@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const navItems = [
@@ -16,7 +16,11 @@ const navItems = [
   { name: "Contact", href: "/contact" },
 ];
 
-export default function Navbar() {
+interface NavbarProps {
+  user?: any;
+}
+
+export default function Navbar({ user }: NavbarProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const pathname = usePathname();
 
@@ -61,12 +65,23 @@ export default function Navbar() {
 
         {/* CTA */}
         <div className="hidden md:flex items-center gap-4">
-          <Link href="/contact">
-             <Button variant="ghost" size="sm" className="uppercase font-bold tracking-wide">Log In</Button>
-          </Link>
-          <Link href="/contact">
-            <Button size="sm" className="uppercase font-bold tracking-wide rounded-none px-6">Get Demo</Button>
-          </Link>
+          {user ? (
+            <Link href="/profile">
+               <Button size="sm" className="uppercase font-bold tracking-wide gap-2">
+                 <User size={16} />
+                 Profile
+               </Button>
+            </Link>
+          ) : (
+            <>
+              <Link href="/login">
+                 <Button variant="ghost" size="sm" className="uppercase font-bold tracking-wide">Log In</Button>
+              </Link>
+              <Link href="/contact">
+                <Button size="sm" className="uppercase font-bold tracking-wide rounded-none px-6">Get Demo</Button>
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile Toggle */}
@@ -102,8 +117,23 @@ export default function Navbar() {
                 </Link>
               ))}
               <div className="flex flex-col gap-3 mt-4">
-                 <Button variant="outline" className="w-full justify-center uppercase font-bold rounded-none">Log In</Button>
-                 <Button className="w-full justify-center uppercase font-bold rounded-none">Request Demo</Button>
+                 {user ? (
+                   <Link href="/profile" onClick={() => setIsOpen(false)}>
+                      <Button className="w-full justify-center uppercase font-bold rounded-none gap-2">
+                        <User size={16} />
+                        Profile
+                      </Button>
+                   </Link>
+                 ) : (
+                   <>
+                     <Link href="/login" onClick={() => setIsOpen(false)}>
+                       <Button variant="outline" className="w-full justify-center uppercase font-bold rounded-none">Log In</Button>
+                     </Link>
+                     <Link href="/contact" onClick={() => setIsOpen(false)}>
+                       <Button className="w-full justify-center uppercase font-bold rounded-none">Request Demo</Button>
+                     </Link>
+                   </>
+                 )}
               </div>
             </div>
           </motion.div>

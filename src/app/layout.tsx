@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -25,11 +24,10 @@ export default function RootLayout({
       <body
         className={`${outfit.variable} antialiased bg-background text-foreground flex flex-col min-h-screen`}
       >
-        <Navbar />
-        <main className="flex-1 pt-24">
+        <main className="flex-1">
           {children}
         </main>
-        <Footer />
+        <Toaster />
       </body>
     </html>
   );
