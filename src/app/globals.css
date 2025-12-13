@@ -28,48 +28,47 @@
 }
 
 :root {
-  /* Black Background */
-  --background: #000000;
-  /* White Foreground */
-  --foreground: #ffffff;
+  /* User Defined Palette */
+  --color-primary-base: #0F4C45;
+  --color-primary-light: #1F6F5C;
+  --color-heading: #0B3D2E;
+  --color-text: #3A3A3A;
+  --color-bg-main: #F6F8F7;
+  --color-bg-soft: #EEF3F1;
+  --color-white: #FFFFFF;
+  --color-border-base: #D9E2DE;
+  --color-black: #000000;
 
-  /* White Primary */
-  --primary: #ffffff; 
-  --primary-foreground: #000000;
+  /* Semantic Mapping - Light Theme */
+  --background: var(--color-bg-main);
+  --foreground: var(--color-text);
 
-  /* Dark Grey Accent */
-  --accent: #27272a; /* Zinc 800 */
-  --accent-foreground: #ffffff;
+  --primary: var(--color-primary-base);
+  --primary-foreground: var(--color-white);
 
-  /* Muted */
-  --muted: #27272a;
-  --muted-foreground: #a1a1aa; /* Zinc 400 */
-  
-  /* Shadcn variables - mapping to Black Theme */
-  --card: #000000;
-  --card-foreground: #ffffff;
-  
-  --popover: #000000;
-  --popover-foreground: #ffffff;
-  
-  --secondary: #27272a;
-  --secondary-foreground: #ffffff;
-  
-  --destructive: #7f1d1d;
-  --destructive-foreground: #ffffff;
+  --secondary: var(--color-bg-soft);
+  --secondary-foreground: var(--color-primary-base);
 
-  --border: #27272a;
-  --input: #27272a;
-  --ring: #ffffff;
-  
-  --radius: 0rem;
-}
+  --muted: var(--color-bg-soft);
+  --muted-foreground: #737373;
 
-@media (prefers-color-scheme: light) {
-  :root {
-     /* Force Dark Mode even if system is light, as per user request for "Background Black" */
-     /* No overrides needed, default is black. */
-  }
+  --accent: var(--color-bg-soft);
+  --accent-foreground: var(--color-primary-base);
+
+  --destructive: #ef4444;
+  --destructive-foreground: var(--color-white);
+
+  --border: var(--color-border-base);
+  --input: var(--color-border-base);
+  --ring: var(--color-primary-base);
+
+  --card: var(--color-white);
+  --card-foreground: var(--color-text);
+
+  --popover: var(--color-white);
+  --popover-foreground: var(--color-text);
+
+  --radius: 0.5rem;
 }
 
 body {

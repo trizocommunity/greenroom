@@ -29,7 +29,7 @@ export default function AboutPage() {
       <Values />
 
       {/* Origin Story */}
-      <section className="py-32 bg-black text-white border-y border-white">
+      <section className="py-32 bg-background text-foreground border-y border-border">
         <div className="container max-w-7xl px-4 md:px-6 mx-auto text-center">
           <p className="text-3xl md:text-5xl font-black uppercase leading-tight tracking-tighter">
             "To simplify festival operations so organizers can focus on the art, and judges can focus on the talent."

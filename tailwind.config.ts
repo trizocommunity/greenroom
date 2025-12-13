@@ -14,7 +14,12 @@ const config: Config = {
         primary: {
           DEFAULT: "var(--primary)",
           foreground: "var(--primary-foreground)",
+          light: "var(--color-primary-light)", // Added specific light shade
         },
+        heading: "var(--color-heading)", // Added heading color
+        text: "var(--color-text)",      // Added text color
+        "bg-main": "var(--color-bg-main)", // Added specific bg main
+        "bg-soft": "var(--color-bg-soft)", // Added specific bg soft
         accent: {
           DEFAULT: "var(--accent)",
           foreground: "var(--accent-foreground)",

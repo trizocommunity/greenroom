@@ -17,7 +17,7 @@ import {
 export default function FeaturesPage() {
   return (
     <div className="min-h-screen ">
-      <div className="py-20 bg-black text-center border-b border-white/10">
+      <div className="py-20 bg-background text-center border-b border-border">
          <div className="container max-w-7xl mx-auto px-4">
             <h1 className="text-6xl md:text-8xl font-black uppercase tracking-tighter mb-6">System <br/> Features</h1>
          </div>

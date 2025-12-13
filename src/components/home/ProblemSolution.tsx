@@ -19,7 +19,7 @@ const solutions = [
 
 export default function ProblemSolution() {
   return (
-    <section className="py-24 bg-black text-white overflow-hidden border-t border-white/10">
+    <section className="py-24 bg-background text-foreground overflow-hidden border-t border-border">
       <div className="container max-w-7xl px-4 md:px-6 mx-auto">
         
         <div className="text-center mb-20">
@@ -37,11 +37,11 @@ export default function ProblemSolution() {
         <div className="grid md:grid-cols-2 relative group border border-gray-100">
           
           {/* Divider */}
-          <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/10 hidden md:block z-20" />
+          <div className="absolute left-1/2 top-0 bottom-0 w-px bg-border hidden md:block z-20" />
 
           {/* Left: The Old Way */}
           <motion.div 
-            className="p-12 md:p-20 bg-black border-b md:border-b-0 md:border-r border-white/10 relative overflow-hidden transition-colors hover:bg-neutral-900 group"
+            className="p-12 md:p-20 bg-card border-b md:border-b-0 md:border-r border-border relative overflow-hidden transition-colors hover:bg-muted/50 group"
             initial={{ opacity: 0, x: -50 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
@@ -77,7 +77,7 @@ export default function ProblemSolution() {
 
           {/* Right: The New Way */}
           <motion.div 
-            className="p-12 md:p-20 bg-black text-white relative overflow-hidden transition-colors hover:bg-neutral-900 group"
+            className="p-12 md:p-20 bg-card text-foreground relative overflow-hidden transition-colors hover:bg-muted/50 group"
             initial={{ opacity: 0, x: 50 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
@@ -107,7 +107,7 @@ export default function ProblemSolution() {
                   transition={{ delay: 0.4 + (i * 0.1) }}
                   className="flex items-center gap-6 text-xl font-bold"
                 >
-                  <div className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-xs">
+                  <div className="w-6 h-6 rounded-full border-2 border-foreground flex items-center justify-center text-xs">
                     <Check size={14} strokeWidth={4} />
                   </div>
                   {item}

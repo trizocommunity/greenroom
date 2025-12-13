@@ -28,7 +28,7 @@ const audiences = [
 
 export default function TargetAudience() {
   return (
-    <section className="py-32 bg-black border-t border-white/10">
+    <section className="py-32 bg-background border-t border-border">
       <div className="container max-w-7xl px-4 md:px-6 mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-end mb-24 gap-8">
           <h2 className="text-4xl md:text-6xl font-black uppercase tracking-tighter max-w-2xl">
@@ -43,9 +43,9 @@ export default function TargetAudience() {
           {audiences.map((item, i) => (
             <motion.div
               key={i}
-              className="group border border-white/10 p-8 hover:bg-white hover:text-black transition-colors duration-500"
+              className="group border border-border p-8 hover:bg-muted transition-colors duration-500"
             >
-              <div className="mb-6 p-4 border border-white/20 inline-block group-hover:border-black">
+              <div className="mb-6 p-4 border border-border inline-block group-hover:border-black">
                 <item.icon size={32} strokeWidth={1} />
               </div>
               <h3 className="text-2xl font-bold uppercase mb-4 tracking-wide">{item.title}</h3>

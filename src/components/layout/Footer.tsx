@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function Footer() {
   return (
-    <footer className="bg-black border-t border-white/10 mt-auto text-white">
+    <footer className="bg-background border-t border-border mt-auto text-foreground">
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-12 md:py-20">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
           {/* Brand */}
@@ -39,7 +39,7 @@ export default function Footer() {
           </div>
         </div>
         
-        <div className="border-t border-white/10 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-gray-500 uppercase font-medium tracking-wider">
+        <div className="border-t border-border mt-12 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-muted-foreground uppercase font-medium tracking-wider">
           <p>&copy; {new Date().getFullYear()} Greenroom. All rights reserved.</p>
           <div className="flex gap-6 mt-4 md:mt-0">
              <Link href="#" className="hover:text-primary">Privacy Policy</Link>

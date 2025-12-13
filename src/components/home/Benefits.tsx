@@ -29,21 +29,21 @@ const benefits = [
 
 export default function Benefits() {
   return (
-    <section className="py-32 bg-black text-white">
+    <section className="py-32 bg-background text-foreground">
       <div className="container max-w-7xl px-4 md:px-6 mx-auto">
         <div className="mb-20">
-          <h2 className="text-5xl md:text-7xl font-black uppercase tracking-tighter mb-6 text-white">
-            Unmatched <br/> <span className="text-gray-400">Efficiency</span>
+          <h2 className="text-5xl md:text-7xl font-black uppercase tracking-tighter mb-6 text-foreground">
+            Unmatched <br/> <span className="text-muted-foreground">Efficiency</span>
           </h2>
         </div>
 
-        <div className="grid md:grid-cols-4 border-t border-b border-black">
+        <div className="grid md:grid-cols-4 border-t border-b border-border">
           {benefits.map((benefit, i) => (
             <div
               key={i}
-              className={`${benefit.colSpan} p-12 group hover:bg-neutral-900 transition-colors duration-500 relative ${benefit.hasBorderRight ? "md:border-r border-white/10" : ""}`}
+              className={`${benefit.colSpan} p-12 group hover:bg-soft transition-colors duration-500 relative ${benefit.hasBorderRight ? "md:border-r border-border" : ""}`}
             >
-              <div className={`h-px w-full bg-white/10 absolute bottom-0 left-0`} />
+              <div className={`h-px w-full bg-border absolute bottom-0 left-0`} />
               <div className="mb-12 opacity-50 group-hover:opacity-100 transition-opacity">
                 <benefit.icon size={48} strokeWidth={1} />
               </div>

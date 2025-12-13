@@ -19,11 +19,11 @@ export default function ContactForm() {
 
   if (submitted) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-center p-12 bg-black border border-white/10">
-        <div className="mb-6"><CheckCircle size={48} className="text-white" /></div>
-        <h3 className="text-3xl font-black uppercase mb-4 text-white">Received</h3>
-        <p className="text-gray-400 mb-8 font-medium">We will contact you shortly.</p>
-        <Button onClick={() => setSubmitted(false)} variant="outline" className="uppercase font-bold tracking-wider rounded-none border-white hover:bg-white hover:text-black h-12 px-8">
+      <div className="h-full flex flex-col items-center justify-center text-center p-12 bg-card border border-border">
+        <div className="mb-6"><CheckCircle size={48} className="text-primary" /></div>
+        <h3 className="text-3xl font-black uppercase mb-4 text-foreground">Received</h3>
+        <p className="text-muted-foreground mb-8 font-medium">We will contact you shortly.</p>
+        <Button onClick={() => setSubmitted(false)} variant="outline" className="uppercase font-bold tracking-wider rounded-none border-foreground hover:bg-foreground hover:text-background h-12 px-8">
           Reset
         </Button>
       </div>
@@ -32,7 +32,7 @@ export default function ContactForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      <h3 className="text-3xl font-black uppercase mb-8 tracking-tighter text-white">Usage Inquiry</h3>
+      <h3 className="text-3xl font-black uppercase mb-8 tracking-tighter text-foreground">Usage Inquiry</h3>
       
       <div className="space-y-6">
         <div className="grid md:grid-cols-2 gap-6">
@@ -43,7 +43,7 @@ export default function ContactForm() {
               type="text"
               id="name"
               placeholder="YOUR NAME"
-              className="h-12 bg-transparent border-t-0 border-x-0 border-b-2 border-white/20 focus-visible:ring-0 focus-visible:border-white rounded-none px-0 font-bold uppercase placeholder:text-gray-600 text-white"
+              className="h-12 bg-transparent border-t-0 border-x-0 border-b-2 border-border focus-visible:ring-0 focus-visible:border-foreground rounded-none px-0 font-bold uppercase placeholder:text-muted-foreground text-foreground"
             />
           </div>
           <div className="space-y-2">
@@ -53,7 +53,7 @@ export default function ContactForm() {
               type="text"
               id="org"
               placeholder="YOUR ORG"
-              className="h-12 bg-transparent border-t-0 border-x-0 border-b-2 border-white/20 focus-visible:ring-0 focus-visible:border-white rounded-none px-0 font-bold uppercase placeholder:text-gray-600 text-white"
+              className="h-12 bg-transparent border-t-0 border-x-0 border-b-2 border-border focus-visible:ring-0 focus-visible:border-foreground rounded-none px-0 font-bold uppercase placeholder:text-muted-foreground text-foreground"
             />
           </div>
         </div>
@@ -66,7 +66,7 @@ export default function ContactForm() {
               type="email"
               id="email"
               placeholder="EMAIL@EXAMPLE.COM"
-              className="h-12 bg-transparent border-t-0 border-x-0 border-b-2 border-white/20 focus-visible:ring-0 focus-visible:border-white rounded-none px-0 font-bold uppercase placeholder:text-gray-600 text-white"
+              className="h-12 bg-transparent border-t-0 border-x-0 border-b-2 border-border focus-visible:ring-0 focus-visible:border-foreground rounded-none px-0 font-bold uppercase placeholder:text-muted-foreground text-foreground"
             />
           </div>
           <div className="space-y-2">
@@ -76,7 +76,7 @@ export default function ContactForm() {
               type="tel"
               id="phone"
               placeholder="+00 00000 00000"
-              className="h-12 bg-transparent border-t-0 border-x-0 border-b-2 border-white/20 focus-visible:ring-0 focus-visible:border-white rounded-none px-0 font-bold uppercase placeholder:text-gray-600 text-white"
+              className="h-12 bg-transparent border-t-0 border-x-0 border-b-2 border-border focus-visible:ring-0 focus-visible:border-foreground rounded-none px-0 font-bold uppercase placeholder:text-muted-foreground text-foreground"
             />
           </div>
         </div>
@@ -88,11 +88,11 @@ export default function ContactForm() {
               id="message"
               rows={4}
               placeholder="TELL US ABOUT YOUR EVENT..."
-              className="p-4 bg-black border-2 border-white/20 focus-visible:ring-0 focus-visible:border-white rounded-none font-bold uppercase placeholder:text-gray-600 text-white resize-none"
+              className="p-4 bg-background border-2 border-border focus-visible:ring-0 focus-visible:border-foreground rounded-none font-bold uppercase placeholder:text-muted-foreground text-foreground resize-none"
            />
         </div>
 
-        <Button type="submit" size="lg" className="w-full h-14 bg-white text-black hover:bg-gray-200 rounded-none uppercase font-black tracking-widest text-lg">
+        <Button type="submit" size="lg" className="w-full h-14 bg-primary text-primary-foreground hover:bg-primary/90 rounded-none uppercase font-black tracking-widest text-lg">
           Submit Inquiry <Send className="ml-4 w-4 h-4" />
         </Button>
       </div>
