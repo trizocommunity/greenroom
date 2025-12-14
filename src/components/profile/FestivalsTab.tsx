@@ -4,23 +4,33 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 import { Festival, useFestivals } from "@/hooks/useFestivals";
 import { FestivalCard } from "./FestivalCard";
 import { FestivalEmptyState } from "./FestivalEmptyState";
+import { EditFestivalModal } from "./EditFestivalModal";
 import { CreateFestivalModal } from "./CreateFestivalModal";
 
 export function FestivalsTab() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingFestival, setEditingFestival] = useState<Festival | null>(null);
   const { data: festivals = [], isLoading, isError } = useFestivals();
 
   const handleView = (festival: Festival) => {
-    // Future: Navigate to festival details page
-    console.log("View festival:", festival.id);
+    if (!festival.slug) {
+      toast.error("This festival does not have a public page yet.");
+      return;
+    }
+
+    // Determine URL based on environment (simplified for now)
+    // In production this should be `${festival.slug}.greenrooom.com`
+    // For local dev we use the query param fallback
+    const url = `${window.location.origin}?festival=${festival.slug}`;
+    window.open(url, "_blank");
   };
 
   const handleEdit = (festival: Festival) => {
-    // Future: Open edit modal
-    console.log("Edit festival:", festival.id);
+    setEditingFestival(festival);
   };
 
   // if (isLoading) {
@@ -88,6 +98,13 @@ export function FestivalsTab() {
       <CreateFestivalModal
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
+      />
+
+      {/* Edit Modal */}
+      <EditFestivalModal
+        festival={editingFestival}
+        open={!!editingFestival}
+        onOpenChange={(open) => !open && setEditingFestival(null)}
       />
     </div>
   );

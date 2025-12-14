@@ -74,6 +74,7 @@ export async function PATCH(
 
     const {
       name,
+      slug,
       description,
       startDate,
       endDate,
@@ -84,6 +85,24 @@ export async function PATCH(
       orgLocation,
       orgEstablishedYear,
     } = body;
+
+    // If slug is being updated, validate it
+    if (slug && slug !== existing.slug) {
+      if (!/^[a-z0-9-]+$/.test(slug)) {
+        return new NextResponse("Invalid slug format", { status: 400 });
+      }
+
+      const slugTaken = await prisma.festival.findFirst({
+        where: { 
+          slug,
+          NOT: { id } // Exclude current festival
+        },
+      });
+
+      if (slugTaken) {
+        return new NextResponse("This URL slug is already taken", { status: 400 });
+      }
+    }
 
     const start = startDate ? new Date(startDate) : existing.startDate;
     const end = endDate ? new Date(endDate) : existing.endDate;
@@ -98,6 +117,7 @@ export async function PATCH(
       where: { id },
       data: {
         name: name ?? existing.name,
+        slug: slug ?? existing.slug,
         description: description ?? existing.description,
         startDate: start,
         endDate: end,
@@ -116,7 +136,7 @@ export async function PATCH(
     return NextResponse.json(festival);
   } catch (error) {
     console.error("[FESTIVAL_PATCH]", error);
-    return new NextResponse("Internal Error", { status: 500 });
+    return new NextResponse(`Internal Error: ${(error as Error).message}`, { status: 500 });
   }
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -23,7 +23,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useCreateFestival } from "@/hooks/useFestivals";
+import { Festival, useUpdateFestival } from "@/hooks/useFestivals";
 
 const festivalStep1Schema = z.object({
   name: z.string().min(2, "Festival name must be at least 2 characters"),
@@ -48,18 +48,20 @@ type Step1Data = z.infer<typeof festivalStep1Schema>;
 type Step2Data = z.infer<typeof festivalStep2Schema>;
 type FestivalFormData = z.infer<typeof fullSchema>;
 
-interface CreateFestivalModalProps {
+interface EditFestivalModalProps {
+  festival: Festival | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function CreateFestivalModal({
+export function EditFestivalModal({
+  festival,
   open,
   onOpenChange,
-}: CreateFestivalModalProps) {
+}: EditFestivalModalProps) {
   const [step, setStep] = useState(1);
   const [step1Data, setStep1Data] = useState<Step1Data | null>(null);
-  const createMutation = useCreateFestival();
+  const updateMutation = useUpdateFestival();
 
   const step1Form = useForm<Step1Data>({
     resolver: zodResolver(festivalStep1Schema),
@@ -84,6 +86,35 @@ export function CreateFestivalModal({
     },
   });
 
+  // Load festival data when modal opens
+  useEffect(() => {
+    if (festival && open) {
+      // Format dates for input type="date"
+      const startDate = new Date(festival.startDate).toISOString().split('T')[0];
+      const endDate = new Date(festival.endDate).toISOString().split('T')[0];
+
+      step1Form.reset({
+        name: festival.name,
+        slug: festival.slug || "",
+        description: festival.description || "",
+        startDate,
+        endDate,
+        location: festival.location,
+      });
+
+      step2Form.reset({
+        orgName: festival.orgName,
+        orgDescription: festival.orgDescription || "",
+        orgWebsite: festival.orgWebsite || "",
+        orgLocation: festival.orgLocation || "",
+        orgEstablishedYear: festival.orgEstablishedYear ? String(festival.orgEstablishedYear) : "",
+      });
+      
+      setStep(1);
+      setStep1Data(null);
+    }
+  }, [festival, open, step1Form, step2Form]);
+
   const handleStep1Submit = (data: Step1Data) => {
     // Validate date range
     const start = new Date(data.startDate);
@@ -99,28 +130,31 @@ export function CreateFestivalModal({
   };
 
   const handleStep2Submit = async (data: Step2Data) => {
-    if (!step1Data) return;
+    if (!step1Data || !festival) return;
 
     const fullData: FestivalFormData = {
       ...step1Data,
       ...data,
     };
 
-    createMutation.mutate(
+    updateMutation.mutate(
       {
-        name: fullData.name,
-        slug: fullData.slug,
-        description: fullData.description || undefined,
-        startDate: fullData.startDate,
-        endDate: fullData.endDate,
-        location: fullData.location,
-        orgName: fullData.orgName,
-        orgDescription: fullData.orgDescription || undefined,
-        orgWebsite: fullData.orgWebsite || undefined,
-        orgLocation: fullData.orgLocation || undefined,
-        orgEstablishedYear: fullData.orgEstablishedYear
-          ? parseInt(fullData.orgEstablishedYear)
-          : undefined,
+        id: festival.id,
+        data: {
+          name: fullData.name,
+          slug: fullData.slug,
+          description: fullData.description || undefined,
+          startDate: fullData.startDate,
+          endDate: fullData.endDate,
+          location: fullData.location,
+          orgName: fullData.orgName,
+          orgDescription: fullData.orgDescription || undefined,
+          orgWebsite: fullData.orgWebsite || undefined,
+          orgLocation: fullData.orgLocation || undefined,
+          orgEstablishedYear: fullData.orgEstablishedYear
+            ? parseInt(fullData.orgEstablishedYear)
+            : undefined,
+        },
       },
       {
         onSuccess: () => {
@@ -131,22 +165,24 @@ export function CreateFestivalModal({
   };
 
   const handleClose = () => {
-    setStep(1);
-    setStep1Data(null);
-    step1Form.reset();
-    step2Form.reset();
     onOpenChange(false);
+    setTimeout(() => {
+        setStep(1);
+        setStep1Data(null);
+    }, 300);
   };
 
   const handleBack = () => {
     setStep(1);
   };
 
+  if (!festival) return null;
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create Festival</DialogTitle>
+          <DialogTitle>Edit Festival</DialogTitle>
           <DialogDescription>
             {step === 1
               ? "Step 1 of 2: Festival Information"
@@ -397,11 +433,11 @@ export function CreateFestivalModal({
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={createMutation.isPending}>
-                    {createMutation.isPending && (
+                  <Button type="submit" disabled={updateMutation.isPending}>
+                    {updateMutation.isPending && (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     )}
-                    Create Festival
+                    Save Changes
                   </Button>
                 </div>
               </div>

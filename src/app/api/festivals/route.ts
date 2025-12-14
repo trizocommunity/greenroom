@@ -52,6 +52,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const {
       name,
+      slug,
       description,
       startDate,
       endDate,
@@ -64,8 +65,21 @@ export async function POST(request: Request) {
     } = body;
 
     // Validation
-    if (!name || !startDate || !endDate || !location || !orgName) {
+    if (!name || !slug || !startDate || !endDate || !location || !orgName) {
       return new NextResponse("Missing required fields", { status: 400 });
+    }
+
+    // Validate slug format
+    if (!/^[a-z0-9-]+$/.test(slug)) {
+      return new NextResponse("Invalid slug format", { status: 400 });
+    }
+
+    // Check if slug is already taken
+    const existingFestival = await prisma.festival.findFirst({
+      where: { slug },
+    });
+    if (existingFestival) {
+      return new NextResponse("This URL slug is already taken", { status: 400 });
     }
 
     const start = new Date(startDate);
@@ -80,6 +94,7 @@ export async function POST(request: Request) {
     const festival = await prisma.festival.create({
       data: {
         name,
+        slug,
         description,
         startDate: start,
         endDate: end,

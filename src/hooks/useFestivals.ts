@@ -4,6 +4,7 @@ import { toast } from "sonner";
 export type Festival = {
   id: string;
   name: string;
+  slug: string | null;
   description: string | null;
   startDate: string;
   endDate: string;
@@ -19,6 +20,7 @@ export type Festival = {
 
 export type CreateFestivalInput = {
   name: string;
+  slug: string;
   description?: string;
   startDate: string;
   endDate: string;
