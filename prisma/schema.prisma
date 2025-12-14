@@ -21,11 +21,43 @@ model User {
   isActive      Boolean    @default(true)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
+  festivals     Festival[]
 }
 
 enum GlobalRole {
   USER
   SUPER_ADMIN
+}
+
+enum FestivalStatus {
+  UPCOMING
+  ONGOING
+  COMPLETED
+}
+
+model Festival {
+  id            String          @id @default(cuid())
+  name          String
+  description   String?
+  startDate     DateTime
+  endDate       DateTime
+  location      String
+  status        FestivalStatus  @default(UPCOMING)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  // Organization info
+  orgName           String
+  orgDescription    String?
+  orgWebsite        String?
+  orgLocation       String?
+  orgEstablishedYear Int?
+  
+  // Relations
+  creatorId     String
+  creator       User            @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  
+  @@index([creatorId])
 }
 
 model PasswordResetToken {
