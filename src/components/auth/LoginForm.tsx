@@ -42,9 +42,13 @@ export function LoginForm() {
       }
       return response.json()
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast.success("Logged in successfully")
-      router.push("/profile")
+      if (data.role === "SUPER_ADMIN") {
+        router.push("/super-admin")
+      } else {
+        router.push("/profile")
+      }
       router.refresh()
     },
     onError: (error) => {
