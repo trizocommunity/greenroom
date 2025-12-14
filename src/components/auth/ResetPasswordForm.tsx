@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { useMutation } from "@tanstack/react-query"
 import { z } from "zod"
 import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
@@ -19,7 +20,6 @@ export function ResetPasswordForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get("token")
-  const [isLoading, setIsLoading] = React.useState(false)
 
   const {
     register,
@@ -40,15 +40,8 @@ export function ResetPasswordForm() {
     }
   }, [token, setValue])
 
-  async function onSubmit(data: FormData) {
-    if (!data.token) {
-        toast.error("Missing reset token");
-        return;
-    }
-    
-    setIsLoading(true)
-
-    try {
+  const { mutate, isPending } = useMutation({
+    mutationFn: async (data: FormData) => {
       const response = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: {
@@ -61,18 +54,26 @@ export function ResetPasswordForm() {
          const result = await response.json()
          throw new Error(result.error || "Failed to reset password")
       }
-
+    },
+    onSuccess: () => {
       toast.success("Password reset successfully")
       router.push("/login")
-    } catch (error) {
+    },
+    onError: (error) => {
        if (error instanceof Error) {
         toast.error(error.message)
       } else {
         toast.error("Something went wrong")
       }
-    } finally {
-      setIsLoading(false)
     }
+  })
+
+  function onSubmit(data: FormData) {
+    if (!data.token) {
+        toast.error("Missing reset token");
+        return;
+    }
+    mutate(data)
   }
 
   if (!token) {
@@ -90,7 +91,7 @@ export function ResetPasswordForm() {
               id="password"
               type="password"
               autoComplete="new-password"
-              disabled={isLoading}
+              disabled={isPending}
               {...register("password")}
             />
             {errors.password && (
@@ -103,15 +104,15 @@ export function ResetPasswordForm() {
               id="confirmPassword"
               type="password"
               autoComplete="new-password"
-              disabled={isLoading}
+              disabled={isPending}
               {...register("confirmPassword")}
             />
             {errors.confirmPassword && (
               <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>
             )}
           </div>
-          <Button disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button disabled={isPending}>
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Reset Password
           </Button>
         </div>

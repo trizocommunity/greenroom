@@ -30,12 +30,13 @@ export async function POST(request: Request) {
       )
     }
 
-    await createSession(user.id, user.globalRole)
+    const isOnboarded = !!(user.fullName && user.displayName && user.age !== null)
+    await createSession(user.id, user.globalRole, isOnboarded)
 
     return NextResponse.json({ success: true, role: user.globalRole })
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 })
+      return NextResponse.json({ error: (error as any).errors }, { status: 400 })
     }
     return NextResponse.json(
       { error: 'Internal server error' },

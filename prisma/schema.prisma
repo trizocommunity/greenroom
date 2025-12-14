@@ -15,6 +15,9 @@ model User {
   email         String     @unique
   passwordHash  String
   globalRole    GlobalRole @default(USER)
+  fullName      String?
+  displayName   String?
+  age           Int?
   isActive      Boolean    @default(true)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt

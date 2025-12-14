@@ -14,21 +14,19 @@ import { forgotPasswordSchema } from "@/lib/validations/auth"
 
 type FormData = z.infer<typeof forgotPasswordSchema>
 
+import { useMutation } from "@tanstack/react-query"
+
 export function ForgotPasswordForm() {
-  const [isLoading, setIsLoading] = React.useState(false)
-
   const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<FormData>({
-    resolver: zodResolver(forgotPasswordSchema),
-  })
+      register,
+      handleSubmit,
+      formState: { errors },
+    } = useForm<FormData>({
+      resolver: zodResolver(forgotPasswordSchema),
+    })
 
-  async function onSubmit(data: FormData) {
-    setIsLoading(true)
-
-    try {
+  const { mutate, isPending } = useMutation({
+    mutationFn: async (data: FormData) => {
       const response = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: {
@@ -40,13 +38,17 @@ export function ForgotPasswordForm() {
       if (!response.ok) {
         throw new Error("Failed to send reset email")
       }
-
+    },
+    onSuccess: () => {
       toast.success("If an account exists, we sent a reset link")
-    } catch (error) {
+    },
+    onError: () => {
       toast.error("Something went wrong")
-    } finally {
-      setIsLoading(false)
     }
+  })
+
+  function onSubmit(data: FormData) {
+    mutate(data)
   }
 
   return (
@@ -62,15 +64,15 @@ export function ForgotPasswordForm() {
               autoCapitalize="none"
               autoComplete="email"
               autoCorrect="off"
-              disabled={isLoading}
+              disabled={isPending}
               {...register("email")}
             />
             {errors.email && (
               <p className="text-sm text-red-500">{errors.email.message}</p>
             )}
           </div>
-          <Button disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button disabled={isPending}>
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Send Reset Link
           </Button>
         </div>
