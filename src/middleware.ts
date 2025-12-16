@@ -7,6 +7,8 @@ const protectedRoutes = ['/profile', '/super-admin', '/onboarding']
 const publicRoutes = ['/login', '/register', '/forget-password', '/reset-password', '/', '/about', '/features', '/services', '/contact']
 const festivalRoutes = ['/about', '/news', '/gallery', '/sessions', '/results']
 
+const authRoutes = ['/login', '/register', '/forget-password', '/reset-password']
+
 export default async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname
   const host = req.headers.get('host') || ''
@@ -29,7 +31,17 @@ export default async function middleware(req: NextRequest) {
     festivalSlug !== 'api'
   
   // Handle festival subdomain routing
-  if (isFestivalRequest && !path.startsWith('/api') && !path.startsWith('/_next') && !path.startsWith('/festival')) {
+  if (isFestivalRequest && !path.startsWith('/api') && !path.startsWith('/_next') && !path.startsWith('/festival') && !authRoutes.includes(path)) {
+    
+    // Prevent access to /dashboard on subdomain
+    if (path.includes('/dashboard')) {
+        // Redirect to main app dashboard: app.greenroom.com/festival/{slug}/dashboard
+        // For local dev, we assume main app is on localhost:3000
+        const mainAppHost = process.env.NEXT_PUBLIC_APP_URL ? new URL(process.env.NEXT_PUBLIC_APP_URL).host : 'localhost:3000';
+        const url = new URL(`/festival/${festivalSlug}${path}`, `http://${mainAppHost}`);
+        return NextResponse.redirect(url);
+    }
+
     // Rewrite to internal festival route
     const url = req.nextUrl.clone()
     url.pathname = `/festival/${festivalSlug}${path === '/' ? '' : path}`
@@ -63,7 +75,8 @@ export default async function middleware(req: NextRequest) {
   }
 
   // 6. Strict Access: Redirect to /profile if the user is authenticated and tries to access ANY public route
-  if (session?.userId && isPublicRoute && path !== '/profile' && !isOnboardingRoute) {
+  // EXCEPTION: Allow access to festival subdomains so admins can view the public site
+  if (session?.userId && isPublicRoute && path !== '/profile' && !isOnboardingRoute && !isFestivalRequest) {
      return NextResponse.redirect(new URL('/profile', req.nextUrl))
   }
   

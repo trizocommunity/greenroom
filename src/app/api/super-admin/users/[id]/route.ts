@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { findUserById, findUserByEmail, updateUser, deleteUser } from "@/models/UserModel";
 import { GlobalRole } from "@prisma/client";
 
 export async function DELETE(
@@ -21,21 +21,19 @@ export async function DELETE(
     }
 
     // Check if user exists
-    const user = await prisma.user.findUnique({
-        where: { id }
-    });
-
+    const user = await findUserById(id);
     if (!user) {
-        return new NextResponse("User not found", { status: 404 });
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
     }
 
     // Prevent deleting other SUPER_ADMINs (optional safety, implementation choice)
     // but user requested visual disabled state, good to enforce on backend too unless intentional.
     // Let's allow it but maybe warn? For now, allow it as standard logic implies admins manage admins.
     
-    await prisma.user.delete({
-      where: { id },
-    });
+    await deleteUser(id);
 
     return new NextResponse(null, { status: 200 });
   } catch (error) {
@@ -64,20 +62,15 @@ export async function PATCH(
       }
 
       // Check for email collision if email changed
-      const existingUser = await prisma.user.findUnique({
-          where: { email }
-      });
+      const existingUser = await findUserByEmail(email);
       if (existingUser && existingUser.id !== id) {
-          return new NextResponse("Email already in use", { status: 409 });
+        return NextResponse.json({ error: "Email already in use" }, { status: 400 });
       }
   
-      await prisma.user.update({
-        where: { id },
-        data: {
-            fullName,
-            email,
-            globalRole: globalRole as GlobalRole
-        }
+      await updateUser(id, {
+        fullName,
+        email,
+        globalRole: globalRole as GlobalRole
       });
   
       return new NextResponse(null, { status: 200 });

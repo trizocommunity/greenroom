@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { findUserByEmail } from "@/models/UserModel";
+import { createPasswordResetToken } from "@/models/PasswordResetTokenModel";
 import { forgotPasswordSchema } from '@/lib/validations/auth'
 import { z } from 'zod'
 import crypto from 'crypto'
@@ -9,9 +10,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { email } = forgotPasswordSchema.parse(body)
 
-    const user = await prisma.user.findUnique({
-      where: { email },
-    })
+    const user = await findUserByEmail(email)
 
     if (!user) {
       // Don't reveal user existence
@@ -24,12 +23,10 @@ export async function POST(request: Request) {
 
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60) // 1 hour
 
-    await prisma.passwordResetToken.create({
-      data: {
-        userId: user.id,
-        tokenHash,
-        expiresAt,
-      },
+    await createPasswordResetToken({
+      userId: user.id,
+      tokenHash,
+      expiresAt,
     })
 
     // Mock Email sending

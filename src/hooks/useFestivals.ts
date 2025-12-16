@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { festivalService } from "@/services/festivalService";
 
 export type Festival = {
   id: string;
@@ -35,14 +36,7 @@ export type CreateFestivalInput = {
 export const useFestivals = () => {
   return useQuery({
     queryKey: ["festivals"],
-    queryFn: async (): Promise<Festival[]> => {
-      const response = await fetch("/api/festivals");
-      if (!response.ok) {
-        throw new Error("Failed to fetch festivals");
-      }
-      return response.json();
-    },
-    
+    queryFn: festivalService.getAll,
   });
 };
 
@@ -50,20 +44,7 @@ export const useCreateFestival = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: CreateFestivalInput) => {
-      const response = await fetch("/api/festivals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || "Failed to create festival");
-      }
-
-      return response.json();
-    },
+    mutationFn: festivalService.create,
     onSuccess: () => {
       toast.success("Festival created successfully");
       queryClient.invalidateQueries({ queryKey: ["festivals"] });
@@ -78,26 +59,8 @@ export const useUpdateFestival = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      id,
-      data,
-    }: {
-      id: string;
-      data: Partial<CreateFestivalInput>;
-    }) => {
-      const response = await fetch(`/api/festivals/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || "Failed to update festival");
-      }
-
-      return response.json();
-    },
+    mutationFn: ({ id, data }: { id: string; data: Partial<CreateFestivalInput> }) =>
+      festivalService.update(id, data),
     onSuccess: () => {
       toast.success("Festival updated successfully");
       queryClient.invalidateQueries({ queryKey: ["festivals"] });
@@ -112,16 +75,7 @@ export const useDeleteFestival = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      const response = await fetch(`/api/festivals/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || "Failed to delete festival");
-      }
-    },
+    mutationFn: festivalService.delete,
     onSuccess: () => {
       toast.success("Festival deleted successfully");
       queryClient.invalidateQueries({ queryKey: ["festivals"] });

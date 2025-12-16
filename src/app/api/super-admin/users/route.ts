@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { findAllUsers } from "@/models/UserModel";
 
 export async function GET() {
   try {
@@ -10,19 +10,10 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        fullName: true, // Assuming schema has fullName based on seed/schema checks
-        globalRole: true,
-        isActive: true,
-        createdAt: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const users = await findAllUsers(
+      {},
+      { createdAt: "desc" }
+    );
 
     return NextResponse.json(users);
   } catch (error) {

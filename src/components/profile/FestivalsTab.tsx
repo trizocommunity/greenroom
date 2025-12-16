@@ -10,11 +10,14 @@ import { FestivalCard } from "./FestivalCard";
 import { FestivalEmptyState } from "./FestivalEmptyState";
 import { EditFestivalModal } from "./EditFestivalModal";
 import { CreateFestivalModal } from "./CreateFestivalModal";
+import { useRouter } from "next/navigation";
 
 export function FestivalsTab() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingFestival, setEditingFestival] = useState<Festival | null>(null);
   const { data: festivals = [], isLoading, isError } = useFestivals();
+
+  const router = useRouter();
 
   const handleView = (festival: Festival) => {
     if (!festival.slug) {
@@ -29,33 +32,18 @@ export function FestivalsTab() {
     window.open(url, "_blank");
   };
 
+  const handleManage = (festival: Festival) => {
+    if (!festival.slug) {
+      toast.error("This festival does not have a dashboard yet.");
+      return;
+    }
+    // Navigate to dashboard using client-side routing
+    router.push(`/festival/${festival.slug}/dashboard`);
+  };
+
   const handleEdit = (festival: Festival) => {
     setEditingFestival(festival);
   };
-
-  // if (isLoading) {
-  //   return (
-  //     <div className="space-y-6">
-  //       <div className="flex items-center justify-between">
-  //         <Skeleton className="h-8 w-48" />
-  //         <Skeleton className="h-10 w-32" />
-  //       </div>
-  //       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-  //         {[1, 2, 3].map((i) => (
-  //           <Skeleton key={i} className="h-52 rounded-lg" />
-  //         ))}
-  //       </div>
-  //     </div>
-  //   );
-  // }
-
-  // if (isError) {
-  //   return (
-  //     <div className="py-10 text-center text-red-500">
-  //       Failed to load festivals. Please try again.
-  //     </div>
-  //   );
-  // }
 
   return (
     <div className="space-y-6">
@@ -88,6 +76,7 @@ export function FestivalsTab() {
               key={festival.id}
               festival={festival}
               onView={handleView}
+              onManage={handleManage}
               onEdit={handleEdit}
             />
           ))}

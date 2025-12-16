@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { findUserById } from "@/models/UserModel";
 
 export async function GET() {
   try {
@@ -10,16 +10,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.userId },
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-        displayName: true,
-        globalRole: true,
-      },
-    });
+    const user = await findUserById(session.userId);
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });

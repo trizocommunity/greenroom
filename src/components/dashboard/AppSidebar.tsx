@@ -9,6 +9,7 @@ import {
   ChevronsUpDown,
   BadgeCheck,
   LogOut,
+  Calendar,
 } from "lucide-react"
 
 import {
@@ -54,6 +55,11 @@ const items = [
     title: "Users",
     url: "/super-admin/users",
     icon: Users,
+  },
+  {
+    title: "Festivals",
+    url: "/super-admin/festivals",
+    icon: Calendar,
   },
   {
     title: "Payments",

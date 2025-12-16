@@ -1,7 +1,7 @@
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
+import { findUserById } from "@/models/UserModel";
 import { ProfileView } from "@/components/profile/profile-view";
 
 export const metadata: Metadata = {
@@ -16,11 +16,7 @@ export default async function ProfilePage() {
     redirect("/login");
   }
 
-  const user = await prisma.user.findUnique({
-    where: {
-      id: session.userId,
-    },
-  });
+  const user = await findUserById(session.userId);
 
   if (!user) {
     redirect("/login");

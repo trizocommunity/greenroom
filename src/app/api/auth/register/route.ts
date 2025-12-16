@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { findUserByEmail, createUser } from "@/models/UserModel";
 import { hashPassword } from '@/lib/auth/password'
 import { registerSchema } from '@/lib/validations/auth'
 import { z } from 'zod'
@@ -9,9 +9,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { email, password } = registerSchema.parse(body)
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    })
+    const existingUser = await findUserByEmail(email)
 
     if (existingUser) {
       return NextResponse.json(
@@ -22,11 +20,9 @@ export async function POST(request: Request) {
 
     const hashedPassword = await hashPassword(password)
 
-    const user = await prisma.user.create({
-      data: {
-        email,
-        passwordHash: hashedPassword,
-      },
+    const user = await createUser({
+      email,
+      passwordHash: hashedPassword,
     })
 
     const { passwordHash: _, ...userWithoutPassword } = user

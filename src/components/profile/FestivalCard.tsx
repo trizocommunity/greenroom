@@ -30,6 +30,7 @@ interface FestivalCardProps {
   festival: Festival;
   onEdit?: (festival: Festival) => void;
   onView?: (festival: Festival) => void;
+  onManage?: (festival: Festival) => void;
 }
 
 const statusConfig = {
@@ -47,7 +48,7 @@ const statusConfig = {
   },
 };
 
-export function FestivalCard({ festival, onEdit, onView }: FestivalCardProps) {
+export function FestivalCard({ festival, onEdit, onView, onManage }: FestivalCardProps) {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const deleteMutation = useDeleteFestival();
 
@@ -96,7 +97,7 @@ export function FestivalCard({ festival, onEdit, onView }: FestivalCardProps) {
                   <Pencil className="mr-2 h-4 w-4" />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem disabled>
+                <DropdownMenuItem onClick={() => onManage?.(festival)}>
                   <Settings className="mr-2 h-4 w-4" />
                   Manage
                 </DropdownMenuItem>

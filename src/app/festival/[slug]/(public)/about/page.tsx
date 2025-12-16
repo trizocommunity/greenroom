@@ -1,13 +1,7 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, MapPin, Calendar, Globe } from "lucide-react";
-
-async function getFestivalBySlug(slug: string) {
-  return prisma.festival.findFirst({
-    where: { slug },
-  });
-}
+import { findFestivalBySlug } from "@/models/FestivalModel";
 
 export default async function AboutPage({
   params,
@@ -15,7 +9,7 @@ export default async function AboutPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const festival = await getFestivalBySlug(slug);
+  const festival = await findFestivalBySlug(slug);
   
   if (!festival) {
     notFound();
