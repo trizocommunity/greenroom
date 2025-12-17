@@ -3,8 +3,8 @@ import { getSession } from "@/lib/auth/session";
 import { FestivalDashboardSidebar } from "@/components/festival/dashboard/FestivalDashboardSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/components/ui/breadcrumb";
 import { findFestivalBySlug } from "@/models/FestivalModel";
+import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 
 export default async function FestivalDashboardLayout({
   children,
@@ -42,6 +42,8 @@ export default async function FestivalDashboardLayout({
     name: festival.name,
     slug: festival.slug,
     accentColor: festival.accentColor,
+    status: festival.status,
+    expiresAt: festival.expiresAt,
   };
 
   return (
@@ -49,25 +51,15 @@ export default async function FestivalDashboardLayout({
       <FestivalDashboardSidebar festival={festivalData} />
       <div className="flex flex-1 flex-col">
         {/* Header */}
-        <header className="fixed top-0 w-full bg-white flex h-16 shrink-0 items-center justify-between gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 z-50 border-b border-border">
+        <header className="fixed top-0 w-full bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 flex h-16 shrink-0 items-center justify-start gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 z-50 border-b border-border">
           <div className="flex items-center gap-2 px-7">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4" />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Dashboard</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
+            <h1 className="font-semibold text-lg max-w-[200px] truncate hidden md:block">{festival.name}</h1>
           </div>
-          <div className="flex items-center gap-4 px-7">
-            <span className="text-sm text-muted-foreground">
-              {session.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Festival Admin'}
-            </span>
-          </div>
+          <FestivalRoleBadge role={session.role === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : 'ADMIN'} />
         </header>
-        <main className="flex flex-1 flex-col gap-4 p-8 pt-22">
+        <main className="flex flex-1 flex-col gap-4 p-8 pt-24">
           {children}
         </main>
       </div>

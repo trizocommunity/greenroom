@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { FestivalsTab } from "./FestivalsTab"
+import { BillingTab } from "./BillingTab"
 
 const profileSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
@@ -36,7 +37,7 @@ interface ProfileViewProps {
 
 export function ProfileView({ user }: ProfileViewProps) {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState("profile")
+  const [activeTab, setActiveTab] = useState("festivals")
 
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema) as any,
@@ -86,16 +87,22 @@ export function ProfileView({ user }: ProfileViewProps) {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="bg-transparent w-full justify-start border-b rounded-none h-auto p-0 gap-6">
           <TabsTrigger 
+            value="festivals"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 pb-2 shadow-none"
+          >
+            Festivals
+          </TabsTrigger>
+          <TabsTrigger 
             value="profile"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 pb-2 shadow-none"
           >
             Profile
           </TabsTrigger>
           <TabsTrigger 
-            value="festivals"
+            value="billing"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 pb-2 shadow-none"
           >
-            Festivals
+            Billing
           </TabsTrigger>
           <TabsTrigger 
             value="settings"
@@ -135,7 +142,11 @@ export function ProfileView({ user }: ProfileViewProps) {
             </TabsContent>
             
             <TabsContent value="festivals" className="m-0">
-              <FestivalsTab />
+              <FestivalsTab user={user} />
+            </TabsContent>
+
+            <TabsContent value="billing" className="m-0">
+              <BillingTab />
             </TabsContent>
 
             <TabsContent value="settings" className="m-0">

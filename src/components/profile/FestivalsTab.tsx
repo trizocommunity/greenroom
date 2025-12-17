@@ -1,23 +1,79 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Festival, useFestivals } from "@/hooks/useFestivals";
+import { usePaymentStatus } from "@/hooks/usePaymentStatus";
 import { FestivalCard } from "./FestivalCard";
 import { FestivalEmptyState } from "./FestivalEmptyState";
 import { EditFestivalModal } from "./EditFestivalModal";
 import { CreateFestivalModal } from "./CreateFestivalModal";
 import { useRouter } from "next/navigation";
+import { User, GlobalRole } from "@prisma/client";
+import { JoinedFestivalCard, JoinedFestival } from "./JoinedFestivalCard";
 
-export function FestivalsTab() {
+interface FestivalsTabProps {
+  user: {
+     globalRole: GlobalRole;
+  }
+}
+
+
+export function FestivalsTab({ user }: FestivalsTabProps) {
+
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingFestival, setEditingFestival] = useState<Festival | null>(null);
   const { data: festivals = [], isLoading, isError } = useFestivals();
+  const { data: paymentStatus, isLoading: isPaymentLoading } = usePaymentStatus();
 
   const router = useRouter();
+
+  const hasCreatedFestival = festivals.length > 0;
+  const isSuperAdmin = user.globalRole === "SUPER_ADMIN";
+  // User can create if they are Super Admin OR they haven't created one yet (AND payment is OK)
+  const canCreate = isSuperAdmin || !hasCreatedFestival;
+  const canCreateFestival = (canCreate) && (paymentStatus?.canCreateFestival ?? false);
+
+  // MOCK DATA for Joined Festivals (Since backend doesn't support it yet)
+  const joinedFestivals: JoinedFestival[] = [
+    {
+      id: "mock-1",
+      name: "Kerala School Kalolsavam",
+      role: "JUDGE",
+      startDate: new Date("2024-01-01"),
+      location: "Kozhikode, Kerala",
+    },
+    {
+      id: "mock-2",
+      name: "Tech Fest 2024",
+      role: "PARTICIPANT",
+      startDate: new Date("2024-03-15"),
+      location: "Kochi, Kerala",
+    }
+  ];
+
+  const handleCreateClick = () => {
+    if (hasCreatedFestival && !isSuperAdmin) {
+        // This case should be handled by disabled button state, but redundant check
+        return; 
+    }
+
+    if (!paymentStatus?.canCreateFestival) {
+      toast.error("Complete payment to create a festival", {
+        description: "Go to the Billing tab to complete your payment.",
+        action: {
+          label: "Go to Billing",
+          onClick: () => router.push("/profile?tab=billing"),
+        },
+      });
+      return;
+    }
+    setIsCreateOpen(true);
+  };
 
   const handleView = (festival: Festival) => {
     if (!festival.slug) {
@@ -55,33 +111,80 @@ export function FestivalsTab() {
             Create and manage festivals you organize or host
           </p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Festival
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-block">
+                <Button 
+                  onClick={handleCreateClick}
+                  disabled={isPaymentLoading}
+                  variant={canCreateFestival ? "default" : "secondary"}
+                  className={!canCreateFestival ? "cursor-not-allowed opacity-70" : ""}
+                >
+                  {canCreateFestival ? (
+                    <Plus className="mr-2 h-4 w-4" />
+                  ) : (
+                    <Lock className="mr-2 h-4 w-4" />
+                  )}
+                  Create Festival
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {!canCreateFestival && !isPaymentLoading && (
+              <TooltipContent side="bottom" className="max-w-xs">
+                 {hasCreatedFestival && !isSuperAdmin ? (
+                    <p>You can manage only one festival at a time</p>
+                 ) : (
+                    <p>Complete payment to unlock festival creation</p>
+                 )}
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
-      {/* Festival List or Empty State */}
-      {isLoading ? (<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-52 rounded-lg" />
-          ))}
+      {/* Sections */}
+        <div className="space-y-10">
+            {/* Section 1: Your Festival */}
+            <div className="space-y-4">
+                <h3 className="text-lg font-medium border-b pb-2">Your Festival</h3>
+                 {isLoading ? (
+                    <div className="grid grid-cols-1 gap-4">
+                         <Skeleton className="h-52 rounded-lg" />
+                    </div>
+                ) : festivals.length === 0 ? (
+                    <FestivalEmptyState onCreateClick={handleCreateClick} />
+                ) : (
+                    <div className="grid grid-cols-1 gap-6">
+                    {festivals.map((festival) => (
+                        <FestivalCard
+                        key={festival.id}
+                        festival={festival}
+                        onView={handleView}
+                        onManage={handleManage}
+                        onEdit={handleEdit}
+                        />
+                    ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Section 2: Joined Festivals */}
+            <div className="space-y-4">
+                 <h3 className="text-lg font-medium border-b pb-2">Joined Festivals</h3>
+                 {joinedFestivals.length === 0 ? (
+                     <div className="text-center py-10 rounded-lg border border-dashed bg-muted/20">
+                         <p className="text-muted-foreground">You haven't joined any festivals yet</p>
+                     </div>
+                 ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {joinedFestivals.map((festival) => (
+                           <JoinedFestivalCard key={festival.id} festival={festival} />
+                        ))}
+                    </div>
+                 )}
+            </div>
         </div>
-        ) : festivals.length === 0 ? (
-        <FestivalEmptyState onCreateClick={() => setIsCreateOpen(true)} />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {festivals.map((festival) => (
-            <FestivalCard
-              key={festival.id}
-              festival={festival}
-              onView={handleView}
-              onManage={handleManage}
-              onEdit={handleEdit}
-            />
-          ))}
-        </div>
-      )}
 
       {/* Create Modal */}
       <CreateFestivalModal
@@ -98,3 +201,4 @@ export function FestivalsTab() {
     </div>
   );
 }
+

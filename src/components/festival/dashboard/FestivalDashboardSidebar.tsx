@@ -23,7 +23,9 @@ import {
   Clock,
   QrCode,
 } from "lucide-react";
-import { Festival } from "@prisma/client";
+import { Festival, FestivalStatus } from "@prisma/client";
+import { format } from "date-fns";
+import { FestivalStatusBadge } from "@/components/festival/FestivalStatusBadge";
 import {
   Sidebar,
   SidebarContent,
@@ -39,7 +41,7 @@ import {
 } from "@/components/ui/sidebar";
 
 interface FestivalDashboardSidebarProps {
-  festival: Pick<Festival, "name" | "slug" | "accentColor" | "id">;
+  festival: Pick<Festival, "name" | "slug" | "accentColor" | "id" | "status" | "expiresAt">;
 }
 
 export function FestivalDashboardSidebar({ festival }: FestivalDashboardSidebarProps) {
@@ -156,7 +158,14 @@ export function FestivalDashboardSidebar({ festival }: FestivalDashboardSidebarP
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
                   <span className="font-semibold truncate">{festival.name}</span>
-                  <span className="text-xs">Dashboard</span>
+                  <div className="flex items-center gap-2">
+                    <FestivalStatusBadge status={festival.status} expiresAt={festival.expiresAt} size="sm" />
+                  </div>
+                  {festival.expiresAt && (
+                    <span className="text-[10px] text-muted-foreground">
+                      Valid until: {format(new Date(festival.expiresAt), 'dd/MM/yyyy')}
+                    </span>
+                  )}
                 </div>
               </Link>
             </SidebarMenuButton>
