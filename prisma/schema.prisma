@@ -22,6 +22,7 @@ model User {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
   festivals     Festival[]
+  payments      Payment[]
 }
 
 enum GlobalRole {
@@ -56,6 +57,7 @@ model Payment {
   updatedAt       DateTime      @updatedAt
   
   festival        Festival?
+  user            User          @relation(fields: [userId], references: [id])
 }
 
 model Festival {

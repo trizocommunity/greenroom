@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
-import { PaymentController } from "@/server/controllers/payment.controller";
+import * as PaymentController from "@/server/controllers/payment.controller";
 
 // POST /api/payments/verify - Verify Razorpay payment signature
 export async function POST(request: NextRequest) {

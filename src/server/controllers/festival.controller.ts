@@ -1,5 +1,5 @@
 import type { FestivalStatus } from "@prisma/client";
-import { PaymentController } from "@/server/controllers/payment.controller"; // To check payment
+import * as PaymentController from "@/server/controllers/payment.controller"; // To check payment
 import {
   createFestival,
   deleteFestival,
@@ -17,181 +17,184 @@ function computeStatus(startDate: Date, endDate: Date): FestivalStatus {
   return "ONGOING";
 }
 
-export class FestivalController {
-  static async index(userId: string, role: string) {
-    const where = role === "SUPER_ADMIN" ? {} : { creatorId: userId };
-    const festivals = await findAllFestivals(where);
+export async function index(userId: string, role: string) {
+  const where = role === "SUPER_ADMIN" ? {} : { creatorId: userId };
+  const festivals = await findAllFestivals(where);
 
-    // Business Logic: Compute status
-    return festivals.map((festival) => ({
-      ...festival,
-      status: computeStatus(festival.startDate, festival.endDate),
-    }));
+  // Business Logic: Compute status
+  return festivals.map((festival) => ({
+    ...festival,
+    status: computeStatus(festival.startDate, festival.endDate),
+  }));
+}
+
+export async function store(userId: string, role: string, data: any) {
+  // 1. Business Rule: Check Payment & Limits
+  // "If user.role === USER AND user already has an active festival -> deny creation"
+  if (role === "USER") {
+    const paymentStatus = await PaymentController.getUserStatus(userId);
+    if (!paymentStatus.canCreateFestival) {
+      throw new Error("Start a subscription to create a festival");
+    }
+
+    const userFestivals = await findAllFestivals({ creatorId: userId });
+    if (userFestivals.length > 0) {
+      throw new Error("Standard users can only manage one festival");
+    }
   }
 
-  static async store(userId: string, role: string, data: any) {
-    // 1. Business Rule: Check Payment & Limits
-    // "If user.role === USER AND user already has an active festival -> deny creation"
-    if (role === "USER") {
-      const paymentStatus = await PaymentController.getUserStatus(userId);
-      if (!paymentStatus.canCreateFestival) {
-        throw new Error("Start a subscription to create a festival");
-      }
+  const {
+    name,
+    slug,
+    description,
+    startDate,
+    endDate,
+    location,
+    orgName,
+    orgDescription,
+    orgWebsite,
+    orgLocation,
+    orgEstablishedYear,
+  } = data;
 
-      const userFestivals = await findAllFestivals({ creatorId: userId });
-      if (userFestivals.length > 0) {
-        throw new Error("Standard users can only manage one festival");
-      }
-    }
+  // Validation
+  if (!name || !slug || !startDate || !endDate || !location || !orgName) {
+    throw new Error("Missing required fields");
+  }
 
-    const {
-      name,
-      slug,
-      description,
-      startDate,
-      endDate,
-      location,
-      orgName,
-      orgDescription,
-      orgWebsite,
-      orgLocation,
-      orgEstablishedYear,
-    } = data;
+  if (!/^[a-z0-9-]+$/.test(slug)) {
+    throw new Error("Invalid slug format");
+  }
 
-    // Validation
-    if (!name || !slug || !startDate || !endDate || !location || !orgName) {
-      throw new Error("Missing required fields");
-    }
+  const isTaken = await isFestivalSlugTaken(slug);
+  if (isTaken) {
+    throw new Error("This URL slug is already taken");
+  }
 
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  if (end < start) {
+    throw new Error("End date must be after start date");
+  }
+
+  const status = computeStatus(start, end);
+
+  const festival = await createFestival({
+    name,
+    slug,
+    description,
+    startDate: start,
+    endDate: end,
+    location,
+    status,
+    orgName,
+    orgDescription,
+    orgWebsite,
+    orgLocation,
+    orgEstablishedYear: orgEstablishedYear
+      ? parseInt(orgEstablishedYear)
+      : null,
+    creator: { connect: { id: userId } },
+  });
+
+  return festival;
+}
+
+export async function show(id: string, userId: string, role: string) {
+  const festival = await findFestivalById(id);
+
+  if (!festival) {
+    throw new Error("Festival not found");
+  }
+
+  if (festival.creatorId !== userId && role !== "SUPER_ADMIN") {
+    throw new Error("Forbidden");
+  }
+
+  return {
+    ...festival,
+    status: computeStatus(festival.startDate, festival.endDate),
+  };
+}
+
+export async function update(
+  id: string,
+  userId: string,
+  role: string,
+  data: any,
+) {
+  const existing = await findFestivalById(id);
+  if (!existing) {
+    throw new Error("Festival not found");
+  }
+
+  if (existing.creatorId !== userId && role !== "SUPER_ADMIN") {
+    throw new Error("Forbidden");
+  }
+
+  const {
+    name,
+    slug,
+    description,
+    startDate,
+    endDate,
+    location,
+    orgName,
+    orgDescription,
+    orgWebsite,
+    orgLocation,
+    orgEstablishedYear,
+  } = data;
+
+  if (slug && slug !== existing.slug) {
     if (!/^[a-z0-9-]+$/.test(slug)) {
       throw new Error("Invalid slug format");
     }
-
-    const isTaken = await isFestivalSlugTaken(slug);
+    const isTaken = await isFestivalSlugTaken(slug, id);
     if (isTaken) {
       throw new Error("This URL slug is already taken");
     }
-
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-
-    if (end < start) {
-      throw new Error("End date must be after start date");
-    }
-
-    const status = computeStatus(start, end);
-
-    const festival = await createFestival({
-      name,
-      slug,
-      description,
-      startDate: start,
-      endDate: end,
-      location,
-      status,
-      orgName,
-      orgDescription,
-      orgWebsite,
-      orgLocation,
-      orgEstablishedYear: orgEstablishedYear
-        ? parseInt(orgEstablishedYear)
-        : null,
-      creator: { connect: { id: userId } },
-    });
-
-    return festival;
   }
 
-  static async show(id: string, userId: string, role: string) {
-    const festival = await findFestivalById(id);
+  const start = startDate ? new Date(startDate) : existing.startDate;
+  const end = endDate ? new Date(endDate) : existing.endDate;
 
-    if (!festival) {
-      throw new Error("Festival not found");
-    }
-
-    if (festival.creatorId !== userId && role !== "SUPER_ADMIN") {
-      throw new Error("Forbidden");
-    }
-
-    return {
-      ...festival,
-      status: computeStatus(festival.startDate, festival.endDate),
-    };
+  if (end < start) {
+    throw new Error("End date must be after start date");
   }
 
-  static async update(id: string, userId: string, role: string, data: any) {
-    const existing = await findFestivalById(id);
-    if (!existing) {
-      throw new Error("Festival not found");
-    }
+  const status = computeStatus(start, end);
 
-    if (existing.creatorId !== userId && role !== "SUPER_ADMIN") {
-      throw new Error("Forbidden");
-    }
+  const festival = await updateFestival(id, {
+    name: name ?? existing.name,
+    slug: slug ?? existing.slug,
+    description: description ?? existing.description,
+    startDate: start,
+    endDate: end,
+    location: location ?? existing.location,
+    status,
+    orgName: orgName ?? existing.orgName,
+    orgDescription: orgDescription ?? existing.orgDescription,
+    orgWebsite: orgWebsite ?? existing.orgWebsite,
+    orgLocation: orgLocation ?? existing.orgLocation,
+    orgEstablishedYear: orgEstablishedYear
+      ? parseInt(orgEstablishedYear)
+      : existing.orgEstablishedYear,
+  });
 
-    const {
-      name,
-      slug,
-      description,
-      startDate,
-      endDate,
-      location,
-      orgName,
-      orgDescription,
-      orgWebsite,
-      orgLocation,
-      orgEstablishedYear,
-    } = data;
+  return festival;
+}
 
-    if (slug && slug !== existing.slug) {
-      if (!/^[a-z0-9-]+$/.test(slug)) {
-        throw new Error("Invalid slug format");
-      }
-      const isTaken = await isFestivalSlugTaken(slug, id);
-      if (isTaken) {
-        throw new Error("This URL slug is already taken");
-      }
-    }
-
-    const start = startDate ? new Date(startDate) : existing.startDate;
-    const end = endDate ? new Date(endDate) : existing.endDate;
-
-    if (end < start) {
-      throw new Error("End date must be after start date");
-    }
-
-    const status = computeStatus(start, end);
-
-    const festival = await updateFestival(id, {
-      name: name ?? existing.name,
-      slug: slug ?? existing.slug,
-      description: description ?? existing.description,
-      startDate: start,
-      endDate: end,
-      location: location ?? existing.location,
-      status,
-      orgName: orgName ?? existing.orgName,
-      orgDescription: orgDescription ?? existing.orgDescription,
-      orgWebsite: orgWebsite ?? existing.orgWebsite,
-      orgLocation: orgLocation ?? existing.orgLocation,
-      orgEstablishedYear: orgEstablishedYear
-        ? parseInt(orgEstablishedYear)
-        : existing.orgEstablishedYear,
-    });
-
-    return festival;
+export async function destroy(id: string, userId: string, role: string) {
+  const existing = await findFestivalById(id);
+  if (!existing) {
+    throw new Error("Festival not found");
   }
 
-  static async destroy(id: string, userId: string, role: string) {
-    const existing = await findFestivalById(id);
-    if (!existing) {
-      throw new Error("Festival not found");
-    }
-
-    if (existing.creatorId !== userId && role !== "SUPER_ADMIN") {
-      throw new Error("Forbidden");
-    }
-
-    await deleteFestival(id);
+  if (existing.creatorId !== userId && role !== "SUPER_ADMIN") {
+    throw new Error("Forbidden");
   }
+
+  await deleteFestival(id);
 }

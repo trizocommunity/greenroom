@@ -35,9 +35,8 @@ export const SUPER_ADMIN_SIDEBAR_ITEMS = [
   },
   {
     title: "Payments",
-    url: "#",
+    url: "/super-admin/payments",
     icon: CreditCard,
-    disabled: true,
   },
   {
     title: "Settings",

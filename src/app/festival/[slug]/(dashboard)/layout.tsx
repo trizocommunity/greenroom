@@ -1,6 +1,5 @@
 import { notFound, redirect } from "next/navigation";
 import { FestivalDashboardSidebar } from "@/components/festival/dashboard/FestivalDashboardSidebar";
-import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import { Separator } from "@/components/ui/separator";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { getSession } from "@/lib/auth/session";
@@ -48,7 +47,7 @@ export default async function FestivalDashboardLayout({
 
   return (
     <SidebarProvider>
-      <FestivalDashboardSidebar festival={festivalData} />
+      <FestivalDashboardSidebar role={session.role} festival={festivalData} />
       <div className="flex flex-1 flex-col">
         {/* Header */}
         <header className="fixed top-0 w-full bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 flex h-16 shrink-0 items-center justify-start gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 z-50 border-b border-border">
@@ -59,9 +58,6 @@ export default async function FestivalDashboardLayout({
               {festival.name}
             </h1>
           </div>
-          <FestivalRoleBadge
-            role={session.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "ADMIN"}
-          />
         </header>
         <main className="flex flex-1 flex-col gap-4 p-8 pt-24">{children}</main>
       </div>

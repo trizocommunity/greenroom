@@ -15,7 +15,7 @@ export default async function DashboardLayout({
 
   return (
     <>
-      <DashboardNavbar />
+      <DashboardNavbar role={session.role} />
       <div className="pt-20">{children}</div>
     </>
   );

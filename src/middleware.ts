@@ -119,8 +119,33 @@ export default async function middleware(req: NextRequest) {
   }
 
   // 7. Role-Based Access Control
-  if (path.startsWith("/super-admin") && session?.role !== "SUPER_ADMIN") {
-    return NextResponse.redirect(new URL("/profile", req.nextUrl));
+  const role = session?.role;
+
+  // STRICT RULE: Super Admins cannot access User routes (Profile, Billing, Onboarding)
+  if (role === "SUPER_ADMIN") {
+    if (
+      path.startsWith("/profile") ||
+      path.startsWith("/billing") ||
+      path === "/onboarding" ||
+      path === "/create-festival"
+    ) {
+      return NextResponse.redirect(new URL("/super-admin", req.nextUrl));
+    }
+    // Redirect root to super-admin dashboard for logged-in super admins
+    if (path === "/") {
+      return NextResponse.redirect(new URL("/super-admin", req.nextUrl));
+    }
+  }
+
+  // STRICT RULE: Users cannot access Super Admin routes
+  if (role === "USER") {
+    if (path.startsWith("/super-admin")) {
+      return NextResponse.redirect(new URL("/profile", req.nextUrl));
+    }
+    // Redirect root to profile for logged-in users
+    if (path === "/") {
+      return NextResponse.redirect(new URL("/profile", req.nextUrl));
+    }
   }
 
   return NextResponse.next();

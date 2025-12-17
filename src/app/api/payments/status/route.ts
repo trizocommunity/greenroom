@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
-import { PaymentController } from "@/server/controllers/payment.controller";
+import * as PaymentController from "@/server/controllers/payment.controller";
 
 export async function GET() {
   try {

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
-import { FestivalController } from "@/server/controllers/festival.controller";
+import * as FestivalController from "@/server/controllers/festival.controller";
 
 export async function GET() {
   try {

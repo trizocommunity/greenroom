@@ -5,7 +5,6 @@ import { format } from "date-fns";
 import { ExternalLink, GalleryVerticalEnd, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FestivalStatusBadge } from "@/components/festival/FestivalStatusBadge";
 import {
   Sidebar,
   SidebarContent,
@@ -20,16 +19,19 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { getFestivalDashboardSidebarConfig } from "@/config/sidebar.config";
+import { FestivalRoleBadge } from "../FestivalRoleBadge";
 
 interface FestivalDashboardSidebarProps {
   festival: Pick<
     Festival,
     "name" | "slug" | "accentColor" | "id" | "status" | "expiresAt"
   >;
+  role: string;
 }
 
 export function FestivalDashboardSidebar({
   festival,
+  role,
 }: FestivalDashboardSidebarProps) {
   const pathname = usePathname();
   const basePath = `/festival/${festival.slug}`;
@@ -44,20 +46,18 @@ export function FestivalDashboardSidebar({
             <SidebarMenuButton size="lg" asChild>
               <Link href={dashboardPath}>
                 <div
-                  className="flex aspect-square size-8 items-center justify-center rounded-lg text-sidebar-primary-foreground"
+                  className="flex aspect-square size-10 items-center justify-center rounded-lg text-sidebar-primary-foreground"
                   style={{ backgroundColor: festival.accentColor }}
                 >
-                  <GalleryVerticalEnd className="size-4" />
+                  <GalleryVerticalEnd className="size-5" />
                 </div>
-                <div className="flex flex-col gap-0.5 leading-none">
+                <div className="flex flex-col gap-1 leading-none">
                   <span className="font-semibold truncate">
                     {festival.name}
                   </span>
                   <div className="flex items-center gap-2">
-                    <FestivalStatusBadge
-                      status={festival.status}
-                      expiresAt={festival.expiresAt}
-                      size="sm"
+                    <FestivalRoleBadge
+                      role={role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "ADMIN"}
                     />
                   </div>
                   {festival.expiresAt && (
