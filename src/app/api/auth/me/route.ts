@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
-import { findUserById } from "@/models/UserModel";
+import { findUserById } from "@/server/models/user.model";
 
 export async function GET() {
   try {
@@ -21,7 +21,7 @@ export async function GET() {
     console.error("Error fetching current user:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { GraduationCap, Music, BookOpen, School } from "lucide-react";
+import { BookOpen, GraduationCap, Music, School } from "lucide-react";
 
 const audiences = [
   {
@@ -32,7 +32,7 @@ export default function TargetAudience() {
       <div className="container max-w-7xl px-4 md:px-6 mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-end mb-24 gap-8">
           <h2 className="text-4xl md:text-6xl font-black uppercase tracking-tighter max-w-2xl">
-            Built For <br/> Every Stage
+            Built For <br /> Every Stage
           </h2>
           <p className="text-xl text-gray-500 max-w-md mb-2">
             Scalable architecture for events of any size.
@@ -48,8 +48,12 @@ export default function TargetAudience() {
               <div className="mb-6 p-4 border border-border inline-block group-hover:border-black">
                 <item.icon size={32} strokeWidth={1} />
               </div>
-              <h3 className="text-2xl font-bold uppercase mb-4 tracking-wide">{item.title}</h3>
-              <p className="text-gray-400 font-medium leading-relaxed group-hover:text-gray-600">{item.desc}</p>
+              <h3 className="text-2xl font-bold uppercase mb-4 tracking-wide">
+                {item.title}
+              </h3>
+              <p className="text-gray-400 font-medium leading-relaxed group-hover:text-gray-600">
+                {item.desc}
+              </p>
             </motion.div>
           ))}
         </div>

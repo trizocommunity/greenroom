@@ -1,12 +1,12 @@
-import Link from "next/link"
-import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm"
-import { AuthLayout } from "@/components/auth/AuthLayout"
-import { Metadata } from "next"
+import type { Metadata } from "next";
+import Link from "next/link";
+import { AuthLayout } from "@/components/auth/AuthLayout";
+import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 
 export const metadata: Metadata = {
   title: "Forgot Password | Greenroom",
   description: "Reset your password",
-}
+};
 
 export default function ForgotPasswordPage() {
   return (
@@ -25,5 +25,5 @@ export default function ForgotPasswordPage() {
         </Link>
       </div>
     </AuthLayout>
-  )
+  );
 }

@@ -1,7 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from "@tanstack/react-query";
+import { paymentApi } from "@/services/payment.api";
 
 export interface PaymentStatus {
-  status: 'NOT_PAID' | 'ACTIVE' | 'EXPIRED';
+  status: "NOT_PAID" | "ACTIVE" | "EXPIRED";
   payment?: {
     id: string;
     amount: number;
@@ -12,18 +13,10 @@ export interface PaymentStatus {
   canCreateFestival: boolean;
 }
 
-async function fetchPaymentStatus(): Promise<PaymentStatus> {
-  const res = await fetch('/api/payments/status');
-  if (!res.ok) {
-    throw new Error('Failed to fetch payment status');
-  }
-  return res.json();
-}
-
 export function usePaymentStatus() {
   return useQuery({
-    queryKey: ['paymentStatus'],
-    queryFn: fetchPaymentStatus,
+    queryKey: ["paymentStatus"],
+    queryFn: paymentApi.getStatus,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }

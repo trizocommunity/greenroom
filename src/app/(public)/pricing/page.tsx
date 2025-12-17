@@ -1,12 +1,13 @@
-import { PricingCard } from '@/components/pricing/PricingCard';
-import { LifecycleInfo } from '@/components/pricing/LifecycleInfo';
-import { Button } from '@/components/ui/button';
-import { Mail } from 'lucide-react';
-import Link from 'next/link';
+import { Mail } from "lucide-react";
+import Link from "next/link";
+import { LifecycleInfo } from "@/components/pricing/LifecycleInfo";
+import { PricingCard } from "@/components/pricing/PricingCard";
+import { Button } from "@/components/ui/button";
 
 export const metadata = {
-  title: 'Pricing | Greenroom',
-  description: 'Simple, transparent pricing for festival management. One-time payment per festival.',
+  title: "Pricing | Greenroom",
+  description:
+    "Simple, transparent pricing for festival management. One-time payment per festival.",
 };
 
 export default function PricingPage() {
@@ -21,7 +22,8 @@ export default function PricingPage() {
               Simple, <span className="text-primary">Transparent</span> Pricing
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              No hidden fees. No monthly subscriptions. Pay only when you create a festival.
+              No hidden fees. No monthly subscriptions. Pay only when you create
+              a festival.
             </p>
           </div>
 
@@ -40,7 +42,8 @@ export default function PricingPage() {
             Need a custom solution?
           </h2>
           <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-            Running multiple festivals or need enterprise features? Let&apos;s talk about a plan that works for you.
+            Running multiple festivals or need enterprise features? Let&apos;s
+            talk about a plan that works for you.
           </p>
           <Link href="/contact">
             <Button variant="outline" size="lg" className="h-12 px-8">

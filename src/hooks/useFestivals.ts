@@ -1,6 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { festivalService } from "@/services/festivalService";
+import { festivalApi } from "@/services/festival.api";
 
 export type Festival = {
   id: string;
@@ -36,7 +36,7 @@ export type CreateFestivalInput = {
 export const useFestivals = () => {
   return useQuery({
     queryKey: ["festivals"],
-    queryFn: festivalService.getAll,
+    queryFn: festivalApi.getAll,
   });
 };
 
@@ -44,7 +44,7 @@ export const useCreateFestival = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: festivalService.create,
+    mutationFn: festivalApi.create,
     onSuccess: () => {
       toast.success("Festival created successfully");
       queryClient.invalidateQueries({ queryKey: ["festivals"] });
@@ -59,8 +59,13 @@ export const useUpdateFestival = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<CreateFestivalInput> }) =>
-      festivalService.update(id, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<CreateFestivalInput>;
+    }) => festivalApi.update(id, data),
     onSuccess: () => {
       toast.success("Festival updated successfully");
       queryClient.invalidateQueries({ queryKey: ["festivals"] });
@@ -75,7 +80,7 @@ export const useDeleteFestival = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: festivalService.delete,
+    mutationFn: festivalApi.delete,
     onSuccess: () => {
       toast.success("Festival deleted successfully");
       queryClient.invalidateQueries({ queryKey: ["festivals"] });

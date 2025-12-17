@@ -1,22 +1,21 @@
-"use client"
+"use client";
 
+import { useMutation } from "@tanstack/react-query";
 import {
-  Users,
-  CreditCard,
-  LayoutDashboard,
-  Settings,
-  GalleryVerticalEnd,
-  ChevronsUpDown,
   BadgeCheck,
-  LogOut,
   Calendar,
-} from "lucide-react"
-
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
+  ChevronsUpDown,
+  CreditCard,
+  GalleryVerticalEnd,
+  LayoutDashboard,
+  LogOut,
+  Settings,
+  Users,
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +24,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -37,49 +36,18 @@ import {
   SidebarMenuItem,
   SidebarRail,
   useSidebar,
-} from "@/components/ui/sidebar"
-import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { useMutation } from "@tanstack/react-query"
-import { toast } from "sonner"
-import { useCurrentUser } from "@/hooks/useCurrentUser"
+} from "@/components/ui/sidebar";
+import { SUPER_ADMIN_SIDEBAR_ITEMS } from "@/config/sidebar.config";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 // Menu items.
-const items = [
-  {
-    title: "Dashboard",
-    url: "/super-admin",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Users",
-    url: "/super-admin/users",
-    icon: Users,
-  },
-  {
-    title: "Festivals",
-    url: "/super-admin/festivals",
-    icon: Calendar,
-  },
-  {
-    title: "Payments",
-    url: "#",
-    icon: CreditCard,
-    disabled: true,
-  },
-  {
-    title: "Settings",
-    url: "#",
-    icon: Settings,
-    disabled: true,
-  }
-]
+const items = SUPER_ADMIN_SIDEBAR_ITEMS;
 
 export function AppSidebar() {
-  const pathname = usePathname()
-  const router = useRouter()
-  const { isMobile } = useSidebar()
-  const { data: user, isLoading } = useCurrentUser()
+  const pathname = usePathname();
+  const router = useRouter();
+  const { isMobile } = useSidebar();
+  const { data: user, isLoading } = useCurrentUser();
 
   const { mutate: logout } = useMutation({
     mutationFn: async () => {
@@ -103,8 +71,13 @@ export function AppSidebar() {
   // Get user initials for avatar fallback
   const getInitials = (name: string | null | undefined) => {
     if (!name) return "SA";
-    return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
-  }
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   const displayName = user?.displayName || user?.fullName || "Super Admin";
   const email = user?.email || "";
@@ -134,16 +107,23 @@ export function AppSidebar() {
           <SidebarMenu className="gap-2">
             {items.map((item) => (
               <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton 
-                  asChild 
-                  isActive={item.url === "/super-admin" ? pathname === item.url : pathname?.startsWith(item.url)} 
+                <SidebarMenuButton
+                  asChild
+                  isActive={
+                    item.url === "/super-admin"
+                      ? pathname === item.url
+                      : pathname?.startsWith(item.url)
+                  }
                   disabled={item.disabled}
                   tooltip={item.title}
                 >
-                    <Link href={item.url} className={`font-medium ${item.disabled ? "opacity-50 pointer-events-none" : ""}`}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
+                  <Link
+                    href={item.url}
+                    className={`font-medium ${item.disabled ? "opacity-50 pointer-events-none" : ""}`}
+                  >
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
@@ -160,7 +140,9 @@ export function AppSidebar() {
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
                   <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
+                    <AvatarFallback className="rounded-lg">
+                      {initials}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold text-base">
@@ -182,21 +164,25 @@ export function AppSidebar() {
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                     <Avatar className="h-8 w-8 rounded-lg">
-                      <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
+                      <AvatarFallback className="rounded-lg">
+                        {initials}
+                      </AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-medium">{displayName}</span>
+                      <span className="truncate font-medium">
+                        {displayName}
+                      </span>
                       <span className="truncate text-xs">{email}</span>
                     </div>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
-                  <Link href={'/profile'} >
-                  <DropdownMenuItem>
-                    <BadgeCheck className="mr-2 h-4 w-4" />
-                    Profile
-                  </DropdownMenuItem>
+                  <Link href={"/profile"}>
+                    <DropdownMenuItem>
+                      <BadgeCheck className="mr-2 h-4 w-4" />
+                      Profile
+                    </DropdownMenuItem>
                   </Link>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
@@ -212,5 +198,5 @@ export function AppSidebar() {
 
       <SidebarRail />
     </Sidebar>
-  )
+  );
 }

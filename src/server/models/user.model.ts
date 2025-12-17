@@ -1,5 +1,5 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { Prisma } from "@prisma/client";
 
 export async function findUserById(id: string) {
   return prisma.user.findUnique({
@@ -15,7 +15,7 @@ export async function findUserByEmail(email: string) {
 
 export async function findAllUsers(
   where: Prisma.UserWhereInput = {},
-  orderBy: Prisma.UserOrderByWithRelationInput = { createdAt: "desc" }
+  orderBy: Prisma.UserOrderByWithRelationInput = { createdAt: "desc" },
 ) {
   return prisma.user.findMany({
     where,

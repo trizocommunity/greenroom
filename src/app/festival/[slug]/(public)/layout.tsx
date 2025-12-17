@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
-import { FestivalNavbar } from "@/components/festival/FestivalNavbar";
-import { FestivalFooter } from "@/components/festival/FestivalFooter";
-import { findFestivalBySlug } from "@/models/FestivalModel";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
+import { FestivalFooter } from "@/components/festival/FestivalFooter";
+import { FestivalNavbar } from "@/components/festival/FestivalNavbar";
+import { getSession } from "@/lib/auth/session";
+import { findFestivalBySlug } from "@/server/models/festival.model";
 
 export default async function FestivalLayout({
   children,
@@ -14,15 +14,15 @@ export default async function FestivalLayout({
 }) {
   const { slug } = await params;
   const festival = await findFestivalBySlug(slug);
-  
+
   if (!festival) {
     notFound();
   }
-  
+
   // Check if user is logged in
   const session = await getSession();
   const isLoggedIn = !!session?.userId;
-  
+
   // Transform dates to strings for client component
   // Assert slug is non-null since we checked above
   const festivalData = {
@@ -36,9 +36,7 @@ export default async function FestivalLayout({
     <FestivalProvider festival={festivalData}>
       <div className="min-h-screen flex flex-col">
         <FestivalNavbar festival={festivalData} isLoggedIn={isLoggedIn} />
-        <main className="flex-1 pt-16">
-          {children}
-        </main>
+        <main className="flex-1 pt-16">{children}</main>
         <FestivalFooter festival={festivalData} />
       </div>
     </FestivalProvider>

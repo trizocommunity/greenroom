@@ -1,24 +1,24 @@
-'use client';
+"use client";
 
-import { Calendar, Archive, Info, Clock } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion } from "framer-motion";
+import { Archive, Calendar, Clock, Info } from "lucide-react";
 
 const lifecyclePoints = [
   {
     icon: Clock,
-    text: 'Festival remains active for 30 days after creation',
+    text: "Festival remains active for 30 days after creation",
   },
   {
     icon: Calendar,
-    text: 'Manage your festival anytime during the validity period',
+    text: "Manage your festival anytime during the validity period",
   },
   {
     icon: Archive,
-    text: 'After expiry, festival becomes read-only',
+    text: "After expiry, festival becomes read-only",
   },
   {
     icon: Info,
-    text: 'Renew anytime to restore full access',
+    text: "Renew anytime to restore full access",
   },
 ];
 
@@ -34,7 +34,7 @@ export function LifecycleInfo() {
         <h3 className="text-lg font-semibold text-foreground text-center mb-6">
           Festival Validity
         </h3>
-        
+
         <div className="grid gap-4 sm:grid-cols-2">
           {lifecyclePoints.map((point, index) => (
             <motion.div

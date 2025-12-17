@@ -1,26 +1,17 @@
 "use client";
 
-import { Calendar, MapPin} from "lucide-react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { format } from "date-fns";
+import { Calendar, MapPin } from "lucide-react";
 import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
-export interface JoinedFestival {
-  id: string;
-  name: string;
-  role: "ADMIN" | "JUDGE" | "PARTICIPANT" | "TEAM-LEADER" | "STAGE-MANAGER";
-  startDate: Date;
-  location: string;
-  logo?: string;
-}
+import type { JoinedFestival } from "@/types/festival";
 
 interface JoinedFestivalCardProps {
   festival: JoinedFestival;
 }
 
-
 export function JoinedFestivalCard({ festival }: JoinedFestivalCardProps) {
-
   return (
     <Card className="hover:shadow-sm transition-shadow duration-200 border-dashed bg-muted/20">
       <CardHeader className="pb-3">
@@ -28,7 +19,7 @@ export function JoinedFestivalCard({ festival }: JoinedFestivalCardProps) {
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-md truncate">{festival.name}</h3>
             <div className="mt-2">
-                 <FestivalRoleBadge role={festival.role} />
+              <FestivalRoleBadge role={festival.role} />
             </div>
           </div>
         </div>

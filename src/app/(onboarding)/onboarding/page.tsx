@@ -1,25 +1,42 @@
-'use client'
+"use client";
 
-import { useRouter } from "next/navigation"
-import { useMutation } from "@tanstack/react-query"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
-import { updateProfile } from "@/server/actions/profile"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardFooter, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { toast } from "sonner"
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { updateProfile } from "@/server/actions/profile";
 
 const formSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
   displayName: z.string().min(2, "Display name must be at least 2 characters"),
-  age: z.coerce.number().min(13, "You must be at least 13 years old").max(120, "Invalid age"),
-})
+  age: z.coerce
+    .number()
+    .min(13, "You must be at least 13 years old")
+    .max(120, "Invalid age"),
+});
 
 export default function OnboardingPage() {
-  const router = useRouter()
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema) as any,
@@ -29,28 +46,28 @@ export default function OnboardingPage() {
       age: undefined,
     },
     mode: "onChange",
-  })
+  });
 
   const { mutate, isPending } = useMutation({
     mutationFn: updateProfile,
     onSuccess: (result) => {
       if (result.error) {
-        toast.error(result.error)
+        toast.error(result.error);
         if (result.fields) {
-           console.error(result.fields)
+          console.error(result.fields);
         }
       } else {
-        toast.success("Profile updated!")
-        router.push("/profile")
+        toast.success("Profile updated!");
+        router.push("/profile");
       }
     },
     onError: () => {
-      toast.error("Something went wrong.")
-    }
-  })
+      toast.error("Something went wrong.");
+    },
+  });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    mutate(values)
+    mutate(values);
   }
 
   return (
@@ -71,7 +88,9 @@ export default function OnboardingPage() {
             <circle cx="12" cy="7" r="4" />
           </svg>
         </div>
-        <CardTitle className="text-2xl font-semibold tracking-tight">Complete your profile</CardTitle>
+        <CardTitle className="text-2xl font-semibold tracking-tight">
+          Complete your profile
+        </CardTitle>
         <CardDescription className="text-muted-foreground text-sm">
           This helps personalize your Greenroom experience.
         </CardDescription>
@@ -92,7 +111,7 @@ export default function OnboardingPage() {
                 </FormItem>
               )}
             />
-             <FormField
+            <FormField
               control={form.control as any}
               name="displayName"
               render={({ field }) => (
@@ -105,34 +124,37 @@ export default function OnboardingPage() {
                 </FormItem>
               )}
             />
-             <FormField
+            <FormField
               control={form.control as any}
               name="age"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Age</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="25" {...field} className="h-11" />
+                    <Input
+                      type="number"
+                      placeholder="25"
+                      {...field}
+                      className="h-11"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button 
-                type="submit" 
-                className="w-full h-11 mt-6" 
-                disabled={!form.formState.isValid || isPending}
+            <Button
+              type="submit"
+              className="w-full h-11 mt-6"
+              disabled={!form.formState.isValid || isPending}
             >
               {isPending ? "Saving..." : "Continue"}
             </Button>
           </form>
         </Form>
       </CardContent>
-       <CardFooter className="justify-center">
-            <p className="text-xs text-muted-foreground">
-                Step 1 of 1
-            </p>
-       </CardFooter>
+      <CardFooter className="justify-center">
+        <p className="text-xs text-muted-foreground">Step 1 of 1</p>
+      </CardFooter>
     </Card>
-  )
+  );
 }

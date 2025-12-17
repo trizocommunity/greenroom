@@ -1,5 +1,5 @@
-import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import Navbar from "@/components/layout/Navbar";
 import { getSession } from "@/lib/auth/session";
 
 export default async function PublicLayout({
@@ -12,9 +12,7 @@ export default async function PublicLayout({
   return (
     <>
       <Navbar user={session} />
-      <div className="pt-20">
-        {children}
-      </div>
+      <div className="pt-20">{children}</div>
       <Footer />
     </>
   );

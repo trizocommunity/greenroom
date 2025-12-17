@@ -1,12 +1,12 @@
-import Link from "next/link"
-import { LoginForm } from "@/components/auth/LoginForm"
-import { AuthLayout } from "@/components/auth/AuthLayout"
-import { Metadata } from "next"
+import type { Metadata } from "next";
+import Link from "next/link";
+import { AuthLayout } from "@/components/auth/AuthLayout";
+import { LoginForm } from "@/components/auth/LoginForm";
 
 export const metadata: Metadata = {
   title: "Login | Greenroom",
   description: "Login to your account",
-}
+};
 
 export default function LoginPage() {
   return (
@@ -16,12 +16,12 @@ export default function LoginPage() {
     >
       <LoginForm />
       <div className="mt-4 text-center text-sm text-muted-foreground">
-         <Link
-            href="/forgot-password"
-            className="underline underline-offset-4 hover:text-primary"
-          >
-            Forgot your password?
-          </Link>
+        <Link
+          href="/forgot-password"
+          className="underline underline-offset-4 hover:text-primary"
+        >
+          Forgot your password?
+        </Link>
       </div>
       <div className="mt-2 text-center text-sm text-muted-foreground">
         Do not have an account?{" "}
@@ -33,5 +33,5 @@ export default function LoginPage() {
         </Link>
       </div>
     </AuthLayout>
-  )
+  );
 }

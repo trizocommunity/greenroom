@@ -1,11 +1,11 @@
-import Link from "next/link"
-import { ComponentPropsWithoutRef } from "react"
-import { cn } from "@/lib/utils"
+import Link from "next/link";
+import type { ComponentPropsWithoutRef } from "react";
+import { cn } from "@/lib/utils";
 
 interface AuthLayoutProps extends ComponentPropsWithoutRef<"div"> {
-  title?: string
-  description?: string
-  showLogo?: boolean
+  title?: string;
+  description?: string;
+  showLogo?: boolean;
 }
 
 export function AuthLayout({
@@ -20,15 +20,18 @@ export function AuthLayout({
     <div
       className={cn(
         "flex min-h-screen items-center justify-center p-4",
-        className
+        className,
       )}
       {...props}
     >
       <div className="w-full max-w-[400px] space-y-6">
         {showLogo && (
           <div className="flex justify-center">
-            <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-               Greenroom
+            <Link
+              href="/"
+              className="flex items-center gap-2 font-bold text-xl"
+            >
+              Greenroom
             </Link>
           </div>
         )}
@@ -45,5 +48,5 @@ export function AuthLayout({
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Loader2, ArrowRight, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -12,9 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
@@ -23,30 +21,18 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Festival, useUpdateFestival } from "@/hooks/useFestivals";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { type Festival, useUpdateFestival } from "@/hooks/useFestivals";
 
-const festivalStep1Schema = z.object({
-  name: z.string().min(2, "Festival name must be at least 2 characters"),
-  slug: z.string().min(2, "Slug must be at least 2 characters").regex(/^[a-z0-9-]+$/, "Slug can only contain lowercase letters, numbers, and hyphens"),
-  description: z.string().optional(),
-  startDate: z.string().min(1, "Start date is required"),
-  endDate: z.string().min(1, "End date is required"),
-  location: z.string().min(2, "Location is required"),
-});
-
-const festivalStep2Schema = z.object({
-  orgName: z.string().min(2, "Organization name is required"),
-  orgDescription: z.string().optional(),
-  orgWebsite: z.string().url().optional().or(z.literal("")),
-  orgLocation: z.string().optional(),
-  orgEstablishedYear: z.string().optional(),
-});
-
-const fullSchema = festivalStep1Schema.merge(festivalStep2Schema);
-
-type Step1Data = z.infer<typeof festivalStep1Schema>;
-type Step2Data = z.infer<typeof festivalStep2Schema>;
-type FestivalFormData = z.infer<typeof fullSchema>;
+import {
+  type FestivalFormData,
+  type FestivalStep1Data,
+  type FestivalStep2Data,
+  festivalSchema,
+  festivalStep1Schema,
+  festivalStep2Schema,
+} from "@/lib/validations/festival";
 
 interface EditFestivalModalProps {
   festival: Festival | null;
@@ -60,10 +46,12 @@ export function EditFestivalModal({
   onOpenChange,
 }: EditFestivalModalProps) {
   const [step, setStep] = useState(1);
-  const [step1Data, setStep1Data] = useState<Step1Data | null>(null);
+  const [step1Data, setFestivalStep1Data] = useState<FestivalStep1Data | null>(
+    null,
+  );
   const updateMutation = useUpdateFestival();
 
-  const step1Form = useForm<Step1Data>({
+  const step1Form = useForm<FestivalStep1Data>({
     resolver: zodResolver(festivalStep1Schema),
     defaultValues: {
       name: "",
@@ -75,7 +63,7 @@ export function EditFestivalModal({
     },
   });
 
-  const step2Form = useForm<Step2Data>({
+  const step2Form = useForm<FestivalStep2Data>({
     resolver: zodResolver(festivalStep2Schema),
     defaultValues: {
       orgName: "",
@@ -90,8 +78,10 @@ export function EditFestivalModal({
   useEffect(() => {
     if (festival && open) {
       // Format dates for input type="date"
-      const startDate = new Date(festival.startDate).toISOString().split('T')[0];
-      const endDate = new Date(festival.endDate).toISOString().split('T')[0];
+      const startDate = new Date(festival.startDate)
+        .toISOString()
+        .split("T")[0];
+      const endDate = new Date(festival.endDate).toISOString().split("T")[0];
 
       step1Form.reset({
         name: festival.name,
@@ -107,15 +97,17 @@ export function EditFestivalModal({
         orgDescription: festival.orgDescription || "",
         orgWebsite: festival.orgWebsite || "",
         orgLocation: festival.orgLocation || "",
-        orgEstablishedYear: festival.orgEstablishedYear ? String(festival.orgEstablishedYear) : "",
+        orgEstablishedYear: festival.orgEstablishedYear
+          ? String(festival.orgEstablishedYear)
+          : "",
       });
-      
+
       setStep(1);
-      setStep1Data(null);
+      setFestivalStep1Data(null);
     }
   }, [festival, open, step1Form, step2Form]);
 
-  const handleStep1Submit = (data: Step1Data) => {
+  const handleStep1Submit = (data: FestivalStep1Data) => {
     // Validate date range
     const start = new Date(data.startDate);
     const end = new Date(data.endDate);
@@ -125,11 +117,11 @@ export function EditFestivalModal({
       });
       return;
     }
-    setStep1Data(data);
+    setFestivalStep1Data(data);
     setStep(2);
   };
 
-  const handleStep2Submit = async (data: Step2Data) => {
+  const handleStep2Submit = async (data: FestivalStep2Data) => {
     if (!step1Data || !festival) return;
 
     const fullData: FestivalFormData = {
@@ -160,15 +152,15 @@ export function EditFestivalModal({
         onSuccess: () => {
           handleClose();
         },
-      }
+      },
     );
   };
 
   const handleClose = () => {
     onOpenChange(false);
     setTimeout(() => {
-        setStep(1);
-        setStep1Data(null);
+      setStep(1);
+      setFestivalStep1Data(null);
     }, 300);
   };
 
@@ -231,14 +223,21 @@ export function EditFestivalModal({
                   <FormItem>
                     <FormLabel>URL Slug *</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="summer-music-fest" 
-                        {...field} 
-                        onChange={(e) => field.onChange(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
+                      <Input
+                        placeholder="summer-music-fest"
+                        {...field}
+                        onChange={(e) =>
+                          field.onChange(
+                            e.target.value
+                              .toLowerCase()
+                              .replace(/[^a-z0-9-]/g, "-"),
+                          )
+                        }
                       />
                     </FormControl>
                     <p className="text-xs text-muted-foreground">
-                      Your festival URL: {field.value || 'your-slug'}.greenrooom.com
+                      Your festival URL: {field.value || "your-slug"}
+                      .greenrooom.com
                     </p>
                     <FormMessage />
                   </FormItem>
@@ -426,11 +425,7 @@ export function EditFestivalModal({
                   Back
                 </Button>
                 <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleClose}
-                  >
+                  <Button type="button" variant="outline" onClick={handleClose}>
                     Cancel
                   </Button>
                   <Button type="submit" disabled={updateMutation.isPending}>

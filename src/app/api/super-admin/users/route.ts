@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
-import { findAllUsers } from "@/models/UserModel";
+import { findAllUsers } from "@/server/models/user.model";
 
 export async function GET() {
   try {
@@ -10,10 +10,7 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const users = await findAllUsers(
-      {},
-      { createdAt: "desc" }
-    );
+    const users = await findAllUsers({}, { createdAt: "desc" });
 
     return NextResponse.json(users);
   } catch (error) {

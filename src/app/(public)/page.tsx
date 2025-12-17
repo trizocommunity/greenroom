@@ -1,8 +1,8 @@
+import Benefits from "@/components/home/Benefits";
+import CTASection from "@/components/home/CTASection";
 import Hero from "@/components/home/Hero";
 import ProblemSolution from "@/components/home/ProblemSolution";
-import Benefits from "@/components/home/Benefits";
 import TargetAudience from "@/components/home/TargetAudience";
-import CTASection from "@/components/home/CTASection";
 
 export default function Home() {
   return (

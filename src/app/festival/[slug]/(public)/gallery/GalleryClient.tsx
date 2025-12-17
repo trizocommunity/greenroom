@@ -1,8 +1,8 @@
 "use client";
 
+import { AnimatePresence, motion } from "framer-motion";
+import { ImageIcon, X } from "lucide-react";
 import { useState } from "react";
-import { X, ImageIcon } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 
 interface GalleryImage {
   id: string;
@@ -38,7 +38,7 @@ export function GalleryClient({ images, accentColor }: GalleryClientProps) {
             key={image.id}
             onClick={() => setSelectedImage(image)}
             className="group relative aspect-square rounded-lg overflow-hidden bg-muted hover:ring-2 transition-all"
-            style={{ '--ring-color': accentColor } as React.CSSProperties}
+            style={{ "--ring-color": accentColor } as React.CSSProperties}
           >
             <img
               src={image.url}

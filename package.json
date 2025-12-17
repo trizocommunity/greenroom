@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "check": "biome check --write ."
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -45,14 +47,13 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.3.9",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/pg": "^8.16.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.0.10",
     "prisma": "^7.1.0",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",

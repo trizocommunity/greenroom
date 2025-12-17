@@ -1,8 +1,8 @@
-import { getSession } from "@/lib/auth/session";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Metadata } from "next";
-import { findUserById } from "@/models/UserModel";
 import { ProfileView } from "@/components/profile/profile-view";
+import { getSession } from "@/lib/auth/session";
+import { findUserById } from "@/server/models/user.model";
 
 export const metadata: Metadata = {
   title: "Profile | Greenroom",
@@ -23,7 +23,7 @@ export default async function ProfilePage() {
   }
 
   return (
-    <div className="container mx-auto max-w-4xl py-12 px-4">
+    <div className="container mx-auto max-w-5xl py-12 px-4">
       <ProfileView user={user as any} />
     </div>
   );

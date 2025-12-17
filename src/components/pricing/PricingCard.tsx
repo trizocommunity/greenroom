@@ -1,17 +1,24 @@
-'use client';
+"use client";
 
-import { Check, Calendar, Lock, ArrowRight, Shield, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion } from "framer-motion";
+import {
+  ArrowRight,
+  Calendar,
+  Check,
+  Lock,
+  Shield,
+  Sparkles,
+} from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 const features = [
-  'Create and manage 1 festival',
-  'Full festival dashboard access',
-  'Public festival website (subdomain)',
-  'Result publishing',
-  'Valid for 30 days',
-  'Secure payment',
+  "Create and manage 1 festival",
+  "Full festival dashboard access",
+  "Public festival website (subdomain)",
+  "Result publishing",
+  "Valid for 30 days",
+  "Secure payment",
 ];
 
 export function PricingCard() {
@@ -24,7 +31,7 @@ export function PricingCard() {
     >
       {/* Glow effect */}
       <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-primary/30 to-primary/20 rounded-2xl blur-xl opacity-60" />
-      
+
       <div className="relative bg-card border-2 border-primary/20 rounded-xl p-8 shadow-xl">
         {/* Badge */}
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -36,7 +43,9 @@ export function PricingCard() {
 
         {/* Plan Header */}
         <div className="text-center pt-4 pb-6 border-b border-border">
-          <h3 className="text-xl font-semibold text-foreground mb-2">Festival Pass</h3>
+          <h3 className="text-xl font-semibold text-foreground mb-2">
+            Festival Pass
+          </h3>
           <div className="flex items-baseline justify-center gap-1">
             <span className="text-5xl font-black text-foreground">₹1000</span>
             <span className="text-muted-foreground text-lg">/ festival</span>
@@ -65,8 +74,8 @@ export function PricingCard() {
         {/* CTA */}
         <div className="pt-4 border-t border-border">
           <Link href="/register" className="block">
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
               className="w-full h-14 text-lg font-semibold rounded-lg group"
             >
               Get Started
