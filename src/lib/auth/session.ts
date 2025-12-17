@@ -21,12 +21,32 @@ export async function decrypt(input: string): Promise<any> {
   return payload
 }
 
-export async function createSession(userId: string, role: string) {
+export async function createSession(userId: string, role: string, isOnboarded: boolean) {
   const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-  const session = await encrypt({ userId, role, expires })
+  const session = await encrypt({ userId, role, isOnboarded, expires })
 
   const cookieStore = await cookies()
   cookieStore.set('session', session, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    expires,
+    sameSite: 'lax',
+    path: '/',
+  })
+}
+
+export async function updateSession(data: Partial<any>) {
+  const session = await getSession()
+  if (!session) return
+
+  const newPayload = { ...session, ...data }
+  // refresh expiration
+  const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+  newPayload.expires = expires
+
+  const newToken = await encrypt(newPayload)
+  const cookieStore = await cookies()
+  cookieStore.set('session', newToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     expires,

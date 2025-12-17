@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { useMutation } from "@tanstack/react-query"
 import { z } from "zod"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -17,20 +18,16 @@ type FormData = z.infer<typeof registerSchema>
 
 export function RegisterForm() {
   const router = useRouter()
-  const [isLoading, setIsLoading] = React.useState(false)
-
   const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<FormData>({
-    resolver: zodResolver(registerSchema),
-  })
+      register,
+      handleSubmit,
+      formState: { errors },
+    } = useForm<FormData>({
+      resolver: zodResolver(registerSchema),
+    })
 
-  async function onSubmit(data: FormData) {
-    setIsLoading(true)
-
-    try {
+  const { mutate, isPending } = useMutation({
+    mutationFn: async (data: FormData) => {
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
@@ -43,18 +40,23 @@ export function RegisterForm() {
         const result = await response.json()
         throw new Error(result.error || "Failed to register")
       }
-
+      return response.json()
+    },
+    onSuccess: () => {
       toast.success("Account created successfully")
       router.push("/login")
-    } catch (error) {
-       if (error instanceof Error) {
+    },
+    onError: (error) => {
+      if (error instanceof Error) {
         toast.error(error.message)
       } else {
         toast.error("Something went wrong")
       }
-    } finally {
-      setIsLoading(false)
     }
+  })
+
+  function onSubmit(data: FormData) {
+    mutate(data)
   }
 
   return (
@@ -70,7 +72,7 @@ export function RegisterForm() {
               autoCapitalize="none"
               autoComplete="email"
               autoCorrect="off"
-              disabled={isLoading}
+              disabled={isPending}
               {...register("email")}
             />
             {errors.email && (
@@ -83,15 +85,15 @@ export function RegisterForm() {
               id="password"
               type="password"
               autoComplete="new-password"
-              disabled={isLoading}
+              disabled={isPending}
               {...register("password")}
             />
              {errors.password && (
               <p className="text-sm text-red-500">{errors.password.message}</p>
             )}
           </div>
-          <Button disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button disabled={isPending}>
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create Account
           </Button>
         </div>

@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { useMutation } from "@tanstack/react-query"
 import { z } from "zod"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -17,20 +18,16 @@ type FormData = z.infer<typeof loginSchema>
 
 export function LoginForm() {
   const router = useRouter()
-  const [isLoading, setIsLoading] = React.useState(false)
-
   const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<FormData>({
-    resolver: zodResolver(loginSchema),
-  })
+      register,
+      handleSubmit,
+      formState: { errors },
+    } = useForm<FormData>({
+      resolver: zodResolver(loginSchema),
+    })
 
-  async function onSubmit(data: FormData) {
-    setIsLoading(true)
-
-    try {
+  const { mutate, isPending } = useMutation({
+    mutationFn: async (data: FormData) => {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
@@ -43,19 +40,28 @@ export function LoginForm() {
         const result = await response.json()
         throw new Error(result.error || "Failed to login")
       }
-
+      return response.json()
+    },
+    onSuccess: (data) => {
       toast.success("Logged in successfully")
-      router.push("/profile")
+      if (data.role === "SUPER_ADMIN") {
+        router.push("/super-admin")
+      } else {
+        router.push("/profile")
+      }
       router.refresh()
-    } catch (error) {
-       if (error instanceof Error) {
+    },
+    onError: (error) => {
+      if (error instanceof Error) {
         toast.error(error.message)
       } else {
         toast.error("Something went wrong")
       }
-    } finally {
-      setIsLoading(false)
     }
+  })
+
+  function onSubmit(data: FormData) {
+    mutate(data)
   }
 
   return (
@@ -71,7 +77,7 @@ export function LoginForm() {
               autoCapitalize="none"
               autoComplete="email"
               autoCorrect="off"
-              disabled={isLoading}
+              disabled={isPending}
               {...register("email")}
             />
             {errors.email && (
@@ -84,15 +90,15 @@ export function LoginForm() {
               id="password"
               type="password"
               autoComplete="current-password"
-              disabled={isLoading}
+              disabled={isPending}
               {...register("password")}
             />
              {errors.password && (
               <p className="text-sm text-red-500">{errors.password.message}</p>
             )}
           </div>
-          <Button disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button disabled={isPending}>
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Sign In
           </Button>
         </div>

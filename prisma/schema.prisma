@@ -15,14 +15,109 @@ model User {
   email         String     @unique
   passwordHash  String
   globalRole    GlobalRole @default(USER)
+  fullName      String?
+  displayName   String?
+  age           Int?
   isActive      Boolean    @default(true)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
+  festivals     Festival[]
 }
 
 enum GlobalRole {
   USER
   SUPER_ADMIN
+}
+
+enum FestivalStatus {
+  UPCOMING
+  ONGOING
+  COMPLETED
+}
+
+model Festival {
+  id            String          @id @default(cuid())
+  name          String
+  description   String?
+  startDate     DateTime
+  endDate       DateTime
+  location      String
+  status        FestivalStatus  @default(UPCOMING)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  // Public site fields
+  slug          String?         @unique
+  tagline       String?
+  accentColor   String          @default("#0F4C45")
+  logo          String?
+  heroImage     String?
+  
+  // Organization info
+  orgName           String
+  orgDescription    String?
+  orgWebsite        String?
+  orgLocation       String?
+  orgEstablishedYear Int?
+  
+  // Relations
+  creatorId     String
+  creator       User            @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  
+  // Public content relations
+  programs      Program[]
+  teams         Team[]
+  newsItems     NewsItem[]
+  galleryImages GalleryImage[]
+  
+  @@index([creatorId])
+}
+
+model Program {
+  id          String   @id @default(cuid())
+  name        String
+  category    String   // "JUNIOR" | "SUBJUNIOR" | "SENIOR"
+  posterUrl   String?
+  createdAt   DateTime @default(now())
+  festivalId  String
+  festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  
+  @@index([festivalId])
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  score       Int      @default(0)
+  rank        Int?
+  createdAt   DateTime @default(now())
+  festivalId  String
+  festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  
+  @@index([festivalId])
+}
+
+model NewsItem {
+  id          String   @id @default(cuid())
+  title       String
+  excerpt     String?
+  content     String
+  publishedAt DateTime @default(now())
+  festivalId  String
+  festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  
+  @@index([festivalId])
+}
+
+model GalleryImage {
+  id          String   @id @default(cuid())
+  url         String
+  caption     String?
+  createdAt   DateTime @default(now())
+  festivalId  String
+  festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  
+  @@index([festivalId])
 }
 
 model PasswordResetToken {

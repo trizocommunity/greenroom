@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import QueryProvider from "@/components/providers/QueryProvider";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -24,10 +25,12 @@ export default function RootLayout({
       <body
         className={`${outfit.variable} antialiased bg-background text-foreground flex flex-col min-h-screen`}
       >
-        <main className="flex-1">
-          {children}
-        </main>
-        <Toaster />
+        <QueryProvider>
+          <main className="flex-1">
+            {children}
+          </main>
+          <Toaster />
+        </QueryProvider>
       </body>
     </html>
   );
