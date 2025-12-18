@@ -2,16 +2,16 @@ import Link from "next/link";
 
 export default function Footer() {
   return (
-    <footer className="bg-background border-t border-border mt-auto text-foreground">
+    <footer className="mt-auto text-foreground border-t border-white/50 bg-white/60 backdrop-blur-2xl">
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-12 md:py-20">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
-            <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="w-6 h-6 bg-primary text-primary-foreground rounded-sm flex items-center justify-center font-bold text-xs">
+            <Link href="/" className="flex items-center gap-3 mb-4">
+              <div className="w-7 h-7 rounded-2xl bg-linear-to-br from-primary to-orange-400 text-white flex items-center justify-center font-bold text-xs shadow-[0_6px_18px_rgba(124,58,237,0.3)]">
                 G
               </div>
-              <span className="font-bold text-xl uppercase tracking-tighter">
+              <span className="font-semibold text-xl tracking-tight">
                 Greenroom
               </span>
             </Link>
@@ -23,7 +23,7 @@ export default function Footer() {
 
           {/* Links */}
           <div>
-            <h4 className="font-bold uppercase tracking-wide mb-4 text-primary">
+            <h4 className="font-semibold tracking-wide mb-4 text-primary">
               Platform
             </h4>
             <ul className="space-y-3 text-sm text-muted-foreground font-medium">
@@ -63,7 +63,7 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="font-bold uppercase tracking-wide mb-4 text-primary">
+            <h4 className="font-semibold tracking-wide mb-4 text-primary">
               Contact
             </h4>
             <ul className="space-y-3 text-sm text-muted-foreground font-medium">
@@ -78,7 +78,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-border mt-12 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-muted-foreground uppercase font-medium tracking-wider">
+        <div className="border-t border-white/60 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-muted-foreground font-medium tracking-wide">
           <p>
             &copy; {new Date().getFullYear()} Greenroom. All rights reserved.
           </p>

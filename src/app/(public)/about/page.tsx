@@ -7,12 +7,12 @@ export default function AboutPage() {
   return (
     <div className="min-h-screen ">
       {/* Hero / Intro */}
-      <section className="py-20 min-h-screen container max-w-7xl px-4 md:px-6 mx-auto">
+      <section className="py-24 min-h-screen container max-w-7xl px-4 md:px-6 mx-auto">
         <div className="flex flex-col gap-12 text-center md:text-left">
           <div className="max-w-4xl">
-            <h1 className="text-6xl md:text-9xl font-black uppercase tracking-tighter mb-8 leading-[0.8]">
-              We Are <br />{" "}
-              <span className="text-transparent bg-clip-text bg-linear-to-r from-gray-400 to-white">
+            <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-6 leading-tight text-heading">
+              We are{" "}
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-primary via-fuchsia-500 to-orange-400">
                 Greenroom
               </span>
             </h1>
@@ -24,7 +24,7 @@ export default function AboutPage() {
               <Link href="/contact">
                 <Button
                   size="lg"
-                  className="h-14 px-8 uppercase font-bold tracking-wider rounded-none"
+                  className="h-12 px-10"
                 >
                   Join the Revolution
                 </Button>
@@ -38,11 +38,11 @@ export default function AboutPage() {
       <Values />
 
       {/* Origin Story */}
-      <section className="py-32 bg-background text-foreground border-y border-border">
+      <section className="py-32 text-foreground border-y border-white/50">
         <div className="container max-w-7xl px-4 md:px-6 mx-auto text-center">
-          <p className="text-3xl md:text-5xl font-black uppercase leading-tight tracking-tighter">
-            "To simplify festival operations so organizers can focus on the art,
-            and judges can focus on the talent."
+          <p className="text-2xl md:text-3xl font-semibold leading-tight tracking-tight text-heading max-w-3xl mx-auto">
+            &quot;To simplify festival operations so organizers can focus on the art,
+            and judges can focus on the talent.&quot;
           </p>
         </div>
       </section>

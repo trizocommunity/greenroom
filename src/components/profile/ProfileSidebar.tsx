@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, User, CreditCard, Settings } from "lucide-react";
+import { LayoutDashboard, Calendar, CreditCard, Settings } from "lucide-react";
 
 interface ProfileSidebarProps {
   activeTab: string;
@@ -17,17 +17,17 @@ export function ProfileSidebar({
   const items = [
     {
       label: "Dashboard",
-      value: "festivals",
+      value: "dashboard",
       icon: LayoutDashboard,
     },
     {
-      label: "Profile",
-      value: "profile",
-      icon: User,
+      label: "Festivals",
+      value: "festivals",
+      icon: Calendar,
     },
     {
-      label: "Payment History",
-      value: "payments",
+      label: "Billing",
+      value: "billing",
       icon: CreditCard,
     },
     {

@@ -57,7 +57,9 @@ export function FestivalDashboardSidebar({
                   </span>
                   <div className="flex items-center gap-2">
                     <FestivalRoleBadge
-                      role={role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "ADMIN"}
+                      festivalRole={
+                        role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "ADMIN"
+                      }
                     />
                   </div>
                   {festival.expiresAt && (

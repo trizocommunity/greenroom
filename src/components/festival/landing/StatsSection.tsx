@@ -16,7 +16,7 @@ export function StatsSection({ accentColor }: StatsSectionProps) {
   ];
 
   return (
-    <section className="py-20 border-y border-border/40 bg-muted/20">
+    <section className="py-20 border-y border-border/40 bg-white/40 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           {stats.map((stat, idx) => (

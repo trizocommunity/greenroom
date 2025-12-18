@@ -2,24 +2,17 @@
 
 import { useMutation } from "@tanstack/react-query";
 import {
-  BadgeCheck,
-  Calendar,
   ChevronsUpDown,
-  CreditCard,
   GalleryVerticalEnd,
-  LayoutDashboard,
   LogOut,
-  Settings,
-  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -84,18 +77,20 @@ export function AppSidebar() {
   const initials = getInitials(user?.fullName);
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" className="bg-transparent">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/super-admin">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-2xl bg-linear-to-br from-primary to-orange-400 text-white shadow-[0_6px_18px_rgba(124,58,237,0.35)]">
                   <GalleryVerticalEnd className="size-4" />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold">Super Admin</span>
-                  <span className="">Dashboard</span>
+                  <span className="font-semibold text-slate-50">
+                    Super Admin
+                  </span>
+                  <span className="text-xs text-slate-400">Dashboard</span>
                 </div>
               </Link>
             </SidebarMenuButton>

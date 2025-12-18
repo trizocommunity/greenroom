@@ -1,15 +1,14 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { Loader2, LogOut, User } from "lucide-react";
+import { Loader2, LogOut } from "lucide-react";
 import Link from "next/link";
 
 import { useRouter } from "next/navigation";
-import * as React from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
-export default function DashboardNavbar({ role }: { role?: string }) {
+export default function DashboardNavbar() {
   const router = useRouter();
 
   const { mutate, isPending } = useMutation({
@@ -32,50 +31,29 @@ export default function DashboardNavbar({ role }: { role?: string }) {
     },
   });
 
-  const homeLink = role === "SUPER_ADMIN" ? "/super-admin" : "/profile";
-
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-b border-border supports-backdrop-filter:bg-background/60">
-      <div className="mx-auto max-w-5xl px-4  h-20 flex items-center justify-between">
+    <header className="fixed top-0 left-0 right-0 z-40 backdrop-blur-2xl border-b border-slate-800 supports-backdrop-filter:bg-white-950/80">
+      <div className="mx-auto max-w-7xl px-4 h-20 flex items-center justify-between">
         {/* Logo - Points to Profile (Home for logged in users) */}
-        <Link href={homeLink} className="flex items-center gap-2 group">
-          <div className="w-8 h-8 bg-primary text-primary-foreground rounded flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">
-            G
-          </div>
-          <span className="font-bold text-xl tracking-tighter uppercase">
-            Greenroom
-          </span>
+        <Link href={"/profile"} className="text-2xl font-bold">
+          Greenroom
         </Link>
 
         {/* Dashboard Actions */}
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="uppercase font-bold tracking-wide gap-2 text-muted-foreground hover:text-foreground"
-            onClick={() => mutate()}
-            disabled={isPending}
-          >
-            {isPending ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <LogOut size={16} />
-            )}
-            Log Out
-          </Button>
-
-          {role !== "SUPER_ADMIN" && (
-            <Link href="/profile">
-              <Button
-                size="sm"
-                className="uppercase font-bold tracking-wide gap-2"
-              >
-                <User size={16} />
-                Profile
-              </Button>
-            </Link>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={() => mutate()}
+          disabled={isPending}
+        >
+          {isPending ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <LogOut size={16} />
           )}
-        </div>
+          Log Out
+        </Button>
       </div>
     </header>
   );

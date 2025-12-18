@@ -15,7 +15,7 @@ export function GalleryPreview({ slug }: GalleryPreviewProps) {
   const images = MOCK_GALLERY.slice(0, 4);
 
   return (
-    <section className="py-24 bg-background">
+    <section className="py-24 bg-transparent">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-6">
           <div className="text-center md:text-left">

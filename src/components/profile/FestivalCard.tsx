@@ -6,6 +6,7 @@ import {
   Eye,
   Loader2,
   MapPin,
+  MoreVertical,
   Pencil,
   Settings,
   Trash2,
@@ -24,8 +25,16 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { type Festival, useDeleteFestival } from "@/hooks/useFestivals";
+import { cn } from "@/lib/utils";
 
 interface FestivalCardProps {
   festival: Festival;
@@ -37,15 +46,15 @@ interface FestivalCardProps {
 const statusConfig = {
   UPCOMING: {
     label: "Upcoming",
-    className: "bg-blue-100 text-blue-700 border-blue-200",
+    className: "bg-blue-500/10 text-blue-500 border-blue-500/20",
   },
   ONGOING: {
     label: "Ongoing",
-    className: "bg-green-100 text-green-700 border-green-200",
+    className: "bg-green-500/10 text-green-500 border-green-500/20",
   },
   COMPLETED: {
     label: "Completed",
-    className: "bg-gray-100 text-gray-600 border-gray-200",
+    className: "bg-gray-500/10 text-gray-500 border-gray-500/20",
   },
 };
 
@@ -60,7 +69,6 @@ export function FestivalCard({
 
   const startDate = new Date(festival.startDate);
   const endDate = new Date(festival.endDate);
-  const createdDate = new Date(festival.createdAt);
 
   const status = statusConfig[festival.status];
 
@@ -74,87 +82,97 @@ export function FestivalCard({
 
   return (
     <>
-      <Card className="group hover:shadow-lg transition-all duration-300 border-primary/20 bg-linear-to-br from-background to-muted/30">
-        <CardHeader className="pb-3 relative">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-xl truncate tracking-tight">
-                {festival.name}
-              </h3>
-              <Badge variant="outline" className={`mt-2 ${status.className}`}>
+      <Card className="group relative overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300">
+        <div className="absolute inset-0 h-36 w-full bg-linear-to-b from-primary/20 to-background/90" />
+
+        <CardContent className="relative pt-8 px-6 pb-6">
+          <div className="flex justify-between items-start mb-7">
+            <div className="space-y-1">
+              <Badge
+                variant="outline"
+                className={cn("mb-2 backdrop-blur-sm", status.className)}
+              >
                 {status.label}
               </Badge>
-              <div className="mt-2">
-                <FestivalRoleBadge role="OWNER" />
+              <h3 className="font-bold text-2xl tracking-tight leading-none">
+                {festival.name}
+              </h3>
+              <div className="flex items-center text-sm text-muted-foreground gap-2">
+                <FestivalRoleBadge festivalRole="OWNER" />
+                <span>•</span>
+                <span>
+                  Created {format(new Date(festival.createdAt), "MMM d, yyyy")}
+                </span>
               </div>
             </div>
-            <Badge
-              variant="secondary"
-              className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 shadow-sm"
-            >
-              Created Festival : {format(createdDate, "MMM d, yyyy")}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {festival.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {festival.description}
-            </p>
-          )}
 
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Calendar className="h-4 w-4 shrink-0" />
-              <span>
-                {format(startDate, "MMM d, yyyy")} →{" "}
-                {format(endDate, "MMM d, yyyy")}
-              </span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 -mr-2 text-muted-foreground hover:text-foreground"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onView?.(festival)}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  View Public Page
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onEdit?.(festival)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit Details
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => setIsDeleteOpen(true)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Festival
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 py-4 border-b border-border/50 my-4">
+            <div className="space-y-1">
+              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Date
+              </div>
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Calendar className="h-3.5 w-3.5 text-primary" />
+                <span>
+                  {format(startDate, "MMM d")} -{" "}
+                  {format(endDate, "MMM d, yyyy")}
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <MapPin className="h-4 w-4 shrink-0" />
-              <span className="truncate">{festival.location}</span>
+            <div className="space-y-1">
+              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Location
+              </div>
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <MapPin className="h-3.5 w-3.5 text-primary" />
+                <span className="truncate">{festival.location}</span>
+              </div>
             </div>
           </div>
 
-          <div className="pt-4 mt-2 border-t flex gap-2">
+          <div className="flex gap-3">
             <Button
-              className="flex-1 bg-primary/95 hover:bg-primary"
+              className="flex-1 bg-primary text-primary-foreground shadow-lg hover:shadow-primary/25 transition-all"
               onClick={() => onManage?.(festival)}
             >
               <Settings className="w-4 h-4 mr-2" />
-              Manage
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => onView?.(festival)}
-              title="View Public Site"
-            >
-              <Eye className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => onEdit?.(festival)}
-              title="Edit Details"
-            >
-              <Pencil className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
-              onClick={() => setIsDeleteOpen(true)}
-              title="Delete"
-            >
-              <Trash2 className="w-4 h-4" />
+              Manage Dashboard
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -173,7 +191,7 @@ export function FestivalCard({
                 e.preventDefault();
                 handleDelete();
               }}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending && (

@@ -13,7 +13,7 @@ export type FestivalRole =
   | "OWNER"; // Added OWNER for the creator context
 
 interface FestivalRoleBadgeProps {
-  role: FestivalRole | string;
+  festivalRole: FestivalRole | string;
   className?: string;
   variant?: "default" | "secondary" | "destructive" | "outline";
 }
@@ -65,12 +65,12 @@ const roleConfig: Record<
 };
 
 export function FestivalRoleBadge({
-  role,
+  festivalRole,
   className,
   variant = "outline",
 }: FestivalRoleBadgeProps) {
-  const config = roleConfig[role] || {
-    label: role,
+  const config = roleConfig[festivalRole] || {
+    label: festivalRole,
     className: "bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-100",
     icon: User,
   };

@@ -17,7 +17,7 @@ export function FeaturedPrograms({ accentColor, slug }: FeaturedProgramsProps) {
   const featured = MOCK_SESSIONS.slice(0, 3);
 
   return (
-    <section className="py-24 bg-background">
+    <section className="py-24 bg-transparent">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="flex justify-between items-end mb-12">
           <div>
@@ -25,7 +25,7 @@ export function FeaturedPrograms({ accentColor, slug }: FeaturedProgramsProps) {
               Featured Programs
             </h2>
             <p className="text-muted-foreground">
-              Don't miss the key events happening now.
+              Don&apos;t miss the flagship events curated for this edition.
             </p>
           </div>
           <Link href={`/festival/${slug}/sessions`} className="hidden md:block">
@@ -44,7 +44,7 @@ export function FeaturedPrograms({ accentColor, slug }: FeaturedProgramsProps) {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
               viewport={{ once: true }}
-              className="p-6 rounded-2xl border border-border hover:border-border/80 hover:shadow-lg transition-all bg-card group"
+              className="p-6 rounded-3xl border border-border/60 hover:border-border hover:shadow-[0_10px_30px_rgba(15,23,42,0.1)] transition-all bg-white/70 backdrop-blur-xl group"
             >
               <div className="flex justify-between items-start mb-4">
                 <Badge variant="secondary" className="font-normal">

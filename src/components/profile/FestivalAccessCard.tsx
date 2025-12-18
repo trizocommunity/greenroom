@@ -6,9 +6,7 @@ import {
   AlertCircle,
   ArrowRight,
   Check,
-  CreditCard,
   Loader2,
-  RefreshCw,
   Sparkles,
 } from "lucide-react";
 import { useState } from "react";
@@ -24,7 +22,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-import { type PaymentStatus, usePaymentStatus } from "@/hooks/usePaymentStatus";
+import { usePaymentStatus } from "@/hooks/usePaymentStatus";
 
 interface RazorpayOrder {
   orderId: string;

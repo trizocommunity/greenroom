@@ -26,11 +26,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { updateProfile } from "@/server/actions/profile";
 
+import { BillingTab } from "./BillingTab";
+import { DashboardTab } from "./DashboardTab";
 import { FestivalsTab } from "./FestivalsTab";
-import { PaymentHistoryTab } from "./PaymentHistoryTab";
 import { ProfileSidebar } from "./ProfileSidebar";
 
 const profileSchema = z.object({
@@ -54,7 +54,7 @@ interface ProfileViewProps {
 
 export function ProfileView({ user }: ProfileViewProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState("festivals");
+  const [activeTab, setActiveTab] = useState("dashboard");
 
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema) as any,
@@ -116,60 +116,26 @@ export function ProfileView({ user }: ProfileViewProps) {
       <main className="flex-1 min-w-0">
         <div className="mb-6">
           <h2 className="text-2xl font-semibold tracking-tight">
-            {activeTab === "festivals" && "Dashboard"}
-            {activeTab === "profile" && "Profile Details"}
-            {activeTab === "payments" && "Payment History"}
+            {activeTab === "dashboard" && "Dashboard"}
+            {activeTab === "festivals" && "Festivals"}
+            {activeTab === "billing" && "Billing & Payments"}
             {activeTab === "settings" && "General Settings"}
           </h2>
           <p className="text-muted-foreground">
+            {activeTab === "dashboard" &&
+              "Overview of your account and activities."}
             {activeTab === "festivals" && "Manage your festivals and events."}
-            {activeTab === "profile" && "View your personal information."}
-            {activeTab === "payments" &&
-              "View your billing and payment history."}
+            {activeTab === "billing" &&
+              "View your billing status and payment history."}
             {activeTab === "settings" && "Update your profile and preferences."}
           </p>
         </div>
 
+        {activeTab === "dashboard" && <DashboardTab user={user} />}
+
         {activeTab === "festivals" && <FestivalsTab />}
 
-        {activeTab === "profile" && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Details</CardTitle>
-              <CardDescription>Read-only view of your profile.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="p-4 rounded-lg bg-muted/50 border">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">
-                    Full Name
-                  </Label>
-                  <p className="font-medium mt-1">{user.fullName || "-"}</p>
-                </div>
-                <div className="p-4 rounded-lg bg-muted/50 border">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">
-                    Display Name
-                  </Label>
-                  <p className="font-medium mt-1">{user.displayName || "-"}</p>
-                </div>
-                <div className="p-4 rounded-lg bg-muted/50 border">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">
-                    Age
-                  </Label>
-                  <p className="font-medium mt-1">{user.age || "-"}</p>
-                </div>
-                <div className="p-4 rounded-lg bg-muted/50 border">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">
-                    Role
-                  </Label>
-                  <p className="font-medium mt-1">{user.globalRole}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {activeTab === "payments" && <PaymentHistoryTab />}
+        {activeTab === "billing" && <BillingTab />}
 
         {activeTab === "settings" && (
           <Card>

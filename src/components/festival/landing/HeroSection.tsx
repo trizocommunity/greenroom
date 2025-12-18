@@ -15,14 +15,14 @@ export function HeroSection({ festival }: HeroSectionProps) {
     <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden">
       {/* Abstract Background */}
       <div
-        className="absolute inset-0 z-0 opacity-10"
+        className="absolute inset-0 z-0 opacity-70"
         style={{
-          background: `radial-gradient(circle at 50% 50%, ${festival.accentColor}, transparent 70%)`,
+          background: `radial-gradient(circle at 0% 0%, ${festival.accentColor}22, transparent 60%), radial-gradient(circle at 100% 100%, ${festival.accentColor}33, transparent 55%)`,
         }}
       />
 
       {/* Noise Texture Overlay */}
-      <div className="absolute inset-0 z-1 opacity-[0.03] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+      <div className="absolute inset-0 z-1 opacity-[0.04] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
 
       <div className="relative z-10 max-w-5xl mx-auto px-4 text-center">
         <motion.div
@@ -31,13 +31,13 @@ export function HeroSection({ festival }: HeroSectionProps) {
           transition={{ duration: 0.8, ease: "easeOut" }}
         >
           <span
-            className="inline-block py-1 px-3 rounded-full text-sm font-medium border bg-background/50 backdrop-blur-sm mb-6"
+            className="inline-block py-1 px-3 rounded-full text-sm font-medium border bg-white/60 backdrop-blur-md mb-6"
             style={{
               borderColor: festival.accentColor,
               color: festival.accentColor,
             }}
           >
-            Welcome to the {new Date(festival.startDate).getFullYear()} Edition
+            {festival.tagline || `Welcome to the ${new Date(festival.startDate).getFullYear()} Edition`}
           </span>
 
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter mb-6 bg-clip-text text-transparent bg-linear-to-b from-foreground to-foreground/70">
@@ -46,7 +46,7 @@ export function HeroSection({ festival }: HeroSectionProps) {
 
           <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
             {festival.description ||
-              "Celebrating excellence, creativity, and community."}
+              "Run on Greenroom for paperless scoring, live leaderboards, and transparent results across every stage."}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">

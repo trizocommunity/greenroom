@@ -3,14 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 import { type Festival, useFestivals } from "@/hooks/useFestivals";
 import { usePaymentStatus } from "@/hooks/usePaymentStatus";
 import type { JoinedFestival } from "@/types/festival";
@@ -19,9 +13,9 @@ import { EditFestivalModal } from "./EditFestivalModal";
 import { FestivalCard } from "./FestivalCard";
 import { FestivalEmptyState } from "./FestivalEmptyState";
 import { JoinedFestivalCard } from "./JoinedFestivalCard";
-import { FestivalAccessCard } from "./FestivalAccessCard";
 
 import { MOCK_JOINED_FESTIVALS } from "@/data/user-festivals.mock";
+import { CreditCard, Sparkles } from "lucide-react";
 
 export function FestivalsTab() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -85,11 +79,6 @@ export function FestivalsTab() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      {/* Header / Access Status */}
-      <FestivalAccessCard
-        onCreateClick={handleCreateClick}
-        hasCreatedFestival={hasCreatedFestival}
-      />
 
       {/* Sections */}
       <div className="space-y-10">
@@ -99,8 +88,34 @@ export function FestivalsTab() {
             <div className="grid grid-cols-1 gap-4">
               <Skeleton className="h-52 rounded-lg" />
             </div>
-          ) : festivals.length === 0 ? (
-            <FestivalEmptyState />
+          ) : festivals.length === 0 && paymentStatus?.status === "ACTIVE" ? (
+            <div className="py-16 rounded-lg border border-dashed bg-muted/20">
+              <FestivalEmptyState />
+              <div className="flex justify-center">
+                <Button size="lg" onClick={handleCreateClick}>
+                  Create Festival
+                  <Sparkles className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ) : festivals.length === 0 && paymentStatus?.status === "NOT_PAID" ? (
+            <div className="py-16 rounded-lg border border-dashed bg-muted/20">
+              <div className="flex flex-col items-center justify-center">
+                <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-6">
+                  <CreditCard className="w-10 h-10 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2 text-foreground">Not paid yet</h3>
+                <p className="text-muted-foreground text-center max-w-sm mb-6">
+                  Complete your payment to create a festival.
+                </p>
+              </div>
+              <div className="flex justify-center">
+                <Button size="lg" onClick={handleCreateClick}>
+                  Complete Payment
+                  <Sparkles className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           ) : (
             <div className="grid grid-cols-1 gap-6">
               {festivals.map((festival) => (
