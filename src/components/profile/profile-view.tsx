@@ -27,12 +27,11 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { updateProfile } from "@/server/actions/profile";
 
 import { FestivalsTab } from "./FestivalsTab";
-
 import { PaymentHistoryTab } from "./PaymentHistoryTab";
+import { ProfileSidebar } from "./ProfileSidebar";
 
 const profileSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
@@ -95,163 +94,148 @@ export function ProfileView({ user }: ProfileViewProps) {
     : user.email.substring(0, 2).toUpperCase();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Avatar className="h-20 w-20">
-          <AvatarImage src="" />
-          <AvatarFallback className="text-xl">{initials}</AvatarFallback>
-        </Avatar>
-        <div>
-          <h1 className="text-2xl font-bold">
-            {user.displayName || user.fullName || "User"}
-          </h1>
-          <p className="text-muted-foreground">{user.email}</p>
+    <div className="flex flex-col md:flex-row gap-8">
+      <aside className="w-full md:w-64 shrink-0">
+        <div className="flex items-center gap-3 mb-8 px-4">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src="" />
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
+          <div className="overflow-hidden">
+            <h1 className="text-sm font-medium truncate">
+              {user.displayName || user.fullName || "User"}
+            </h1>
+            <p className="text-xs text-muted-foreground truncate">
+              {user.email}
+            </p>
+          </div>
         </div>
-      </div>
+        <ProfileSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      </aside>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="bg-transparent w-full justify-start border-b rounded-none h-auto p-0 gap-6">
-          <TabsTrigger
-            value="festivals"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 pb-2 shadow-none"
-          >
-            Dashboard
-          </TabsTrigger>
-          <TabsTrigger
-            value="profile"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 pb-2 shadow-none"
-          >
-            Profile
-          </TabsTrigger>
-          <TabsTrigger
-            value="payments"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 pb-2 shadow-none"
-          >
-            Payment History
-          </TabsTrigger>
-          <TabsTrigger
-            value="settings"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 pb-2 shadow-none"
-          >
-            Settings
-          </TabsTrigger>
-        </TabsList>
-        <div className="mt-6">
-          <TabsContent value="festivals" className="m-0">
-            <FestivalsTab />
-          </TabsContent>
+      <main className="flex-1 min-w-0">
+        <div className="mb-6">
+          <h2 className="text-2xl font-semibold tracking-tight">
+            {activeTab === "festivals" && "Dashboard"}
+            {activeTab === "profile" && "Profile Details"}
+            {activeTab === "payments" && "Payment History"}
+            {activeTab === "settings" && "General Settings"}
+          </h2>
+          <p className="text-muted-foreground">
+            {activeTab === "festivals" && "Manage your festivals and events."}
+            {activeTab === "profile" && "View your personal information."}
+            {activeTab === "payments" &&
+              "View your billing and payment history."}
+            {activeTab === "settings" && "Update your profile and preferences."}
+          </p>
+        </div>
 
-          <TabsContent value="profile" className="m-0">
-            <Card>
-              <CardHeader>
-                <CardTitle>Details</CardTitle>
-                <CardDescription>
-                  Read-only view of your profile.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="p-4 rounded-lg bg-muted/50 border">
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">
-                      Full Name
-                    </Label>
-                    <p className="font-medium mt-1">{user.fullName || "-"}</p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-muted/50 border">
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">
-                      Display Name
-                    </Label>
-                    <p className="font-medium mt-1">
-                      {user.displayName || "-"}
-                    </p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-muted/50 border">
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">
-                      Age
-                    </Label>
-                    <p className="font-medium mt-1">{user.age || "-"}</p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-muted/50 border">
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">
-                      Role
-                    </Label>
-                    <p className="font-medium mt-1">{user.globalRole}</p>
-                  </div>
+        {activeTab === "festivals" && <FestivalsTab />}
+
+        {activeTab === "profile" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Details</CardTitle>
+              <CardDescription>Read-only view of your profile.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="p-4 rounded-lg bg-muted/50 border">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Full Name
+                  </Label>
+                  <p className="font-medium mt-1">{user.fullName || "-"}</p>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                <div className="p-4 rounded-lg bg-muted/50 border">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Display Name
+                  </Label>
+                  <p className="font-medium mt-1">{user.displayName || "-"}</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 border">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Age
+                  </Label>
+                  <p className="font-medium mt-1">{user.age || "-"}</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 border">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Role
+                  </Label>
+                  <p className="font-medium mt-1">{user.globalRole}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-          <TabsContent value="payments" className="m-0">
-            <PaymentHistoryTab />
-          </TabsContent>
+        {activeTab === "payments" && <PaymentHistoryTab />}
 
-          <TabsContent value="settings" className="m-0">
-            <Card>
-              <CardHeader>
-                <CardTitle>Edit Profile</CardTitle>
-                <CardDescription>
-                  Update your personal information.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Form {...form}>
-                  <form
-                    onSubmit={form.handleSubmit(onSubmit)}
-                    className="space-y-4 max-w-md"
+        {activeTab === "settings" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Edit Profile</CardTitle>
+              <CardDescription>
+                Update your personal information.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-4 max-w-md"
+                >
+                  <FormField
+                    control={form.control as any}
+                    name="fullName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Full Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Jane Doe" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control as any}
+                    name="displayName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Display Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="janedoe" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control as any}
+                    name="age"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Age</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="25" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button
+                    type="submit"
+                    disabled={!form.formState.isValid || isPending}
                   >
-                    <FormField
-                      control={form.control as any}
-                      name="fullName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Full Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Jane Doe" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control as any}
-                      name="displayName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Display Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="janedoe" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control as any}
-                      name="age"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Age</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="25" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button
-                      type="submit"
-                      disabled={!form.formState.isValid || isPending}
-                    >
-                      {isPending ? "Saving..." : "Save Changes"}
-                    </Button>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </div>
-      </Tabs>
+                    {isPending ? "Saving..." : "Save Changes"}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        )}
+      </main>
     </div>
   );
 }
