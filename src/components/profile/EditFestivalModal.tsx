@@ -144,7 +144,7 @@ export function EditFestivalModal({
           orgWebsite: fullData.orgWebsite || undefined,
           orgLocation: fullData.orgLocation || undefined,
           orgEstablishedYear: fullData.orgEstablishedYear
-            ? parseInt(fullData.orgEstablishedYear)
+            ? parseInt(fullData.orgEstablishedYear, 10)
             : undefined,
         },
       },

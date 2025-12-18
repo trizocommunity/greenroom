@@ -21,7 +21,8 @@ model User {
   isActive      Boolean    @default(true)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
-  festivals     Festival[]
+  festivals     Festival[] @relation("CreatedFestivals")
+  memberships   FestivalMember[]
   payments      Payment[]
 }
 
@@ -92,7 +93,9 @@ model Festival {
   
   // Relations
   creatorId     String
-  creator       User            @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  creator       User            @relation("CreatedFestivals", fields: [creatorId], references: [id], onDelete: Cascade)
+  
+  members       FestivalMember[]
   
   // Public content relations
   programs      Program[]
@@ -157,4 +160,21 @@ model PasswordResetToken {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
+}
+
+model FestivalMember {
+  id         String   @id @default(cuid())
+  userId     String
+  festivalId String
+  role       String   // "JUDGE" | "PARTICIPANT" | "ADMIN" | "TEAM-LEADER" | "STAGE-MANAGER"
+  
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  festival   Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, festivalId])
+  @@index([userId])
+  @@index([festivalId])
 }

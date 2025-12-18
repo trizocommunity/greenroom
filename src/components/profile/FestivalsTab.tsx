@@ -88,30 +88,12 @@ export function FestivalsTab() {
             <div className="grid grid-cols-1 gap-4">
               <Skeleton className="h-52 rounded-lg" />
             </div>
-          ) : festivals.length === 0 && paymentStatus?.status === "ACTIVE" ? (
+          ) : festivals.length === 0 ? (
             <div className="py-16 rounded-lg border border-dashed bg-muted/20">
               <FestivalEmptyState />
               <div className="flex justify-center">
                 <Button size="lg" onClick={handleCreateClick}>
                   Create Festival
-                  <Sparkles className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ) : festivals.length === 0 && paymentStatus?.status === "NOT_PAID" ? (
-            <div className="py-16 rounded-lg border border-dashed bg-muted/20">
-              <div className="flex flex-col items-center justify-center">
-                <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-6">
-                  <CreditCard className="w-10 h-10 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2 text-foreground">Not paid yet</h3>
-                <p className="text-muted-foreground text-center max-w-sm mb-6">
-                  Complete your payment to create a festival.
-                </p>
-              </div>
-              <div className="flex justify-center">
-                <Button size="lg" onClick={handleCreateClick}>
-                  Complete Payment
                   <Sparkles className="ml-2 h-4 w-4" />
                 </Button>
               </div>

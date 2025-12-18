@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { ImageIcon, X } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 
 interface GalleryImage {
@@ -35,16 +36,18 @@ export function GalleryClient({ images, accentColor }: GalleryClientProps) {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {images.map((image) => (
           <button
+            type="button"
             key={image.id}
             onClick={() => setSelectedImage(image)}
             className="group relative aspect-square rounded-lg overflow-hidden bg-muted hover:ring-2 transition-all"
             style={{ "--ring-color": accentColor } as React.CSSProperties}
           >
-            <img
+            <Image
               src={image.url}
               alt={image.caption || "Gallery image"}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              loading="lazy"
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
+              sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
             />
             {image.caption && (
               <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
@@ -66,6 +69,7 @@ export function GalleryClient({ images, accentColor }: GalleryClientProps) {
             onClick={() => setSelectedImage(null)}
           >
             <button
+              type="button"
               className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors"
               onClick={() => setSelectedImage(null)}
             >
@@ -75,16 +79,18 @@ export function GalleryClient({ images, accentColor }: GalleryClientProps) {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="max-w-5xl max-h-[90vh] relative"
+              className="max-w-5xl w-full aspect-video relative"
               onClick={(e) => e.stopPropagation()}
             >
-              <img
+              <Image
                 src={selectedImage.url}
                 alt={selectedImage.caption || "Gallery image"}
-                className="max-w-full max-h-[85vh] object-contain rounded-lg"
+                fill
+                className="object-contain rounded-lg"
+                priority
               />
               {selectedImage.caption && (
-                <p className="text-white text-center mt-4">
+                <p className="absolute -bottom-12 left-0 right-0 text-white text-center">
                   {selectedImage.caption}
                 </p>
               )}
