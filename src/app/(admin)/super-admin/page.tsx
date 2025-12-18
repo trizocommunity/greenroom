@@ -1,17 +1,17 @@
-import { countUsers } from "@/models/UserModel";
+import { Shield, UserCheck, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, UserCheck, Shield } from "lucide-react";
+import { countUsers } from "@/server/models/user.model";
 
 export default async function SuperAdminDashboard() {
   // Fetch real analytics
   const totalUsers = await countUsers();
-  
+
   const activeUsers = await countUsers({
-      isActive: true
+    isActive: true,
   });
 
   const superAdmins = await countUsers({
-      globalRole: "SUPER_ADMIN"
+    globalRole: "SUPER_ADMIN",
   });
 
   return (
@@ -22,7 +22,7 @@ export default async function SuperAdminDashboard() {
           Overview of your platform statistics
         </p>
       </div>
-      
+
       <div className="grid auto-rows-min gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -31,7 +31,9 @@ export default async function SuperAdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalUsers}</div>
-            <p className="text-xs text-muted-foreground">Registered on the platform</p>
+            <p className="text-xs text-muted-foreground">
+              Registered on the platform
+            </p>
           </CardContent>
         </Card>
 
@@ -42,7 +44,9 @@ export default async function SuperAdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{activeUsers}</div>
-            <p className="text-xs text-muted-foreground">Currently active accounts</p>
+            <p className="text-xs text-muted-foreground">
+              Currently active accounts
+            </p>
           </CardContent>
         </Card>
 

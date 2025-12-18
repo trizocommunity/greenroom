@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { FileDigit, Trophy, Users, ShieldCheck } from "lucide-react";
+import { FileDigit, ShieldCheck, Trophy, Users } from "lucide-react";
 
 const benefits = [
   {
@@ -9,21 +9,21 @@ const benefits = [
     description: "Eliminate heaps of paper. Judges score digitally.",
     icon: FileDigit,
     colSpan: "md:col-span-1",
-    hasBorderRight: true
+    hasBorderRight: true,
   },
   {
     title: "Real-time",
     description: "Scores are calculated instantly. No tabulation delays.",
     icon: Trophy,
     colSpan: "md:col-span-1",
-    hasBorderRight: true
+    hasBorderRight: true,
   },
   {
     title: "Secure",
     description: "Full audit trails. Role-based access ensures integrity.",
     icon: ShieldCheck,
     colSpan: "md:col-span-2",
-    hasBorderRight: false
+    hasBorderRight: false,
   },
 ];
 
@@ -33,7 +33,8 @@ export default function Benefits() {
       <div className="container max-w-7xl px-4 md:px-6 mx-auto">
         <div className="mb-20">
           <h2 className="text-5xl md:text-7xl font-black uppercase tracking-tighter mb-6 text-foreground">
-            Unmatched <br/> <span className="text-muted-foreground">Efficiency</span>
+            Unmatched <br />{" "}
+            <span className="text-muted-foreground">Efficiency</span>
           </h2>
         </div>
 
@@ -43,12 +44,18 @@ export default function Benefits() {
               key={i}
               className={`${benefit.colSpan} p-12 group hover:bg-soft transition-colors duration-500 relative ${benefit.hasBorderRight ? "md:border-r border-border" : ""}`}
             >
-              <div className={`h-px w-full bg-border absolute bottom-0 left-0`} />
+              <div
+                className={`h-px w-full bg-border absolute bottom-0 left-0`}
+              />
               <div className="mb-12 opacity-50 group-hover:opacity-100 transition-opacity">
                 <benefit.icon size={48} strokeWidth={1} />
               </div>
-              <h3 className="text-2xl font-bold uppercase tracking-wide mb-4">{benefit.title}</h3>
-              <p className="text-lg font-light leading-relaxed opacity-80">{benefit.description}</p>
+              <h3 className="text-2xl font-bold uppercase tracking-wide mb-4">
+                {benefit.title}
+              </h3>
+              <p className="text-lg font-light leading-relaxed opacity-80">
+                {benefit.description}
+              </p>
             </div>
           ))}
         </div>

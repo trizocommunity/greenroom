@@ -9,7 +9,7 @@ export default function FestivalsPage() {
           Manage all festivals on the platform
         </p>
       </div>
-      
+
       <FestivalsTable />
     </div>
   );

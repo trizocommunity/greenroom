@@ -1,6 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { userService } from "@/services/userService";
+import { userApi } from "@/services/user.api";
 
 export type User = {
   id: string;
@@ -14,7 +14,7 @@ export type User = {
 export const useUsers = () => {
   return useQuery({
     queryKey: ["users"],
-    queryFn: userService.getAll,
+    queryFn: userApi.getAll,
   });
 };
 
@@ -22,8 +22,8 @@ export const useUpdateUser = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<User> }) => 
-      userService.update(id, data),
+    mutationFn: ({ id, data }: { id: string; data: Partial<User> }) =>
+      userApi.update(id, data),
     onSuccess: () => {
       toast.success("User updated successfully");
       queryClient.invalidateQueries({ queryKey: ["users"] });
@@ -38,7 +38,7 @@ export const useDeleteUser = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: userService.delete,
+    mutationFn: userApi.delete,
     onSuccess: () => {
       toast.success("User deleted successfully");
       queryClient.invalidateQueries({ queryKey: ["users"] });

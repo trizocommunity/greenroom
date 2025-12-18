@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FestivalPublicData } from "./FestivalContext";
+import type { FestivalPublicData } from "./FestivalContext";
 
 interface FestivalFooterProps {
   festival: FestivalPublicData;
@@ -97,7 +97,10 @@ export function FestivalFooter({ festival }: FestivalFooterProps) {
           </p>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>Powered by</span>
-            <Link href="/" className="font-semibold hover:text-foreground transition-colors">
+            <Link
+              href="/"
+              className="font-semibold hover:text-foreground transition-colors"
+            >
               Greenroom
             </Link>
           </div>

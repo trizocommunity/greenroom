@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, ReactNode } from 'react';
+import { createContext, type ReactNode, useContext } from "react";
 
 export type FestivalPublicData = {
   id: string;
@@ -41,7 +41,7 @@ export function FestivalProvider({
 export function useFestival() {
   const context = useContext(FestivalContext);
   if (!context) {
-    throw new Error('useFestival must be used within a FestivalProvider');
+    throw new Error("useFestival must be used within a FestivalProvider");
   }
   return context;
 }

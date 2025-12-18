@@ -1,28 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  MoreHorizontal, 
-  Eye, 
-  Settings, 
-  Pencil, 
-  Trash2,
-  Calendar,
-  MapPin
-} from "lucide-react";
 import { format } from "date-fns";
-import { Festival, useFestivals, useDeleteFestival } from "@/hooks/useFestivals";
+import {
+  Calendar,
+  Eye,
+  MapPin,
+  MoreHorizontal,
+  Pencil,
+  Settings,
+  Trash2,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { toast } from "sonner";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EditFestivalModal } from "@/components/profile/EditFestivalModal";
 import {
   AlertDialog,
@@ -34,20 +24,36 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  type Festival,
+  useDeleteFestival,
+  useFestivals,
+} from "@/hooks/useFestivals";
 
 export function FestivalsTable() {
   const { data: festivals = [], isLoading } = useFestivals();
   const deleteMutation = useDeleteFestival();
   const [editingFestival, setEditingFestival] = useState<Festival | null>(null);
-  const [festivalToDelete, setFestivalToDelete] = useState<Festival | null>(null);
+  const [festivalToDelete, setFestivalToDelete] = useState<Festival | null>(
+    null,
+  );
 
   const router = useRouter();
 
   const handleView = (festival: Festival) => {
-     if (!festival.slug) return;
-     const url = `${window.location.origin}?festival=${festival.slug}`;
-     window.open(url, "_blank");
+    if (!festival.slug) return;
+    const url = `${window.location.origin}?festival=${festival.slug}`;
+    window.open(url, "_blank");
   };
 
   const handleManage = (festival: Festival) => {
@@ -58,126 +64,144 @@ export function FestivalsTable() {
   const handleDelete = () => {
     if (!festivalToDelete) return;
     deleteMutation.mutate(festivalToDelete.id, {
-        onSuccess: () => {
-             setFestivalToDelete(null);
-             toast.success("Festival terminated successfully");
-        }
+      onSuccess: () => {
+        setFestivalToDelete(null);
+        toast.success("Festival terminated successfully");
+      },
     });
   };
 
   if (isLoading) {
     return (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3, 4, 5, 6].map(i => (
-                <Card key={i}>
-                  <CardHeader>
-                    <Skeleton className="h-5 w-3/4" />
-                    <Skeleton className="h-4 w-1/2 mt-2" />
-                  </CardHeader>
-                  <CardContent>
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-2/3 mt-2" />
-                  </CardContent>
-                </Card>
-            ))}
-        </div>
-    )
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <Card key={i}>
+            <CardHeader>
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-4 w-1/2 mt-2" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3 mt-2" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
   }
 
   return (
     <>
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {festivals.map((festival) => (
-        <Card key={festival.id} className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <CardTitle className="text-lg">{festival.name}</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">{festival.slug}</p>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="h-8 w-8 p-0">
-                    <span className="sr-only">Open menu</span>
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleView(festival)}>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {festivals.map((festival) => (
+          <Card key={festival.id} className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <CardTitle className="text-lg">{festival.name}</CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {festival.slug}
+                  </p>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                      <span className="sr-only">Open menu</span>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleView(festival)}>
                       <Eye className="mr-2 h-4 w-4" /> View Site
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleManage(festival)}>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleManage(festival)}>
                       <Settings className="mr-2 h-4 w-4" /> Dashboard
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setEditingFestival(festival)}>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setEditingFestival(festival)}
+                    >
                       <Pencil className="mr-2 h-4 w-4" /> Edit Details
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
                       className="text-red-600 focus:text-red-600 bg-red-50 focus:bg-red-100"
                       onClick={() => setFestivalToDelete(festival)}
-                  >
+                    >
                       <Trash2 className="mr-2 h-4 w-4" /> Terminate
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            <div className="mt-3">
-              <Badge variant="outline" className={
-                   festival.status === 'ONGOING' ? "bg-green-100 text-green-700 border-green-300" :
-                   festival.status === 'UPCOMING' ? "bg-blue-100 text-blue-700 border-blue-300" :
-                   "bg-gray-100 text-gray-600 border-gray-300"
-              }>
-                  {festival.status}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">Organization</p>
-              <p className="text-sm">{festival.orgName}</p>
-            </div>
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                  <Calendar size={14} className="shrink-0" />
-                  <span>{format(new Date(festival.startDate), "MMM d")} - {format(new Date(festival.endDate), "MMM d, yyyy")}</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="mt-3">
+                <Badge
+                  variant="outline"
+                  className={
+                    festival.status === "ONGOING"
+                      ? "bg-green-100 text-green-700 border-green-300"
+                      : festival.status === "UPCOMING"
+                        ? "bg-blue-100 text-blue-700 border-blue-300"
+                        : "bg-gray-100 text-gray-600 border-gray-300"
+                  }
+                >
+                  {festival.status}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-1">
+                  Organization
+                </p>
+                <p className="text-sm">{festival.orgName}</p>
+              </div>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Calendar size={14} className="shrink-0" />
+                  <span>
+                    {format(new Date(festival.startDate), "MMM d")} -{" "}
+                    {format(new Date(festival.endDate), "MMM d, yyyy")}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
                   <MapPin size={14} className="shrink-0" />
                   <span>{festival.location}</span>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-    <EditFestivalModal 
+      <EditFestivalModal
         festival={editingFestival}
         open={!!editingFestival}
         onOpenChange={(open) => !open && setEditingFestival(null)}
-    />
+      />
 
-    <AlertDialog open={!!festivalToDelete} onOpenChange={(open) => !open && setFestivalToDelete(null)}>
+      <AlertDialog
+        open={!!festivalToDelete}
+        onOpenChange={(open) => !open && setFestivalToDelete(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Terminate Festival</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to permanently delete <b>{festivalToDelete?.name}</b>?
-              This action cannot be undone and will remove all associated data including programs, teams, and results.
+              Are you sure you want to permanently delete{" "}
+              <b>{festivalToDelete?.name}</b>? This action cannot be undone and
+              will remove all associated data including programs, teams, and
+              results.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-                className="bg-red-600 hover:bg-red-700" 
-                onClick={handleDelete}
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={handleDelete}
             >
-                Terminate
+              Terminate
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-    </AlertDialog>
-
+      </AlertDialog>
     </>
   );
 }

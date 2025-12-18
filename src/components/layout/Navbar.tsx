@@ -1,18 +1,19 @@
 "use client";
 
-import * as React from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Menu, User, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
+import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, User } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 const navItems = [
   { name: "Home", href: "/" },
   { name: "About", href: "/about" },
   { name: "Services", href: "/services" },
   { name: "Features", href: "/features" },
+  { name: "Pricing", href: "/pricing" },
   { name: "Contact", href: "/contact" },
 ];
 
@@ -30,9 +31,11 @@ export default function Navbar({ user }: NavbarProps) {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 group">
           <div className="w-8 h-8 bg-primary text-primary-foreground rounded flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">
-             G
+            G
           </div>
-          <span className="font-bold text-xl tracking-tighter uppercase">Greenroom</span>
+          <span className="font-bold text-xl tracking-tighter uppercase">
+            Greenroom
+          </span>
         </Link>
 
         {/* Desktop Nav */}
@@ -40,15 +43,13 @@ export default function Navbar({ user }: NavbarProps) {
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="relative py-2"
-              >
-                <span className={cn(
-                  "text-sm font-semibold uppercase tracking-wide transition-colors hover:text-primary",
-                  isActive ? "text-primary" : "text-muted-foreground"
-                )}>
+              <Link key={item.href} href={item.href} className="relative py-2">
+                <span
+                  className={cn(
+                    "text-sm font-semibold uppercase tracking-wide transition-colors hover:text-primary",
+                    isActive ? "text-primary" : "text-muted-foreground",
+                  )}
+                >
                   {item.name}
                 </span>
                 {isActive && (
@@ -59,7 +60,7 @@ export default function Navbar({ user }: NavbarProps) {
                   />
                 )}
               </Link>
-            )
+            );
           })}
         </nav>
 
@@ -67,18 +68,32 @@ export default function Navbar({ user }: NavbarProps) {
         <div className="hidden md:flex items-center gap-4">
           {user ? (
             <Link href="/profile">
-               <Button size="sm" className="uppercase font-bold tracking-wide gap-2">
-                 <User size={16} />
-                 Profile
-               </Button>
+              <Button
+                size="sm"
+                className="uppercase font-bold tracking-wide gap-2"
+              >
+                <User size={16} />
+                Profile
+              </Button>
             </Link>
           ) : (
             <>
               <Link href="/login">
-                 <Button variant="ghost" size="sm" className="uppercase font-bold tracking-wide">Log In</Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="uppercase font-bold tracking-wide"
+                >
+                  Log In
+                </Button>
               </Link>
               <Link href="/contact">
-                <Button size="sm" className="uppercase font-bold tracking-wide rounded-none px-6">Get Demo</Button>
+                <Button
+                  size="sm"
+                  className="uppercase font-bold tracking-wide rounded-none px-6"
+                >
+                  Get Demo
+                </Button>
               </Link>
             </>
           )}
@@ -102,7 +117,7 @@ export default function Navbar({ user }: NavbarProps) {
             exit={{ opacity: 0, height: 0 }}
             className="md:hidden bg-background border-b border-border overflow-hidden"
           >
-             <div className="p-6 flex flex-col gap-4">
+            <div className="p-6 flex flex-col gap-4">
               {navItems.map((item) => (
                 <Link
                   key={item.href}
@@ -110,30 +125,39 @@ export default function Navbar({ user }: NavbarProps) {
                   onClick={() => setIsOpen(false)}
                   className={cn(
                     "text-lg font-bold uppercase tracking-wide py-2 border-b border-gray-50 last:border-0",
-                    pathname === item.href ? "text-primary pl-2 border-l-4 border-primary" : "text-gray-400"
+                    pathname === item.href
+                      ? "text-primary pl-2 border-l-4 border-primary"
+                      : "text-gray-400",
                   )}
                 >
                   {item.name}
                 </Link>
               ))}
               <div className="flex flex-col gap-3 mt-4">
-                 {user ? (
-                   <Link href="/profile" onClick={() => setIsOpen(false)}>
-                      <Button className="w-full justify-center uppercase font-bold rounded-none gap-2">
-                        <User size={16} />
-                        Profile
+                {user ? (
+                  <Link href="/profile" onClick={() => setIsOpen(false)}>
+                    <Button className="w-full justify-center uppercase font-bold rounded-none gap-2">
+                      <User size={16} />
+                      Profile
+                    </Button>
+                  </Link>
+                ) : (
+                  <>
+                    <Link href="/login" onClick={() => setIsOpen(false)}>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-center uppercase font-bold rounded-none"
+                      >
+                        Log In
                       </Button>
-                   </Link>
-                 ) : (
-                   <>
-                     <Link href="/login" onClick={() => setIsOpen(false)}>
-                       <Button variant="outline" className="w-full justify-center uppercase font-bold rounded-none">Log In</Button>
-                     </Link>
-                     <Link href="/contact" onClick={() => setIsOpen(false)}>
-                       <Button className="w-full justify-center uppercase font-bold rounded-none">Request Demo</Button>
-                     </Link>
-                   </>
-                 )}
+                    </Link>
+                    <Link href="/contact" onClick={() => setIsOpen(false)}>
+                      <Button className="w-full justify-center uppercase font-bold rounded-none">
+                        Request Demo
+                      </Button>
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>

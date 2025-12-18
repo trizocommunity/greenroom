@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { motion } from "framer-motion";
+import { Award, Download, FileImage, Medal, Trophy } from "lucide-react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,7 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Download, Trophy, Medal, Award, FileImage } from "lucide-react";
 
 interface Program {
   id: string;
@@ -39,12 +39,18 @@ const categoryColors: Record<string, string> = {
   SENIOR: "bg-purple-100 text-purple-700 border-purple-200",
 };
 
-export function ResultsClient({ programs, teams, accentColor }: ResultsClientProps) {
+export function ResultsClient({
+  programs,
+  teams,
+  accentColor,
+}: ResultsClientProps) {
   const [activeTab, setActiveTab] = useState<"program" | "team">("program");
   const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
-  
+
   // Sort teams by rank
-  const sortedTeams = [...teams].sort((a, b) => (a.rank || 999) - (b.rank || 999));
+  const sortedTeams = [...teams].sort(
+    (a, b) => (a.rank || 999) - (b.rank || 999),
+  );
   const topTeams = sortedTeams.slice(0, 3);
   const otherTeams = sortedTeams.slice(3);
 
@@ -55,19 +61,25 @@ export function ResultsClient({ programs, teams, accentColor }: ResultsClientPro
         <Button
           variant={activeTab === "program" ? "default" : "ghost"}
           onClick={() => setActiveTab("program")}
-          style={activeTab === "program" ? { backgroundColor: accentColor } : undefined}
+          style={
+            activeTab === "program"
+              ? { backgroundColor: accentColor }
+              : undefined
+          }
         >
           Program
         </Button>
         <Button
           variant={activeTab === "team" ? "default" : "ghost"}
           onClick={() => setActiveTab("team")}
-          style={activeTab === "team" ? { backgroundColor: accentColor } : undefined}
+          style={
+            activeTab === "team" ? { backgroundColor: accentColor } : undefined
+          }
         >
           Team
         </Button>
       </div>
-      
+
       {/* Tab Content */}
       <motion.div
         key={activeTab}
@@ -87,8 +99,8 @@ export function ResultsClient({ programs, teams, accentColor }: ResultsClientPro
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {programs.map((program) => (
-                  <Card 
-                    key={program.id} 
+                  <Card
+                    key={program.id}
                     className="hover:shadow-md transition-shadow cursor-pointer"
                     onClick={() => setSelectedProgram(program)}
                   >
@@ -102,8 +114,8 @@ export function ResultsClient({ programs, teams, accentColor }: ResultsClientPro
                             </p>
                           )}
                         </div>
-                        <Badge 
-                          variant="outline" 
+                        <Badge
+                          variant="outline"
                           className={categoryColors[program.category] || ""}
                         >
                           {program.category}
@@ -116,7 +128,7 @@ export function ResultsClient({ programs, teams, accentColor }: ResultsClientPro
             )}
           </div>
         )}
-        
+
         {activeTab === "team" && (
           <div className="space-y-8">
             {teams.length === 0 ? (
@@ -137,8 +149,12 @@ export function ResultsClient({ programs, teams, accentColor }: ResultsClientPro
                         <Medal key="2" className="h-8 w-8 text-gray-400" />,
                         <Award key="3" className="h-8 w-8 text-amber-600" />,
                       ];
-                      const labels = ["1st Place 🥇", "2nd Place 🥈", "3rd Place 🥉"];
-                      
+                      const labels = [
+                        "1st Place 🥇",
+                        "2nd Place 🥈",
+                        "3rd Place 🥉",
+                      ];
+
                       return (
                         <Card key={team.id} className="text-center">
                           <CardContent className="pt-6">
@@ -147,7 +163,7 @@ export function ResultsClient({ programs, teams, accentColor }: ResultsClientPro
                               {labels[index]}
                             </p>
                             <h3 className="font-bold text-lg">{team.name}</h3>
-                            <p 
+                            <p
                               className="text-2xl font-bold mt-2"
                               style={{ color: accentColor }}
                             >
@@ -159,16 +175,22 @@ export function ResultsClient({ programs, teams, accentColor }: ResultsClientPro
                     })}
                   </div>
                 )}
-                
+
                 {/* Other Teams Table */}
                 {otherTeams.length > 0 && (
                   <div className="border rounded-lg overflow-hidden">
                     <table className="w-full">
                       <thead className="bg-muted">
                         <tr>
-                          <th className="text-left py-3 px-4 font-semibold">Rank</th>
-                          <th className="text-left py-3 px-4 font-semibold">Team</th>
-                          <th className="text-right py-3 px-4 font-semibold">Score</th>
+                          <th className="text-left py-3 px-4 font-semibold">
+                            Rank
+                          </th>
+                          <th className="text-left py-3 px-4 font-semibold">
+                            Team
+                          </th>
+                          <th className="text-right py-3 px-4 font-semibold">
+                            Score
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -177,8 +199,12 @@ export function ResultsClient({ programs, teams, accentColor }: ResultsClientPro
                             <td className="py-3 px-4 text-muted-foreground">
                               #{team.rank || "-"}
                             </td>
-                            <td className="py-3 px-4 font-medium">{team.name}</td>
-                            <td className="py-3 px-4 text-right">{team.score} pts</td>
+                            <td className="py-3 px-4 font-medium">
+                              {team.name}
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              {team.score} pts
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -190,9 +216,12 @@ export function ResultsClient({ programs, teams, accentColor }: ResultsClientPro
           </div>
         )}
       </motion.div>
-      
+
       {/* Program Poster Modal */}
-      <Dialog open={!!selectedProgram} onOpenChange={() => setSelectedProgram(null)}>
+      <Dialog
+        open={!!selectedProgram}
+        onOpenChange={() => setSelectedProgram(null)}
+      >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{selectedProgram?.name}</DialogTitle>
@@ -211,7 +240,10 @@ export function ResultsClient({ programs, teams, accentColor }: ResultsClientPro
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <Button className="w-full gap-2" style={{ backgroundColor: accentColor }}>
+                  <Button
+                    className="w-full gap-2"
+                    style={{ backgroundColor: accentColor }}
+                  >
                     <Download className="h-4 w-4" />
                     Download Poster
                   </Button>

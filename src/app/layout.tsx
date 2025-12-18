@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
-import { Toaster } from "@/components/ui/sonner";
 import QueryProvider from "@/components/providers/QueryProvider";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -12,7 +12,8 @@ const outfit = Outfit({
 
 export const metadata: Metadata = {
   title: "Greenroom | Paperless Festival Management",
-  description: "A premium, reliable platform to run large-scale festivals without chaos.",
+  description:
+    "A premium, reliable platform to run large-scale festivals without chaos.",
 };
 
 export default function RootLayout({
@@ -26,9 +27,7 @@ export default function RootLayout({
         className={`${outfit.variable} antialiased bg-background text-foreground flex flex-col min-h-screen`}
       >
         <QueryProvider>
-          <main className="flex-1">
-            {children}
-          </main>
+          <main className="flex-1">{children}</main>
           <Toaster />
         </QueryProvider>
       </body>

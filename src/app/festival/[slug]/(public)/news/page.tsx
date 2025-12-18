@@ -1,8 +1,14 @@
-import { notFound } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { format } from "date-fns";
 import { Calendar } from "lucide-react";
-import { findFestivalBySlugWithNews } from "@/models/FestivalModel";
+import { notFound } from "next/navigation";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { findFestivalBySlugWithNews } from "@/server/models/festival.model";
 
 export default async function NewsPage({
   params,
@@ -11,7 +17,7 @@ export default async function NewsPage({
 }) {
   const { slug } = await params;
   const festival = await findFestivalBySlugWithNews(slug);
-  
+
   if (!festival) {
     notFound();
   }
@@ -19,13 +25,13 @@ export default async function NewsPage({
   return (
     <div className="py-12 px-4">
       <div className="max-w-4xl mx-auto space-y-8">
-        <h1 
+        <h1
           className="text-3xl font-bold"
           style={{ color: festival.accentColor }}
         >
           News & Updates
         </h1>
-        
+
         {festival.newsItems.length === 0 ? (
           <Card>
             <CardContent className="py-16 text-center">

@@ -1,6 +1,6 @@
+import { redirect } from "next/navigation";
 import DashboardNavbar from "@/components/layout/DashboardNavbar";
 import { getSession } from "@/lib/auth/session";
-import { redirect } from "next/navigation";
 
 export default async function DashboardLayout({
   children,
@@ -8,17 +8,15 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }>) {
   const session = await getSession();
-  
+
   if (!session) {
-      redirect("/login");
+    redirect("/login");
   }
 
   return (
     <>
-      <DashboardNavbar />
-      <div className="pt-20">
-        {children}
-      </div>
+      <DashboardNavbar role={session.role} />
+      <div className="pt-20">{children}</div>
     </>
   );
 }

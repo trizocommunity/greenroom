@@ -1,5 +1,5 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { Prisma } from "@prisma/client";
 
 export async function findPasswordResetTokenByHash(tokenHash: string) {
   return prisma.passwordResetToken.findFirst({
@@ -17,13 +17,18 @@ export async function findValidPasswordResetToken(tokenHash: string) {
   });
 }
 
-export async function createPasswordResetToken(data: Prisma.PasswordResetTokenCreateInput) {
+export async function createPasswordResetToken(
+  data: Prisma.PasswordResetTokenCreateInput,
+) {
   return prisma.passwordResetToken.create({
     data,
   });
 }
 
-export async function updatePasswordResetToken(id: string, data: Prisma.PasswordResetTokenUpdateInput) {
+export async function updatePasswordResetToken(
+  id: string,
+  data: Prisma.PasswordResetTokenUpdateInput,
+) {
   return prisma.passwordResetToken.update({
     where: { id },
     data,

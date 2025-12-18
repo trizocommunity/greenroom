@@ -17,7 +17,7 @@ const config: Config = {
           light: "var(--color-primary-light)", // Added specific light shade
         },
         heading: "var(--color-heading)", // Added heading color
-        text: "var(--color-text)",      // Added text color
+        text: "var(--color-text)", // Added text color
         "bg-main": "var(--color-bg-main)", // Added specific bg main
         "bg-soft": "var(--color-bg-soft)", // Added specific bg soft
         accent: {
@@ -27,7 +27,7 @@ const config: Config = {
         muted: {
           DEFAULT: "var(--muted)",
           foreground: "var(--muted-foreground)",
-        }
+        },
       },
       fontFamily: {
         sans: ["var(--font-outfit)", "sans-serif"],

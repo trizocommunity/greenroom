@@ -1,10 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Trophy, Users, Calendar, MapPin } from "lucide-react";
+import { Calendar, MapPin, Trophy, Users } from "lucide-react";
 
 interface StatsSectionProps {
-    accentColor: string;
+  accentColor: string;
 }
 
 export function StatsSection({ accentColor }: StatsSectionProps) {

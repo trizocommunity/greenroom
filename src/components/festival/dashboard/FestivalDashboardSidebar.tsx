@@ -1,29 +1,10 @@
 "use client";
 
+import type { Festival } from "@prisma/client";
+import { format } from "date-fns";
+import { ExternalLink, GalleryVerticalEnd, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { 
-  Users, 
-  Settings, 
-  Trophy, 
-  Calendar, 
-  LayoutDashboard,
-  LogOut,
-  ExternalLink,
-  GalleryVerticalEnd,
-  UserCog,
-  Gavel,
-  Mic2,
-  UsersRound,
-  FolderTree,
-  FileText,
-  Building2,
-  Network,
-  MonitorPlay,
-  Clock,
-  QrCode,
-} from "lucide-react";
-import { Festival } from "@prisma/client";
 import {
   Sidebar,
   SidebarContent,
@@ -37,110 +18,26 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { getFestivalDashboardSidebarConfig } from "@/config/sidebar.config";
+import { FestivalRoleBadge } from "../FestivalRoleBadge";
 
 interface FestivalDashboardSidebarProps {
-  festival: Pick<Festival, "name" | "slug" | "accentColor" | "id">;
+  festival: Pick<
+    Festival,
+    "name" | "slug" | "accentColor" | "id" | "status" | "expiresAt"
+  >;
+  role: string;
 }
 
-export function FestivalDashboardSidebar({ festival }: FestivalDashboardSidebarProps) {
+export function FestivalDashboardSidebar({
+  festival,
+  role,
+}: FestivalDashboardSidebarProps) {
   const pathname = usePathname();
   const basePath = `/festival/${festival.slug}`;
   const dashboardPath = `${basePath}/dashboard`;
 
-  const menuGroups = [
-    {
-      title: "Overview",
-      items: [
-        {
-          title: "Dashboard",
-          href: dashboardPath,
-          icon: LayoutDashboard,
-        },
-      ],
-    },
-    {
-      title: "Pre-works",
-      items: [
-        {
-          title: "Team Leaders",
-          href: `${dashboardPath}/team-leaders`,
-          icon: UserCog,
-        },
-        {
-          title: "Judges",
-          href: `${dashboardPath}/judges`,
-          icon: Gavel,
-        },
-        {
-          title: "Stage Managers",
-          href: `${dashboardPath}/stage-managers`,
-          icon: Mic2,
-        },
-        {
-          title: "Participants",
-          href: `${dashboardPath}/participants`,
-          icon: UsersRound,
-        },
-        {
-          title: "Categories",
-          href: `${dashboardPath}/categories`,
-          icon: FolderTree,
-        },
-        {
-          title: "Programmes",
-          href: `${dashboardPath}/programmes`,
-          icon: FileText,
-        },
-        {
-          title: "Colleges/Schools",
-          href: `${dashboardPath}/colleges`,
-          icon: Building2,
-        },
-        {
-          title: "Groups",
-          href: `${dashboardPath}/groups`,
-          icon: Network,
-        },
-      ],
-    },
-    {
-      title: "Event Works",
-      items: [
-        {
-          title: "Stages",
-          href: `${dashboardPath}/stages`,
-          icon: MonitorPlay,
-        },
-        {
-          title: "Schedule",
-          href: `${dashboardPath}/schedule`,
-          icon: Clock,
-        },
-        {
-          title: "Chest Numbers & QR",
-          href: `${dashboardPath}/chest-numbers`,
-          icon: QrCode,
-        },
-      ],
-    },
-    {
-      title: "On-event Works",
-      items: [
-        // To be extended later
-      ],
-    },
-    {
-      title: "Settings",
-      items: [
-        {
-          title: "Festival Settings",
-          href: `${dashboardPath}/settings`,
-          icon: Settings,
-        },
-      ],
-    },
-  ];
-
+  const menuGroups = getFestivalDashboardSidebarConfig(dashboardPath);
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -148,15 +45,27 @@ export function FestivalDashboardSidebar({ festival }: FestivalDashboardSidebarP
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href={dashboardPath}>
-                <div 
-                  className="flex aspect-square size-8 items-center justify-center rounded-lg text-sidebar-primary-foreground"
+                <div
+                  className="flex aspect-square size-10 items-center justify-center rounded-lg text-sidebar-primary-foreground"
                   style={{ backgroundColor: festival.accentColor }}
                 >
-                  <GalleryVerticalEnd className="size-4" />
+                  <GalleryVerticalEnd className="size-5" />
                 </div>
-                <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold truncate">{festival.name}</span>
-                  <span className="text-xs">Dashboard</span>
+                <div className="flex flex-col gap-1 leading-none">
+                  <span className="font-semibold truncate">
+                    {festival.name}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <FestivalRoleBadge
+                      role={role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "ADMIN"}
+                    />
+                  </div>
+                  {festival.expiresAt && (
+                    <span className="text-[10px] text-muted-foreground">
+                      Valid until:{" "}
+                      {format(new Date(festival.expiresAt), "dd/MM/yyyy")}
+                    </span>
+                  )}
                 </div>
               </Link>
             </SidebarMenuButton>
@@ -176,8 +85,8 @@ export function FestivalDashboardSidebar({ festival }: FestivalDashboardSidebarP
                       const isActive = pathname === item.href;
                       return (
                         <SidebarMenuItem key={item.title}>
-                          <SidebarMenuButton 
-                            asChild 
+                          <SidebarMenuButton
+                            asChild
                             isActive={isActive}
                             tooltip={item.title}
                           >
@@ -222,4 +131,3 @@ export function FestivalDashboardSidebar({ festival }: FestivalDashboardSidebarP
     </Sidebar>
   );
 }
-

@@ -1,30 +1,30 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useMutation } from "@tanstack/react-query"
-import { z } from "zod"
-import { useRouter } from "next/navigation"
-import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import * as React from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import type { z } from "zod";
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { registerSchema } from "@/lib/validations/auth"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { registerSchema } from "@/lib/validations/auth";
 
-type FormData = z.infer<typeof registerSchema>
+type FormData = z.infer<typeof registerSchema>;
 
 export function RegisterForm() {
-  const router = useRouter()
+  const router = useRouter();
   const {
-      register,
-      handleSubmit,
-      formState: { errors },
-    } = useForm<FormData>({
-      resolver: zodResolver(registerSchema),
-    })
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormData>({
+    resolver: zodResolver(registerSchema),
+  });
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (data: FormData) => {
@@ -34,29 +34,29 @@ export function RegisterForm() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
-      })
+      });
 
       if (!response.ok) {
-        const result = await response.json()
-        throw new Error(result.error || "Failed to register")
+        const result = await response.json();
+        throw new Error(result.error || "Failed to register");
       }
-      return response.json()
+      return response.json();
     },
     onSuccess: () => {
-      toast.success("Account created successfully")
-      router.push("/login")
+      toast.success("Account created successfully");
+      router.push("/login");
     },
     onError: (error) => {
       if (error instanceof Error) {
-        toast.error(error.message)
+        toast.error(error.message);
       } else {
-        toast.error("Something went wrong")
+        toast.error("Something went wrong");
       }
-    }
-  })
+    },
+  });
 
   function onSubmit(data: FormData) {
-    mutate(data)
+    mutate(data);
   }
 
   return (
@@ -88,7 +88,7 @@ export function RegisterForm() {
               disabled={isPending}
               {...register("password")}
             />
-             {errors.password && (
+            {errors.password && (
               <p className="text-sm text-red-500">{errors.password.message}</p>
             )}
           </div>
@@ -99,5 +99,5 @@ export function RegisterForm() {
         </div>
       </form>
     </div>
-  )
+  );
 }

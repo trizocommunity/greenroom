@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { LucideIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 interface ServiceCardProps {
   title: string;
@@ -10,7 +10,12 @@ interface ServiceCardProps {
   index: number;
 }
 
-export default function ServiceCard({ title, description, icon: Icon, index }: ServiceCardProps) {
+export default function ServiceCard({
+  title,
+  description,
+  icon: Icon,
+  index,
+}: ServiceCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -22,8 +27,12 @@ export default function ServiceCard({ title, description, icon: Icon, index }: S
       <div className="w-12 h-12 flex items-center justify-center mb-8 border border-border group-hover:border-primary rounded-none transition-colors">
         <Icon size={24} strokeWidth={1} />
       </div>
-      <h3 className="text-2xl font-bold uppercase tracking-wide mb-4 text-foreground">{title}</h3>
-      <p className="text-muted-foreground group-hover:text-foreground leading-relaxed font-medium">{description}</p>
+      <h3 className="text-2xl font-bold uppercase tracking-wide mb-4 text-foreground">
+        {title}
+      </h3>
+      <p className="text-muted-foreground group-hover:text-foreground leading-relaxed font-medium">
+        {description}
+      </p>
     </motion.div>
   );
 }

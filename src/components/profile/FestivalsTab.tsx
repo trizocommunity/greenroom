@@ -1,23 +1,60 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
-import { Festival, useFestivals } from "@/hooks/useFestivals";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { type Festival, useFestivals } from "@/hooks/useFestivals";
+import { usePaymentStatus } from "@/hooks/usePaymentStatus";
+import type { JoinedFestival } from "@/types/festival";
+import { CreateFestivalModal } from "./CreateFestivalModal";
+import { EditFestivalModal } from "./EditFestivalModal";
 import { FestivalCard } from "./FestivalCard";
 import { FestivalEmptyState } from "./FestivalEmptyState";
-import { EditFestivalModal } from "./EditFestivalModal";
-import { CreateFestivalModal } from "./CreateFestivalModal";
-import { useRouter } from "next/navigation";
+import { JoinedFestivalCard } from "./JoinedFestivalCard";
+import { FestivalAccessCard } from "./FestivalAccessCard";
+
+import { MOCK_JOINED_FESTIVALS } from "@/data/user-festivals.mock";
 
 export function FestivalsTab() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingFestival, setEditingFestival] = useState<Festival | null>(null);
-  const { data: festivals = [], isLoading, isError } = useFestivals();
+  const { data: festivals = [], isLoading } = useFestivals();
+  const { data: paymentStatus } = usePaymentStatus();
 
   const router = useRouter();
+
+  const hasCreatedFestival = festivals.length > 0;
+
+  // MOCK DATA for Joined Festivals (Since backend doesn't support it yet)
+  const joinedFestivals: JoinedFestival[] =
+    MOCK_JOINED_FESTIVALS as unknown as JoinedFestival[];
+
+  const handleCreateClick = () => {
+    if (hasCreatedFestival) {
+      toast.error("You can only create one festival.");
+      return;
+    }
+
+    if (!paymentStatus?.canCreateFestival) {
+      toast.error("Complete payment to create a festival", {
+        description: "Go to the Billing tab to complete your payment.",
+        action: {
+          label: "Go to Billing",
+          onClick: () => router.push("/profile?tab=billing"),
+        },
+      });
+      return;
+    }
+    setIsCreateOpen(true);
+  };
 
   const handleView = (festival: Festival) => {
     if (!festival.slug) {
@@ -48,46 +85,60 @@ export function FestivalsTab() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold">Festivals</h2>
-          <p className="text-sm text-muted-foreground">
-            Create and manage festivals you organize or host
-          </p>
+      {/* Header / Access Status */}
+      <FestivalAccessCard
+        onCreateClick={handleCreateClick}
+        hasCreatedFestival={hasCreatedFestival}
+      />
+
+      {/* Sections */}
+      <div className="space-y-10">
+        {/* Section 1: Your Festival */}
+        <div className="space-y-4">
+          {isLoading ? (
+            <div className="grid grid-cols-1 gap-4">
+              <Skeleton className="h-52 rounded-lg" />
+            </div>
+          ) : festivals.length === 0 ? (
+            <FestivalEmptyState />
+          ) : (
+            <div className="grid grid-cols-1 gap-6">
+              {festivals.map((festival) => (
+                <FestivalCard
+                  key={festival.id}
+                  festival={festival}
+                  onView={handleView}
+                  onManage={handleManage}
+                  onEdit={handleEdit}
+                />
+              ))}
+            </div>
+          )}
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Festival
-        </Button>
+
+        {/* Section 2: Joined Festivals */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium border-b pb-2">
+            Joined Festivals
+          </h3>
+          {joinedFestivals.length === 0 ? (
+            <div className="text-center py-10 rounded-lg border border-dashed bg-muted/20">
+              <p className="text-muted-foreground">
+                You haven't joined any festivals yet
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {joinedFestivals.map((festival) => (
+                <JoinedFestivalCard key={festival.id} festival={festival} />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Festival List or Empty State */}
-      {isLoading ? (<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-52 rounded-lg" />
-          ))}
-        </div>
-        ) : festivals.length === 0 ? (
-        <FestivalEmptyState onCreateClick={() => setIsCreateOpen(true)} />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {festivals.map((festival) => (
-            <FestivalCard
-              key={festival.id}
-              festival={festival}
-              onView={handleView}
-              onManage={handleManage}
-              onEdit={handleEdit}
-            />
-          ))}
-        </div>
-      )}
-
       {/* Create Modal */}
-      <CreateFestivalModal
-        open={isCreateOpen}
-        onOpenChange={setIsCreateOpen}
-      />
+      <CreateFestivalModal open={isCreateOpen} onOpenChange={setIsCreateOpen} />
 
       {/* Edit Modal */}
       <EditFestivalModal

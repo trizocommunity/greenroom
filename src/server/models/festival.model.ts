@@ -1,9 +1,9 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { Festival, Prisma } from "@prisma/client";
 
 export async function findAllFestivals(
   where: Prisma.FestivalWhereInput = {},
-  orderBy: Prisma.FestivalOrderByWithRelationInput = { createdAt: "desc" }
+  orderBy: Prisma.FestivalOrderByWithRelationInput = { createdAt: "desc" },
 ) {
   return prisma.festival.findMany({
     where,
@@ -29,7 +29,10 @@ export async function createFestival(data: Prisma.FestivalCreateInput) {
   });
 }
 
-export async function updateFestival(id: string, data: Prisma.FestivalUpdateInput) {
+export async function updateFestival(
+  id: string,
+  data: Prisma.FestivalUpdateInput,
+) {
   return prisma.festival.update({
     where: { id },
     data,

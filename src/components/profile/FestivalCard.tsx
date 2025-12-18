@@ -1,18 +1,17 @@
 "use client";
 
-import { useState } from "react";
 import { format } from "date-fns";
-import { Calendar, MapPin, Eye, Pencil, Settings, MoreVertical, Trash2 } from "lucide-react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Calendar,
+  Eye,
+  Loader2,
+  MapPin,
+  Pencil,
+  Settings,
+  Trash2,
+} from "lucide-react";
+import { useState } from "react";
+import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,8 +22,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Festival, useDeleteFestival } from "@/hooks/useFestivals";
-import { Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { type Festival, useDeleteFestival } from "@/hooks/useFestivals";
 
 interface FestivalCardProps {
   festival: Festival;
@@ -48,7 +49,12 @@ const statusConfig = {
   },
 };
 
-export function FestivalCard({ festival, onEdit, onView, onManage }: FestivalCardProps) {
+export function FestivalCard({
+  festival,
+  onEdit,
+  onView,
+  onManage,
+}: FestivalCardProps) {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const deleteMutation = useDeleteFestival();
 
@@ -68,52 +74,29 @@ export function FestivalCard({ festival, onEdit, onView, onManage }: FestivalCar
 
   return (
     <>
-      <Card className="group hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="pb-3">
+      <Card className="group hover:shadow-lg transition-all duration-300 border-primary/20 bg-linear-to-br from-background to-muted/30">
+        <CardHeader className="pb-3 relative">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-lg truncate">{festival.name}</h3>
+              <h3 className="font-bold text-xl truncate tracking-tight">
+                {festival.name}
+              </h3>
               <Badge variant="outline" className={`mt-2 ${status.className}`}>
                 {status.label}
               </Badge>
+              <div className="mt-2">
+                <FestivalRoleBadge role="OWNER" />
+              </div>
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                  <span className="sr-only">Actions</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onView?.(festival)}>
-                  <Eye className="mr-2 h-4 w-4" />
-                  View
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onEdit?.(festival)}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onManage?.(festival)}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Manage
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => setIsDeleteOpen(true)}
-                  className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Badge
+              variant="secondary"
+              className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 shadow-sm"
+            >
+              Created Festival : {format(createdDate, "MMM d, yyyy")}
+            </Badge>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
           {festival.description && (
             <p className="text-sm text-muted-foreground line-clamp-2">
               {festival.description}
@@ -124,7 +107,8 @@ export function FestivalCard({ festival, onEdit, onView, onManage }: FestivalCar
             <div className="flex items-center gap-2 text-muted-foreground">
               <Calendar className="h-4 w-4 shrink-0" />
               <span>
-                {format(startDate, "MMM d, yyyy")} → {format(endDate, "MMM d, yyyy")}
+                {format(startDate, "MMM d, yyyy")} →{" "}
+                {format(endDate, "MMM d, yyyy")}
               </span>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
@@ -133,10 +117,39 @@ export function FestivalCard({ festival, onEdit, onView, onManage }: FestivalCar
             </div>
           </div>
 
-          <div className="pt-2 border-t">
-            <p className="text-xs text-muted-foreground">
-              Created {format(createdDate, "MMM d, yyyy")}
-            </p>
+          <div className="pt-4 mt-2 border-t flex gap-2">
+            <Button
+              className="flex-1 bg-primary/95 hover:bg-primary"
+              onClick={() => onManage?.(festival)}
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Manage
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => onView?.(festival)}
+              title="View Public Site"
+            >
+              <Eye className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => onEdit?.(festival)}
+              title="Edit Details"
+            >
+              <Pencil className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
+              onClick={() => setIsDeleteOpen(true)}
+              title="Delete"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -147,7 +160,8 @@ export function FestivalCard({ festival, onEdit, onView, onManage }: FestivalCar
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Festival</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{festival.name}"? This action cannot be undone.
+              Are you sure you want to delete "{festival.name}"? This action
+              cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

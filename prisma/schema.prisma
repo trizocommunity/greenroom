@@ -22,6 +22,7 @@ model User {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
   festivals     Festival[]
+  payments      Payment[]
 }
 
 enum GlobalRole {
@@ -35,6 +36,30 @@ enum FestivalStatus {
   COMPLETED
 }
 
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  EXPIRED
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  userId          String
+  amount          Int           // Amount in paise (100000 = ₹1000)
+  currency        String        @default("INR")
+  status          PaymentStatus @default(PENDING)
+  razorpayOrderId String?       @unique // Razorpay order ID
+  razorpayId      String?       // Razorpay payment ID after success
+  validFrom       DateTime      @default(now())
+  validUntil      DateTime
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  festival        Festival?
+  user            User          @relation(fields: [userId], references: [id])
+}
+
 model Festival {
   id            String          @id @default(cuid())
   name          String
@@ -45,6 +70,11 @@ model Festival {
   status        FestivalStatus  @default(UPCOMING)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
+  
+  // Payment & Lifecycle
+  paymentId     String?         @unique
+  payment       Payment?        @relation(fields: [paymentId], references: [id])
+  expiresAt     DateTime?
   
   // Public site fields
   slug          String?         @unique

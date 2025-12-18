@@ -1,14 +1,14 @@
+import type { CreateFestivalInput, Festival } from "@/hooks/useFestivals";
 import api from "@/lib/axios";
-import { Festival, CreateFestivalInput } from "@/hooks/useFestivals";
 
 export const festivalService = {
   getAll: async (): Promise<Festival[]> => {
-    const { data } = await api.get<Festival[]>('/festivals');
+    const { data } = await api.get<Festival[]>("/festivals");
     return data;
   },
 
   create: async (festivalData: CreateFestivalInput) => {
-    const { data } = await api.post('/festivals', festivalData);
+    const { data } = await api.post("/festivals", festivalData);
     return data;
   },
 
@@ -19,5 +19,5 @@ export const festivalService = {
 
   delete: async (id: string) => {
     await api.delete(`/festivals/${id}`);
-  }
+  },
 };

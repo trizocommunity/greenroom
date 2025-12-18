@@ -1,10 +1,11 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, ArrowRight, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -12,9 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
@@ -23,30 +21,20 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+
 import { useCreateFestival } from "@/hooks/useFestivals";
+import { usePaymentStatus } from "@/hooks/usePaymentStatus";
+import { format } from "date-fns";
 
-const festivalStep1Schema = z.object({
-  name: z.string().min(2, "Festival name must be at least 2 characters"),
-  slug: z.string().min(2, "Slug must be at least 2 characters").regex(/^[a-z0-9-]+$/, "Slug can only contain lowercase letters, numbers, and hyphens"),
-  description: z.string().optional(),
-  startDate: z.string().min(1, "Start date is required"),
-  endDate: z.string().min(1, "End date is required"),
-  location: z.string().min(2, "Location is required"),
-});
-
-const festivalStep2Schema = z.object({
-  orgName: z.string().min(2, "Organization name is required"),
-  orgDescription: z.string().optional(),
-  orgWebsite: z.string().url().optional().or(z.literal("")),
-  orgLocation: z.string().optional(),
-  orgEstablishedYear: z.string().optional(),
-});
-
-const fullSchema = festivalStep1Schema.merge(festivalStep2Schema);
-
-type Step1Data = z.infer<typeof festivalStep1Schema>;
-type Step2Data = z.infer<typeof festivalStep2Schema>;
-type FestivalFormData = z.infer<typeof fullSchema>;
+import {
+  type FestivalFormData,
+  type FestivalStep1Data,
+  type FestivalStep2Data,
+  festivalStep1Schema,
+  festivalStep2Schema,
+} from "@/lib/validations/festival";
 
 interface CreateFestivalModalProps {
   open: boolean;
@@ -58,10 +46,19 @@ export function CreateFestivalModal({
   onOpenChange,
 }: CreateFestivalModalProps) {
   const [step, setStep] = useState(1);
-  const [step1Data, setStep1Data] = useState<Step1Data | null>(null);
+  const [step1Data, setStep1Data] = useState<FestivalStep1Data | null>(null);
   const createMutation = useCreateFestival();
+  const { data: paymentStatus } = usePaymentStatus();
 
-  const step1Form = useForm<Step1Data>({
+  const validUntil = paymentStatus?.payment?.validUntil;
+  // Convert validUntil to YYYY-MM-DD for max attribute
+  const maxDate = validUntil
+    ? new Date(validUntil).toISOString().split("T")[0]
+    : undefined;
+  // Min date is today
+  const minDate = new Date().toISOString().split("T")[0];
+
+  const step1Form = useForm<FestivalStep1Data>({
     resolver: zodResolver(festivalStep1Schema),
     defaultValues: {
       name: "",
@@ -73,7 +70,7 @@ export function CreateFestivalModal({
     },
   });
 
-  const step2Form = useForm<Step2Data>({
+  const step2Form = useForm<FestivalStep2Data>({
     resolver: zodResolver(festivalStep2Schema),
     defaultValues: {
       orgName: "",
@@ -84,7 +81,7 @@ export function CreateFestivalModal({
     },
   });
 
-  const handleStep1Submit = (data: Step1Data) => {
+  const handleStep1Submit = (data: FestivalStep1Data) => {
     // Validate date range
     const start = new Date(data.startDate);
     const end = new Date(data.endDate);
@@ -94,11 +91,20 @@ export function CreateFestivalModal({
       });
       return;
     }
+
+    // Validate against billing period
+    if (validUntil && end > new Date(validUntil)) {
+      step1Form.setError("endDate", {
+        message: `End date cannot exceed your billing validity (${format(new Date(validUntil), "PP")})`,
+      });
+      return;
+    }
+
     setStep1Data(data);
     setStep(2);
   };
 
-  const handleStep2Submit = async (data: Step2Data) => {
+  const handleStep2Submit = async (data: FestivalStep2Data) => {
     if (!step1Data) return;
 
     const fullData: FestivalFormData = {
@@ -126,7 +132,7 @@ export function CreateFestivalModal({
         onSuccess: () => {
           handleClose();
         },
-      }
+      },
     );
   };
 
@@ -195,14 +201,21 @@ export function CreateFestivalModal({
                   <FormItem>
                     <FormLabel>URL Slug *</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="summer-music-fest" 
-                        {...field} 
-                        onChange={(e) => field.onChange(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
+                      <Input
+                        placeholder="summer-music-fest"
+                        {...field}
+                        onChange={(e) =>
+                          field.onChange(
+                            e.target.value
+                              .toLowerCase()
+                              .replace(/[^a-z0-9-]/g, "-"),
+                          )
+                        }
                       />
                     </FormControl>
                     <p className="text-xs text-muted-foreground">
-                      Your festival URL: {field.value || 'your-slug'}.greenrooom.com
+                      Your festival URL: {field.value || "your-slug"}
+                      .greenrooom.com
                     </p>
                     <FormMessage />
                   </FormItem>
@@ -236,7 +249,12 @@ export function CreateFestivalModal({
                     <FormItem>
                       <FormLabel>Start Date *</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <Input
+                          type="date"
+                          min={minDate}
+                          max={maxDate}
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -250,13 +268,32 @@ export function CreateFestivalModal({
                     <FormItem>
                       <FormLabel>End Date *</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <Input
+                          type="date"
+                          min={minDate}
+                          max={maxDate}
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
+
+              {validUntil && (
+                <div className="bg-primary/5 border border-primary/20 rounded-md p-3 text-sm flex gap-2 items-start">
+                  <div className="mt-0.5">ℹ️</div>
+                  <div>
+                    <span className="font-medium">Billing Constraints:</span>
+                    <p className="text-muted-foreground mt-0.5">
+                      You can only schedule your festival within your active
+                      billing period (until{" "}
+                      {format(new Date(validUntil), "MMM dd, yyyy")}).
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <FormField
                 control={step1Form.control}
@@ -390,11 +427,7 @@ export function CreateFestivalModal({
                   Back
                 </Button>
                 <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleClose}
-                  >
+                  <Button type="button" variant="outline" onClick={handleClose}>
                     Cancel
                   </Button>
                   <Button type="submit" disabled={createMutation.isPending}>

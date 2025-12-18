@@ -1,12 +1,12 @@
-import Link from "next/link"
-import { RegisterForm } from "@/components/auth/RegisterForm"
-import { AuthLayout } from "@/components/auth/AuthLayout"
-import { Metadata } from "next"
+import type { Metadata } from "next";
+import Link from "next/link";
+import { AuthLayout } from "@/components/auth/AuthLayout";
+import { RegisterForm } from "@/components/auth/RegisterForm";
 
 export const metadata: Metadata = {
   title: "Register | Greenroom",
   description: "Create a new account",
-}
+};
 
 export default function RegisterPage() {
   return (
@@ -25,5 +25,5 @@ export default function RegisterPage() {
         </Link>
       </div>
     </AuthLayout>
-  )
+  );
 }

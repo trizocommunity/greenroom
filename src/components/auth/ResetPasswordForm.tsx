@@ -1,44 +1,44 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useMutation } from "@tanstack/react-query"
-import { z } from "zod"
-import { useRouter, useSearchParams } from "next/navigation"
-import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import * as React from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import type { z } from "zod";
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { resetPasswordSchema } from "@/lib/validations/auth"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { resetPasswordSchema } from "@/lib/validations/auth";
 
-type FormData = z.infer<typeof resetPasswordSchema>
+type FormData = z.infer<typeof resetPasswordSchema>;
 
 export function ResetPasswordForm() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const token = searchParams.get("token")
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-    setValue
+    setValue,
   } = useForm<FormData>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: {
-       token: token || "",
-    }
-  })
+      token: token || "",
+    },
+  });
 
   // Ensure token is set if it comes late or changes
   React.useEffect(() => {
     if (token) {
-        setValue("token", token);
+      setValue("token", token);
     }
-  }, [token, setValue])
+  }, [token, setValue]);
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (data: FormData) => {
@@ -48,36 +48,38 @@ export function ResetPasswordForm() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
-      })
+      });
 
       if (!response.ok) {
-         const result = await response.json()
-         throw new Error(result.error || "Failed to reset password")
+        const result = await response.json();
+        throw new Error(result.error || "Failed to reset password");
       }
     },
     onSuccess: () => {
-      toast.success("Password reset successfully")
-      router.push("/login")
+      toast.success("Password reset successfully");
+      router.push("/login");
     },
     onError: (error) => {
-       if (error instanceof Error) {
-        toast.error(error.message)
+      if (error instanceof Error) {
+        toast.error(error.message);
       } else {
-        toast.error("Something went wrong")
+        toast.error("Something went wrong");
       }
-    }
-  })
+    },
+  });
 
   function onSubmit(data: FormData) {
     if (!data.token) {
-        toast.error("Missing reset token");
-        return;
+      toast.error("Missing reset token");
+      return;
     }
-    mutate(data)
+    mutate(data);
   }
 
   if (!token) {
-      return <div className="text-center text-red-500">Invalid or missing token</div>
+    return (
+      <div className="text-center text-red-500">Invalid or missing token</div>
+    );
   }
 
   return (
@@ -108,7 +110,9 @@ export function ResetPasswordForm() {
               {...register("confirmPassword")}
             />
             {errors.confirmPassword && (
-              <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>
+              <p className="text-sm text-red-500">
+                {errors.confirmPassword.message}
+              </p>
             )}
           </div>
           <Button disabled={isPending}>
@@ -118,5 +122,5 @@ export function ResetPasswordForm() {
         </div>
       </form>
     </div>
-  )
+  );
 }
