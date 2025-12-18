@@ -31,8 +31,15 @@ async function main() {
     if (checkRes.rows.length > 0) {
       console.log("User exists, updating role...");
       await client.query(
-        'UPDATE "User" SET "globalRole" = $1, "passwordHash" = $2, "fullName" = $3 WHERE email = $4',
-        ["SUPER_ADMIN", hashedPassword, "Super Admin", email],
+        'UPDATE "User" SET "globalRole" = $1, "passwordHash" = $2, "fullName" = $3, "displayName" = $4, "age" = $5 WHERE email = $6',
+        [
+          "SUPER_ADMIN",
+          hashedPassword,
+          "Trizo Community",
+          "Trizo",
+          null,
+          email,
+        ],
       );
     } else {
       console.log("Creating new Super Admin user...");
@@ -51,8 +58,17 @@ async function main() {
         Math.random().toString(36).substring(2, 15);
 
       await client.query(
-        'INSERT INTO "User" ("id", "email", "passwordHash", "fullName", "globalRole", "isActive", "createdAt", "updatedAt") VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())',
-        [id, email, hashedPassword, "Super Admin", "SUPER_ADMIN", true],
+        'INSERT INTO "User" ("id", "email", "passwordHash", "fullName", "displayName", "age", "globalRole", "isActive", "createdAt", "updatedAt") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())',
+        [
+          id,
+          email,
+          hashedPassword,
+          "Trizo Community",
+          "Trizo",
+          null,
+          "SUPER_ADMIN",
+          true,
+        ],
       );
     }
 
