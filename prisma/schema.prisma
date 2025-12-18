@@ -24,6 +24,8 @@ model User {
   festivals     Festival[] @relation("CreatedFestivals")
   memberships   FestivalMember[]
   payments      Payment[]
+
+  @@map("user")
 }
 
 enum GlobalRole {
@@ -59,6 +61,8 @@ model Payment {
   
   festival        Festival?
   user            User          @relation(fields: [userId], references: [id])
+
+  @@map("payment")
 }
 
 model Festival {
@@ -104,6 +108,7 @@ model Festival {
   galleryImages GalleryImage[]
   
   @@index([creatorId])
+  @@map("festival")
 }
 
 model Program {
@@ -116,6 +121,7 @@ model Program {
   festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
   
   @@index([festivalId])
+  @@map("program")
 }
 
 model Team {
@@ -128,6 +134,7 @@ model Team {
   festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
   
   @@index([festivalId])
+  @@map("team")
 }
 
 model NewsItem {
@@ -140,6 +147,7 @@ model NewsItem {
   festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
   
   @@index([festivalId])
+  @@map("news_item")
 }
 
 model GalleryImage {
@@ -151,6 +159,7 @@ model GalleryImage {
   festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
   
   @@index([festivalId])
+  @@map("gallery_image")
 }
 
 model PasswordResetToken {
@@ -160,6 +169,8 @@ model PasswordResetToken {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
+
+  @@map("password_reset_token")
 }
 
 model FestivalMember {
@@ -177,4 +188,5 @@ model FestivalMember {
   @@unique([userId, festivalId])
   @@index([userId])
   @@index([festivalId])
+  @@map("festival_member")
 }
