@@ -131,3 +131,18 @@ export const getAllPayments = async () => {
     },
   });
 };
+
+export const getUserPayments = async (userId: string) => {
+  const { prisma } = await import("@/lib/db");
+  return prisma.payment.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    include: {
+      festival: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+};

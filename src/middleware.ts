@@ -123,12 +123,7 @@ export default async function middleware(req: NextRequest) {
 
   // STRICT RULE: Super Admins cannot access User routes (Profile, Billing, Onboarding)
   if (role === "SUPER_ADMIN") {
-    if (
-      path.startsWith("/profile") ||
-      path.startsWith("/billing") ||
-      path === "/onboarding" ||
-      path === "/create-festival"
-    ) {
+    if (path.startsWith("/profile") || path === "/onboarding") {
       return NextResponse.redirect(new URL("/super-admin", req.nextUrl));
     }
     // Redirect root to super-admin dashboard for logged-in super admins

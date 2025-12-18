@@ -33,8 +33,21 @@ export async function store(userId: string, role: string, data: any) {
   // "If user.role === USER AND user already has an active festival -> deny creation"
   if (role === "USER") {
     const paymentStatus = await PaymentController.getUserStatus(userId);
-    if (!paymentStatus.canCreateFestival) {
+    if (!paymentStatus.canCreateFestival || !paymentStatus.payment) {
       throw new Error("Start a subscription to create a festival");
+    }
+
+    const { startDate, endDate } = data;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const validUntil = new Date(paymentStatus.payment.validUntil);
+
+    // Business Rule: Festival must end before billing expires
+    // We compare timestamps to match strict window
+    if (end > validUntil) {
+      throw new Error(
+        `Festival dates must be within your billing period (Valid until ${validUntil.toLocaleDateString()})`,
+      );
     }
 
     const userFestivals = await findAllFestivals({ creatorId: userId });

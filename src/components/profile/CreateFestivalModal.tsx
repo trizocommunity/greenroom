@@ -23,7 +23,10 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+
 import { useCreateFestival } from "@/hooks/useFestivals";
+import { usePaymentStatus } from "@/hooks/usePaymentStatus";
+import { format } from "date-fns";
 
 import {
   type FestivalFormData,
@@ -45,6 +48,15 @@ export function CreateFestivalModal({
   const [step, setStep] = useState(1);
   const [step1Data, setStep1Data] = useState<FestivalStep1Data | null>(null);
   const createMutation = useCreateFestival();
+  const { data: paymentStatus } = usePaymentStatus();
+
+  const validUntil = paymentStatus?.payment?.validUntil;
+  // Convert validUntil to YYYY-MM-DD for max attribute
+  const maxDate = validUntil
+    ? new Date(validUntil).toISOString().split("T")[0]
+    : undefined;
+  // Min date is today
+  const minDate = new Date().toISOString().split("T")[0];
 
   const step1Form = useForm<FestivalStep1Data>({
     resolver: zodResolver(festivalStep1Schema),
@@ -79,6 +91,15 @@ export function CreateFestivalModal({
       });
       return;
     }
+
+    // Validate against billing period
+    if (validUntil && end > new Date(validUntil)) {
+      step1Form.setError("endDate", {
+        message: `End date cannot exceed your billing validity (${format(new Date(validUntil), "PP")})`,
+      });
+      return;
+    }
+
     setStep1Data(data);
     setStep(2);
   };
@@ -228,7 +249,12 @@ export function CreateFestivalModal({
                     <FormItem>
                       <FormLabel>Start Date *</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <Input
+                          type="date"
+                          min={minDate}
+                          max={maxDate}
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -242,13 +268,32 @@ export function CreateFestivalModal({
                     <FormItem>
                       <FormLabel>End Date *</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <Input
+                          type="date"
+                          min={minDate}
+                          max={maxDate}
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
+
+              {validUntil && (
+                <div className="bg-primary/5 border border-primary/20 rounded-md p-3 text-sm flex gap-2 items-start">
+                  <div className="mt-0.5">ℹ️</div>
+                  <div>
+                    <span className="font-medium">Billing Constraints:</span>
+                    <p className="text-muted-foreground mt-0.5">
+                      You can only schedule your festival within your active
+                      billing period (until{" "}
+                      {format(new Date(validUntil), "MMM dd, yyyy")}).
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <FormField
                 control={step1Form.control}

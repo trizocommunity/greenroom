@@ -1,7 +1,5 @@
 "use client";
 
-import type { GlobalRole } from "@prisma/client";
-import { Lock, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -21,38 +19,27 @@ import { EditFestivalModal } from "./EditFestivalModal";
 import { FestivalCard } from "./FestivalCard";
 import { FestivalEmptyState } from "./FestivalEmptyState";
 import { JoinedFestivalCard } from "./JoinedFestivalCard";
-
-interface FestivalsTabProps {
-  user: {
-    globalRole: GlobalRole;
-  };
-}
+import { FestivalAccessCard } from "./FestivalAccessCard";
 
 import { MOCK_JOINED_FESTIVALS } from "@/data/user-festivals.mock";
 
-export function FestivalsTab({ user }: FestivalsTabProps) {
+export function FestivalsTab() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingFestival, setEditingFestival] = useState<Festival | null>(null);
-  const { data: festivals = [], isLoading, isError } = useFestivals();
-  const { data: paymentStatus, isLoading: isPaymentLoading } =
-    usePaymentStatus();
+  const { data: festivals = [], isLoading } = useFestivals();
+  const { data: paymentStatus } = usePaymentStatus();
 
   const router = useRouter();
 
   const hasCreatedFestival = festivals.length > 0;
-  const isSuperAdmin = user.globalRole === "SUPER_ADMIN";
-  // User can create if they are Super Admin OR they haven't created one yet (AND payment is OK)
-  const canCreate = isSuperAdmin || !hasCreatedFestival;
-  const canCreateFestival =
-    canCreate && (paymentStatus?.canCreateFestival ?? false);
 
   // MOCK DATA for Joined Festivals (Since backend doesn't support it yet)
   const joinedFestivals: JoinedFestival[] =
     MOCK_JOINED_FESTIVALS as unknown as JoinedFestival[];
 
   const handleCreateClick = () => {
-    if (hasCreatedFestival && !isSuperAdmin) {
-      // This case should be handled by disabled button state, but redundant check
+    if (hasCreatedFestival) {
+      toast.error("You can only create one festival.");
       return;
     }
 
@@ -98,51 +85,16 @@ export function FestivalsTab({ user }: FestivalsTabProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      {canCreateFestival && (
-        <div className="flex flex-col items-start gap-2">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-block">
-                  <Button
-                    onClick={handleCreateClick}
-                    disabled={isPaymentLoading}
-                    variant={canCreateFestival ? "default" : "secondary"}
-                    className={
-                      !canCreateFestival ? "cursor-not-allowed opacity-70" : ""
-                    }
-                  >
-                    {canCreateFestival ? (
-                      <Plus className="mr-2 h-4 w-4" />
-                    ) : (
-                      <Lock className="mr-2 h-4 w-4" />
-                    )}
-                    Create Festival
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {!canCreateFestival && !isPaymentLoading && (
-                <TooltipContent side="bottom" className="max-w-xs">
-                  {hasCreatedFestival && !isSuperAdmin ? (
-                    <p>You can manage only one festival at a time</p>
-                  ) : (
-                    <p>Complete payment to unlock festival creation</p>
-                  )}
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
-          <p className="text-sm text-muted-foreground">
-            Create and manage festivals you organize or host
-          </p>
-        </div>
-      )}
+      {/* Header / Access Status */}
+      <FestivalAccessCard
+        onCreateClick={handleCreateClick}
+        hasCreatedFestival={hasCreatedFestival}
+      />
 
       {/* Sections */}
       <div className="space-y-10">
         {/* Section 1: Your Festival */}
         <div className="space-y-4">
-          <h3 className="text-lg font-medium border-b pb-2">Your Festival</h3>
           {isLoading ? (
             <div className="grid grid-cols-1 gap-4">
               <Skeleton className="h-52 rounded-lg" />
