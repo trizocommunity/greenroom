@@ -82,6 +82,12 @@ model Edition {
   startsAt    DateTime
   endsAt      DateTime
 
+  // Usage Counters (Phase 4)
+  participantsCount Int @default(0)
+  eventsCount       Int @default(0)
+  judgesCount       Int @default(0)
+  storageUsedMB     Int @default(0)
+
   limits      EditionLimit?
 
   paymentId   String        @unique // Enforce idempotency: One payment = One edition
