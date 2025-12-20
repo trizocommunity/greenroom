@@ -81,14 +81,26 @@ export const verifyPayment = async (payload: {
   return true;
 };
 
-export const getUserStatus = async (userId: string) => {
+export const getUserStatus = async (userId: string, role: string = "USER") => {
   const activePayment = await getActivePaymentForUser(userId);
+
+  // Check if user already has a festival (for USER role only)
+  // SUPER_ADMINs can create unlimited festivals
+  let hasExistingFestival = false;
+  if (role === "USER") {
+    const { findAllFestivals } = await import("@/server/models/festival.model");
+    const userFestivals = await findAllFestivals({ creatorId: userId });
+    hasExistingFestival = userFestivals.length > 0;
+  }
 
   if (activePayment) {
     return {
       status: "ACTIVE",
       payment: activePayment,
-      canCreateFestival: true,
+      // canCreateFestival is true ONLY if:
+      // 1. Payment is active, AND
+      // 2. User hasn't created a festival yet (or is SUPER_ADMIN)
+      canCreateFestival: !hasExistingFestival,
     };
   }
 

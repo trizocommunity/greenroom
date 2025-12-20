@@ -115,7 +115,7 @@ export function FestivalsTab() {
 
         {/* Section 2: Joined Festivals */}
         <div className="space-y-4">
-          <h3 className="text-lg font-medium border-b pb-2">
+          <h3 className="text-lg font-bold uppercase tracking-widest border-b border-white/10 pb-2 text-foreground">
             Joined Festivals
           </h3>
           {joinedFestivals.length === 0 ? (

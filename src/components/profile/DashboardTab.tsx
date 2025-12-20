@@ -49,7 +49,7 @@ export function DashboardTab({ user }: DashboardTabProps) {
     <div className="space-y-6">
       {/* Welcome Section */}
       <div className="space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">
+        <h2 className="text-3xl font-black uppercase tracking-tighter text-foreground">
           Welcome back, {user.displayName || user.fullName || "User"}!
         </h2>
         <p className="text-muted-foreground">
@@ -100,7 +100,9 @@ export function DashboardTab({ user }: DashboardTabProps) {
 
       {/* Festival Access Status */}
       <div className="space-y-4">
-        <h3 className="text-xl font-semibold">Festival Access</h3>
+        <h3 className="text-xl font-bold uppercase tracking-widest text-foreground">
+          Festival Access
+        </h3>
         <FestivalAccessCard
           onCreateClick={handleCreateClick}
           hasCreatedFestival={hasCreatedFestival}

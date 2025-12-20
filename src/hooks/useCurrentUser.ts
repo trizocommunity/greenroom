@@ -1,4 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
+import api from "@/lib/axios";
 
 export type CurrentUser = {
   id: string;
@@ -10,13 +12,12 @@ export type CurrentUser = {
 
 export const useCurrentUser = () => {
   return useQuery({
-    queryKey: ["currentUser"],
+    queryKey: queryKeys.auth.currentUser(),
     queryFn: async (): Promise<CurrentUser> => {
-      const response = await fetch("/api/auth/me");
-      if (!response.ok) {
-        throw new Error("Failed to fetch current user");
-      }
-      return response.json();
+      const { data } = await api.get<CurrentUser>("/auth/me");
+      return data;
     },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 1,
   });
 };

@@ -1,8 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { AlertCircle, CheckCircle2, Clock, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,41 +14,20 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { usePaymentStatus } from "@/hooks/usePaymentStatus";
+import { usePaymentHistory } from "@/hooks/usePaymentHistory";
 import { Skeleton } from "../ui/skeleton";
-
-interface Payment {
-  id: string;
-  amount: number;
-  currency: string;
-  status: "PENDING" | "COMPLETED" | "FAILED" | "EXPIRED";
-  razorpayOrderId: string | null;
-  razorpayId: string | null;
-  createdAt: string;
-  validFrom: string;
-  validUntil: string;
-  festival?: {
-    name: string;
-  };
-}
 
 export function BillingTab() {
   const { data: paymentStatus, isLoading: isStatusLoading } =
     usePaymentStatus();
-  const { data: payments, isLoading: isHistoryLoading } = useQuery<Payment[]>({
-    queryKey: ["paymentHistory"],
-    queryFn: async () => {
-      const res = await fetch("/api/payments/history");
-      if (!res.ok) throw new Error("Failed to fetch payments");
-      return res.json();
-    },
-  });
+  const { data: payments, isLoading: isHistoryLoading } = usePaymentHistory();
 
   if (isStatusLoading || isHistoryLoading) {
     return (
       <div className="w-full flex justify-center p-8">
-          <div className="flex justify-center">
-            <Skeleton className="h-8 w-8 rounded-full" />
-          </div>
+        <div className="flex justify-center">
+          <Skeleton className="h-8 w-8 rounded-full" />
+        </div>
       </div>
     );
   }

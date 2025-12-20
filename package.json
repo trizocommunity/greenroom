@@ -7,9 +7,19 @@
     "build": "next build",
     "start": "next start",
     "lint": "biome lint .",
-    "postinstall": "bunx prisma generate",
     "format": "biome format --write .",
-    "check": "biome check --write ."
+    "check": "biome check --write .",
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:status": "prisma migrate status",
+    "db:seed": "bun prisma/seed-superadmin.js",
+    "db:studio": "prisma studio",
+    "db:reset": "prisma migrate reset",
+    "db:validate": "prisma validate",
+    "prebuild": "prisma generate"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

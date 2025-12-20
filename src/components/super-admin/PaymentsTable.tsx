@@ -26,21 +26,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-interface Payment {
-  id: string;
-  amount: number;
-  status: "PENDING" | "COMPLETED" | "FAILED" | "EXPIRED";
-  razorpayOrderId: string | null;
-  createdAt: string;
-  user: {
-    fullName: string | null;
-    email: string;
-  };
-  festival: {
-    name: string;
-  } | null;
-}
+import {
+  useSuperAdminPayments,
+  type Payment,
+} from "@/hooks/useSuperAdminPayments";
 
 const columns: ColumnDef<Payment>[] = [
   {
@@ -137,14 +126,7 @@ export function PaymentsTable() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
-  const { data: payments = [], isLoading } = useQuery({
-    queryKey: ["super-admin-payments"],
-    queryFn: async () => {
-      const res = await fetch("/api/super-admin/payments");
-      if (!res.ok) throw new Error("Failed to fetch payments");
-      return res.json();
-    },
-  });
+  const { data: payments = [], isLoading } = useSuperAdminPayments();
 
   const table = useReactTable({
     data: payments,

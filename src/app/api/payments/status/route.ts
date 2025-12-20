@@ -10,7 +10,11 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const status = await PaymentController.getUserStatus(session.userId);
+    // Pass role to getUserStatus so it can check festival limit for USER role
+    const status = await PaymentController.getUserStatus(
+      session.userId,
+      session.role,
+    );
 
     return NextResponse.json(status);
   } catch (error) {

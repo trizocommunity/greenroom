@@ -115,7 +115,7 @@ export function ProfileView({ user }: ProfileViewProps) {
 
       <main className="flex-1 min-w-0">
         <div className="mb-6">
-          <h2 className="text-2xl font-semibold tracking-tight">
+          <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-2 text-foreground">
             {activeTab === "dashboard" && "Dashboard"}
             {activeTab === "festivals" && "Festivals"}
             {activeTab === "billing" && "Billing & Payments"}

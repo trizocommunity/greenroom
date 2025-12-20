@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import { paymentApi } from "@/services/payment.api";
+import { useCurrentUser } from "./useCurrentUser";
 
 export interface PaymentStatus {
   status: "NOT_PAID" | "ACTIVE" | "EXPIRED";
@@ -14,9 +16,13 @@ export interface PaymentStatus {
 }
 
 export function usePaymentStatus() {
+  const { data: user } = useCurrentUser();
+
   return useQuery({
-    queryKey: ["paymentStatus"],
+    queryKey: queryKeys.payments.status(user?.id),
     queryFn: paymentApi.getStatus,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 1,
+    enabled: !!user?.id,
   });
 }

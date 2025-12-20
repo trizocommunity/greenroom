@@ -44,7 +44,7 @@ export function FeaturedPrograms({ accentColor, slug }: FeaturedProgramsProps) {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
               viewport={{ once: true }}
-              className="p-6 rounded-3xl border border-border/60 hover:border-border hover:shadow-[0_10px_30px_rgba(15,23,42,0.1)] transition-all bg-white/70 backdrop-blur-xl group"
+              className="p-6 rounded-3xl border border-white/10 hover:border-primary/50 hover:shadow-[0_10px_30px_rgba(124,58,237,0.1)] transition-all bg-card/40 backdrop-blur-sm group"
             >
               <div className="flex justify-between items-start mb-4">
                 <Badge variant="secondary" className="font-normal">

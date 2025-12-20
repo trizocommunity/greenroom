@@ -98,32 +98,39 @@ export default async function middleware(req: NextRequest) {
   // 5. Onboarding Check
   const isOnboardingRoute = path === "/onboarding";
   if (session?.userId) {
+    // If not onboarded, redirect to onboarding (both roles)
     if (!session.isOnboarded && !isOnboardingRoute) {
       return NextResponse.redirect(new URL("/onboarding", req.nextUrl));
     }
+    // If onboarded and on onboarding route, redirect to respective dashboard
     if (session.isOnboarded && isOnboardingRoute) {
-      return NextResponse.redirect(new URL("/profile", req.nextUrl));
+      const target =
+        session.role === "SUPER_ADMIN" ? "/super-admin" : "/profile";
+      return NextResponse.redirect(new URL(target, req.nextUrl));
     }
   }
 
-  // 6. Strict Access: Redirect to /profile if the user is authenticated and tries to access ANY public route
+  // 6. Strict Access: Redirect to dashboard if authenticated and tries to access ANY public route
   // EXCEPTION: Allow access to festival subdomains so admins can view the public site
   if (
     session?.userId &&
     isPublicRoute &&
     path !== "/profile" &&
+    path !== "/super-admin" &&
     !isOnboardingRoute &&
     !isFestivalRequest
   ) {
-    return NextResponse.redirect(new URL("/profile", req.nextUrl));
+    const target = session.role === "SUPER_ADMIN" ? "/super-admin" : "/profile";
+    return NextResponse.redirect(new URL(target, req.nextUrl));
   }
 
   // 7. Role-Based Access Control
   const role = session?.role;
 
-  // STRICT RULE: Super Admins cannot access User routes (Profile, Billing, Onboarding)
+  // STRICT RULE: Super Admins cannot access User routes (Profile)
   if (role === "SUPER_ADMIN") {
-    if (path.startsWith("/profile") || path === "/onboarding") {
+    // Note: Onboarding is allowed if !isOnboarded (handled in section 5)
+    if (path.startsWith("/profile")) {
       return NextResponse.redirect(new URL("/super-admin", req.nextUrl));
     }
     // Redirect root to super-admin dashboard for logged-in super admins

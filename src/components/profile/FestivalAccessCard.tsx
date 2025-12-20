@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
   AlertCircle,
@@ -96,12 +96,17 @@ function BillingProgress({
   );
 
   return (
-    <div className="space-y-2 mt-4">
-      <div className="flex justify-between text-xs text-muted-foreground">
+    <div className="space-y-3 mt-6">
+      <div className="flex justify-between text-sm font-medium text-foreground">
         <span>{Math.round(percentage)}% of time elapsed</span>
-        <span>{daysLeft > 0 ? `${daysLeft} days left` : "Expired"}</span>
+        <span className={daysLeft > 0 ? "text-primary" : "text-destructive"}>
+          {daysLeft > 0 ? `${daysLeft} days left` : "Expired"}
+        </span>
       </div>
-      <Progress value={percentage} className="h-2" />
+      <Progress
+        value={percentage}
+        className="h-4 bg-primary/20 border border-primary/10"
+      />
     </div>
   );
 }
@@ -183,11 +188,11 @@ export function FestivalAccessCard({
       <CardHeader className="pb-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <CardTitle className="text-xl flex items-center gap-2">
+            <CardTitle className="text-xl flex items-center gap-2 font-bold uppercase tracking-widest text-foreground">
               <Sparkles className="h-5 w-5 text-primary" />
               Festival Access Status
             </CardTitle>
-            <CardDescription className="mt-1">
+            <CardDescription className="mt-1 font-medium">
               {status === "NOT_PAID"
                 ? "Purchase a pass to unlock festival creation."
                 : status === "ACTIVE"
@@ -200,14 +205,21 @@ export function FestivalAccessCard({
       </CardHeader>
       <CardContent>
         {status === "NOT_PAID" && (
-          <div className="flex flex-col sm:flex-row items-center gap-6 p-4 bg-muted/40 rounded-lg border border-dashed">
+          <div className="flex flex-col sm:flex-row items-center gap-6 p-6 bg-white/5 rounded-xl border border-white/10">
             <div className="text-center sm:text-left flex-1">
-              <div className="text-lg font-bold">₹1000 / 30 Days</div>
-              <p className="text-sm text-muted-foreground">
+              <div className="text-2xl font-black tracking-tight text-foreground">
+                ₹1000 / 30 Days
+              </div>
+              <p className="text-sm text-muted-foreground font-medium">
                 One-time payment. No auto-renewal.
               </p>
             </div>
-            <Button onClick={handlePayment} disabled={isProcessing} size="lg">
+            <Button
+              onClick={handlePayment}
+              disabled={isProcessing}
+              size="lg"
+              className="rounded-full font-bold uppercase tracking-wide shadow-lg shadow-primary/20"
+            >
               {isProcessing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -226,19 +238,19 @@ export function FestivalAccessCard({
         {status === "ACTIVE" && payment && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="p-3 bg-green-50/50 dark:bg-green-950/20 border border-green-100 dark:border-green-900 rounded-md">
-                <div className="text-xs text-muted-foreground uppercase font-semibold">
+              <div className="p-4 bg-primary/10 border border-primary/20 rounded-xl">
+                <div className="text-xs text-primary/80 uppercase font-bold tracking-widest">
                   Valid From
                 </div>
-                <div className="text-sm font-medium mt-1">
+                <div className="text-lg font-bold mt-1 text-foreground">
                   {format(new Date(payment.validFrom), "MMM dd, yyyy")}
                 </div>
               </div>
-              <div className="p-3 bg-green-50/50 dark:bg-green-950/20 border border-green-100 dark:border-green-900 rounded-md">
-                <div className="text-xs text-muted-foreground uppercase font-semibold">
+              <div className="p-4 bg-primary/10 border border-primary/20 rounded-xl">
+                <div className="text-xs text-primary/80 uppercase font-bold tracking-widest">
                   Valid Until
                 </div>
-                <div className="text-sm font-medium mt-1 text-green-700 dark:text-green-400">
+                <div className="text-lg font-bold mt-1 text-foreground">
                   {format(new Date(payment.validUntil), "MMM dd, yyyy")}
                 </div>
               </div>
@@ -281,12 +293,12 @@ export function FestivalAccessCard({
         )}
 
         {status === "EXPIRED" && (
-          <div className="flex flex-col sm:flex-row items-center gap-6 p-4 bg-red-50/50 dark:bg-red-950/20 rounded-lg border border-red-100 dark:border-red-900">
+          <div className="flex flex-col sm:flex-row items-center gap-6 p-6 bg-destructive/10 rounded-xl border border-destructive/20">
             <div className="text-center sm:text-left flex-1">
-              <div className="text-lg font-bold text-red-600 dark:text-red-400">
+              <div className="text-lg font-bold text-destructive">
                 Access Expired
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground font-medium">
                 Renew your pass to create new festivals.
               </p>
             </div>
@@ -294,7 +306,7 @@ export function FestivalAccessCard({
               onClick={handlePayment}
               disabled={isProcessing}
               variant="outline"
-              className="border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900"
+              className="border-destructive/30 hover:bg-destructive/10 text-destructive hover:text-destructive"
             >
               {isProcessing ? "Processing..." : "Renew Access (₹1000)"}
             </Button>

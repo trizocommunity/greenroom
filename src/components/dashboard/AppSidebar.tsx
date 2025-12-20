@@ -1,14 +1,8 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
-import {
-  ChevronsUpDown,
-  GalleryVerticalEnd,
-  LogOut,
-} from "lucide-react";
+import { ChevronsUpDown, GalleryVerticalEnd, LogOut } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { usePathname } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -32,34 +26,15 @@ import {
 } from "@/components/ui/sidebar";
 import { SUPER_ADMIN_SIDEBAR_ITEMS } from "@/config/sidebar.config";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 
 // Menu items.
 const items = SUPER_ADMIN_SIDEBAR_ITEMS;
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const { isMobile } = useSidebar();
   const { data: user, isLoading } = useCurrentUser();
-
-  const { mutate: logout } = useMutation({
-    mutationFn: async () => {
-      const response = await fetch("/api/auth/logout", {
-        method: "POST",
-      });
-      if (!response.ok) {
-        throw new Error("Failed to logout");
-      }
-    },
-    onSuccess: () => {
-      router.push("/");
-      router.refresh();
-      toast.success("Logged out successfully");
-    },
-    onError: () => {
-      toast.error("Failed to log out");
-    },
-  });
 
   // Get user initials for avatar fallback
   const getInitials = (name: string | null | undefined) => {
@@ -172,10 +147,12 @@ export function AppSidebar() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => logout()}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Log out
-                </DropdownMenuItem>
+                <LogoutButton>
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log out
+                  </DropdownMenuItem>
+                </LogoutButton>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>

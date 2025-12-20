@@ -48,14 +48,17 @@ export default function Navbar({ user }: NavbarProps) {
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-colors duration-300 bg-transparent",
         scrolled
-          ? "bg-white/70 backdrop-blur-2xl border-b border-white/60 supports-backdrop-filter:bg-white/70"
+          ? "bg-background/80 backdrop-blur-2xl border-b border-white/10"
           : "bg-transparent border-transparent",
       )}
     >
       <div className="mx-auto max-w-7xl px-4 md:px-6 h-20 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="text-2xl font-bold">
-            Greenroom
+        <Link
+          href="/"
+          className="text-2xl font-black uppercase tracking-tighter text-foreground"
+        >
+          Greenroom
         </Link>
 
         {/* Desktop Nav */}
@@ -66,7 +69,7 @@ export default function Navbar({ user }: NavbarProps) {
               <Link key={item.href} href={item.href} className="relative py-2">
                 <span
                   className={cn(
-                    "text-sm font-medium tracking-wide text-foreground transition-colors hover:text-primary",
+                    "text-sm font-bold uppercase tracking-widest transition-colors hover:text-primary",
                     isActive ? "text-primary" : "text-muted-foreground",
                   )}
                 >
@@ -90,7 +93,7 @@ export default function Navbar({ user }: NavbarProps) {
             <Link href="/profile">
               <Button
                 size="sm"
-                className="uppercase font-bold tracking-wide gap-2"
+                className="uppercase font-bold tracking-wide gap-2 rounded-full"
               >
                 <User size={16} />
                 Profile
@@ -99,12 +102,19 @@ export default function Navbar({ user }: NavbarProps) {
           ) : (
             <>
               <Link href="/login">
-                <Button variant="outline" size="sm" className="font-medium text-foreground">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
+                >
                   Log In
                 </Button>
               </Link>
               <Link href="/contact">
-                <Button size="sm" className="px-6">
+                <Button
+                  size="sm"
+                  className="px-6 rounded-full font-bold uppercase tracking-widest shadow-lg shadow-primary/25"
+                >
                   Get Demo
                 </Button>
               </Link>
@@ -113,7 +123,10 @@ export default function Navbar({ user }: NavbarProps) {
         </div>
 
         {/* Mobile Toggle */}
-        <button className="md:hidden p-2 text-primary" onClick={() => setIsOpen(!isOpen)}>
+        <button
+          className="md:hidden p-2 text-foreground"
+          onClick={() => setIsOpen(!isOpen)}
+        >
           {isOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
@@ -125,7 +138,7 @@ export default function Navbar({ user }: NavbarProps) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-white/80 backdrop-blur-2xl border-b border-white/60 overflow-hidden"
+            className="md:hidden bg-background/95 backdrop-blur-2xl border-b border-white/10 overflow-hidden"
           >
             <div className="p-6 flex flex-col gap-4">
               {navItems.map((item) => (
@@ -134,10 +147,10 @@ export default function Navbar({ user }: NavbarProps) {
                   href={item.href}
                   onClick={() => setIsOpen(false)}
                   className={cn(
-                    "text-base font-medium tracking-wide py-2 border-b border-slate-100 last:border-0",
+                    "text-base font-bold uppercase tracking-widest py-4 border-b border-white/5 last:border-0",
                     pathname === item.href
                       ? "text-primary pl-2 border-l-4 border-primary"
-                      : "text-slate-400",
+                      : "text-muted-foreground",
                   )}
                 >
                   {item.name}
@@ -146,7 +159,7 @@ export default function Navbar({ user }: NavbarProps) {
               <div className="flex flex-col gap-3 mt-4">
                 {user ? (
                   <Link href="/profile" onClick={() => setIsOpen(false)}>
-                      <Button className="w-full justify-center gap-2">
+                    <Button className="w-full justify-center gap-2 rounded-full font-bold uppercase">
                       <User size={16} />
                       Profile
                     </Button>
@@ -154,12 +167,15 @@ export default function Navbar({ user }: NavbarProps) {
                 ) : (
                   <>
                     <Link href="/login" onClick={() => setIsOpen(false)}>
-                      <Button variant="outline" className="w-full justify-center">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-center rounded-full font-bold uppercase border-white/10 hover:bg-white/10"
+                      >
                         Log In
                       </Button>
                     </Link>
                     <Link href="/contact" onClick={() => setIsOpen(false)}>
-                      <Button className="w-full justify-center">
+                      <Button className="w-full justify-center rounded-full font-bold uppercase shadow-lg shadow-primary/25">
                         Request Demo
                       </Button>
                     </Link>

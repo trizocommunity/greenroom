@@ -14,31 +14,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-interface Payment {
-  id: string;
-  amount: number;
-  currency: string;
-  status: "PENDING" | "COMPLETED" | "FAILED" | "EXPIRED";
-  razorpayOrderId: string | null;
-  razorpayId: string | null;
-  createdAt: string;
-  validFrom: string;
-  validUntil: string;
-  festival?: {
-    name: string;
-  };
-}
+import { usePaymentHistory } from "@/hooks/usePaymentHistory";
 
 export function PaymentHistoryTab() {
-  const { data: payments, isLoading } = useQuery<Payment[]>({
-    queryKey: ["paymentHistory"],
-    queryFn: async () => {
-      const res = await fetch("/api/payments/history");
-      if (!res.ok) throw new Error("Failed to fetch payments");
-      return res.json();
-    },
-  });
+  const { data: payments, isLoading } = usePaymentHistory();
 
   if (isLoading) {
     return (

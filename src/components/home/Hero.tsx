@@ -10,16 +10,16 @@ export default function Hero() {
   const y = useTransform(scrollY, [0, 500], [0, 160]);
 
   return (
-    <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
+    <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden bg-background">
       {/* Soft background blobs */}
       <motion.div
         aria-hidden
-        className="pointer-events-none absolute -left-40 top-40 h-80 w-80 rounded-full bg-linear-to-br from-purple-400/40 via-primary/40 to-orange-400/40 blur-3xl"
+        className="pointer-events-none absolute -left-40 top-40 h-80 w-80 rounded-full bg-primary/20 blur-[100px]"
         style={{ y }}
       />
       <motion.div
         aria-hidden
-        className="pointer-events-none absolute -right-32 bottom-0 h-96 w-96 rounded-full bg-linear-to-tr from-sky-300/30 via-fuchsia-400/40 to-orange-300/30 blur-3xl"
+        className="pointer-events-none absolute -right-32 bottom-0 h-96 w-96 rounded-full bg-primary/10 blur-[120px]"
         style={{ y }}
       />
 
@@ -29,7 +29,7 @@ export default function Hero() {
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight mb-8 leading-tight text-heading"
+          className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black uppercase tracking-tighter mb-8 leading-tight text-foreground"
         >
           Paperless festival
           <br />
@@ -47,11 +47,10 @@ export default function Hero() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.8 }}
-          className="text-base md:text-lg text-muted-foreground font-medium mb-10 max-w-2xl"
+          className="text-lg md:text-xl text-muted-foreground font-medium mb-10 max-w-2xl"
         >
-          The future of large-scale event coordination is here.
-          Eliminate paper, reduce disputes, and keep every stakeholder
-          in sync in real time.
+          The future of large-scale event coordination is here. Eliminate paper,
+          reduce disputes, and keep every stakeholder in sync in real time.
         </motion.p>
 
         <motion.div
@@ -63,7 +62,7 @@ export default function Hero() {
           <Link href="/register">
             <Button
               size="lg"
-              className="h-12 px-10 text-base shadow-[0_10px_28px_rgba(124,58,237,0.25)]"
+              className="h-14 px-10 text-lg font-semibold rounded-full shadow-[0_10px_28px_rgba(124,58,237,0.25)] hover:scale-105 transition-transform"
             >
               Get Started <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
@@ -72,9 +71,9 @@ export default function Hero() {
             <Button
               variant="outline"
               size="lg"
-              className="h-12 px-10 text-base bg-white/40 backdrop-blur-xl border-white/60 hover:bg-white hover:text-slate-900"
+              className="h-14 px-10 text-lg font-semibold rounded-full bg-background/50 backdrop-blur-xl border-white/10 hover:bg-white/10 hover:text-foreground hover:scale-105 transition-transform"
             >
-              Demostration
+              Demonstration
             </Button>
           </Link>
         </motion.div>
