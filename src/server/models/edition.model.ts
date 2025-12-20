@@ -10,6 +10,14 @@ export async function findEditionById(id: string) {
   });
 }
 
+// Phase 3: Idempotency helper
+export async function findEditionByPaymentId(paymentId: string) {
+  return prisma.edition.findUnique({
+    where: { paymentId },
+    include: { limits: true, festival: true },
+  });
+}
+
 export async function findEditionByFestivalAndYear(
   festivalId: string,
   year: number,

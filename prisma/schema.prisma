@@ -84,6 +84,8 @@ model Edition {
 
   limits      EditionLimit?
 
+  paymentId   String        @unique // Enforce idempotency: One payment = One edition
+
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
