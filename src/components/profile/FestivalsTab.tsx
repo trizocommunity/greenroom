@@ -5,8 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { type Festival, useFestivals } from "@/hooks/useFestivals";
-import { usePaymentStatus } from "@/hooks/usePaymentStatus";
+import { type Festival, useMyFestival } from "@/hooks/useFestivals";
 import type { JoinedFestival } from "@/types/festival";
 import { CreateFestivalModal } from "./CreateFestivalModal";
 import { EditFestivalModal } from "./EditFestivalModal";
@@ -15,61 +14,43 @@ import { FestivalEmptyState } from "./FestivalEmptyState";
 import { JoinedFestivalCard } from "./JoinedFestivalCard";
 
 import { MOCK_JOINED_FESTIVALS } from "@/data/user-festivals.mock";
-import { CreditCard, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 export function FestivalsTab() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingFestival, setEditingFestival] = useState<Festival | null>(null);
-  const { data: festivals = [], isLoading } = useFestivals();
-  const { data: paymentStatus } = usePaymentStatus();
+
+  // Use useMyFestival hook
+  const { data: festival, isLoading } = useMyFestival();
+  // festival is Festival | null | undefined
 
   const router = useRouter();
 
-  const hasCreatedFestival = festivals.length > 0;
-
-  // MOCK DATA for Joined Festivals (Since backend doesn't support it yet)
+  // MOCK DATA for Joined Festivals
   const joinedFestivals: JoinedFestival[] =
     MOCK_JOINED_FESTIVALS as unknown as JoinedFestival[];
 
   const handleCreateClick = () => {
-    if (hasCreatedFestival) {
+    if (festival) {
       toast.error("You can only create one festival.");
-      return;
-    }
-
-    if (!paymentStatus?.canCreateFestival) {
-      toast.error("Complete payment to create a festival", {
-        description: "Go to the Billing tab to complete your payment.",
-        action: {
-          label: "Go to Billing",
-          onClick: () => router.push("/profile?tab=billing"),
-        },
-      });
       return;
     }
     setIsCreateOpen(true);
   };
 
   const handleView = (festival: Festival) => {
+    // Phase 1: View might be disabled or restricted
     if (!festival.slug) {
-      toast.error("This festival does not have a public page yet.");
+      toast.error("No public page available.");
       return;
     }
-
-    // Determine URL based on environment (simplified for now)
-    // In production this should be `${festival.slug}.greenrooom.com`
-    // For local dev we use the query param fallback
     const url = `${window.location.origin}?festival=${festival.slug}`;
     window.open(url, "_blank");
   };
 
   const handleManage = (festival: Festival) => {
-    if (!festival.slug) {
-      toast.error("This festival does not have a dashboard yet.");
-      return;
-    }
-    // Navigate to dashboard using client-side routing
-    router.push(`/festival/${festival.slug}/dashboard`);
+    // Disabled in Phase 1 / Locked
+    toast.info("Dashboard is locked.");
   };
 
   const handleEdit = (festival: Festival) => {
@@ -78,9 +59,6 @@ export function FestivalsTab() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-
-      {/* Sections */}
       <div className="space-y-10">
         {/* Section 1: Your Festival */}
         <div className="space-y-4">
@@ -88,27 +66,24 @@ export function FestivalsTab() {
             <div className="grid grid-cols-1 gap-4">
               <Skeleton className="h-52 rounded-lg" />
             </div>
-          ) : festivals.length === 0 ? (
+          ) : !festival ? (
             <div className="py-16 rounded-lg border border-dashed bg-muted/20">
               <FestivalEmptyState />
               <div className="flex justify-center">
                 <Button size="lg" onClick={handleCreateClick}>
-                  Create Festival
+                  Create Your Festival
                   <Sparkles className="ml-2 h-4 w-4" />
                 </Button>
               </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6">
-              {festivals.map((festival) => (
-                <FestivalCard
-                  key={festival.id}
-                  festival={festival}
-                  onView={handleView}
-                  onManage={handleManage}
-                  onEdit={handleEdit}
-                />
-              ))}
+              <FestivalCard
+                festival={festival}
+                onView={handleView}
+                onManage={handleManage}
+                onEdit={handleEdit}
+              />
             </div>
           )}
         </div>
@@ -134,10 +109,9 @@ export function FestivalsTab() {
         </div>
       </div>
 
-      {/* Create Modal */}
       <CreateFestivalModal open={isCreateOpen} onOpenChange={setIsCreateOpen} />
 
-      {/* Edit Modal */}
+      {/* Edit Festival Modal - Might need updates if fields changed, but keeping connected for now */}
       <EditFestivalModal
         festival={editingFestival}
         open={!!editingFestival}

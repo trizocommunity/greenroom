@@ -2,7 +2,7 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
   engineType = "library"
 }
 
@@ -20,14 +20,14 @@ enum GlobalRole {
 }
 
 enum FestivalStatus {
-  DRAFT     // created but locked
-  ACTIVE    // unlocked (after first paid edition)
+  DRAFT // created but locked
+  ACTIVE // unlocked (after first paid edition)
 }
 
 enum EditionStatus {
-  ACTIVE    // 0–90 days (write + read)
-  FREEZE    // read-only
-  ARCHIVED  // cold storage
+  ACTIVE // 0–90 days (write + read)
+  FREEZE // read-only
+  ARCHIVED // cold storage
 }
 
 // -----------------------------------------------------------------------------
@@ -35,92 +35,93 @@ enum EditionStatus {
 // -----------------------------------------------------------------------------
 
 model User {
-  id          String      @id @default(uuid())
-  email       String      @unique
-  password    String      // Note: Was passwordHash in old schema, sticking to requirement "password" but usually this implies hashed
-  globalRole  GlobalRole  @default(USER)
+  id         String     @id @default(uuid())
+  email      String     @unique
+  password   String // Note: Was passwordHash in old schema, sticking to requirement "password" but usually this implies hashed
+  globalRole GlobalRole @default(USER)
 
   // Profile Fields (Restored for compability)
   fullName    String?
   displayName String?
   age         Int?
-  isActive    Boolean     @default(true)
+  isActive    Boolean @default(true)
 
-  festival    Festival?   // ONE festival max
-  payments    Payment[]
-  tokens      PasswordResetToken[]
+  festival Festival? // ONE festival max
+  payments Payment[]
+  tokens   PasswordResetToken[]
 
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@map("user") // Optional: keeping map for potential existing conventions or cleaner DB names
 }
 
 model PasswordResetToken {
-  id        String   @id @default(uuid())
-  token     String   @unique
+  id        String    @id @default(uuid())
+  token     String    @unique
   expires   DateTime
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@map("password_reset_token")
 }
 
 model Payment {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   amount      Int
   currency    String
-  status      String   // "captured", "failed"
-  providerId  String   // Razorpay Order ID
-  referenceId String?  // Razorpay Payment ID
+  status      String // "captured", "failed"
+  providerId  String // Razorpay Order ID
+  referenceId String? // Razorpay Payment ID
   receipt     String?
-  
-  validUntil  DateTime // Logic: Subscription valid until...
-  
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  validUntil DateTime // Logic: Subscription valid until...
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("payment")
 }
 
 model Festival {
-  id          String         @id @default(uuid())
-  ownerId     String         @unique
-  owner       User           @relation(fields: [ownerId], references: [id])
+  id      String @id @default(uuid())
+  ownerId String @unique
+  owner   User   @relation(fields: [ownerId], references: [id])
 
-  name        String
-  category    String?
-  branding    Json?
-  rules       Json?
-  structure   Json?
+  name      String
+  slug      String  @unique
+  category  String?
+  branding  Json?
+  rules     Json?
+  structure Json?
 
-  status      FestivalStatus @default(DRAFT)
-  isLocked    Boolean        @default(true)
+  status   FestivalStatus @default(DRAFT)
+  isLocked Boolean        @default(true)
 
-  editions    Edition[]
+  editions Edition[]
 
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@map("festival")
 }
 
 model Edition {
-  id          String        @id @default(uuid())
-  festivalId  String
-  festival    Festival      @relation(fields: [festivalId], references: [id])
+  id         String   @id @default(uuid())
+  festivalId String
+  festival   Festival @relation(fields: [festivalId], references: [id])
 
-  year        Int           // 2025, 2026
-  name        String        // "10th Edition"
-  status      EditionStatus @default(ACTIVE)
+  number Int // e.g. 1, 2, 3 (Edition Number)
+  name   String? // Optional display name "10th Edition"
+  status EditionStatus @default(ACTIVE)
 
-  startsAt    DateTime
-  endsAt      DateTime
+  startDate DateTime
+  endDate   DateTime
 
   // Usage Counters (Phase 4)
   participantsCount Int @default(0)
@@ -128,47 +129,47 @@ model Edition {
   judgesCount       Int @default(0)
   storageUsedMB     Int @default(0)
 
-  limits      EditionLimit?
+  limits EditionLimit?
 
-  paymentId   String        @unique // Enforce idempotency: One payment = One edition
+  // paymentId REMOVED for Phase 1 - No payment logic yet
 
   participants Participant[]
 
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@unique([festivalId, year])
+  @@unique([festivalId, number])
   @@map("edition")
 }
 
 model Participant {
-  id                String   @id @default(uuid())
-  editionId         String
-  edition           Edition  @relation(fields: [editionId], references: [id])
+  id        String  @id @default(uuid())
+  editionId String
+  edition   Edition @relation(fields: [editionId], references: [id])
 
-  name              String
-  email             String
-  phone             String?
+  name               String
+  email              String
+  phone              String?
   registrationNumber String? // Optional chest number/ID
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([editionId, email]) // Prevent duplicate registration in same edition
   @@map("participant")
 }
 
 model EditionLimit {
-  id            String   @id @default(uuid())
-  editionId     String   @unique
-  edition       Edition  @relation(fields: [editionId], references: [id])
+  id        String  @id @default(uuid())
+  editionId String  @unique
+  edition   Edition @relation(fields: [editionId], references: [id])
 
-  maxParticipants Int    @default(1000)
-  maxEvents       Int    @default(100)
-  maxJudges       Int    @default(50)
-  maxStorageMB    Int    @default(1024)
+  maxParticipants Int @default(1000)
+  maxEvents       Int @default(100)
+  maxJudges       Int @default(50)
+  maxStorageMB    Int @default(1024)
 
-  createdAt       DateTime @default(now())
-  
+  createdAt DateTime @default(now())
+
   @@map("edition_limit")
 }

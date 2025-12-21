@@ -55,7 +55,7 @@ export default async function FestivalDashboardLayout({
     // If endsAt is past, it should technically be expired/frozen, but logic depends on scheduler.
     // For UI, we just show diff.
     daysRemaining = differenceInDays(
-      new Date(activeEdition.endsAt),
+      new Date(activeEdition.endDate),
       new Date(),
     );
   }
@@ -119,8 +119,11 @@ export default async function FestivalDashboardLayout({
               activeEdition: activeEdition
                 ? {
                     id: activeEdition.id,
-                    name: activeEdition.name,
+                    name:
+                      activeEdition.name || `Edition ${activeEdition.number}`,
                     status: activeEdition.status,
+                    participantsCount: activeEdition.participantsCount,
+                    limits: activeEdition.limits,
                   }
                 : null,
             }}

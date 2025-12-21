@@ -10,45 +10,7 @@ import {
 export async function index(userId: string, role: string) {
   const where = role === "SUPER_ADMIN" ? {} : { ownerId: userId };
   const festivals = await findAllFestivals(where);
-
-  // Map to Frontend interface
-  return festivals.map((f: any) => {
-    // Get latest edition or default
-    const latestEdition = f.editions?.[0]; // Assuming order is irrelevant or sort by latest in model? default sort was createdAt desc.
-
-    // Default dates if no edition
-    const now = new Date();
-    const startDate = latestEdition?.startsAt
-      ? new Date(latestEdition.startsAt)
-      : new Date(now.setDate(now.getDate() + 30));
-    const endDate = latestEdition?.endsAt
-      ? new Date(latestEdition.endsAt)
-      : new Date(now.setDate(now.getDate() + 3));
-
-    // Compute Status
-    let status = "UPCOMING";
-    const today = new Date();
-    if (endDate < today) {
-      status = "COMPLETED";
-    } else if (startDate <= today && endDate >= today) {
-      status = "ONGOING";
-    }
-
-    return {
-      ...f,
-      status, // Overwrite DB status (DRAFT/ACTIVE) with Frontend Computed Status
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      location: "Bengaluru, India", // Placeholder as removed from schema
-      // Add other missing fields if necessary
-      description: f.description || "",
-      orgName: f.owner?.fullName || "Organization",
-      orgDescription: "",
-      orgWebsite: "",
-      orgLocation: "",
-      orgEstablishedYear: null,
-    };
-  });
+  return festivals;
 }
 
 export async function store(userId: string, role: string, data: any) {
@@ -70,10 +32,15 @@ export async function store(userId: string, role: string, data: any) {
     }
   }
 
+  // Generate slug from name
+  const slug = name.toLowerCase().replace(/ /g, "-") + "-" + Date.now();
+
   const festival = await createFestival({
     name,
+    slug,
     owner: { connect: { id: userId } },
     status: "DRAFT", // Default to DRAFT
+    isLocked: true,
   });
 
   return festival;

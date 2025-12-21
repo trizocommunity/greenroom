@@ -11,22 +11,23 @@ export async function findEditionById(id: string) {
 }
 
 // Phase 3: Idempotency helper
-export async function findEditionByPaymentId(paymentId: string) {
-  return prisma.edition.findUnique({
-    where: { paymentId },
-    include: { limits: true, festival: true },
-  });
-}
+// Phase 3: Idempotency helper - COMMENTED OUT due to schema change
+// export async function findEditionByPaymentId(paymentId: string) {
+//   return prisma.edition.findUnique({
+//     where: { paymentId },
+//     include: { limits: true, festival: true },
+//   });
+// }
 
-export async function findEditionByFestivalAndYear(
+export async function findEditionByFestivalAndNumber(
   festivalId: string,
-  year: number,
+  number: number,
 ) {
   return prisma.edition.findUnique({
     where: {
-      festivalId_year: {
+      festivalId_number: {
         festivalId,
-        year,
+        number,
       },
     },
     include: { limits: true },
@@ -52,6 +53,6 @@ export async function updateEdition(
 export async function getFestivalEditions(festivalId: string) {
   return prisma.edition.findMany({
     where: { festivalId },
-    orderBy: { year: "desc" },
+    orderBy: { number: "desc" },
   });
 }

@@ -28,9 +28,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { updateProfile } from "@/server/actions/profile";
 
-import { BillingTab } from "./BillingTab";
 import { DashboardTab } from "./DashboardTab";
 import { FestivalsTab } from "./FestivalsTab";
+import { EditionsTab } from "./EditionsTab";
 import { ProfileSidebar } from "./ProfileSidebar";
 
 const profileSchema = z.object({
@@ -118,15 +118,14 @@ export function ProfileView({ user }: ProfileViewProps) {
           <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-2 text-foreground">
             {activeTab === "dashboard" && "Dashboard"}
             {activeTab === "festivals" && "Festivals"}
-            {activeTab === "billing" && "Billing & Payments"}
+            {activeTab === "editions" && "Editions"}
             {activeTab === "settings" && "General Settings"}
           </h2>
           <p className="text-muted-foreground">
             {activeTab === "dashboard" &&
               "Overview of your account and activities."}
-            {activeTab === "festivals" && "Manage your festivals and events."}
-            {activeTab === "billing" &&
-              "View your billing status and payment history."}
+            {activeTab === "festivals" && "Manage your festival identity."}
+            {activeTab === "editions" && "Manage festival editions (Locked)."}
             {activeTab === "settings" && "Update your profile and preferences."}
           </p>
         </div>
@@ -135,7 +134,7 @@ export function ProfileView({ user }: ProfileViewProps) {
 
         {activeTab === "festivals" && <FestivalsTab />}
 
-        {activeTab === "billing" && <BillingTab />}
+        {activeTab === "editions" && <EditionsTab />}
 
         {activeTab === "settings" && (
           <Card>

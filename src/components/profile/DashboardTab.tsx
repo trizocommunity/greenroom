@@ -1,14 +1,13 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { toast } from "sonner";
+import { useMyFestival } from "@/hooks/useFestivals";
+import { type User } from "@prisma/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useFestivals } from "@/hooks/useFestivals";
-import { usePaymentStatus } from "@/hooks/usePaymentStatus";
-import { FestivalAccessCard } from "./FestivalAccessCard";
+import { Sparkles, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import { CreateFestivalModal } from "./CreateFestivalModal";
-import type { User } from "@prisma/client";
+import { useRouter } from "next/navigation";
 
 interface DashboardTabProps {
   user: User & {
@@ -19,45 +18,23 @@ interface DashboardTabProps {
 }
 
 export function DashboardTab({ user }: DashboardTabProps) {
-  const router = useRouter();
+  const { data: festival } = useMyFestival();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const { data: festivals = [] } = useFestivals();
-  const { data: paymentStatus } = usePaymentStatus();
+  const router = useRouter();
 
-  const hasCreatedFestival = festivals.length > 0;
-
-  const handleCreateClick = () => {
-    if (hasCreatedFestival) {
-      toast.error("You can only create one festival.");
-      return;
-    }
-
-    if (!paymentStatus?.canCreateFestival) {
-      toast.error("Complete payment to create a festival", {
-        description: "Go to the Billing tab to complete your payment.",
-        action: {
-          label: "Go to Billing",
-          onClick: () => router.push("/profile?tab=billing"),
-        },
-      });
-      return;
-    }
+  const handleCreate = () => {
     setIsCreateOpen(true);
   };
 
   return (
     <div className="space-y-6">
-      {/* Welcome Section */}
       <div className="space-y-2">
         <h2 className="text-3xl font-black uppercase tracking-tighter text-foreground">
           Welcome back, {user.displayName || user.fullName || "User"}!
         </h2>
-        <p className="text-muted-foreground">
-          Here's what's happening with your account today.
-        </p>
+        <p className="text-muted-foreground">Your festival control center.</p>
       </div>
 
-      {/* User Details Summary */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Your Profile</CardTitle>
@@ -65,7 +42,7 @@ export function DashboardTab({ user }: DashboardTabProps) {
         <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="text-sm font-medium text-muted-foreground">
-              Full Name
+              Name
             </div>
             <div className="text-base">{user.fullName || "-"}</div>
           </div>
@@ -83,31 +60,45 @@ export function DashboardTab({ user }: DashboardTabProps) {
               {user.globalRole.toLowerCase()}
             </div>
           </div>
-          <div>
-            <div className="text-sm font-medium text-muted-foreground">
-              Status
-            </div>
-            <div className="text-base">
-              {user.isActive ? (
-                <span className="text-green-500 font-medium">Active</span>
-              ) : (
-                <span className="text-red-500 font-medium">Inactive</span>
-              )}
-            </div>
-          </div>
         </CardContent>
       </Card>
 
-      {/* Festival Access Status */}
-      <div className="space-y-4">
-        <h3 className="text-xl font-bold uppercase tracking-widest text-foreground">
-          Festival Access
-        </h3>
-        <FestivalAccessCard
-          onCreateClick={handleCreateClick}
-          hasCreatedFestival={hasCreatedFestival}
-        />
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-primary" />
+            Your Festival
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {festival ? (
+            <div className="space-y-2">
+              <div className="text-xl font-bold">{festival.name}</div>
+              <div className="text-sm text-muted-foreground font-mono">
+                /{festival.slug}
+              </div>
+              <div className="flex gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/profile?tab=festivals")}
+                >
+                  Go to Festivals Tab
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-muted-foreground">
+                You haven't created a festival yet.
+              </p>
+              <Button onClick={handleCreate}>
+                Create Your Festival
+                <Sparkles className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <CreateFestivalModal open={isCreateOpen} onOpenChange={setIsCreateOpen} />
     </div>

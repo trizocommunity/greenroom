@@ -25,8 +25,8 @@ export default async function EditionsPage({
     notFound();
   }
 
-  // Sort editions by year desc
-  const editions = festival.editions.sort((a, b) => b.year - a.year);
+  // Sort editions by number desc
+  const editions = festival.editions.sort((a, b) => b.number - a.number);
 
   return (
     <div className="space-y-6">
@@ -50,15 +50,15 @@ export default async function EditionsPage({
           <Card key={edition.id}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                {edition.name}
+                {edition.name || `Edition ${edition.number}`}
               </CardTitle>
               <EditionStatusBadge status={edition.status} size="sm" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{edition.year}</div>
+              <div className="text-2xl font-bold">Edition {edition.number}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {format(new Date(edition.startsAt), "MMM d, yyyy")} -{" "}
-                {format(new Date(edition.endsAt), "MMM d, yyyy")}
+                {format(new Date(edition.startDate), "MMM d, yyyy")} -{" "}
+                {format(new Date(edition.endDate), "MMM d, yyyy")}
               </p>
 
               <div className="mt-4 flex justify-end">

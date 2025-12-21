@@ -38,10 +38,10 @@ export async function createEditionAction(formData: FormData) {
     const edition = await createEdition({
       festival: { connect: { id: festivalId } },
       name,
-      year,
-      startsAt: new Date(startDate),
-      endsAt: new Date(endDate),
-      paymentId,
+      number: year, // Mapping input 'year' to 'number' for now, assuming input name hasn't changed
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      // paymentId REMOVED
       status: "ACTIVE", // Defaulting to ACTIVE for UX testing
     });
 

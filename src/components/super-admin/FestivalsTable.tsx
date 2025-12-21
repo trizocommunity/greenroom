@@ -1,15 +1,6 @@
 "use client";
 
-import { format } from "date-fns";
-import {
-  Calendar,
-  Eye,
-  MapPin,
-  MoreHorizontal,
-  Pencil,
-  Settings,
-  Trash2,
-} from "lucide-react";
+import { Eye, MoreHorizontal, Pencil, Settings, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -74,7 +65,7 @@ export function FestivalsTable() {
   if (isLoading) {
     return (
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
+        {[1, 2, 3].map((i) => (
           <Card key={i}>
             <CardHeader>
               <Skeleton className="h-5 w-3/4" />
@@ -82,7 +73,6 @@ export function FestivalsTable() {
             </CardHeader>
             <CardContent>
               <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-2/3 mt-2" />
             </CardContent>
           </Card>
         ))}
@@ -100,7 +90,7 @@ export function FestivalsTable() {
                 <div className="flex-1">
                   <CardTitle className="text-lg">{festival.name}</CardTitle>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {festival.slug}
+                    /{festival.slug}
                   </p>
                 </div>
                 <DropdownMenu>
@@ -135,38 +125,15 @@ export function FestivalsTable() {
                 <Badge
                   variant="outline"
                   className={
-                    festival.status === "ONGOING"
+                    festival.status === "ACTIVE"
                       ? "bg-green-100 text-green-700 border-green-300"
-                      : festival.status === "UPCOMING"
-                        ? "bg-blue-100 text-blue-700 border-blue-300"
-                        : "bg-gray-100 text-gray-600 border-gray-300"
+                      : "bg-gray-100 text-gray-600 border-gray-300"
                   }
                 >
                   {festival.status}
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">
-                  Organization
-                </p>
-                <p className="text-sm">{festival.orgName}</p>
-              </div>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <Calendar size={14} className="shrink-0" />
-                  <span>
-                    {format(new Date(festival.startDate), "MMM d")} -{" "}
-                    {format(new Date(festival.endDate), "MMM d, yyyy")}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin size={14} className="shrink-0" />
-                  <span>{festival.location}</span>
-                </div>
-              </div>
-            </CardContent>
           </Card>
         ))}
       </div>

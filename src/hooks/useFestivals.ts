@@ -7,42 +7,34 @@ import { useCurrentUser } from "./useCurrentUser";
 export type Festival = {
   id: string;
   name: string;
-  slug: string | null;
-  description: string | null;
-  startDate: string;
-  endDate: string;
-  location: string;
-  status: "UPCOMING" | "ONGOING" | "COMPLETED";
+  slug: string;
+  status: "DRAFT" | "ACTIVE";
+  isLocked: boolean;
   createdAt: string;
-  orgName: string;
-  orgDescription: string | null;
-  orgWebsite: string | null;
-  orgLocation: string | null;
-  orgEstablishedYear: number | null;
 };
 
 export type CreateFestivalInput = {
   name: string;
-  slug: string;
-  description?: string;
-  startDate: string;
-  endDate: string;
-  location: string;
-  orgName: string;
-  orgDescription?: string;
-  orgWebsite?: string;
-  orgLocation?: string;
-  orgEstablishedYear?: number;
+  slug?: string;
 };
 
-export const useFestivals = () => {
+// Phase 1: Fetch My Festival
+export const useMyFestival = () => {
   const { data: user } = useCurrentUser();
 
   return useQuery({
-    queryKey: queryKeys.festivals.list(user?.id),
-    queryFn: festivalApi.getAll,
-    staleTime: 1000 * 60, // 1 minute
+    queryKey: queryKeys.festivals.list(user?.id), // keeping key for now or change to ['my-festival']?
+    // Let's use a specific key for my festival
+    queryFn: festivalApi.getMyFestival,
+    staleTime: 1000 * 60,
     enabled: !!user?.id,
+  });
+};
+
+export const useFestivals = () => {
+  return useQuery({
+    queryKey: queryKeys.festivals.all(),
+    queryFn: festivalApi.getAll,
   });
 };
 
@@ -53,15 +45,19 @@ export const useCreateFestival = () => {
     mutationFn: festivalApi.create,
     onSuccess: () => {
       toast.success("Festival created successfully");
-      // Invalidate both festivals and payments to ensure fresh data
+      // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: queryKeys.festivals.all() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.payments.all() });
     },
-    onError: (error) => {
-      toast.error(error.message);
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || error.message);
     },
   });
 };
+
+// Temporarily Disable or Simplified Update/Delete for Phase 1
+// Users generally won't update festival in Phase 1 except maybe slug/name?
+// Schema says Locked. So update might be restricted.
+// But we keep the hook structure for future phases or admins.
 
 export const useUpdateFestival = () => {
   const queryClient = useQueryClient();
@@ -78,7 +74,7 @@ export const useUpdateFestival = () => {
       toast.success("Festival updated successfully");
       queryClient.invalidateQueries({ queryKey: queryKeys.festivals.all() });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error(error.message);
     },
   });
@@ -91,12 +87,12 @@ export const useDeleteFestival = () => {
     mutationFn: festivalApi.delete,
     onSuccess: () => {
       toast.success("Festival deleted successfully");
-      // Invalidate both festivals and payments
       queryClient.invalidateQueries({ queryKey: queryKeys.festivals.all() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.payments.all() });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error(error.message);
     },
   });
 };
+
+// Removed useDeleteFestival as users cannot delete festivals.

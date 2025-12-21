@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { findFestivalByOwnerId } from "@/server/models/festival.model";
 import { PaymentService } from "@/server/services/payment.service";
 import {
-  findEditionByPaymentId,
+  // findEditionByPaymentId, // Removed
   createEdition,
 } from "@/server/models/edition.model";
 import type { User } from "@prisma/client";
@@ -17,11 +17,11 @@ export const EditionPaymentController = {
    * Enforces Idempotency and "First Edition Unlock" rule.
    */
   async createPaidEdition(user: User, paymentId: string, year: number) {
-    // 1. Idempotency Check (Critical)
-    const existingEdition = await findEditionByPaymentId(paymentId);
-    if (existingEdition) {
-      return existingEdition;
-    }
+    // 1. Idempotency Check (Critical) - DISABLED for Phase 1
+    // const existingEdition = await findEditionByPaymentId(paymentId);
+    // if (existingEdition) {
+    //   return existingEdition;
+    // }
 
     // 2. Validate User & Festival
     const festival = await findFestivalByOwnerId(user.id);
@@ -44,12 +44,12 @@ export const EditionPaymentController = {
       const newEdition = await tx.edition.create({
         data: {
           festivalId: festival.id,
-          year: year,
-          paymentId: paymentId,
+          number: year,
+          // paymentId: paymentId, // Removed for Phase 1
           name: `${year} Edition`,
           status: "ACTIVE",
-          startsAt: new Date(),
-          endsAt: endsAt,
+          startDate: new Date(),
+          endDate: endsAt,
           limits: {
             create: {
               maxParticipants: 1000,

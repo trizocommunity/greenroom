@@ -21,9 +21,12 @@ export async function findFestivalById(id: string) {
   });
 }
 
-// Note: Slug is removed in Phase 1 schema.
-// If needed for UI, we might need to re-add it or use ID.
-// For now, removing findFestivalBySlug helpers as they break strict Phase 1 compliance.
+export async function findFestivalBySlug(slug: string) {
+  return prisma.festival.findUnique({
+    where: { slug },
+    include: { owner: true, editions: { include: { limits: true } } },
+  });
+}
 
 export async function createFestival(data: Prisma.FestivalCreateInput) {
   return prisma.festival.create({

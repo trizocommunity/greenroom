@@ -19,8 +19,8 @@ export const EditionLifecycleService = {
    */
   async evaluate(edition: Edition): Promise<Edition> {
     const now = new Date();
-    const endsAt = new Date(edition.endsAt);
-    const oneYearAfterEnd = new Date(endsAt);
+    const endDate = new Date(edition.endDate);
+    const oneYearAfterEnd = new Date(endDate);
     oneYearAfterEnd.setFullYear(oneYearAfterEnd.getFullYear() + 1);
 
     let newStatus: EditionStatus | null = null;
@@ -33,7 +33,7 @@ export const EditionLifecycleService = {
       }
     }
     // Rule 1: ACTIVE -> FREEZE
-    else if (now > endsAt) {
+    else if (now > endDate) {
       if (edition.status === "ACTIVE") {
         newStatus = "FREEZE";
       }

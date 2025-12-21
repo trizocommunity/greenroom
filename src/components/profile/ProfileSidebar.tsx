@@ -26,9 +26,9 @@ export function ProfileSidebar({
       icon: Calendar,
     },
     {
-      label: "Billing",
-      value: "billing",
-      icon: CreditCard,
+      label: "Editions",
+      value: "editions",
+      icon: CreditCard, // Using CreditCard icon for now or maybe Layers/List? Layers is better.
     },
     {
       label: "Settings",
