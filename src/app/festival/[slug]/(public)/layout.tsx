@@ -3,7 +3,7 @@ import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { FestivalFooter } from "@/components/festival/FestivalFooter";
 import { FestivalNavbar } from "@/components/festival/FestivalNavbar";
 import { getSession } from "@/lib/auth/session";
-import { findFestivalBySlug } from "@/server/models/festival.model";
+import { findFestivalById } from "@/server/models/festival.model";
 
 export default async function FestivalLayout({
   children,
@@ -12,8 +12,8 @@ export default async function FestivalLayout({
   children: React.ReactNode;
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await params;
-  const festival = await findFestivalBySlug(slug);
+  const { slug: festivalId } = await params;
+  const festival = await findFestivalById(festivalId);
 
   if (!festival) {
     notFound();
@@ -23,13 +23,25 @@ export default async function FestivalLayout({
   const session = await getSession();
   const isLoggedIn = !!session?.userId;
 
-  // Transform dates to strings for client component
-  // Assert slug is non-null since we checked above
+  // Transform for client component
+  // Mock missing Phase 2 fields if FestivalProvider needs them
   const festivalData = {
     ...festival,
-    slug: festival.slug,
-    startDate: festival.startDate.toISOString(),
-    endDate: festival.endDate.toISOString(),
+    slug: festival.id,
+    startDate: new Date().toISOString(), // Mocking dates as they are not on Festival
+    endDate: new Date().toISOString(),
+    description: "",
+    tagline: "",
+    location: "",
+    accentColor: "#000000",
+    activeEdition: null,
+    logo: null,
+    heroImage: null,
+    orgName: "",
+    orgDescription: "",
+    orgWebsite: "",
+    orgLocation: "",
+    orgEstablishedYear: null,
   };
 
   return (

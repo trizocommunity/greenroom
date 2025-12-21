@@ -89,14 +89,17 @@ export const getUserStatus = async (userId: string, role: string = "USER") => {
   let hasExistingFestival = false;
   if (role === "USER") {
     const { findAllFestivals } = await import("@/server/models/festival.model");
-    const userFestivals = await findAllFestivals({ creatorId: userId });
+    const userFestivals = await findAllFestivals({ ownerId: userId });
     hasExistingFestival = userFestivals.length > 0;
   }
 
   if (activePayment) {
     return {
       status: "ACTIVE",
-      payment: activePayment,
+      payment: {
+        ...activePayment,
+        validFrom: activePayment.createdAt,
+      },
       // canCreateFestival is true ONLY if:
       // 1. Payment is active, AND
       // 2. User hasn't created a festival yet (or is SUPER_ADMIN)
@@ -110,7 +113,10 @@ export const getUserStatus = async (userId: string, role: string = "USER") => {
     // Payment exists but expired
     return {
       status: "EXPIRED",
-      payment: latestPayment, // return the expired payment for reference
+      payment: {
+        ...latestPayment,
+        validFrom: latestPayment.createdAt,
+      }, // return the expired payment for reference
       canCreateFestival: false,
     };
   }
@@ -134,12 +140,6 @@ export const getAllPayments = async () => {
           email: true,
         },
       },
-      festival: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
     },
   });
 };
@@ -149,12 +149,5 @@ export const getUserPayments = async (userId: string) => {
   return prisma.payment.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
-    include: {
-      festival: {
-        select: {
-          name: true,
-        },
-      },
-    },
   });
 };

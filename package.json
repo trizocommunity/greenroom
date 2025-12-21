@@ -71,6 +71,6 @@
     "typescript": "^5"
   },
   "prisma": {
-    "seed": "bun prisma/seed-direct.js"
+    "seed": "bun prisma/seed-superadmin.js"
   }
 }

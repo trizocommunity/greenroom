@@ -77,9 +77,5 @@ export const UsageCounterService = {
         [fieldToUpdate]: { increment: amount },
       },
     });
-
-    console.log(
-      `[UsageCounter] Incremented ${resource} for edition ${editionId}. New usage: ${currentUsage + amount}`,
-    );
   },
 };

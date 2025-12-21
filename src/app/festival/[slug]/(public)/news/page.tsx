@@ -8,31 +8,32 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { findFestivalBySlugWithNews } from "@/server/models/festival.model";
+import { findFestivalById } from "@/server/models/festival.model";
 
 export default async function NewsPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await params;
-  const festival = await findFestivalBySlugWithNews(slug);
+  const { slug: festivalId } = await params;
+  const festival = await findFestivalById(festivalId);
 
   if (!festival) {
     notFound();
   }
 
+  // Phase 1 Schema has no News model. Mocking empty list.
+  const newsItems: any[] = [];
+  const accentColor = "#000000"; // Default
+
   return (
     <div className="py-12 px-4">
       <div className="max-w-4xl mx-auto space-y-8">
-        <h1
-          className="text-3xl font-bold"
-          style={{ color: festival.accentColor }}
-        >
+        <h1 className="text-3xl font-bold" style={{ color: accentColor }}>
           News & Updates
         </h1>
 
-        {festival.newsItems.length === 0 ? (
+        {newsItems.length === 0 ? (
           <Card>
             <CardContent className="py-16 text-center">
               <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -43,7 +44,7 @@ export default async function NewsPage({
           </Card>
         ) : (
           <div className="space-y-4">
-            {festival.newsItems.map((item) => (
+            {newsItems.map((item) => (
               <Card key={item.id} className="hover:shadow-md transition-shadow">
                 <CardHeader>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">

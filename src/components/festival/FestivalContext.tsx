@@ -20,6 +20,15 @@ export type FestivalPublicData = {
   orgWebsite: string | null;
   orgLocation: string | null;
   orgEstablishedYear: number | null;
+  activeEdition: {
+    id: string;
+    name: string;
+    status: string; // EditionStatus
+    participantsCount: number;
+    limits: {
+      maxParticipants: number;
+    } | null;
+  } | null;
 };
 
 const FestivalContext = createContext<FestivalPublicData | null>(null);

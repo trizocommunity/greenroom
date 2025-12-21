@@ -12,12 +12,13 @@ export const PaymentService = {
    * @param signature The signature to verify (if applicable)
    * @returns verified boolean
    */
-  async verifyPayment(paymentId: string, signature?: string): Promise<boolean> {
+  async verifyPayment(
+    paymentId: string,
+    _signature?: string,
+  ): Promise<boolean> {
     // Phase 3 Mock Logic:
     // We assume if a paymentID is passed, it's valid for this architecture scope.
     // In production, verify `razorpay_signature` here.
-
-    console.log(`[PaymentService] Verifying payment ${paymentId}...`);
 
     if (!paymentId) return false;
 

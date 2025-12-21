@@ -1,4 +1,4 @@
-import { type Edition, EditionStatus } from "@prisma/client";
+import type { Edition, EditionStatus } from "@prisma/client";
 import { updateEdition } from "@/server/models/edition.model";
 
 /**
@@ -41,9 +41,6 @@ export const EditionLifecycleService = {
 
     // Apply transition if needed
     if (newStatus) {
-      console.log(
-        `[Lifecycle] Transitioning Edition ${edition.id} from ${edition.status} to ${newStatus}`,
-      );
       return await updateEdition(edition.id, { status: newStatus });
     }
 

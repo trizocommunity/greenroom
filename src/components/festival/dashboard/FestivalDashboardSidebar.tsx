@@ -1,6 +1,6 @@
 "use client";
 
-import type { Festival } from "@prisma/client";
+import type { FestivalStatus } from "@prisma/client";
 import { format } from "date-fns";
 import { ExternalLink, GalleryVerticalEnd, LogOut } from "lucide-react";
 import Link from "next/link";
@@ -22,10 +22,14 @@ import { getFestivalDashboardSidebarConfig } from "@/config/sidebar.config";
 import { FestivalRoleBadge } from "../FestivalRoleBadge";
 
 interface FestivalDashboardSidebarProps {
-  festival: Pick<
-    Festival,
-    "name" | "slug" | "accentColor" | "id" | "status" | "expiresAt"
-  >;
+  festival: {
+    id: string;
+    name: string;
+    slug: string; // Used for links, can be ID
+    status: FestivalStatus | string;
+    accentColor?: string;
+    expiresAt?: Date | string | null;
+  };
   role: string;
 }
 
@@ -37,7 +41,7 @@ export function FestivalDashboardSidebar({
   const basePath = `/festival/${festival.slug}`;
   const dashboardPath = `${basePath}/dashboard`;
 
-  const menuGroups = getFestivalDashboardSidebarConfig(dashboardPath);
+  const menuGroups = getFestivalDashboardSidebarConfig(dashboardPath, role);
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>

@@ -33,19 +33,19 @@ export function FestivalStatusBadge({
   }
 
   switch (status) {
-    case "UPCOMING":
+    case "DRAFT":
       return (
         <Badge
           variant="secondary"
-          className={`${size === "sm" ? "text-xs px-1.5 py-0" : ""} bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100`}
+          className={`${size === "sm" ? "text-xs px-1.5 py-0" : ""} bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-100`}
         >
           <Clock
             className={`${size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3"} mr-1`}
           />
-          Upcoming
+          Draft
         </Badge>
       );
-    case "ONGOING":
+    case "ACTIVE":
       return (
         <Badge
           variant="secondary"
@@ -55,18 +55,6 @@ export function FestivalStatusBadge({
             className={`${size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3"} mr-1`}
           />
           Active
-        </Badge>
-      );
-    case "COMPLETED":
-      return (
-        <Badge
-          variant="secondary"
-          className={`${size === "sm" ? "text-xs px-1.5 py-0" : ""} bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-100`}
-        >
-          <Snowflake
-            className={`${size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3"} mr-1`}
-          />
-          Completed
         </Badge>
       );
     default:

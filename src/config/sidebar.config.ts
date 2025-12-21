@@ -46,94 +46,114 @@ export const SUPER_ADMIN_SIDEBAR_ITEMS = [
   },
 ];
 
-export const getFestivalDashboardSidebarConfig = (dashboardPath: string) => [
-  {
-    title: "Overview",
-    items: [
-      {
-        title: "Dashboard",
-        href: dashboardPath,
-        icon: LayoutDashboard,
-      },
-    ],
-  },
-  {
-    title: "Pre-works",
-    items: [
-      {
-        title: "Team Leaders",
-        href: `${dashboardPath}/team-leaders`,
-        icon: UserCog,
-      },
-      {
-        title: "Judges",
-        href: `${dashboardPath}/judges`,
-        icon: Gavel,
-      },
-      {
-        title: "Stage Managers",
-        href: `${dashboardPath}/stage-managers`,
-        icon: Mic2,
-      },
-      {
-        title: "Participants",
-        href: `${dashboardPath}/participants`,
-        icon: UsersRound,
-      },
-      {
-        title: "Categories",
-        href: `${dashboardPath}/categories`,
-        icon: FolderTree,
-      },
-      {
-        title: "Programmes",
-        href: `${dashboardPath}/programmes`,
-        icon: FileText,
-      },
-      {
-        title: "Colleges/Schools",
-        href: `${dashboardPath}/colleges`,
-        icon: Building2,
-      },
-      {
-        title: "Groups",
-        href: `${dashboardPath}/groups`,
-        icon: Network,
-      },
-    ],
-  },
-  {
-    title: "Event Works",
-    items: [
-      {
-        title: "Stages",
-        href: `${dashboardPath}/stages`,
-        icon: MonitorPlay,
-      },
-      {
-        title: "Schedule",
-        href: `${dashboardPath}/schedule`,
-        icon: Clock,
-      },
-      {
-        title: "Chest Numbers & QR",
-        href: `${dashboardPath}/chest-numbers`,
-        icon: QrCode,
-      },
-    ],
-  },
-  {
-    title: "On-event Works",
-    items: [],
-  },
-  {
-    title: "Settings",
-    items: [
-      {
-        title: "Festival Settings",
-        href: `${dashboardPath}/settings`,
-        icon: Settings,
-      },
-    ],
-  },
-];
+export const getFestivalDashboardSidebarConfig = (
+  dashboardPath: string,
+  role: string = "OWNER", // Default to lower privilege if unknown, but OWNER is standard for dashboard
+) => {
+  const isSuperAdmin = role === "SUPER_ADMIN";
+
+  const hasAccess = (allowedRoles?: string[]) => {
+    if (isSuperAdmin) return true;
+    if (!allowedRoles) return true;
+    return allowedRoles.includes(role);
+  };
+
+  return [
+    {
+      title: "Overview",
+      items: [
+        {
+          title: "Dashboard",
+          href: dashboardPath,
+          icon: LayoutDashboard,
+        },
+      ],
+    },
+    {
+      title: "Pre-works",
+      items: [
+        {
+          title: "Team Leaders",
+          href: `${dashboardPath}/team-leaders`,
+          icon: UserCog,
+        },
+        {
+          title: "Judges",
+          href: `${dashboardPath}/judges`,
+          icon: Gavel,
+        },
+        {
+          title: "Stage Managers",
+          href: `${dashboardPath}/stage-managers`,
+          icon: Mic2,
+        },
+        {
+          title: "Participants",
+          href: `${dashboardPath}/participants`,
+          icon: UsersRound,
+        },
+        {
+          title: "Categories",
+          href: `${dashboardPath}/categories`,
+          icon: FolderTree,
+        },
+        {
+          title: "Programmes",
+          href: `${dashboardPath}/programmes`,
+          icon: FileText,
+        },
+        {
+          title: "Colleges/Schools",
+          href: `${dashboardPath}/colleges`,
+          icon: Building2,
+        },
+        {
+          title: "Groups",
+          href: `${dashboardPath}/groups`,
+          icon: Network,
+        },
+      ],
+    },
+    {
+      title: "Event Works",
+      items: [
+        {
+          title: "Stages",
+          href: `${dashboardPath}/stages`,
+          icon: MonitorPlay,
+        },
+        {
+          title: "Schedule",
+          href: `${dashboardPath}/schedule`,
+          icon: Clock,
+        },
+        {
+          title: "Chest Numbers & QR",
+          href: `${dashboardPath}/chest-numbers`,
+          icon: QrCode,
+        },
+      ],
+    },
+    {
+      title: "On-event Works",
+      items: [],
+    },
+    {
+      title: "Settings",
+      items: [
+        {
+          title: "Manage Editions",
+          href: `${dashboardPath}/editions`,
+          icon: Calendar,
+          allowedRoles: ["OWNER"],
+        },
+        {
+          title: "Festival Settings",
+          href: `${dashboardPath}/settings`,
+          icon: Settings,
+          allowedRoles: ["OWNER"],
+        },
+      ].filter((item) => hasAccess(item.allowedRoles)),
+    },
+  ];
+};

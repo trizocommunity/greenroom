@@ -17,16 +17,9 @@ export const EditionPaymentController = {
    * Enforces Idempotency and "First Edition Unlock" rule.
    */
   async createPaidEdition(user: User, paymentId: string, year: number) {
-    console.log(
-      `[EditionPaymentController] Processing payment ${paymentId} for user ${user.id}`,
-    );
-
     // 1. Idempotency Check (Critical)
     const existingEdition = await findEditionByPaymentId(paymentId);
     if (existingEdition) {
-      console.log(
-        `[EditionPaymentController] Idempotent hit. Returning existing edition ${existingEdition.id}`,
-      );
       return existingEdition;
     }
 
@@ -71,9 +64,6 @@ export const EditionPaymentController = {
       // Unlock Festival Rule:
       // If festival is DRAFT, this is the FIRST paid edition. Unlock it.
       if (festival.status === "DRAFT") {
-        console.log(
-          `[EditionPaymentController] Unlocking Festival ${festival.id} (First Edition)`,
-        );
         await tx.festival.update({
           where: { id: festival.id },
           data: {

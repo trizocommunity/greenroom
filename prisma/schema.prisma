@@ -40,12 +40,52 @@ model User {
   password    String      // Note: Was passwordHash in old schema, sticking to requirement "password" but usually this implies hashed
   globalRole  GlobalRole  @default(USER)
 
+  // Profile Fields (Restored for compability)
+  fullName    String?
+  displayName String?
+  age         Int?
+  isActive    Boolean     @default(true)
+
   festival    Festival?   // ONE festival max
+  payments    Payment[]
+  tokens      PasswordResetToken[]
 
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   
   @@map("user") // Optional: keeping map for potential existing conventions or cleaner DB names
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  expires   DateTime
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@map("password_reset_token")
+}
+
+model Payment {
+  id          String   @id @default(uuid())
+  amount      Int
+  currency    String
+  status      String   // "captured", "failed"
+  providerId  String   // Razorpay Order ID
+  referenceId String?  // Razorpay Payment ID
+  receipt     String?
+  
+  validUntil  DateTime // Logic: Subscription valid until...
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("payment")
 }
 
 model Festival {
@@ -92,11 +132,30 @@ model Edition {
 
   paymentId   String        @unique // Enforce idempotency: One payment = One edition
 
+  participants Participant[]
+
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
   @@unique([festivalId, year])
   @@map("edition")
+}
+
+model Participant {
+  id                String   @id @default(uuid())
+  editionId         String
+  edition           Edition  @relation(fields: [editionId], references: [id])
+
+  name              String
+  email             String
+  phone             String?
+  registrationNumber String? // Optional chest number/ID
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([editionId, email]) // Prevent duplicate registration in same edition
+  @@map("participant")
 }
 
 model EditionLimit {

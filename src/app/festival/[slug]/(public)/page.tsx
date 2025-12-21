@@ -4,15 +4,15 @@ import { GalleryPreview } from "@/components/festival/landing/GalleryPreview";
 import { HeroSection } from "@/components/festival/landing/HeroSection";
 import { ResultsTeaser } from "@/components/festival/landing/ResultsTeaser";
 import { StatsSection } from "@/components/festival/landing/StatsSection";
-import { findFestivalBySlugWithCounts } from "@/server/models/festival.model";
+import { findFestivalById } from "@/server/models/festival.model";
 
 export default async function FestivalPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await params;
-  const festival = await findFestivalBySlugWithCounts(slug);
+  const { slug: festivalId } = await params;
+  const festival = await findFestivalById(festivalId);
 
   if (!festival) {
     notFound();
@@ -22,30 +22,31 @@ export default async function FestivalPage({
   const festivalData = {
     id: festival.id,
     name: festival.name,
-    slug: festival.slug!,
-    description: festival.description,
-    tagline: festival.tagline,
-    startDate: festival.startDate.toISOString(),
-    endDate: festival.endDate.toISOString(),
-    location: festival.location,
+    slug: festival.id,
+    description: "",
+    tagline: "",
+    startDate: new Date().toISOString(),
+    endDate: new Date().toISOString(),
+    location: "",
     status: festival.status,
-    accentColor: festival.accentColor,
-    logo: festival.logo,
-    heroImage: festival.heroImage,
-    orgName: festival.orgName,
-    orgDescription: festival.orgDescription,
-    orgWebsite: festival.orgWebsite,
-    orgLocation: festival.orgLocation,
-    orgEstablishedYear: festival.orgEstablishedYear,
+    accentColor: "#000000",
+    activeEdition: null,
+    logo: null,
+    heroImage: null,
+    orgName: "",
+    orgDescription: "",
+    orgWebsite: "",
+    orgLocation: "",
+    orgEstablishedYear: null,
   };
 
   return (
     <div className="flex flex-col min-h-screen">
       <HeroSection festival={festivalData} />
-      <StatsSection accentColor={festival.accentColor} />
+      <StatsSection accentColor={festivalData.accentColor} />
 
       {/* About Section */}
-      {festival.description && (
+      {festivalData.description && (
         <section className="py-24 px-4 bg-background border-t border-white/10 relative overflow-hidden">
           <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/5 to-transparent blur-3xl -z-10" />
           <div className="max-w-3xl mx-auto text-center space-y-6">
@@ -56,18 +57,21 @@ export default async function FestivalPage({
               A Celebration of Culture
             </h2>
             <p className="text-xl text-muted-foreground leading-relaxed font-medium">
-              {festival.description}
+              {festivalData.description}
             </p>
           </div>
         </section>
       )}
 
       <FeaturedPrograms
-        accentColor={festival.accentColor}
-        slug={festival.slug!}
+        accentColor={festivalData.accentColor}
+        slug={festivalData.slug}
       />
-      <ResultsTeaser accentColor={festival.accentColor} slug={festival.slug!} />
-      <GalleryPreview slug={festival.slug!} />
+      <ResultsTeaser
+        accentColor={festivalData.accentColor}
+        slug={festivalData.slug}
+      />
+      <GalleryPreview slug={festivalData.slug} />
     </div>
   );
 }

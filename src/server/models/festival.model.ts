@@ -10,14 +10,14 @@ export async function findAllFestivals(
   return prisma.festival.findMany({
     where,
     orderBy,
-    include: { owner: true, editions: true },
+    include: { owner: true, editions: { include: { limits: true } } },
   });
 }
 
 export async function findFestivalById(id: string) {
   return prisma.festival.findUnique({
     where: { id },
-    include: { owner: true, editions: true },
+    include: { owner: true, editions: { include: { limits: true } } },
   });
 }
 

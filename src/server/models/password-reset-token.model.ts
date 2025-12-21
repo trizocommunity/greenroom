@@ -1,17 +1,17 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
-export async function findPasswordResetTokenByHash(tokenHash: string) {
+export async function findPasswordResetTokenByHash(token: string) {
   return prisma.passwordResetToken.findFirst({
-    where: { tokenHash },
+    where: { token },
   });
 }
 
-export async function findValidPasswordResetToken(tokenHash: string) {
+export async function findValidPasswordResetToken(token: string) {
   return prisma.passwordResetToken.findFirst({
     where: {
-      tokenHash,
-      expiresAt: { gt: new Date() },
+      token,
+      expires: { gt: new Date() },
       usedAt: null,
     },
   });

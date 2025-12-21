@@ -1,7 +1,4 @@
-import type {
-  Payment,
-  PaymentStatus as PrismaPaymentStatus,
-} from "@prisma/client";
+import type { Payment } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
 export type CreatePaymentInput = {
@@ -33,7 +30,7 @@ export async function createPayment(
       currency,
       status: "PENDING",
       validUntil,
-      razorpayOrderId,
+      providerId: razorpayOrderId!, // Map to providerId
     },
   });
 }
@@ -42,7 +39,7 @@ export async function getPaymentByOrderId(
   razorpayOrderId: string,
 ): Promise<Payment | null> {
   return prisma.payment.findFirst({
-    where: { razorpayOrderId },
+    where: { providerId: razorpayOrderId },
   });
 }
 
@@ -78,14 +75,14 @@ export async function getLatestPaymentForUser(
 
 export async function updatePaymentStatus(
   id: string,
-  status: PrismaPaymentStatus,
+  status: string,
   razorpayId?: string,
 ): Promise<Payment> {
   return prisma.payment.update({
     where: { id },
     data: {
       status,
-      ...(razorpayId && { razorpayId }),
+      ...(razorpayId && { referenceId: razorpayId }),
     },
   });
 }
