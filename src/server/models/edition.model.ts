@@ -34,6 +34,21 @@ export async function findEditionByFestivalAndNumber(
   });
 }
 
+export async function findEditionByFestivalAndSlug(
+  festivalId: string,
+  slug: string,
+) {
+  return prisma.edition.findUnique({
+    where: {
+      festivalId_slug: {
+        festivalId,
+        slug,
+      },
+    },
+    include: { limits: true },
+  });
+}
+
 export async function createEdition(data: Prisma.EditionCreateInput) {
   return prisma.edition.create({
     data,

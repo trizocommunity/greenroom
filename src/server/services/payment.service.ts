@@ -4,27 +4,31 @@
  * In a real app, this would verify signatures from Stripe/Razorpay.
  * For Phase 3 implementation, we are standardizing the interface.
  */
+import { RazorpayService } from "@/server/services/razorpay.service";
+
+/**
+ * Payment Verification Service
+ *
+ * Verifies signatures from Stripe/Razorpay.
+ */
 export const PaymentService = {
   /**
    * Verified that a payment is authentic and successful.
    *
-   * @param paymentId The ID from the payment provider
-   * @param signature The signature to verify (if applicable)
+   * @param orderId The Order ID from Razorpay
+   * @param paymentId The Payment ID from Razorpay
+   * @param signature The signature to verify
    * @returns verified boolean
    */
   async verifyPayment(
+    orderId: string,
     paymentId: string,
-    _signature?: string,
+    signature: string,
   ): Promise<boolean> {
-    // Phase 3 Mock Logic:
-    // We assume if a paymentID is passed, it's valid for this architecture scope.
-    // In production, verify `razorpay_signature` here.
-
-    if (!paymentId) return false;
-
-    // Simulate API verification delay
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    return true;
+    return RazorpayService.verifyPaymentSignature(
+      orderId,
+      paymentId,
+      signature,
+    );
   },
 };

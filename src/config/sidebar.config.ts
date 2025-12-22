@@ -46,9 +46,15 @@ export const SUPER_ADMIN_SIDEBAR_ITEMS = [
   },
 ];
 
+// Revised config that takes basePath as argument or handles routing structure better.
+// The current implementation takes 'dashboardPath' which is `/festival/id/dashboard`.
+// But editions is at `/festival/id/editions`.
+// So we need to pass basePath or strip 'dashboard' from dashboardPath.
+
 export const getFestivalDashboardSidebarConfig = (
-  dashboardPath: string,
-  role: string = "OWNER", // Default to lower privilege if unknown, but OWNER is standard for dashboard
+  basePath: string, // This is now the ROOT for the links (e.g. /festival/id or /festival/id/edition-slug)
+  role: string = "OWNER",
+  isEditionView: boolean = false,
 ) => {
   const isSuperAdmin = role === "SUPER_ADMIN";
 
@@ -58,59 +64,67 @@ export const getFestivalDashboardSidebarConfig = (
     return allowedRoles.includes(role);
   };
 
+  if (!isEditionView) {
+    // FESTIVAL OVERVIEW MODE
+    return [
+      {
+        title: "Overview",
+        items: [
+          {
+            title: "Dashboard",
+            href: basePath, // /festival/id
+            icon: LayoutDashboard,
+          },
+        ],
+      },
+      {
+        title: "Settings",
+        items: [
+          {
+            title: "General Settings",
+            href: `${basePath}/settings`,
+            icon: Settings,
+            allowedRoles: ["OWNER"],
+          },
+        ].filter((i) => hasAccess(i.allowedRoles)),
+      },
+    ];
+  }
+
+  // EDITION DASHBOARD MODE
   return [
     {
-      title: "Overview",
+      title: "Edition",
       items: [
         {
           title: "Dashboard",
-          href: dashboardPath,
+          href: basePath, // /festival/id/edition-slug
           icon: LayoutDashboard,
+        },
+        {
+          title: "Settings",
+          href: `${basePath}/settings`,
+          icon: Settings,
         },
       ],
     },
     {
-      title: "Pre-works",
+      title: "Management",
       items: [
         {
-          title: "Team Leaders",
-          href: `${dashboardPath}/team-leaders`,
-          icon: UserCog,
-        },
-        {
-          title: "Judges",
-          href: `${dashboardPath}/judges`,
-          icon: Gavel,
-        },
-        {
-          title: "Stage Managers",
-          href: `${dashboardPath}/stage-managers`,
-          icon: Mic2,
-        },
-        {
           title: "Participants",
-          href: `${dashboardPath}/participants`,
+          href: `${basePath}/participants`,
           icon: UsersRound,
         },
         {
-          title: "Categories",
-          href: `${dashboardPath}/categories`,
-          icon: FolderTree,
+          title: "Judges",
+          href: `${basePath}/judges`,
+          icon: Gavel,
         },
         {
-          title: "Programmes",
-          href: `${dashboardPath}/programmes`,
+          title: "Events/Programmes",
+          href: `${basePath}/programmes`,
           icon: FileText,
-        },
-        {
-          title: "Colleges/Schools",
-          href: `${dashboardPath}/colleges`,
-          icon: Building2,
-        },
-        {
-          title: "Groups",
-          href: `${dashboardPath}/groups`,
-          icon: Network,
         },
       ],
     },
@@ -118,42 +132,21 @@ export const getFestivalDashboardSidebarConfig = (
       title: "Event Works",
       items: [
         {
-          title: "Stages",
-          href: `${dashboardPath}/stages`,
-          icon: MonitorPlay,
-        },
-        {
           title: "Schedule",
-          href: `${dashboardPath}/schedule`,
+          href: `${basePath}/schedule`,
           icon: Clock,
-        },
-        {
-          title: "Chest Numbers & QR",
-          href: `${dashboardPath}/chest-numbers`,
-          icon: QrCode,
         },
       ],
     },
     {
-      title: "On-event Works",
-      items: [],
-    },
-    {
-      title: "Settings",
+      title: "Back",
       items: [
         {
-          title: "Manage Editions",
-          href: `${dashboardPath}/editions`,
-          icon: Calendar,
-          allowedRoles: ["OWNER"],
+          title: "Back to Festival",
+          href: basePath.split("/").slice(0, 3).join("/"), // Hacky: Go to /festival/[id]
+          icon: Building2, // Icon
         },
-        {
-          title: "Festival Settings",
-          href: `${dashboardPath}/settings`,
-          icon: Settings,
-          allowedRoles: ["OWNER"],
-        },
-      ].filter((item) => hasAccess(item.allowedRoles)),
+      ],
     },
   ];
 };

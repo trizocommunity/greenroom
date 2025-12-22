@@ -38,21 +38,6 @@ export function FestivalsTab() {
     setIsCreateOpen(true);
   };
 
-  const handleView = (festival: Festival) => {
-    // Phase 1: View might be disabled or restricted
-    if (!festival.slug) {
-      toast.error("No public page available.");
-      return;
-    }
-    const url = `${window.location.origin}?festival=${festival.slug}`;
-    window.open(url, "_blank");
-  };
-
-  const handleManage = (festival: Festival) => {
-    // Disabled in Phase 1 / Locked
-    toast.info("Dashboard is locked.");
-  };
-
   const handleEdit = (festival: Festival) => {
     setEditingFestival(festival);
   };
@@ -78,12 +63,7 @@ export function FestivalsTab() {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6">
-              <FestivalCard
-                festival={festival}
-                onView={handleView}
-                onManage={handleManage}
-                onEdit={handleEdit}
-              />
+              <FestivalCard festival={festival} onEdit={handleEdit} />
             </div>
           )}
         </div>

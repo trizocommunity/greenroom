@@ -77,10 +77,16 @@ model Payment {
   referenceId String? // Razorpay Payment ID
   receipt     String?
 
-  validUntil DateTime // Logic: Subscription valid until...
+  validUntil DateTime? // Logic: Subscription valid until... (Made optional as logic shifts to Edition)
 
   userId String
   user   User   @relation(fields: [userId], references: [id])
+
+  festivalId String?
+  festival   Festival? @relation(fields: [festivalId], references: [id])
+
+  editionId String?
+  edition   Edition? @relation(fields: [editionId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -96,6 +102,19 @@ model Festival {
   name      String
   slug      String  @unique
   category  String?
+  description String?
+  
+  // Organization Details
+  orgName String?
+  orgDescription String?
+  orgWebsite String?
+  orgLocation String? // To match mocked data usage
+  establishedYear Int?
+
+  // Founder/Message
+  founderName String?
+  founderMessage String?
+
   branding  Json?
   rules     Json?
   structure Json?
@@ -104,6 +123,7 @@ model Festival {
   isLocked Boolean        @default(true)
 
   editions Edition[]
+  payments Payment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -118,10 +138,17 @@ model Edition {
 
   number Int // e.g. 1, 2, 3 (Edition Number)
   name   String? // Optional display name "10th Edition"
+  slug   String // URL-friendly identifier
   status EditionStatus @default(ACTIVE)
 
   startDate DateTime
   endDate   DateTime
+
+  // Details
+  description String?
+  theme       String?
+  venue       String?
+  location    String?
 
   // Usage Counters (Phase 4)
   participantsCount Int @default(0)
@@ -131,7 +158,7 @@ model Edition {
 
   limits EditionLimit?
 
-  // paymentId REMOVED for Phase 1 - No payment logic yet
+  payments Payment[]
 
   participants Participant[]
 
@@ -139,6 +166,7 @@ model Edition {
   updatedAt DateTime @updatedAt
 
   @@unique([festivalId, number])
+  @@unique([festivalId, slug])
   @@map("edition")
 }
 

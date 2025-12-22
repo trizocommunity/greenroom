@@ -1,5 +1,5 @@
 import { findParticipantsByEdition } from "@/server/models/participant.model";
-import { findFestivalById } from "@/server/models/festival.model";
+import { findFestivalBySlugOrId } from "@/server/models/festival.model";
 import { notFound } from "next/navigation";
 import { AddParticipantForm } from "@/components/festival/participants/AddParticipantForm";
 import {
@@ -25,8 +25,8 @@ export default async function ParticipantsPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug: festivalId } = await params;
-  const festival = await findFestivalById(festivalId);
+  const { slug: festivalSlug } = await params;
+  const festival = await findFestivalBySlugOrId(festivalSlug);
 
   if (!festival) {
     notFound();

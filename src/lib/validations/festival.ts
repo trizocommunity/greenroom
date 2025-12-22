@@ -20,7 +20,7 @@ export const festivalStep2Schema = z.object({
   orgDescription: z.string().optional(),
   orgWebsite: z.string().url().optional().or(z.literal("")),
   orgLocation: z.string().optional(),
-  orgEstablishedYear: z.string().optional(),
+  establishedYear: z.string().optional(),
 });
 
 export const festivalSchema = festivalStep1Schema.merge(festivalStep2Schema);

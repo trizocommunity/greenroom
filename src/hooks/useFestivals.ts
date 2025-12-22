@@ -3,19 +3,45 @@ import { toast } from "sonner";
 import { queryKeys } from "@/lib/query-keys";
 import { festivalApi } from "@/services/festival.api";
 import { useCurrentUser } from "./useCurrentUser";
+import type { EditionStatus } from "@prisma/client";
 
 export type Festival = {
   id: string;
   name: string;
   slug: string;
+  description?: string;
+  orgName?: string;
+  orgDescription?: string;
+  orgWebsite?: string;
+  orgLocation?: string;
+  establishedYear?: number;
+  founderName?: string;
+  founderMessage?: string;
   status: "DRAFT" | "ACTIVE";
   isLocked: boolean;
   createdAt: string;
+  editions: {
+    id: string;
+    name: string;
+    number: number;
+    slug: string;
+    status: EditionStatus;
+    startDate: string;
+    endDate: string;
+  }[];
 };
 
 export type CreateFestivalInput = {
   name: string;
   slug?: string;
+  description?: string;
+  orgName?: string;
+  orgDescription?: string;
+  orgWebsite?: string;
+  orgLocation?: string;
+  establishedYear?: number;
+  founderName?: string;
+  founderMessage?: string;
 };
 
 // Phase 1: Fetch My Festival

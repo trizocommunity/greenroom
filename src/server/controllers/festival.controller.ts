@@ -75,11 +75,26 @@ export async function update(
     throw new Error("Forbidden");
   }
 
-  const { name } = data;
+  const { name, slug } = data;
 
   const festival = await updateFestival(id, {
     name: name ?? existing.name,
+    slug: slug ?? existing.slug,
   });
+
+  // Revalidate old and new paths
+  const revalidatePath = (await import("next/cache")).revalidatePath;
+  revalidatePath(`/festival/${existing.slug}`);
+  if (slug && slug !== existing.slug) {
+    revalidatePath(`/festival/${slug}`);
+  }
+  revalidatePath(`/festival/${existing.slug}/settings`);
+
+  // Public Paths
+  revalidatePath(`/${existing.slug}`);
+  if (slug && slug !== existing.slug) {
+    revalidatePath(`/${slug}`);
+  }
 
   return festival;
 }

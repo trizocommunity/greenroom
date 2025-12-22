@@ -4,7 +4,7 @@ import type { FestivalStatus } from "@prisma/client";
 import { format } from "date-fns";
 import { ExternalLink, GalleryVerticalEnd, LogOut } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useParams } from "next/navigation";
 import {
   Sidebar,
   SidebarContent,
@@ -31,17 +31,33 @@ interface FestivalDashboardSidebarProps {
     expiresAt?: Date | string | null;
   };
   role: string;
+  hasActiveEdition?: boolean;
 }
 
 export function FestivalDashboardSidebar({
   festival,
   role,
+  hasActiveEdition = false,
 }: FestivalDashboardSidebarProps) {
   const pathname = usePathname();
-  const basePath = `/festival/${festival.slug}`;
-  const dashboardPath = `${basePath}/dashboard`;
+  const params = useParams();
+  const editionSlug = params?.editionSlug as string | undefined;
 
-  const menuGroups = getFestivalDashboardSidebarConfig(dashboardPath, role);
+  // Base Path Logic
+  // If editionSlug exists, base is /festival/[id]/[editionSlug]
+  // Else /festival/[id]
+  const basePath = `/festival/${festival.slug}`; // festival.slug is ID here
+  const dashboardPath = editionSlug ? `${basePath}/${editionSlug}` : basePath; // Root dashboard
+
+  const menuGroups = getFestivalDashboardSidebarConfig(
+    dashboardPath,
+    role,
+    !!editionSlug,
+  );
+
+  // Phase 2: Execution Visibility Guards
+  const protectedItems = ["Participants", "Events", "Judges", "Results"];
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -89,17 +105,37 @@ export function FestivalDashboardSidebar({
                   <SidebarMenu>
                     {group.items.map((item) => {
                       const isActive = pathname === item.href;
+                      const isProtected = protectedItems.includes(item.title);
+                      const isDisabled = isProtected && !hasActiveEdition;
+
                       return (
                         <SidebarMenuItem key={item.title}>
                           <SidebarMenuButton
-                            asChild
+                            asChild={!isDisabled}
                             isActive={isActive}
-                            tooltip={item.title}
+                            tooltip={
+                              isDisabled
+                                ? "Create an active edition to start execution."
+                                : item.title
+                            }
+                            className={
+                              isDisabled
+                                ? "opacity-50 cursor-not-allowed group-hover:bg-transparent"
+                                : ""
+                            }
                           >
-                            <Link href={item.href}>
-                              <item.icon />
-                              <span>{item.title}</span>
-                            </Link>
+                            {/* If disabled, render as div/span, else Link */}
+                            {isDisabled ? (
+                              <div className="flex items-center gap-2">
+                                <item.icon />
+                                <span>{item.title}</span>
+                              </div>
+                            ) : (
+                              <Link href={item.href}>
+                                <item.icon />
+                                <span>{item.title}</span>
+                              </Link>
+                            )}
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                       );
@@ -116,7 +152,7 @@ export function FestivalDashboardSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip="View Public Site">
-              <Link href={basePath}>
+              <Link href={`/${festival.slug}`} target="_blank">
                 <ExternalLink />
                 <span>View Public Site</span>
               </Link>

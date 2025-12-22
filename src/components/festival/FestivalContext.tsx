@@ -19,7 +19,7 @@ export type FestivalPublicData = {
   orgDescription: string | null;
   orgWebsite: string | null;
   orgLocation: string | null;
-  orgEstablishedYear: number | null;
+  establishedYear: number | null;
   activeEdition: {
     id: string;
     name: string;

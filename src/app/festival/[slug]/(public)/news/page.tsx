@@ -8,15 +8,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { findFestivalById } from "@/server/models/festival.model";
+import { findFestivalBySlugOrId } from "@/server/models/festival.model";
 
 export default async function NewsPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug: festivalId } = await params;
-  const festival = await findFestivalById(festivalId);
+  const { slug: festivalSlug } = await params;
+  const festival = await findFestivalBySlugOrId(festivalSlug);
 
   if (!festival) {
     notFound();

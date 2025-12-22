@@ -3,7 +3,7 @@ import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { FestivalFooter } from "@/components/festival/FestivalFooter";
 import { FestivalNavbar } from "@/components/festival/FestivalNavbar";
 import { getSession } from "@/lib/auth/session";
-import { findFestivalBySlugOrId } from "@/server/models/festival.model";
+import { findFestivalBySlug } from "@/server/models/festival.model";
 
 export default async function FestivalLayout({
   children,
@@ -13,7 +13,7 @@ export default async function FestivalLayout({
   params: Promise<{ slug: string }>;
 }) {
   const { slug: festivalSlug } = await params;
-  const festival = await findFestivalBySlugOrId(festivalSlug);
+  const festival = await findFestivalBySlug(festivalSlug);
 
   if (!festival) {
     notFound();
@@ -27,21 +27,21 @@ export default async function FestivalLayout({
   // Mock missing Phase 2 fields if FestivalProvider needs them
   const festivalData = {
     ...festival,
-    slug: festival.id,
+    slug: festival.slug,
     startDate: new Date().toISOString(), // Mocking dates as they are not on Festival
     endDate: new Date().toISOString(),
-    description: "",
+    description: festival.description || "",
     tagline: "",
-    location: "",
+    location: festival.orgLocation || "",
     accentColor: "#000000",
     activeEdition: null,
     logo: null,
     heroImage: null,
-    orgName: "",
-    orgDescription: "",
-    orgWebsite: "",
-    orgLocation: "",
-    establishedYear: null,
+    orgName: festival.orgName || "",
+    orgDescription: festival.orgDescription || "",
+    orgWebsite: festival.orgWebsite || "",
+    orgLocation: festival.orgLocation || "",
+    establishedYear: festival.establishedYear || null,
   };
 
   return (

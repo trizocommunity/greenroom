@@ -1,23 +1,27 @@
 "use client";
 
-import { Lock, Eye } from "lucide-react";
+import { Lock, Eye, ExternalLink, LayoutDashboard, Pencil } from "lucide-react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { type Festival } from "@/hooks/useFestivals";
+import type { Festival } from "@/hooks/useFestivals";
 import { format } from "date-fns";
 
 interface FestivalCardProps {
   festival: Festival;
   onEdit?: (festival: Festival) => void;
-  onView?: (festival: Festival) => void;
-  onManage?: (festival: Festival) => void;
 }
 
-export function FestivalCard({ festival, onEdit, onView }: FestivalCardProps) {
+export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
   const isLocked = festival.isLocked;
   // DRAFT status is default
   const isDraft = festival.status === "DRAFT";
+
+  // Find Active Edition or fallback to first one
+  const activeEdition =
+    festival.editions?.find((e) => e.status === "ACTIVE") ||
+    festival.editions?.[0];
 
   return (
     <Card className="group relative overflow-hidden border-0 shadow-md transition-all duration-300">
@@ -44,6 +48,12 @@ export function FestivalCard({ festival, onEdit, onView }: FestivalCardProps) {
                   Locked
                 </Badge>
               )}
+              {activeEdition && (
+                <Badge className="bg-green-500 text-white hover:bg-green-600">
+                  {activeEdition.status === "ACTIVE" ? "Active" : "Latest"}:{" "}
+                  {activeEdition.slug}
+                </Badge>
+              )}
             </div>
             <h3 className="font-bold text-2xl tracking-tight">
               {festival.name}
@@ -51,30 +61,52 @@ export function FestivalCard({ festival, onEdit, onView }: FestivalCardProps) {
             <div className="text-sm text-muted-foreground">
               Created {format(new Date(festival.createdAt), "MMM d, yyyy")}
             </div>
-            {festival.slug && (
-              <div className="text-xs text-muted-foreground font-mono">
-                /{festival.slug}
-              </div>
-            )}
           </div>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onView?.(festival)}
-            disabled={isLocked} // Optional: Disable view if locked? Or allow? User said "Festival dashboard must exist but be read-only".
-            // "View Public Page" might be different from "Manage".
-            // Let's keep View button but maybe disabled if no public page yet?
-            // For now, simple Eye icon.
-          >
-            <Eye className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onEdit?.(festival)}
+              title="Edit Details"
+            >
+              <Pencil className="w-4 h-4" />
+            </Button>
+            {activeEdition && (
+              <Button
+                variant="ghost"
+                size="icon"
+                asChild
+                title="View Public Page"
+              >
+                <Link href={`/${festival.slug}`} target="_blank">
+                  <Eye className="w-4 h-4" />
+                </Link>
+              </Button>
+            )}
+          </div>
         </div>
 
-        {isLocked && (
-          <div className="mt-4 p-4 rounded-lg bg-muted/50 border border-dashed border-muted-foreground/20 text-sm italic text-muted-foreground">
-            "Your festival is created but locked. Create an edition to start
-            execution."
+        {activeEdition ? (
+          <div className="flex gap-3 mt-4">
+            <Button asChild className="flex-1" variant="outline">
+              <Link href={`/${festival.slug}`} target="_blank">
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Public Site
+              </Link>
+            </Button>
+            <Button asChild className="flex-1">
+              <Link href={`/festival/${festival.slug}/${activeEdition.slug}`}>
+                <LayoutDashboard className="mr-2 h-4 w-4" />
+                Dashboard
+              </Link>
+            </Button>
+          </div>
+        ) : (
+          <div className="mt-4 p-4 rounded-lg bg-muted/50 border border-dashed border-muted-foreground/20 text-sm italic text-muted-foreground text-center">
+            {isLocked
+              ? "Festival is locked. Activate an edition to start."
+              : "No active edition running."}
           </div>
         )}
       </CardContent>

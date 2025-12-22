@@ -70,9 +70,9 @@ export default async function middleware(req: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    // Rewrite to internal festival route
+    // Rewrite to internal festival route (using (festivalPublic) group implicitly)
     const url = req.nextUrl.clone();
-    url.pathname = `/festival/${festivalSlug}${path === "/" ? "" : path}`;
+    url.pathname = `/${festivalSlug}${path === "/" ? "" : path}`;
     // Remove festival query param after rewrite (for local dev)
     url.searchParams.delete("festival");
     return NextResponse.rewrite(url);

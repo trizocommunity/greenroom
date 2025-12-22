@@ -1,28 +1,28 @@
 import { Building2, Calendar, Globe, MapPin } from "lucide-react";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { findFestivalBySlugOrId } from "@/server/models/festival.model";
+import { findFestivalBySlug } from "@/server/models/festival.model";
 
 export default async function AboutPage({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ slug: string; editionSlug: string }>;
 }) {
-  const { slug: festivalSlug } = await params;
-  const festival = await findFestivalBySlugOrId(festivalSlug);
+  const { slug } = await params;
+  const festival = await findFestivalBySlug(slug);
 
   if (!festival) {
     notFound();
   }
 
-  // Phase 1 Schema mocks
+  // Phase 1 Schema mocks (Same as before)
   const accentColor = "#000000";
-  const orgName = "Organization Name"; // Mock or fetching from branding if available?
-  const orgDescription = "";
-  const orgLocation = "";
-  const orgEstablishedYear = null;
-  const orgWebsite = "";
-  const description = ""; // Schema has no description? Wait, schema in Step 12 had NO description field on Festival model.
+  const orgName = festival.orgName || "Organization Name";
+  const orgDescription = festival.orgDescription || "";
+  const orgLocation = festival.orgLocation || "";
+  const establishedYear = festival.establishedYear || null;
+  const orgWebsite = festival.orgWebsite || "";
+  const description = festival.description || "";
 
   return (
     <div className="py-12 px-4">
@@ -66,10 +66,10 @@ export default async function AboutPage({
                     <span>{orgLocation}</span>
                   </div>
                 )}
-                {orgEstablishedYear && (
+                {establishedYear && (
                   <div className="flex items-center gap-2 text-sm">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span>Established {orgEstablishedYear}</span>
+                    <span>Established {establishedYear}</span>
                   </div>
                 )}
                 {orgWebsite && (

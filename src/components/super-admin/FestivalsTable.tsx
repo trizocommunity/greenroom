@@ -1,6 +1,14 @@
 "use client";
 
-import { Eye, MoreHorizontal, Pencil, Settings, Trash2 } from "lucide-react";
+import {
+  Eye,
+  MoreHorizontal,
+  Pencil,
+  Settings,
+  Trash2,
+  ExternalLink,
+} from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -43,13 +51,23 @@ export function FestivalsTable() {
 
   const handleView = (festival: Festival) => {
     if (!festival.slug) return;
-    const url = `${window.location.origin}?festival=${festival.slug}`;
+    // Public Site: /festival-slug/edition-slug (or just festival-slug)
+    const activeEdition = festival.editions?.find((e) => e.status === "ACTIVE");
+    let url = `${window.location.origin}/${festival.slug}`;
+    if (activeEdition) {
+      url += `/${activeEdition.slug}`;
+    }
     window.open(url, "_blank");
   };
 
   const handleManage = (festival: Festival) => {
-    if (!festival.slug) return;
-    router.push(`/festival/${festival.slug}/dashboard`);
+    // Internal Dashboard: /festival/[id] or /festival/[id]/[edition-slug]
+    const activeEdition = festival.editions?.find((e) => e.status === "ACTIVE");
+    if (activeEdition) {
+      router.push(`/festival/${festival.slug}/${activeEdition.slug}`);
+    } else {
+      router.push(`/festival/${festival.slug}`);
+    }
   };
 
   const handleDelete = () => {
@@ -83,59 +101,92 @@ export function FestivalsTable() {
   return (
     <>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {festivals.map((festival) => (
-          <Card key={festival.id} className="hover:shadow-md transition-shadow">
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <CardTitle className="text-lg">{festival.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    /{festival.slug}
-                  </p>
+        {festivals.map((festival) => {
+          const activeEdition = festival.editions?.find(
+            (e) => e.status === "ACTIVE",
+          );
+          const editionsCount = festival.editions?.length || 0;
+
+          return (
+            <Card
+              key={festival.id}
+              className="hover:shadow-md transition-shadow"
+            >
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <Link
+                      href={`/super-admin/festivals/${festival.id}`}
+                      className="hover:underline"
+                    >
+                      <CardTitle className="text-lg">{festival.name}</CardTitle>
+                    </Link>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      /{festival.slug}
+                    </p>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-8 w-8 p-0">
+                        <span className="sr-only">Open menu</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() =>
+                          router.push(`/super-admin/festivals/${festival.id}`)
+                        }
+                      >
+                        <Settings className="mr-2 h-4 w-4" /> Manage in Admin
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleView(festival)}>
+                        <Eye className="mr-2 h-4 w-4" /> View Site
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleManage(festival)}>
+                        <Settings className="mr-2 h-4 w-4" /> Dashboard
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setEditingFestival(festival)}
+                      >
+                        <Pencil className="mr-2 h-4 w-4" /> Edit Details
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-red-600 focus:text-red-600 bg-red-50 focus:bg-red-100"
+                        onClick={() => setFestivalToDelete(festival)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" /> Terminate
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
-                      <span className="sr-only">Open menu</span>
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleView(festival)}>
-                      <Eye className="mr-2 h-4 w-4" /> View Site
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleManage(festival)}>
-                      <Settings className="mr-2 h-4 w-4" /> Dashboard
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setEditingFestival(festival)}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Badge
+                    variant="outline"
+                    className={
+                      festival.status === "ACTIVE"
+                        ? "bg-green-100 text-green-700 border-green-300"
+                        : "bg-gray-100 text-gray-600 border-gray-300"
+                    }
+                  >
+                    {festival.status}
+                  </Badge>
+                  {activeEdition && (
+                    <Badge
+                      variant="outline"
+                      className="bg-blue-50 text-blue-700 border-blue-200"
                     >
-                      <Pencil className="mr-2 h-4 w-4" /> Edit Details
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="text-red-600 focus:text-red-600 bg-red-50 focus:bg-red-100"
-                      onClick={() => setFestivalToDelete(festival)}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" /> Terminate
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <div className="mt-3">
-                <Badge
-                  variant="outline"
-                  className={
-                    festival.status === "ACTIVE"
-                      ? "bg-green-100 text-green-700 border-green-300"
-                      : "bg-gray-100 text-gray-600 border-gray-300"
-                  }
-                >
-                  {festival.status}
-                </Badge>
-              </div>
-            </CardHeader>
-          </Card>
-        ))}
+                      Active: {activeEdition.slug}
+                    </Badge>
+                  )}
+                  <Badge variant="secondary" className="bg-muted">
+                    {editionsCount} Edition{editionsCount !== 1 ? "s" : ""}
+                  </Badge>
+                </div>
+              </CardHeader>
+            </Card>
+          );
+        })}
       </div>
 
       <EditFestivalModal

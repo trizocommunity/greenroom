@@ -21,18 +21,28 @@ const navItems = [
 interface FestivalNavbarProps {
   festival: FestivalPublicData;
   isLoggedIn?: boolean;
+  currentEditionSlug?: string;
 }
 
 export function FestivalNavbar({
   festival,
   isLoggedIn = false,
+  currentEditionSlug,
 }: FestivalNavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const pathname = usePathname();
 
-  // Extract the current page from pathname (e.g., /festival/slug/about -> /about)
-  const currentPage = pathname.replace(`/festival/${festival.slug}`, "") || "/";
+  // Base URL for navigation links
+  // If inside an edition public site, links should stay within that edition
+  // e.g. /festival-slug/edition-slug/about
+  const linkBase = currentEditionSlug
+    ? `/${festival.slug}/${currentEditionSlug}`
+    : `/festival/${festival.slug}`;
+
+  // Current page extraction needs to be robust
+  // If linkBase is /f/e, and path is /f/e/about, currentPage is /about
+  const currentPage = pathname.replace(linkBase, "") || "/";
 
   useEffect(() => {
     const handleScroll = () => {
@@ -58,10 +68,7 @@ export function FestivalNavbar({
     >
       <div className="mx-auto max-w-7xl px-4 md:px-6 h-16 flex items-center justify-between">
         {/* Festival Logo / Name */}
-        <Link
-          href={`/festival/${festival.slug}`}
-          className="flex items-center gap-3 group"
-        >
+        <Link href={linkBase} className="flex items-center gap-3 group">
           {festival.logo ? (
             <img
               src={festival.logo}
@@ -84,15 +91,15 @@ export function FestivalNavbar({
         {/* Desktop Nav - Center */}
         <nav className="hidden md:flex items-center gap-6">
           {navItems.map((item) => {
+            // Handle Home specially
+            const href =
+              item.href === "/" ? linkBase : `${linkBase}${item.href}`;
             const isActive =
               currentPage === item.href ||
-              (currentPage === "/" && item.href === "/");
+              (currentPage === "/" && item.href === "/"); // Simple check, might need refinement
+
             return (
-              <Link
-                key={item.href}
-                href={`/festival/${festival.slug}${item.href}`}
-                className="relative py-2"
-              >
+              <Link key={item.href} href={href} className="relative py-2">
                 <span
                   className={cn(
                     "text-sm font-medium transition-colors hover:text-foreground",
@@ -117,7 +124,9 @@ export function FestivalNavbar({
         {/* Right Side - Auth */}
         <div className="hidden md:flex items-center gap-3">
           {isLoggedIn ? (
-            <Link href={`/festival/${festival.slug}/dashboard`}>
+            <Link
+              href={`/festival/${festival.slug}/${currentEditionSlug || ""}`}
+            >
               <Button
                 size="sm"
                 className="gap-2"
@@ -128,7 +137,7 @@ export function FestivalNavbar({
               </Button>
             </Link>
           ) : (
-            <Link href="/login">
+            <Link href={`/login?redirect=${encodeURIComponent(pathname)}`}>
               <Button variant="outline" size="sm" className="gap-2">
                 <LogIn size={16} />
                 Login
@@ -158,11 +167,13 @@ export function FestivalNavbar({
           >
             <div className="p-4 flex flex-col gap-2">
               {navItems.map((item) => {
+                const href =
+                  item.href === "/" ? linkBase : `${linkBase}${item.href}`;
                 const isActive = currentPage === item.href;
                 return (
                   <Link
                     key={item.href}
-                    href={`/festival/${festival.slug}${item.href}`}
+                    href={href}
                     onClick={() => setIsOpen(false)}
                     className={cn(
                       "px-4 py-3 rounded-lg font-medium transition-colors",
@@ -189,15 +200,18 @@ export function FestivalNavbar({
                       setIsOpen(false);
                       const mainAppUrl =
                         process.env.NEXT_PUBLIC_APP_URL ||
-                        "http://localhost:3000";
-                      window.location.href = `${mainAppUrl}/festival/${festival.slug}/dashboard`;
+                        "http://localhost:3000"; // Should use window.origin really if same domain
+                      window.location.href = `/festival/${festival.slug}/${currentEditionSlug || ""}`;
                     }}
                   >
                     <LayoutDashboard size={16} />
                     Dashboard
                   </Button>
                 ) : (
-                  <Link href="/login" onClick={() => setIsOpen(false)}>
+                  <Link
+                    href={`/login?redirect=${encodeURIComponent(pathname)}`}
+                    onClick={() => setIsOpen(false)}
+                  >
                     <Button variant="outline" className="w-full gap-2">
                       <LogIn size={16} />
                       Login

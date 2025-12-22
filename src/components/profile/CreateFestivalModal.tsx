@@ -25,6 +25,14 @@ import { useCreateFestival } from "@/hooks/useFestivals";
 
 const validationSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters").max(50),
+  slug: z
+    .string()
+    .min(3)
+    .max(50)
+    .regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with dashes")
+    .optional()
+    .or(z.literal("")),
+  description: z.string().optional(),
 });
 
 type FormData = z.infer<typeof validationSchema>;
@@ -44,12 +52,18 @@ export function CreateFestivalModal({
     resolver: zodResolver(validationSchema),
     defaultValues: {
       name: "",
+      slug: "",
+      description: "",
     },
   });
 
   const onSubmit = (data: FormData) => {
     createMutation.mutate(
-      { name: data.name },
+      {
+        name: data.name,
+        slug: data.slug || undefined,
+        description: data.description || undefined,
+      },
       {
         onSuccess: () => {
           form.reset();
@@ -65,7 +79,8 @@ export function CreateFestivalModal({
         <DialogHeader>
           <DialogTitle>Create Your Festival</DialogTitle>
           <DialogDescription>
-            Enter a name for your festival. You can configure editions later.
+            Enter the details for your festival. You can configure editions
+            later.
           </DialogDescription>
         </DialogHeader>
 
@@ -79,6 +94,50 @@ export function CreateFestivalModal({
                   <FormLabel>Festival Name</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g. Summer Rock Fest" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="slug"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    URL Slug{" "}
+                    <span className="text-xs text-muted-foreground">
+                      (Optional)
+                    </span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input placeholder="summer-rock-fest" {...field} />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Leave empty to auto-generate from name.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Description{" "}
+                    <span className="text-xs text-muted-foreground">
+                      (Optional)
+                    </span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="A short description of your festival"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
