@@ -1,28 +1,40 @@
 import { Building2, Calendar, Globe, MapPin } from "lucide-react";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { findFestivalBySlug } from "@/server/models/festival.model";
+import { getPublicFestivalData } from "@/server/loader/festivalPublic";
 
 export default async function AboutPage({
   params,
+  searchParams,
 }: {
-  params: Promise<{ slug: string; editionSlug: string }>;
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ edition?: string }>;
 }) {
   const { slug } = await params;
-  const festival = await findFestivalBySlug(slug);
+  const { edition: editionParam } = await searchParams;
 
-  if (!festival) {
+  const data = await getPublicFestivalData(slug, editionParam);
+
+  if (!data) {
     notFound();
   }
 
-  // Phase 1 Schema mocks (Same as before)
-  const accentColor = "#000000";
+  const { festival, edition } = data;
+
+  // Use edition description if available, else festival description
+  const description = edition?.description || festival.description || "";
+
+  const accentColor =
+    festival.branding &&
+    typeof festival.branding === "object" &&
+    "colors" in festival.branding
+      ? (festival.branding as any).colors?.primary || "#000000"
+      : "#000000";
   const orgName = festival.orgName || "Organization Name";
   const orgDescription = festival.orgDescription || "";
   const orgLocation = festival.orgLocation || "";
   const establishedYear = festival.establishedYear || null;
   const orgWebsite = festival.orgWebsite || "";
-  const description = festival.description || "";
 
   return (
     <div className="py-12 px-4">
@@ -33,7 +45,10 @@ export default async function AboutPage({
             className="text-3xl font-bold mb-6"
             style={{ color: accentColor }}
           >
-            About {festival.name}
+            About{" "}
+            {edition
+              ? edition.name || `${edition.number}th Edition`
+              : festival.name}
           </h1>
           <Card>
             <CardContent className="pt-6">

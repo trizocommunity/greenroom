@@ -52,9 +52,7 @@ export default async function AdminFestivalDetailPage({
             const activeEdition = festival.editions.find(
               (e: any) => e.status === "ACTIVE",
             );
-            const href = activeEdition
-              ? `/${festival.slug}/${activeEdition.slug}`
-              : `/${festival.slug}`;
+            const href = activeEdition?.slug;
             return (
               <a href={href} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="mr-2 h-4 w-4" /> Public Site

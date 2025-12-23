@@ -51,12 +51,8 @@ export function FestivalsTable() {
 
   const handleView = (festival: Festival) => {
     if (!festival.slug) return;
-    // Public Site: /festival-slug/edition-slug (or just festival-slug)
-    const activeEdition = festival.editions?.find((e) => e.status === "ACTIVE");
+    // Public Site: /festival-slug
     let url = `${window.location.origin}/${festival.slug}`;
-    if (activeEdition) {
-      url += `/${activeEdition.slug}`;
-    }
     window.open(url, "_blank");
   };
 

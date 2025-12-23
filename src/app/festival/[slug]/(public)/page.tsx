@@ -24,7 +24,7 @@ export default async function FestivalPage({
     festival.editions[0];
 
   if (activeEdition) {
-    redirect(`/${festival.slug}/${activeEdition.slug}`);
+    redirect(`/${festival.slug}`);
   }
 
   // Transform for client component

@@ -94,7 +94,7 @@ export function EditionsTab() {
 
               <div className="space-y-2">
                 <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white">
-                  {activeEdition.name || activeEdition.slug}
+                  {activeEdition.name}
                 </h3>
                 <div className="flex items-center gap-2 text-zinc-400 font-medium text-sm">
                   <span className="opacity-70">

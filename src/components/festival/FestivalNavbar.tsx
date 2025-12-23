@@ -21,27 +21,21 @@ const navItems = [
 interface FestivalNavbarProps {
   festival: FestivalPublicData;
   isLoggedIn?: boolean;
-  currentEditionSlug?: string;
 }
 
 export function FestivalNavbar({
   festival,
   isLoggedIn = false,
-  currentEditionSlug,
 }: FestivalNavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const pathname = usePathname();
 
   // Base URL for navigation links
-  // If inside an edition public site, links should stay within that edition
-  // e.g. /festival-slug/edition-slug/about
-  const linkBase = currentEditionSlug
-    ? `/${festival.slug}/${currentEditionSlug}`
-    : `/festival/${festival.slug}`;
+  // Public site is always at /festival-slug (or subdomain root)
+  const linkBase = `/${festival.slug}`;
 
-  // Current page extraction needs to be robust
-  // If linkBase is /f/e, and path is /f/e/about, currentPage is /about
+  // Current page extraction
   const currentPage = pathname.replace(linkBase, "") || "/";
 
   useEffect(() => {
@@ -96,7 +90,7 @@ export function FestivalNavbar({
               item.href === "/" ? linkBase : `${linkBase}${item.href}`;
             const isActive =
               currentPage === item.href ||
-              (currentPage === "/" && item.href === "/"); // Simple check, might need refinement
+              (currentPage === "/" && item.href === "/");
 
             return (
               <Link key={item.href} href={href} className="relative py-2">
@@ -124,9 +118,7 @@ export function FestivalNavbar({
         {/* Right Side - Auth */}
         <div className="hidden md:flex items-center gap-3">
           {isLoggedIn ? (
-            <Link
-              href={`/festival/${festival.slug}/${currentEditionSlug || ""}`}
-            >
+            <Link href={`/festival/${festival.slug}/dashboard`}>
               <Button
                 size="sm"
                 className="gap-2"
@@ -198,10 +190,7 @@ export function FestivalNavbar({
                     style={{ backgroundColor: festival.accentColor }}
                     onClick={() => {
                       setIsOpen(false);
-                      const mainAppUrl =
-                        process.env.NEXT_PUBLIC_APP_URL ||
-                        "http://localhost:3000"; // Should use window.origin really if same domain
-                      window.location.href = `/festival/${festival.slug}/${currentEditionSlug || ""}`;
+                      window.location.href = `/festival/${festival.slug}/dashboard`;
                     }}
                   >
                     <LayoutDashboard size={16} />
