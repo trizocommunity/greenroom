@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { findFestivalByOwnerId } from "@/server/models/festival.model";
 
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
   try {
     const session = await getSession();
     if (!session || !session.userId) {

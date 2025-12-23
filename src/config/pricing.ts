@@ -1,85 +1,94 @@
+import { EditionTier } from "@prisma/client";
+
+export const TIER_CONFIG = {
+  [EditionTier.BASIC]: {
+    price: 1500,
+    label: "Basic",
+    durationDays: 90,
+    limits: {
+      participants: 300,
+      events: 30,
+      judges: 10,
+      storageMB: 512, // 0.5 GB
+    },
+  },
+  [EditionTier.STANDARD]: {
+    price: 3000,
+    label: "Standard",
+    durationDays: 120,
+    limits: {
+      participants: 1000,
+      events: 100,
+      judges: 50,
+      storageMB: 2048, // 2 GB
+    },
+  },
+  [EditionTier.PRO]: {
+    price: 6000,
+    label: "Pro",
+    durationDays: 180,
+    limits: {
+      participants: 3000,
+      events: 300,
+      judges: 150,
+      storageMB: 10240, // 10 GB
+    },
+  },
+};
+
 export type PricingTier = {
   id: string;
   name: string;
   price: number;
   description: string;
   features: string[];
-  limits: {
-    participants: number;
-    events: number;
-    judges: number;
-    storage: string;
-    durationMonths: number;
-  };
   isPopular?: boolean;
 };
 
 export const PRICING_TIERS: PricingTier[] = [
   {
-    id: "starter",
-    name: "Starter Edition",
-    price: 1500,
+    id: EditionTier.BASIC,
+    name: "Basic",
+    price: TIER_CONFIG[EditionTier.BASIC].price,
     description: "Perfect for small local festivals and beginners.",
-    limits: {
-      participants: 500,
-      events: 50,
-      judges: 20,
-      storage: "500 MB",
-      durationMonths: 3,
-    },
     features: [
-      "500 Participants",
-      "50 Events",
-      "20 Judges",
-      "500 MB Storage",
-      "3 Months Active Duration",
-      "Read-only access after 3 months",
-      "Archived after 1 year",
+      `${TIER_CONFIG[EditionTier.BASIC].limits.participants} Participants`,
+      `${TIER_CONFIG[EditionTier.BASIC].limits.events} Events`,
+      `${TIER_CONFIG[EditionTier.BASIC].limits.judges} Judges`,
+      "0.5 GB Storage",
+      `${TIER_CONFIG[EditionTier.BASIC].durationDays} Days Active Duration`,
+      "Read-only access afterwards",
     ],
+    isPopular: false,
   },
   {
-    id: "standard",
-    name: "Standard Edition",
-    price: 2500,
+    id: EditionTier.STANDARD,
+    name: "Standard",
+    price: TIER_CONFIG[EditionTier.STANDARD].price,
     description: "The best value for most growing festivals.",
-    isPopular: true,
-    limits: {
-      participants: 1000,
-      events: 100,
-      judges: 50,
-      storage: "1 GB",
-      durationMonths: 3,
-    },
     features: [
-      "1000 Participants",
-      "100 Events",
-      "50 Judges",
-      "1 GB Storage",
-      "3 Months Active Duration",
-      "Read-only access after 3 months",
-      "Archived after 1 year",
+      `${TIER_CONFIG[EditionTier.STANDARD].limits.participants} Participants`,
+      `${TIER_CONFIG[EditionTier.STANDARD].limits.events} Events`,
+      `${TIER_CONFIG[EditionTier.STANDARD].limits.judges} Judges`,
+      "2 GB Storage",
+      `${TIER_CONFIG[EditionTier.STANDARD].durationDays} Days Active Duration`,
+      "Read-only access afterwards",
     ],
+    isPopular: true,
   },
   {
-    id: "large",
-    name: "Large Edition",
-    price: 4000,
+    id: EditionTier.PRO,
+    name: "Pro",
+    price: TIER_CONFIG[EditionTier.PRO].price,
     description: "For established festivals needing more capacity.",
-    limits: {
-      participants: 3000,
-      events: 200,
-      judges: 100,
-      storage: "3 GB",
-      durationMonths: 3,
-    },
     features: [
-      "3000 Participants",
-      "200 Events",
-      "100 Judges",
-      "3 GB Storage",
-      "3 Months Active Duration",
-      "Read-only access after 3 months",
-      "Archived after 1 year",
+      `${TIER_CONFIG[EditionTier.PRO].limits.participants} Participants`,
+      `${TIER_CONFIG[EditionTier.PRO].limits.events} Events`,
+      `${TIER_CONFIG[EditionTier.PRO].limits.judges} Judges`,
+      "10 GB Storage",
+      `${TIER_CONFIG[EditionTier.PRO].durationDays} Days Active Duration`,
+      "Read-only access afterwards",
     ],
+    isPopular: false,
   },
 ];

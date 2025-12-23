@@ -63,32 +63,17 @@ export function FestivalDashboardSidebar({
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
+            <SidebarMenuButton isActive={true} size="lg" asChild>
               <Link href={dashboardPath}>
                 <div
-                  className="flex aspect-square size-10 items-center justify-center rounded-lg text-sidebar-primary-foreground"
+                  className="flex aspect-square size-9 items-center justify-center rounded-lg text-sidebar-primary-foreground"
                   style={{ backgroundColor: festival.accentColor }}
                 >
-                  <GalleryVerticalEnd className="size-5" />
+                  <GalleryVerticalEnd className="size-4" />
                 </div>
-                <div className="flex flex-col gap-1 leading-none">
-                  <span className="font-semibold truncate">
-                    {festival.name}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <FestivalRoleBadge
-                      festivalRole={
-                        role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "ADMIN"
-                      }
-                    />
-                  </div>
-                  {festival.expiresAt && (
-                    <span className="text-[10px] text-muted-foreground">
-                      Valid until:{" "}
-                      {format(new Date(festival.expiresAt), "dd/MM/yyyy")}
-                    </span>
-                  )}
-                </div>
+                <span className="font-semibold truncate capitalize">
+                  {festival.name}
+                </span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -148,26 +133,7 @@ export function FestivalDashboardSidebar({
         ))}
       </SidebarContent>
 
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="View Public Site">
-              <Link href={`/${festival.slug}`} target="_blank">
-                <ExternalLink />
-                <span>View Public Site</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Exit to Main App">
-              <Link href="/profile">
-                <LogOut />
-                <span>Exit to Main App</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
+      <SidebarFooter>{/* Footer actions moved to Right Panel */}</SidebarFooter>
 
       <SidebarRail />
     </Sidebar>

@@ -1,13 +1,10 @@
-"use client";
-
-import { useMyFestival } from "@/hooks/useFestivals";
 import { type User } from "@prisma/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sparkles, Calendar } from "lucide-react";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Sparkles, Calendar, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { CreateFestivalModal } from "./CreateFestivalModal";
-import { useRouter } from "next/navigation";
+import { MOCK_JOINED_FESTIVALS } from "@/data/user-festivals.mock";
+import { JoinedFestivalCard } from "./JoinedFestivalCard";
+import type { JoinedFestival } from "@/types/festival";
 
 interface DashboardTabProps {
   user: User & {
@@ -18,13 +15,9 @@ interface DashboardTabProps {
 }
 
 export function DashboardTab({ user }: DashboardTabProps) {
-  const { data: festival } = useMyFestival();
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const router = useRouter();
-
-  const handleCreate = () => {
-    setIsCreateOpen(true);
-  };
+  // Mock data for joined festivals
+  const joinedFestivals: JoinedFestival[] =
+    MOCK_JOINED_FESTIVALS as unknown as JoinedFestival[];
 
   return (
     <div className="space-y-6">
@@ -32,75 +25,45 @@ export function DashboardTab({ user }: DashboardTabProps) {
         <h2 className="text-3xl font-black uppercase tracking-tighter text-foreground">
           Welcome back, {user.displayName || user.fullName || "User"}!
         </h2>
-        <p className="text-muted-foreground">Your festival control center.</p>
+        <p className="text-muted-foreground">Your activity overview.</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Your Profile</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <div className="text-sm font-medium text-muted-foreground">
-              Name
-            </div>
-            <div className="text-base">{user.fullName || "-"}</div>
-          </div>
-          <div>
-            <div className="text-sm font-medium text-muted-foreground">
-              Email
-            </div>
-            <div className="text-base">{user.email}</div>
-          </div>
-          <div>
-            <div className="text-sm font-medium text-muted-foreground">
-              Role
-            </div>
-            <div className="text-base capitalize">
-              {user.globalRole.toLowerCase()}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Main Content: Joined Festivals */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-bold flex items-center gap-2">
+            <Calendar className="text-primary w-5 h-5" />
+            Joined Festivals
+          </h3>
+          <Button>
+            Join Festival
+            <Search className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-primary" />
-            Your Festival
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {festival ? (
-            <div className="space-y-2">
-              <div className="text-xl font-bold">{festival.name}</div>
-              <div className="text-sm text-muted-foreground font-mono">
-                /{festival.slug}
-              </div>
-              <div className="flex gap-2 mt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => router.push("/profile?tab=festivals")}
-                >
-                  Go to Festivals Tab
+        {joinedFestivals.length === 0 ? (
+          <Card className="border-dashed bg-muted/20">
+            <CardHeader className="text-center py-12">
+              <CardTitle>You haven't joined any festivals yet.</CardTitle>
+              <p className="text-muted-foreground mt-2">
+                Join a festival to start participating in events.
+              </p>
+              <div className="flex justify-center pt-4">
+                <Button>
+                  Find a Festival
+                  <Search className="ml-2 h-4 w-4" />
                 </Button>
               </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-muted-foreground">
-                You haven't created a festival yet.
-              </p>
-              <Button onClick={handleCreate}>
-                Create Your Festival
-                <Sparkles className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <CreateFestivalModal open={isCreateOpen} onOpenChange={setIsCreateOpen} />
+            </CardHeader>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {joinedFestivals.map((festival) => (
+              <JoinedFestivalCard key={festival.id} festival={festival} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

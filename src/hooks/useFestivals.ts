@@ -26,6 +26,7 @@ export type Festival = {
     number: number;
     slug: string;
     status: EditionStatus;
+    tierLabel: string;
     startDate: string;
     endDate: string;
   }[];

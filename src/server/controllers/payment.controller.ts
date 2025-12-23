@@ -1,4 +1,5 @@
-import { PRICING_CONFIG } from "@/config/pricing.config";
+import { TIER_CONFIG } from "@/config/pricing";
+import { EditionTier } from "@prisma/client";
 import {
   createPayment,
   getActivePaymentForUser,
@@ -11,8 +12,8 @@ import {
   RazorpayService,
 } from "@/server/services/razorpay.service";
 
-const FESTIVAL_PRICE = PRICING_CONFIG.FESTIVAL_PASS.AMOUNT_PAISE;
-const VALIDITY_DAYS = PRICING_CONFIG.FESTIVAL_PASS.VALIDITY_DAYS;
+const FESTIVAL_PRICE = TIER_CONFIG[EditionTier.BASIC].price * 100; // Legacy fallback
+const VALIDITY_DAYS = TIER_CONFIG[EditionTier.BASIC].durationDays;
 
 export const createOrder = async (userId: string) => {
   // Business Rule: Prevent duplicate active access

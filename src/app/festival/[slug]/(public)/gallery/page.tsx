@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { MOCK_GALLERY } from "@/data/mockFestivalData";
+import Image from "next/image";
 
 export default function GalleryPage() {
   return (
@@ -24,7 +25,7 @@ export default function GalleryPage() {
               transition={{ delay: i * 0.1 }}
               className="break-inside-avoid rounded-xl overflow-hidden group relative"
             >
-              <img
+              <Image
                 src={src}
                 alt="Gallery item"
                 className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-500"

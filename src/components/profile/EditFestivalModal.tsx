@@ -224,7 +224,7 @@ export function EditFestivalModal({
                             onChange={(e) =>
                               field.onChange(
                                 e.target.value
-                                  ? parseInt(e.target.value)
+                                  ? parseInt(e.target.value, 10)
                                   : undefined,
                               )
                             }

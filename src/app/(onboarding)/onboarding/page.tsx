@@ -43,7 +43,7 @@ export default function OnboardingPage() {
     defaultValues: {
       fullName: "",
       displayName: "",
-      age: undefined,
+      age: "" as any, // Initialize as empty string to prevent uncontrolled input warning
     },
     mode: "onChange",
   });
