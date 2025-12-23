@@ -19,6 +19,8 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { PanelRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EditionCountdownBanner } from "@/components/festival/editions/EditionCountdownBanner";
+import { FrozenEditionBanner } from "@/components/festival/editions/FrozenEditionBanner";
 
 export default async function EditionDashboardLayout({
   children,
@@ -165,6 +167,15 @@ export default async function EditionDashboardLayout({
               },
             }}
           >
+            <EditionCountdownBanner
+              endDate={activeEdition.endDate}
+              status={activeEdition.status}
+              className="mb-4"
+            />
+            <FrozenEditionBanner
+              status={activeEdition.status}
+              className="mb-4"
+            />
             {children}
           </FestivalProvider>
         </main>

@@ -111,12 +111,13 @@ export function EditionCreationWizard({
             }
 
             toast.success("Edition created successfully! Redirecting...");
-            router.push(`/festival/${festivalSlug}`); // Or appropriate redirect
-            router.refresh();
+            router.push(`/festival/${festivalSlug}`);
           } catch (err: any) {
             console.error("Verification error:", err);
             toast.error(err.message || "Failed to verify payment");
+          } finally {
             setIsProcessing(false);
+            toast.dismiss();
           }
         },
         modal: {

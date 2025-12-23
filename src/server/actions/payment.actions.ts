@@ -6,6 +6,7 @@ import { EditionTier, type Prisma } from "@prisma/client"; // EditionTier used a
 import { TIER_CONFIG } from "@/config/pricing";
 import Razorpay from "razorpay";
 import crypto from "crypto";
+import { revalidatePath } from "next/cache";
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -176,6 +177,12 @@ export async function finalizeEditionPayment(
         return edition;
       },
     );
+
+    // 5. Revalidate Cache (Performance Optimization)
+    revalidatePath(`/festival/${result.slug}`);
+    revalidatePath(`/festival/${result.slug}/dashboard`);
+    revalidatePath("/profile");
+    revalidatePath("/", "layout"); // Deep invalidation
 
     return { success: true, data: result };
   } catch (error: any) {

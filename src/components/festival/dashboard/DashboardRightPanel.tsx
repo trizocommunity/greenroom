@@ -3,7 +3,7 @@ import { StatusStrip } from "@/components/dashboard/StatusStrip";
 import type { FestivalRole } from "@/components/festival/FestivalRoleBadge";
 import { Button } from "@/components/ui/button";
 import type { EditionStatus } from "@prisma/client";
-import { ExternalLink, User } from "lucide-react";
+import { ExternalLink, User, Layers } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/components/auth/LogoutButton";
@@ -95,6 +95,18 @@ export function DashboardPanelContent({
             <Link href="/profile">
               <User className="mr-2 h-3.5 w-3.5" />
               My Profile
+            </Link>
+          </Button>
+
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="justify-start hover:bg-white/5 w-full h-8 px-3 text-xs"
+          >
+            <Link href={`/festival/${festivalSlug}/editions`}>
+              <Layers className="mr-2 h-3.5 w-3.5" />
+              View History
             </Link>
           </Button>
 

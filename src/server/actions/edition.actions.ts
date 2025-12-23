@@ -62,6 +62,19 @@ export async function updateEditionAction(formData: FormData) {
     location,
   } = validated.data;
 
+  // 1. Guard: Check if edition exists and is ACTIVE
+  const existingEdition = await import("@/server/models/edition.model").then(
+    (mod) => mod.findEditionById(id),
+  );
+
+  if (!existingEdition) {
+    return { error: "Edition not found" };
+  }
+
+  if (existingEdition.status !== "ACTIVE") {
+    return { error: "Cannot modify a frozen or archived edition." };
+  }
+
   try {
     // Generate new slug from name
     // We might want to append random string if collision, but for now simple slugify
