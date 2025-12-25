@@ -76,18 +76,34 @@ export function EditionSettingsForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid gap-2">
-        <Label htmlFor="name">Edition Name (Updates URL)</Label>
-        <Input
-          id="name"
-          name="name"
-          defaultValue={edition.name || `Edition ${edition.number}`}
-          placeholder="e.g. Winter 2025"
-          required
-        />
-        <p className="text-xs text-muted-foreground">
-          Changing the name will verify and update the public URL slug.
-        </p>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor="name">Edition Name</Label>
+          <Input
+            id="name"
+            name="name"
+            defaultValue={edition.name || `Edition ${edition.number}`}
+            placeholder="e.g. Winter 2025"
+            required
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="slug">Slug (URL)</Label>
+          <div className="relative">
+            <Input
+              id="slug"
+              name="slug"
+              defaultValue={edition.slug}
+              placeholder="winter-2025"
+              className="font-mono text-purple-500 border-purple-500/50 bg-purple-500/10"
+              required
+            />
+          </div>
+          <p className="text-xs text-muted-foreground font-mono">
+            /festival/{festivalSlug}/
+            <span className="text-purple-400">{edition.slug}</span>
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">

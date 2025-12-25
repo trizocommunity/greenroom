@@ -23,9 +23,22 @@ export const queryKeys = {
   festivals: {
     all: () => ["festivals"] as const,
     lists: () => ["festivals", "list"] as const,
-    list: (userId?: string) => ["festivals", "list", { userId }] as const,
+    list: (filters?: Record<string, unknown>) =>
+      ["festivals", "list", { ...filters }] as const,
     details: () => ["festivals", "detail"] as const,
     detail: (id: string) => ["festivals", "detail", id] as const,
+  },
+
+  /**
+   * Edition-related queries
+   */
+  editions: {
+    all: () => ["editions"] as const,
+    lists: () => ["editions", "list"] as const,
+    list: (filters?: Record<string, unknown>) =>
+      ["editions", "list", { ...filters }] as const,
+    details: () => ["editions", "detail"] as const,
+    detail: (id: string) => ["editions", "detail", id] as const,
   },
 
   /**
@@ -33,8 +46,13 @@ export const queryKeys = {
    */
   payments: {
     all: () => ["payments"] as const,
+    lists: () => ["payments", "list"] as const,
+    list: (filters?: Record<string, unknown>) =>
+      ["payments", "list", { ...filters }] as const,
     status: (userId?: string) => ["payments", "status", { userId }] as const,
     history: (userId?: string) => ["payments", "history", { userId }] as const,
+    details: () => ["payments", "detail"] as const,
+    detail: (id: string) => ["payments", "detail", id] as const,
   },
 
   /**
@@ -44,8 +62,18 @@ export const queryKeys = {
     all: () => ["users"] as const,
     lists: () => ["users", "list"] as const,
     list: (filters?: Record<string, unknown>) =>
-      ["users", "list", filters] as const,
+      ["users", "list", { ...filters }] as const,
     details: () => ["users", "detail"] as const,
     detail: (id: string) => ["users", "detail", id] as const,
+  },
+
+  /**
+   * Audit Logs
+   */
+  auditLogs: {
+    all: () => ["auditLogs"] as const,
+    lists: () => ["auditLogs", "list"] as const,
+    list: (filters?: Record<string, unknown>) =>
+      ["auditLogs", "list", { ...filters }] as const,
   },
 } as const;

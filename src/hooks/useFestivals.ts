@@ -50,7 +50,7 @@ export const useMyFestival = () => {
   const { data: user } = useCurrentUser();
 
   return useQuery({
-    queryKey: queryKeys.festivals.list(user?.id), // keeping key for now or change to ['my-festival']?
+    queryKey: queryKeys.festivals.list({ userId: user?.id }), // keeping key for now or change to ['my-festival']?
     // Let's use a specific key for my festival
     queryFn: festivalApi.getMyFestival,
     staleTime: 1000 * 60,

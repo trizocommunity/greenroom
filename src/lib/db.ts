@@ -3,7 +3,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+  prisma_v2: PrismaClient | undefined;
   pool: Pool | undefined;
 };
 
@@ -45,7 +45,7 @@ const adapter = new PrismaPg(pool);
 
 // Configure Prisma Client with appropriate settings
 export const prisma =
-  globalForPrisma.prisma ??
+  globalForPrisma.prisma_v2 ??
   new PrismaClient({
     adapter,
     log:
@@ -56,7 +56,7 @@ export const prisma =
   });
 
 if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+  globalForPrisma.prisma_v2 = prisma;
 }
 
 // Graceful shutdown handling

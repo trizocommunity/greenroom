@@ -14,6 +14,7 @@ const updateEditionSchema = z.object({
   id: z.string().min(1, "Edition ID is required"),
   festivalId: z.string().min(1, "Festival ID is required"),
   name: z.string().min(1, "Name is required"),
+  slug: z.string().min(1, "Slug is required"),
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
   description: z.string().optional(),
@@ -36,6 +37,7 @@ export async function updateEditionAction(formData: FormData) {
     id: formData.get("id"),
     festivalId: formData.get("festivalId"),
     name: formData.get("name"),
+    slug: formData.get("slug"), // Capture slug from form
     startDate: formData.get("startDate"),
     endDate: formData.get("endDate"),
     description: formData.get("description"),
@@ -54,6 +56,7 @@ export async function updateEditionAction(formData: FormData) {
     id,
     festivalId,
     name,
+    slug,
     startDate,
     endDate,
     description,
@@ -76,18 +79,18 @@ export async function updateEditionAction(formData: FormData) {
   }
 
   try {
-    // Generate new slug from name
-    // We might want to append random string if collision, but for now simple slugify
-    // Ideally we check for uniqueness but Prisma unique constraint will throw if duplicate.
-    // User asked "for change edition details like name ,, it need new params, so make sense"
-    // Implicitly: Update Slug to match Name.
-    const newSlug = slugify(name);
+    // Check if a DIFFERENT edition already has this slug within the same festival
+    // Note: Prisma unique constraint is usually global or composite.
+    // If Festival + Slug is unique, we are safe.
+
+    // Explicit slug takes precedence, otherwise re-slugify name
+    const finalSlug = slug ? slugify(slug) : slugify(name);
 
     const updatedEdition = await import("@/server/models/edition.model").then(
       (mod) =>
         mod.updateEdition(id, {
           name,
-          slug: newSlug,
+          slug: finalSlug,
           startDate: new Date(startDate),
           endDate: new Date(endDate),
           description: description || undefined,
@@ -106,8 +109,6 @@ export async function updateEditionAction(formData: FormData) {
     revalidatePath(`/festival/${festivalSlug}`);
 
     // If slug changed, we need to communicate that to the client to redirect
-    // We can't redirect easily from server action called by a form without full page reload or client handling.
-    // We'll return the new slug and let Client Component handle navigation.
     return { success: true, newSlug: updatedEdition.slug };
   } catch (error: any) {
     console.error("Failed to update edition:", error);

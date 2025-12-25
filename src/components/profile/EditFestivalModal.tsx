@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
@@ -59,6 +59,7 @@ export function EditFestivalModal({
 }: EditFestivalModalProps) {
   const updateMutation = useUpdateFestival();
   const router = useRouter();
+  const pathname = usePathname();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -107,10 +108,30 @@ export function EditFestivalModal({
         },
       },
       {
-        onSuccess: () => {
+        onSuccess: (updatedFestival) => {
           onOpenChange(false);
           toast.success("Festival updated successfully");
-          router.refresh(); // Refresh to update links on the page
+
+          if (
+            updatedFestival?.slug &&
+            festival.slug &&
+            updatedFestival.slug !== festival.slug
+          ) {
+            // Check if we are on a path that includes the old slug
+            // Example: /festival/old-slug/settings -> /festival/new-slug/settings
+            // Example: /festival/old-slug -> /festival/new-slug
+            if (pathname.includes(festival.slug)) {
+              const newPath = pathname.replace(
+                festival.slug,
+                updatedFestival.slug,
+              );
+              router.push(newPath);
+            } else {
+              router.refresh();
+            }
+          } else {
+            router.refresh();
+          }
         },
       },
     );

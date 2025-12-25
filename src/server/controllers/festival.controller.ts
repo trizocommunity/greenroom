@@ -75,11 +75,26 @@ export async function update(
     throw new Error("Forbidden");
   }
 
-  const { name, slug } = data;
+  const {
+    name,
+    slug,
+    description,
+    orgName,
+    orgWebsite,
+    establishedYear,
+    founderName,
+    founderMessage,
+  } = data;
 
   const festival = await updateFestival(id, {
     name: name ?? existing.name,
     slug: slug ?? existing.slug,
+    description: description ?? existing.description,
+    orgName: orgName ?? existing.orgName,
+    orgWebsite: orgWebsite ?? existing.orgWebsite,
+    establishedYear: establishedYear ?? existing.establishedYear,
+    founderName: founderName ?? existing.founderName,
+    founderMessage: founderMessage ?? existing.founderMessage,
   });
 
   // Revalidate old and new paths
@@ -92,9 +107,14 @@ export async function update(
 
   // Public Paths
   revalidatePath(`/${existing.slug}`);
+  revalidatePath(`/${existing.slug}`);
   if (slug && slug !== existing.slug) {
     revalidatePath(`/${slug}`);
   }
+
+  // Revalidate Profile/Dashboard Lists
+  revalidatePath("/profile");
+  revalidatePath("/dashboard");
 
   return festival;
 }

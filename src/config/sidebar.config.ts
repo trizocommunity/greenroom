@@ -7,6 +7,7 @@ import {
   Gavel,
   LayoutDashboard,
   Settings,
+  Shield,
   Users,
   UsersRound,
 } from "lucide-react";
@@ -28,9 +29,19 @@ export const SUPER_ADMIN_SIDEBAR_ITEMS = [
     icon: Calendar,
   },
   {
+    title: "Editions",
+    url: "/super-admin/editions",
+    icon: FileText,
+  },
+  {
     title: "Payments",
     url: "/super-admin/payments",
     icon: CreditCard,
+  },
+  {
+    title: "Audit Logs",
+    url: "/super-admin/audit-logs",
+    icon: Shield,
   },
   {
     title: "Settings",

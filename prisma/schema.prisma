@@ -213,3 +213,16 @@ model EditionLimit {
 
   @@map("edition_limit")
 }
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorId     String
+  actorRole   String
+  action      String   // e.g., "DELETE_FESTIVAL", "FREEZE_EDITION"
+  targetType  String   // e.g., "FESTIVAL", "EDITION"
+  targetId    String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@map("audit_log")
+}
