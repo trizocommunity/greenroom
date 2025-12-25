@@ -31,13 +31,11 @@ interface FestivalDashboardSidebarProps {
     expiresAt?: Date | string | null;
   };
   role: string;
-  hasActiveEdition?: boolean;
 }
 
 export function FestivalDashboardSidebar({
   festival,
   role,
-  hasActiveEdition = false,
 }: FestivalDashboardSidebarProps) {
   const pathname = usePathname();
   const params = useParams();
@@ -55,13 +53,20 @@ export function FestivalDashboardSidebar({
     !!editionSlug,
   );
 
-  // Phase 2: Execution Visibility Guards
-  const protectedItems = ["Participants", "Events", "Judges", "Results"];
-
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarMenu>
+          <SidebarMenuItem>
+            <div className="flex flex-col gap-2 p-2 group-data-[collapsible=icon]:hidden">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Role
+                </span>
+                <FestivalRoleBadge festivalRole={role} />
+              </div>
+            </div>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton isActive={true} size="lg" asChild>
               <Link href={dashboardPath}>
@@ -71,9 +76,14 @@ export function FestivalDashboardSidebar({
                 >
                   <GalleryVerticalEnd className="size-4" />
                 </div>
-                <span className="font-semibold truncate capitalize">
-                  {festival.name}
-                </span>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold capitalize">
+                    {festival.name}
+                  </span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {role} View
+                  </span>
+                </div>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -82,53 +92,33 @@ export function FestivalDashboardSidebar({
 
       <SidebarContent>
         {menuGroups.map((group) => (
-          <SidebarGroup key={group.title}>
-            {group.items.length > 0 && (
-              <>
-                <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {group.items.map((item) => {
-                      const isActive = pathname === item.href;
-                      const isProtected = protectedItems.includes(item.title);
-                      const isDisabled = isProtected && !hasActiveEdition;
-
-                      return (
-                        <SidebarMenuItem key={item.title}>
-                          <SidebarMenuButton
-                            asChild={!isDisabled}
-                            isActive={isActive}
-                            tooltip={
-                              isDisabled
-                                ? "Create an active edition to start execution."
-                                : item.title
-                            }
-                            className={
-                              isDisabled
-                                ? "opacity-50 cursor-not-allowed group-hover:bg-transparent"
-                                : ""
-                            }
-                          >
-                            {/* If disabled, render as div/span, else Link */}
-                            {isDisabled ? (
-                              <div className="flex items-center gap-2">
-                                <item.icon />
-                                <span>{item.title}</span>
-                              </div>
-                            ) : (
-                              <Link href={item.href}>
-                                <item.icon />
-                                <span>{item.title}</span>
-                              </Link>
-                            )}
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      );
-                    })}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </>
+          <SidebarGroup key={group.title || "main"}>
+            {group.title && group.items.length > 0 && (
+              <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
             )}
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((item) => {
+                  const isActive = pathname === item.href;
+                  // Disable logic can be added here based on edition status if needed
+
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive}
+                        tooltip={item.title}
+                      >
+                        <Link href={item.href}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
           </SidebarGroup>
         ))}
       </SidebarContent>

@@ -1,12 +1,8 @@
 import { LimitationCard } from "@/components/dashboard/LimitationCard";
 import { StatusStrip } from "@/components/dashboard/StatusStrip";
 import type { FestivalRole } from "@/components/festival/FestivalRoleBadge";
-import { Button } from "@/components/ui/button";
 import type { EditionStatus } from "@prisma/client";
-import { ExternalLink, User, Layers } from "lucide-react";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { LogoutButton } from "@/components/auth/LogoutButton";
 
 interface DashboardRightPanelProps {
   festivalSlug: string;
@@ -33,7 +29,6 @@ interface DashboardRightPanelProps {
 }
 
 export function DashboardPanelContent({
-  festivalSlug,
   festivalName,
   editionName,
   editionStatus,
@@ -67,56 +62,6 @@ export function DashboardPanelContent({
             className="bg-card border-border shadow-sm"
           />
         )}
-      </div>
-
-      {/* Footer Section: Quick Actions */}
-      <div className="mt-auto space-y-3 pt-4 border-t border-border/40 shrink-0">
-        <h3 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-          Quick Actions
-        </h3>
-        <div className="flex flex-col gap-1.5">
-          <Button
-            asChild
-            variant="secondary"
-            size="sm"
-            className="justify-start bg-secondary/50 hover:bg-secondary/80 w-full h-8 px-3 text-xs"
-          >
-            <Link href={`/${festivalSlug}`} target="_blank">
-              <ExternalLink className="mr-2 h-3.5 w-3.5" />
-              View Public Site
-            </Link>
-          </Button>
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="justify-start hover:bg-white/5 w-full h-8 px-3 text-xs"
-          >
-            <Link href="/profile">
-              <User className="mr-2 h-3.5 w-3.5" />
-              My Profile
-            </Link>
-          </Button>
-
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="justify-start hover:bg-white/5 w-full h-8 px-3 text-xs"
-          >
-            <Link href={`/festival/${festivalSlug}/editions`}>
-              <Layers className="mr-2 h-3.5 w-3.5" />
-              View History
-            </Link>
-          </Button>
-
-          <LogoutButton
-            variant="ghost"
-            className="justify-start text-red-400 hover:text-red-300 hover:bg-red-950/20 w-full h-8 px-3 text-xs"
-            showIcon={true}
-            size="sm"
-          />
-        </div>
       </div>
     </div>
   );

@@ -1,16 +1,28 @@
 import {
-  Building2,
+  BarChart3,
+  BookOpen,
   Calendar,
-  Clock,
-  CreditCard,
+  ClipboardList,
+  Edit,
   FileText,
-  Gavel,
   LayoutDashboard,
+  Megaphone,
+  QrCode,
   Settings,
   Shield,
+  Trophy,
   Users,
   UsersRound,
 } from "lucide-react";
+
+export type FestivalRole =
+  | "SUPER_ADMIN"
+  | "ADMIN"
+  | "JUDGE"
+  | "TEAM-LEADER"
+  | "STAGE-MANAGER"
+  | "ANNOUNCER"
+  | "OWNER";
 
 export const SUPER_ADMIN_SIDEBAR_ITEMS = [
   {
@@ -51,33 +63,48 @@ export const SUPER_ADMIN_SIDEBAR_ITEMS = [
   },
 ];
 
-// Revised config that takes basePath as argument or handles routing structure better.
-// The current implementation takes 'dashboardPath' which is `/festival/id/dashboard`.
-// But editions is at `/festival/id/editions`.
-// So we need to pass basePath or strip 'dashboard' from dashboardPath.
+// Re-import CreditCard which was missing in the replacement content above?
+// Ah, I see I missed adding it to the imports. Let me fix the imports in the replacement content below.
+// Wait, I can't self-correct in the tool call description. I will just execute it correctly.
+import { CreditCard } from "lucide-react";
+
+interface SidebarItem {
+  title: string;
+  href: string;
+  icon: any;
+  allowedRoles?: FestivalRole[];
+  disabled?: boolean;
+}
+
+interface SidebarGroup {
+  title: string;
+  items: SidebarItem[];
+}
 
 export const getFestivalDashboardSidebarConfig = (
-  basePath: string, // This is now the ROOT for the links (e.g. /festival/id or /festival/id/edition-slug)
+  basePath: string,
   role: string = "OWNER",
   isEditionView: boolean = false,
-) => {
+): SidebarGroup[] => {
   const isSuperAdmin = role === "SUPER_ADMIN";
+  const normalizedRole = role as FestivalRole;
 
-  const hasAccess = (allowedRoles?: string[]) => {
+  const hasAccess = (allowedRoles?: FestivalRole[]) => {
     if (isSuperAdmin) return true;
-    if (!allowedRoles) return true;
-    return allowedRoles.includes(role);
+    if (!allowedRoles) return true; // Public/Shared
+    if (allowedRoles.includes("ADMIN") && role === "OWNER") return true; // Owner has Admin rights
+    return allowedRoles.includes(normalizedRole);
   };
 
   if (!isEditionView) {
-    // FESTIVAL OVERVIEW MODE
+    // FESTIVAL OVERVIEW MODE (Simplified for now)
     return [
       {
         title: "Overview",
         items: [
           {
             title: "Dashboard",
-            href: basePath, // /festival/id
+            href: basePath,
             icon: LayoutDashboard,
           },
         ],
@@ -89,7 +116,7 @@ export const getFestivalDashboardSidebarConfig = (
             title: "General Settings",
             href: `${basePath}/settings`,
             icon: Settings,
-            allowedRoles: ["OWNER"],
+            allowedRoles: ["OWNER", "ADMIN"] as FestivalRole[],
           },
         ].filter((i) => hasAccess(i.allowedRoles)),
       },
@@ -97,39 +124,61 @@ export const getFestivalDashboardSidebarConfig = (
   }
 
   // EDITION DASHBOARD MODE
-  return [
+  const groups: SidebarGroup[] = [
     {
-      title: "Edition",
+      title: "", // Top level
       items: [
         {
           title: "Dashboard",
-          href: basePath, // /festival/id/edition-slug
+          href: basePath,
           icon: LayoutDashboard,
         },
         {
           title: "Settings",
           href: `${basePath}/settings`,
           icon: Settings,
+          allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
         },
       ],
     },
     {
-      title: "Management",
+      title: "Pre-Works (Setup)",
       items: [
+        {
+          title: "Setup Data",
+          href: `${basePath}/setup`,
+          icon: BookOpen,
+          allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
+        },
         {
           title: "Participants",
           href: `${basePath}/participants`,
           icon: UsersRound,
+          allowedRoles: ["ADMIN", "OWNER", "TEAM-LEADER"],
         },
         {
-          title: "Judges",
-          href: `${basePath}/judges`,
-          icon: Gavel,
+          title: "Categories",
+          href: `${basePath}/categories`,
+          icon: ClipboardList,
+          allowedRoles: ["ADMIN", "OWNER"],
         },
         {
-          title: "Events/Programmes",
+          title: "Programmes",
           href: `${basePath}/programmes`,
           icon: FileText,
+          allowedRoles: ["ADMIN", "OWNER"],
+        },
+        {
+          title: "Institutions",
+          href: `${basePath}/institutions`,
+          icon: Building2,
+          allowedRoles: ["ADMIN", "OWNER"],
+        },
+        {
+          title: "Assign Prog ↔ Ptcp",
+          href: `${basePath}/assign-programmes`,
+          icon: Edit,
+          allowedRoles: ["ADMIN", "OWNER", "TEAM-LEADER"],
         },
       ],
     },
@@ -137,21 +186,103 @@ export const getFestivalDashboardSidebarConfig = (
       title: "Event Works",
       items: [
         {
+          title: "Chest Numbers",
+          href: `${basePath}/chest-numbers`,
+          icon: CreditCard, // Placeholder
+          allowedRoles: ["ADMIN", "OWNER"],
+        },
+        {
+          title: "QR Codes",
+          href: `${basePath}/qr-codes`,
+          icon: QrCode,
+          allowedRoles: ["ADMIN", "OWNER", "STAGE-MANAGER"] as FestivalRole[],
+        },
+        {
+          title: "Stage Management",
+          href: `${basePath}/stage-management`,
+          icon: Megaphone,
+          allowedRoles: ["ADMIN", "OWNER", "STAGE-MANAGER"],
+        },
+        {
           title: "Schedule",
           href: `${basePath}/schedule`,
-          icon: Clock,
+          icon: Calendar,
+          allowedRoles: ["ADMIN", "OWNER", "STAGE-MANAGER"],
         },
       ],
     },
     {
-      title: "Back",
+      title: "On-Event Works",
       items: [
         {
-          title: "Back to Festival",
-          href: basePath.split("/").slice(0, 3).join("/"), // Hacky: Go to /festival/[id]
-          icon: Building2, // Icon
+          title: "Scan QR",
+          href: `${basePath}/scan`,
+          icon: QrCode,
+          allowedRoles: [
+            "ADMIN",
+            "OWNER",
+            "JUDGE",
+            "STAGE-MANAGER",
+          ] as FestivalRole[],
+        },
+        {
+          title: "Coding/decoding",
+          href: `${basePath}/coding`,
+          icon: Shield,
+          allowedRoles: ["ADMIN", "OWNER", "JUDGE"] as FestivalRole[],
+        },
+        {
+          title: "Mark Completion",
+          href: `${basePath}/completion`,
+          icon: CheckCircle,
+          allowedRoles: ["ADMIN", "OWNER", "STAGE-MANAGER"],
+        },
+        {
+          title: "Stage Navigation",
+          href: `${basePath}/stages`,
+          icon: Megaphone,
+          allowedRoles: [
+            "ADMIN",
+            "OWNER",
+            "JUDGE",
+            "STAGE-MANAGER",
+            "ANNOUNCER",
+          ] as FestivalRole[],
+        },
+      ],
+    },
+    {
+      title: "Summary & Results",
+      items: [
+        {
+          title: "Results",
+          href: `${basePath}/results`,
+          icon: Trophy,
+          allowedRoles: [
+            "ADMIN",
+            "OWNER",
+            "JUDGE",
+            "ANNOUNCER",
+          ] as FestivalRole[],
+        },
+        {
+          title: "Analytics",
+          href: `${basePath}/analytics`,
+          icon: BarChart3,
+          allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
         },
       ],
     },
   ];
+
+  // Filter groups
+  return groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => hasAccess(item.allowedRoles)),
+    }))
+    .filter((group) => group.items.length > 0);
 };
+
+// Import missing icons
+import { Building2, CheckCircle } from "lucide-react";

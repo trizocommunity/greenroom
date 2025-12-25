@@ -7,9 +7,9 @@ export type FestivalRole =
   | "SUPER_ADMIN"
   | "ADMIN"
   | "JUDGE"
-  | "PARTICIPANT"
   | "TEAM-LEADER"
   | "STAGE-MANAGER"
+  | "ANNOUNCER"
   | "OWNER"; // Added OWNER for the creator context
 
 interface FestivalRoleBadgeProps {
@@ -45,11 +45,6 @@ const roleConfig: Record<
       "bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-100",
     icon: Gavel,
   },
-  PARTICIPANT: {
-    label: "Participant",
-    className: "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100",
-    icon: User,
-  },
   "TEAM-LEADER": {
     label: "Team Leader",
     className:
@@ -60,6 +55,11 @@ const roleConfig: Record<
     label: "Stage Manager",
     className:
       "bg-indigo-100 text-indigo-700 border-indigo-200 hover:bg-indigo-100",
+    icon: Mic2,
+  },
+  ANNOUNCER: {
+    label: "Announcer",
+    className: "bg-pink-100 text-pink-700 border-pink-200 hover:bg-pink-100",
     icon: Mic2,
   },
 };

@@ -23,11 +23,12 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { ExternalLink, PanelRight } from "lucide-react";
+import { ExternalLink, PanelRight, User, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EditionCountdownBanner } from "@/components/festival/editions/EditionCountdownBanner";
 import { FrozenEditionBanner } from "@/components/festival/editions/FrozenEditionBanner";
 import Link from "next/link";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 
 export default async function EditionDashboardLayout({
   children,
@@ -93,14 +94,10 @@ export default async function EditionDashboardLayout({
       }}
     >
       <SidebarProvider>
-        <FestivalDashboardSidebar
-          festival={festivalData}
-          role={userRole}
-          hasActiveEdition={true}
-        />
+        <FestivalDashboardSidebar festival={festivalData} role={userRole} />
 
         <SidebarInset>
-          <header className="sticky top-0 z-10 w-full flex h-14 shrink-0 items-center justify-between border-b bg-background/95 backdrop-blur px-6 shadow-sm">
+          <header className="sticky top-0 z-10 w-full flex h-14 shrink-0 items-center justify-between border-b bg-background/95 backdrop-blur px-8 shadow-sm">
             <div className="flex items-center gap-2">
               <SidebarTrigger className="-ml-2 h-8 w-8" />
               <div className="mr-2 h-4 w-px bg-border" />
@@ -120,21 +117,56 @@ export default async function EditionDashboardLayout({
             </div>
 
             {/* Header Actions */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <Button
-                variant="outline"
-                size="sm"
+                variant="ghost"
+                size="icon"
                 className="hidden md:flex"
                 asChild
+                title="View Public Page"
               >
                 <Link
                   href={`/${festivalSlug}?edition=${activeEdition.slug}`}
                   target="_blank"
                 >
-                  <ExternalLink className="mr-2 h-4 w-4" />
-                  View Public Page
+                  <ExternalLink className="h-4 w-4" />
+                  <span className="sr-only">View Public Page</span>
                 </Link>
               </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="hidden md:flex"
+                asChild
+                title="View History"
+              >
+                <Link href={`/festival/${festivalSlug}/editions`}>
+                  <Layers className="h-4 w-4" />
+                  <span className="sr-only">View History</span>
+                </Link>
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="hidden md:flex"
+                asChild
+                title="My Profile"
+              >
+                <Link href="/profile">
+                  <User className="h-4 w-4" />
+                  <span className="sr-only">My Profile</span>
+                </Link>
+              </Button>
+
+              <LogoutButton
+                variant="ghost"
+                size="icon"
+                showText={false}
+                showIcon={true}
+                className="hidden md:flex"
+              />
 
               {/* Mobile Right Panel Trigger */}
               <Sheet>
