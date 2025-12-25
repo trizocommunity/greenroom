@@ -1,6 +1,9 @@
 import { notFound, redirect } from "next/navigation";
-import { FestivalDashboardSidebar } from "@/components/festival/dashboard/FestivalDashboardSidebar";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { getSession } from "@/lib/auth/session";
 import { findFestivalBySlugOrId } from "@/server/models/festival.model";
 import { differenceInDays } from "date-fns";
@@ -9,18 +12,22 @@ import {
   DashboardPanelContent,
   DashboardRightPanel,
 } from "@/components/festival/dashboard/DashboardRightPanel";
+import { FestivalDashboardSidebar } from "@/components/festival/dashboard/FestivalDashboardSidebar";
+import { EditionDashboardProvider } from "@/components/festival/dashboard/EditionDashboardContext";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
+  BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { PanelRight } from "lucide-react";
+import { ExternalLink, PanelRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EditionCountdownBanner } from "@/components/festival/editions/EditionCountdownBanner";
 import { FrozenEditionBanner } from "@/components/festival/editions/FrozenEditionBanner";
+import Link from "next/link";
 
 export default async function EditionDashboardLayout({
   children,
@@ -78,133 +85,154 @@ export default async function EditionDashboardLayout({
   const userRole = isSuperAdmin ? "SUPER_ADMIN" : "OWNER";
 
   return (
-    <SidebarProvider>
-      <FestivalDashboardSidebar
-        role={session.role}
-        festival={festivalData}
-        hasActiveEdition={activeEdition.status === "ACTIVE"}
-      />
+    <EditionDashboardProvider
+      value={{
+        festivalSlug: festival.slug,
+        editionSlug: activeEdition.slug,
+        editionName: activeEdition.slug,
+      }}
+    >
+      <SidebarProvider>
+        <FestivalDashboardSidebar
+          festival={festivalData}
+          role={userRole}
+          hasActiveEdition={true}
+        />
 
-      {/* Center Content */}
-      <div className="flex flex-1 flex-col transition-all duration-300 ease-in-out min-w-0">
-        <header className="sticky top-0 z-10 w-full flex h-14 shrink-0 items-center justify-between border-b bg-background/95 backdrop-blur px-6 shadow-sm">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-2 h-8 w-8" />
-            <div className="mr-2 h-4 w-px bg-border" />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbLink href={`/festival/${festivalSlug}`}>
-                    Festival
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbLink
-                    href={`/festival/${festivalSlug}/${editionSlug}`}
-                  >
-                    {activeEdition.name || editionSlug}
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
+        <SidebarInset>
+          <header className="sticky top-0 z-10 w-full flex h-14 shrink-0 items-center justify-between border-b bg-background/95 backdrop-blur px-6 shadow-sm">
+            <div className="flex items-center gap-2">
+              <SidebarTrigger className="-ml-2 h-8 w-8" />
+              <div className="mr-2 h-4 w-px bg-border" />
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem>
+                    <BreadcrumbLink href={`/festival/${festivalSlug}`}>
+                      Festival
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>{activeEdition.slug}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
+            </div>
 
-          {/* Mobile Right Panel Trigger */}
-          <Sheet>
-            <SheetTrigger asChild>
+            {/* Header Actions */}
+            <div className="flex items-center gap-2">
               <Button
-                variant="ghost"
-                size="icon"
-                className="xl:hidden h-8 w-8 text-muted-foreground"
+                variant="outline"
+                size="sm"
+                className="hidden md:flex"
+                asChild
               >
-                <PanelRight className="h-5 w-5" />
-                <span className="sr-only">Open Festival Info</span>
+                <Link
+                  href={`/${festivalSlug}?edition=${activeEdition.slug}`}
+                  target="_blank"
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  View Public Page
+                </Link>
               </Button>
-            </SheetTrigger>
-            <SheetContent
-              side="right"
-              className="p-6 w-80 sm:w-96 overflow-y-auto"
+
+              {/* Mobile Right Panel Trigger */}
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="xl:hidden h-8 w-8 text-muted-foreground"
+                  >
+                    <PanelRight className="h-5 w-5" />
+                    <span className="sr-only">Open Festival Info</span>
+                  </Button>
+                </SheetTrigger>
+                <SheetContent
+                  side="right"
+                  className="p-6 w-80 sm:w-96 overflow-y-auto"
+                >
+                  <DashboardPanelContent
+                    festivalSlug={festival.slug}
+                    festivalName={festival.name}
+                    editionName={activeEdition.slug}
+                    editionStatus={activeEdition.status}
+                    daysRemaining={daysRemaining}
+                    userRole={userRole}
+                    activeEdition={{
+                      tierLabel: activeEdition.tierLabel,
+                      limits: activeEdition.limits || {
+                        maxParticipants: 1000,
+                        maxEvents: 50,
+                        maxJudges: 20,
+                        maxStorageMB: 1024,
+                      },
+                      usage: {
+                        participantsCount: activeEdition.participantsCount,
+                        eventsCount: activeEdition.eventsCount,
+                        judgesCount: activeEdition.judgesCount,
+                        storageUsedMB: activeEdition.storageUsedMB,
+                      },
+                    }}
+                    className="mt-4"
+                  />
+                </SheetContent>
+              </Sheet>
+            </div>
+          </header>
+
+          <main className="flex flex-1 flex-col gap-6 p-8 relative overflow-hidden">
+            <FestivalProvider
+              festival={{
+                ...festivalData,
+                activeEdition: {
+                  id: activeEdition.id,
+                  name: activeEdition.slug,
+                  status: activeEdition.status,
+                  participantsCount: activeEdition.participantsCount,
+                  limits: activeEdition.limits,
+                },
+              }}
             >
-              <DashboardPanelContent
-                festivalSlug={festival.slug}
-                festivalName={festival.name}
-                editionName={activeEdition.name || editionSlug}
-                editionStatus={activeEdition.status}
-                daysRemaining={daysRemaining}
-                userRole={userRole}
-                activeEdition={{
-                  tierLabel: activeEdition.tierLabel,
-                  limits: activeEdition.limits || {
-                    maxParticipants: 1000,
-                    maxEvents: 50,
-                    maxJudges: 20,
-                    maxStorageMB: 1024,
-                  },
-                  usage: {
-                    participantsCount: activeEdition.participantsCount,
-                    eventsCount: activeEdition.eventsCount,
-                    judgesCount: activeEdition.judgesCount,
-                    storageUsedMB: activeEdition.storageUsedMB,
-                  },
-                }}
-                className="mt-4" // Add some top margin inside sheet
+              <EditionCountdownBanner
+                endDate={activeEdition.endDate}
+                status={activeEdition.status}
+                className="mb-4"
               />
-            </SheetContent>
-          </Sheet>
-        </header>
+              <FrozenEditionBanner
+                status={activeEdition.status}
+                className="mb-4"
+              />
+              {children}
+            </FestivalProvider>
+          </main>
+        </SidebarInset>
 
-        <main className="flex flex-1 flex-col gap-6 p-8 relative overflow-hidden">
-          <FestivalProvider
-            festival={{
-              ...festivalData,
-              activeEdition: {
-                id: activeEdition.id,
-                name: activeEdition.name || `Edition ${activeEdition.number}`,
-                status: activeEdition.status,
-                participantsCount: activeEdition.participantsCount,
-                limits: activeEdition.limits,
-              },
-            }}
-          >
-            <EditionCountdownBanner
-              endDate={activeEdition.endDate}
-              status={activeEdition.status}
-              className="mb-4"
-            />
-            <FrozenEditionBanner
-              status={activeEdition.status}
-              className="mb-4"
-            />
-            {children}
-          </FestivalProvider>
-        </main>
-      </div>
-
-      {/* Right Panel - Hidden on smaller screens, visible on XL */}
-      <DashboardRightPanel
-        festivalSlug={festival.slug}
-        festivalName={festival.name}
-        editionName={activeEdition.name || editionSlug}
-        editionStatus={activeEdition.status}
-        daysRemaining={daysRemaining}
-        userRole={userRole}
-        activeEdition={{
-          tierLabel: activeEdition.tierLabel,
-          limits: activeEdition.limits || {
-            maxParticipants: 1000,
-            maxEvents: 50,
-            maxJudges: 20,
-            maxStorageMB: 1024,
-          }, // Fallback
-          usage: {
-            participantsCount: activeEdition.participantsCount,
-            eventsCount: activeEdition.eventsCount,
-            judgesCount: activeEdition.judgesCount,
-            storageUsedMB: activeEdition.storageUsedMB,
-          },
-        }}
-      />
-    </SidebarProvider>
+        {/* Right Panel - Hidden on smaller screens, visible on XL */}
+        <DashboardRightPanel
+          festivalSlug={festival.slug}
+          festivalName={festival.name}
+          editionName={activeEdition.slug}
+          editionStatus={activeEdition.status}
+          daysRemaining={daysRemaining}
+          userRole={userRole}
+          activeEdition={{
+            tierLabel: activeEdition.tierLabel,
+            limits: activeEdition.limits || {
+              maxParticipants: 1000,
+              maxEvents: 50,
+              maxJudges: 20,
+              maxStorageMB: 1024,
+            },
+            usage: {
+              participantsCount: activeEdition.participantsCount,
+              eventsCount: activeEdition.eventsCount,
+              judgesCount: activeEdition.judgesCount,
+              storageUsedMB: activeEdition.storageUsedMB,
+            },
+          }}
+        />
+      </SidebarProvider>
+    </EditionDashboardProvider>
   );
 }

@@ -14,12 +14,10 @@ interface EditionSettingsFormProps {
   edition: {
     id: string;
     festivalId: string;
-    name: string | null;
     slug: string;
     startDate: string | Date;
     endDate: string | Date;
     status: string;
-    number: number;
     description?: string | null;
     theme?: string | null;
     venue?: string | null;
@@ -78,16 +76,6 @@ export function EditionSettingsForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <Label htmlFor="name">Edition Name</Label>
-          <Input
-            id="name"
-            name="name"
-            defaultValue={edition.name || `Edition ${edition.number}`}
-            placeholder="e.g. Winter 2025"
-            required
-          />
-        </div>
-        <div className="grid gap-2">
           <Label htmlFor="slug">Slug (URL)</Label>
           <div className="relative">
             <Input
@@ -100,8 +88,7 @@ export function EditionSettingsForm({
             />
           </div>
           <p className="text-xs text-muted-foreground font-mono">
-            /festival/{festivalSlug}/
-            <span className="text-purple-400">{edition.slug}</span>
+            The slug is used as the edition name and must be unique.
           </p>
         </div>
       </div>

@@ -6,17 +6,16 @@ import { ChevronDown } from "lucide-react";
 import React from "react";
 
 interface EditionSelectorProps {
-  currentEditionNumber: number;
+  currentEditionSlug: string;
   availableEditions: {
     id: string;
-    number: number;
-    name: string | null;
+    slug: string;
     status: EditionStatus;
   }[];
 }
 
 export function EditionSelector({
-  currentEditionNumber,
+  currentEditionSlug,
   availableEditions,
 }: EditionSelectorProps) {
   const router = useRouter();
@@ -38,18 +37,17 @@ export function EditionSelector({
       </span>
       <div className="relative">
         <select
-          value={currentEditionNumber.toString()}
+          value={currentEditionSlug}
           onChange={handleValueChange}
-          className="w-[180px] appearance-none bg-background/50 backdrop-blur-md border border-white/10 text-white rounded-md py-2 pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all cursor-pointer hover:bg-background/70"
+          className="w-[180px] appearance-none bg-background/50 backdrop-blur-md border border-white/10 text-white rounded-md py-2 pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all cursor-pointer hover:bg-background/70 uppercase font-mono"
         >
           {availableEditions.map((edition) => (
             <option
               key={edition.id}
-              value={edition.number.toString()}
+              value={edition.slug}
               className="bg-zinc-900 text-white"
             >
-              {edition.name ||
-                `${edition.number}${getOrdinal(edition.number)} Edition`}
+              {edition.slug}
               {edition.status === EditionStatus.ACTIVE && " (Live)"}
             </option>
           ))}
@@ -58,10 +56,4 @@ export function EditionSelector({
       </div>
     </div>
   );
-}
-
-function getOrdinal(n: number) {
-  const s = ["th", "st", "nd", "rd"];
-  const v = n % 100;
-  return s[(v - 20) % 10] || s[v] || s[0];
 }

@@ -41,7 +41,7 @@ export default async function AdminEditionsPage() {
                 <TableCell>
                   <div className="flex flex-col">
                     <span className="font-medium">
-                      {edition.name || `Edition ${edition.number}`}
+                      {edition.slug.toUpperCase()}
                     </span>
                     <span className="text-xs text-muted-foreground">
                       ID: {edition.id}
@@ -80,7 +80,7 @@ export default async function AdminEditionsPage() {
                   {edition.status === "ACTIVE" && (
                     <FreezeEditionButton
                       editionId={edition.id}
-                      editionName={edition.name || `Edition ${edition.number}`}
+                      editionName={edition.slug}
                     />
                   )}
                 </TableCell>

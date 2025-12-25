@@ -38,7 +38,9 @@ export default async function EditionDashboardPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">{edition.name}</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {edition.slug.toUpperCase()}
+        </h1>
         <p className="text-muted-foreground">
           {edition.status} • {format(new Date(edition.startDate), "PPP")} -{" "}
           {format(new Date(edition.endDate), "PPP")}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -51,10 +51,8 @@ export function AdminEditFestivalModal({
   onOpenChange,
 }: AdminEditFestivalModalProps) {
   const [loading, setLoading] = useState(false);
-  const [originalSlug, setOriginalSlug] = useState("");
   const updateMutation = useUpdateFestival();
   const router = useRouter();
-  const pathname = usePathname();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -76,7 +74,6 @@ export function AdminEditFestivalModal({
       getFestivalAdmin(festivalId)
         .then((data) => {
           if (data) {
-            setOriginalSlug(data.slug);
             form.reset({
               name: data.name,
               slug: data.slug,
@@ -100,28 +97,10 @@ export function AdminEditFestivalModal({
         data: data,
       },
       {
-        onSuccess: (updatedFestival) => {
+        onSuccess: () => {
           onOpenChange(false);
           toast.success("Festival updated");
-
-          if (
-            updatedFestival?.slug &&
-            originalSlug &&
-            updatedFestival.slug !== originalSlug
-          ) {
-            if (pathname.includes(originalSlug)) {
-              const newPath = pathname.replace(
-                originalSlug,
-                updatedFestival.slug,
-              );
-              router.push(newPath);
-              router.refresh();
-            } else {
-              router.refresh();
-            }
-          } else {
-            router.refresh();
-          }
+          router.refresh();
         },
       },
     );

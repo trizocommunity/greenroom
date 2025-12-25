@@ -145,8 +145,6 @@ model Edition {
   festivalId String
   festival   Festival @relation(fields: [festivalId], references: [id])
 
-  number Int // e.g. 1, 2, 3 (Edition Number)
-  name   String? // Optional display name "10th Edition"
   slug   String // URL-friendly identifier
   tier   EditionTier @default(STANDARD)
   tierLabel String @default("Standard") // Added for UI identity persistence
@@ -177,7 +175,6 @@ model Edition {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([festivalId, number])
   @@unique([festivalId, slug])
   @@map("edition")
 }

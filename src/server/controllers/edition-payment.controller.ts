@@ -86,8 +86,6 @@ export const EditionPaymentController = {
       const newEdition = await tx.edition.create({
         data: {
           festivalId: festival.id,
-          number: nextNumber,
-          name: `${nextNumber}${getOrdinal(nextNumber)} Edition`,
           slug: `edition-${nextNumber}`, // Default Slug
           status: "ACTIVE",
           startDate: new Date(),

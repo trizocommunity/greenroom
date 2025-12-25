@@ -38,6 +38,7 @@ const formSchema = z.object({
     .regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with dashes"),
   description: z.string().optional(),
   orgName: z.string().optional(),
+  orgDescription: z.string().optional(),
   orgWebsite: z.string().url("Invalid URL").optional().or(z.literal("")),
   establishedYear: z.number().optional(),
   founderName: z.string().optional(),
@@ -68,6 +69,7 @@ export function EditFestivalModal({
       slug: "",
       description: "",
       orgName: "",
+      orgDescription: "",
       orgWebsite: "",
       establishedYear: undefined,
       founderName: "",
@@ -82,6 +84,7 @@ export function EditFestivalModal({
         slug: festival.slug || "",
         description: festival.description || "",
         orgName: festival.orgName || "",
+        orgDescription: festival.orgDescription || "",
         orgWebsite: festival.orgWebsite || "",
         establishedYear: festival.establishedYear || undefined,
         founderName: festival.founderName || "",
@@ -101,6 +104,7 @@ export function EditFestivalModal({
           slug: data.slug,
           description: data.description,
           orgName: data.orgName,
+          orgDescription: data.orgDescription,
           orgWebsite: data.orgWebsite,
           establishedYear: data.establishedYear,
           founderName: data.founderName,
@@ -256,6 +260,24 @@ export function EditFestivalModal({
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="orgDescription"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Organization Description</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Tell us about your organization..."
+                          className="h-24"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}

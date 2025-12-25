@@ -9,13 +9,11 @@ export const adminService = {
         editions: {
           select: {
             id: true,
-            name: true,
-            number: true,
             slug: true,
             status: true,
             tier: true,
           },
-          orderBy: { number: "desc" },
+          orderBy: { createdAt: "desc" },
         },
       },
       orderBy: { createdAt: "desc" },
@@ -56,7 +54,7 @@ export const adminService = {
       include: {
         user: { select: { email: true } },
         festival: { select: { name: true } },
-        edition: { select: { name: true, number: true } },
+        edition: { select: { slug: true } },
       },
       orderBy: { createdAt: "desc" },
       take: 50,

@@ -120,7 +120,7 @@ export async function freezeEditionAdmin(editionId: string, reason: string) {
         action: "FREEZE_EDITION",
         targetType: "EDITION",
         targetId: editionId,
-        metadata: { reason, editionNumber: edition.number },
+        metadata: { reason, editionSlug: edition.slug },
       },
     });
   });
@@ -150,11 +150,11 @@ export async function getEditionAdmin(editionId: string) {
 // --- Update Actions ---
 
 const updateEditionSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1),
+  id: z.string(),
   slug: z.string().min(1),
-  startDate: z.string().min(1),
-  endDate: z.string().min(1),
+  startDate: z.string(),
+  endDate: z.string(),
+  status: z.enum(["ACTIVE", "FREEZE", "ARCHIVED"]).optional(),
   description: z.string().optional(),
   theme: z.string().optional(),
   venue: z.string().optional(),
@@ -175,10 +175,9 @@ export async function updateEditionAdmin(formData: FormData) {
 
   const rawData = {
     id: formData.get("id"),
-    name: formData.get("name"),
     slug: formData.get("slug"),
-    startDate: formData.get("startDate"),
-    endDate: formData.get("endDate"),
+    startDate: formData.get("startDate")?.toString() || "",
+    endDate: formData.get("endDate")?.toString() || "",
     description: formData.get("description"),
     theme: formData.get("theme"),
     venue: formData.get("venue"),
@@ -188,12 +187,13 @@ export async function updateEditionAdmin(formData: FormData) {
   const validated = updateEditionSchema.safeParse(rawData);
 
   if (!validated.success) {
-    return { error: "Validation failed" };
+    return {
+      error: `Validation failed: ${JSON.stringify(validated.error.flatten().fieldErrors)}`,
+    };
   }
 
   const {
-    id,
-    name,
+    id: editionId,
     slug,
     startDate,
     endDate,
@@ -201,24 +201,46 @@ export async function updateEditionAdmin(formData: FormData) {
     theme,
     venue,
     location,
+    status,
   } = validated.data;
 
   try {
-    // If slug is provided, use it. Ideally we should check uniqueness but uniqueness is constrained by DB anyway.
-    // If slug is somehow empty (prevented by schema), fallback to name.
-    const finalSlug = slug ? slugify(slug) : slugify(name);
+    const originalEdition = await db.edition.findUnique({
+      where: { id: editionId },
+      select: { slug: true, festivalId: true },
+    });
+
+    if (!originalEdition) {
+      return { error: "Edition not found" };
+    }
+
+    const finalSlug = (slug || originalEdition.slug).toLowerCase();
+
+    // Check slug uniqueness if changed
+    if (finalSlug !== originalEdition.slug) {
+      const existing = await db.edition.findFirst({
+        where: {
+          festivalId: originalEdition.festivalId,
+          slug: finalSlug,
+          NOT: { id: editionId },
+        },
+      });
+      if (existing) {
+        return { error: "Slug already exists for this festival." };
+      }
+    }
 
     await db.edition.update({
-      where: { id },
+      where: { id: editionId },
       data: {
-        name,
         slug: finalSlug,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
-        description: description || undefined,
-        theme: theme || undefined,
-        venue: venue || undefined,
-        location: location || undefined,
+        startDate: startDate ? new Date(startDate) : undefined,
+        endDate: endDate ? new Date(endDate) : undefined,
+        status: status as any,
+        description,
+        theme,
+        venue,
+        location,
       },
     });
 
@@ -229,8 +251,8 @@ export async function updateEditionAdmin(formData: FormData) {
         actorRole: "SUPER_ADMIN",
         action: "UPDATE_EDITION",
         targetType: "EDITION",
-        targetId: id,
-        metadata: { changes: validated.data },
+        targetId: editionId,
+        metadata: { reason: "Admin Update" },
       },
     });
 
@@ -240,7 +262,7 @@ export async function updateEditionAdmin(formData: FormData) {
 
     // Revalidate Public Site Paths
     const festival = await db.festival.findFirst({
-      where: { editions: { some: { id } } },
+      where: { editions: { some: { id: editionId } } },
       select: { slug: true },
     });
 

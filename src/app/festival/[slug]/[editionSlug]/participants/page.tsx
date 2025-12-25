@@ -56,9 +56,9 @@ export default async function ParticipantsPage({
           <h2 className="text-3xl font-bold tracking-tight">Participants</h2>
           <p className="text-muted-foreground">
             Managing participants for{" "}
-            <span className="font-semibold text-foreground">
-              {activeEdition.name}
-            </span>
+            <h1 className="text-2xl font-bold tracking-tight uppercase">
+              {activeEdition.slug} Participants
+            </h1>
           </p>
         </div>
         <div className="flex items-center gap-4 text-sm font-medium border px-4 py-2 rounded-lg bg-muted/50">

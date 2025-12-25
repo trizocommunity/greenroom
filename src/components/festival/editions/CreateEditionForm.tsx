@@ -48,13 +48,16 @@ export function CreateEditionForm({ festivalId }: { festivalId: string }) {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="name">Edition Name</Label>
+            <Label htmlFor="slug">Edition Slug</Label>
             <Input
-              id="name"
-              name="name"
-              placeholder="e.g. 10th Anniversary Edition"
+              id="slug"
+              name="slug"
+              placeholder="e.g. edition-2024"
               required
             />
+            <p className="text-[0.8rem] text-muted-foreground">
+              The slug is used as the edition name and must be unique.
+            </p>
           </div>
 
           <div className="space-y-2">

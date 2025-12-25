@@ -13,7 +13,6 @@ export async function createEditionAction(_formData: FormData) {
 const updateEditionSchema = z.object({
   id: z.string().min(1, "Edition ID is required"),
   festivalId: z.string().min(1, "Festival ID is required"),
-  name: z.string().min(1, "Name is required"),
   slug: z.string().min(1, "Slug is required"),
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
@@ -27,17 +26,17 @@ function slugify(text: string) {
   return text
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s-]/g, "") // Remove all non-word chars except spaces and hyphens
-    .replace(/[\s_-]+/g, "-") // Replace spaces, underscores, and multiple hyphens with a single hyphen
-    .replace(/^-+|-+$/g, ""); // Remove leading/trailing hyphens
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 export async function updateEditionAction(formData: FormData) {
   const rawData = {
     id: formData.get("id"),
     festivalId: formData.get("festivalId"),
-    name: formData.get("name"),
-    slug: formData.get("slug"), // Capture slug from form
+    // name removed
+    slug: formData.get("slug"),
     startDate: formData.get("startDate"),
     endDate: formData.get("endDate"),
     description: formData.get("description"),
@@ -55,7 +54,7 @@ export async function updateEditionAction(formData: FormData) {
   const {
     id,
     festivalId,
-    name,
+    // name,
     slug,
     startDate,
     endDate,
@@ -66,6 +65,8 @@ export async function updateEditionAction(formData: FormData) {
   } = validated.data;
 
   // 1. Guard: Check if edition exists and is ACTIVE
+  // Use db import or make sure models/edition.model is used correctly
+  // Assuming findEditionById is a valid function in models
   const existingEdition = await import("@/server/models/edition.model").then(
     (mod) => mod.findEditionById(id),
   );
@@ -79,17 +80,30 @@ export async function updateEditionAction(formData: FormData) {
   }
 
   try {
-    // Check if a DIFFERENT edition already has this slug within the same festival
-    // Note: Prisma unique constraint is usually global or composite.
-    // If Festival + Slug is unique, we are safe.
+    const finalSlug = slugify(slug);
 
-    // Explicit slug takes precedence, otherwise re-slugify name
-    const finalSlug = slug ? slugify(slug) : slugify(name);
+    const existingSlugEdition = await import("@/lib/db").then((mod) =>
+      mod.prisma.edition.findFirst({
+        where: {
+          festivalId: festivalId,
+          slug: finalSlug,
+          NOT: {
+            id: id,
+          },
+        },
+      }),
+    );
+
+    if (existingSlugEdition) {
+      return {
+        error: "An edition with this slug already exists for this festival.",
+      };
+    }
 
     const updatedEdition = await import("@/server/models/edition.model").then(
       (mod) =>
         mod.updateEdition(id, {
-          name,
+          // name: undefined, // remove name update
           slug: finalSlug,
           startDate: new Date(startDate),
           endDate: new Date(endDate),
@@ -108,14 +122,9 @@ export async function updateEditionAction(formData: FormData) {
     revalidatePath(`/festival/${festivalSlug}/${updatedEdition.slug}`);
     revalidatePath(`/festival/${festivalSlug}`);
 
-    // If slug changed, we need to communicate that to the client to redirect
     return { success: true, newSlug: updatedEdition.slug };
   } catch (error: any) {
     console.error("Failed to update edition:", error);
-    if (error.code === "P2002") {
-      // Prisma unique constraint violation
-      return { error: "An edition with this name/slug already exists." };
-    }
     return { error: "Failed to update edition." };
   }
 }

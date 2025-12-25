@@ -9,6 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { ViewDetailsDialog } from "@/components/admin/ViewDetailsDialog";
 
 export default async function AdminAuditLogsPage() {
   const logs = await getAuditLogs();
@@ -31,6 +32,7 @@ export default async function AdminAuditLogsPage() {
               <TableHead>Target</TableHead>
               <TableHead>Actor</TableHead>
               <TableHead>Metadata</TableHead>
+              <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -65,6 +67,14 @@ export default async function AdminAuditLogsPage() {
                   <div className="max-w-[300px] truncate text-xs font-mono text-muted-foreground">
                     {JSON.stringify(log.metadata)}
                   </div>
+                </TableCell>
+                <TableCell>
+                  <ViewDetailsDialog
+                    title="Audit Log Details"
+                    description={`Action: ${log.action} | Time: ${format(log.createdAt, "PPpp")}`}
+                    data={log}
+                    type="audit"
+                  />
                 </TableCell>
               </TableRow>
             ))}

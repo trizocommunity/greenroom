@@ -32,7 +32,6 @@ import {
 
 // Simplified schema relying on server validation mostly, but good to have client side too
 const formSchema = z.object({
-  name: z.string().min(1),
   slug: z.string().min(1),
   startDate: z.string(),
   endDate: z.string(),
@@ -61,7 +60,6 @@ export function AdminEditEditionModal({
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
       slug: "",
       startDate: "",
       endDate: "",
@@ -79,7 +77,6 @@ export function AdminEditEditionModal({
         .then((data) => {
           if (data) {
             form.reset({
-              name: data.name || "",
               slug: data.slug || "",
               startDate: data.startDate
                 ? new Date(data.startDate).toISOString().split("T")[0]
@@ -106,34 +103,12 @@ export function AdminEditEditionModal({
       Object.entries(values).forEach(([key, val]) => {
         if (val) formData.append(key, val);
       });
-      // Capture old slug to compare if needed, but we rely on server response newSlug
-      const currentSlug = form.getValues().slug;
 
       const result = await updateEditionAdmin(formData);
       if (result.success) {
         toast.success("Edition updated successfully");
         onOpenChange(false);
-
-        // Handle Redirect if slug changed and we are on a relevant page
-        if (result.newSlug && result.newSlug !== currentSlug) {
-          // We can check if the current pathname contains the old slug
-          // But actually result.newSlug comes from server standardization
-          // We should compare result.newSlug with what is in the URL potentially
-          // However, simple router.refresh() updates lists.
-          // If we are on the edition detail page, we should redirect.
-          // Since we don't know easily if we are on edit page, let's assume if
-          // pathname ends with or contains the valid-slug.
-          // Safer bet: refresh. If the user complains about "routing url",
-          // they might be on the public page /festival/[slug]/[editionSlug]
-          // If so, router.refresh() won't change the URL.
-          // We need to construct the new URL.
-          // But we lack festivalSlug here to build full URL.
-          // Actually, we can just strict refresh.
-          // IF the user is on the admin list, refresh works.
-          router.refresh();
-        } else {
-          router.refresh();
-        }
+        router.refresh();
       } else {
         toast.error(result.error);
       }
@@ -166,22 +141,6 @@ export function AdminEditEditionModal({
                 {/* General Tab */}
                 <TabsContent value="general" className="space-y-4 pt-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Name</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Winter Edition 2025"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                     <FormField
                       control={form.control}
                       name="slug"

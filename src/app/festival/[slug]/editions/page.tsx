@@ -36,7 +36,7 @@ export default async function EditionsListPage({
 
   const editions = await prisma.edition.findMany({
     where: { festivalId: festival.id },
-    orderBy: { number: "desc" },
+    orderBy: { createdAt: "desc" },
     include: {
       limits: true,
     },
@@ -54,7 +54,7 @@ export default async function EditionsListPage({
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-border/40 pb-8">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold tracking-tight bg-linear-to-r from-white to-zinc-400 bg-clip-text text-transparent">
             Editions History
           </h1>
           <p className="text-muted-foreground text-lg max-w-2xl">
@@ -89,7 +89,7 @@ export default async function EditionsListPage({
             <Card className="h-full border-border/40 bg-card/50 hover:bg-card/80 hover:border-primary/20 transition-all duration-300 relative overflow-hidden group-hover:shadow-lg group-hover:shadow-primary/5">
               {/* Decorative gradient blob */}
               <div
-                className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br -z-10 blur-3xl opacity-10 rounded-full translate-x-10 -translate-y-10 transition-opacity group-hover:opacity-20 ${
+                className={`absolute top-0 right-0 w-32 h-32 bg-linear-to-br -z-10 blur-3xl opacity-10 rounded-full translate-x-10 -translate-y-10 transition-opacity group-hover:opacity-20 ${
                   edition.status === "ACTIVE"
                     ? "from-green-500 to-emerald-700"
                     : "from-blue-500 to-indigo-700"
@@ -110,8 +110,8 @@ export default async function EditionsListPage({
                         <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
                       )}
                     </div>
-                    <CardTitle className="text-xl group-hover:text-primary transition-colors">
-                      {edition.name || `${edition.number}th Edition`}
+                    <CardTitle className="text-xl group-hover:text-primary transition-colors uppercase">
+                      {edition.slug}
                     </CardTitle>
                   </div>
                   <EditionStatusBadge status={edition.status} size="sm" />
@@ -128,7 +128,7 @@ export default async function EditionsListPage({
               <CardContent className="pb-3">
                 <div className="grid grid-cols-3 gap-2 py-4 border-y border-border/40">
                   <div className="flex flex-col items-center justify-center p-2 rounded-md bg-secondary/20">
-                    <Users className="w-4 h-4 mb-1 text-muted-foreground text-blue-400" />
+                    <Users className="w-4 h-4 mb-1 text-blue-400" />
                     <span className="text-lg font-bold leading-none">
                       {edition.participantsCount}
                     </span>
@@ -137,7 +137,7 @@ export default async function EditionsListPage({
                     </span>
                   </div>
                   <div className="flex flex-col items-center justify-center p-2 rounded-md bg-secondary/20">
-                    <Mic2 className="w-4 h-4 mb-1 text-muted-foreground text-purple-400" />
+                    <Mic2 className="w-4 h-4 mb-1 text-purple-400" />
                     <span className="text-lg font-bold leading-none">
                       {edition.eventsCount}
                     </span>
@@ -146,7 +146,7 @@ export default async function EditionsListPage({
                     </span>
                   </div>
                   <div className="flex flex-col items-center justify-center p-2 rounded-md bg-secondary/20">
-                    <Trophy className="w-4 h-4 mb-1 text-muted-foreground text-amber-400" />
+                    <Trophy className="w-4 h-4 mb-1 text-amber-400" />
                     <span className="text-lg font-bold leading-none">
                       {edition.judgesCount}
                     </span>

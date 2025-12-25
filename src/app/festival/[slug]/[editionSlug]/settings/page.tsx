@@ -29,7 +29,7 @@ export default async function EditionSettingsPage({
       <div>
         <h3 className="text-2xl font-bold tracking-tight">Edition Settings</h3>
         <p className="text-muted-foreground">
-          Manage configuration for {edition.name || edition.slug}.
+          Manage configuration for {edition.slug.toUpperCase()}.
         </p>
       </div>
       <Separator />

@@ -103,9 +103,7 @@ export function LimitationCard({
               <Progress
                 value={percentage}
                 className="h-1 bg-zinc-800"
-                indicatorClassName={
-                  item.color && item.color.replace("text-", "bg-")
-                }
+                indicatorClassName={item.color?.replace("text-", "bg-")}
               />
             </div>
           );

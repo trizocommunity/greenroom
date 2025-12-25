@@ -118,7 +118,7 @@ export function FestivalNavbar({
         {/* Right Side - Auth */}
         <div className="hidden md:flex items-center gap-3">
           {isLoggedIn ? (
-            <Link href={`/festival/${festival.slug}/dashboard`}>
+            <Link href={`/festival/${festival.slug}`}>
               <Button
                 size="sm"
                 className="gap-2"

@@ -93,12 +93,12 @@ export function EditionsTab() {
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white">
-                  {activeEdition.name}
+                <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white uppercase">
+                  {activeEdition.slug}
                 </h3>
                 <div className="flex items-center gap-2 text-zinc-400 font-medium text-sm">
-                  <span className="opacity-70">
-                    Edition #{activeEdition.number}
+                  <span className="opacity-70 uppercase tracking-widest text-xs">
+                    Current Edition
                   </span>
                   <span className="w-1 h-1 rounded-full bg-zinc-600" />
                   <div className="flex items-center gap-1.5">
@@ -202,13 +202,10 @@ export function EditionsTab() {
               >
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start mb-1">
-                    <Badge variant="outline" className="font-mono text-[10px]">
-                      #{edition.number}
-                    </Badge>
                     <EditionStatusBadge status={edition.status} size="sm" />
                   </div>
-                  <CardTitle className="text-lg font-bold">
-                    {edition.name || edition.slug}
+                  <CardTitle className="text-lg font-bold uppercase">
+                    {edition.slug}
                   </CardTitle>
                   <CardDescription className="text-xs">
                     {new Date(edition.startDate).toLocaleDateString()} -{" "}

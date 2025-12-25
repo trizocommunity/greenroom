@@ -19,21 +19,6 @@ export async function findEditionById(id: string) {
 //   });
 // }
 
-export async function findEditionByFestivalAndNumber(
-  festivalId: string,
-  number: number,
-) {
-  return prisma.edition.findUnique({
-    where: {
-      festivalId_number: {
-        festivalId,
-        number,
-      },
-    },
-    include: { limits: true },
-  });
-}
-
 export async function findEditionByFestivalAndSlug(
   festivalId: string,
   slug: string,
@@ -68,6 +53,6 @@ export async function updateEdition(
 export async function getFestivalEditions(festivalId: string) {
   return prisma.edition.findMany({
     where: { festivalId },
-    orderBy: { number: "desc" },
+    orderBy: { startDate: "desc" },
   });
 }

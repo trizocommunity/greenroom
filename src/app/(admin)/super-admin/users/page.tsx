@@ -1,6 +1,7 @@
 import { adminService } from "@/server/services/admin.service";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { ViewDetailsDialog } from "@/components/admin/ViewDetailsDialog";
 import {
   Table,
   TableBody,
@@ -29,6 +30,7 @@ export default async function AdminUsersPage() {
               <TableHead>Festival</TableHead>
               <TableHead>Join Date</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -67,6 +69,13 @@ export default async function AdminUsersPage() {
                   <Badge variant={user.isActive ? "default" : "secondary"}>
                     {user.isActive ? "Active" : "Inactive"}
                   </Badge>
+                </TableCell>
+                <TableCell>
+                  <ViewDetailsDialog
+                    title="User Details"
+                    description={`User ID: ${user.id}`}
+                    data={user}
+                  />
                 </TableCell>
               </TableRow>
             ))}

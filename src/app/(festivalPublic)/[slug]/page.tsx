@@ -1,3 +1,4 @@
+import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FeaturedPrograms } from "@/components/festival/landing/FeaturedPrograms";
 import { GalleryPreview } from "@/components/festival/landing/GalleryPreview";
@@ -7,6 +8,39 @@ import { StatsSection } from "@/components/festival/landing/StatsSection";
 import { getPublicFestivalData } from "@/server/loader/festivalPublic";
 import { EditionSelector } from "@/components/festival/public/EditionSelector";
 import { EditionStatusBadge } from "@/components/festival/public/EditionStatusBadge";
+import Image from "next/image";
+
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ edition?: string }>;
+}): Promise<Metadata> {
+  const { slug: festivalSlug } = await params;
+  const { edition: editionParam } = await searchParams;
+  const data = await getPublicFestivalData(festivalSlug, editionParam);
+
+  if (!data) return { title: "Festival Not Found" };
+
+  const { festival, edition } = data;
+  const currentEditionName = edition?.slug;
+  const title = currentEditionName
+    ? `${festival.name} - ${currentEditionName}`
+    : festival.name;
+
+  return {
+    title: title,
+    description: festival.description,
+    openGraph: {
+      title: title,
+      description: festival.description || undefined,
+      images: (festival.branding as any)?.heroImage
+        ? [(festival.branding as any).heroImage]
+        : [],
+    },
+  };
+}
 
 export default async function FestivalPage({
   params,
@@ -34,7 +68,7 @@ export default async function FestivalPage({
           {festival.branding &&
             typeof festival.branding === "object" &&
             "logo" in festival.branding && (
-              <img
+              <Image
                 src={(festival.branding as any).logo}
                 alt={festival.name}
                 className="h-24 w-24 object-contain mx-auto mb-6"
@@ -113,7 +147,7 @@ export default async function FestivalPage({
           isHistoricalView={isHistoricalView}
         />
         <EditionSelector
-          currentEditionNumber={edition.number}
+          currentEditionSlug={edition.slug}
           availableEditions={availableEditions}
         />
       </div>
@@ -130,7 +164,7 @@ export default async function FestivalPage({
               About the Event
             </span>
             <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-foreground">
-              {edition.name || `${edition.number}th Edition`}
+              {edition.slug}
             </h2>
             <p className="text-xl text-muted-foreground leading-relaxed font-medium">
               {displayData.description}

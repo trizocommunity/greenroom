@@ -229,6 +229,7 @@ export function ResultsClient({
           <div className="space-y-4">
             {selectedProgram?.posterUrl ? (
               <>
+                {/* biome-ignore lint/performance/noImgElement: External user content */}
                 <img
                   src={selectedProgram.posterUrl}
                   alt={`${selectedProgram.name} poster`}

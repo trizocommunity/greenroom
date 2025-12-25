@@ -134,7 +134,6 @@ export async function finalizeEditionPayment(
         const edition = await tx.edition.create({
           data: {
             festivalId: payment.festivalId!,
-            number: nextEditionNumber,
             slug: editionSlug,
             tier: tier,
             tierLabel: config.label,

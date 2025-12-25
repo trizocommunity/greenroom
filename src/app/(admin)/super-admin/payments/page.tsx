@@ -1,6 +1,7 @@
 import { adminService } from "@/server/services/admin.service";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { ViewDetailsDialog } from "@/components/admin/ViewDetailsDialog";
 import {
   Table,
   TableBody,
@@ -53,6 +54,7 @@ export default async function AdminPaymentsPage() {
               <TableHead>Context</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Date</TableHead>
+              <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -80,11 +82,7 @@ export default async function AdminPaymentsPage() {
                       <span>Fest: {payment.festival.name}</span>
                     )}
                     {payment.edition && (
-                      <span>
-                        Edt:{" "}
-                        {payment.edition.name ||
-                          `No. ${payment.edition.number}`}
-                      </span>
+                      <span>Edt: {payment.edition.slug.toUpperCase()}</span>
                     )}
                     {!payment.festival && !payment.edition && (
                       <span className="text-muted-foreground">-</span>
@@ -98,6 +96,13 @@ export default async function AdminPaymentsPage() {
                 </TableCell>
                 <TableCell>
                   {format(payment.createdAt, "MMM d, yyyy")}
+                </TableCell>
+                <TableCell>
+                  <ViewDetailsDialog
+                    title="Payment Details"
+                    description={`Reference: ${payment.referenceId}`}
+                    data={payment}
+                  />
                 </TableCell>
               </TableRow>
             ))}

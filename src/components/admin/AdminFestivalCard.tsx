@@ -41,8 +41,6 @@ import { AdminEditEditionModal } from "@/components/admin/AdminEditEditionModal"
 
 interface Edition {
   id: string;
-  name: string | null;
-  number: number;
   slug: string;
   status: "ACTIVE" | "FREEZE" | "ARCHIVED";
   tier: string;
@@ -70,7 +68,7 @@ export function AdminFestivalCard({ festival }: AdminFestivalCardProps) {
   // Helper to get edition name for the freeze modal
   const getEditionName = (id: string) => {
     const edition = festival.editions.find((e) => e.id === id);
-    return edition ? edition.name || `Edition ${edition.number}` : "";
+    return edition ? edition.slug : "";
   };
 
   return (
@@ -186,7 +184,7 @@ export function AdminFestivalCard({ festival }: AdminFestivalCardProps) {
                         <div className="flex flex-col gap-0.5">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium text-slate-200">
-                              {edition.name || `Edition ${edition.number}`}
+                              {edition.slug.toUpperCase()}
                             </span>
                             {edition.status === "ACTIVE" && (
                               <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />

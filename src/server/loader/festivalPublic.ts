@@ -21,8 +21,6 @@ export type PublicFestivalData = {
   edition: {
     id: string;
     slug: string;
-    number: number;
-    name: string | null;
     status: EditionStatus;
     startDate: Date;
     endDate: Date;
@@ -35,8 +33,7 @@ export type PublicFestivalData = {
   isHistoricalView: boolean;
   availableEditions: {
     id: string;
-    number: number;
-    name: string | null;
+    slug: string;
     status: EditionStatus;
   }[];
 };
@@ -86,13 +83,11 @@ export async function getPublicFestivalData(
     },
     select: {
       id: true,
-      number: true,
-      name: true,
       status: true,
       slug: true,
     },
     orderBy: {
-      number: "desc",
+      startDate: "desc",
     },
   });
 
@@ -101,39 +96,29 @@ export async function getPublicFestivalData(
   let isHistoricalView = false;
 
   if (editionIdentifier) {
-    // If specific edition requested (by number)
-    const editionNum = parseInt(editionIdentifier);
-    // Find by number roughly (assuming identifier is number).
-    // If identifier is slug, we could try that too, but plan asked for ?edition=10
-    if (!Number.isNaN(editionNum)) {
-      targetEdition = await prisma.edition.findFirst({
-        where: {
-          festivalId: festival.id,
-          number: editionNum,
-          status: { not: EditionStatus.ARCHIVED }, // Or allow archived? Plan said "Frozen". Let's assume viewable if not draft.
-          // Wait, user requirement says "Public users must be able to view Past Editions".
-          // So Frozen/Archived are okay. Draft is NOT.
-          // Let's rely on standard logic: status in ACTIVE, FREEZE, ARCHIVED (if we use ARCHIVED for hidden old ones, maybe not, but schema says 'cold storage').
-          // Phase 6 intro says "No public users must never see system states". Draft is system state. Active/Freeze are public.
-        },
-        select: {
-          id: true,
-          slug: true,
-          number: true,
-          name: true,
-          status: true,
-          startDate: true,
-          endDate: true,
-          description: true,
-          theme: true,
-          venue: true,
-          location: true,
-          tierLabel: true,
-        },
-      });
-      if (targetEdition) {
-        isHistoricalView = true;
-      }
+    // Treat identifier as slug directly
+    targetEdition = await prisma.edition.findFirst({
+      where: {
+        festivalId: festival.id,
+        slug: editionIdentifier,
+        status: { not: EditionStatus.ARCHIVED }, // Same logic as before if desired
+      },
+      select: {
+        id: true,
+        slug: true,
+        status: true,
+        startDate: true,
+        endDate: true,
+        description: true,
+        theme: true,
+        venue: true,
+        location: true,
+        tierLabel: true,
+      },
+    });
+
+    if (targetEdition) {
+      isHistoricalView = true;
     }
   }
 
@@ -145,12 +130,10 @@ export async function getPublicFestivalData(
         festivalId: festival.id,
         status: EditionStatus.ACTIVE,
       },
-      orderBy: { number: "desc" },
+      orderBy: { startDate: "desc" },
       select: {
         id: true,
         slug: true,
-        number: true,
-        name: true,
         status: true,
         startDate: true,
         endDate: true,
@@ -172,12 +155,10 @@ export async function getPublicFestivalData(
           festivalId: festival.id,
           status: EditionStatus.FREEZE,
         },
-        orderBy: { number: "desc" },
+        orderBy: { startDate: "desc" },
         select: {
           id: true,
           slug: true,
-          number: true,
-          name: true,
           status: true,
           startDate: true,
           endDate: true,
@@ -190,12 +171,10 @@ export async function getPublicFestivalData(
       });
       if (latestFrozen) {
         targetEdition = latestFrozen;
-        isHistoricalView = true; // Implicitly historical since it is not active
+        isHistoricalView = true;
       }
     }
   }
-
-  // NOTE: If still no targetEdition, user sees "Coming Soon" state handled by frontend
 
   return {
     festival,

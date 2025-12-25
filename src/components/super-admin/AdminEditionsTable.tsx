@@ -56,22 +56,21 @@ export function AdminEditionsTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Number</TableHead>
-              <TableHead>Name</TableHead>
               <TableHead>Slug</TableHead>
+              <TableHead>Festival</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Dates</TableHead>
+              <TableHead>Tier</TableHead>
+              <TableHead>Date</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {editions.map((edition) => (
               <TableRow key={edition.id}>
-                <TableCell className="font-medium">#{edition.number}</TableCell>
-                <TableCell>{edition.name || "-"}</TableCell>
-                <TableCell className="font-mono text-xs">
+                <TableCell className="font-medium font-mono">
                   {edition.slug}
                 </TableCell>
+                <TableCell>{edition.festival.name}</TableCell>
                 <TableCell>
                   <Badge
                     variant={
