@@ -2,7 +2,7 @@
 
 import { ActionResponse } from "@/types/actions";
 import { prisma } from "@/lib/db";
-import { EditionTier, type Prisma } from "@prisma/client"; // EditionTier used as value
+import { type EditionTier, type Prisma } from "@prisma/client"; // EditionTier used as type
 import { TIER_CONFIG } from "@/config/pricing";
 import Razorpay from "razorpay";
 import crypto from "crypto";
@@ -96,6 +96,9 @@ export async function finalizeEditionPayment(
     if (!payment) return { success: false, error: "Payment not found" };
     if (!payment.festivalId)
       return { success: false, error: "Payment not linked to festival" };
+    if (!payment.festival)
+      return { success: false, error: "Festival data not available" };
+
     if (payment.status === "SUCCESS")
       return { success: false, error: "Payment already processed" };
 
@@ -126,30 +129,53 @@ export async function finalizeEditionPayment(
       (await prisma.edition.count({
         where: { festivalId: payment.festivalId },
       })) + 1;
-    const editionSlug = `${payment.festival?.slug}-edition-${nextEditionNumber}`;
+
+    // Ensure slug is valid
+    const festivalSlug = payment.festival.slug;
+    if (!festivalSlug)
+      return { success: false, error: "Festival slug missing" };
+
+    const editionSlug = `${festivalSlug}-edition-${nextEditionNumber}`;
+
+    // Prepare data with explicit defaults to prevent DB null constraint violations
+    const editionData = {
+      festivalId: payment.festivalId!,
+      number: nextEditionNumber, // Required by DB schema
+      slug: editionSlug,
+      tier: tier,
+      tierLabel: config.label,
+      status: "ACTIVE" as const,
+      startDate: new Date(),
+      endDate: new Date(Date.now() + config.durationDays * 24 * 60 * 60 * 1000),
+
+      // Explicit constraints for potential DB mismatch (Root Cause Fix)
+      description: "",
+      theme: "",
+      venue: "",
+      location: "",
+      participantsCount: 0,
+      eventsCount: 0,
+      judgesCount: 0,
+      storageUsedMB: 0,
+
+      createdByPaymentId: payment.id,
+    };
+
+    const limitsData = {
+      maxParticipants: config.limits.participants,
+      maxEvents: config.limits.events,
+      maxJudges: config.limits.judges,
+      maxStorageMB: config.limits.storageMB,
+    };
 
     const result = await prisma.$transaction(
       async (tx: Prisma.TransactionClient) => {
-        // Create Edition with Limits
+        // Create Edition with Limits (Atomic)
         const edition = await tx.edition.create({
           data: {
-            festivalId: payment.festivalId!,
-            slug: editionSlug,
-            tier: tier,
-            tierLabel: config.label,
-            status: "ACTIVE",
-            startDate: new Date(),
-            endDate: new Date(
-              Date.now() + config.durationDays * 24 * 60 * 60 * 1000,
-            ),
-            createdByPaymentId: payment.id,
+            ...editionData,
             limits: {
-              create: {
-                maxParticipants: config.limits.participants,
-                maxEvents: config.limits.events,
-                maxJudges: config.limits.judges,
-                maxStorageMB: config.limits.storageMB,
-              },
+              create: limitsData,
             },
           },
         });

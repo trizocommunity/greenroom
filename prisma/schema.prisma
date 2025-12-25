@@ -145,6 +145,7 @@ model Edition {
   festivalId String
   festival   Festival @relation(fields: [festivalId], references: [id])
 
+  number Int // Sequential edition number (1, 2, 3...)
   slug   String // URL-friendly identifier
   tier   EditionTier @default(STANDARD)
   tierLabel String @default("Standard") // Added for UI identity persistence
