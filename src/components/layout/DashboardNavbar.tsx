@@ -1,21 +1,52 @@
 "use client";
 
 import Link from "next/link";
-import { LogoutButton } from "@/components/auth/LogoutButton";
+import { useState } from "react";
+import { Menu } from "lucide-react";
+import type { User } from "@prisma/client";
 
-export default function DashboardNavbar() {
+import { LogoutButton } from "@/components/auth/LogoutButton";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { ProfileSidebarContent } from "@/components/profile/ProfileSidebarContent";
+
+interface DashboardNavbarProps {
+  user: Pick<User, "fullName" | "displayName" | "age" | "email">;
+}
+
+export default function DashboardNavbar({ user }: DashboardNavbarProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
     <header className="fixed top-0 left-0 right-0 z-40 backdrop-blur-2xl border-b border-white/10 bg-background/80">
       <div className="mx-auto max-w-7xl px-4 h-20 flex items-center justify-between">
-        {/* Logo - Points to Profile (Home for logged in users) */}
         <Link
           href={"/profile"}
           className="text-2xl font-black uppercase tracking-tighter text-foreground"
         >
           Greenroom
         </Link>
-        {/* Dashboard Actions */}
-        <LogoutButton />
+        <div className="md:hidden">
+          <Sheet open={isOpen} onOpenChange={setIsOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0">
+              <div className="py-6 h-full">
+                <ProfileSidebarContent
+                  user={user}
+                  className="px-2"
+                  onLinkClick={() => setIsOpen(false)}
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+        <div className="hidden md:block">
+          <LogoutButton />
+        </div>
       </div>
     </header>
   );

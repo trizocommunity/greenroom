@@ -74,17 +74,31 @@ model PasswordResetToken {
   @@map("password_reset_token")
 }
 
+enum PaymentPurpose {
+  FESTIVAL_AND_FIRST_EDITION
+  NEW_EDITION
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
 model Payment {
   id          String  @id @default(uuid())
   amount      Int
   currency    String
-  status      String // "captured", "failed"
+  status      PaymentStatus @default(PENDING)
   providerId  String // Razorpay Order ID
   referenceId String? // Razorpay Payment ID
   receipt     String?
 
   tier        EditionTier?  // Stored for immutable record
 
+  purpose     PaymentPurpose @default(NEW_EDITION) // Defaulting to avoid breaking old rows immediately, but practically mostly used for upgrades.
+  used        Boolean        @default(false)      // True if this payment has been "redeemed" to create a resource
 
   validUntil DateTime? // Logic: Subscription valid until... (Made optional as logic shifts to Edition)
 

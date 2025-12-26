@@ -29,8 +29,10 @@ export function OverviewTab({ displayName }: OverviewTabProps) {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="space-y-2">
-        <h2 className="text-3xl font-black uppercase tracking-tighter text-foreground">
-          Welcome back, {displayName}!
+        <h2 className="text-3xl uppercase tracking-tighter text-foreground">
+          <span className="font-medium">Welcome, </span>
+          <span className="text-primary font-black">{displayName}</span>
+          <span className="font-medium">!</span>
         </h2>
         <p className="text-muted-foreground">
           Ready to launch your next big event? Choose a plan below to get
@@ -47,10 +49,10 @@ export function OverviewTab({ displayName }: OverviewTabProps) {
           <CardHeader>
             <div className="flex justify-between items-start">
               <div>
-                <Badge className="mb-2 bg-primary/10 text-primary hover:bg-primary/20 border-primary/20">
+                <Badge className="mb-2 bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 font-medium">
                   Most Popular
                 </Badge>
-                <CardTitle className="text-2xl md:text-3xl">
+                <CardTitle className="text-2xl md:text-3xl font-black">
                   {standardTier.name} Plan
                 </CardTitle>
                 <CardDescription className="text-base mt-2 max-w-2xl">
