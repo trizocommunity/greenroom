@@ -1,6 +1,5 @@
 import {
   BarChart3,
-  BookOpen,
   Calendar,
   ClipboardList,
   Edit,
@@ -142,41 +141,35 @@ export const getFestivalDashboardSidebarConfig = (
       ],
     },
     {
-      title: "Pre-Works (Setup)",
+      title: "Pre-Works",
       items: [
         {
-          title: "Setup Data",
-          href: `${basePath}/setup`,
-          icon: BookOpen,
-          allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
-        },
-        {
-          title: "Participants",
-          href: `${basePath}/participants`,
-          icon: UsersRound,
-          allowedRoles: ["ADMIN", "OWNER", "TEAM-LEADER"],
-        },
-        {
           title: "Categories",
-          href: `${basePath}/categories`,
+          href: `${basePath}/pre-works/categories`,
           icon: ClipboardList,
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {
           title: "Programmes",
-          href: `${basePath}/programmes`,
+          href: `${basePath}/pre-works/programmes`,
           icon: FileText,
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {
-          title: "Institutions",
-          href: `${basePath}/institutions`,
+          title: "Groups",
+          href: `${basePath}/pre-works/groups`,
           icon: Building2,
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {
-          title: "Assign Prog ↔ Ptcp",
-          href: `${basePath}/assign-programmes`,
+          title: "Participants",
+          href: `${basePath}/pre-works/participants`,
+          icon: UsersRound,
+          allowedRoles: ["ADMIN", "OWNER", "TEAM-LEADER"],
+        },
+        {
+          title: "Programme Assignment",
+          href: `${basePath}/pre-works/assignments`,
           icon: Edit,
           allowedRoles: ["ADMIN", "OWNER", "TEAM-LEADER"],
         },

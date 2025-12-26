@@ -6,9 +6,12 @@ import { z } from "zod";
 
 const createParticipantSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email"),
+  email: z.string().email("Invalid email").optional().or(z.literal("")),
   phone: z.string().optional(),
   editionId: z.string().min(1, "Edition ID is required"),
+  groupId: z.string().min(1, "Group ID is required"),
+  categoryId: z.string().min(1, "Category ID is required"),
+  gender: z.enum(["MALE", "FEMALE", "OTHER"]).default("MALE"),
 });
 
 export async function createParticipantAction(formData: FormData) {
@@ -17,6 +20,9 @@ export async function createParticipantAction(formData: FormData) {
     email: formData.get("email"),
     phone: formData.get("phone"),
     editionId: formData.get("editionId"),
+    groupId: formData.get("groupId"),
+    categoryId: formData.get("categoryId"),
+    gender: formData.get("gender"),
   };
 
   const validated = createParticipantSchema.safeParse(rawData);
@@ -25,7 +31,8 @@ export async function createParticipantAction(formData: FormData) {
     return { error: validated.error.flatten().fieldErrors };
   }
 
-  const { name, email, phone, editionId } = validated.data;
+  const { name, email, phone, editionId, groupId, categoryId, gender } =
+    validated.data;
 
   try {
     // Transaction to enforce limit and atomicity
@@ -52,26 +59,26 @@ export async function createParticipantAction(formData: FormData) {
       }
 
       // 2. Create Participant
-      // Check for duplicate email in this edition first (though DB unique constraint handles it, nicer error here)
-      const existing = await tx.participant.findUnique({
-        where: {
-          editionId_email: {
-            editionId,
-            email,
-          },
-        },
-      });
+      // Check for duplicate email in this edition first (if email provided)
+      if (email) {
+        const existing = await tx.participant.findFirst({
+          where: { editionId, email },
+        });
 
-      if (existing) {
-        throw new Error("This email is already registered for this edition.");
+        if (existing) {
+          throw new Error("This email is already registered for this edition.");
+        }
       }
 
       await tx.participant.create({
         data: {
-          editionId,
+          edition: { connect: { id: editionId } },
+          group: { connect: { id: groupId } },
+          category: { connect: { id: categoryId } },
           name,
           email,
           phone,
+          gender,
         },
       });
 

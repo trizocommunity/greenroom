@@ -172,6 +172,10 @@ model Edition {
   payments Payment[]
 
   participants Participant[]
+  categories   EditionCategory[]
+  groups       EditionGroup[]
+  programmes   Programme[]
+  programmeAssignments ProgrammeAssignment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -180,22 +184,7 @@ model Edition {
   @@map("edition")
 }
 
-model Participant {
-  id        String  @id @default(uuid())
-  editionId String
-  edition   Edition @relation(fields: [editionId], references: [id])
 
-  name               String
-  email              String
-  phone              String?
-  registrationNumber String? // Optional chest number/ID
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([editionId, email]) // Prevent duplicate registration in same edition
-  @@map("participant")
-}
 
 model EditionLimit {
   id        String  @id @default(uuid())
@@ -210,6 +199,155 @@ model EditionLimit {
   createdAt DateTime @default(now())
 
   @@map("edition_limit")
+}
+
+// -----------------------------------------------------------------------------
+// Pre-Works Enums
+// -----------------------------------------------------------------------------
+
+enum ProgrammeType {
+  INDIVIDUAL
+  GROUP
+}
+
+enum StageType {
+  STAGE
+  NON_STAGE
+}
+
+enum GroupType {
+  SCHOOL
+  COLLEGE
+  MADRASA
+  OPEN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+// -----------------------------------------------------------------------------
+// Pre-Works Models
+// -----------------------------------------------------------------------------
+
+model EditionCategory {
+  id          String   @id @default(uuid())
+  editionId   String
+  edition     Edition  @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  
+  name        String
+  description String?
+  
+  programmes  Programme[]
+  participants Participant[] // Optional: Linking participant to a default/main category if needed
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("edition_category")
+}
+
+model Programme {
+  id          String        @id @default(uuid())
+  editionId   String
+  edition     Edition       @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  
+  categoryId  String
+  category    EditionCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  name        String
+  type        ProgrammeType @default(INDIVIDUAL)
+  stageType   StageType     @default(STAGE)
+  maxEntries  Int           @default(1) // Max participants per group/school if applicable, or generic limit
+
+  assignments ProgrammeAssignment[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("programme")
+}
+
+model EditionGroup {
+  id          String    @id @default(uuid())
+  editionId   String
+  edition     Edition   @relation(fields: [editionId], references: [id], onDelete: Cascade)
+
+  name        String
+  type        GroupType @default(SCHOOL)
+
+  participants Participant[]
+  assignments  ProgrammeAssignment[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("edition_group")
+}
+
+model ProgrammeAssignment {
+  id            String    @id @default(uuid())
+  editionId     String
+  edition       Edition   @relation(fields: [editionId], references: [id], onDelete: Cascade)
+
+  programmeId   String
+  programme     Programme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+
+  // Polymorphic-ish assignment: Usually assigning a participant.
+  // For group events, we might still assign individual participants OR a group entity.
+  // Requirement says: "participantId // OR groupId (for group events)"
+  // Keeping it clean: A Participant is the core entity. Even for group events, you assign 'members'.
+  // IF the user specifically wants to assign a "Group" entity directly, we'd need a groupId field here.
+  // Based on "participantId // OR groupId", I will add optional groupId but prioritize participant logic if strict MVC.
+  // Let's stick to explicit fields.
+  
+  participantId String?
+  participant   Participant? @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  groupId       String?
+  group         EditionGroup? @relation(fields: [groupId], references: [id]) 
+
+  assignedAt    DateTime @default(now())
+
+  // Validation should ensure either participantId OR groupId is set, not both (or as per logic).
+  // Also uniqueness: A participant shouldn't be assigned to the same programme twice.
+
+  @@unique([programmeId, participantId])
+  // @@unique([programmeId, groupId]) // Conditional uniqueness difficult in pure Prisma, handle in service.
+  
+  @@map("programme_assignment")
+}
+
+model Participant {
+  id        String  @id @default(uuid())
+  editionId String
+  edition   Edition @relation(fields: [editionId], references: [id], onDelete: Cascade)
+
+  // Relations
+  groupId   String
+  group     EditionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  categoryId String
+  category   EditionCategory @relation(fields: [categoryId], references: [id]) // Restrict delete if participants exist? Or Cascade?
+
+  name               String
+  email              String? // Made optional as per some festival contexts (children) but unique constraint might need review
+  phone              String?
+  gender             Gender?
+  registrationNumber String? // Optional chest number/ID
+
+  assignments ProgrammeAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([editionId, email]) // Keep email unique per edition if provided? 
+  // If email is optional, unique constraint on nulls varies by DB. Postgres supports multiple nulls.
+  // If email is NOT empty string. A service level check is safer if logic is complex.
+  
+  @@map("participant")
 }
 
 model AuditLog {
