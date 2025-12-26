@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { decrypt } from "@/lib/auth/session";
 
 // 1. Specify protected and public routes
-const protectedRoutes = ["/profile", "/super-admin", "/onboarding"];
+const protectedRoutes = ["/profile", "/super-admin"];
 const publicRoutes = [
   "/login",
   "/register",
@@ -95,21 +95,6 @@ export default async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/login", req.nextUrl));
   }
 
-  // 5. Onboarding Check
-  const isOnboardingRoute = path === "/onboarding";
-  if (session?.userId) {
-    // If not onboarded, redirect to onboarding (both roles)
-    if (!session.isOnboarded && !isOnboardingRoute) {
-      return NextResponse.redirect(new URL("/onboarding", req.nextUrl));
-    }
-    // If onboarded and on onboarding route, redirect to respective dashboard
-    if (session.isOnboarded && isOnboardingRoute) {
-      const target =
-        session.role === "SUPER_ADMIN" ? "/super-admin" : "/profile";
-      return NextResponse.redirect(new URL(target, req.nextUrl));
-    }
-  }
-
   // 6. Strict Access: Redirect to dashboard if authenticated and tries to access ANY public route
   // EXCEPTION: Allow access to festival subdomains so admins can view the public site
   if (
@@ -117,7 +102,6 @@ export default async function middleware(req: NextRequest) {
     isPublicRoute &&
     path !== "/profile" &&
     path !== "/super-admin" &&
-    !isOnboardingRoute &&
     !isFestivalRequest
   ) {
     const target = session.role === "SUPER_ADMIN" ? "/super-admin" : "/profile";
@@ -129,7 +113,6 @@ export default async function middleware(req: NextRequest) {
 
   // STRICT RULE: Super Admins cannot access User routes (Profile)
   if (role === "SUPER_ADMIN") {
-    // Note: Onboarding is allowed if !isOnboarded (handled in section 5)
     if (path.startsWith("/profile")) {
       return NextResponse.redirect(new URL("/super-admin", req.nextUrl));
     }

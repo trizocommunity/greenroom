@@ -28,12 +28,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const isOnboarded = !!(
-      user.fullName &&
-      user.displayName &&
-      user.age !== null
-    );
-    await createSession(user.id, user.globalRole, isOnboarded);
+    await createSession(user.id, user.globalRole);
 
     return NextResponse.json({ success: true, role: user.globalRole });
   } catch (error) {

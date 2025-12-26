@@ -40,10 +40,8 @@ export async function updateProfile(data: z.infer<typeof profileSchema>) {
       },
     });
 
-    await updateSession({ isOnboarded: true });
-
     revalidatePath("/profile");
-    revalidatePath("/onboarding");
+
     return { success: true };
   } catch (error) {
     console.error("Profile update error:", error);
