@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Lock,
   ExternalLink,
   LayoutDashboard,
   Settings,
@@ -22,18 +21,17 @@ import {
 import { useMyFestival } from "@/hooks/useFestivals";
 import Link from "next/link";
 import { EditionStatusBadge } from "@/components/festival/EditionStatusBadge";
-import { cn } from "@/lib/utils";
 
 export function EditionsTab() {
   const { data: festival, isLoading } = useMyFestival();
 
   if (isLoading) {
-    return <div className="h-64 animate-pulse bg-muted/50 rounded-xl" />;
+    return <div className="mt-6 h-64 animate-pulse bg-muted/50 rounded-xl" />;
   }
 
   if (!festival) {
     return (
-      <Card className="border-dashed bg-muted/20">
+      <Card className="mt-6 border-dashed bg-muted/20">
         <CardHeader className="text-center pb-8">
           <CardTitle>No Festival Created</CardTitle>
           <CardDescription>
@@ -58,7 +56,7 @@ export function EditionsTab() {
   const otherEditions = editions.filter((e) => e.status !== "ACTIVE");
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="mt-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold tracking-tight">Your Editions</h2>
         {!activeEdition && (

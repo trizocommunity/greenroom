@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Calendar, CreditCard, Settings } from "lucide-react";
+import { LayoutDashboard, Calendar, CreditCard } from "lucide-react";
 
 interface ProfileSidebarProps {
   activeTab: string;
@@ -16,8 +16,8 @@ export function ProfileSidebar({
 }: ProfileSidebarProps) {
   const items = [
     {
-      label: "Dashboard",
-      value: "dashboard",
+      label: "Overview",
+      value: "overview",
       icon: LayoutDashboard,
     },
     {
@@ -29,11 +29,6 @@ export function ProfileSidebar({
       label: "Editions",
       value: "editions",
       icon: CreditCard, // Using CreditCard icon for now or maybe Layers/List? Layers is better.
-    },
-    {
-      label: "Settings",
-      value: "settings",
-      icon: Settings,
     },
   ];
 

@@ -11,12 +11,13 @@ import { z } from "zod";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Form,
   FormControl,
@@ -28,7 +29,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { updateProfile } from "@/server/actions/profile";
 
-import { DashboardTab } from "./DashboardTab";
+import { OverviewTab } from "./OverviewTab";
 import { FestivalsTab } from "./FestivalsTab";
 import { EditionsTab } from "./EditionsTab";
 import { ProfileSidebar } from "./ProfileSidebar";
@@ -54,7 +55,8 @@ interface ProfileViewProps {
 
 export function ProfileView({ user }: ProfileViewProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState("overview");
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema) as any,
@@ -73,6 +75,7 @@ export function ProfileView({ user }: ProfileViewProps) {
       } else {
         toast.success("Profile updated successfully");
         router.refresh();
+        setIsEditModalOpen(false);
       }
     },
     onError: () => {
@@ -93,62 +96,42 @@ export function ProfileView({ user }: ProfileViewProps) {
         .substring(0, 2)
     : user.email.substring(0, 2).toUpperCase();
 
+  const Displayname =
+    user.displayName || user.fullName || user.email.split("@")[0];
+
   return (
     <div className="flex flex-col md:flex-row gap-8">
       <aside className="w-full md:w-64 shrink-0">
-        <div className="flex items-center gap-3 mb-8 px-4">
+        <div className="flex items-center gap-3 mb-4  px-4">
           <Avatar className="h-10 w-10">
             <AvatarImage src="" />
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
           <div className="overflow-hidden">
-            <h1 className="text-sm font-medium truncate">
-              {user.displayName || user.fullName || "User"}
-            </h1>
+            <h1 className="text-sm font-medium truncate">{Displayname}</h1>
             <p className="text-xs text-muted-foreground truncate">
               {user.email}
             </p>
           </div>
         </div>
-        <ProfileSidebar activeTab={activeTab} onTabChange={setActiveTab} />
-      </aside>
-
-      <main className="flex-1 min-w-0">
-        <div className="mb-6">
-          <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-2 text-foreground">
-            {activeTab === "dashboard" && "Dashboard"}
-            {activeTab === "festivals" && "Festivals"}
-            {activeTab === "editions" && "Editions"}
-            {activeTab === "settings" && "General Settings"}
-          </h2>
-          <p className="text-muted-foreground">
-            {activeTab === "dashboard" &&
-              "Overview of your account and activities."}
-            {activeTab === "festivals" && "Manage your festival identity."}
-            {activeTab === "editions" && "Manage festival editions (Locked)."}
-            {activeTab === "settings" && "Update your profile and preferences."}
-          </p>
-        </div>
-
-        {activeTab === "dashboard" && <DashboardTab user={user} />}
-
-        {activeTab === "festivals" && <FestivalsTab />}
-
-        {activeTab === "editions" && <EditionsTab />}
-
-        {activeTab === "settings" && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Edit Profile</CardTitle>
-              <CardDescription>
-                Update your personal information.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+        <div className="px-4 mb-8">
+          <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="w-fit">
+                Edit Profile
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit Profile</DialogTitle>
+                <DialogDescription>
+                  Update your personal information.
+                </DialogDescription>
+              </DialogHeader>
               <Form {...form}>
                 <form
                   onSubmit={form.handleSubmit(onSubmit)}
-                  className="space-y-4 max-w-md"
+                  className="space-y-4"
                 >
                   <FormField
                     control={form.control as any}
@@ -189,17 +172,39 @@ export function ProfileView({ user }: ProfileViewProps) {
                       </FormItem>
                     )}
                   />
-                  <Button
-                    type="submit"
-                    disabled={!form.formState.isValid || isPending}
-                  >
-                    {isPending ? "Saving..." : "Save Changes"}
-                  </Button>
+                  <div className="flex justify-end pt-4">
+                    <Button
+                      type="submit"
+                      disabled={!form.formState.isValid || isPending}
+                    >
+                      {isPending ? "Saving..." : "Save Changes"}
+                    </Button>
+                  </div>
                 </form>
               </Form>
-            </CardContent>
-          </Card>
-        )}
+            </DialogContent>
+          </Dialog>
+        </div>
+        <ProfileSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      </aside>
+
+      <main className="flex-1 min-w-0">
+        <div className="">
+          <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter  text-foreground">
+            {activeTab === "festivals" && "Festivals"}
+            {activeTab === "editions" && "Editions"}
+          </h2>
+          <p className="text-muted-foreground">
+            {activeTab === "festivals" && "Manage your festival identity."}
+            {activeTab === "editions" && "Manage festival editions (Locked)."}
+          </p>
+        </div>
+
+        {activeTab === "overview" && <OverviewTab displayName={Displayname} />}
+
+        {activeTab === "festivals" && <FestivalsTab />}
+
+        {activeTab === "editions" && <EditionsTab />}
       </main>
     </div>
   );

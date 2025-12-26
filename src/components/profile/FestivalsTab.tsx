@@ -44,7 +44,7 @@ export function FestivalsTab() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="mt-6 space-y-6">
       <div className="space-y-10">
         {/* Section 1: Your Festival */}
         <div className="space-y-4">
