@@ -7,6 +7,7 @@ import Razorpay from "razorpay";
 import { TIER_CONFIG } from "@/config/pricing";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { AppError, handleActionError, ERROR_MESSAGES } from "@/lib/errors";
 import type { ActionResponse } from "@/types/actions";
 import { createAuditLog } from "@/server/services/audit-log.service";
 
@@ -21,7 +22,7 @@ export async function initiateFestivalPayment(
 ): Promise<ActionResponse<any>> {
   try {
     const session = await getSession();
-    if (!session?.userId) return { success: false, error: "Unauthorized" };
+    if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
     const userId = session.userId;
 
     console.log(
@@ -29,7 +30,7 @@ export async function initiateFestivalPayment(
     );
 
     const config = TIER_CONFIG[tier];
-    if (!config) return { success: false, error: "Invalid tier" };
+    if (!config) throw new AppError("Invalid or unavailable tier selected.");
 
     // Check for existing pending payment
     const existingPayment = await prisma.payment.findFirst({
@@ -96,12 +97,8 @@ export async function initiateFestivalPayment(
         key: process.env.RAZORPAY_KEY_ID,
       },
     };
-  } catch (error: any) {
-    console.error("Payment initiation error:", error);
-    return {
-      success: false,
-      error: error.message || "Failed to initiate payment",
-    };
+  } catch (error) {
+    return handleActionError(error);
   }
 }
 
@@ -115,9 +112,9 @@ export async function verifyFestivalPayment(
       where: { id: paymentId },
     });
 
-    if (!payment) return { success: false, error: "Payment not found" };
+    if (!payment) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
     if (payment.status === "PAID")
-      return { success: false, error: "Payment already processed" };
+      throw new AppError("This payment has already been processed.");
 
     // Verify Signature
     const body = payment.providerId + "|" + razorpayPaymentId;
@@ -139,7 +136,7 @@ export async function verifyFestivalPayment(
         metadata: { reason: "Invalid signature" },
       });
 
-      return { success: false, error: "Invalid payment signature" };
+      throw new AppError("Payment verification failed. Invalid signature.");
     }
 
     // Mark as PAID
@@ -177,11 +174,7 @@ export async function verifyFestivalPayment(
 
     revalidatePath("/profile");
     return { success: true, data: { paymentId } };
-  } catch (error: any) {
-    console.error("Payment verification error:", error);
-    return {
-      success: false,
-      error: error.message || "Failed to verify payment",
-    };
+  } catch (error) {
+    return handleActionError(error);
   }
 }

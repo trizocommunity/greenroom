@@ -20,11 +20,13 @@ import {
   type CreateFestivalInput,
 } from "@/lib/validations/festival";
 
+import { AppError, handleActionError, ERROR_MESSAGES } from "@/lib/errors";
+
 export async function createFestival(input: CreateFestivalInput) {
   try {
     const session = await getSession();
     if (!session?.userId) {
-      return { success: false, error: "Unauthorized" };
+      throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
     }
 
     // 1. Validate Input
@@ -36,12 +38,12 @@ export async function createFestival(input: CreateFestivalInput) {
     });
 
     if (!payment || payment.status !== "PAID" || payment.used) {
-      return { success: false, error: "Invalid, unpaid, or used payment." };
+      throw new AppError("Invalid, unpaid, or used payment.");
     }
 
     // Payment Purpose Check
     if (payment.purpose !== "FESTIVAL_CREATION") {
-      return { success: false, error: "Payment purpose mismatch." };
+      throw new AppError("Payment purpose mismatch.");
     }
 
     // Resolve Tier (Default to STANDARD if missing)
@@ -104,11 +106,7 @@ export async function createFestival(input: CreateFestivalInput) {
     revalidatePath("/festivals");
 
     return { success: true, data: result };
-  } catch (error: any) {
-    console.error("Create Festival Error:", error);
-    if (error.code === "P2002") {
-      return { success: false, error: "Slug taken." };
-    }
-    return { success: false, error: error.message || "Failed." };
+  } catch (error) {
+    return handleActionError(error);
   }
 }

@@ -63,13 +63,21 @@ export function EditProfileDialog({ user, trigger }: EditProfileDialogProps) {
   const { mutate, isPending } = useMutation({
     mutationFn: updateProfile,
     onSuccess: (result) => {
-      if (result.error) {
+      if (!result.success) {
+        if (result.fields) {
+          Object.entries(result.fields).forEach(([key, message]) => {
+            // @ts-ignore
+            form.setError(key as any, { message });
+          });
+          return;
+        }
         toast.error(result.error);
-      } else {
-        toast.success("Profile updated successfully");
-        router.refresh();
-        setIsOpen(false);
+        return;
       }
+
+      toast.success("Profile updated successfully");
+      router.refresh();
+      setIsOpen(false);
     },
     onError: () => {
       toast.error("Something went wrong.");

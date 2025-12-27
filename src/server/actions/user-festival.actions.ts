@@ -22,14 +22,24 @@ export async function getMyFestival() {
   return festival;
 }
 
-export async function updateFestivalAction(data: UpdateFestivalInput) {
-  const session = await getSession();
-  if (!session?.userId) {
-    return { success: false, error: "Unauthorized" };
-  }
+import { AppError, handleActionError, ERROR_MESSAGES } from "@/lib/errors";
+import type { ActionResponse } from "@/types/actions";
 
+export async function updateFestivalAction(
+  data: UpdateFestivalInput,
+): Promise<ActionResponse<any>> {
   try {
+    const session = await getSession();
+    if (!session?.userId) {
+      throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+    }
+
     const validated = updateFestivalSchema.parse(data);
+
+    // If slug is being updated, we might want to sanitize it or check availability overtly,
+    // but Prisma unique constraint will handle the final check.
+    // However, basic sanitization similar to creation is good practice if not fully handled by schema.
+    // Assuming schema handles basic regex.
 
     const festival = await prisma.festival.update({
       where: { ownerId: session.userId },
@@ -45,12 +55,6 @@ export async function updateFestivalAction(data: UpdateFestivalInput) {
 
     return { success: true, data: festival };
   } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return { success: false, error: error.issues[0].message };
-    }
-    return {
-      success: false,
-      error: error.message || "Failed to update festival",
-    };
+    return handleActionError(error);
   }
 }

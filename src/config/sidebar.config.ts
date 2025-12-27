@@ -96,12 +96,6 @@ export const getFestivalDashboardSidebarConfig = (
           href: basePath,
           icon: LayoutDashboard,
         },
-        {
-          title: "Settings",
-          href: `${basePath}/settings`,
-          icon: Settings,
-          allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
-        },
       ],
     },
     {

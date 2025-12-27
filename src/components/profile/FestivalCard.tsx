@@ -7,6 +7,7 @@ import {
   Lock,
   Pencil,
   Clock,
+  Globe,
 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -86,6 +87,17 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
             <Pencil className="w-4 h-4" />
           </Button>
         </div>
+
+        {/* Subdomain Highlight */}
+        <button
+          type="button"
+          className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-primary/5 border border-primary/10 rounded-full text-xs font-semibold text-primary clickable hover:bg-primary/10 transition-colors cursor-pointer"
+          onClick={() => onEdit?.(festival)}
+        >
+          <Globe className="w-3 h-3" />
+          {festival.slug}.greenroom.com
+          <Pencil className="w-3 h-3 ml-1 opacity-50" />
+        </button>
 
         {/* Lifecycle Progress Section */}
         {!isExpired && (

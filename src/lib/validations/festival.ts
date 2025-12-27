@@ -41,6 +41,12 @@ export const updateFestivalSchema = z.object({
   location: z.string().optional().nullable(),
   founderName: z.string().optional().nullable(),
   founderMessage: z.string().optional().nullable(),
+  slug: z
+    .string()
+    .min(3)
+    .max(50)
+    .regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with dashes")
+    .optional(),
 });
 
 export type CreateFestivalInput = z.infer<typeof createFestivalSchema>;
