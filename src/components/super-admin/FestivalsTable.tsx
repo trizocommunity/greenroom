@@ -1,12 +1,12 @@
 "use client";
 
 import {
+  ExternalLink,
   Eye,
   MoreHorizontal,
   Pencil,
   Settings,
   Trash2,
-  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -52,18 +52,13 @@ export function FestivalsTable() {
   const handleView = (festival: Festival) => {
     if (!festival.slug) return;
     // Public Site: /festival-slug
-    let url = `${window.location.origin}/${festival.slug}`;
+    const url = `${window.location.origin}/${festival.slug}`;
     window.open(url, "_blank");
   };
 
   const handleManage = (festival: Festival) => {
-    // Internal Dashboard: /festival/[id] or /festival/[id]/[edition-slug]
-    const activeEdition = festival.editions?.find((e) => e.status === "ACTIVE");
-    if (activeEdition) {
-      router.push(`/festival/${festival.slug}/${activeEdition.slug}`);
-    } else {
-      router.push(`/festival/${festival.slug}`);
-    }
+    // Navigate directly to festival dashboard
+    router.push(`/festival/${festival.slug}`);
   };
 
   const handleDelete = () => {
@@ -98,11 +93,6 @@ export function FestivalsTable() {
     <>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {festivals.map((festival) => {
-          const activeEdition = festival.editions?.find(
-            (e) => e.status === "ACTIVE",
-          );
-          const editionsCount = festival.editions?.length || 0;
-
           return (
             <Card
               key={festival.id}
@@ -167,16 +157,8 @@ export function FestivalsTable() {
                   >
                     {festival.status}
                   </Badge>
-                  {activeEdition && (
-                    <Badge
-                      variant="outline"
-                      className="bg-blue-50 text-blue-700 border-blue-200"
-                    >
-                      Active: {activeEdition.slug}
-                    </Badge>
-                  )}
                   <Badge variant="secondary" className="bg-muted">
-                    {editionsCount} Edition{editionsCount !== 1 ? "s" : ""}
+                    {festival.tierLabel || "Standard"}
                   </Badge>
                 </div>
               </CardHeader>

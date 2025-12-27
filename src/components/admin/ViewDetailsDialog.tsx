@@ -1,24 +1,24 @@
 "use client";
 
+import { format } from "date-fns";
+import { Eye, KeyRound } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Eye, KeyRound } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { format } from "date-fns";
-import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { resetUserPassword } from "@/server/actions/admin-user.actions";
-import { toast } from "sonner";
 
 interface ViewDetailsDialogProps {
   title: string;

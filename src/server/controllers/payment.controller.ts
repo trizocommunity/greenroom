@@ -1,5 +1,5 @@
+import { Tier } from "@prisma/client";
 import { TIER_CONFIG } from "@/config/pricing";
-import { EditionTier } from "@prisma/client";
 import {
   createPayment,
   getActivePaymentForUser,
@@ -12,8 +12,8 @@ import {
   RazorpayService,
 } from "@/server/services/razorpay.service";
 
-const FESTIVAL_PRICE = TIER_CONFIG[EditionTier.BASIC].price * 100; // Legacy fallback
-const VALIDITY_DAYS = TIER_CONFIG[EditionTier.BASIC].durationDays;
+const FESTIVAL_PRICE = TIER_CONFIG[Tier.BASIC].price * 100; // Legacy fallback
+const VALIDITY_DAYS = TIER_CONFIG[Tier.BASIC].durationDays;
 
 export const createOrder = async (userId: string) => {
   // Business Rule: Prevent duplicate active access
@@ -77,7 +77,7 @@ export const verifyPayment = async (payload: {
 
   // Model Call: Update Status
   // Business Rule: Update to COMPLETED
-  await updatePaymentStatus(payment.id, "COMPLETED", razorpay_payment_id);
+  await updatePaymentStatus(payment.id, "PAID", razorpay_payment_id);
 
   return true;
 };
@@ -110,7 +110,7 @@ export const getUserStatus = async (userId: string, role: string = "USER") => {
 
   const latestPayment = await getLatestPaymentForUser(userId);
 
-  if (latestPayment && latestPayment.status === "COMPLETED") {
+  if (latestPayment && latestPayment.status === "PAID") {
     // Payment exists but expired
     return {
       status: "EXPIRED",

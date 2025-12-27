@@ -1,4 +1,4 @@
-import type { Payment } from "@prisma/client";
+import type { Payment, PaymentStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
 export type CreatePaymentInput = {
@@ -57,7 +57,7 @@ export async function getActivePaymentForUser(
   return prisma.payment.findFirst({
     where: {
       userId,
-      status: "COMPLETED",
+      status: "PAID",
       validUntil: { gt: now },
     },
     orderBy: { createdAt: "desc" },
@@ -75,7 +75,7 @@ export async function getLatestPaymentForUser(
 
 export async function updatePaymentStatus(
   id: string,
-  status: string,
+  status: PaymentStatus,
   razorpayId?: string,
 ): Promise<Payment> {
   return prisma.payment.update({
@@ -83,6 +83,8 @@ export async function updatePaymentStatus(
     data: {
       status,
       ...(razorpayId && { referenceId: razorpayId }),
+      // Ensure we are using valid enum values if 'status' comes from outside,
+      // but here we trust the caller (controller) which now uses "PAID".
     },
   });
 }

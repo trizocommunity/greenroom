@@ -19,21 +19,23 @@ enum GlobalRole {
   SUPER_ADMIN
 }
 
-enum FestivalStatus {
-  DRAFT // created but locked
-  ACTIVE // unlocked (after first paid edition)
-}
-
-enum EditionStatus {
-  ACTIVE // 0–90 days (write + read)
-  FREEZE // read-only
-  ARCHIVED // cold storage
-}
-
-enum EditionTier {
+enum Tier {
   BASIC
   STANDARD
   PRO
+}
+
+enum InstitutionType {
+  COLLEGE
+  MADRASA
+  SCHOOL
+  OTHER
+}
+
+enum FestivalStatus {
+  DRAFT // created but locked
+  ACTIVE // unlocked (paid)
+  EXPIRED // past 40 days
 }
 
 // -----------------------------------------------------------------------------
@@ -43,10 +45,10 @@ enum EditionTier {
 model User {
   id         String     @id @default(uuid())
   email      String     @unique
-  password   String // Note: Was passwordHash in old schema, sticking to requirement "password" but usually this implies hashed
+  password   String 
   globalRole GlobalRole @default(USER)
 
-  // Profile Fields (Restored for compability)
+  // Profile Fields
   fullName    String?
   displayName String?
   age         Int?
@@ -59,7 +61,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("user") // Optional: keeping map for potential existing conventions or cleaner DB names
+  @@map("user")
 }
 
 model PasswordResetToken {
@@ -75,8 +77,7 @@ model PasswordResetToken {
 }
 
 enum PaymentPurpose {
-  FESTIVAL_AND_FIRST_EDITION
-  NEW_EDITION
+  FESTIVAL_CREATION
 }
 
 enum PaymentStatus {
@@ -95,21 +96,18 @@ model Payment {
   referenceId String? // Razorpay Payment ID
   receipt     String?
 
-  tier        EditionTier?  // Stored for immutable record
+  tier        Tier?  // Stored for immutable record
 
-  purpose     PaymentPurpose @default(NEW_EDITION) // Defaulting to avoid breaking old rows immediately, but practically mostly used for upgrades.
-  used        Boolean        @default(false)      // True if this payment has been "redeemed" to create a resource
+  purpose     PaymentPurpose @default(FESTIVAL_CREATION)
+  used        Boolean        @default(false)      // True if this payment has been "redeemed"
 
-  validUntil DateTime? // Logic: Subscription valid until... (Made optional as logic shifts to Edition)
+  validUntil DateTime? 
 
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
   festivalId String?
-  festival   Festival? @relation(fields: [festivalId], references: [id])
-
-  editionId String?
-  edition   Edition? @relation(fields: [editionId], references: [id])
+  festival   Festival? @relation(fields: [festivalId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -124,15 +122,21 @@ model Festival {
 
   name      String
   slug      String  @unique
-  category  String?
   description String?
   
   // Organization Details
+  category  String?
   orgName String?
   orgDescription String?
   orgWebsite String?
-  orgLocation String? // To match mocked data usage
+  orgLocation String?
   establishedYear Int?
+
+  // Core Fields
+  institutionType InstitutionType?
+  institutionName String?
+  location        String?
+  expiresAt       DateTime?
 
   // Founder/Message
   founderName String?
@@ -144,9 +148,24 @@ model Festival {
 
   status   FestivalStatus @default(DRAFT)
   isLocked Boolean        @default(true)
+  
+  // Tier & Usage
+  tier        Tier @default(STANDARD)
+  tierLabel   String @default("Standard")
+  
+  // Usage Counters
+  participantsCount Int @default(0)
+  eventsCount       Int @default(0)
+  judgesCount       Int @default(0)
+  storageUsedMB     Int @default(0)
 
-  editions Edition[]
-  payments Payment[]
+  // Child Entities
+  payments      Payment[]
+  participants  Participant[]
+  categories    Category[]
+  groups        Group[]
+  programmes    Programme[]
+  programmeAssignments ProgrammeAssignment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -154,70 +173,122 @@ model Festival {
   @@map("festival")
 }
 
-model Edition {
-  id         String   @id @default(uuid())
-  festivalId String
-  festival   Festival @relation(fields: [festivalId], references: [id])
-
-  number Int // Sequential edition number (1, 2, 3...)
-  slug   String // URL-friendly identifier
-  tier   EditionTier @default(STANDARD)
-  tierLabel String @default("Standard") // Added for UI identity persistence
-  status EditionStatus @default(ACTIVE)
-
-  startDate DateTime
-  endDate   DateTime
-
-  // Details
-  description String?
-  theme       String?
-  venue       String?
-  location    String?
-
-  // Usage Counters (Phase 4)
-  participantsCount Int @default(0)
-  eventsCount       Int @default(0)
-  judgesCount       Int @default(0)
-  storageUsedMB     Int @default(0)
-
-  limits EditionLimit?
+model Category {
+  id          String   @id @default(uuid())
+  festivalId  String
+  festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
   
-  createdByPaymentId String? // validation: must exist
-  payments Payment[]
+  name        String
+  description String?
+  
+  programmes  Programme[]
+  participants Participant[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("category")
+}
+
+model Programme {
+  id          String        @id @default(uuid())
+  festivalId  String
+  festival    Festival      @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  
+  categoryId  String
+  category    Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  name        String
+  type        ProgrammeType @default(INDIVIDUAL)
+  stageType   StageType     @default(STAGE)
+  maxEntries  Int           @default(1)
+
+  assignments ProgrammeAssignment[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("programme")
+}
+
+model Group {
+  id          String    @id @default(uuid())
+  festivalId  String
+  festival    Festival  @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+
+  name        String
+  type        GroupType @default(SCHOOL)
 
   participants Participant[]
-  categories   EditionCategory[]
-  groups       EditionGroup[]
-  programmes   Programme[]
-  programmeAssignments ProgrammeAssignment[]
+  assignments  ProgrammeAssignment[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("group")
+}
+
+model ProgrammeAssignment {
+  id            String    @id @default(uuid())
+  festivalId    String
+  festival      Festival  @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+
+  programmeId   String
+  programme     Programme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+
+  participantId String?
+  participant   Participant? @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  groupId       String?
+  group         Group? @relation(fields: [groupId], references: [id]) 
+
+  assignedAt    DateTime @default(now())
+
+  @@unique([programmeId, participantId])
+  
+  @@map("programme_assignment")
+}
+
+model Participant {
+  id        String  @id @default(uuid())
+  festivalId String
+  festival   Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+
+  // Child of a Group? Or direct? In schema it has groupId as relation.
+  groupId   String
+  group     Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  name               String
+  email              String? 
+  phone              String?
+  gender             Gender?
+  registrationNumber String?
+
+  assignments ProgrammeAssignment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([festivalId, slug])
-  @@map("edition")
+  @@unique([festivalId, email]) 
+
+  @@map("participant")
 }
 
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorId     String
+  actorRole   String
+  action      String
+  targetType  String
+  targetId    String
+  metadata    Json?
+  createdAt   DateTime @default(now())
 
-
-model EditionLimit {
-  id        String  @id @default(uuid())
-  editionId String  @unique
-  edition   Edition @relation(fields: [editionId], references: [id])
-
-  maxParticipants Int @default(1000)
-  maxEvents       Int @default(100)
-  maxJudges       Int @default(50)
-  maxStorageMB    Int @default(1024)
-
-  createdAt DateTime @default(now())
-
-  @@map("edition_limit")
+  @@map("audit_log")
 }
-
-// -----------------------------------------------------------------------------
-// Pre-Works Enums
-// -----------------------------------------------------------------------------
 
 enum ProgrammeType {
   INDIVIDUAL
@@ -240,139 +311,4 @@ enum Gender {
   MALE
   FEMALE
   OTHER
-}
-
-// -----------------------------------------------------------------------------
-// Pre-Works Models
-// -----------------------------------------------------------------------------
-
-model EditionCategory {
-  id          String   @id @default(uuid())
-  editionId   String
-  edition     Edition  @relation(fields: [editionId], references: [id], onDelete: Cascade)
-  
-  name        String
-  description String?
-  
-  programmes  Programme[]
-  participants Participant[] // Optional: Linking participant to a default/main category if needed
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("edition_category")
-}
-
-model Programme {
-  id          String        @id @default(uuid())
-  editionId   String
-  edition     Edition       @relation(fields: [editionId], references: [id], onDelete: Cascade)
-  
-  categoryId  String
-  category    EditionCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-
-  name        String
-  type        ProgrammeType @default(INDIVIDUAL)
-  stageType   StageType     @default(STAGE)
-  maxEntries  Int           @default(1) // Max participants per group/school if applicable, or generic limit
-
-  assignments ProgrammeAssignment[]
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("programme")
-}
-
-model EditionGroup {
-  id          String    @id @default(uuid())
-  editionId   String
-  edition     Edition   @relation(fields: [editionId], references: [id], onDelete: Cascade)
-
-  name        String
-  type        GroupType @default(SCHOOL)
-
-  participants Participant[]
-  assignments  ProgrammeAssignment[]
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("edition_group")
-}
-
-model ProgrammeAssignment {
-  id            String    @id @default(uuid())
-  editionId     String
-  edition       Edition   @relation(fields: [editionId], references: [id], onDelete: Cascade)
-
-  programmeId   String
-  programme     Programme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
-
-  // Polymorphic-ish assignment: Usually assigning a participant.
-  // For group events, we might still assign individual participants OR a group entity.
-  // Requirement says: "participantId // OR groupId (for group events)"
-  // Keeping it clean: A Participant is the core entity. Even for group events, you assign 'members'.
-  // IF the user specifically wants to assign a "Group" entity directly, we'd need a groupId field here.
-  // Based on "participantId // OR groupId", I will add optional groupId but prioritize participant logic if strict MVC.
-  // Let's stick to explicit fields.
-  
-  participantId String?
-  participant   Participant? @relation(fields: [participantId], references: [id], onDelete: Cascade)
-
-  groupId       String?
-  group         EditionGroup? @relation(fields: [groupId], references: [id]) 
-
-  assignedAt    DateTime @default(now())
-
-  // Validation should ensure either participantId OR groupId is set, not both (or as per logic).
-  // Also uniqueness: A participant shouldn't be assigned to the same programme twice.
-
-  @@unique([programmeId, participantId])
-  // @@unique([programmeId, groupId]) // Conditional uniqueness difficult in pure Prisma, handle in service.
-  
-  @@map("programme_assignment")
-}
-
-model Participant {
-  id        String  @id @default(uuid())
-  editionId String
-  edition   Edition @relation(fields: [editionId], references: [id], onDelete: Cascade)
-
-  // Relations
-  groupId   String
-  group     EditionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-
-  categoryId String
-  category   EditionCategory @relation(fields: [categoryId], references: [id]) // Restrict delete if participants exist? Or Cascade?
-
-  name               String
-  email              String? // Made optional as per some festival contexts (children) but unique constraint might need review
-  phone              String?
-  gender             Gender?
-  registrationNumber String? // Optional chest number/ID
-
-  assignments ProgrammeAssignment[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([editionId, email]) // Keep email unique per edition if provided? 
-  // If email is optional, unique constraint on nulls varies by DB. Postgres supports multiple nulls.
-  // If email is NOT empty string. A service level check is safer if logic is complex.
-  
-  @@map("participant")
-}
-
-model AuditLog {
-  id          String   @id @default(cuid())
-  actorId     String
-  actorRole   String
-  action      String   // e.g., "DELETE_FESTIVAL", "FREEZE_EDITION"
-  targetType  String   // e.g., "FESTIVAL", "EDITION"
-  targetId    String
-  metadata    Json?
-  createdAt   DateTime @default(now())
-
-  @@map("audit_log")
 }

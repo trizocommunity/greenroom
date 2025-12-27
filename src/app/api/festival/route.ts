@@ -53,6 +53,25 @@ export async function POST(request: Request) {
       slug = `${slug}-${Math.floor(Math.random() * 10000)}`;
     }
 
+    // [New Phase 2] Payment Enforcement
+    const { systemConfig } = await import("@/lib/config");
+    let paymentIdToConsume: string | null = null;
+
+    if (systemConfig.paymentFirstFlowEnabled) {
+      const { getUnusedPayment, consumePayment } = await import(
+        "@/server/services/billing.service"
+      );
+      const payment = await getUnusedPayment(userId);
+
+      if (!payment) {
+        return NextResponse.json(
+          { error: "Payment required. Please purchase a credit first." },
+          { status: 402 },
+        );
+      }
+      paymentIdToConsume = payment.id;
+    }
+
     // 4. Create Festival
     const festival = await createFestival({
       name,
@@ -61,6 +80,14 @@ export async function POST(request: Request) {
       status: "DRAFT",
       isLocked: true,
     });
+
+    // [New Phase 2] Consume Payment
+    if (paymentIdToConsume) {
+      const { consumePayment } = await import(
+        "@/server/services/billing.service"
+      );
+      await consumePayment(paymentIdToConsume, { festivalId: festival.id });
+    }
 
     return NextResponse.json(festival, { status: 201 });
   } catch (error) {

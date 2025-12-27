@@ -1,12 +1,14 @@
 "use server";
 
-import { ActionResponse } from "@/types/actions";
-import { prisma } from "@/lib/db";
-import { type EditionTier, type Prisma } from "@prisma/client"; // EditionTier used as type
-import { TIER_CONFIG } from "@/config/pricing";
-import Razorpay from "razorpay";
+import type { Prisma, Tier } from "@prisma/client";
 import crypto from "crypto";
 import { revalidatePath } from "next/cache";
+import Razorpay from "razorpay";
+import { TIER_CONFIG } from "@/config/pricing";
+import { getSession } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
+import type { ActionResponse } from "@/types/actions";
+import { createAuditLog } from "@/server/services/audit-log.service";
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -14,42 +16,63 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET || "",
 });
 
-export async function initiateEditionPayment(
-  festivalId: string,
-  tier: EditionTier,
-  userId: string,
+export async function initiateFestivalPayment(
+  tier: Tier,
 ): Promise<ActionResponse<any>> {
   try {
-    // 1. Validation
-    const festival = await prisma.festival.findUnique({
-      where: { id: festivalId },
-      include: { editions: { where: { status: "ACTIVE" } } },
-    });
+    const session = await getSession();
+    if (!session?.userId) return { success: false, error: "Unauthorized" };
+    const userId = session.userId;
 
-    if (!festival) return { success: false, error: "Festival not found" };
-    if (festival.ownerId !== userId)
-      return { success: false, error: "Unauthorized" };
-    if (festival.editions.length > 0)
-      return { success: false, error: "An active edition already exists" };
+    console.log(
+      `[Payment] Initiating festival payment for user ${userId}, tier: ${tier}`,
+    );
 
     const config = TIER_CONFIG[tier];
     if (!config) return { success: false, error: "Invalid tier" };
 
-    // 2. Create Razorpay Order
+    // Check for existing pending payment
+    const existingPayment = await prisma.payment.findFirst({
+      where: {
+        userId,
+        tier,
+        status: "PENDING",
+        used: false,
+        purpose: "FESTIVAL_CREATION",
+        createdAt: {
+          gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Created within last 24 hours
+        },
+      },
+    });
+
+    if (existingPayment?.providerId) {
+      return {
+        success: true,
+        data: {
+          paymentId: existingPayment.id,
+          orderId: existingPayment.providerId,
+          amount: config.price * 100,
+          currency: "INR",
+          key: process.env.RAZORPAY_KEY_ID,
+        },
+      };
+    }
+
+    // Create Razorpay Order
     const options = {
-      amount: config.price * 100, // Amount in lowest denomination (paise)
+      amount: config.price * 100,
       currency: "INR",
       receipt: `rcpt_${Date.now()}`.substring(0, 40),
       notes: {
-        festivalId,
+        userId,
         tier,
-        type: "EDITION_CREATION",
+        type: "FESTIVAL_CREATION",
       },
     };
 
     const order = await razorpay.orders.create(options);
 
-    // 3. Create Pending Payment Record
+    // Create Pending Payment Record
     const payment = await prisma.payment.create({
       data: {
         amount: config.price,
@@ -57,8 +80,9 @@ export async function initiateEditionPayment(
         status: "PENDING",
         providerId: order.id,
         userId,
-        festivalId,
         tier,
+        purpose: "FESTIVAL_CREATION",
+        used: false,
       },
     });
 
@@ -81,28 +105,21 @@ export async function initiateEditionPayment(
   }
 }
 
-export async function finalizeEditionPayment(
+export async function verifyFestivalPayment(
   paymentId: string,
   razorpayPaymentId: string,
   razorpaySignature: string,
 ): Promise<ActionResponse<any>> {
   try {
-    // 1. Fetch Payment
     const payment = await prisma.payment.findUnique({
       where: { id: paymentId },
-      include: { festival: true },
     });
 
     if (!payment) return { success: false, error: "Payment not found" };
-    if (!payment.festivalId)
-      return { success: false, error: "Payment not linked to festival" };
-    if (!payment.festival)
-      return { success: false, error: "Festival data not available" };
-
-    if (payment.status === "SUCCESS")
+    if (payment.status === "PAID")
       return { success: false, error: "Payment already processed" };
 
-    // 2. Verify Signature
+    // Verify Signature
     const body = payment.providerId + "|" + razorpayPaymentId;
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "")
@@ -114,117 +131,57 @@ export async function finalizeEditionPayment(
         where: { id: paymentId },
         data: { status: "FAILED" },
       });
+
+      await createAuditLog({
+        action: "PAYMENT_FAILED",
+        targetType: "PAYMENT",
+        targetId: paymentId,
+        metadata: { reason: "Invalid signature" },
+      });
+
       return { success: false, error: "Invalid payment signature" };
     }
 
-    // 3. Get Configuration
-    const tier = payment.tier; // This acts as the source of truth
-    if (!tier) return { success: false, error: "Payment has no tier" };
-
-    const config = TIER_CONFIG[tier];
-    if (!config) return { success: false, error: "Invalid tier configuration" };
-
-    // 4. Atomic Transaction: Create Edition + Unlock Festival + Update Payment
-    const nextEditionNumber =
-      (await prisma.edition.count({
-        where: { festivalId: payment.festivalId },
-      })) + 1;
-
-    // Ensure slug is valid
-    const festivalSlug = payment.festival.slug;
-    if (!festivalSlug)
-      return { success: false, error: "Festival slug missing" };
-
-    const editionSlug = `${festivalSlug}-edition-${nextEditionNumber}`;
-
-    // Prepare data with explicit defaults to prevent DB null constraint violations
-    const editionData = {
-      festivalId: payment.festivalId!,
-      number: nextEditionNumber, // Required by DB schema
-      slug: editionSlug,
-      tier: tier,
-      tierLabel: config.label,
-      status: "ACTIVE" as const,
-      startDate: new Date(),
-      endDate: new Date(Date.now() + config.durationDays * 24 * 60 * 60 * 1000),
-
-      // Explicit constraints for potential DB mismatch (Root Cause Fix)
-      description: "",
-      theme: "",
-      venue: "",
-      location: "",
-      participantsCount: 0,
-      eventsCount: 0,
-      judgesCount: 0,
-      storageUsedMB: 0,
-
-      createdByPaymentId: payment.id,
-    };
-
-    const limitsData = {
-      maxParticipants: config.limits.participants,
-      maxEvents: config.limits.events,
-      maxJudges: config.limits.judges,
-      maxStorageMB: config.limits.storageMB,
-    };
-
-    const result = await prisma.$transaction(
-      async (tx: Prisma.TransactionClient) => {
-        // Create Edition with Limits (Atomic)
-        const edition = await tx.edition.create({
-          data: {
-            ...editionData,
-            limits: {
-              create: limitsData,
-            },
-          },
-        });
-
-        // Unlock Festival
-        await tx.festival.update({
-          where: { id: payment.festivalId! },
-          data: {
-            isLocked: false,
-            status: "ACTIVE",
-          },
-        });
-
-        // Update Payment
-        await tx.payment.update({
-          where: { id: paymentId },
-          data: {
-            status: "SUCCESS",
-            referenceId: razorpayPaymentId,
-            editionId: edition.id,
-          },
-        });
-
-        return edition;
+    // Mark as PAID
+    await prisma.payment.update({
+      where: { id: paymentId },
+      data: {
+        status: "PAID",
+        referenceId: razorpayPaymentId,
       },
-    );
+    });
 
-    // 5. Revalidate Cache (Performance Optimization)
-    revalidatePath(`/festival/${result.slug}`);
-    revalidatePath(`/festival/${result.slug}/dashboard`);
+    await createAuditLog({
+      action: "PAYMENT_SUCCESS",
+      targetType: "PAYMENT",
+      targetId: paymentId,
+      metadata: {
+        amount: payment.amount,
+        tier: payment.tier,
+        providerId: payment.providerId,
+      },
+    });
+
+    // Clean up other abandoned pending payments for festival creation
+    await prisma.payment.updateMany({
+      where: {
+        userId: payment.userId,
+        status: "PENDING",
+        purpose: "FESTIVAL_CREATION",
+        id: { not: paymentId }, // Exclude the current successfully paid one
+      },
+      data: {
+        status: "FAILED",
+      },
+    });
+
     revalidatePath("/profile");
-    revalidatePath("/", "layout"); // Deep invalidation
-
-    return { success: true, data: result };
+    return { success: true, data: { paymentId } };
   } catch (error: any) {
-    console.error("Payment finalization error:", error);
-    // Attempt to mark as failed if not already success
-    try {
-      await prisma.payment.update({
-        where: { id: paymentId },
-        data: { status: "FAILED" },
-      });
-    } catch (e) {
-      /* ignore */
-    }
-
+    console.error("Payment verification error:", error);
     return {
       success: false,
-      error: error.message || "Failed to finalize payment",
+      error: error.message || "Failed to verify payment",
     };
   }
 }

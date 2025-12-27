@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Check, Sparkles, AlertCircle } from "lucide-react";
+import { AlertCircle, ArrowRight, Check, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import type { PricingTier } from "@/config/pricing";
@@ -53,7 +53,7 @@ export function PricingCard({ tier, index }: PricingCardProps) {
               ₹{tier.price}
             </span>
             <span className="text-muted-foreground text-sm font-medium">
-              / edition
+              / festival
             </span>
           </div>
           <p className="text-muted-foreground text-sm mt-3 px-2">

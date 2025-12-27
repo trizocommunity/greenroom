@@ -1,49 +1,46 @@
+import { Prisma } from "@prisma/client";
+import { findFestivalById } from "@/server/models/festival.model";
 import {
   createGroup,
   deleteGroup,
-  findGroupsByEdition,
   findGroupById,
+  findGroupsByFestival,
   updateGroup,
 } from "@/server/models/group.model";
-import { findEditionById } from "@/server/models/edition.model";
-import { Prisma } from "@prisma/client";
 
 export const GroupService = {
-  async getAll(editionId: string) {
-    return findGroupsByEdition(editionId);
+  async getAll(festivalId: string) {
+    return findGroupsByFestival(festivalId);
   },
 
   async create(
-    editionId: string,
+    festivalId: string,
     data: { name: string; type: "SCHOOL" | "COLLEGE" | "MADRASA" | "OPEN" },
   ) {
-    const edition = await findEditionById(editionId);
-    if (
-      !edition ||
-      edition.status === "FREEZE" ||
-      edition.status === "ARCHIVED"
-    ) {
-      throw new Error("Edition is frozen or invalid");
+    const festival = await findFestivalById(festivalId);
+    if (!festival) throw new Error("Festival not found");
+    if (festival.status === "EXPIRED") {
+      throw new Error("Festival is expired");
     }
 
     return createGroup({
-      edition: { connect: { id: editionId } },
+      festival: { connect: { id: festivalId } },
       name: data.name,
       type: data.type,
     });
   },
 
-  async update(id: string, editionId: string, data: { name?: string }) {
+  async update(id: string, festivalId: string, data: { name?: string }) {
     const exists = await findGroupById(id);
-    if (!exists || exists.editionId !== editionId)
+    if (!exists || exists.festivalId !== festivalId)
       throw new Error("Group not found");
 
     return updateGroup(id, data);
   },
 
-  async delete(id: string, editionId: string) {
+  async delete(id: string, festivalId: string) {
     const exists = await findGroupById(id);
-    if (!exists || exists.editionId !== editionId)
+    if (!exists || exists.festivalId !== festivalId)
       throw new Error("Group not found");
 
     const partCount = (exists as any)._count?.participants ?? 0;

@@ -1,22 +1,20 @@
 "use server";
 
-import { prisma } from "@/lib/db";
-import { getSession } from "@/lib/auth/session";
-import { TIER_CONFIG } from "@/config/pricing";
-import { EditionTier, PaymentPurpose } from "@prisma/client";
-import Razorpay from "razorpay";
+import type { PaymentPurpose, Tier } from "@prisma/client";
 import crypto from "crypto";
 import { revalidatePath } from "next/cache";
+import Razorpay from "razorpay";
+import { TIER_CONFIG } from "@/config/pricing";
+import { getSession } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
+import { getUnusedPayment } from "@/server/services/billing.service";
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID || "",
   key_secret: process.env.RAZORPAY_KEY_SECRET || "",
 });
 
-export async function initiatePayment(
-  purpose: PaymentPurpose,
-  tier: EditionTier,
-) {
+export async function initiatePayment(purpose: PaymentPurpose, tier: Tier) {
   try {
     const session = await getSession();
     if (!session?.userId) {
@@ -26,6 +24,33 @@ export async function initiatePayment(
     const config = TIER_CONFIG[tier];
     if (!config) {
       return { success: false, error: "Invalid tier" };
+    }
+
+    // Check for existing pending payment
+    const existingPayment = await prisma.payment.findFirst({
+      where: {
+        userId: session.userId,
+        tier,
+        purpose,
+        status: "PENDING",
+        used: false,
+        createdAt: {
+          gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Created within last 24 hours
+        },
+      },
+    });
+
+    if (existingPayment?.providerId) {
+      return {
+        success: true,
+        data: {
+          paymentId: existingPayment.id,
+          orderId: existingPayment.providerId,
+          amount: config.price * 100,
+          currency: "INR",
+          key: process.env.RAZORPAY_KEY_ID,
+        },
+      };
     }
 
     // Create Razorpay Order
@@ -134,7 +159,21 @@ export async function getBillingHistory() {
     orderBy: { createdAt: "desc" },
     include: {
       festival: { select: { name: true } },
-      edition: { select: { slug: true, number: true } },
     },
   });
+}
+
+export async function checkUnusedCredit() {
+  const session = await getSession();
+  if (!session?.userId) return null;
+
+  const payment = await getUnusedPayment(session.userId);
+  return payment
+    ? {
+        id: payment.id,
+        amount: payment.amount,
+        purpose: payment.purpose,
+        tier: payment.tier,
+      }
+    : null;
 }

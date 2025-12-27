@@ -1,7 +1,6 @@
-import { adminService } from "@/server/services/admin.service";
 import { format } from "date-fns";
-import { Badge } from "@/components/ui/badge";
 import { ViewDetailsDialog } from "@/components/admin/ViewDetailsDialog";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -10,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { adminService } from "@/server/services/admin.service";
 
 export default async function AdminUsersPage() {
   const users = await adminService.getUsersForAdmin();

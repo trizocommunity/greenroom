@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getSession, updateSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { createAuditLog } from "@/server/services/audit-log.service";
 
 const profileSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
@@ -38,6 +39,13 @@ export async function updateProfile(data: z.infer<typeof profileSchema>) {
         displayName: result.data.displayName,
         age: result.data.age,
       },
+    });
+
+    await createAuditLog({
+      action: "UPDATE_PROFILE",
+      targetType: "USER",
+      targetId: session.userId,
+      metadata: { changes: result.data },
     });
 
     revalidatePath("/profile");

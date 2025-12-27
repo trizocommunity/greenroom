@@ -1,56 +1,97 @@
+import { prisma } from "@/lib/db";
 import {
+  checkAssignmentExists,
   createAssignment,
   deleteAssignment,
   findAssignmentsByProgramme,
-  checkAssignmentExists,
 } from "@/server/models/assignment.model";
-import { findProgrammeById } from "@/server/models/programme.model";
+import { findFestivalById } from "@/server/models/festival.model";
 import { findParticipantById } from "@/server/models/participant.model";
-import { findEditionById } from "@/server/models/edition.model";
+import { findProgrammeById } from "@/server/models/programme.model";
 
 export const AssignmentService = {
+  async getAll(festivalId: string) {
+    return prisma.programmeAssignment.findMany({
+      where: { festivalId },
+      include: {
+        programme: true,
+        participant: true,
+        group: true,
+      },
+      orderBy: { assignedAt: "desc" },
+    });
+  },
+
   async getByProgramme(programmeId: string) {
     return findAssignmentsByProgramme(programmeId);
   },
 
-  async assign(editionId: string, programmeId: string, participantId: string) {
-    const edition = await findEditionById(editionId);
-    if (edition?.status === "FREEZE") throw new Error("Edition frozen");
+  async create(
+    festivalId: string,
+    data: { programmeId: string; participantId?: string; groupId?: string },
+  ) {
+    const festival = await findFestivalById(festivalId);
+    if (festival?.status === "EXPIRED") throw new Error("Festival expired");
 
-    // 1. Verify Programme
-    const programme = await findProgrammeById(programmeId);
-    if (!programme || programme.editionId !== editionId)
+    // Verify Programme
+    const programme = await findProgrammeById(data.programmeId);
+    if (!programme || programme.festivalId !== festivalId)
       throw new Error("Invalid Programme");
 
-    // 2. Verify Participant
-    const participant = await findParticipantById(participantId);
-    if (!participant || participant.editionId !== editionId)
-      throw new Error("Invalid Participant");
-
-    // 3. Category Match Rule
-    // "Participant category must match Programme category"
-    if (programme.categoryId !== participant.categoryId) {
-      throw new Error("Participant category does not match Programme category");
+    if (!data.participantId && !data.groupId) {
+      throw new Error("Either participantId or groupId is required");
     }
 
-    // 4. Check Duplicate
-    const exists = await checkAssignmentExists(programmeId, participantId);
-    if (exists) throw new Error("Already assigned");
+    if (data.participantId) {
+      // Verify Participant
+      const participant = await findParticipantById(data.participantId);
+      if (!participant || participant.festivalId !== festivalId)
+        throw new Error("Invalid Participant");
 
-    // 5. Create
+      // Category Match Rule
+      if (programme.categoryId !== participant.categoryId) {
+        throw new Error(
+          "Participant category does not match Programme category",
+        );
+      }
+
+      // Check Duplicate
+      const exists = await checkAssignmentExists(
+        data.programmeId,
+        data.participantId,
+      );
+      if (exists) throw new Error("Already assigned");
+
+      return createAssignment({
+        festival: { connect: { id: festivalId } },
+        programme: { connect: { id: data.programmeId } },
+        participant: { connect: { id: data.participantId } },
+        ...(participant.groupId
+          ? { group: { connect: { id: participant.groupId } } }
+          : {}),
+        assignedAt: new Date(),
+      });
+    }
+
+    // Group-based assignment
     return createAssignment({
-      edition: { connect: { id: editionId } },
-      programme: { connect: { id: programmeId } },
-      participant: { connect: { id: participantId } },
-      ...(participant.groupId
-        ? { group: { connect: { id: participant.groupId } } }
-        : {}),
+      festival: { connect: { id: festivalId } },
+      programme: { connect: { id: data.programmeId } },
+      ...(data.groupId ? { group: { connect: { id: data.groupId } } } : {}),
       assignedAt: new Date(),
     });
   },
 
-  async remove(id: string, editionId: string) {
-    // In future: verify ownership via simple query
+  async delete(id: string, _festivalId?: string) {
     return deleteAssignment(id);
+  },
+
+  // Aliases for backwards compatibility
+  async assign(festivalId: string, programmeId: string, participantId: string) {
+    return this.create(festivalId, { programmeId, participantId });
+  },
+
+  async remove(id: string, festivalId?: string) {
+    return this.delete(id, festivalId);
   },
 };

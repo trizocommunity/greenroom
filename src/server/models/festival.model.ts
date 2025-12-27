@@ -10,21 +10,21 @@ export async function findAllFestivals(
   return prisma.festival.findMany({
     where,
     orderBy,
-    include: { owner: true, editions: { include: { limits: true } } },
+    include: { owner: true },
   });
 }
 
 export async function findFestivalById(id: string) {
   return prisma.festival.findUnique({
     where: { id },
-    include: { owner: true, editions: { include: { limits: true } } },
+    include: { owner: true },
   });
 }
 
 export async function findFestivalBySlug(slug: string) {
   return prisma.festival.findUnique({
     where: { slug },
-    include: { owner: true, editions: { include: { limits: true } } },
+    include: { owner: true },
   });
 }
 
@@ -54,7 +54,7 @@ export async function deleteFestival(id: string) {
 export async function findFestivalByOwnerId(ownerId: string) {
   return prisma.festival.findUnique({
     where: { ownerId },
-    include: { owner: true, editions: { include: { limits: true } } },
+    include: { owner: true },
   });
 }
 
@@ -62,13 +62,13 @@ export async function findFestivalBySlugOrId(slugOrId: string) {
   // Try slug first as it is more common in URLs now
   const bySlug = await prisma.festival.findUnique({
     where: { slug: slugOrId },
-    include: { owner: true, editions: { include: { limits: true } } },
+    include: { owner: true },
   });
   if (bySlug) return bySlug;
 
   // Fallback to ID
   return prisma.festival.findUnique({
     where: { id: slugOrId },
-    include: { owner: true, editions: { include: { limits: true } } },
+    include: { owner: true },
   });
 }

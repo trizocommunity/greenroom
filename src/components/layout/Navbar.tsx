@@ -124,6 +124,7 @@ export default function Navbar({ user }: NavbarProps) {
 
         {/* Mobile Toggle */}
         <button
+          type="button"
           className="md:hidden p-2 text-foreground"
           onClick={() => setIsOpen(!isOpen)}
         >

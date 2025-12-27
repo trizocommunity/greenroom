@@ -1,11 +1,10 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import type { User } from "@prisma/client";
-
-import { OverviewTab } from "./tabs/OverviewTab";
-import { BillingTab } from "./tabs/BillingTab";
+import { useSearchParams } from "next/navigation";
 import { ProfileSidebarContent } from "./ProfileSidebarContent";
+import { BillingTab } from "./tabs/BillingTab";
+import { OverviewTab } from "./tabs/OverviewTab";
 
 interface UserWithProfile extends User {
   fullName: string | null;
@@ -33,7 +32,7 @@ export function ProfileView({ user }: ProfileViewProps) {
 
       {/* Main Content */}
       <main className="flex-1 min-w-0">
-        {activeTab === "overview" && <OverviewTab />}
+        {activeTab === "overview" && <OverviewTab displayName={displayName} />}
         {activeTab === "billing" && <BillingTab />}
       </main>
     </div>

@@ -2,8 +2,8 @@ import { Mail } from "lucide-react";
 import Link from "next/link";
 import { LifecycleInfo } from "@/components/pricing/LifecycleInfo";
 import { PricingCard } from "@/components/pricing/PricingCard";
-import { PRICING_TIERS } from "@/config/pricing";
 import { Button } from "@/components/ui/button";
+import { PRICING_TIERS } from "@/config/pricing";
 
 export const metadata = {
   title: "Pricing | Greenroom",
@@ -39,8 +39,7 @@ export default function PricingPage() {
           <div className="text-center mb-16">
             <p className="text-muted-foreground bg-muted/30 py-3 px-6 rounded-full inline-flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-              Festival identity stays forever. Each year you pay only for the
-              edition.
+              Festival identity stays forever. Pay once per festival creation.
             </p>
           </div>
 

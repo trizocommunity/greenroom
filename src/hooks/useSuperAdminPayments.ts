@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
 import api from "@/lib/axios";
+import { queryKeys } from "@/lib/query-keys";
 
 export interface SuperAdminPayment {
   id: string;

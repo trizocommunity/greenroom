@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,14 +15,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { deleteFestivalAdmin } from "@/server/actions/admin.actions";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-
-import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
 interface DeleteFestivalButtonProps {
   festivalId: string;
@@ -92,8 +91,7 @@ export function DeleteFestivalButton({
           </DialogTitle>
           <DialogDescription>
             You are about to irreversibly delete <strong>{festivalName}</strong>
-            . This will delete all associated Editions, Payments, Participants,
-            and data.
+            . This will delete all associated Payments, Participants, and data.
           </DialogDescription>
         </DialogHeader>
 

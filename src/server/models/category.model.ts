@@ -1,45 +1,45 @@
-import { prisma } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/db";
 
-export async function createCategory(data: Prisma.EditionCategoryCreateInput) {
-  return prisma.editionCategory.create({
+export async function createCategory(data: Prisma.CategoryCreateInput) {
+  return prisma.category.create({
     data,
   });
 }
 
 export async function updateCategory(
   id: string,
-  data: Prisma.EditionCategoryUpdateInput,
+  data: Prisma.CategoryUpdateInput,
 ) {
-  return prisma.editionCategory.update({
+  return prisma.category.update({
     where: { id },
     data,
   });
 }
 
 export async function deleteCategory(id: string) {
-  return prisma.editionCategory.delete({
+  return prisma.category.delete({
     where: { id },
   });
 }
 
 export async function findCategoryById(id: string) {
-  return prisma.editionCategory.findUnique({
+  return prisma.category.findUnique({
     where: { id },
     include: { _count: { select: { programmes: true, participants: true } } },
   });
 }
 
-export async function findCategoriesByEdition(editionId: string) {
-  return prisma.editionCategory.findMany({
-    where: { editionId },
-    orderBy: { createdAt: "asc" }, // Usually categories have an order, for now creation time
+export async function findCategoriesByFestival(festivalId: string) {
+  return prisma.category.findMany({
+    where: { festivalId },
+    orderBy: { createdAt: "asc" },
     include: { _count: { select: { programmes: true, participants: true } } },
   });
 }
 
-export async function countCategories(editionId: string) {
-  return prisma.editionCategory.count({
-    where: { editionId },
+export async function countCategories(festivalId: string) {
+  return prisma.category.count({
+    where: { festivalId },
   });
 }

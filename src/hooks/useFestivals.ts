@@ -3,7 +3,6 @@ import { toast } from "sonner";
 import { queryKeys } from "@/lib/query-keys";
 import { festivalApi } from "@/services/festival.api";
 import { useCurrentUser } from "./useCurrentUser";
-import type { EditionStatus } from "@prisma/client";
 
 export type Festival = {
   id: string;
@@ -17,19 +16,16 @@ export type Festival = {
   establishedYear?: number;
   founderName?: string;
   founderMessage?: string;
-  status: "DRAFT" | "ACTIVE";
+  status: "DRAFT" | "ACTIVE" | "EXPIRED";
   isLocked: boolean;
   createdAt: string;
-  editions: {
-    id: string;
-    name: string;
-    number: number;
-    slug: string;
-    status: EditionStatus;
-    tierLabel: string;
-    startDate: string;
-    endDate: string;
-  }[];
+  expiresAt?: string | null;
+  tier?: string;
+  tierLabel?: string;
+  participantsCount?: number;
+  eventsCount?: number;
+  judgesCount?: number;
+  storageUsedMB?: number;
 };
 
 export type CreateFestivalInput = {

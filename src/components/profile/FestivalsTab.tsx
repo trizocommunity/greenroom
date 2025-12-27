@@ -1,17 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { toast } from "sonner";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { type Festival, useMyFestival } from "@/hooks/useFestivals";
-
-import { CreateFestivalModal } from "./CreateFestivalModal";
-import { EditFestivalModal } from "./EditFestivalModal";
-import { FestivalCard } from "./FestivalCard";
-import { FestivalEmptyState } from "./FestivalEmptyState";
-
 import {
   ArrowRight,
   ExternalLink,
@@ -20,9 +8,18 @@ import {
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { type Festival, useMyFestival } from "@/hooks/useFestivals";
+
+import { EditFestivalModal } from "./EditFestivalModal";
+import { FestivalCard } from "./FestivalCard";
+import { FestivalEmptyState } from "./FestivalEmptyState";
 
 export function FestivalsTab() {
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingFestival, setEditingFestival] = useState<Festival | null>(null);
 
   // Use useMyFestival hook
@@ -36,7 +33,8 @@ export function FestivalsTab() {
       toast.error("You can only create one festival.");
       return;
     }
-    setIsCreateOpen(true);
+    // Redirect to pricing to start creation flow via payment
+    router.push("/pricing");
   };
 
   const handleEdit = (festival: Festival) => {
@@ -135,9 +133,7 @@ export function FestivalsTab() {
         </div>
       </div>
 
-      <CreateFestivalModal open={isCreateOpen} onOpenChange={setIsCreateOpen} />
-
-      {/* Edit Festival Modal - Might need updates if fields changed, but keeping connected for now */}
+      {/* Edit Festival Modal */}
       <EditFestivalModal
         festival={editingFestival}
         open={!!editingFestival}

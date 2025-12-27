@@ -1,6 +1,6 @@
+import type { User } from "@prisma/client";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { User } from "@prisma/client";
 
 export async function getCurrentUser(): Promise<User | null> {
   const session = await getSession();

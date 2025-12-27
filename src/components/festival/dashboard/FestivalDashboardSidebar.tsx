@@ -4,7 +4,7 @@ import type { FestivalStatus } from "@prisma/client";
 import { format } from "date-fns";
 import { ExternalLink, GalleryVerticalEnd, LogOut } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import {
   Sidebar,
   SidebarContent,
@@ -25,7 +25,7 @@ interface FestivalDashboardSidebarProps {
   festival: {
     id: string;
     name: string;
-    slug: string; // Used for links, can be ID
+    slug: string; // Used for links
     status: FestivalStatus | string;
     accentColor?: string;
     expiresAt?: Date | string | null;
@@ -38,20 +38,12 @@ export function FestivalDashboardSidebar({
   role,
 }: FestivalDashboardSidebarProps) {
   const pathname = usePathname();
-  const params = useParams();
-  const editionSlug = params?.editionSlug as string | undefined;
+  // const params = useParams(); // Removed unused
 
-  // Base Path Logic
-  // If editionSlug exists, base is /festival/[id]/[editionSlug]
-  // Else /festival/[id]
-  const basePath = `/festival/${festival.slug}`; // festival.slug is ID here
-  const dashboardPath = editionSlug ? `${basePath}/${editionSlug}` : basePath; // Root dashboard
+  const basePath = `/festival/${festival.slug}`;
+  const dashboardPath = basePath;
 
-  const menuGroups = getFestivalDashboardSidebarConfig(
-    dashboardPath,
-    role,
-    !!editionSlug,
-  );
+  const menuGroups = getFestivalDashboardSidebarConfig(dashboardPath, role);
 
   return (
     <Sidebar collapsible="icon">
@@ -100,8 +92,6 @@ export function FestivalDashboardSidebar({
               <SidebarMenu>
                 {group.items.map((item) => {
                   const isActive = pathname === item.href;
-                  // Disable logic can be added here based on edition status if needed
-
                   return (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton

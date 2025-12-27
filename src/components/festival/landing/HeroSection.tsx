@@ -37,7 +37,8 @@ export function HeroSection({ festival }: HeroSectionProps) {
               color: festival.accentColor,
             }}
           >
-            {festival.tagline || `Welcome to the ${new Date(festival.startDate).getFullYear()} Edition`}
+            {festival.tagline ||
+              `Welcome to the ${new Date(festival.startDate || new Date()).getFullYear()} Festival`}
           </span>
 
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter mb-6 bg-clip-text text-transparent bg-linear-to-b from-foreground to-foreground/70">

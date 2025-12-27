@@ -1,11 +1,11 @@
 "use client";
 
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { LayoutDashboard } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { EditProfileDialog } from "./EditProfileDialog";
 import type { User } from "@prisma/client";
+import { CreditCard, LayoutDashboard } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
+import { EditProfileDialog } from "./EditProfileDialog";
 
 interface ProfileSidebarContentProps {
   user: Pick<User, "fullName" | "displayName" | "age" | "email">;
@@ -47,6 +47,11 @@ export function ProfileSidebarContent({
       label: "Overview",
       value: "overview",
       icon: LayoutDashboard,
+    },
+    {
+      label: "Billing",
+      value: "billing",
+      icon: CreditCard,
     },
   ];
 

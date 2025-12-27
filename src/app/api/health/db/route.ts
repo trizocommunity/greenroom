@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma, pool } from "@/lib/db";
+import { pool, prisma } from "@/lib/db";
 
 /**
  * Database health check endpoint

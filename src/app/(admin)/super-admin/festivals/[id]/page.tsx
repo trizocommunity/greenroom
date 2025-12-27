@@ -1,18 +1,11 @@
-import { notFound } from "next/navigation";
-import { findFestivalById } from "@/server/models/festival.model";
-import { AdminEditionsTable } from "@/components/super-admin/AdminEditionsTable";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { findFestivalById } from "@/server/models/festival.model";
 
 export default async function AdminFestivalDetailPage({
   params,
@@ -48,17 +41,14 @@ export default async function AdminFestivalDetailPage({
           </p>
         </div>
         <Button variant="outline" asChild>
-          {(() => {
-            const activeEdition = festival.editions.find(
-              (e: any) => e.status === "ACTIVE",
-            );
-            const href = activeEdition?.slug;
-            return (
-              <a href={href} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="mr-2 h-4 w-4" /> Public Site
-              </a>
-            );
-          })()}
+          <a
+            href={`/${festival.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <ExternalLink className="mr-2 h-4 w-4" />
+            Public Site
+          </a>
         </Button>
       </div>
 
@@ -87,26 +77,21 @@ export default async function AdminFestivalDetailPage({
           </CardContent>
         </Card>
 
-        {/* Placeholder for Stats or other info */}
         <Card>
           <CardHeader>
             <CardTitle>Quick Stats</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Total Editions</span>
-              <span className="font-medium">{festival.editions.length}</span>
+              <span className="text-muted-foreground">Status</span>
+              <span className="font-medium">{festival.status}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Tier</span>
+              <span className="font-medium">{festival.tier}</span>
             </div>
           </CardContent>
         </Card>
-      </div>
-
-      <div>
-        <h3 className="text-xl font-semibold mb-3">Editions Management</h3>
-        <AdminEditionsTable
-          editions={festival.editions}
-          festivalSlug={festival.slug}
-        />
       </div>
     </div>
   );

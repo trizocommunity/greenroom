@@ -1,9 +1,9 @@
 "use server";
 
-import { adminService } from "@/server/services/admin.service";
-import { prisma } from "@/lib/db";
-import { hashPassword } from "@/lib/auth/password";
 import { revalidatePath } from "next/cache";
+import { hashPassword } from "@/lib/auth/password";
+import { prisma } from "@/lib/db";
+import { adminService } from "@/server/services/admin.service";
 
 export async function resetUserPassword(userId: string, newPassword: string) {
   // 1. Authorization Check: Ensure the caller is a Super Admin

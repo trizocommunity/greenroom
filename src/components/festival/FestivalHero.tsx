@@ -11,8 +11,8 @@ interface FestivalHeroProps {
 }
 
 export function FestivalHero({ festival }: FestivalHeroProps) {
-  const startDate = new Date(festival.startDate);
-  const endDate = new Date(festival.endDate);
+  const startDate = new Date(festival.startDate || new Date());
+  const endDate = new Date(festival.endDate || new Date());
 
   return (
     <section
@@ -109,7 +109,7 @@ export function FestivalHero({ festival }: FestivalHeroProps) {
       </div>
 
       {/* Bottom fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-24 bg-linear-to-t from-background to-transparent" />
     </section>
   );
 }

@@ -1,16 +1,55 @@
 "use server";
 
-import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { prisma } from "@/lib/db";
+import { ParticipantService } from "@/server/services/participant.service";
 
+// New action for hooks - uses ParticipantService
+export async function getParticipantsAction(festivalId: string) {
+  return ParticipantService.getAll(festivalId);
+}
+
+// New action for hooks - uses ParticipantService
+export async function createParticipantWithServiceAction(
+  festivalId: string,
+  data: {
+    name: string;
+    groupId: string;
+    categoryId: string;
+    email?: string;
+    phone?: string;
+    gender?: string;
+    registrationNumber?: string;
+  },
+) {
+  return ParticipantService.create(festivalId, {
+    name: data.name,
+    groupId: data.groupId,
+    categoryId: data.categoryId,
+    email: data.email,
+    phone: data.phone,
+    gender: (data.gender as "MALE" | "FEMALE" | "OTHER") || "MALE",
+    registrationNumber: data.registrationNumber,
+  });
+}
+
+// New action for hooks - uses ParticipantService
+export async function deleteParticipantWithServiceAction(
+  festivalId: string,
+  id: string,
+) {
+  return ParticipantService.delete(id, festivalId);
+}
+
+// Legacy action using FormData - kept for backwards compatibility
 const createParticipantSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email").optional().or(z.literal("")),
   phone: z.string().optional(),
-  editionId: z.string().min(1, "Edition ID is required"),
-  groupId: z.string().min(1, "Group ID is required"),
-  categoryId: z.string().min(1, "Category ID is required"),
+  festivalId: z.string().min(1, "Festival ID is required"),
+  groupId: z.string().optional(),
+  categoryId: z.string().optional(),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).default("MALE"),
 });
 
@@ -19,7 +58,7 @@ export async function createParticipantAction(formData: FormData) {
     name: formData.get("name"),
     email: formData.get("email"),
     phone: formData.get("phone"),
-    editionId: formData.get("editionId"),
+    festivalId: formData.get("festivalId"),
     groupId: formData.get("groupId"),
     categoryId: formData.get("categoryId"),
     gender: formData.get("gender"),
@@ -31,60 +70,92 @@ export async function createParticipantAction(formData: FormData) {
     return { error: validated.error.flatten().fieldErrors };
   }
 
-  const { name, email, phone, editionId, groupId, categoryId, gender } =
+  const { name, email, phone, festivalId, groupId, categoryId, gender } =
     validated.data;
 
   try {
     // Transaction to enforce limit and atomicity
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Fetch Edition count & Limit
-      const edition = await tx.edition.findUnique({
-        where: { id: editionId },
-        include: { limits: true },
+      // 1. Fetch Festival count & Limit
+      const festival = await tx.festival.findUnique({
+        where: { id: festivalId },
       });
 
-      if (!edition) {
-        throw new Error("Edition not found");
+      if (!festival) {
+        throw new Error("Festival not found");
       }
 
-      if (edition.status !== "ACTIVE") {
-        throw new Error("Edition is not active");
-      }
+      // TODO: Check festival status if needed
+      // if (festival.status !== "ACTIVE") { ... }
 
-      const limit = edition.limits?.maxParticipants || 1000; // Default limit
-      const currentCount = edition.participantsCount;
+      // Hardcoded limit for now or fetch from structure
+      const limit = 1000;
+      const currentCount = festival.participantsCount;
 
       if (currentCount >= limit) {
-        throw new Error("Participant limit reached for this edition.");
+        throw new Error("Participant limit reached for this festival.");
       }
 
       // 2. Create Participant
-      // Check for duplicate email in this edition first (if email provided)
       if (email) {
         const existing = await tx.participant.findFirst({
-          where: { editionId, email },
+          where: { festivalId, email },
         });
 
         if (existing) {
-          throw new Error("This email is already registered for this edition.");
+          throw new Error(
+            "This email is already registered for this festival.",
+          );
         }
+      }
+
+      // Handle missing group/category more gracefully?
+      // For now, we need them if schema requires, but I made them optional in Zod.
+      // However, Prisma requires them if the model says so.
+      // Validating against Prisma schema:
+      // model Participant { groupId String, categoryId String ... }
+      // So they ARE required in DB.
+      // We must provide them or fetch defaults.
+
+      let finalGroupId = groupId;
+      let finalCategoryId = categoryId;
+
+      if (!finalGroupId) {
+        // Try to find a default group or creating one?
+        // For now, fail if not provided, unless we find *any* group.
+        const defaultGroup = await tx.group.findFirst({
+          where: { festivalId },
+        });
+        if (defaultGroup) finalGroupId = defaultGroup.id;
+        else throw new Error("No group specified and no default group found.");
+      }
+
+      if (!finalCategoryId) {
+        const defaultCat = await tx.category.findFirst({
+          where: { festivalId },
+        });
+        if (defaultCat) finalCategoryId = defaultCat.id;
+        else
+          throw new Error(
+            "No category specified and no default category found.",
+          );
       }
 
       await tx.participant.create({
         data: {
-          edition: { connect: { id: editionId } },
-          group: { connect: { id: groupId } },
-          category: { connect: { id: categoryId } },
+          festival: { connect: { id: festivalId } },
+          group: { connect: { id: finalGroupId } },
+          category: { connect: { id: finalCategoryId } },
           name,
           email,
           phone,
-          gender,
+          gender: gender as any,
         },
       });
 
       // 3. Increment Count
-      await tx.edition.update({
-        where: { id: editionId },
+      await tx.festival.update({
+        where: { id: festivalId },
         data: {
           participantsCount: { increment: 1 },
         },
@@ -94,10 +165,9 @@ export async function createParticipantAction(formData: FormData) {
     });
 
     try {
-      revalidatePath(`/festival/${editionId}`);
-    } catch (e) {
-      // Ignore static generation store missing in test environment
-    }
+      // Revalidate festival dashboard
+      revalidatePath(`/festival/${festivalId}`);
+    } catch (e) {}
     return { success: true };
   } catch (error: any) {
     console.error("Failed to register participant:", error);
@@ -107,7 +177,7 @@ export async function createParticipantAction(formData: FormData) {
 
 export async function deleteParticipantAction(
   participantId: string,
-  editionId: string,
+  festivalId: string,
 ) {
   try {
     await prisma.$transaction(async (tx) => {
@@ -115,8 +185,8 @@ export async function deleteParticipantAction(
         where: { id: participantId },
       });
 
-      await tx.edition.update({
-        where: { id: editionId },
+      await tx.festival.update({
+        where: { id: festivalId },
         data: {
           participantsCount: { decrement: 1 },
         },
@@ -124,7 +194,7 @@ export async function deleteParticipantAction(
     });
 
     try {
-      revalidatePath(`/festival/${editionId}`);
+      revalidatePath(`/festival/${festivalId}`);
     } catch {}
     return { success: true };
   } catch (error) {

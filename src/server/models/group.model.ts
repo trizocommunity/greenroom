@@ -1,38 +1,35 @@
-import { prisma } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/db";
 
-export async function createGroup(data: Prisma.EditionGroupCreateInput) {
-  return prisma.editionGroup.create({
+export async function createGroup(data: Prisma.GroupCreateInput) {
+  return prisma.group.create({
     data,
   });
 }
 
-export async function updateGroup(
-  id: string,
-  data: Prisma.EditionGroupUpdateInput,
-) {
-  return prisma.editionGroup.update({
+export async function updateGroup(id: string, data: Prisma.GroupUpdateInput) {
+  return prisma.group.update({
     where: { id },
     data,
   });
 }
 
 export async function deleteGroup(id: string) {
-  return prisma.editionGroup.delete({
+  return prisma.group.delete({
     where: { id },
   });
 }
 
 export async function findGroupById(id: string) {
-  return prisma.editionGroup.findUnique({
+  return prisma.group.findUnique({
     where: { id },
     include: { _count: { select: { participants: true } } },
   });
 }
 
-export async function findGroupsByEdition(editionId: string) {
-  return prisma.editionGroup.findMany({
-    where: { editionId },
+export async function findGroupsByFestival(festivalId: string) {
+  return prisma.group.findMany({
+    where: { festivalId },
     orderBy: { name: "asc" },
     include: { _count: { select: { participants: true } } },
   });

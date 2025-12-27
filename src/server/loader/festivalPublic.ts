@@ -1,5 +1,5 @@
+import type { FestivalStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { EditionStatus, FestivalStatus } from "@prisma/client";
 
 export type PublicFestivalData = {
   festival: {
@@ -18,31 +18,18 @@ export type PublicFestivalData = {
     branding: any;
     status: FestivalStatus;
   };
-  edition: {
-    id: string;
-    slug: string;
-    status: EditionStatus;
+  // Simplified "Event" data (mapped from Festival)
+  event: {
     startDate: Date;
     endDate: Date;
-    description: string | null;
-    theme: string | null;
-    venue: string | null;
     location: string | null;
-    tierLabel: string;
+    status: FestivalStatus;
   } | null;
-  isHistoricalView: boolean;
-  availableEditions: {
-    id: string;
-    slug: string;
-    status: EditionStatus;
-  }[];
 };
 
 export async function getPublicFestivalData(
   festivalSlug: string,
-  editionIdentifier?: string | null,
 ): Promise<PublicFestivalData | null> {
-  // 1. Fetch Festival
   const festival = await prisma.festival.findUnique({
     where: { slug: festivalSlug },
     select: {
@@ -61,6 +48,9 @@ export async function getPublicFestivalData(
       branding: true,
       status: true,
       isLocked: true,
+      createdAt: true,
+      expiresAt: true,
+      location: true,
     },
   });
 
@@ -68,118 +58,20 @@ export async function getPublicFestivalData(
     return null;
   }
 
-  // 2. Fetch All Public Editions (Active or Frozen) for History Selector
-  // Exclude Drafts
-  const publicEditions = await prisma.edition.findMany({
-    where: {
-      festivalId: festival.id,
-      status: {
-        in: [
-          EditionStatus.ACTIVE,
-          EditionStatus.FREEZE,
-          EditionStatus.ARCHIVED,
-        ],
-      },
-    },
-    select: {
-      id: true,
-      status: true,
-      slug: true,
-    },
-    orderBy: {
-      startDate: "desc",
-    },
-  });
+  // If DRAFT, perhaps hiding logic? Assuming logic handled upstream or allowed for preview.
 
-  // 3. Resolve Target Edition
-  let targetEdition = null;
-  let isHistoricalView = false;
-
-  if (editionIdentifier) {
-    // Treat identifier as slug directly
-    targetEdition = await prisma.edition.findFirst({
-      where: {
-        festivalId: festival.id,
-        slug: editionIdentifier,
-        status: { not: EditionStatus.ARCHIVED }, // Same logic as before if desired
-      },
-      select: {
-        id: true,
-        slug: true,
-        status: true,
-        startDate: true,
-        endDate: true,
-        description: true,
-        theme: true,
-        venue: true,
-        location: true,
-        tierLabel: true,
-      },
-    });
-
-    if (targetEdition) {
-      isHistoricalView = true;
-    }
-  }
-
-  // Automatic Resolution if no specific edition targeted found
-  if (!targetEdition) {
-    // Priority 1: ACTIVE Edition
-    const activeEdition = await prisma.edition.findFirst({
-      where: {
-        festivalId: festival.id,
-        status: EditionStatus.ACTIVE,
-      },
-      orderBy: { startDate: "desc" },
-      select: {
-        id: true,
-        slug: true,
-        status: true,
-        startDate: true,
-        endDate: true,
-        description: true,
-        theme: true,
-        venue: true,
-        location: true,
-        tierLabel: true,
-      },
-    });
-
-    if (activeEdition) {
-      targetEdition = activeEdition;
-      isHistoricalView = false;
-    } else {
-      // Priority 2: Latest FROZEN Edition
-      const latestFrozen = await prisma.edition.findFirst({
-        where: {
-          festivalId: festival.id,
-          status: EditionStatus.FREEZE,
-        },
-        orderBy: { startDate: "desc" },
-        select: {
-          id: true,
-          slug: true,
-          status: true,
-          startDate: true,
-          endDate: true,
-          description: true,
-          theme: true,
-          venue: true,
-          location: true,
-          tierLabel: true,
-        },
-      });
-      if (latestFrozen) {
-        targetEdition = latestFrozen;
-        isHistoricalView = true;
-      }
-    }
-  }
+  // Construct "Event" data from Festival
+  const eventData = {
+    startDate: festival.createdAt,
+    endDate:
+      festival.expiresAt ||
+      new Date(festival.createdAt.getTime() + 40 * 24 * 60 * 60 * 1000), // Fallback if expiresAt missing
+    location: festival.location || festival.orgLocation || null,
+    status: festival.status,
+  };
 
   return {
     festival,
-    edition: targetEdition,
-    isHistoricalView,
-    availableEditions: publicEditions,
+    event: eventData,
   };
 }

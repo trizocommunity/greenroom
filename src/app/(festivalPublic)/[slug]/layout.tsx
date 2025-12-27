@@ -16,11 +16,19 @@ export default async function FestivalLayout({
   const { slug: festivalSlug } = await params;
 
   // Fetch basic festival info for the layout (Navbar/Footer)
-  // We can't know the edition here (no searchParams), so we provide base festival info
   const festival = await findFestivalBySlug(festivalSlug);
 
   if (!festival) {
     notFound();
+  }
+
+  // Expiry Guard
+  const isExpired =
+    festival.status === "EXPIRED" ||
+    (festival.expiresAt && new Date(festival.expiresAt) < new Date());
+
+  if (isExpired) {
+    notFound(); // As per product definition: "After expiry... permanently deleted"
   }
 
   // Check if user is logged in
@@ -28,7 +36,6 @@ export default async function FestivalLayout({
   const isLoggedIn = !!session?.userId;
 
   // Transform for client component
-  // Base data without specific edition overrides
   const festivalData = {
     id: festival.id,
     name: festival.name,
@@ -45,7 +52,6 @@ export default async function FestivalLayout({
       "colors" in festival.branding
         ? (festival.branding as any).colors?.primary || "#000000"
         : "#000000",
-    activeEdition: null, // Layout doesn't know
     logo:
       festival.branding &&
       typeof festival.branding === "object" &&
@@ -63,6 +69,9 @@ export default async function FestivalLayout({
     orgWebsite: festival.orgWebsite || "",
     orgLocation: festival.orgLocation || "",
     establishedYear: festival.establishedYear || null,
+    participantsCount: festival.participantsCount || 0,
+    eventsCount: festival.eventsCount || 0,
+    limits: null,
   };
 
   return (

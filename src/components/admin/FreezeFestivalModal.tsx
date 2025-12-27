@@ -1,7 +1,7 @@
 "use client";
 
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {

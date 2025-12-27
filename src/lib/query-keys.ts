@@ -30,15 +30,27 @@ export const queryKeys = {
   },
 
   /**
-   * Edition-related queries
+   * Festival Pre-works Data (Categories, Groups, Programmes, Participants, Assignments)
    */
-  editions: {
-    all: () => ["editions"] as const,
-    lists: () => ["editions", "list"] as const,
-    list: (filters?: Record<string, unknown>) =>
-      ["editions", "list", { ...filters }] as const,
-    details: () => ["editions", "detail"] as const,
-    detail: (id: string) => ["editions", "detail", id] as const,
+  categories: {
+    all: () => ["categories"] as const,
+    list: (festivalId: string) => ["categories", "list", festivalId] as const,
+  },
+  groups: {
+    all: () => ["groups"] as const,
+    list: (festivalId: string) => ["groups", "list", festivalId] as const,
+  },
+  programmes: {
+    all: () => ["programmes"] as const,
+    list: (festivalId: string) => ["programmes", "list", festivalId] as const,
+  },
+  participants: {
+    all: () => ["participants"] as const,
+    list: (festivalId: string) => ["participants", "list", festivalId] as const,
+  },
+  assignments: {
+    all: () => ["assignments"] as const,
+    list: (festivalId: string) => ["assignments", "list", festivalId] as const,
   },
 
   /**
@@ -50,6 +62,8 @@ export const queryKeys = {
     list: (filters?: Record<string, unknown>) =>
       ["payments", "list", { ...filters }] as const,
     status: (userId?: string) => ["payments", "status", { userId }] as const,
+    unusedCredit: (userId?: string) =>
+      ["payments", "unused-credit", { userId }] as const,
     history: (userId?: string) => ["payments", "history", { userId }] as const,
     details: () => ["payments", "detail"] as const,
     detail: (id: string) => ["payments", "detail", id] as const,

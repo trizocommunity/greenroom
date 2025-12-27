@@ -1,25 +1,21 @@
-import { Metadata } from "next";
 import { Building2, Calendar, Globe, MapPin } from "lucide-react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getPublicFestivalData } from "@/server/loader/festivalPublic";
 
 export async function generateMetadata({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ edition?: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const { edition: editionParam } = await searchParams;
-  const data = await getPublicFestivalData(slug, editionParam);
+  const data = await getPublicFestivalData(slug);
 
   if (!data) return { title: "About Not Found" };
 
-  const { festival, edition } = data;
-  const currentEditionName = edition?.slug;
-  const title = `About - ${currentEditionName ? `${festival.name} ${currentEditionName}` : festival.name}`;
+  const { festival } = data;
+  const title = `About - ${festival.name}`;
 
   return {
     title: title,
@@ -33,24 +29,20 @@ export async function generateMetadata({
 
 export default async function AboutPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ edition?: string }>;
 }) {
   const { slug } = await params;
-  const { edition: editionParam } = await searchParams;
 
-  const data = await getPublicFestivalData(slug, editionParam);
+  const data = await getPublicFestivalData(slug);
 
   if (!data) {
     notFound();
   }
 
-  const { festival, edition } = data;
+  const { festival } = data;
 
-  // Use edition description if available, else festival description
-  const description = edition?.description || festival.description || "";
+  const description = festival.description || "";
 
   const accentColor =
     festival.branding &&
@@ -73,7 +65,7 @@ export default async function AboutPage({
             className="text-3xl font-bold mb-6"
             style={{ color: accentColor }}
           >
-            About {edition ? edition.slug.toUpperCase() : festival.name}
+            About {festival.name}
           </h1>
           <Card>
             <CardContent className="pt-6">

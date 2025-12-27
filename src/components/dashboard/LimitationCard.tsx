@@ -1,6 +1,6 @@
+import { Calendar, Database, Gavel, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Users, Calendar, Gavel, Database } from "lucide-react";
 
 interface LimitationCardProps {
   tierLabel: string;
@@ -74,7 +74,7 @@ export function LimitationCard({
     <Card className={className}>
       <CardHeader className="pb-3 border-b border-white/5 bg-white/5">
         <CardTitle className="text-sm font-medium tracking-wide text-muted-foreground uppercase flex items-center justify-between">
-          <span>Edition Limits</span>
+          <span>Festival Limits</span>
           <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-100 border border-zinc-700 font-bold">
             {tierLabel || "Tier"}
           </span>

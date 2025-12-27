@@ -12,6 +12,9 @@ import {
   Trophy,
   Users,
   UsersRound,
+  CreditCard,
+  Building2,
+  CheckCircle,
 } from "lucide-react";
 
 export type FestivalRole =
@@ -40,11 +43,6 @@ export const SUPER_ADMIN_SIDEBAR_ITEMS = [
     icon: Calendar,
   },
   {
-    title: "Editions",
-    url: "/super-admin/editions",
-    icon: FileText,
-  },
-  {
     title: "Payments",
     url: "/super-admin/payments",
     icon: CreditCard,
@@ -62,11 +60,6 @@ export const SUPER_ADMIN_SIDEBAR_ITEMS = [
   },
 ];
 
-// Re-import CreditCard which was missing in the replacement content above?
-// Ah, I see I missed adding it to the imports. Let me fix the imports in the replacement content below.
-// Wait, I can't self-correct in the tool call description. I will just execute it correctly.
-import { CreditCard } from "lucide-react";
-
 interface SidebarItem {
   title: string;
   href: string;
@@ -83,7 +76,6 @@ interface SidebarGroup {
 export const getFestivalDashboardSidebarConfig = (
   basePath: string,
   role: string = "OWNER",
-  isEditionView: boolean = false,
 ): SidebarGroup[] => {
   const isSuperAdmin = role === "SUPER_ADMIN";
   const normalizedRole = role as FestivalRole;
@@ -95,34 +87,6 @@ export const getFestivalDashboardSidebarConfig = (
     return allowedRoles.includes(normalizedRole);
   };
 
-  if (!isEditionView) {
-    // FESTIVAL OVERVIEW MODE (Simplified for now)
-    return [
-      {
-        title: "Overview",
-        items: [
-          {
-            title: "Dashboard",
-            href: basePath,
-            icon: LayoutDashboard,
-          },
-        ],
-      },
-      {
-        title: "Settings",
-        items: [
-          {
-            title: "General Settings",
-            href: `${basePath}/settings`,
-            icon: Settings,
-            allowedRoles: ["OWNER", "ADMIN"] as FestivalRole[],
-          },
-        ].filter((i) => hasAccess(i.allowedRoles)),
-      },
-    ];
-  }
-
-  // EDITION DASHBOARD MODE
   const groups: SidebarGroup[] = [
     {
       title: "", // Top level
@@ -276,6 +240,3 @@ export const getFestivalDashboardSidebarConfig = (
     }))
     .filter((group) => group.items.length > 0);
 };
-
-// Import missing icons
-import { Building2, CheckCircle } from "lucide-react";

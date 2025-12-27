@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/db";
 
 export async function createParticipant(data: Prisma.ParticipantCreateInput) {
   return prisma.participant.create({
@@ -30,11 +30,11 @@ export async function findParticipantById(id: string) {
   });
 }
 
-export async function findParticipantsByEdition(
-  editionId: string,
+export async function findParticipantsByFestival(
+  festivalId: string,
   groupId?: string,
 ) {
-  const where: Prisma.ParticipantWhereInput = { editionId };
+  const where: Prisma.ParticipantWhereInput = { festivalId };
   if (groupId) where.groupId = groupId;
 
   return prisma.participant.findMany({
@@ -44,8 +44,8 @@ export async function findParticipantsByEdition(
   });
 }
 
-export async function countParticipants(editionId: string) {
+export async function countParticipants(festivalId: string) {
   return prisma.participant.count({
-    where: { editionId },
+    where: { festivalId },
   });
 }

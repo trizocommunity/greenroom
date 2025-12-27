@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/db";
 
 export async function createAssignment(
   data: Prisma.ProgrammeAssignmentCreateInput,

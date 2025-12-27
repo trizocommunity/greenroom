@@ -27,8 +27,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  useSuperAdminPayments,
   type Payment,
+  useSuperAdminPayments,
 } from "@/hooks/useSuperAdminPayments";
 
 const columns: ColumnDef<Payment>[] = [

@@ -1,8 +1,8 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import { LayoutDashboard, Calendar, CreditCard, LogOut } from "lucide-react";
+import { Calendar, CreditCard, LayoutDashboard, LogOut } from "lucide-react";
 import { LogoutButton } from "@/components/auth/LogoutButton";
+import { cn } from "@/lib/utils";
 
 interface ProfileSidebarProps {
   activeTab: string;
@@ -25,11 +25,6 @@ export function ProfileSidebar({
       label: "Festivals",
       value: "festivals",
       icon: Calendar,
-    },
-    {
-      label: "Editions",
-      value: "editions",
-      icon: CreditCard, // Using CreditCard icon for now or maybe Layers/List? Layers is better.
     },
   ];
 

@@ -1,40 +1,38 @@
 import { LimitationCard } from "@/components/dashboard/LimitationCard";
 import { StatusStrip } from "@/components/dashboard/StatusStrip";
 import type { FestivalRole } from "@/components/festival/FestivalRoleBadge";
-import type { EditionStatus } from "@prisma/client";
 import { cn } from "@/lib/utils";
+import type { FestivalStatus } from "@prisma/client";
 
 interface DashboardRightPanelProps {
   festivalSlug: string;
   festivalName: string;
-  editionName: string | null;
-  editionStatus: EditionStatus | null;
+  festivalStatus: FestivalStatus | string;
   daysRemaining?: number | null;
   userRole: FestivalRole | string;
-  activeEdition?: {
-    tierLabel: string;
-    limits: {
-      maxParticipants: number;
-      maxEvents: number;
-      maxJudges: number;
-      maxStorageMB: number;
-    };
-    usage: {
-      participantsCount: number;
-      eventsCount: number;
-      judgesCount: number;
-      storageUsedMB: number;
-    };
+  usage?: {
+    participantsCount: number;
+    eventsCount: number;
+    judgesCount: number;
+    storageUsedMB: number;
   };
+  limits?: {
+    maxParticipants: number;
+    maxEvents: number;
+    maxJudges: number;
+    maxStorageMB: number;
+  };
+  tierLabel?: string;
 }
 
 export function DashboardPanelContent({
   festivalName,
-  editionName,
-  editionStatus,
+  festivalStatus,
   daysRemaining,
   userRole,
-  activeEdition,
+  usage,
+  limits,
+  tierLabel,
   className,
 }: DashboardRightPanelProps & { className?: string }) {
   return (
@@ -45,8 +43,6 @@ export function DashboardPanelContent({
         <div className="space-y-4 pt-1">
           <StatusStrip
             festivalName={festivalName}
-            editionName={editionName}
-            editionStatus={editionStatus}
             daysRemaining={daysRemaining}
             userRole={userRole}
             orientation="vertical"
@@ -54,11 +50,11 @@ export function DashboardPanelContent({
         </div>
 
         {/* Limitation Card */}
-        {activeEdition && (
+        {usage && limits && (
           <LimitationCard
-            tierLabel={activeEdition.tierLabel}
-            limits={activeEdition.limits}
-            usage={activeEdition.usage}
+            tierLabel={tierLabel || "Standard"}
+            limits={limits}
+            usage={usage}
             className="bg-card border-border shadow-sm"
           />
         )}

@@ -3,6 +3,7 @@
 import { ChevronsUpDown, GalleryVerticalEnd, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -26,7 +27,6 @@ import {
 } from "@/components/ui/sidebar";
 import { SUPER_ADMIN_SIDEBAR_ITEMS } from "@/config/sidebar.config";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { LogoutButton } from "@/components/auth/LogoutButton";
 
 // Menu items.
 const items = SUPER_ADMIN_SIDEBAR_ITEMS;

@@ -1,0 +1,271 @@
+"use client";
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { queryKeys } from "@/lib/query-keys";
+import {
+  getCategoriesAction,
+  createCategoryAction,
+  deleteCategoryAction,
+} from "@/server/actions/category.actions";
+import {
+  getGroupsAction,
+  createGroupAction,
+  deleteGroupAction,
+} from "@/server/actions/group.actions";
+import {
+  getProgrammesAction,
+  createProgrammeAction,
+  deleteProgrammeAction,
+} from "@/server/actions/programme.actions";
+import {
+  getParticipantsAction,
+  createParticipantWithServiceAction,
+  deleteParticipantWithServiceAction,
+} from "@/server/actions/participant.actions";
+import {
+  getAssignmentsAction,
+  createAssignmentAction,
+  deleteAssignmentAction,
+} from "@/server/actions/assignment.actions";
+
+// ============================================================================
+// Categories Hooks
+// ============================================================================
+
+export function useCategories(festivalId: string) {
+  return useQuery({
+    queryKey: queryKeys.categories.list(festivalId),
+    queryFn: () => getCategoriesAction(festivalId),
+    enabled: !!festivalId,
+  });
+}
+
+export function useCreateCategory(festivalId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { name: string; description?: string }) =>
+      createCategoryAction(festivalId, data),
+    onSuccess: () => {
+      toast.success("Category created successfully");
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.categories.list(festivalId),
+      });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to create category");
+    },
+  });
+}
+
+export function useDeleteCategory(festivalId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteCategoryAction(festivalId, id),
+    onSuccess: () => {
+      toast.success("Category deleted");
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.categories.list(festivalId),
+      });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete category");
+    },
+  });
+}
+
+// ============================================================================
+// Groups Hooks
+// ============================================================================
+
+export function useGroups(festivalId: string) {
+  return useQuery({
+    queryKey: queryKeys.groups.list(festivalId),
+    queryFn: () => getGroupsAction(festivalId),
+    enabled: !!festivalId,
+  });
+}
+
+export function useCreateGroup(festivalId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { name: string; type?: string }) =>
+      createGroupAction(festivalId, data),
+    onSuccess: () => {
+      toast.success("Group created successfully");
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.groups.list(festivalId),
+      });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to create group");
+    },
+  });
+}
+
+export function useDeleteGroup(festivalId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteGroupAction(festivalId, id),
+    onSuccess: () => {
+      toast.success("Group deleted");
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.groups.list(festivalId),
+      });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete group");
+    },
+  });
+}
+
+// ============================================================================
+// Programmes Hooks
+// ============================================================================
+
+export function useProgrammes(festivalId: string) {
+  return useQuery({
+    queryKey: queryKeys.programmes.list(festivalId),
+    queryFn: () => getProgrammesAction(festivalId),
+    enabled: !!festivalId,
+  });
+}
+
+export function useCreateProgramme(festivalId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      name: string;
+      categoryId: string;
+      type?: string;
+      stageType?: string;
+      maxEntries?: number;
+    }) => createProgrammeAction(festivalId, data),
+    onSuccess: () => {
+      toast.success("Programme created successfully");
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.programmes.list(festivalId),
+      });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to create programme");
+    },
+  });
+}
+
+export function useDeleteProgramme(festivalId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteProgrammeAction(festivalId, id),
+    onSuccess: () => {
+      toast.success("Programme deleted");
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.programmes.list(festivalId),
+      });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete programme");
+    },
+  });
+}
+
+// ============================================================================
+// Participants Hooks
+// ============================================================================
+
+export function useParticipants(festivalId: string) {
+  return useQuery({
+    queryKey: queryKeys.participants.list(festivalId),
+    queryFn: () => getParticipantsAction(festivalId),
+    enabled: !!festivalId,
+  });
+}
+
+export function useCreateParticipant(festivalId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      name: string;
+      groupId: string;
+      categoryId: string;
+      email?: string;
+      phone?: string;
+      gender?: string;
+      registrationNumber?: string;
+    }) => createParticipantWithServiceAction(festivalId, data),
+    onSuccess: () => {
+      toast.success("Participant created successfully");
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.participants.list(festivalId),
+      });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to create participant");
+    },
+  });
+}
+
+export function useDeleteParticipant(festivalId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      deleteParticipantWithServiceAction(festivalId, id),
+    onSuccess: () => {
+      toast.success("Participant deleted");
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.participants.list(festivalId),
+      });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete participant");
+    },
+  });
+}
+
+// ============================================================================
+// Assignments Hooks
+// ============================================================================
+
+export function useAssignments(festivalId: string) {
+  return useQuery({
+    queryKey: queryKeys.assignments.list(festivalId),
+    queryFn: () => getAssignmentsAction(festivalId),
+    enabled: !!festivalId,
+  });
+}
+
+export function useCreateAssignment(festivalId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      programmeId: string;
+      participantId?: string;
+      groupId?: string;
+    }) => createAssignmentAction(festivalId, data),
+    onSuccess: () => {
+      toast.success("Assignment created successfully");
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.assignments.list(festivalId),
+      });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to create assignment");
+    },
+  });
+}
+
+export function useDeleteAssignment(festivalId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteAssignmentAction(festivalId, id),
+    onSuccess: () => {
+      toast.success("Assignment deleted");
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.assignments.list(festivalId),
+      });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete assignment");
+    },
+  });
+}

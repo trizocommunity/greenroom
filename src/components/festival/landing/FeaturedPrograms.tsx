@@ -25,7 +25,7 @@ export function FeaturedPrograms({ accentColor, slug }: FeaturedProgramsProps) {
               Featured Programs
             </h2>
             <p className="text-muted-foreground">
-              Don&apos;t miss the flagship events curated for this edition.
+              Don&apos;t miss the flagship events curated for this event.
             </p>
           </div>
           <Link href={`/festival/${slug}/sessions`} className="hidden md:block">

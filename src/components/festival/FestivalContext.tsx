@@ -5,29 +5,28 @@ import { createContext, type ReactNode, useContext } from "react";
 export type FestivalPublicData = {
   id: string;
   name: string;
-  slug: string | null;
+  slug: string | null; // Made nullable in type, but usually present
   description: string | null;
   tagline: string | null;
-  startDate: string;
-  endDate: string;
-  location: string;
+  startDate: string | null; // Dates might be optional now
+  endDate: string | null;
+  location: string | null;
   status: string;
   accentColor: string;
   logo: string | null;
   heroImage: string | null;
-  orgName: string;
+  orgName: string | null;
   orgDescription: string | null;
   orgWebsite: string | null;
   orgLocation: string | null;
   establishedYear: number | null;
-  activeEdition: {
-    id: string;
-    name: string;
-    status: string; // EditionStatus
-    participantsCount: number;
-    limits: {
-      maxParticipants: number;
-    } | null;
+  // Festival stats
+  participantsCount?: number;
+  eventsCount?: number;
+  limits?: {
+    maxParticipants: number;
+    maxEvents?: number;
+    maxJudges?: number;
   } | null;
 };
 

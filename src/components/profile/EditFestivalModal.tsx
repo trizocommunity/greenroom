@@ -1,14 +1,8 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
-
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -26,180 +20,103 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { type Festival, useUpdateFestival } from "@/hooks/useFestivals";
-
-const formSchema = z.object({
-  name: z.string().min(3, "Name must be at least 3 characters").max(50),
-  slug: z
-    .string()
-    .min(3)
-    .max(50)
-    .regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with dashes"),
-  description: z.string().optional(),
-  orgName: z.string().optional(),
-  orgDescription: z.string().optional(),
-  orgWebsite: z.string().url("Invalid URL").optional().or(z.literal("")),
-  establishedYear: z.number().optional(),
-  founderName: z.string().optional(),
-  founderMessage: z.string().optional(),
-});
-
-type FormData = z.infer<typeof formSchema>;
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Loader2 } from "lucide-react";
+import { updateFestivalAction } from "@/server/actions/user-festival.actions";
+import { updateFestivalSchema } from "@/lib/validations/festival";
+import type { UpdateFestivalInput } from "@/lib/validations/festival";
+import { InstitutionType } from "@prisma/client";
+import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 
 interface EditFestivalModalProps {
-  festival: Festival | null;
+  festival: any;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+type FormValues = UpdateFestivalInput;
 
 export function EditFestivalModal({
   festival,
   open,
   onOpenChange,
 }: EditFestivalModalProps) {
-  const updateMutation = useUpdateFestival();
   const router = useRouter();
-  const pathname = usePathname();
-
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+  const queryClient = useQueryClient();
+  const form = useForm<FormValues>({
+    resolver: zodResolver(updateFestivalSchema),
     defaultValues: {
-      name: "",
-      slug: "",
-      description: "",
-      orgName: "",
-      orgDescription: "",
-      orgWebsite: "",
-      establishedYear: undefined,
-      founderName: "",
-      founderMessage: "",
+      name: festival?.name || "",
+      description: festival?.description || "",
+      orgName: festival?.orgName || "",
+      orgDescription: festival?.orgDescription || "",
+      orgWebsite: festival?.orgWebsite || "",
+      orgLocation: festival?.orgLocation || "",
+      establishedYear: festival?.establishedYear || null,
+      institutionType: festival?.institutionType || null,
+      institutionName: festival?.institutionName || "",
+      location: festival?.location || "",
+      founderName: festival?.founderName || "",
+      founderMessage: festival?.founderMessage || "",
     },
   });
 
-  useEffect(() => {
-    if (festival && open) {
-      form.reset({
-        name: festival.name,
-        slug: festival.slug || "",
-        description: festival.description || "",
-        orgName: festival.orgName || "",
-        orgDescription: festival.orgDescription || "",
-        orgWebsite: festival.orgWebsite || "",
-        establishedYear: festival.establishedYear || undefined,
-        founderName: festival.founderName || "",
-        founderMessage: festival.founderMessage || "",
-      });
+  const onSubmit = async (values: FormValues) => {
+    try {
+      const res = await updateFestivalAction(values);
+      if (res.success) {
+        toast.success("Festival updated successfully");
+        queryClient.invalidateQueries({ queryKey: queryKeys.festivals.all() });
+        onOpenChange(false);
+      } else {
+        toast.error("Error", { description: res.error });
+      }
+      router.refresh();
+    } catch (error: any) {
+      toast.error("Error", { description: "Failed to update festival" });
     }
-  }, [festival, open, form]);
-
-  const onSubmit = (data: FormData) => {
-    if (!festival) return;
-
-    updateMutation.mutate(
-      {
-        id: festival.id,
-        data: {
-          name: data.name,
-          slug: data.slug,
-          description: data.description,
-          orgName: data.orgName,
-          orgDescription: data.orgDescription,
-          orgWebsite: data.orgWebsite,
-          establishedYear: data.establishedYear,
-          founderName: data.founderName,
-          founderMessage: data.founderMessage,
-        },
-      },
-      {
-        onSuccess: (updatedFestival) => {
-          onOpenChange(false);
-          toast.success("Festival updated successfully");
-
-          if (
-            updatedFestival?.slug &&
-            festival.slug &&
-            updatedFestival.slug !== festival.slug
-          ) {
-            // Check if we are on a path that includes the old slug
-            // Example: /festival/old-slug/settings -> /festival/new-slug/settings
-            // Example: /festival/old-slug -> /festival/new-slug
-            if (pathname.includes(festival.slug)) {
-              const newPath = pathname.replace(
-                festival.slug,
-                updatedFestival.slug,
-              );
-              router.push(newPath);
-            } else {
-              router.refresh();
-            }
-          } else {
-            router.refresh();
-          }
-        },
-      },
-    );
   };
-
-  if (!festival) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Festival Details</DialogTitle>
           <DialogDescription>
-            Update your festival name and URL slug.
+            Update your festival information and organizational details.
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <Tabs defaultValue="general" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="general">General</TabsTrigger>
-                <TabsTrigger value="organization">Organization</TabsTrigger>
-                <TabsTrigger value="founder">Founder</TabsTrigger>
-              </TabsList>
-
-              {/* General Tab */}
-              <TabsContent value="general" className="space-y-4 pt-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Festival Name</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Summer Music Festival"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="slug"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>URL Slug</FormLabel>
-                        <FormControl>
-                          <Input placeholder="summer-music-fest" {...field} />
-                        </FormControl>
-                        <p className="text-xs text-muted-foreground">
-                          URL: {field.value}.greenrooom.com
-                        </p>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Basic Info */}
+              <div className="space-y-4 md:col-span-2">
+                <h3 className="font-bold text-lg border-b pb-2">
+                  Basic Information
+                </h3>
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Festival Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="E.g. Summer Arts 2025" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="description"
@@ -208,28 +125,36 @@ export function EditFestivalModal({
                       <FormLabel>Description</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="A short description of your festival"
-                          className="h-32"
+                          placeholder="Briefly describe your festival..."
+                          className="resize-none"
                           {...field}
+                          value={field.value || ""}
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </TabsContent>
+              </div>
 
-              {/* Organization Tab */}
-              <TabsContent value="organization" className="space-y-4 pt-4">
+              {/* Organization Info */}
+              <div className="space-y-4 md:col-span-2">
+                <h3 className="font-bold text-lg border-b pb-2 pt-4">
+                  Organization Details
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="orgName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Organization/College Name</FormLabel>
+                        <FormLabel>Organization Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="State University" {...field} />
+                          <Input
+                            placeholder="Name of your org"
+                            {...field}
+                            value={field.value || ""}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -244,14 +169,11 @@ export function EditFestivalModal({
                         <FormControl>
                           <Input
                             type="number"
-                            placeholder="1990"
+                            placeholder="YYYY"
                             {...field}
+                            value={field.value || ""}
                             onChange={(e) =>
-                              field.onChange(
-                                e.target.value
-                                  ? parseInt(e.target.value, 10)
-                                  : undefined,
-                              )
+                              field.onChange(e.target.valueAsNumber || null)
                             }
                           />
                         </FormControl>
@@ -260,58 +182,143 @@ export function EditFestivalModal({
                     )}
                   />
                 </div>
-
-                <FormField
-                  control={form.control}
-                  name="orgDescription"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Organization Description</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Tell us about your organization..."
-                          className="h-24"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
                 <FormField
                   control={form.control}
                   name="orgWebsite"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Website</FormLabel>
+                      <FormLabel>Organization Website</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="https://university.edu"
+                          placeholder="https://example.com"
                           {...field}
+                          value={field.value || ""}
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </TabsContent>
-
-              {/* Founder Tab */}
-              <TabsContent value="founder" className="space-y-4 pt-4">
                 <FormField
                   control={form.control}
-                  name="founderName"
+                  name="orgLocation"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Founder Name</FormLabel>
+                      <FormLabel>Organization Location</FormLabel>
                       <FormControl>
-                        <Input placeholder="John Doe" {...field} />
+                        <Input
+                          placeholder="City, Country"
+                          {...field}
+                          value={field.value || ""}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+              </div>
+
+              {/* Institution Info */}
+              <div className="space-y-4 md:col-span-2">
+                <h3 className="font-bold text-lg border-b pb-2 pt-4">
+                  Institution Info
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="institutionType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Institution Type</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value || undefined}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value={InstitutionType.COLLEGE}>
+                              College
+                            </SelectItem>
+                            <SelectItem value={InstitutionType.SCHOOL}>
+                              School
+                            </SelectItem>
+                            <SelectItem value={InstitutionType.MADRASA}>
+                              Madrasa
+                            </SelectItem>
+                            <SelectItem value={InstitutionType.OTHER}>
+                              Other
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="institutionName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Institution Name</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Name of institution"
+                            {...field}
+                            value={field.value || ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Founder Message */}
+              <div className="space-y-4 md:col-span-2">
+                <h3 className="font-bold text-lg border-b pb-2 pt-4">
+                  Founder Message
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="founderName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Founder Name</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Founder's Name"
+                            {...field}
+                            value={field.value || ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="location"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Festival Venue/Location</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Venue location"
+                            {...field}
+                            value={field.value || ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 <FormField
                   control={form.control}
                   name="founderMessage"
@@ -320,21 +327,29 @@ export function EditFestivalModal({
                       <FormLabel>Founder Message</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Welcome to our annual event..."
-                          className="h-32"
+                          placeholder="A message from the founder..."
+                          className="resize-none"
                           {...field}
+                          value={field.value || ""}
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </TabsContent>
-            </Tabs>
+              </div>
+            </div>
 
-            <div className="flex justify-end pt-4">
-              <Button type="submit" disabled={updateMutation.isPending}>
-                {updateMutation.isPending && (
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
                 Save Changes
