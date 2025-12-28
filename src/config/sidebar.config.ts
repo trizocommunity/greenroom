@@ -21,7 +21,7 @@ export type FestivalRole =
   | "SUPER_ADMIN"
   | "ADMIN"
   | "JUDGE"
-  | "TEAM-LEADER"
+  | "TEAM_LEADER"
   | "STAGE-MANAGER"
   | "ANNOUNCER"
   | "OWNER";
@@ -96,6 +96,12 @@ export const getFestivalDashboardSidebarConfig = (
           href: basePath,
           icon: LayoutDashboard,
         },
+        {
+          title: "Teams",
+          href: `${basePath}/teams`,
+          icon: Users,
+          allowedRoles: ["ADMIN", "OWNER"],
+        },
       ],
     },
     {
@@ -123,13 +129,13 @@ export const getFestivalDashboardSidebarConfig = (
           title: "Participants",
           href: `${basePath}/pre-works/participants`,
           icon: UsersRound,
-          allowedRoles: ["ADMIN", "OWNER", "TEAM-LEADER"],
+          allowedRoles: ["ADMIN", "OWNER", "TEAM_LEADER"],
         },
         {
           title: "Programme Assignment",
           href: `${basePath}/pre-works/assignments`,
           icon: Edit,
-          allowedRoles: ["ADMIN", "OWNER", "TEAM-LEADER"],
+          allowedRoles: ["ADMIN", "OWNER", "TEAM_LEADER"],
         },
       ],
     },

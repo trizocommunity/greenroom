@@ -57,6 +57,7 @@ model User {
   festival Festival? // ONE festival max
   payments Payment[]
   tokens   PasswordResetToken[]
+  memberOf FestivalMember[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -170,7 +171,34 @@ model Festival {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  members       FestivalMember[]
+  
   @@map("festival")
+}
+
+enum FestivalRole {
+  TEAM_LEADER
+}
+
+model FestivalMember {
+  id        String   @id @default(uuid())
+  
+  festivalId String
+  festival   Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  role      FestivalRole @default(TEAM_LEADER)
+  
+  isActive  Boolean @default(true)
+  metadata  Json?   // Store initial password here if absolutely needed for "Show Password" feature
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([festivalId, userId])
+  @@map("festival_member")
 }
 
 model Category {

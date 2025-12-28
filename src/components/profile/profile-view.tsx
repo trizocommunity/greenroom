@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { ProfileSidebarContent } from "./ProfileSidebarContent";
 import { BillingTab } from "./tabs/BillingTab";
 import { OverviewTab } from "./tabs/OverviewTab";
+import { FestivalsTab } from "./tabs/FestivalsTab";
 
 interface UserWithProfile extends User {
   fullName: string | null;
@@ -32,8 +33,11 @@ export function ProfileView({ user }: ProfileViewProps) {
 
       {/* Main Content */}
       <main className="flex-1 min-w-0">
-        {activeTab === "overview" && <OverviewTab displayName={displayName} />}
+        {activeTab === "overview" && (
+          <OverviewTab displayName={displayName} userId={user.id} />
+        )}
         {activeTab === "billing" && <BillingTab />}
+        {activeTab === "festivals" && <FestivalsTab userId={user.id} />}
       </main>
     </div>
   );

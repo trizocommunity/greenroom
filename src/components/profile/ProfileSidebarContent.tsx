@@ -1,7 +1,7 @@
 "use client";
 
 import type { User } from "@prisma/client";
-import { CreditCard, LayoutDashboard } from "lucide-react";
+import { CreditCard, LayoutDashboard, Tent } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -52,6 +52,11 @@ export function ProfileSidebarContent({
       label: "Billing",
       value: "billing",
       icon: CreditCard,
+    },
+    {
+      label: "My Festivals",
+      value: "festivals",
+      icon: Tent,
     },
   ];
 

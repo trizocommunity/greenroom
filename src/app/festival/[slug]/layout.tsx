@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getSession } from "@/lib/auth/session";
 import { findFestivalBySlugOrId } from "@/server/models/festival.model";
+import { prisma } from "@/lib/db";
 
 export default async function FestivalDashboardLayout({
   children,
@@ -40,7 +41,26 @@ export default async function FestivalDashboardLayout({
 
   const isCreator = festival.ownerId === session.userId;
   const isSuperAdmin = session.role === "SUPER_ADMIN";
-  if (!isCreator && !isSuperAdmin) redirect("/");
+
+  let role = isSuperAdmin ? "SUPER_ADMIN" : isCreator ? "OWNER" : "";
+
+  if (!isCreator && !isSuperAdmin) {
+    // Check if team member
+    const member = await prisma.festivalMember.findUnique({
+      where: {
+        festivalId_userId: {
+          festivalId: festival.id,
+          userId: session.userId,
+        },
+      },
+    });
+
+    if (member && member.role === "TEAM_LEADER" && member.isActive) {
+      role = "TEAM_LEADER";
+    } else {
+      redirect("/");
+    }
+  }
 
   // 3. Expiry Guard (Strict Blocking)
   const isExpired =
@@ -82,7 +102,7 @@ export default async function FestivalDashboardLayout({
     },
   };
 
-  const userRole = isSuperAdmin ? "SUPER_ADMIN" : "OWNER";
+  const userRole = role;
 
   return (
     <SidebarProvider>
