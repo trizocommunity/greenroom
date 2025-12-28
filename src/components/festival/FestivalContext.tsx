@@ -28,6 +28,9 @@ export type FestivalPublicData = {
     maxEvents?: number;
     maxJudges?: number;
   } | null;
+  // Deadlines
+  participantCreationDeadline: string | Date | null;
+  programmeAssignmentDeadline: string | Date | null;
 };
 
 const FestivalContext = createContext<FestivalPublicData | null>(null);

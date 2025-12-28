@@ -96,10 +96,12 @@ export default async function FestivalDashboardLayout({
     participantsCount: festival.participantsCount || 0,
     eventsCount: festival.eventsCount || 0,
     limits: {
-      maxParticipants: 1000, // Default or fetch from Festival.branding/settings
+      maxParticipants: 1000,
       maxEvents: 100,
       maxJudges: 20,
     },
+    participantCreationDeadline: festival.participantCreationDeadline,
+    programmeAssignmentDeadline: festival.programmeAssignmentDeadline,
   };
 
   const userRole = role;

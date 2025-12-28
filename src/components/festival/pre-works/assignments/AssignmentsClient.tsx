@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/table";
 import { useAssignments } from "@/hooks/useAssignments";
 import { Eye, Loader2, Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { DeadlinesCard } from "../DeadlinesCard";
 import { format } from "date-fns";
 import { AssignmentDialog } from "./AssignmentDialog";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
@@ -49,6 +51,8 @@ export function AssignmentsClient({
 
   return (
     <div className="space-y-6">
+      <DeadlinesCard type="assignment" />
+
       <div className="flex justify-end">
         {!isReadOnly && <AssignmentDialog festivalId={festivalId} />}
       </div>
@@ -119,7 +123,9 @@ export function AssignmentsClient({
                           <DeleteDialog
                             title="Delete Assignment"
                             description="Are you sure you want to remove this assignment?"
-                            onDelete={() => deleteAssignment(assignment.id)}
+                            onDelete={async () => {
+                              await deleteAssignment(assignment.id);
+                            }}
                             isDeleting={isDeleting}
                           />
                         </>

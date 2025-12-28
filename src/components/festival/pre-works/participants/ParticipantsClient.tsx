@@ -15,6 +15,7 @@ import { Eye, FileText, Loader2, Pencil, Trash2, User } from "lucide-react";
 import { ParticipantDialog } from "./ParticipantDialog";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { format } from "date-fns";
+import { DeadlinesCard } from "../DeadlinesCard";
 
 interface ParticipantsClientProps {
   festivalId: string;
@@ -44,6 +45,7 @@ export function ParticipantsClient({
 
   return (
     <div className="space-y-6">
+      <DeadlinesCard type="participant" />
       <div className="flex justify-between items-center bg-muted/40 p-4 rounded-lg border">
         <div className="flex items-center gap-2">
           <User className="h-5 w-5 text-muted-foreground" />
