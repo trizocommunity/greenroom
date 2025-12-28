@@ -97,8 +97,14 @@ export const getFestivalDashboardSidebarConfig = (
           icon: LayoutDashboard,
         },
         {
-          title: "Teams",
-          href: `${basePath}/teams`,
+          title: "Settings",
+          href: `${basePath}/settings`,
+          icon: Settings,
+          allowedRoles: ["ADMIN", "OWNER"],
+        },
+        {
+          title: "Members",
+          href: `${basePath}/members`,
           icon: Users,
           allowedRoles: ["ADMIN", "OWNER"],
         },
@@ -139,6 +145,7 @@ export const getFestivalDashboardSidebarConfig = (
         },
       ],
     },
+
     {
       title: "Event Works",
       items: [

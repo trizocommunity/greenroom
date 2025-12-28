@@ -30,7 +30,7 @@ export function ForgotPasswordForm() {
     mutationFn: async (data: FormData) => {
       return await forgotPasswordAction(data);
     },
-    onSuccess: (result) => {
+    onSuccess: (_result) => {
       // Always show success to prevent user enumeration
       toast.success("If an account exists, we sent a reset link");
     },

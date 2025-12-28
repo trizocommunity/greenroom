@@ -1,10 +1,9 @@
 "use client";
 
 import type { FestivalStatus } from "@prisma/client";
-import { format } from "date-fns";
-import { ExternalLink, GalleryVerticalEnd, LogOut } from "lucide-react";
+import { GalleryVerticalEnd } from "lucide-react";
 import Link from "next/link";
-import { useParams, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   Sidebar,
   SidebarContent,
@@ -49,16 +48,6 @@ export function FestivalDashboardSidebar({
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarMenu>
-          <SidebarMenuItem>
-            <div className="flex flex-col gap-2 p-2 group-data-[collapsible=icon]:hidden">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Role
-                </span>
-                <FestivalRoleBadge festivalRole={role} />
-              </div>
-            </div>
-          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton isActive={true} size="lg" asChild>
               <Link href={dashboardPath}>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { FestivalPublicData } from "./FestivalContext";
 
 interface FestivalFooterProps {
@@ -14,9 +15,11 @@ export function FestivalFooter({ festival }: FestivalFooterProps) {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               {festival.logo ? (
-                <img
+                <Image
                   src={festival.logo}
                   alt={festival.name}
+                  width={40}
+                  height={40}
                   className="h-10 w-10 object-contain rounded"
                 />
               ) : (

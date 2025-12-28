@@ -28,3 +28,28 @@ export async function createProgrammeAction(
 export async function deleteProgrammeAction(festivalId: string, id: string) {
   return ProgrammeService.delete(id, festivalId);
 }
+
+export async function updateProgrammeAction(
+  festivalId: string,
+  id: string,
+  data: {
+    name?: string;
+    categoryId?: string;
+    type?: string;
+    stageType?: string;
+    maxEntries?: number;
+  },
+) {
+  // Map data to service format if needed, or if service accepts partials
+  return ProgrammeService.update(id, festivalId, {
+    name: data.name,
+    categoryId: data.categoryId,
+    type: data.type
+      ? (data.type as "INDIVIDUAL" | "GROUP") || "INDIVIDUAL"
+      : undefined,
+    stageType: data.stageType
+      ? (data.stageType as "STAGE" | "NON_STAGE") || "STAGE"
+      : undefined,
+    maxEntries: data.maxEntries,
+  });
+}

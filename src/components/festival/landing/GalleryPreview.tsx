@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 import { MOCK_GALLERY } from "@/data/mockFestivalData";
 
 interface GalleryPreviewProps {
@@ -44,10 +45,11 @@ export function GalleryPreview({ slug }: GalleryPreviewProps) {
               className={`relative overflow-hidden rounded-2xl group cursor-zoom-in ${i === 0 ? "col-span-2 row-span-2 h-80 md:h-full" : "h-40 md:h-full"}`}
             >
               <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors z-10" />
-              <img
+              <Image
                 src={img}
                 alt={`Gallery ${i}`}
-                className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
+                fill
+                className="object-cover transform group-hover:scale-110 transition-transform duration-700"
               />
             </motion.div>
           ))}

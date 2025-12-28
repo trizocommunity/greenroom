@@ -135,6 +135,11 @@ export async function getJoinedFestivals(userId: string) {
       },
       include: {
         festival: true,
+        group: {
+          select: {
+            name: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
@@ -144,6 +149,7 @@ export async function getJoinedFestivals(userId: string) {
     return memberships.map((m) => ({
       ...m.festival,
       memberRole: m.role,
+      memberGroupName: m.group?.name,
       memberSince: m.createdAt,
     }));
   } catch (error) {

@@ -59,7 +59,7 @@ export function LoginForm() {
       }
       router.refresh();
     },
-    onError: (error) => {
+    onError: (_error) => {
       toast.error("Something went wrong. Please try again.");
     },
   });

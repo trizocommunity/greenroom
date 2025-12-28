@@ -1,19 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 import { TIER_CONFIG } from "@/config/pricing";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import {
-  consumePayment,
-  getUnusedPayment,
-} from "@/server/services/billing.service";
 import { createAuditLog } from "@/server/services/audit-log.service";
-
-// Validation Schema
-
-import { InstitutionType } from "@prisma/client";
 
 import {
   createFestivalSchema,
@@ -72,10 +63,18 @@ export async function createFestival(input: CreateFestivalInput) {
           institutionName: data.institutionName,
           location: data.location,
           description: data.description,
+          ownerId: session.userId,
           status: "ACTIVE",
           expiresAt: expiresAt,
           isLocked: false,
-          ownerId: session.userId,
+
+          // Create Admin Member
+          members: {
+            create: {
+              userId: session.userId,
+              role: "ADMIN",
+            },
+          },
 
           // Tier Info
           tier: tier,
@@ -106,6 +105,57 @@ export async function createFestival(input: CreateFestivalInput) {
     revalidatePath("/festivals");
 
     return { success: true, data: result };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
+
+export async function updateFestivalDeadlinesAction(
+  festivalId: string,
+  data: {
+    participantCreationDeadline?: string | null;
+    programmeAssignmentDeadline?: string | null;
+  },
+) {
+  try {
+    const session = await getSession();
+    if (!session?.userId) {
+      throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+    }
+
+    // Check ADMIN
+    const festival = await prisma.festival.findUnique({
+      where: { id: festivalId },
+      include: {
+        members: {
+          where: {
+            userId: session.userId,
+            role: "ADMIN",
+          },
+        },
+      },
+    });
+
+    const isAdmin = festival?.members.length && festival.members.length > 0;
+
+    if (!festival || !isAdmin) {
+      throw new AppError(ERROR_MESSAGES.FORBIDDEN);
+    }
+
+    const updated = await prisma.festival.update({
+      where: { id: festivalId },
+      data: {
+        participantCreationDeadline: data.participantCreationDeadline
+          ? new Date(data.participantCreationDeadline)
+          : null,
+        programmeAssignmentDeadline: data.programmeAssignmentDeadline
+          ? new Date(data.programmeAssignmentDeadline)
+          : null,
+      },
+    });
+
+    revalidatePath(`/festival/${festival.slug}/settings`);
+    return { success: true, data: updated };
   } catch (error) {
     return handleActionError(error);
   }

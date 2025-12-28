@@ -16,3 +16,11 @@ export async function createCategoryAction(
 export async function deleteCategoryAction(festivalId: string, id: string) {
   return CategoryService.delete(id, festivalId);
 }
+
+export async function updateCategoryAction(
+  festivalId: string,
+  id: string,
+  data: { name: string; description?: string },
+) {
+  return CategoryService.update(id, festivalId, data);
+}

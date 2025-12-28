@@ -14,8 +14,8 @@ const razorpay = new Razorpay({
 
 export const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || "";
 
-export class RazorpayService {
-  static async createOrder(
+export const RazorpayService = {
+  async createOrder(
     amount: number,
     currency: string,
     receipt: string,
@@ -27,9 +27,9 @@ export class RazorpayService {
       receipt,
       notes,
     });
-  }
+  },
 
-  static verifyPaymentSignature(
+  verifyPaymentSignature(
     orderId: string,
     paymentId: string,
     signature: string,
@@ -41,5 +41,5 @@ export class RazorpayService {
       .digest("hex");
 
     return expectedSignature === signature;
-  }
-}
+  },
+};

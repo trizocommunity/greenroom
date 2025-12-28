@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { Calendar, MapPin } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 import type { FestivalPublicData } from "./FestivalContext";
 
 interface FestivalHeroProps {
@@ -46,9 +47,11 @@ export function FestivalHero({ festival }: FestivalHeroProps) {
         {/* Festival Logo */}
         {festival.logo && (
           <div className="mb-8 flex justify-center">
-            <img
+            <Image
               src={festival.logo}
               alt={festival.name}
+              width={96}
+              height={96}
               className="h-24 w-24 object-contain rounded-xl shadow-lg"
             />
           </div>

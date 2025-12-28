@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { LayoutDashboard, LogIn, Menu, X } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -64,9 +65,11 @@ export function FestivalNavbar({
         {/* Festival Logo / Name */}
         <Link href={linkBase} className="flex items-center gap-3 group">
           {festival.logo ? (
-            <img
+            <Image
               src={festival.logo}
               alt={festival.name}
+              width={40}
+              height={40}
               className="h-10 w-10 object-contain rounded"
             />
           ) : (
@@ -140,6 +143,7 @@ export function FestivalNavbar({
 
         {/* Mobile Toggle */}
         <button
+          type="button"
           className="md:hidden p-2"
           onClick={() => setIsOpen(!isOpen)}
           style={{ color: festival.accentColor }}

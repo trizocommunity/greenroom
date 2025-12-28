@@ -1,7 +1,7 @@
 "use server";
 
 import crypto from "crypto";
-import { z } from "zod";
+import type { z } from "zod";
 import { verifyPassword, hashPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import {

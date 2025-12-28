@@ -27,7 +27,6 @@ interface DashboardRightPanelProps {
 
 export function DashboardPanelContent({
   festivalName,
-  festivalStatus,
   daysRemaining,
   userRole,
   usage,

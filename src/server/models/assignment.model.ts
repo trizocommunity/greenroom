@@ -15,6 +15,16 @@ export async function deleteAssignment(id: string) {
   });
 }
 
+export async function updateAssignment(
+  id: string,
+  data: Prisma.ProgrammeAssignmentUpdateInput,
+) {
+  return prisma.programmeAssignment.update({
+    where: { id },
+    data,
+  });
+}
+
 export async function findAssignmentsByProgramme(programmeId: string) {
   return prisma.programmeAssignment.findMany({
     where: { programmeId },

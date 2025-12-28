@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/db";
 import { findCategoryById } from "@/server/models/category.model";
 import { findFestivalById } from "@/server/models/festival.model";
 import { findGroupById } from "@/server/models/group.model";
@@ -55,6 +55,51 @@ export const ParticipantService = {
       email: data.email || undefined,
       phone: data.phone,
       registrationNumber: data.registrationNumber,
+    });
+  },
+
+  async update(
+    id: string,
+    festivalId: string,
+    data: {
+      name?: string;
+      email?: string;
+      phone?: string;
+      groupId?: string;
+      categoryId?: string;
+      gender?: "MALE" | "FEMALE" | "OTHER";
+      registrationNumber?: string;
+    },
+  ) {
+    const existing = await findParticipantById(id);
+    if (!existing || existing.festivalId !== festivalId)
+      throw new Error("Participant not found");
+
+    // Optional: Validate group/category if they are changing
+    // We assume IDs are valid for now or rely on Foreign Key constraints?
+    // Better to check if provided.
+    if (data.groupId) {
+      const group = await findGroupById(data.groupId);
+      if (!group || group.festivalId !== festivalId)
+        throw new Error("Invalid Group");
+    }
+    if (data.categoryId) {
+      const category = await findCategoryById(data.categoryId);
+      if (!category || category.festivalId !== festivalId)
+        throw new Error("Invalid Category");
+    }
+
+    return prisma.participant.update({
+      where: { id },
+      data: {
+        name: data.name,
+        groupId: data.groupId,
+        categoryId: data.categoryId,
+        email: data.email,
+        phone: data.phone,
+        gender: data.gender,
+        registrationNumber: data.registrationNumber,
+      },
     });
   },
 

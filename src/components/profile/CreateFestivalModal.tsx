@@ -1,3 +1,5 @@
+"use client";
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -18,6 +20,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -128,8 +131,9 @@ export function CreateFestivalModal({
           router.push(`/festival/${result.data.slug}`);
         }
       } else {
-        if (result.fields) {
-          if (result.fields.slug || result.fields.festivalSlug) {
+        const errorResult = result as any;
+        if (errorResult.fields) {
+          if (errorResult.fields.slug || errorResult.fields.festivalSlug) {
             // Now we can show error on the actual slug field
             form.setError("festivalSlug", {
               message:
@@ -138,13 +142,13 @@ export function CreateFestivalModal({
             return;
           }
           // Generic field errors
-          Object.entries(result.fields).forEach(([key, message]) => {
+          Object.entries(errorResult.fields).forEach(([key, message]) => {
             if (key === "slug") return;
             form.setError(key as any, { message: message as string });
           });
           return;
         }
-        toast.error(result.error || "Failed to create festival");
+        toast.error(errorResult.error || "Failed to create festival");
       }
     } catch (error: any) {
       toast.error("An unexpected error occurred");

@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { Festival } from "@/hooks/useFestivals";
 
 interface JoinedFestivalCardProps {
-  festival: Festival & { memberRole?: string };
+  festival: Festival & { memberRole?: string; memberGroupName?: string };
 }
 
 export function JoinedFestivalCard({ festival }: JoinedFestivalCardProps) {
@@ -28,12 +28,17 @@ export function JoinedFestivalCard({ festival }: JoinedFestivalCardProps) {
             >
               {festival.status}
             </Badge>
-            <Badge variant="outline" className="font-medium bg-background/50">
-              {festival.tierLabel || festival.tier || "Standard"}
-            </Badge>
             {festival.memberRole && (
               <Badge variant="secondary" className="font-medium">
                 {festival.memberRole.replace("_", " ")}
+              </Badge>
+            )}
+            {festival.memberGroupName && (
+              <Badge
+                variant="outline"
+                className="font-medium border-primary/50"
+              >
+                Group: {festival.memberGroupName}
               </Badge>
             )}
           </div>
