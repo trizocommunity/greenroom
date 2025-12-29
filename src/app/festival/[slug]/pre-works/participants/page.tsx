@@ -4,6 +4,7 @@ import { ParticipantsClient } from "@/components/festival/pre-works/participants
 import { getSession } from "@/lib/auth/session";
 import { findMemberByFestivalAndUser } from "@/server/models/member.model";
 import { prisma } from "@/lib/db";
+import { DeadlinesCard } from "@/components/festival/pre-works/DeadlinesCard";
 
 export default async function ParticipantsPage({
   params,
@@ -34,12 +35,17 @@ export default async function ParticipantsPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Participants</h2>
-        <p className="text-muted-foreground">
-          Manage participants for{" "}
-          <span className="font-semibold text-foreground">{festival.name}</span>
-        </p>
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Participants</h2>
+          <p className="text-muted-foreground">
+            Manage participants for{" "}
+            <span className="font-semibold text-foreground">
+              {festival.name}
+            </span>
+          </p>
+        </div>
+        <DeadlinesCard type="participant" />
       </div>
 
       <ParticipantsClient festivalId={festival.id} userGroup={userGroup} />

@@ -8,11 +8,12 @@ export async function getGroupsAction(festivalId: string) {
 
 export async function createGroupAction(
   festivalId: string,
-  data: { name: string; type?: string },
+  data: { name: string; type?: string; seriesStart?: number },
 ) {
   return GroupService.create(festivalId, {
     name: data.name,
     type: (data.type as "SCHOOL" | "COLLEGE" | "MADRASA" | "OPEN") || "SCHOOL",
+    seriesStart: data.seriesStart,
   });
 }
 
@@ -23,10 +24,11 @@ export async function deleteGroupAction(festivalId: string, id: string) {
 export async function updateGroupAction(
   festivalId: string,
   id: string,
-  data: { name: string; type?: string },
+  data: { name: string; type?: string; seriesStart?: number },
 ) {
   return GroupService.update(id, festivalId, {
     name: data.name,
     type: (data.type as "SCHOOL" | "COLLEGE" | "MADRASA" | "OPEN") || "SCHOOL",
+    seriesStart: data.seriesStart,
   });
 }

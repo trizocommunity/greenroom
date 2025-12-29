@@ -27,9 +27,15 @@ interface GroupDialogProps {
   festivalId: string;
   group?: any;
   trigger?: React.ReactNode;
+  readOnly?: boolean;
 }
 
-export function GroupDialog({ festivalId, group, trigger }: GroupDialogProps) {
+export function GroupDialog({
+  festivalId,
+  group,
+  trigger,
+  readOnly,
+}: GroupDialogProps) {
   const [open, setOpen] = useState(false);
   const { createGroup, isCreating, updateGroup, isUpdating } =
     useGroups(festivalId);
@@ -39,6 +45,7 @@ export function GroupDialog({ festivalId, group, trigger }: GroupDialogProps) {
   const [formData, setFormData] = useState({
     name: "",
     type: "SCHOOL",
+    seriesStart: 100,
   });
 
   useEffect(() => {
@@ -46,9 +53,10 @@ export function GroupDialog({ festivalId, group, trigger }: GroupDialogProps) {
       setFormData({
         name: group.name || "",
         type: group.type || "SCHOOL",
+        seriesStart: group.seriesStart || 100,
       });
     } else if (open && !group) {
-      setFormData({ name: "", type: "SCHOOL" });
+      setFormData({ name: "", type: "SCHOOL", seriesStart: 100 });
     }
   }, [open, group]);
 
@@ -56,12 +64,19 @@ export function GroupDialog({ festivalId, group, trigger }: GroupDialogProps) {
     e.preventDefault();
     try {
       if (isEditing && group) {
-        await updateGroup({ id: group.id, data: formData });
+        await updateGroup({
+          id: group.id,
+          data: { ...formData, seriesStart: Number(formData.seriesStart) },
+        });
       } else {
-        await createGroup(formData);
+        await createGroup({
+          ...formData,
+          seriesStart: Number(formData.seriesStart),
+        });
       }
       setOpen(false);
-      if (!isEditing) setFormData({ name: "", type: "SCHOOL" });
+      if (!isEditing)
+        setFormData({ name: "", type: "SCHOOL", seriesStart: 100 });
     } catch (error) {
       // Handled hook
     }
@@ -79,11 +94,19 @@ export function GroupDialog({ festivalId, group, trigger }: GroupDialogProps) {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit Group" : "Create Group"}</DialogTitle>
+          <DialogTitle>
+            {readOnly
+              ? "Group Details"
+              : isEditing
+                ? "Edit Group"
+                : "Create Group"}
+          </DialogTitle>
           <DialogDescription>
-            {isEditing
-              ? "Update group details."
-              : "Add a new group (School/College)."}
+            {readOnly
+              ? "View group details."
+              : isEditing
+                ? "Update group details."
+                : "Add a new group (School/College)."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -97,6 +120,24 @@ export function GroupDialog({ festivalId, group, trigger }: GroupDialogProps) {
                 setFormData({ ...formData, name: e.target.value })
               }
               placeholder="e.g. Model School"
+              disabled={readOnly}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="seriesStart">Series Start</Label>
+            <Input
+              id="seriesStart"
+              type="number"
+              required
+              value={formData.seriesStart}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  seriesStart: Number(e.target.value),
+                })
+              }
+              placeholder="e.g. 100"
+              disabled={readOnly}
             />
           </div>
           <div className="space-y-2">
@@ -104,6 +145,7 @@ export function GroupDialog({ festivalId, group, trigger }: GroupDialogProps) {
             <Select
               value={formData.type}
               onValueChange={(val) => setFormData({ ...formData, type: val })}
+              disabled={readOnly}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -123,12 +165,14 @@ export function GroupDialog({ festivalId, group, trigger }: GroupDialogProps) {
               onClick={() => setOpen(false)}
               disabled={isLoading}
             >
-              Cancel
+              {readOnly ? "Close" : "Cancel"}
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isEditing ? "Save Changes" : "Create"}
-            </Button>
+            {!readOnly && (
+              <Button type="submit" disabled={isLoading}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isEditing ? "Save Changes" : "Create"}
+              </Button>
+            )}
           </DialogFooter>
         </form>
       </DialogContent>

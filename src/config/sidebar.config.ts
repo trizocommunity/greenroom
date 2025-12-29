@@ -138,7 +138,7 @@ export const getFestivalDashboardSidebarConfig = (
           allowedRoles: ["ADMIN", "OWNER", "TEAM_LEADER"],
         },
         {
-          title: "Programme Assignment",
+          title: "Assignment",
           href: `${basePath}/pre-works/assignments`,
           icon: Edit,
           allowedRoles: ["ADMIN", "OWNER", "TEAM_LEADER"],

@@ -18,12 +18,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAssignments } from "@/hooks/useAssignments";
-import { Eye, Loader2, Pencil, Trash2 } from "lucide-react";
-import { toast } from "sonner";
-import { DeadlinesCard } from "../DeadlinesCard";
+import { Eye, Loader2, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { AssignmentDialog } from "./AssignmentDialog";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface AssignmentsClientProps {
   festivalId: string;
@@ -51,10 +55,23 @@ export function AssignmentsClient({
 
   return (
     <div className="space-y-6">
-      <DeadlinesCard type="assignment" />
-
       <div className="flex justify-end">
-        {!isReadOnly && <AssignmentDialog festivalId={festivalId} />}
+        {isReadOnly ? (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <Button disabled>New Assignment</Button>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Assignment deadline has passed.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : (
+          <AssignmentDialog festivalId={festivalId} />
+        )}
       </div>
 
       <Card>

@@ -1,5 +1,13 @@
 "use client";
 
+import { useFestival } from "@/components/festival/FestivalContext";
+import { isPast } from "date-fns";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,11 +19,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useParticipants } from "@/hooks/useParticipants";
-import { Eye, FileText, Loader2, Pencil, Trash2, User } from "lucide-react";
+import { Eye, FileText, Loader2, Pencil, User } from "lucide-react";
 import { ParticipantDialog } from "./ParticipantDialog";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { format } from "date-fns";
-import { DeadlinesCard } from "../DeadlinesCard";
 
 interface ParticipantsClientProps {
   festivalId: string;
@@ -32,8 +39,8 @@ export function ParticipantsClient({
   const { participants, isLoading, deleteParticipant, isDeleting } =
     useParticipants(festivalId);
 
-  // Todo: Get counts from festival context or hook if needed for limit display?
-  // Passed down props? Or separate hook.
+  const festival = useFestival();
+  // Participant Creation Deadline Removed
 
   if (isLoading) {
     return (
@@ -45,7 +52,6 @@ export function ParticipantsClient({
 
   return (
     <div className="space-y-6">
-      <DeadlinesCard type="participant" />
       <div className="flex justify-between items-center bg-muted/40 p-4 rounded-lg border">
         <div className="flex items-center gap-2">
           <User className="h-5 w-5 text-muted-foreground" />

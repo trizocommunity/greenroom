@@ -54,7 +54,7 @@ export function GroupsClient({ festivalId }: GroupsClientProps) {
                   </CardDescription>
                 </div>
                 <Badge variant="outline">
-                  {group.participants?.length || 0} Participants
+                  {group._count?.participants ?? 0} Participants
                 </Badge>
               </CardHeader>
               <CardContent className="space-y-4 pt-4">

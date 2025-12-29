@@ -137,8 +137,10 @@ export async function updateFestivalDeadlinesAction(
     });
 
     const isAdmin = festival?.members.length && festival.members.length > 0;
+    const isOwner = festival?.ownerId === session.userId;
+    const isSuperAdmin = session.role === "SUPER_ADMIN";
 
-    if (!festival || !isAdmin) {
+    if (!festival || (!isAdmin && !isOwner && !isSuperAdmin)) {
       throw new AppError(ERROR_MESSAGES.FORBIDDEN);
     }
 

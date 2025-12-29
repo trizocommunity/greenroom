@@ -15,7 +15,11 @@ export function useGroups(festivalId: string) {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: { name: string; type: string }) => {
+    mutationFn: async (data: {
+      name: string;
+      type: string;
+      seriesStart?: number;
+    }) => {
       const result = await createGroupAction(festivalId, data);
       return result;
     },
@@ -48,7 +52,7 @@ export function useGroups(festivalId: string) {
       data,
     }: {
       id: string;
-      data: { name: string; type?: string };
+      data: { name: string; type?: string; seriesStart?: number };
     }) => {
       const { updateGroupAction } = await import(
         "@/server/actions/group.actions"

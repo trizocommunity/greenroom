@@ -23,7 +23,11 @@ export const CategoryService = {
 
   async create(
     festivalId: string,
-    data: { name: string; description?: string },
+    data: {
+      name: string;
+      description?: string;
+      type?: "INDIVIDUAL" | "GENERAL";
+    },
   ) {
     // 1. Check Festival Status
     const festival = await findFestivalById(festivalId);
@@ -46,13 +50,18 @@ export const CategoryService = {
       festival: { connect: { id: festivalId } },
       name: data.name,
       description: data.description,
+      type: data.type || "INDIVIDUAL",
     });
   },
 
   async update(
     id: string,
     festivalId: string,
-    data: { name?: string; description?: string },
+    data: {
+      name?: string;
+      description?: string;
+      type?: "INDIVIDUAL" | "GENERAL";
+    },
   ) {
     // 1. Check Festival Status
     const festival = await findFestivalById(festivalId);

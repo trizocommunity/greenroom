@@ -38,6 +38,11 @@ export const AssignmentService = {
     if (!programme || programme.festivalId !== festivalId)
       throw new Error("Invalid Programme");
 
+    // 1. Max Limit Check
+    if (programme._count.assignments >= programme.maxEntries) {
+      throw new Error(`Max limit reached (${programme.maxEntries})`);
+    }
+
     if (!data.participantId && !data.groupId) {
       throw new Error("Either participantId or groupId is required");
     }
@@ -48,8 +53,12 @@ export const AssignmentService = {
       if (!participant || participant.festivalId !== festivalId)
         throw new Error("Invalid Participant");
 
-      // Category Match Rule
-      if (programme.categoryId !== participant.categoryId) {
+      // 2. Category Match Rule (Type Dependent)
+      // If Category is INDIVIDUAL, Participant MUST match category.
+      // If Category is GENERAL, any participant is allowed (per prompt "List all participants").
+      const isGeneral = programme.category.type === "GENERAL";
+
+      if (!isGeneral && programme.categoryId !== participant.categoryId) {
         throw new Error(
           "Participant category does not match Programme category",
         );

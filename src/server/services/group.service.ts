@@ -15,7 +15,11 @@ export const GroupService = {
 
   async create(
     festivalId: string,
-    data: { name: string; type: "SCHOOL" | "COLLEGE" | "MADRASA" | "OPEN" },
+    data: {
+      name: string;
+      type: "SCHOOL" | "COLLEGE" | "MADRASA" | "OPEN";
+      seriesStart?: number;
+    },
   ) {
     const festival = await findFestivalById(festivalId);
     if (!festival) throw new Error("Festival not found");
@@ -27,10 +31,19 @@ export const GroupService = {
       festival: { connect: { id: festivalId } },
       name: data.name,
       type: data.type,
+      seriesStart: data.seriesStart || 100,
     });
   },
 
-  async update(id: string, festivalId: string, data: { name?: string }) {
+  async update(
+    id: string,
+    festivalId: string,
+    data: {
+      name?: string;
+      type?: "SCHOOL" | "COLLEGE" | "MADRASA" | "OPEN";
+      seriesStart?: number;
+    },
+  ) {
     const exists = await findGroupById(id);
     if (!exists || exists.festivalId !== festivalId)
       throw new Error("Group not found");

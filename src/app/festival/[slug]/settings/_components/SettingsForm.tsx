@@ -68,25 +68,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSave} className="space-y-4">
-          <div className="grid gap-2">
-            <Label htmlFor="participantCreation">
-              Participant Creation Deadline
-            </Label>
-            <Input
-              id="participantCreation"
-              type="datetime-local"
-              value={deadlines.participantCreationDeadline}
-              onChange={(e) =>
-                setDeadlines({
-                  ...deadlines,
-                  participantCreationDeadline: e.target.value,
-                })
-              }
-            />
-            <p className="text-sm text-muted-foreground">
-              Team Leaders cannot create or edit participants after this time.
-            </p>
-          </div>
+          {/* Participant Creation Deadline Removed as per requirements */}
 
           <div className="grid gap-2">
             <Label htmlFor="programmeAssignment">

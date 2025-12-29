@@ -170,12 +170,6 @@ export default async function FestivalDashboardLayout({
 
         <main className="flex flex-1 flex-col gap-6 p-8 relative overflow-hidden">
           <FestivalProvider festival={festivalData}>
-            {/* We might display an expiry banner here */}
-            {festival.expiresAt && (
-              <div className="bg-muted/50 p-2 text-xs text-center text-muted-foreground border-b mb-4">
-                Expires on {new Date(festival.expiresAt).toLocaleDateString()}
-              </div>
-            )}
             {children}
           </FestivalProvider>
         </main>

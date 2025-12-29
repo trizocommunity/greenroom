@@ -215,6 +215,7 @@ model Category {
   festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
   
   name        String
+  type        CategoryType @default(INDIVIDUAL)
   description String?
   
   programmes  Programme[]
@@ -224,6 +225,11 @@ model Category {
   updatedAt   DateTime @updatedAt
 
   @@map("category")
+}
+
+enum CategoryType {
+  INDIVIDUAL
+  GENERAL
 }
 
 model Programme {
@@ -254,6 +260,7 @@ model Group {
 
   name        String
   type        GroupType @default(SCHOOL)
+  seriesStart Int       @default(100)
 
   participants Participant[]
   assignments  ProgrammeAssignment[]

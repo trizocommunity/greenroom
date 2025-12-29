@@ -1,4 +1,5 @@
 import { AssignmentsClient } from "@/components/festival/pre-works/assignments/AssignmentsClient";
+import { DeadlinesCard } from "@/components/festival/pre-works/DeadlinesCard";
 import { findFestivalBySlug } from "@/server/models/festival.model";
 import { notFound } from "next/navigation";
 
@@ -22,6 +23,7 @@ export default async function AssignmentsPage({
             Manage participant assignments to programmes.
           </p>
         </div>
+        <DeadlinesCard type="assignment" />
       </div>
       <AssignmentsClient
         festivalId={festival.id}
