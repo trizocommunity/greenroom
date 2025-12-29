@@ -9,9 +9,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useGroups } from "@/hooks/useGroups";
-import { Eye, Loader2, Pencil, Trash2, UserPlus, Users } from "lucide-react";
+import { Eye, Loader2, Pencil, Users } from "lucide-react";
 import { GroupDialog } from "./GroupDialog";
-import { TeamLeaderDialog } from "./TeamLeaderDialog";
+import { GroupDetailsDialog } from "./GroupDetailsDialog";
 import { Badge } from "@/components/ui/badge";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 
@@ -38,63 +38,66 @@ export function GroupsClient({ festivalId }: GroupsClientProps) {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {groups.map((group: any) => {
-          const teamLeader = group.members?.find(
-            (m: any) => m.role === "TEAM_LEADER",
-          );
+          const teamLeaders =
+            group.members?.filter((m: any) => m.role === "TEAM_LEADER") || [];
 
           return (
-            <Card key={group.id}>
-              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                <div>
-                  <CardTitle className="text-base font-semibold">
-                    {group.name}
-                  </CardTitle>
-                  <CardDescription className="capitalize">
-                    {group.type?.toLowerCase()}
-                  </CardDescription>
-                </div>
-                <Badge variant="outline">
-                  {group._count?.participants ?? 0} Participants
-                </Badge>
-              </CardHeader>
-              <CardContent className="space-y-4 pt-4">
-                <div className="rounded-md border p-3">
-                  <div className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Team Leader
+            <Card
+              key={group.id}
+              className="overflow-hidden border-t-4"
+              style={{ borderTopColor: group.color || "#2563eb" }}
+            >
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-lg font-bold">
+                      {group.name}
+                    </CardTitle>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: group.color || "#2563eb" }}
+                      />
+                    </div>
                   </div>
-                  {teamLeader ? (
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                        <Users className="h-4 w-4" />
-                      </div>
-                      <div className="grid gap-0.5 text-sm">
-                        <span className="font-medium">
-                          {teamLeader.user.fullName}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {teamLeader.user.email}
-                        </span>
-                      </div>
+                  <Badge variant="secondary" className="font-mono">
+                    {group._count?.participants ?? 0}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-2">
+                <div className="rounded-md bg-muted/40 p-3 flex flex-col gap-2">
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex justify-between">
+                    <span>Team Leaders ({teamLeaders.length})</span>
+                  </div>
+
+                  {teamLeaders.length > 0 ? (
+                    <div className="space-y-2 pt-1">
+                      {teamLeaders.slice(0, 2).map((tl: any) => (
+                        <div
+                          key={tl.id}
+                          className="flex items-center gap-2 text-sm"
+                        >
+                          <div
+                            className="h-6 w-6 rounded-full bg-background flex items-center justify-center border shadow-sm text-xs font-bold"
+                            style={{ color: group.color || "#2563eb" }}
+                          >
+                            {tl.user.fullName.charAt(0)}
+                          </div>
+                          <span className="truncate font-medium">
+                            {tl.user.fullName}
+                          </span>
+                        </div>
+                      ))}
+                      {teamLeaders.length > 2 && (
+                        <div className="text-xs text-muted-foreground pl-8">
+                          + {teamLeaders.length - 2} others
+                        </div>
+                      )}
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Not assigned
-                      </span>
-                      <TeamLeaderDialog
-                        festivalId={festivalId}
-                        groupId={group.id}
-                        trigger={
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 px-2 text-primary"
-                          >
-                            <UserPlus className="mr-2 h-3 w-3" />
-                            Assign
-                          </Button>
-                        }
-                      />
+                    <div className="text-sm text-muted-foreground italic pl-1">
+                      No team leaders
                     </div>
                   )}
                 </div>
@@ -109,10 +112,9 @@ export function GroupsClient({ festivalId }: GroupsClientProps) {
                       </Button>
                     }
                   />
-                  <GroupDialog
+                  <GroupDetailsDialog
                     festivalId={festivalId}
                     group={group}
-                    readOnly
                     trigger={
                       <Button variant="ghost" size="icon" className="h-8 w-8">
                         <Eye className="h-4 w-4" />

@@ -17,6 +17,11 @@ import { useState } from "react";
 interface TeamLeaderDialogProps {
   festivalId: string;
   groupId: string;
+  memberId?: string; // If present, edit mode
+  initialData?: {
+    fullName: string;
+    email: string;
+  };
   trigger?: React.ReactNode;
   onSuccess?: () => void;
 }
@@ -24,26 +29,44 @@ interface TeamLeaderDialogProps {
 export function TeamLeaderDialog({
   festivalId,
   groupId,
+  memberId,
+  initialData,
   trigger,
   onSuccess,
 }: TeamLeaderDialogProps) {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
+    fullName: initialData?.fullName || "",
+    email: initialData?.email || "",
     password: "",
   });
 
-  const { assignTeamLeader, isAssigningTeamLeader } = useGroups(festivalId);
+  const {
+    assignTeamLeader,
+    isAssigningTeamLeader,
+    updateTeamLeader,
+    isUpdatingTeamLeader,
+  } = useGroups(festivalId);
+
+  const isEditing = !!memberId;
+  const isLoading = isAssigningTeamLeader || isUpdatingTeamLeader;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const res = await assignTeamLeader({ groupId, data: formData });
+    let res: any;
+    if (isEditing && memberId) {
+      res = await updateTeamLeader({ memberId, data: formData });
+    } else {
+      // Create new
+      if (!formData.password) return; // Should be handled by required
+      res = await assignTeamLeader({ groupId, data: formData as any });
+    }
 
     if (res?.success) {
       setOpen(false);
-      setFormData({ fullName: "", email: "", password: "" });
+      // Reset only if creating, keep data if editing? Or just close.
+      if (!isEditing) setFormData({ fullName: "", email: "", password: "" });
       onSuccess?.();
     }
   };
@@ -60,10 +83,13 @@ export function TeamLeaderDialog({
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Assign Team Leader</DialogTitle>
+          <DialogTitle>
+            {isEditing ? "Edit Team Leader" : "Assign Team Leader"}
+          </DialogTitle>
           <DialogDescription>
-            Create a user account for the Team Leader. They will be strictly
-            bound to this group.
+            {isEditing
+              ? "Update Team Leader details for this group."
+              : "Create a user account for the Team Leader. They will be strictly bound to this group."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -91,17 +117,23 @@ export function TeamLeaderDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">
+              Password {isEditing && "(Leave blank to keep current)"}
+            </Label>
             <Input
               id="password"
               type="password"
-              required
+              required={!isEditing}
               minLength={6}
               value={formData.password}
               onChange={(e) =>
                 setFormData({ ...formData, password: e.target.value })
               }
-              placeholder="Simple, memorable password"
+              placeholder={
+                isEditing
+                  ? "New password (optional)"
+                  : "Simple, memorable password"
+              }
             />
           </div>
           <DialogFooter>
@@ -109,15 +141,13 @@ export function TeamLeaderDialog({
               type="button"
               variant="outline"
               onClick={() => setOpen(false)}
-              disabled={isAssigningTeamLeader}
+              disabled={isLoading}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isAssigningTeamLeader}>
-              {isAssigningTeamLeader && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              Create & Assign
+            <Button type="submit" disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isEditing ? "Save Changes" : "Create & Assign"}
             </Button>
           </DialogFooter>
         </form>

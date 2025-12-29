@@ -17,8 +17,8 @@ export function useGroups(festivalId: string) {
   const createMutation = useMutation({
     mutationFn: async (data: {
       name: string;
-      type: string;
       seriesStart?: number;
+      color?: string;
     }) => {
       const result = await createGroupAction(festivalId, data);
       return result;
@@ -52,7 +52,11 @@ export function useGroups(festivalId: string) {
       data,
     }: {
       id: string;
-      data: { name: string; type?: string; seriesStart?: number };
+      data: {
+        name: string;
+        seriesStart?: number;
+        color?: string;
+      };
     }) => {
       const { updateGroupAction } = await import(
         "@/server/actions/group.actions"
@@ -94,6 +98,52 @@ export function useGroups(festivalId: string) {
     },
   });
 
+  const updateTeamLeaderMutation = useMutation({
+    mutationFn: async ({
+      memberId,
+      data,
+    }: {
+      memberId: string;
+      data: { fullName?: string; email?: string; password?: string };
+    }) => {
+      const { updateTeamLeaderAction } = await import(
+        "@/server/actions/member.actions"
+      );
+      return updateTeamLeaderAction(festivalId, memberId, data);
+    },
+    onSuccess: (result) => {
+      if (result.success) {
+        queryClient.invalidateQueries({ queryKey: ["groups", festivalId] });
+        toast.success("Team Leader updated successfully");
+      } else {
+        toast.error(result.error || "Failed to update Team Leader");
+      }
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to update Team Leader");
+    },
+  });
+
+  const removeTeamLeaderMutation = useMutation({
+    mutationFn: async (memberId: string) => {
+      const { removeMemberAction } = await import(
+        "@/server/actions/member.actions"
+      );
+      return removeMemberAction(festivalId, memberId);
+    },
+    onSuccess: (result) => {
+      if (result.success) {
+        queryClient.invalidateQueries({ queryKey: ["groups", festivalId] });
+        toast.success("Team Leader removed successfully");
+      } else {
+        toast.error(result.error || "Failed to remove Team Leader");
+      }
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to remove Team Leader");
+    },
+  });
+
   return {
     groups: query.data || [],
     isLoading: query.isLoading,
@@ -105,5 +155,9 @@ export function useGroups(festivalId: string) {
     isDeleting: deleteMutation.isPending,
     assignTeamLeader: assignTeamLeaderMutation.mutateAsync,
     isAssigningTeamLeader: assignTeamLeaderMutation.isPending,
+    updateTeamLeader: updateTeamLeaderMutation.mutateAsync,
+    isUpdatingTeamLeader: updateTeamLeaderMutation.isPending,
+    removeTeamLeader: removeTeamLeaderMutation.mutateAsync,
+    isRemovingTeamLeader: removeTeamLeaderMutation.isPending,
   };
 }

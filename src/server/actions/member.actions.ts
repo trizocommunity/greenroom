@@ -29,3 +29,35 @@ export async function createTeamLeaderAction(
     return { success: false, error: error.message };
   }
 }
+
+export async function updateTeamLeaderAction(
+  festivalId: string,
+  memberId: string,
+  data: {
+    fullName?: string;
+    email?: string;
+    password?: string;
+  },
+) {
+  try {
+    const result = await MemberService.updateTeamLeader(
+      festivalId,
+      memberId,
+      data,
+    );
+    revalidatePath(`/festival/${festivalId}/pre-works/groups`);
+    return { success: true, data: result };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function removeMemberAction(festivalId: string, memberId: string) {
+  try {
+    await MemberService.removeMember(festivalId, memberId);
+    revalidatePath(`/festival/${festivalId}/pre-works/groups`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}

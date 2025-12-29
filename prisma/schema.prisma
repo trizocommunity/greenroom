@@ -260,7 +260,7 @@ model Group {
   festival    Festival  @relation(fields: [festivalId], references: [id], onDelete: Cascade)
 
   name        String
-  type        GroupType @default(SCHOOL)
+  color       String    @default("#2563eb")
   seriesStart Int       @default(100)
 
   participants Participant[]

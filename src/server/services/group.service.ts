@@ -17,8 +17,8 @@ export const GroupService = {
     festivalId: string,
     data: {
       name: string;
-      type: "SCHOOL" | "COLLEGE" | "MADRASA" | "OPEN";
       seriesStart?: number;
+      color?: string;
     },
   ) {
     const festival = await findFestivalById(festivalId);
@@ -27,10 +27,27 @@ export const GroupService = {
       throw new Error("Festival is expired");
     }
 
+    // Simple random color if not provided
+    const defaultColors = [
+      "#ef4444",
+      "#f97316",
+      "#f59e0b",
+      "#84cc16",
+      "#10b981",
+      "#06b6d4",
+      "#3b82f6",
+      "#6366f1",
+      "#8b5cf6",
+      "#ec4899",
+    ];
+    const randomColor =
+      data.color ||
+      defaultColors[Math.floor(Math.random() * defaultColors.length)];
+
     return createGroup({
       festival: { connect: { id: festivalId } },
       name: data.name,
-      type: data.type,
+      color: randomColor,
       seriesStart: data.seriesStart || 100,
     });
   },
@@ -40,8 +57,8 @@ export const GroupService = {
     festivalId: string,
     data: {
       name?: string;
-      type?: "SCHOOL" | "COLLEGE" | "MADRASA" | "OPEN";
       seriesStart?: number;
+      color?: string;
     },
   ) {
     const exists = await findGroupById(id);

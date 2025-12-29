@@ -38,6 +38,12 @@ export async function findMembersByFestival(
   });
 }
 
+export async function findMemberById(id: string) {
+  return prisma.festivalMember.findUnique({
+    where: { id },
+  });
+}
+
 export async function createMember(data: Prisma.FestivalMemberCreateInput) {
   return prisma.festivalMember.create({
     data,

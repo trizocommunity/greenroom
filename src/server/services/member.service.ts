@@ -65,4 +65,44 @@ export const MemberService = {
       role: "TEAM_LEADER",
     });
   },
+
+  async updateTeamLeader(
+    festivalId: string,
+    memberId: string,
+    data: {
+      fullName?: string;
+      email?: string;
+      password?: string;
+    },
+  ) {
+    const { findMemberById } = await import("@/server/models/member.model");
+    const { updateUser } = await import("@/server/models/user.model");
+
+    const member = await findMemberById(memberId);
+    if (!member || member.festivalId !== festivalId) {
+      throw new Error("Member not found.");
+    }
+
+    const updateData: any = {};
+    if (data.fullName) updateData.fullName = data.fullName;
+    if (data.email) updateData.email = data.email;
+    if (data.password) {
+      updateData.password = await hash(data.password, 10);
+    }
+
+    return updateUser(member.userId, updateData);
+  },
+
+  async removeMember(festivalId: string, memberId: string) {
+    const { findMemberById, deleteMember } = await import(
+      "@/server/models/member.model"
+    );
+
+    const member = await findMemberById(memberId);
+    if (!member || member.festivalId !== festivalId) {
+      throw new Error("Member not found.");
+    }
+
+    return deleteMember(memberId);
+  },
 };

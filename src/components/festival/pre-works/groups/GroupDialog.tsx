@@ -44,19 +44,34 @@ export function GroupDialog({
 
   const [formData, setFormData] = useState({
     name: "",
-    type: "SCHOOL",
     seriesStart: 100,
+    color: "#2563eb",
   });
+
+  const COLORS = [
+    "#ef4444", // Red
+    "#f97316", // Orange
+    "#f599e0b", // Amber
+    "#84cc16", // Lime
+    "#10b981", // Emerald
+    "#06b6d4", // Cyan
+    "#3b82f6", // Blue
+    "#6366f1", // Indigo
+    "#8b5cf6", // Violet
+    "#ec4899", // Pink
+  ];
 
   useEffect(() => {
     if (open && group) {
       setFormData({
         name: group.name || "",
-        type: group.type || "SCHOOL",
         seriesStart: group.seriesStart || 100,
+        color: group.color || "#2563eb",
       });
     } else if (open && !group) {
-      setFormData({ name: "", type: "SCHOOL", seriesStart: 100 });
+      // Pick random default color for new group
+      const randomColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+      setFormData({ name: "", seriesStart: 100, color: randomColor });
     }
   }, [open, group]);
 
@@ -75,8 +90,7 @@ export function GroupDialog({
         });
       }
       setOpen(false);
-      if (!isEditing)
-        setFormData({ name: "", type: "SCHOOL", seriesStart: 100 });
+      // Reset is handled by useEffect on next open
     } catch (error) {
       // Handled hook
     }
@@ -123,41 +137,28 @@ export function GroupDialog({
               disabled={readOnly}
             />
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="seriesStart">Series Start</Label>
-            <Input
-              id="seriesStart"
-              type="number"
-              required
-              value={formData.seriesStart}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  seriesStart: Number(e.target.value),
-                })
-              }
-              placeholder="e.g. 100"
-              disabled={readOnly}
-            />
+            <Label>Group Color</Label>
+            <div className="flex flex-wrap gap-2">
+              {COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  disabled={readOnly}
+                  onClick={() => setFormData({ ...formData, color: c })}
+                  className={`h-8 w-8 rounded-full border-2 transition-all ${
+                    formData.color === c
+                      ? "border-primary scale-110 shadow-sm"
+                      : "border-transparent hover:scale-105"
+                  }`}
+                  style={{ backgroundColor: c }}
+                  aria-label={`Select color ${c}`}
+                />
+              ))}
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="type">Type</Label>
-            <Select
-              value={formData.type}
-              onValueChange={(val) => setFormData({ ...formData, type: val })}
-              disabled={readOnly}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="SCHOOL">School</SelectItem>
-                <SelectItem value="COLLEGE">College</SelectItem>
-                <SelectItem value="MADRASA">Madrasa</SelectItem>
-                <SelectItem value="OPEN">Open</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+
           <DialogFooter>
             <Button
               type="button"
