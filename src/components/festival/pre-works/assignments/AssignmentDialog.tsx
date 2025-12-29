@@ -25,6 +25,7 @@ import { Loader2, Plus, Check } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { useGroups } from "@/hooks/useGroups";
 
 interface AssignmentDialogProps {
   festivalId: string;
@@ -40,13 +41,24 @@ export function AssignmentDialog({
   readOnly = false,
 }: AssignmentDialogProps) {
   const [open, setOpen] = useState(false);
-  const { createAssignment, isCreating, updateAssignment, isUpdating } =
-    useAssignments(festivalId);
+  const {
+    createAssignment,
+    isCreating,
+    updateAssignment,
+    isUpdating,
+    assignments, // Need existing assignments to filter duplicates
+  } = useAssignments(festivalId);
   const { participants } = useParticipants(festivalId);
   const { programmes } = useProgrammes(festivalId);
+  const { groups } = useGroups(festivalId);
 
   const isEditing = !!assignment;
   const isLoading = isCreating || isUpdating;
+
+  // New State: Selected Group ID
+  const [selectedGroupId, setSelectedGroupId] = useState<string>(
+    assignment?.group?.id || assignment?.participant?.group?.id || "",
+  );
 
   const [formData, setFormData] = useState({
     programmeId: "",
@@ -62,29 +74,69 @@ export function AssignmentDialog({
         programmeId: assignment.programmeId || "",
         participantId: assignment.participantId || "",
       });
+      // For editing, pre-fill group if available (though usually derived)
+      const grpId =
+        assignment.group?.id || assignment.participant?.group?.id || "";
+      setSelectedGroupId(grpId);
       setSelectedParticipantIds([assignment.participantId].filter(Boolean));
     } else if (open && !assignment) {
-      setFormData({
-        programmeId: "",
-        participantId: "",
-      });
+      setFormData({ ProgrammeId: "", participantId: "" });
+      setSelectedGroupId("");
       setSelectedParticipantIds([]);
     }
   }, [open, assignment]);
 
-  // Logic to determine Category Type
+  // Derived Info
   const selectedProgramme = programmes.find(
     (p: any) => p.id === formData.programmeId,
   );
+  // Is this a "General" programme (Group Entry) or Individual?
+  // "GENERAL" type often means Group Entry, but let's stick to logic:
+  // If Programme Type is GROUP, we might assign a Group directly OR assign members of a Group?
+  // User Requirements: "Admin must first select Programme -> Select Group -> Filter Participants"
+  // This implies we are assigning Participants (Individual or Group Members).
+
+  // NOTE: Existing logic used `programme.category.type === "GENERAL"`.
   const isGeneral = selectedProgramme?.category?.type === "GENERAL";
 
-  const filteredParticipants = selectedProgramme
-    ? isGeneral
-      ? participants // List all participants for General
-      : participants.filter(
-          (p: any) => p.categoryId === selectedProgramme.categoryId,
-        )
-    : participants;
+  // Filter Logic
+  // 1. Must belong to Selected Group (if group selected)
+  // 2. Must match Category of Programme (unless General which usually allows all?)
+  // 3. Must NOT be already assigned to this Programme.
+
+  const filteredParticipants = participants.filter((participant: any) => {
+    // 1. Group Filter
+    if (selectedGroupId && participant.groupId !== selectedGroupId) {
+      return false;
+    }
+
+    // 2. Category Eligibility
+    // If NOT General, participant must match category.
+    // If General, usually open to all? Or specific logic?
+    if (!isGeneral) {
+      if (
+        selectedProgramme &&
+        participant.categoryId !== selectedProgramme.categoryId
+      ) {
+        return false;
+      }
+    }
+
+    // 3. Duplicate Check
+    // Exclude if already assigned to THIS programme
+    // Check `assignments` list.
+    // NOTE: This check depends on if we have ALL assignments loaded. `useAssignments` hooks typically load all for festival.
+    const isAssigned = assignments.some(
+      (a: any) =>
+        a.programmeId === formData.programmeId &&
+        a.participantId === participant.id &&
+        // If editing, exclude current assignment from check (allow keeping same)
+        (isEditing ? a.id !== assignment.id : true),
+    );
+    if (isAssigned) return false;
+
+    return true;
+  });
 
   // Max Limit Logic
   const maxLimit = selectedProgramme?.maxEntries || 1;
@@ -94,20 +146,16 @@ export function AssignmentDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (readOnly) return;
-
+    // ... (Existing Submit Logic)
     try {
       if (isEditing && assignment) {
-        // Update Single Assignment (Multi-select not supported for Update flow usually, or complex)
         await updateAssignment({ id: assignment.id, data: formData });
       } else {
-        // Create Flow
         if (isGeneral) {
-          // Bulk Create
           if (selectedParticipantIds.length === 0) return;
-          if (selectedParticipantIds.length > remainingSlots) {
-            // Basic validation, though UI should prevent this or show error
-            return;
-          }
+          // If we are assigning "Group Entry", do we assign participantId?
+          // Previously code: createAssignment({ programmeId, participantId: pid })
+          // Assuming General works same way, just bulk.
           await Promise.all(
             selectedParticipantIds.map((pid) =>
               createAssignment({
@@ -117,27 +165,28 @@ export function AssignmentDialog({
             ),
           );
         } else {
-          // Single Create
           await createAssignment(formData);
         }
       }
       setOpen(false);
       if (!isEditing) {
         setFormData({ programmeId: "", participantId: "" });
+        setSelectedGroupId("");
         setSelectedParticipantIds([]);
       }
     } catch (error) {
-      // Handled by hook
+      // Handled hook
     }
   };
 
   const toggleParticipant = (id: string) => {
+    // ... (Existing Toggle Logic)
     setSelectedParticipantIds((prev) => {
       const isSelected = prev.includes(id);
       if (isSelected) {
         return prev.filter((p) => p !== id);
       } else {
-        if (prev.length >= remainingSlots) return prev; // Prevent selecting more than allowed
+        if (prev.length >= remainingSlots) return prev;
         return [...prev, id];
       }
     });
@@ -149,7 +198,7 @@ export function AssignmentDialog({
         {trigger || (
           <Button>
             <Plus className="mr-2 h-4 w-4" />
-            Assign Participant
+            New Assignment
           </Button>
         )}
       </DialogTrigger>
@@ -171,19 +220,20 @@ export function AssignmentDialog({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* 1. Programme Selection */}
           <div className="space-y-2">
             <Label htmlFor="programme">Programme</Label>
             <Select
               required
               value={formData.programmeId}
-              onValueChange={
-                (val) =>
-                  setFormData({
-                    ...formData,
-                    programmeId: val,
-                    participantId: "",
-                  }) // Reset participant on programme change if mismatched
-              }
+              onValueChange={(val) => {
+                setFormData((prev) => ({
+                  ...prev,
+                  programmeId: val,
+                  participantId: "",
+                }));
+                setSelectedParticipantIds([]);
+              }}
               disabled={readOnly || isLoading}
             >
               <SelectTrigger>
@@ -199,9 +249,48 @@ export function AssignmentDialog({
             </Select>
           </div>
 
+          {/* 2. Group Selection (Enabled after Programme selected) */}
+          <div className="space-y-2">
+            <Label>Group</Label>
+            <Select
+              value={selectedGroupId}
+              onValueChange={(val) => {
+                setSelectedGroupId(val);
+                setFormData((prev) => ({ ...prev, participantId: "" })); // Reset participant
+                setSelectedParticipantIds([]);
+              }}
+              disabled={readOnly || !formData.programmeId || isLoading}
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    !formData.programmeId
+                      ? "Select programme first"
+                      : "Select Group"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {groups.map((group: any) => (
+                  <SelectItem key={group.id} value={group.id}>
+                    {group.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground">
+              Filter participants by group.
+            </p>
+          </div>
+
+          {/* 3. Participant Selection */}
           <div className="space-y-2">
             <Label>Participant(s)</Label>
-            {isGeneral && !isEditing ? (
+            {!selectedGroupId ? (
+              <div className="rounded-md border p-4 text-center text-sm text-muted-foreground bg-muted/20">
+                Select a Group to view eligible participants.
+              </div>
+            ) : isGeneral && !isEditing ? (
               <div className="rounded-md border p-2">
                 <div className="mb-2 flex items-center justify-between px-2">
                   <span className="text-sm font-medium">
@@ -211,8 +300,8 @@ export function AssignmentDialog({
                     {selectedParticipantIds.length} / {remainingSlots} selected
                   </Badge>
                 </div>
-                <ScrollArea className="h-[200px]">
-                  <div className="space-y-2 p-2">
+                <ScrollArea className="h-[150px]">
+                  <div className="space-y-1 p-2">
                     {filteredParticipants.map((part: any) => {
                       const isSelected = selectedParticipantIds.includes(
                         part.id,
@@ -235,7 +324,7 @@ export function AssignmentDialog({
                     })}
                     {filteredParticipants.length === 0 && (
                       <div className="p-4 text-center text-sm text-muted-foreground">
-                        No participants found
+                        No eligible participants found in this group.
                       </div>
                     )}
                   </div>
@@ -248,14 +337,14 @@ export function AssignmentDialog({
                 onValueChange={(val) =>
                   setFormData({ ...formData, participantId: val })
                 }
-                disabled={readOnly || isLoading || !formData.programmeId}
+                disabled={readOnly || isLoading || !selectedGroupId}
               >
                 <SelectTrigger>
                   <SelectValue
                     placeholder={
-                      formData.programmeId
-                        ? "Select participant"
-                        : "Select programme first"
+                      !selectedGroupId
+                        ? "Select Group first"
+                        : "Select participant"
                     }
                   />
                 </SelectTrigger>
@@ -267,14 +356,14 @@ export function AssignmentDialog({
                   ))}
                   {filteredParticipants.length === 0 && (
                     <SelectItem value="none" disabled>
-                      No matching participants found
+                      No eligible participants found
                     </SelectItem>
                   )}
                 </SelectContent>
               </Select>
             )}
             {selectedProgramme && !isGeneral && (
-              <div className="text-xs text-muted-foreground text-right">
+              <div className="text-xs text-muted-foreground text-right mt-1">
                 Slots remaining: {remainingSlots}
               </div>
             )}
