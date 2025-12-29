@@ -14,6 +14,7 @@ export async function createProgrammeAction(
     type?: string;
     stageType?: string;
     maxEntries?: number;
+    maxTeamSize?: number;
   },
 ) {
   return ProgrammeService.create(festivalId, {
@@ -22,6 +23,7 @@ export async function createProgrammeAction(
     type: (data.type as "INDIVIDUAL" | "GROUP") || "INDIVIDUAL",
     stageType: (data.stageType as "STAGE" | "NON_STAGE") || "STAGE",
     maxEntries: data.maxEntries,
+    maxTeamSize: data.maxTeamSize,
   });
 }
 

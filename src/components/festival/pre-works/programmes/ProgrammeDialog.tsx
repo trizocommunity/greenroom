@@ -51,6 +51,7 @@ export function ProgrammeDialog({
     type: "INDIVIDUAL",
     stageType: "STAGE",
     maxEntries: 1,
+    maxTeamSize: 1,
   });
 
   useEffect(() => {
@@ -61,6 +62,7 @@ export function ProgrammeDialog({
         type: programme.type || "INDIVIDUAL",
         stageType: programme.stageType || "STAGE",
         maxEntries: programme.maxEntries || 1,
+        maxTeamSize: programme.maxTeamSize || 1,
       });
     } else if (open && !programme) {
       setFormData({
@@ -69,9 +71,24 @@ export function ProgrammeDialog({
         type: "INDIVIDUAL",
         stageType: "STAGE",
         maxEntries: 1,
+        maxTeamSize: 1,
       });
     }
   }, [open, programme]);
+
+  // Derived state to check selected category type
+  const selectedCategory = categories.find(
+    (c: any) => c.id === formData.categoryId,
+  );
+  const isGeneralCategory = selectedCategory?.type === "GENERAL";
+
+  // Effect to auto-update maxTeamSize based on type
+  useEffect(() => {
+    // If we switch to INDIVIDUAL type, force team size to 1.
+    if (formData.type === "INDIVIDUAL" && formData.maxTeamSize !== 1) {
+      setFormData((prev) => ({ ...prev, maxTeamSize: 1 }));
+    }
+  }, [formData.type, formData.maxTeamSize]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,6 +107,7 @@ export function ProgrammeDialog({
           type: "INDIVIDUAL",
           stageType: "STAGE",
           maxEntries: 1,
+          maxTeamSize: 1,
         });
       }
     } catch (error) {
@@ -117,11 +135,7 @@ export function ProgrammeDialog({
                 : "Create Programme"}
           </DialogTitle>
           <DialogDescription>
-            {readOnly
-              ? "View programme details."
-              : isEditing
-                ? "Update programme details."
-                : "Add a new programme."}
+            {readOnly ? "View details." : "Configure programme rules."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -141,12 +155,13 @@ export function ProgrammeDialog({
               <SelectContent>
                 {categories.map((cat: any) => (
                   <SelectItem key={cat.id} value={cat.id}>
-                    {cat.name}
+                    {cat.name} ({cat.type})
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="name">Programme Name</Label>
             <Input
@@ -160,6 +175,7 @@ export function ProgrammeDialog({
               disabled={readOnly || isLoading}
             />
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="type">Type</Label>
@@ -176,6 +192,9 @@ export function ProgrammeDialog({
                   <SelectItem value="GROUP">Group</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-[10px] text-muted-foreground">
+                Determines assignment structure.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="stageType">Stage Type</Label>
@@ -196,22 +215,48 @@ export function ProgrammeDialog({
               </Select>
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="maxEntries">Max Entries (per Group)</Label>
-            <Input
-              id="maxEntries"
-              type="number"
-              min={1}
-              required
-              value={formData.maxEntries}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  maxEntries: parseInt(e.target.value, 10),
-                })
-              }
-              disabled={readOnly || isLoading}
-            />
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="maxEntries">
+                {formData.type === "GROUP"
+                  ? "Max Teams (per Group)"
+                  : "Max Entries (per Group)"}
+              </Label>
+              <Input
+                id="maxEntries"
+                type="number"
+                min={1}
+                required
+                value={formData.maxEntries}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    maxEntries: parseInt(e.target.value, 10),
+                  })
+                }
+                disabled={readOnly || isLoading}
+              />
+            </div>
+            {formData.type === "GROUP" && (
+              <div className="space-y-2">
+                <Label htmlFor="maxTeamSize">Max Participants (per Team)</Label>
+                <Input
+                  id="maxTeamSize"
+                  type="number"
+                  min={1}
+                  required
+                  value={formData.maxTeamSize}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      maxTeamSize: parseInt(e.target.value, 10),
+                    })
+                  }
+                  disabled={readOnly || isLoading}
+                />
+              </div>
+            )}
           </div>
 
           <DialogFooter>

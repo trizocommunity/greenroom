@@ -24,6 +24,7 @@ export const ProgrammeService = {
       type: "INDIVIDUAL" | "GROUP";
       stageType: "STAGE" | "NON_STAGE";
       maxEntries?: number;
+      maxTeamSize?: number;
     },
   ) {
     // 1. Check Festival Status
@@ -55,6 +56,7 @@ export const ProgrammeService = {
       type: data.type,
       stageType: data.stageType,
       maxEntries: data.maxEntries,
+      maxTeamSize: data.maxTeamSize || 1,
     });
   },
 

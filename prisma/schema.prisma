@@ -244,6 +244,7 @@ model Programme {
   type        ProgrammeType @default(INDIVIDUAL)
   stageType   StageType     @default(STAGE)
   maxEntries  Int           @default(1)
+  maxTeamSize Int           @default(1)
 
   assignments ProgrammeAssignment[]
 
