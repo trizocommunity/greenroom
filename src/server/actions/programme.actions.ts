@@ -6,6 +6,13 @@ export async function getProgrammesAction(festivalId: string) {
   return ProgrammeService.getAll(festivalId);
 }
 
+export async function getProgrammeDetailsAction(
+  festivalId: string,
+  id: string,
+) {
+  return ProgrammeService.getDetails(id, festivalId);
+}
+
 export async function createProgrammeAction(
   festivalId: string,
   data: {

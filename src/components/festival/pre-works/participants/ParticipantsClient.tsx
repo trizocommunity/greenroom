@@ -1,13 +1,6 @@
 "use client";
 
 import { useFestival } from "@/components/festival/FestivalContext";
-import { isPast } from "date-fns";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,10 +12,21 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useParticipants } from "@/hooks/useParticipants";
-import { Eye, FileText, Loader2, Pencil, User } from "lucide-react";
+import { Eye, FileText, Filter, Loader2, Pencil, User, X } from "lucide-react";
 import { ParticipantDialog } from "./ParticipantDialog";
+import { ParticipantDetailsDialog } from "./ParticipantDetailsDialog";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { format } from "date-fns";
+import { useGroups } from "@/hooks/useGroups";
+import { useCategories } from "@/hooks/useCategories";
+import { useState } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ParticipantsClientProps {
   festivalId: string;
@@ -38,9 +42,13 @@ export function ParticipantsClient({
 }: ParticipantsClientProps) {
   const { participants, isLoading, deleteParticipant, isDeleting } =
     useParticipants(festivalId);
+  const { groups } = useGroups(festivalId);
+  const { categories } = useCategories(festivalId);
+
+  const [selectedGroup, setSelectedGroup] = useState<string>("ALL");
+  const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
 
   const festival = useFestival();
-  // Participant Creation Deadline Removed
 
   if (isLoading) {
     return (
@@ -50,21 +58,99 @@ export function ParticipantsClient({
     );
   }
 
+  // Filter Logic
+  const filteredParticipants = participants.filter((p: any) => {
+    // Group Filter
+    if (userGroup) {
+      if (p.groupId !== userGroup.id && p.group?.id !== userGroup.id)
+        return false;
+    } else if (selectedGroup !== "ALL") {
+      if (p.groupId !== selectedGroup && p.group?.id !== selectedGroup)
+        return false;
+    }
+
+    // Category Filter
+    if (selectedCategory !== "ALL") {
+      if (
+        p.categoryId !== selectedCategory &&
+        p.category?.id !== selectedCategory
+      )
+        return false;
+    }
+
+    return true;
+  });
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center bg-muted/40 p-4 rounded-lg border">
-        <div className="flex items-center gap-2">
-          <User className="h-5 w-5 text-muted-foreground" />
-          <span className="font-medium text-sm">
-            Total Participants: {participants.length}
-          </span>
-          {userGroup && (
-            <Badge variant="outline" className="ml-2">
-              Your Group: {userGroup.name}
-            </Badge>
-          )}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-muted/40 p-4 rounded-lg border">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <User className="h-5 w-5 text-muted-foreground" />
+            <span className="font-medium text-sm">
+              Total Participants: {filteredParticipants.length}
+            </span>
+            {userGroup && (
+              <Badge variant="outline" className="ml-2">
+                Your Group: {userGroup.name}
+              </Badge>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Manage your festival participants here.
+          </p>
         </div>
-        <ParticipantDialog festivalId={festivalId} userGroup={userGroup} />
+
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          {!userGroup && (
+            <Select value={selectedGroup} onValueChange={setSelectedGroup}>
+              <SelectTrigger className="w-[180px] h-9 text-xs">
+                <SelectValue placeholder="All Groups" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Groups</SelectItem>
+                {groups.map((g: any) => (
+                  <SelectItem key={g.id} value={g.id}>
+                    {g.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger className="w-[180px] h-9 text-xs">
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Categories</SelectItem>
+              {categories
+                .filter((c: any) => c.type !== "GENERAL")
+                .map((c: any) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+
+          {(selectedGroup !== "ALL" || selectedCategory !== "ALL") && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9"
+              onClick={() => {
+                setSelectedGroup("ALL");
+                setSelectedCategory("ALL");
+              }}
+              title="Clear Filters"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+
+          <ParticipantDialog festivalId={festivalId} userGroup={userGroup} />
+        </div>
       </div>
 
       <div className="rounded-md border">
@@ -74,48 +160,63 @@ export function ParticipantsClient({
               <TableHead>Name</TableHead>
               <TableHead>Group</TableHead>
               <TableHead>Category</TableHead>
-              <TableHead>Email</TableHead>
               <TableHead>Registered</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {participants.map((participant: any) => (
+            {filteredParticipants.map((participant: any) => (
               <TableRow key={participant.id}>
                 <TableCell className="font-medium">
                   <div className="flex flex-col">
                     <span>{participant.name}</span>
                     {participant.registrationNumber && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground font-mono">
                         {participant.registrationNumber}
                       </span>
                     )}
                   </div>
                 </TableCell>
-                <TableCell>{participant.group?.name || "-"}</TableCell>
-                <TableCell>{participant.category?.name || "-"}</TableCell>
-                <TableCell>{participant.email || "-"}</TableCell>
                 <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="w-2 h-2 rounded-full"
+                      style={{
+                        backgroundColor: participant.group?.color || "#2563eb",
+                      }}
+                    />
+                    {participant.group?.name || "-"}
+                  </div>
+                </TableCell>
+                <TableCell>{participant.category?.name || "-"}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">
                   {format(new Date(participant.createdAt), "MMM d, yyyy")}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
-                    <ParticipantDialog
+                    <ParticipantDetailsDialog
                       festivalId={festivalId}
                       participant={participant}
                       trigger={
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Pencil className="h-4 w-4" />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-primary"
+                        >
+                          <Eye className="h-4 w-4" />
                         </Button>
                       }
                     />
                     <ParticipantDialog
                       festivalId={festivalId}
                       participant={participant}
-                      readOnly
                       trigger={
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Eye className="h-4 w-4" />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-primary"
+                        >
+                          <Pencil className="h-4 w-4" />
                         </Button>
                       }
                     />
@@ -131,15 +232,15 @@ export function ParticipantsClient({
                 </TableCell>
               </TableRow>
             ))}
-            {participants.length === 0 && (
+            {filteredParticipants.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={5}
                   className="h-24 text-center text-muted-foreground"
                 >
                   <div className="flex flex-col items-center justify-center gap-2">
                     <FileText className="h-8 w-8 text-muted-foreground/50" />
-                    <p>No participants found.</p>
+                    <p>No participants found matching filters.</p>
                   </div>
                 </TableCell>
               </TableRow>

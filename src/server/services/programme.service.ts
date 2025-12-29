@@ -16,6 +16,18 @@ export const ProgrammeService = {
     return findProgrammesByFestival(festivalId, categoryId);
   },
 
+  async getDetails(id: string, festivalId: string) {
+    // Import helper here to avoid circular dep if any, or just plain import at top
+    const { findProgrammeWithAssignments } = await import(
+      "@/server/models/programme.model"
+    );
+    const programme = await findProgrammeWithAssignments(id);
+    if (!programme || programme.festivalId !== festivalId) {
+      throw new Error("Programme not found");
+    }
+    return programme;
+  },
+
   async create(
     festivalId: string,
     data: {

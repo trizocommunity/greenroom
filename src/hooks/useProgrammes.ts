@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getProgrammesAction,
+  getProgrammeDetailsAction,
   createProgrammeAction,
   deleteProgrammeAction,
 } from "@/server/actions/programme.actions";
@@ -73,5 +74,22 @@ export function useProgrammes(festivalId: string) {
     isUpdating: updateMutation.isPending,
     deleteProgramme: deleteMutation.mutateAsync,
     isDeleting: deleteMutation.isPending,
+  };
+}
+
+export function useProgrammeDetails(festivalId: string, programmeId?: string) {
+  const query = useQuery({
+    queryKey: ["programme", festivalId, programmeId],
+    queryFn: async () => {
+      if (!programmeId) return null;
+      return getProgrammeDetailsAction(festivalId, programmeId);
+    },
+    enabled: !!programmeId,
+  });
+
+  return {
+    programme: query.data,
+    isLoading: query.isLoading,
+    error: query.error,
   };
 }

@@ -23,7 +23,7 @@ export default async function AssignmentsPage({
             Manage participant assignments to programmes.
           </p>
         </div>
-        <DeadlinesCard type="assignment" />
+        <DeadlinesCard />
       </div>
       <AssignmentsClient
         festivalId={festival.id}

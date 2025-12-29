@@ -49,3 +49,25 @@ export async function countProgrammes(festivalId: string) {
     where: { festivalId },
   });
 }
+
+export async function findProgrammeWithAssignments(id: string) {
+  return prisma.programme.findUnique({
+    where: { id },
+    include: {
+      category: true,
+      assignments: {
+        include: {
+          participant: {
+            select: {
+              id: true,
+              name: true,
+              registrationNumber: true,
+              group: true,
+            },
+          },
+          group: true, // For group assignments
+        },
+      },
+    },
+  });
+}

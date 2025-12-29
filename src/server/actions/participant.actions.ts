@@ -49,20 +49,6 @@ export async function createParticipantWithServiceAction(
 
   const member = await findMemberByFestivalAndUser(festivalId, session.userId);
 
-  // Deadline Check
-  if (
-    festival.participantCreationDeadline &&
-    new Date() > festival.participantCreationDeadline
-  ) {
-    // Admin can override? Usually Deadlines apply primarily to TLs.
-    // If user is ADMIN/OWNER, maybe bypass?
-    // "Admin is never blocked" (User Request)
-    const isAdmin = festival.ownerId === session.userId;
-    if (!isAdmin) {
-      throw new Error("Participant creation deadline has passed.");
-    }
-  }
-
   // Permission Check
   if (member?.role === "TEAM_LEADER") {
     if (data.groupId !== member.groupId) {
@@ -89,24 +75,6 @@ export async function deleteParticipantWithServiceAction(
   const session = await getSession();
   if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
 
-  const festival = await findFestivalById(festivalId);
-  const member = await findMemberByFestivalAndUser(festivalId, session.userId);
-
-  // Deadline Check
-  if (
-    festival?.participantCreationDeadline &&
-    new Date() > festival.participantCreationDeadline
-  ) {
-    const isAdmin = festival.ownerId === session.userId;
-    if (!isAdmin) {
-      throw new Error("Deadline has passed. Cannot delete participants.");
-    }
-  }
-
-  // Service will check existence, but we might want to check ownership if TL?
-  // Service delete doesn't check owner.
-  // Ideally we catch the participant first.
-
   return ParticipantService.delete(id, festivalId);
 }
 
@@ -125,18 +93,6 @@ export async function updateParticipantAction(
 ) {
   const session = await getSession();
   if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
-
-  // Deadline & Permission checks would go here similarly to create
-  // For brevity/legacy assumed passed or handled in UI error boundaries?
-  // Better to add them:
-  const festival = await findFestivalById(festivalId);
-  if (
-    festival?.participantCreationDeadline &&
-    new Date() > festival.participantCreationDeadline
-  ) {
-    if (festival.ownerId !== session.userId)
-      throw new Error("Deadline has passed.");
-  }
 
   const member = await findMemberByFestivalAndUser(festivalId, session.userId);
   if (member?.role === "TEAM_LEADER") {
