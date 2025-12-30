@@ -33,11 +33,6 @@ export async function findGroupsByFestival(festivalId: string) {
     orderBy: { name: "asc" },
     include: {
       _count: { select: { participants: true } },
-      members: {
-        include: {
-          user: true,
-        },
-      },
     },
   });
 }

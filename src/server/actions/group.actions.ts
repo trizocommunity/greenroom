@@ -24,11 +24,17 @@ export async function deleteGroupAction(festivalId: string, id: string) {
 export async function updateGroupAction(
   festivalId: string,
   id: string,
-  data: { name: string; seriesStart?: number; color?: string },
+  data: {
+    name: string;
+    seriesStart?: number;
+    color?: string;
+    teamLeaderIds?: string[];
+  },
 ) {
   return GroupService.update(id, festivalId, {
     name: data.name,
     seriesStart: data.seriesStart,
     color: data.color,
+    teamLeaderIds: data.teamLeaderIds,
   });
 }

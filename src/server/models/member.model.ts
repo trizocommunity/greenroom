@@ -14,7 +14,6 @@ export async function findMemberByFestivalAndUser(
     },
     include: {
       user: true,
-      group: true,
     },
   });
 }
@@ -30,7 +29,6 @@ export async function findMembersByFestival(
     },
     include: {
       user: true,
-      group: true,
     },
     orderBy: {
       createdAt: "desc",
@@ -49,7 +47,6 @@ export async function createMember(data: Prisma.FestivalMemberCreateInput) {
     data,
     include: {
       user: true,
-      group: true,
     },
   });
 }

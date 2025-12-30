@@ -151,22 +151,90 @@ export function ParticipantDialog({
               disabled={readOnly}
               className="space-y-6 group-disabled:opacity-100 p-1"
             >
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4">
+                <h3 className="font-semibold text-sm text-foreground/80 border-b pb-2">
+                  Festival Details
+                </h3>
+
+                {/* Group Selection */}
                 <div className="space-y-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input
-                    id="name"
-                    required
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    placeholder="Full Name"
-                  />
+                  <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">
+                    Group <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto p-2 border rounded-md bg-muted/5">
+                    {groups.map((group: any) => (
+                      <button
+                        type="button"
+                        key={group.id}
+                        onClick={() => handleGroupSelect(group.id)}
+                        className={cn(
+                          "cursor-pointer px-3 py-1.5 rounded-md border text-sm transition-all flex items-center gap-2",
+                          formData.groupId === group.id
+                            ? "bg-primary/10 border-primary text-primary font-semibold ring-1 ring-primary"
+                            : "bg-background hover:bg-muted text-muted-foreground hover:border-primary/30",
+                          readOnly && "cursor-default opacity-80",
+                        )}
+                        disabled={readOnly}
+                      >
+                        <span
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: group.color || "#2563eb" }}
+                        />
+                        {group.name}
+                      </button>
+                    ))}
+                    {groups.length === 0 && (
+                      <p className="text-sm text-muted-foreground p-2">
+                        No groups available.
+                      </p>
+                    )}
+                  </div>
                 </div>
+
+                {/* Category Selection */}
                 <div className="space-y-2">
-                  <Label htmlFor="registrationNumber">
-                    Reg. Number (Optional)
+                  <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">
+                    Category <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {individualCategories.map((cat: any) => (
+                      <button
+                        type="button"
+                        key={cat.id}
+                        onClick={() =>
+                          !readOnly &&
+                          setFormData({ ...formData, categoryId: cat.id })
+                        }
+                        className={cn(
+                          "cursor-pointer p-3 rounded-lg border text-sm transition-all flex flex-col items-start gap-1 hover:border-primary/50 text-left",
+                          formData.categoryId === cat.id
+                            ? "bg-primary/5 border-primary ring-1 ring-primary"
+                            : "bg-card text-card-foreground hover:bg-muted/50",
+                          readOnly && "cursor-default opacity-80",
+                        )}
+                        disabled={readOnly}
+                      >
+                        <span className="font-semibold">{cat.name}</span>
+                        <Badge variant="secondary" className="text-[10px] h-5">
+                          {cat.code}
+                        </Badge>
+                      </button>
+                    ))}
+                    {individualCategories.length === 0 && (
+                      <p className="text-sm text-muted-foreground col-span-full p-2">
+                        No individual categories found.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Reg Number */}
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="registrationNumber"
+                    className="text-xs uppercase text-muted-foreground font-semibold tracking-wider"
+                  >
+                    Registration Number (Optional)
                   </Label>
                   <Input
                     id="registrationNumber"
@@ -177,145 +245,88 @@ export function ParticipantDialog({
                         registrationNumber: e.target.value,
                       })
                     }
-                    placeholder="Auto-generated if empty"
+                    placeholder="Leave empty for auto-generation"
+                    className="bg-muted/5"
                   />
+                  <p className="text-[10px] text-muted-foreground">
+                    If left empty, a unique ID will be generated automatically
+                    (e.g. ABC-G-101).
+                  </p>
                 </div>
               </div>
 
-              {/* Gender Selection - Badge Style */}
-              <div className="space-y-2">
-                <Label>Gender</Label>
-                <div className="flex flex-wrap gap-2">
-                  {["MALE", "FEMALE", "OTHER"].map((gender) => (
-                    <button
-                      type="button"
-                      key={gender}
-                      onClick={() =>
-                        !readOnly && setFormData({ ...formData, gender })
+              <div className="space-y-4">
+                <h3 className="font-semibold text-sm text-foreground/80 border-b pb-2">
+                  Personal Information
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">
+                      Full Name <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="name"
+                      required
+                      value={formData.name}
+                      onChange={(e) =>
+                        setFormData({ ...formData, name: e.target.value })
                       }
-                      className={cn(
-                        "cursor-pointer px-4 py-2 rounded-full border text-sm font-medium transition-all flex items-center gap-2",
-                        formData.gender === gender
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-background hover:bg-muted text-muted-foreground",
-                        readOnly && "cursor-default opacity-80",
-                      )}
-                      disabled={readOnly}
-                    >
-                      {gender.charAt(0) + gender.slice(1).toLowerCase()}
-                      {formData.gender === gender && (
-                        <Check className="h-3 w-3" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
+                      placeholder="e.g. John Doe"
+                    />
+                  </div>
 
-              {/* Group Selection - Badge Style */}
-              <div className="space-y-2">
-                <Label>
-                  Group{" "}
-                  {formData.groupId ? (
-                    <Check className="inline h-4 w-4 text-green-500 ml-1" />
-                  ) : (
-                    <span className="text-destructive">*</span>
-                  )}
-                </Label>
-                <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto p-1 border rounded-md bg-muted/10">
-                  {groups.map((group: any) => (
-                    <button
-                      type="button"
-                      key={group.id}
-                      onClick={() => handleGroupSelect(group.id)}
-                      className={cn(
-                        "cursor-pointer px-3 py-1.5 rounded-md border text-sm transition-all flex items-center gap-2",
-                        formData.groupId === group.id
-                          ? "bg-primary/10 border-primary text-primary font-semibold ring-1 ring-primary"
-                          : "bg-background hover:bg-muted text-muted-foreground",
-                        readOnly && "cursor-default opacity-80",
-                      )}
-                      disabled={readOnly}
-                    >
-                      <span
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: group.color || "#2563eb" }}
-                      />
-                      {group.name}
-                    </button>
-                  ))}
-                  {groups.length === 0 && (
-                    <p className="text-sm text-muted-foreground p-2">
-                      No groups available.
-                    </p>
-                  )}
-                </div>
-              </div>
+                  <div className="space-y-2">
+                    <Label>Gender</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {["MALE", "FEMALE", "OTHER"].map((gender) => (
+                        <button
+                          type="button"
+                          key={gender}
+                          onClick={() =>
+                            !readOnly && setFormData({ ...formData, gender })
+                          }
+                          className={cn(
+                            "cursor-pointer px-4 py-2 rounded-full border text-sm font-medium transition-all flex items-center gap-2",
+                            formData.gender === gender
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-background hover:bg-muted text-muted-foreground",
+                            readOnly && "cursor-default opacity-80",
+                          )}
+                          disabled={readOnly}
+                        >
+                          {gender.charAt(0) + gender.slice(1).toLowerCase()}
+                          {formData.gender === gender && (
+                            <Check className="h-3 w-3" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-              {/* Category Selection - Badge/Card Style */}
-              <div className="space-y-2">
-                <Label>
-                  Category{" "}
-                  {formData.categoryId ? (
-                    <Check className="inline h-4 w-4 text-green-500 ml-1" />
-                  ) : (
-                    <span className="text-destructive">*</span>
-                  )}
-                </Label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {individualCategories.map((cat: any) => (
-                    <button
-                      type="button"
-                      key={cat.id}
-                      onClick={() =>
-                        !readOnly &&
-                        setFormData({ ...formData, categoryId: cat.id })
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address (Optional)</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
                       }
-                      className={cn(
-                        "cursor-pointer p-3 rounded-lg border text-sm transition-all flex flex-col items-start gap-1 hover:border-primary/50 text-left",
-                        formData.categoryId === cat.id
-                          ? "bg-primary/5 border-primary ring-1 ring-primary"
-                          : "bg-card text-card-foreground",
-                        readOnly && "cursor-default opacity-80",
-                      )}
-                      disabled={readOnly}
-                    >
-                      <span className="font-semibold">{cat.name}</span>
-                      <Badge variant="secondary" className="text-[10px] h-5">
-                        {cat.code}
-                      </Badge>
-                    </button>
-                  ))}
-                  {individualCategories.length === 0 && (
-                    <p className="text-sm text-muted-foreground col-span-full p-2">
-                      No individual categories found.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    placeholder="Email"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) =>
-                      setFormData({ ...formData, phone: e.target.value })
-                    }
-                    placeholder="Phone"
-                  />
+                      placeholder="john@example.com"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number (Optional)</Label>
+                    <Input
+                      id="phone"
+                      value={formData.phone}
+                      onChange={(e) =>
+                        setFormData({ ...formData, phone: e.target.value })
+                      }
+                      placeholder="+91 ..."
+                    />
+                  </div>
                 </div>
               </div>
             </fieldset>

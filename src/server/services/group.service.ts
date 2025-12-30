@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { prisma as db } from "@/lib/db";
 import { findFestivalById } from "@/server/models/festival.model";
 import {
   createGroup,
@@ -59,13 +59,38 @@ export const GroupService = {
       name?: string;
       seriesStart?: number;
       color?: string;
+      teamLeaderIds?: string[];
     },
   ) {
     const exists = await findGroupById(id);
     if (!exists || exists.festivalId !== festivalId)
       throw new Error("Group not found");
 
-    return updateGroup(id, data);
+    // If teamLeaderIds provided, we update participants
+    if (data.teamLeaderIds) {
+      await db.$transaction(async (tx) => {
+        // 1. Reset all participants in this group
+        await tx.participant.updateMany({
+          where: { groupId: id },
+          data: { isTeamLeader: false },
+        });
+
+        // 2. Set new team leaders
+        if (data.teamLeaderIds && data.teamLeaderIds.length > 0) {
+          await tx.participant.updateMany({
+            where: {
+              id: { in: data.teamLeaderIds },
+              groupId: id, // Ensure they belong to this group
+            },
+            data: { isTeamLeader: true },
+          });
+        }
+      });
+    }
+
+    // Remove teamLeaderIds from data passed to updateGroup
+    const { teamLeaderIds, ...groupData } = data;
+    return updateGroup(id, groupData);
   },
 
   async delete(id: string, festivalId: string) {

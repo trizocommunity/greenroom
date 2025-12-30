@@ -293,30 +293,39 @@ model ProgrammeAssignment {
 }
 
 model Participant {
-  id        String  @id @default(uuid())
+  id        String   @id @default(uuid())
+  
   festivalId String
   festival   Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
 
-  // Child of a Group? Or direct? In schema it has groupId as relation.
-  groupId   String
-  group     Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId    String
+  group      Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   categoryId String
-  category   Category @relation(fields: [categoryId], references: [id])
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
-  name               String
-  email              String? 
-  phone              String?
-  gender             Gender?
-  registrationNumber String?
+  name       String
+  email      String?
+  phone      String?
+  gender     Gender   @default(MALE)
+  
+  registrationNumber String? // Optional initially, but we enforce uniqueness if present
+  isTeamLeader       Boolean @default(false)
 
   assignments ProgrammeAssignment[]
-
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([festivalId, email]) 
-
+  // @@unique([festivalId, phone]) // Keep phone unique if used
+  // We want registrationNumber to be unique per festival IF it exists. 
+  // Prisma doesn't support conditional unique constraints well in all DBs without raw SQL for partial indexes.
+  // But usually for SQLite/Postgres we can just do @@unique([festivalId, registrationNumber]).
+  // However, if registrationNumber is null, multiple nulls are allowed in most DBs (except SQL Server < 2008).
+  // Let's assume standard behavior where multiple NULLs are allowed.
+  // @@unique([festivalId, registrationNumber])
+  @@index([festivalId])
+  @@index([groupId])
   @@map("participant")
 }
 
