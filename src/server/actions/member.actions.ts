@@ -1,7 +1,7 @@
 "use server";
 
-import { MemberService } from "@/server/services/member.service";
 import { revalidatePath } from "next/cache";
+import { MemberService } from "@/server/services/member.service";
 
 export async function getMembersAction(festivalId: string) {
   return MemberService.getMembers(festivalId);

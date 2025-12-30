@@ -1,8 +1,8 @@
+import type { FestivalStatus } from "@prisma/client";
 import { LimitationCard } from "@/components/dashboard/LimitationCard";
 import { StatusStrip } from "@/components/dashboard/StatusStrip";
 import type { FestivalRole } from "@/components/festival/FestivalRoleBadge";
 import { cn } from "@/lib/utils";
-import type { FestivalStatus } from "@prisma/client";
 
 interface DashboardRightPanelProps {
   festivalSlug: string;

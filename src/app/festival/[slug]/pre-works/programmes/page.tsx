@@ -1,6 +1,6 @@
+import { notFound } from "next/navigation";
 import { ProgrammesClient } from "@/components/festival/pre-works/programmes/ProgrammesClient";
 import { findFestivalBySlug } from "@/server/models/festival.model";
-import { notFound } from "next/navigation";
 
 export default async function ProgrammesPage({
   params,

@@ -1,11 +1,11 @@
+import { format } from "date-fns";
+import { Calendar, HardDrive, Trophy, Users } from "lucide-react";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { format } from "date-fns";
-import { Users, Calendar, Trophy, HardDrive } from "lucide-react";
-import { findFestivalBySlugOrId } from "@/server/models/festival.model";
 import { getSession } from "@/lib/auth/session";
-import { findMemberByFestivalAndUser } from "@/server/models/member.model";
 import { prisma } from "@/lib/db";
+import { findFestivalBySlugOrId } from "@/server/models/festival.model";
+import { findMemberByFestivalAndUser } from "@/server/models/member.model";
 
 export default async function FestivalDashboardPage({
   params,

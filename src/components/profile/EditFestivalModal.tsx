@@ -1,8 +1,13 @@
 "use client";
 
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { InstitutionType } from "@prisma/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { Building2, Globe, Loader2, User } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -13,15 +18,13 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -29,16 +32,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Globe, Building2, User } from "lucide-react";
-import { updateFestivalAction } from "@/server/actions/user-festival.actions";
-import { updateFestivalSchema } from "@/lib/validations/festival";
-import type { UpdateFestivalInput } from "@/lib/validations/festival";
-import { InstitutionType } from "@prisma/client";
-import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { queryKeys } from "@/lib/query-keys";
+import type { UpdateFestivalInput } from "@/lib/validations/festival";
+import { updateFestivalSchema } from "@/lib/validations/festival";
+import { updateFestivalAction } from "@/server/actions/user-festival.actions";
 
 interface EditFestivalModalProps {
   festival: any;

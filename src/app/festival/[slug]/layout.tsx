@@ -19,8 +19,8 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { getSession } from "@/lib/auth/session";
-import { findFestivalBySlugOrId } from "@/server/models/festival.model";
 import { prisma } from "@/lib/db";
+import { findFestivalBySlugOrId } from "@/server/models/festival.model";
 
 export default async function FestivalDashboardLayout({
   children,
@@ -55,7 +55,7 @@ export default async function FestivalDashboardLayout({
       },
     });
 
-    if (member && member.isActive) {
+    if (member?.isActive) {
       role = member.role;
     } else {
       redirect("/");

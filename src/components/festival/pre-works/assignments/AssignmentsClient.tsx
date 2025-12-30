@@ -1,5 +1,7 @@
 "use client";
 
+import { format } from "date-fns";
+import { Eye, Loader2, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
   Table,
   TableBody,
@@ -17,17 +20,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useAssignments } from "@/hooks/useAssignments";
-import { Eye, Loader2, Pencil } from "lucide-react";
-import { format } from "date-fns";
-import { AssignmentDialog } from "./AssignmentDialog";
-import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useAssignments } from "@/hooks/useAssignments";
+import { AssignmentDialog } from "./AssignmentDialog";
 
 interface AssignmentsClientProps {
   festivalId: string;

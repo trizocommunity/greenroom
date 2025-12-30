@@ -1,10 +1,10 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
-  getAssignmentsAction,
   createAssignmentAction,
   deleteAssignmentAction,
+  getAssignmentsAction,
 } from "@/server/actions/assignment.actions";
-import { toast } from "sonner";
 
 export function useAssignments(festivalId: string) {
   const queryClient = useQueryClient();

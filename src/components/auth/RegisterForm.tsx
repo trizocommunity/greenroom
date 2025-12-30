@@ -37,7 +37,6 @@ export function RegisterForm() {
       if (!result.success) {
         if (result.fields) {
           Object.entries(result.fields).forEach(([key, message]) => {
-            // @ts-expect-error
             setError(key as any, { message });
           });
           return;

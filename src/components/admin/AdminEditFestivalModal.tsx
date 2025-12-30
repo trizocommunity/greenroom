@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { Building2, Globe, Loader2, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -26,13 +26,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import type { UpdateFestivalInput } from "@/lib/validations/festival";
+import { updateFestivalSchema } from "@/lib/validations/festival";
 import {
   getFestivalAdmin,
   updateFestivalAdmin,
 } from "@/server/actions/admin.actions";
-import { updateFestivalSchema } from "@/lib/validations/festival";
-import type { UpdateFestivalInput } from "@/lib/validations/festival";
-import { Globe, Building2, User } from "lucide-react";
 
 type FormValues = UpdateFestivalInput;
 

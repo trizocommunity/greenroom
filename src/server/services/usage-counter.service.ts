@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { TIER_CONFIG } from "@/config/pricing";
+import { prisma } from "@/lib/db";
 
 /**
  * Usage Counter Service

@@ -4,8 +4,8 @@ import type { User } from "@prisma/client";
 import { useSearchParams } from "next/navigation";
 import { ProfileSidebarContent } from "./ProfileSidebarContent";
 import { BillingTab } from "./tabs/BillingTab";
-import { OverviewTab } from "./tabs/OverviewTab";
 import { FestivalsTab } from "./tabs/FestivalsTab";
+import { OverviewTab } from "./tabs/OverviewTab";
 
 interface UserWithProfile extends User {
   fullName: string | null;

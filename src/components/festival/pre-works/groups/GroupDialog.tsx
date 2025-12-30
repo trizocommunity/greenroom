@@ -1,5 +1,7 @@
 "use client";
 
+import { Loader2, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,8 +23,6 @@ import {
 } from "@/components/ui/select";
 import { useGroups } from "@/hooks/useGroups";
 import { useParticipants } from "@/hooks/useParticipants";
-import { Loader2, Plus } from "lucide-react";
-import { useEffect, useState } from "react";
 
 interface GroupDialogProps {
   festivalId: string;

@@ -1,4 +1,5 @@
 import { Prisma, Tier } from "@prisma/client";
+import { TIER_CONFIG } from "@/config/pricing";
 import { findCategoryById } from "@/server/models/category.model";
 import { findFestivalById } from "@/server/models/festival.model";
 import {
@@ -9,7 +10,6 @@ import {
   findProgrammesByFestival,
   updateProgramme,
 } from "@/server/models/programme.model";
-import { TIER_CONFIG } from "@/config/pricing";
 
 export const ProgrammeService = {
   async getAll(festivalId: string, categoryId?: string) {

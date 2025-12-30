@@ -1,17 +1,17 @@
 "use client";
 
+import { format } from "date-fns";
 import {
   Calendar,
   Globe,
   LayoutDashboard,
   MoreVertical,
   Pencil,
-  Users,
-  Trophy,
   Scale,
+  Trophy,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
-import { format } from "date-fns";
 import { useState } from "react";
 import { AdminEditFestivalModal } from "@/components/admin/AdminEditFestivalModal";
 import { DeleteFestivalButton } from "@/components/admin/DeleteFestivalButton";

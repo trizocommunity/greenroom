@@ -2,14 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
-import { ParticipantService } from "@/server/services/participant.service";
-
 // New action for hooks - uses ParticipantService
 import { getSession } from "@/lib/auth/session";
-import { findMemberByFestivalAndUser } from "@/server/models/member.model";
-import { findFestivalById } from "@/server/models/festival.model";
+import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
+
+import { findFestivalById } from "@/server/models/festival.model";
+import { ParticipantService } from "@/server/services/participant.service";
 
 export async function getParticipantsAction(festivalId: string) {
   return ParticipantService.getAll(festivalId);

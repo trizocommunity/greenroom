@@ -1,5 +1,7 @@
 "use client";
 
+import { Loader2, Trash2 } from "lucide-react";
+import { useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,8 +14,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Trash2 } from "lucide-react";
-import { useState } from "react";
 
 interface DeleteDialogProps {
   title?: string;

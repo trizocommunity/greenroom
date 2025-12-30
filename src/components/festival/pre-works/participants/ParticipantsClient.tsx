@@ -1,8 +1,19 @@
 "use client";
 
+import { format } from "date-fns";
+import { Eye, FileText, Filter, Loader2, Pencil, User, X } from "lucide-react";
+import { useState } from "react";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DeleteDialog } from "@/components/ui/delete-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -11,22 +22,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useParticipants } from "@/hooks/useParticipants";
-import { Eye, FileText, Filter, Loader2, Pencil, User, X } from "lucide-react";
-import { ParticipantDialog } from "./ParticipantDialog";
-import { ParticipantDetailsDialog } from "./ParticipantDetailsDialog";
-import { DeleteDialog } from "@/components/ui/delete-dialog";
-import { format } from "date-fns";
-import { useGroups } from "@/hooks/useGroups";
 import { useCategories } from "@/hooks/useCategories";
-import { useState } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useGroups } from "@/hooks/useGroups";
+import { useParticipants } from "@/hooks/useParticipants";
+import { ParticipantDetailsDialog } from "./ParticipantDetailsDialog";
+import { ParticipantDialog } from "./ParticipantDialog";
 
 interface ParticipantsClientProps {
   festivalId: string;

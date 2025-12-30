@@ -93,6 +93,8 @@ export default async function FestivalPage({
     orgWebsite: festival.orgWebsite || "",
     orgLocation: festival.orgLocation || "",
     establishedYear: festival.establishedYear || null,
+    participantCreationDeadline: festival.participantCreationDeadline,
+    programmeAssignmentDeadline: festival.programmeAssignmentDeadline,
   };
 
   return (

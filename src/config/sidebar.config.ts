@@ -1,7 +1,10 @@
 import {
   BarChart3,
+  Building2,
   Calendar,
+  CheckCircle,
   ClipboardList,
+  CreditCard,
   Edit,
   FileText,
   LayoutDashboard,
@@ -12,9 +15,6 @@ import {
   Trophy,
   Users,
   UsersRound,
-  CreditCard,
-  Building2,
-  CheckCircle,
 } from "lucide-react";
 
 export type FestivalRole =

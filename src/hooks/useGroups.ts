@@ -1,10 +1,10 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
-  getGroupsAction,
   createGroupAction,
   deleteGroupAction,
+  getGroupsAction,
 } from "@/server/actions/group.actions";
-import { toast } from "sonner";
 
 export function useGroups(festivalId: string) {
   const queryClient = useQueryClient();
@@ -56,6 +56,7 @@ export function useGroups(festivalId: string) {
         name: string;
         seriesStart?: number;
         color?: string;
+        teamLeaderIds?: string[];
       };
     }) => {
       const { updateGroupAction } = await import(
@@ -72,78 +73,6 @@ export function useGroups(festivalId: string) {
     },
   });
 
-  const assignTeamLeaderMutation = useMutation({
-    mutationFn: async ({
-      groupId,
-      data,
-    }: {
-      groupId: string;
-      data: { fullName: string; email: string; password: string };
-    }) => {
-      const { createTeamLeaderAction } = await import(
-        "@/server/actions/member.actions"
-      );
-      return createTeamLeaderAction(festivalId, groupId, data);
-    },
-    onSuccess: (result) => {
-      if (result.success) {
-        queryClient.invalidateQueries({ queryKey: ["groups", festivalId] });
-        toast.success("Team Leader assigned successfully");
-      } else {
-        toast.error(result.error || "Failed to assign Team Leader");
-      }
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Failed to assign Team Leader");
-    },
-  });
-
-  const updateTeamLeaderMutation = useMutation({
-    mutationFn: async ({
-      memberId,
-      data,
-    }: {
-      memberId: string;
-      data: { fullName?: string; email?: string; password?: string };
-    }) => {
-      const { updateTeamLeaderAction } = await import(
-        "@/server/actions/member.actions"
-      );
-      return updateTeamLeaderAction(festivalId, memberId, data);
-    },
-    onSuccess: (result) => {
-      if (result.success) {
-        queryClient.invalidateQueries({ queryKey: ["groups", festivalId] });
-        toast.success("Team Leader updated successfully");
-      } else {
-        toast.error(result.error || "Failed to update Team Leader");
-      }
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Failed to update Team Leader");
-    },
-  });
-
-  const removeTeamLeaderMutation = useMutation({
-    mutationFn: async (memberId: string) => {
-      const { removeMemberAction } = await import(
-        "@/server/actions/member.actions"
-      );
-      return removeMemberAction(festivalId, memberId);
-    },
-    onSuccess: (result) => {
-      if (result.success) {
-        queryClient.invalidateQueries({ queryKey: ["groups", festivalId] });
-        toast.success("Team Leader removed successfully");
-      } else {
-        toast.error(result.error || "Failed to remove Team Leader");
-      }
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Failed to remove Team Leader");
-    },
-  });
-
   return {
     groups: query.data || [],
     isLoading: query.isLoading,
@@ -153,11 +82,5 @@ export function useGroups(festivalId: string) {
     isUpdating: updateMutation.isPending,
     deleteGroup: deleteMutation.mutateAsync,
     isDeleting: deleteMutation.isPending,
-    assignTeamLeader: assignTeamLeaderMutation.mutateAsync,
-    isAssigningTeamLeader: assignTeamLeaderMutation.isPending,
-    updateTeamLeader: updateTeamLeaderMutation.mutateAsync,
-    isUpdatingTeamLeader: updateTeamLeaderMutation.isPending,
-    removeTeamLeader: removeTeamLeaderMutation.mutateAsync,
-    isRemovingTeamLeader: removeTeamLeaderMutation.isPending,
   };
 }

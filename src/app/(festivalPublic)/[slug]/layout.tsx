@@ -72,6 +72,8 @@ export default async function FestivalLayout({
     participantsCount: festival.participantsCount || 0,
     eventsCount: festival.eventsCount || 0,
     limits: null,
+    participantCreationDeadline: festival.participantCreationDeadline,
+    programmeAssignmentDeadline: festival.programmeAssignmentDeadline,
   };
 
   return (

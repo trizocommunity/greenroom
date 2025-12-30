@@ -2,26 +2,26 @@
 
 import crypto from "crypto";
 import type { z } from "zod";
-import { verifyPassword, hashPassword } from "@/lib/auth/password";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
+import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import {
+  forgotPasswordSchema,
   loginSchema,
   registerSchema,
-  forgotPasswordSchema,
   resetPasswordSchema,
 } from "@/lib/validations/auth";
-import {
-  findUserByEmail,
-  createUser,
-  findUserById,
-  updateUser,
-} from "@/server/models/user.model";
 import {
   createPasswordResetToken,
   findValidPasswordResetToken,
   updatePasswordResetToken,
 } from "@/server/models/password-reset-token.model";
-import { AppError, handleActionError, ERROR_MESSAGES } from "@/lib/errors";
+import {
+  createUser,
+  findUserByEmail,
+  findUserById,
+  updateUser,
+} from "@/server/models/user.model";
 import type { ActionResponse } from "@/types/actions";
 
 export async function loginAction(

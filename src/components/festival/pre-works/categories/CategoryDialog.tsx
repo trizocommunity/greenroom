@@ -1,5 +1,7 @@
 "use client";
 
+import { Eye, Loader2, Pencil, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,7 +14,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useCategories } from "@/hooks/useCategories";
 import {
   Select,
   SelectContent,
@@ -20,8 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Pencil, Plus, Eye } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCategories } from "@/hooks/useCategories";
 
 interface CategoryDialogProps {
   festivalId: string;
@@ -78,7 +78,8 @@ export function CategoryDialog({
         await createCategory(formData);
       }
       setOpen(false);
-      if (!isEditing) setFormData({ name: "", description: "" });
+      if (!isEditing)
+        setFormData({ name: "", description: "", type: "INDIVIDUAL" });
     } catch (error) {
       // Handled by hook
     }

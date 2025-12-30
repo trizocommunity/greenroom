@@ -1,7 +1,7 @@
-import { SettingsForm } from "./_components/SettingsForm";
-import { findFestivalBySlug } from "@/server/models/festival.model";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
+import { findFestivalBySlug } from "@/server/models/festival.model";
+import { SettingsForm } from "./_components/SettingsForm";
 
 export default async function SettingsPage({
   params,

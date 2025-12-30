@@ -1,15 +1,15 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { InstitutionType } from "@prisma/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
 import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
 import {
   Dialog,
   DialogContent,
@@ -35,12 +35,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { createFestival } from "@/server/actions/festival.actions";
+import { queryKeys } from "@/lib/query-keys";
 import {
-  createFestivalSchema,
   type CreateFestivalInput,
+  createFestivalSchema,
 } from "@/lib/validations/festival";
-import { InstitutionType } from "@prisma/client";
+import { createFestival } from "@/server/actions/festival.actions";
 
 type FormData = CreateFestivalInput;
 

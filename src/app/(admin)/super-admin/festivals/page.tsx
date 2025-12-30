@@ -1,7 +1,7 @@
+import { LayoutGrid } from "lucide-react";
+import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminFestivalCard } from "@/components/admin/AdminFestivalCard";
 import { adminService } from "@/server/services/admin.service";
-import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
-import { LayoutGrid } from "lucide-react";
 
 export default async function AdminFestivalsPage() {
   const festivals = await adminService.getFestivalsForAdmin();

@@ -1,12 +1,10 @@
 import { hash } from "bcryptjs";
 import {
   createMember,
-  findMembersByFestival,
   findMemberByFestivalAndUser,
+  findMembersByFestival,
 } from "@/server/models/member.model";
-import { findUserByEmail, createUser } from "@/server/models/user.model";
-import { findGroupById } from "@/server/models/group.model";
-import type { Prisma } from "@prisma/client";
+import { createUser, findUserByEmail } from "@/server/models/user.model";
 
 export const MemberService = {
   async getMembers(festivalId: string) {

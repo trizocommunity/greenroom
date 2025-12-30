@@ -1,13 +1,13 @@
 "use server";
 
-import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
 import { InstitutionType } from "@prisma/client";
 import { z } from "zod";
+import { getSession } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
 
 import {
-  updateFestivalSchema,
   type UpdateFestivalInput,
+  updateFestivalSchema,
 } from "@/lib/validations/festival";
 import { createAuditLog } from "@/server/services/audit-log.service";
 
@@ -22,7 +22,7 @@ export async function getMyFestival() {
   return festival;
 }
 
-import { AppError, handleActionError, ERROR_MESSAGES } from "@/lib/errors";
+import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import type { ActionResponse } from "@/types/actions";
 
 export async function updateFestivalAction(

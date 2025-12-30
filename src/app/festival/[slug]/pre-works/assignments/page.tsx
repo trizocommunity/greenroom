@@ -1,7 +1,7 @@
+import { notFound } from "next/navigation";
 import { AssignmentsClient } from "@/components/festival/pre-works/assignments/AssignmentsClient";
 import { DeadlinesCard } from "@/components/festival/pre-works/DeadlinesCard";
 import { findFestivalBySlug } from "@/server/models/festival.model";
-import { notFound } from "next/navigation";
 
 export default async function AssignmentsPage({
   params,

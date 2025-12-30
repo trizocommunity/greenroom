@@ -15,7 +15,7 @@ const profileSchema = z.object({
     .max(120, "Invalid age"),
 });
 
-import { AppError, handleActionError, ERROR_MESSAGES } from "@/lib/errors";
+import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import type { ActionResponse } from "@/types/actions";
 
 export async function updateProfile(

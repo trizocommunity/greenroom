@@ -1,5 +1,6 @@
 "use client";
 
+import { ClipboardList, Eye, Loader2, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,12 +10,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { useCategories } from "@/hooks/useCategories";
 import { useParticipants } from "@/hooks/useParticipants";
-import { ClipboardList, Eye, Loader2, Pencil, Trash2 } from "lucide-react";
-import { CategoryDialog } from "./CategoryDialog";
 import { CategoryDetailsDialog } from "./CategoryDetailsDialog";
-import { DeleteDialog } from "@/components/ui/delete-dialog";
+import { CategoryDialog } from "./CategoryDialog";
 
 interface CategoriesClientProps {
   festivalId: string;

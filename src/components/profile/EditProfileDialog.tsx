@@ -66,7 +66,6 @@ export function EditProfileDialog({ user, trigger }: EditProfileDialogProps) {
       if (!result.success) {
         if (result.fields) {
           Object.entries(result.fields).forEach(([key, message]) => {
-            // @ts-ignore
             form.setError(key as any, { message });
           });
           return;

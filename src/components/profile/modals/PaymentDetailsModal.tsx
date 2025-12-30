@@ -1,24 +1,24 @@
 "use client";
 
+import { format } from "date-fns";
+import {
+  Box,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  CreditCard,
+  Hash,
+  Receipt,
+  Tag,
+  XCircle,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
-import {
-  CreditCard,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  Calendar,
-  Hash,
-  Receipt,
-  Tag,
-  Box,
-} from "lucide-react";
 
 interface PaymentDetailsModalProps {
   isOpen: boolean;

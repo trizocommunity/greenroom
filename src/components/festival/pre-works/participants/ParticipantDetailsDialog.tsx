@@ -1,5 +1,8 @@
 "use client";
 
+import { Eye, Loader2, Mail, Phone, Users } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -7,11 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Eye, Loader2, Mail, Phone, Users } from "lucide-react";
-import { useParticipants } from "@/hooks/useParticipants";
 import {
   Table,
   TableBody,
@@ -20,8 +19,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useProgrammes } from "@/hooks/useProgrammes";
 import { useAssignments } from "@/hooks/useAssignments";
+import { useParticipants } from "@/hooks/useParticipants";
+import { useProgrammes } from "@/hooks/useProgrammes";
 
 interface ParticipantDetailsDialogProps {
   festivalId: string;

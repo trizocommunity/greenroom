@@ -1,7 +1,18 @@
 "use client";
 
+import { Eye, FileText, Filter, Loader2, Pencil } from "lucide-react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DeleteDialog } from "@/components/ui/delete-dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -10,20 +21,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useProgrammes } from "@/hooks/useProgrammes";
 import { useCategories } from "@/hooks/useCategories";
-import { Eye, FileText, Loader2, Pencil, Filter } from "lucide-react";
+import { useProgrammes } from "@/hooks/useProgrammes";
 import { ProgrammeDialog } from "./ProgrammeDialog";
-import { DeleteDialog } from "@/components/ui/delete-dialog";
-import { useState } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 
 interface ProgrammesClientProps {
   festivalId: string;

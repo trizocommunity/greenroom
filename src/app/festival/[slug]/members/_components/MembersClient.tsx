@@ -1,19 +1,14 @@
 "use client";
 
-import { useMembers } from "@/hooks/useMembers";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import type { FestivalRole } from "@prisma/client";
+import { format } from "date-fns";
+import { Copy, Eye, Loader2, Trash2, User } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, User, Copy, Eye, Trash2 } from "lucide-react";
-import { format } from "date-fns";
-import type { FestivalRole } from "@prisma/client";
+import { Button } from "@/components/ui/button";
+import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
   Dialog,
   DialogContent,
@@ -22,12 +17,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useState } from "react";
-import { revokeFestivalMember } from "@/server/actions/team.actions";
-import { toast } from "sonner";
-import { DeleteDialog } from "@/components/ui/delete-dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -35,8 +26,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { createFestivalMember } from "@/server/actions/team.actions";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useMembers } from "@/hooks/useMembers";
+import {
+  createFestivalMember,
+  revokeFestivalMember,
+} from "@/server/actions/team.actions";
 
 interface MembersClientProps {
   festivalId: string;

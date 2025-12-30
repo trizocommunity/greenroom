@@ -1,6 +1,16 @@
 import { format } from "date-fns";
+import { Activity, ShieldCheck, Terminal } from "lucide-react";
+import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
+import { AuditLogSearch } from "@/components/admin/AuditLogSearch";
 import { ViewDetailsDialog } from "@/components/admin/ViewDetailsDialog";
 import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -10,17 +20,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getAuditLogs } from "@/server/services/audit-log.service";
-import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
-import { ShieldCheck, Activity, Terminal } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-
-import { AuditLogSearch } from "@/components/admin/AuditLogSearch";
 
 export default async function AdminAuditLogsPage({
   searchParams,

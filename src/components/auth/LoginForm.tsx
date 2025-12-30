@@ -39,7 +39,6 @@ export function LoginForm() {
         // Handle Validation Errors
         if (result.fields) {
           Object.entries(result.fields).forEach(([key, message]) => {
-            // @ts-ignore - Dynamic key access
             setError(key as any, { message });
           });
           return;

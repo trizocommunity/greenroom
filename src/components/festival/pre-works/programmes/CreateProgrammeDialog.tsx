@@ -1,5 +1,7 @@
 "use client";
 
+import { Loader2, Plus } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,8 +23,6 @@ import {
 } from "@/components/ui/select";
 import { useCategories } from "@/hooks/useCategories";
 import { useProgrammes } from "@/hooks/useProgrammes";
-import { Loader2, Plus } from "lucide-react";
-import { useState } from "react";
 
 interface CreateProgrammeDialogProps {
   festivalId: string;

@@ -1,9 +1,9 @@
-import { findFestivalBySlugOrId } from "@/server/models/festival.model";
 import { notFound } from "next/navigation";
 import { ParticipantsClient } from "@/components/festival/pre-works/participants/ParticipantsClient";
 import { getSession } from "@/lib/auth/session";
-import { findMemberByFestivalAndUser } from "@/server/models/member.model";
 import { prisma } from "@/lib/db";
+import { findFestivalBySlugOrId } from "@/server/models/festival.model";
+import { findMemberByFestivalAndUser } from "@/server/models/member.model";
 
 export default async function ParticipantsPage({
   params,

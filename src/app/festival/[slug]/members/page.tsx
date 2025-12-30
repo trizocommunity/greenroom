@@ -1,6 +1,6 @@
-import { MembersClient } from "./_components/MembersClient";
-import { findFestivalBySlug } from "@/server/models/festival.model";
 import { notFound } from "next/navigation";
+import { findFestivalBySlug } from "@/server/models/festival.model";
+import { MembersClient } from "./_components/MembersClient";
 
 export default async function MembersPage({
   params,

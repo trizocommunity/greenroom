@@ -1,5 +1,8 @@
 "use client";
 
+import { Eye, Loader2, Users } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -8,7 +11,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
@@ -18,7 +20,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Eye, Loader2, Users } from "lucide-react";
 import { useParticipants } from "@/hooks/useParticipants";
 
 interface User {
@@ -116,7 +117,19 @@ export function GroupDetailsDialog({
                         <TableCell className="w-10 text-muted-foreground text-xs">
                           {i + 1}
                         </TableCell>
-                        <TableCell className="font-medium">{p.name}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {p.name}
+                            {(p as any).isTeamLeader && (
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] h-5 px-1.5 font-normal bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200"
+                              >
+                                Team Leader
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="font-mono text-xs">
                           {p.registrationNumber || "-"}
                         </TableCell>

@@ -1,5 +1,9 @@
 "use client";
 
+import { format } from "date-fns";
+import { Loader2, Plus, User } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -28,12 +33,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useCategories } from "@/hooks/useCategories";
-import { useProgrammes, useProgrammeDetails } from "@/hooks/useProgrammes";
-import { Loader2, Plus, User } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { format } from "date-fns";
+import { useProgrammeDetails, useProgrammes } from "@/hooks/useProgrammes";
 
 interface ProgrammeDialogProps {
   festivalId: string;

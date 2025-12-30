@@ -1,11 +1,10 @@
 "use server";
 
-import { AssignmentService } from "@/server/services/assignment.service";
-
 import { getSession } from "@/lib/auth/session";
-import { findMemberByFestivalAndUser } from "@/server/models/member.model";
-import { findFestivalById } from "@/server/models/festival.model";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
+import { findFestivalById } from "@/server/models/festival.model";
+import { findMemberByFestivalAndUser } from "@/server/models/member.model";
+import { AssignmentService } from "@/server/services/assignment.service";
 
 export async function getAssignmentsAction(festivalId: string) {
   // TODO: Add filtering if needed for other roles, but for now return all

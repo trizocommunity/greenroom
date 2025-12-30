@@ -1,12 +1,12 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { useGroups } from "@/hooks/useGroups";
 import { Eye, Loader2, Pencil, Users } from "lucide-react";
-import { GroupDialog } from "./GroupDialog";
-import { GroupDetailsDialog } from "./GroupDetailsDialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
+import { useGroups } from "@/hooks/useGroups";
+import { GroupDetailsDialog } from "./GroupDetailsDialog";
+import { GroupDialog } from "./GroupDialog";
 
 interface GroupsClientProps {
   festivalId: string;
@@ -61,6 +61,28 @@ export function GroupsClient({ festivalId }: GroupsClientProps) {
                     {group._count?.participants ?? 0}
                   </Badge>
                 </div>
+
+                {/* Team Leaders Section */}
+                {group.participants?.some((p: any) => p.isTeamLeader) && (
+                  <div className="flex flex-col gap-1 mt-2">
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                      Team Leaders
+                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {group.participants
+                        .filter((p: any) => p.isTeamLeader)
+                        .map((p: any) => (
+                          <Badge
+                            key={p.id}
+                            variant="outline"
+                            className="bg-orange-50 text-orange-700 border-orange-200 text-[10px] px-1.5 py-0 h-5"
+                          >
+                            {p.name}
+                          </Badge>
+                        ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Footer Actions */}
                 <div className="flex items-center justify-end gap-1 pt-4 border-t mt-auto">

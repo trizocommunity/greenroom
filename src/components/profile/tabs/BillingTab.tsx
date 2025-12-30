@@ -1,28 +1,28 @@
 "use client";
 
+import { format } from "date-fns";
 import {
-  CreditCard,
-  Receipt,
-  CheckCircle2,
-  XCircle,
-  Clock,
   ArrowRight,
+  CheckCircle2,
+  Clock,
+  CreditCard,
   Loader2,
+  Receipt,
+  XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
-import { getBillingHistory } from "@/server/actions/billing.actions";
 import { BillingHistorySkeleton } from "@/components/ui/Skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getBillingHistory } from "@/server/actions/billing.actions";
 import { PaymentDetailsModal } from "../modals/PaymentDetailsModal";
 
 export function BillingTab() {

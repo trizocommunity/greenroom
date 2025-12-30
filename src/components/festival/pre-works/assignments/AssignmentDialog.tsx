@@ -1,5 +1,8 @@
 "use client";
 
+import { Check, Loader2, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,6 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -19,13 +23,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAssignments } from "@/hooks/useAssignments";
+import { useGroups } from "@/hooks/useGroups";
 import { useParticipants } from "@/hooks/useParticipants";
 import { useProgrammes } from "@/hooks/useProgrammes";
-import { Loader2, Plus, Check } from "lucide-react";
-import { useEffect, useState } from "react";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { useGroups } from "@/hooks/useGroups";
 
 interface AssignmentDialogProps {
   festivalId: string;
@@ -80,7 +80,7 @@ export function AssignmentDialog({
       setSelectedGroupId(grpId);
       setSelectedParticipantIds([assignment.participantId].filter(Boolean));
     } else if (open && !assignment) {
-      setFormData({ ProgrammeId: "", participantId: "" });
+      setFormData({ programmeId: "", participantId: "" });
       setSelectedGroupId("");
       setSelectedParticipantIds([]);
     }

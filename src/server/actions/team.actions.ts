@@ -1,11 +1,11 @@
 "use server";
 
-import { z } from "zod";
-import { prisma } from "@/lib/db";
+import type { FestivalRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { hashPassword } from "@/lib/auth/password";
+import { prisma } from "@/lib/db";
 import { createAuditLog } from "@/server/services/audit-log.service";
-import { FestivalRole } from "@prisma/client";
 
 const createMemberSchema = z.object({
   festivalId: z.string(),
@@ -82,7 +82,7 @@ export async function createFestivalMember(input: CreateMemberInput) {
 
     revalidatePath(`/festival/${festivalId}/members`);
     // Also revalidate teams just in case old route exists, though it should change
-    revalidatePath(`/festival/${festivalId}/teams`);
+
     return { success: true };
   } catch (error) {
     console.error("Error creating member:", error);
@@ -171,7 +171,6 @@ export async function revokeFestivalMember(memberId: string) {
       where: { id: memberId },
     });
     revalidatePath(`/festival/${member.festivalId}/members`);
-    revalidatePath(`/festival/${member.festivalId}/teams`);
 
     await createAuditLog({
       action: "REVOKE_MEMBER",

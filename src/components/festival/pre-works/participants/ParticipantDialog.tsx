@@ -1,5 +1,8 @@
 "use client";
 
+import { Check, Loader2, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,13 +15,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useParticipants } from "@/hooks/useParticipants";
-import { useGroups } from "@/hooks/useGroups";
-import { useCategories } from "@/hooks/useCategories";
-import { Loader2, Plus, Check } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useCategories } from "@/hooks/useCategories";
+import { useGroups } from "@/hooks/useGroups";
+import { useParticipants } from "@/hooks/useParticipants";
 import { cn } from "@/lib/utils";
 
 interface ParticipantDialogProps {

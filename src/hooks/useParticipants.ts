@@ -1,11 +1,11 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
-  getParticipantsAction,
   createParticipantWithServiceAction,
   deleteParticipantWithServiceAction,
+  getParticipantsAction,
   updateParticipantAction,
 } from "@/server/actions/participant.actions";
-import { toast } from "sonner";
 
 export function useParticipants(festivalId: string) {
   const queryClient = useQueryClient();
