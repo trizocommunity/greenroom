@@ -11,8 +11,8 @@ type AuditAction =
   | "PAYMENT_SUCCESS"
   | "PAYMENT_FAILED"
   | "UPDATE_PROFILE"
-  | "CREATE_TEAM_LEADER"
-  | "REVOKE_TEAM_LEADER";
+  | "CREATE_MEMBER"
+  | "REVOKE_MEMBER";
 
 type TargetType = "FESTIVAL" | "USER" | "PAYMENT";
 

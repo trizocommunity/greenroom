@@ -5,23 +5,25 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { hashPassword } from "@/lib/auth/password";
 import { createAuditLog } from "@/server/services/audit-log.service";
+import { FestivalRole } from "@prisma/client";
 
-const createTeamLeaderSchema = z.object({
+const createMemberSchema = z.object({
   festivalId: z.string(),
   fullName: z.string().min(1, "Full name is required"),
   email: z.string().email("Invalid email address").toLowerCase(),
+  role: z.enum(["ADMIN", "ANNOUNCER", "STAGE_MANAGER"]),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-export type CreateTeamLeaderInput = z.infer<typeof createTeamLeaderSchema>;
+export type CreateMemberInput = z.infer<typeof createMemberSchema>;
 
-export async function createTeamLeader(input: CreateTeamLeaderInput) {
-  const result = createTeamLeaderSchema.safeParse(input);
+export async function createFestivalMember(input: CreateMemberInput) {
+  const result = createMemberSchema.safeParse(input);
   if (!result.success) {
     return { success: false, error: result.error.issues[0].message };
   }
 
-  const { festivalId, fullName, email, password } = result.data;
+  const { festivalId, fullName, email, role, password } = result.data;
 
   try {
     // 1. Check if user already exists
@@ -40,9 +42,6 @@ export async function createTeamLeader(input: CreateTeamLeaderInput) {
           globalRole: "USER",
         },
       });
-    } else {
-      // If user exists, we might want to ensure they don't have a conflicting role or just proceed.
-      // For now, we proceed.
     }
 
     // 2. Check if already a member of this festival
@@ -58,7 +57,7 @@ export async function createTeamLeader(input: CreateTeamLeaderInput) {
     if (existingMember) {
       return {
         success: false,
-        error: "User is already a team member of this festival",
+        error: "User is already a member of this festival",
       };
     }
 
@@ -67,7 +66,7 @@ export async function createTeamLeader(input: CreateTeamLeaderInput) {
       data: {
         festivalId,
         userId: user.id,
-        role: "TEAM_LEADER",
+        role: role as FestivalRole,
         metadata: {
           initialPassword: password, // Storing per user request, strictly for admin initial view
         },
@@ -75,27 +74,34 @@ export async function createTeamLeader(input: CreateTeamLeaderInput) {
     });
 
     await createAuditLog({
-      action: "CREATE_TEAM_LEADER",
+      action: "CREATE_MEMBER",
       targetType: "USER",
       targetId: user.id,
-      metadata: { festivalId, email, fullName },
+      metadata: { festivalId, email, fullName, role },
     });
 
+    revalidatePath(`/festival/${festivalId}/members`);
+    // Also revalidate teams just in case old route exists, though it should change
     revalidatePath(`/festival/${festivalId}/teams`);
     return { success: true };
   } catch (error) {
-    console.error("Error creating team leader:", error);
-    return { success: false, error: "Failed to create team leader" };
+    console.error("Error creating member:", error);
+    return { success: false, error: "Failed to create member" };
   }
 }
 
-export async function getTeamLeaders(festivalId: string) {
+export async function getFestivalMembers(
+  festivalId: string,
+  role?: FestivalRole,
+) {
   try {
+    const whereClause: any = { festivalId };
+    if (role) {
+      whereClause.role = role;
+    }
+
     const members = await prisma.festivalMember.findMany({
-      where: {
-        festivalId,
-        role: "TEAM_LEADER",
-      },
+      where: whereClause,
       include: {
         user: {
           select: {
@@ -116,12 +122,13 @@ export async function getTeamLeaders(festivalId: string) {
       userId: m.userId,
       fullName: m.user.fullName,
       email: m.user.email,
+      role: m.role,
       status: m.isActive ? "Active" : "Disabled",
       initialPassword: (m.metadata as any)?.initialPassword || null,
       createdAt: m.createdAt,
     }));
   } catch (error) {
-    console.error("Error fetching team leaders:", error);
+    console.error("Error fetching festival members:", error);
     return [];
   }
 }
@@ -135,11 +142,6 @@ export async function getJoinedFestivals(userId: string) {
       },
       include: {
         festival: true,
-        group: {
-          select: {
-            name: true,
-          },
-        },
       },
       orderBy: {
         createdAt: "desc",
@@ -149,7 +151,6 @@ export async function getJoinedFestivals(userId: string) {
     return memberships.map((m) => ({
       ...m.festival,
       memberRole: m.role,
-      memberGroupName: m.group?.name,
       memberSince: m.createdAt,
     }));
   } catch (error) {
@@ -158,7 +159,7 @@ export async function getJoinedFestivals(userId: string) {
   }
 }
 
-export async function revokeTeamLeader(memberId: string) {
+export async function revokeFestivalMember(memberId: string) {
   try {
     const member = await prisma.festivalMember.findUnique({
       where: { id: memberId },
@@ -169,10 +170,11 @@ export async function revokeTeamLeader(memberId: string) {
     await prisma.festivalMember.delete({
       where: { id: memberId },
     });
+    revalidatePath(`/festival/${member.festivalId}/members`);
     revalidatePath(`/festival/${member.festivalId}/teams`);
 
     await createAuditLog({
-      action: "REVOKE_TEAM_LEADER",
+      action: "REVOKE_MEMBER",
       targetType: "USER",
       targetId: member.userId,
       metadata: { festivalId: member.festivalId },
@@ -180,7 +182,7 @@ export async function revokeTeamLeader(memberId: string) {
 
     return { success: true };
   } catch (error) {
-    console.error("Error revoking team leader:", error);
+    console.error("Error revoking member:", error);
     return { success: false, error: "Failed to revoke access" };
   }
 }

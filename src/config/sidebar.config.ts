@@ -21,8 +21,7 @@ export type FestivalRole =
   | "SUPER_ADMIN"
   | "ADMIN"
   | "JUDGE"
-  | "TEAM_LEADER"
-  | "STAGE-MANAGER"
+  | "STAGE_MANAGER"
   | "ANNOUNCER"
   | "OWNER";
 
@@ -135,13 +134,13 @@ export const getFestivalDashboardSidebarConfig = (
           title: "Participants",
           href: `${basePath}/pre-works/participants`,
           icon: UsersRound,
-          allowedRoles: ["ADMIN", "OWNER", "TEAM_LEADER"],
+          allowedRoles: ["ADMIN", "OWNER"],
         },
         {
           title: "Assignment",
           href: `${basePath}/pre-works/assignments`,
           icon: Edit,
-          allowedRoles: ["ADMIN", "OWNER", "TEAM_LEADER"],
+          allowedRoles: ["ADMIN", "OWNER"],
         },
       ],
     },
@@ -159,19 +158,19 @@ export const getFestivalDashboardSidebarConfig = (
           title: "QR Codes",
           href: `${basePath}/qr-codes`,
           icon: QrCode,
-          allowedRoles: ["ADMIN", "OWNER", "STAGE-MANAGER"] as FestivalRole[],
+          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"] as FestivalRole[],
         },
         {
           title: "Stage Management",
           href: `${basePath}/stage-management`,
           icon: Megaphone,
-          allowedRoles: ["ADMIN", "OWNER", "STAGE-MANAGER"],
+          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
         },
         {
           title: "Schedule",
           href: `${basePath}/schedule`,
           icon: Calendar,
-          allowedRoles: ["ADMIN", "OWNER", "STAGE-MANAGER"],
+          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
         },
       ],
     },
@@ -186,7 +185,7 @@ export const getFestivalDashboardSidebarConfig = (
             "ADMIN",
             "OWNER",
             "JUDGE",
-            "STAGE-MANAGER",
+            "STAGE_MANAGER",
           ] as FestivalRole[],
         },
         {
@@ -199,7 +198,7 @@ export const getFestivalDashboardSidebarConfig = (
           title: "Mark Completion",
           href: `${basePath}/completion`,
           icon: CheckCircle,
-          allowedRoles: ["ADMIN", "OWNER", "STAGE-MANAGER"],
+          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
         },
         {
           title: "Stage Navigation",
@@ -209,7 +208,7 @@ export const getFestivalDashboardSidebarConfig = (
             "ADMIN",
             "OWNER",
             "JUDGE",
-            "STAGE-MANAGER",
+            "STAGE_MANAGER",
             "ANNOUNCER",
           ] as FestivalRole[],
         },

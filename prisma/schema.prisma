@@ -181,8 +181,9 @@ model Festival {
 }
 
 enum FestivalRole {
-  TEAM_LEADER
   ADMIN
+  ANNOUNCER
+  STAGE_MANAGER
 }
 
 model FestivalMember {
@@ -194,10 +195,7 @@ model FestivalMember {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  groupId   String?
-  group     Group?   @relation(fields: [groupId], references: [id])
-
-  role      FestivalRole @default(TEAM_LEADER)
+  role      FestivalRole @default(ANNOUNCER)
   
   isActive  Boolean @default(true)
   metadata  Json?   // Store initial password here if absolutely needed for "Show Password" feature
@@ -265,7 +263,7 @@ model Group {
 
   participants Participant[]
   assignments  ProgrammeAssignment[]
-  members      FestivalMember[]
+
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

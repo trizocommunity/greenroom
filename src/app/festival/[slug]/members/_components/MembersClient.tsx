@@ -11,8 +11,23 @@ import {
 } from "@/components/ui/table";
 import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, User } from "lucide-react";
+import { Loader2, User, Copy, Eye, Trash2 } from "lucide-react";
 import { format } from "date-fns";
+import type { FestivalRole } from "@prisma/client";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { useState } from "react";
+import { revokeFestivalMember } from "@/server/actions/team.actions";
+import { toast } from "sonner";
+import { DeleteDialog } from "@/components/ui/delete-dialog";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 interface MembersClientProps {
   festivalId: string;
@@ -36,7 +51,6 @@ export function MembersClient({ festivalId }: MembersClientProps) {
           <TableRow>
             <TableHead>User</TableHead>
             <TableHead>Role</TableHead>
-            <TableHead>Group</TableHead>
             <TableHead>Joined At</TableHead>
             <TableHead className="text-right">Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
@@ -61,16 +75,7 @@ export function MembersClient({ festivalId }: MembersClientProps) {
                 </div>
               </TableCell>
               <TableCell>
-                <FestivalRoleBadge
-                  festivalRole={member.role || "TEAM_LEADER"}
-                />
-              </TableCell>
-              <TableCell>
-                {member.group ? (
-                  <Badge variant="outline">{member.group.name}</Badge>
-                ) : (
-                  <span className="text-muted-foreground text-sm">-</span>
-                )}
+                <FestivalRoleBadge festivalRole={member.role as FestivalRole} />
               </TableCell>
               <TableCell className="text-muted-foreground text-sm">
                 {format(new Date(member.createdAt), "MMM d, yyyy")}
@@ -87,7 +92,7 @@ export function MembersClient({ festivalId }: MembersClientProps) {
           ))}
           {members.length === 0 && (
             <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center">
+              <TableCell colSpan={5} className="h-24 text-center">
                 No members found.
               </TableCell>
             </TableRow>
@@ -98,35 +103,16 @@ export function MembersClient({ festivalId }: MembersClientProps) {
   );
 }
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Copy, Eye, Trash2 } from "lucide-react";
-import { useState } from "react";
-import { revokeTeamLeader } from "@/server/actions/team.actions"; // Import action directly or use custom hook if available
-import { toast } from "sonner";
-import { DeleteDialog } from "@/components/ui/delete-dialog";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-
 function MemberActions({ member }: { member: any }) {
   const [isRevoking, setIsRevoking] = useState(false);
 
   const handleRevoke = async () => {
     setIsRevoking(true);
     try {
-      const result = await revokeTeamLeader(member.id);
+      const result = await revokeFestivalMember(member.id);
       if (result.success) {
         toast.success("Member removed");
-        // In a real app, query invalidation should happen here.
-        // Assuming useMembers hook handles it via revalidation or window reload?
-        // Ideally useMutation from React Query if available.
-        window.location.reload(); // Quick fix for revalidation if hook doesn't expose refetch
+        window.location.reload();
       } else {
         toast.error("Failed to remove member");
       }
@@ -177,7 +163,7 @@ function MemberActions({ member }: { member: any }) {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Share this with the Team Leader.
+                  Share this with the member.
                 </p>
               </div>
             )}

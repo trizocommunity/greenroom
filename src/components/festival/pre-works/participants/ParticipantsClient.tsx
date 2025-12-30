@@ -30,16 +30,9 @@ import {
 
 interface ParticipantsClientProps {
   festivalId: string;
-  userGroup?: {
-    id: string;
-    name: string;
-  };
 }
 
-export function ParticipantsClient({
-  festivalId,
-  userGroup,
-}: ParticipantsClientProps) {
+export function ParticipantsClient({ festivalId }: ParticipantsClientProps) {
   const { participants, isLoading, deleteParticipant, isDeleting } =
     useParticipants(festivalId);
   const { groups } = useGroups(festivalId);
@@ -47,8 +40,6 @@ export function ParticipantsClient({
 
   const [selectedGroup, setSelectedGroup] = useState<string>("ALL");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
-
-  const festival = useFestival();
 
   if (isLoading) {
     return (
@@ -61,10 +52,7 @@ export function ParticipantsClient({
   // Filter Logic
   const filteredParticipants = participants.filter((p: any) => {
     // Group Filter
-    if (userGroup) {
-      if (p.groupId !== userGroup.id && p.group?.id !== userGroup.id)
-        return false;
-    } else if (selectedGroup !== "ALL") {
+    if (selectedGroup !== "ALL") {
       if (p.groupId !== selectedGroup && p.group?.id !== selectedGroup)
         return false;
     }
@@ -90,11 +78,6 @@ export function ParticipantsClient({
             <span className="font-medium text-sm">
               Total Participants: {filteredParticipants.length}
             </span>
-            {userGroup && (
-              <Badge variant="outline" className="ml-2">
-                Your Group: {userGroup.name}
-              </Badge>
-            )}
           </div>
           <p className="text-xs text-muted-foreground">
             Manage your festival participants here.
@@ -102,21 +85,19 @@ export function ParticipantsClient({
         </div>
 
         <div className="flex items-center gap-2 w-full md:w-auto">
-          {!userGroup && (
-            <Select value={selectedGroup} onValueChange={setSelectedGroup}>
-              <SelectTrigger className="w-[180px] h-9 text-xs">
-                <SelectValue placeholder="All Groups" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Groups</SelectItem>
-                {groups.map((g: any) => (
-                  <SelectItem key={g.id} value={g.id}>
-                    {g.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <Select value={selectedGroup} onValueChange={setSelectedGroup}>
+            <SelectTrigger className="w-[180px] h-9 text-xs">
+              <SelectValue placeholder="All Groups" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Groups</SelectItem>
+              {groups.map((g: any) => (
+                <SelectItem key={g.id} value={g.id}>
+                  {g.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
             <SelectTrigger className="w-[180px] h-9 text-xs">
@@ -149,7 +130,7 @@ export function ParticipantsClient({
             </Button>
           )}
 
-          <ParticipantDialog festivalId={festivalId} userGroup={userGroup} />
+          <ParticipantDialog festivalId={festivalId} />
         </div>
       </div>
 

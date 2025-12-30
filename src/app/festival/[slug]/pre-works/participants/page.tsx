@@ -23,15 +23,6 @@ export default async function ParticipantsPage({
     ? await findMemberByFestivalAndUser(festival.id, session.userId)
     : null;
 
-  let userGroup = undefined;
-  if (member?.role === "TEAM_LEADER" && member.groupId) {
-    const group = await prisma.group.findUnique({
-      where: { id: member.groupId },
-      select: { id: true, name: true },
-    });
-    if (group) userGroup = group;
-  }
-
   return (
     <div className="space-y-6">
       <div>
@@ -42,7 +33,7 @@ export default async function ParticipantsPage({
         </p>
       </div>
 
-      <ParticipantsClient festivalId={festival.id} userGroup={userGroup} />
+      <ParticipantsClient festivalId={festival.id} />
     </div>
   );
 }

@@ -7,45 +7,17 @@ export async function getMembersAction(festivalId: string) {
   return MemberService.getMembers(festivalId);
 }
 
-export async function createTeamLeaderAction(
+export async function addMemberAction(
   festivalId: string,
-  groupId: string,
   data: {
     fullName: string;
     email: string;
-    password: string;
+    role: "ADMIN" | "ANNOUNCER" | "STAGE_MANAGER";
   },
 ) {
   try {
-    const result = await MemberService.createTeamLeader(
-      festivalId,
-      groupId,
-      data,
-    );
-    revalidatePath(`/festival/${festivalId}/pre-works/groups`);
+    const result = await MemberService.addMember(festivalId, data);
     revalidatePath(`/festival/${festivalId}/members`);
-    return { success: true, data: result };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-}
-
-export async function updateTeamLeaderAction(
-  festivalId: string,
-  memberId: string,
-  data: {
-    fullName?: string;
-    email?: string;
-    password?: string;
-  },
-) {
-  try {
-    const result = await MemberService.updateTeamLeader(
-      festivalId,
-      memberId,
-      data,
-    );
-    revalidatePath(`/festival/${festivalId}/pre-works/groups`);
     return { success: true, data: result };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -55,7 +27,7 @@ export async function updateTeamLeaderAction(
 export async function removeMemberAction(festivalId: string, memberId: string) {
   try {
     await MemberService.removeMember(festivalId, memberId);
-    revalidatePath(`/festival/${festivalId}/pre-works/groups`);
+    revalidatePath(`/festival/${festivalId}/members`);
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

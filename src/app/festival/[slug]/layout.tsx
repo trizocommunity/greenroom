@@ -55,8 +55,8 @@ export default async function FestivalDashboardLayout({
       },
     });
 
-    if (member && member.role === "TEAM_LEADER" && member.isActive) {
-      role = "TEAM_LEADER";
+    if (member && member.isActive) {
+      role = member.role;
     } else {
       redirect("/");
     }

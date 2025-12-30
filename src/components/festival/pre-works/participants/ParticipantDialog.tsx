@@ -25,10 +25,6 @@ interface ParticipantDialogProps {
   festivalId: string;
   participant?: any;
   trigger?: React.ReactNode;
-  userGroup?: {
-    id: string;
-    name: string;
-  };
   readOnly?: boolean;
 }
 
@@ -36,7 +32,6 @@ export function ParticipantDialog({
   festivalId,
   participant,
   trigger,
-  userGroup,
   readOnly = false,
 }: ParticipantDialogProps) {
   const [open, setOpen] = useState(false);
@@ -79,20 +74,20 @@ export function ParticipantDialog({
         });
       } else {
         // Create Mode
-        // Pre-select group if available or userGroup
+        // Pre-select first group if only one exists
         // Pre-select first category? No, force user selection.
         setFormData({
           name: "",
           email: "",
           phone: "",
-          groupId: userGroup?.id || (groups.length === 1 ? groups[0].id : ""),
+          groupId: groups.length === 1 ? groups[0].id : "",
           categoryId: "",
           gender: "MALE",
           registrationNumber: "",
         });
       }
     }
-  }, [open, participant, userGroup, groups]); // Added groups to dep to auto-select single group
+  }, [open, participant, groups]); // Added groups to dep to auto-select single group
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,7 +110,7 @@ export function ParticipantDialog({
   };
 
   const handleGroupSelect = (id: string) => {
-    if (readOnly || !!userGroup) return;
+    if (readOnly) return;
     setFormData({ ...formData, groupId: id });
   };
 
@@ -237,10 +232,9 @@ export function ParticipantDialog({
                         formData.groupId === group.id
                           ? "bg-primary/10 border-primary text-primary font-semibold ring-1 ring-primary"
                           : "bg-background hover:bg-muted text-muted-foreground",
-                        (readOnly || !!userGroup) &&
-                          "cursor-default opacity-80",
+                        readOnly && "cursor-default opacity-80",
                       )}
-                      disabled={readOnly || !!userGroup}
+                      disabled={readOnly}
                     >
                       <span
                         className="w-2 h-2 rounded-full"

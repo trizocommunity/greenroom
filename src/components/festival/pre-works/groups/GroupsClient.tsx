@@ -31,9 +31,6 @@ export function GroupsClient({ festivalId }: GroupsClientProps) {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {groups.map((group: any) => {
-          const teamLeaders =
-            group.members?.filter((m: any) => m.role === "TEAM_LEADER") || [];
-
           return (
             <div
               key={group.id}
@@ -63,42 +60,6 @@ export function GroupsClient({ festivalId }: GroupsClientProps) {
                     <Users className="h-3 w-3 mr-1" />
                     {group._count?.participants ?? 0}
                   </Badge>
-                </div>
-
-                {/* Team Leaders Section */}
-                <div className="flex-1">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                    Team Leaders
-                  </p>
-                  {teamLeaders.length > 0 ? (
-                    <div className="flex flex-col gap-2">
-                      {teamLeaders.slice(0, 2).map((tl: any) => (
-                        <div key={tl.id} className="flex items-center gap-2">
-                          <div
-                            className="h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold border bg-card shrink-0"
-                            style={{
-                              borderColor: group.color || "currentColor",
-                              color: group.color || "currentColor",
-                            }}
-                          >
-                            {tl.user.fullName.charAt(0)}
-                          </div>
-                          <span className="text-sm truncate">
-                            {tl.user.fullName}
-                          </span>
-                        </div>
-                      ))}
-                      {teamLeaders.length > 2 && (
-                        <p className="text-xs text-muted-foreground pl-8">
-                          +{teamLeaders.length - 2} more
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 text-muted-foreground/50 text-sm italic">
-                      <span>No assigned leaders</span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Footer Actions */}
@@ -158,8 +119,7 @@ export function GroupsClient({ festivalId }: GroupsClientProps) {
             <Users className="mx-auto h-8 w-8 text-muted-foreground/50" />
             <h3 className="mt-4 text-lg font-semibold">No groups yet</h3>
             <p className="mb-4 mt-2 text-sm text-muted-foreground max-w-sm">
-              Create a group to start adding participants and assigning Team
-              Leaders.
+              Create a group to start adding participants.
             </p>
             <GroupDialog festivalId={festivalId} />
           </div>

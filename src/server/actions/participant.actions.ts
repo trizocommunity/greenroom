@@ -12,21 +12,7 @@ import { findFestivalById } from "@/server/models/festival.model";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 
 export async function getParticipantsAction(festivalId: string) {
-  const session = await getSession();
-  let groupId: string | undefined;
-
-  if (session?.userId) {
-    const member = await findMemberByFestivalAndUser(
-      festivalId,
-      session.userId,
-    );
-    if (member && member.role === "TEAM_LEADER") {
-      if (!member.groupId) return []; // TL must have group
-      groupId = member.groupId;
-    }
-  }
-
-  return ParticipantService.getAll(festivalId, groupId);
+  return ParticipantService.getAll(festivalId);
 }
 
 export async function createParticipantWithServiceAction(
@@ -46,15 +32,6 @@ export async function createParticipantWithServiceAction(
 
   const festival = await findFestivalById(festivalId);
   if (!festival) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
-
-  const member = await findMemberByFestivalAndUser(festivalId, session.userId);
-
-  // Permission Check
-  if (member?.role === "TEAM_LEADER") {
-    if (data.groupId !== member.groupId) {
-      throw new Error("You can only add participants to your own group.");
-    }
-  }
 
   return ParticipantService.create(festivalId, {
     name: data.name,
@@ -93,15 +70,6 @@ export async function updateParticipantAction(
 ) {
   const session = await getSession();
   if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
-
-  const member = await findMemberByFestivalAndUser(festivalId, session.userId);
-  if (member?.role === "TEAM_LEADER") {
-    // TL can only update their own group members.
-    // We should verify current participant belongs to group.
-    // And strict groupId update? TL shouldn't typically move participants between groups but maybe fine if same group.
-    if (data.groupId && data.groupId !== member.groupId)
-      throw new Error("Cannot move to another group.");
-  }
 
   return ParticipantService.update(id, festivalId, {
     name: data.name,
