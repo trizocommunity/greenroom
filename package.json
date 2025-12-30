@@ -15,7 +15,7 @@
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:migrate:status": "prisma migrate status",
-    "db:seed": "bun prisma/seed-superadmin.js",
+    "db:seed": "node prisma/seed-superadmin.js",
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset",
     "db:validate": "prisma validate",
@@ -76,6 +76,6 @@
     "typescript": "^5"
   },
   "prisma": {
-    "seed": "bun prisma/seed-superadmin.js"
+    "seed": "node prisma/seed-superadmin.js"
   }
 }
