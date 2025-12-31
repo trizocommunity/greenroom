@@ -26,7 +26,7 @@ export async function deleteCategory(id: string) {
 export async function findCategoryById(id: string) {
   return prisma.category.findUnique({
     where: { id },
-    include: { _count: { select: { programmes: true, participants: true } } },
+    include: { _count: { select: { programmes: true, students: true } } },
   });
 }
 
@@ -34,7 +34,7 @@ export async function findCategoriesByFestival(festivalId: string) {
   return prisma.category.findMany({
     where: { festivalId },
     orderBy: { createdAt: "asc" },
-    include: { _count: { select: { programmes: true, participants: true } } },
+    include: { _count: { select: { programmes: true, students: true } } },
   });
 }
 

@@ -22,7 +22,7 @@ export type Festival = {
   expiresAt?: string | null;
   tier?: string;
   tierLabel?: string;
-  participantsCount?: number;
+  studentsCount?: number;
   eventsCount?: number;
   judgesCount?: number;
   storageUsedMB?: number;

@@ -23,7 +23,7 @@ export async function deleteGroup(id: string) {
 export async function findGroupById(id: string) {
   return prisma.group.findUnique({
     where: { id },
-    include: { _count: { select: { participants: true } } },
+    include: { _count: { select: { students: true } } },
   });
 }
 
@@ -32,8 +32,8 @@ export async function findGroupsByFestival(festivalId: string) {
     where: { festivalId },
     orderBy: { name: "asc" },
     include: {
-      _count: { select: { participants: true } },
-      participants: {
+      _count: { select: { students: true } },
+      students: {
         where: { isTeamLeader: true },
         select: { id: true, name: true, isTeamLeader: true },
       },

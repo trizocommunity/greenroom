@@ -69,10 +69,10 @@ export default async function FestivalLayout({
     orgWebsite: festival.orgWebsite || "",
     orgLocation: festival.orgLocation || "",
     establishedYear: festival.establishedYear || null,
-    participantsCount: festival.participantsCount || 0,
+    studentsCount: festival.studentsCount || 0,
     eventsCount: festival.eventsCount || 0,
     limits: null,
-    participantCreationDeadline: festival.participantCreationDeadline,
+    studentCreationDeadline: festival.studentCreationDeadline,
     programmeAssignmentDeadline: festival.programmeAssignmentDeadline,
   };
 

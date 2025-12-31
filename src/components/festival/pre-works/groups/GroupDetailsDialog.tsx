@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useParticipants } from "@/hooks/useParticipants";
+import { useStudents } from "@/hooks/useStudents";
 
 interface User {
   id: string;
@@ -34,7 +34,7 @@ interface Member {
   user: User;
 }
 
-interface Participant {
+interface Student {
   id: string;
   name: string;
   registrationNumber?: string | null;
@@ -61,11 +61,11 @@ export function GroupDetailsDialog({
   group,
   trigger,
 }: GroupDetailsDialogProps) {
-  const { participants, isLoading } = useParticipants(festivalId);
+  const { students, isLoading } = useStudents(festivalId);
 
-  // Filter participants for this group
-  const groupParticipants = participants.filter(
-    (p: Participant) => p.group?.id === group.id || p.groupId === group.id,
+  // Filter students for this group
+  const groupStudents = students.filter(
+    (p: Student) => p.group?.id === group.id || p.groupId === group.id,
   );
 
   return (
@@ -84,16 +84,14 @@ export function GroupDetailsDialog({
               <DialogTitle className="text-xl">{group.name}</DialogTitle>
             </div>
           </div>
-          <DialogDescription>
-            {groupParticipants.length} Participants
-          </DialogDescription>
+          <DialogDescription>{groupStudents.length} Students</DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden mt-4">
           <div className="flex flex-col gap-4 overflow-hidden h-full">
             <h4 className="font-semibold text-sm flex items-center gap-2">
               <Users className="h-4 w-4" />
-              Participants ({groupParticipants.length})
+              Students ({groupStudents.length})
             </h4>
 
             <ScrollArea className="flex-1 border rounded-md">
@@ -112,7 +110,7 @@ export function GroupDetailsDialog({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {groupParticipants.map((p: Participant, i: number) => (
+                    {groupStudents.map((p: Student, i: number) => (
                       <TableRow key={p.id}>
                         <TableCell className="w-10 text-muted-foreground text-xs">
                           {i + 1}
@@ -138,13 +136,13 @@ export function GroupDetailsDialog({
                         </TableCell>
                       </TableRow>
                     ))}
-                    {groupParticipants.length === 0 && (
+                    {groupStudents.length === 0 && (
                       <TableRow>
                         <TableCell
                           colSpan={4}
                           className="h-24 text-center text-muted-foreground"
                         >
-                          No participants found in this group.
+                          No students found in this group.
                         </TableCell>
                       </TableRow>
                     )}

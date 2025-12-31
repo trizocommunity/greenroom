@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useParticipants } from "@/hooks/useParticipants";
+import { useStudents } from "@/hooks/useStudents";
 
 interface CategoryDetailsDialogProps {
   festivalId: string;
@@ -38,15 +38,15 @@ export function CategoryDetailsDialog({
   category,
   trigger,
 }: CategoryDetailsDialogProps) {
-  const { participants, isLoading } = useParticipants(festivalId);
+  const { students, isLoading } = useStudents(festivalId);
 
   // Logic:
   // INDIVIDUAL -> Filter by categoryId
-  // GENERAL -> Show ALL participants
-  const filteredParticipants =
+  // GENERAL -> Show ALL students
+  const filteredStudents =
     category.type === "GENERAL"
-      ? participants
-      : participants.filter((p: any) => p.categoryId === category.id);
+      ? students
+      : students.filter((p: any) => p.categoryId === category.id);
 
   return (
     <Dialog>
@@ -76,11 +76,11 @@ export function CategoryDetailsDialog({
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-semibold flex items-center gap-2">
               <Users className="h-4 w-4" />
-              Participants ({filteredParticipants.length})
+              Students ({filteredStudents.length})
             </h4>
             {category.type === "GENERAL" && (
               <span className="text-xs text-muted-foreground">
-                Showing all festival participants (General Category)
+                Showing all festival students (General Category)
               </span>
             )}
           </div>
@@ -103,7 +103,7 @@ export function CategoryDetailsDialog({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredParticipants.map((p: any) => (
+                  {filteredStudents.map((p: any) => (
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">{p.name}</TableCell>
                       <TableCell className="font-mono text-xs">
@@ -119,13 +119,13 @@ export function CategoryDetailsDialog({
                       )}
                     </TableRow>
                   ))}
-                  {filteredParticipants.length === 0 && (
+                  {filteredStudents.length === 0 && (
                     <TableRow>
                       <TableCell
                         colSpan={category.type === "GENERAL" ? 4 : 3}
                         className="h-24 text-center text-muted-foreground"
                       >
-                        No participants found.
+                        No students found.
                       </TableCell>
                     </TableRow>
                   )}

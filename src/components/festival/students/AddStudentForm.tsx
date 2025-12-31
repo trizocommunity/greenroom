@@ -8,23 +8,23 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createParticipantAction } from "@/server/actions/participant.actions";
+import { createStudentAction } from "@/server/actions/student.actions";
 
-export function AddParticipantForm() {
+export function AddStudentForm() {
   const festival = useFestival();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
   if (!festival) return null;
 
-  const currentCount = festival.participantsCount || 0;
-  const maxParticipants = festival.limits?.maxParticipants || 1000;
-  const isFull = currentCount >= maxParticipants;
+  const currentCount = festival.studentsCount || 0;
+  const maxStudents = festival.limits?.maxStudents || 1000;
+  const isFull = currentCount >= maxStudents;
 
   async function onSubmit(formData: FormData) {
     setError(null);
     startTransition(async () => {
-      const result = await createParticipantAction(formData);
+      const result = await createStudentAction(formData);
       if (result.error) {
         if (typeof result.error === "string") {
           setError(result.error);
@@ -32,7 +32,7 @@ export function AddParticipantForm() {
           setError("Please check your inputs.");
         }
       } else {
-        toast.success("Participant registered successfully.");
+        toast.success("Student registered successfully.");
       }
     });
   }
@@ -43,7 +43,7 @@ export function AddParticipantForm() {
         <UserPlus className="h-4 w-4" />
         <AlertTitle>Registration Closed</AlertTitle>
         <AlertDescription>
-          This festival has reached its participant limit ({maxParticipants}).
+          This festival has reached its student limit ({maxStudents}).
         </AlertDescription>
       </Alert>
     );
@@ -87,7 +87,7 @@ export function AddParticipantForm() {
             Registering...
           </>
         ) : (
-          "Register Participant"
+          "Register Student"
         )}
       </Button>
     </form>

@@ -8,6 +8,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // -----------------------------------------------------------------------------
@@ -155,18 +156,18 @@ model Festival {
   tierLabel   String @default("Standard")
   
   // Usage Counters
-  participantsCount Int @default(0)
+  studentsCount     Int @default(0)
   eventsCount       Int @default(0)
   judgesCount       Int @default(0)
   storageUsedMB     Int @default(0)
 
   // Deadlines
-  participantCreationDeadline DateTime?
+  studentCreationDeadline     DateTime?
   programmeAssignmentDeadline DateTime?
 
   // Child Entities
   payments      Payment[]
-  participants  Participant[]
+  students      Student[]
   categories    Category[]
   groups        Group[]
   programmes    Programme[]
@@ -217,7 +218,7 @@ model Category {
   description String?
   
   programmes  Programme[]
-  participants Participant[]
+  students    Student[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -261,7 +262,7 @@ model Group {
   color       String    @default("#2563eb")
   seriesStart Int       @default(100)
 
-  participants Participant[]
+  students    Student[]
   assignments  ProgrammeAssignment[]
 
 
@@ -279,20 +280,20 @@ model ProgrammeAssignment {
   programmeId   String
   programme     Programme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
 
-  participantId String?
-  participant   Participant? @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  studentId     String?
+  student       Student?  @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   groupId       String?
   group         Group? @relation(fields: [groupId], references: [id]) 
 
   assignedAt    DateTime @default(now())
 
-  @@unique([programmeId, participantId])
+  @@unique([programmeId, studentId])
   
   @@map("programme_assignment")
 }
 
-model Participant {
+model Student {
   id        String   @id @default(uuid())
   
   festivalId String
@@ -326,7 +327,7 @@ model Participant {
   // @@unique([festivalId, registrationNumber])
   @@index([festivalId])
   @@index([groupId])
-  @@map("participant")
+  @@map("student")
 }
 
 model AuditLog {

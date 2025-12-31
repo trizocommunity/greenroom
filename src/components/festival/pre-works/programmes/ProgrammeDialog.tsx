@@ -181,7 +181,7 @@ export function ProgrammeDialog({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-semibold">
-              Assigned Participants ({assignments.length})
+              Assigned Students ({assignments.length})
             </h4>
           </div>
           <div className="rounded-md border h-[300px] overflow-hidden flex flex-col">
@@ -190,7 +190,7 @@ export function ProgrammeDialog({
                 <TableHeader className="bg-muted/50 sticky top-0 z-10">
                   <TableRow>
                     <TableHead className="w-[50px]">#</TableHead>
-                    <TableHead>Participant</TableHead>
+                    <TableHead>Student</TableHead>
                     <TableHead>Reg. No</TableHead>
                     <TableHead>Group</TableHead>
                   </TableRow>
@@ -202,7 +202,7 @@ export function ProgrammeDialog({
                         {index + 1}
                       </TableCell>
                       <TableCell className="font-medium">
-                        {assignment.participant?.name}
+                        {assignment.student?.name}
                         {assignment.group && (
                           <span className="ml-2 text-xs text-muted-foreground">
                             (Team: {assignment.group.name})
@@ -210,12 +210,12 @@ export function ProgrammeDialog({
                         )}
                       </TableCell>
                       <TableCell className="font-mono text-xs">
-                        {assignment.participant?.registrationNumber || "-"}
+                        {assignment.student?.registrationNumber || "-"}
                       </TableCell>
                       <TableCell>
-                        {assignment.participant?.group?.name ? (
+                        {assignment.student?.group?.name ? (
                           <Badge variant="outline" className="text-[10px] h-5">
-                            {assignment.participant.group.name}
+                            {assignment.student.group.name}
                           </Badge>
                         ) : (
                           "-"
@@ -378,9 +378,7 @@ export function ProgrammeDialog({
               </div>
               {formData.type === "GROUP" && (
                 <div className="space-y-2">
-                  <Label htmlFor="maxTeamSize">
-                    Max Participants (per Team)
-                  </Label>
+                  <Label htmlFor="maxTeamSize">Max Students (per Team)</Label>
                   <Input
                     id="maxTeamSize"
                     type="number"

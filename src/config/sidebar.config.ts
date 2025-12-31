@@ -131,8 +131,8 @@ export const getFestivalDashboardSidebarConfig = (
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {
-          title: "Participants",
-          href: `${basePath}/pre-works/participants`,
+          title: "Students",
+          href: `${basePath}/pre-works/students`,
           icon: UsersRound,
           allowedRoles: ["ADMIN", "OWNER"],
         },

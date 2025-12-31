@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { useCategories } from "@/hooks/useCategories";
-import { useParticipants } from "@/hooks/useParticipants";
+import { useStudents } from "@/hooks/useStudents";
 import { CategoryDetailsDialog } from "./CategoryDetailsDialog";
 import { CategoryDialog } from "./CategoryDialog";
 
@@ -28,11 +28,10 @@ export function CategoriesClient({ festivalId }: CategoriesClientProps) {
     isDeleting,
   } = useCategories(festivalId);
 
-  // Fetch all participants to compute accurate counts for General categories
-  const { participants, isLoading: isParticipantsLoading } =
-    useParticipants(festivalId);
+  // Fetch all students to compute accurate counts for General categories
+  const { students, isLoading: isStudentsLoading } = useStudents(festivalId);
 
-  const isLoading = isCategoriesLoading || isParticipantsLoading;
+  const isLoading = isCategoriesLoading || isStudentsLoading;
 
   if (isLoading) {
     return (
@@ -42,7 +41,7 @@ export function CategoriesClient({ festivalId }: CategoriesClientProps) {
     );
   }
 
-  const totalParticipants = participants.length;
+  const totalStudents = students.length;
 
   return (
     <div className="space-y-6">
@@ -53,11 +52,11 @@ export function CategoriesClient({ festivalId }: CategoriesClientProps) {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {categories.map((category: any) => {
           const isGeneral = category.type === "GENERAL";
-          // If General -> show total festival participants
-          // If Individual -> show strictly assigned participants
+          // If General -> show total festival students
+          // If Individual -> show strictly assigned students
           const count = isGeneral
-            ? totalParticipants
-            : (category._count?.participants ?? 0);
+            ? totalStudents
+            : (category._count?.students ?? 0);
 
           return (
             <Card key={category.id} className="flex flex-col">
@@ -79,7 +78,7 @@ export function CategoriesClient({ festivalId }: CategoriesClientProps) {
                   <div className="flex flex-col">
                     <span className="text-2xl font-bold">{count}</span>
                     <span className="text-xs text-muted-foreground">
-                      Participants
+                      Students
                     </span>
                   </div>
                   <div className="flex flex-col items-end">

@@ -6,7 +6,7 @@ export const TIER_CONFIG: Record<Tier, any> = {
     label: "Basic",
     durationDays: 90,
     limits: {
-      participants: 300,
+      students: 300,
       events: 30,
       judges: 10,
       storageMB: 512, // 0.5 GB
@@ -17,7 +17,7 @@ export const TIER_CONFIG: Record<Tier, any> = {
     label: "Standard",
     durationDays: 120,
     limits: {
-      participants: 1000,
+      students: 1000,
       events: 100,
       judges: 50,
       storageMB: 2048, // 2 GB
@@ -28,7 +28,7 @@ export const TIER_CONFIG: Record<Tier, any> = {
     label: "Pro",
     durationDays: 180,
     limits: {
-      participants: 3000,
+      students: 3000,
       events: 300,
       judges: 150,
       storageMB: 10240, // 10 GB
@@ -52,7 +52,7 @@ export const PRICING_TIERS: PricingTier[] = [
     price: TIER_CONFIG.BASIC.price,
     description: "Perfect for small local festivals and beginners.",
     features: [
-      `${TIER_CONFIG.BASIC.limits.participants} Participants`,
+      `${TIER_CONFIG.BASIC.limits.students} Students`,
       `${TIER_CONFIG.BASIC.limits.events} Events`,
       `${TIER_CONFIG.BASIC.limits.judges} Judges`,
       "0.5 GB Storage",
@@ -67,7 +67,7 @@ export const PRICING_TIERS: PricingTier[] = [
     price: TIER_CONFIG.STANDARD.price,
     description: "The best value for most growing festivals.",
     features: [
-      `${TIER_CONFIG.STANDARD.limits.participants} Participants`,
+      `${TIER_CONFIG.STANDARD.limits.students} Students`,
       `${TIER_CONFIG.STANDARD.limits.events} Events`,
       `${TIER_CONFIG.STANDARD.limits.judges} Judges`,
       "2 GB Storage",
@@ -82,7 +82,7 @@ export const PRICING_TIERS: PricingTier[] = [
     price: TIER_CONFIG.PRO.price,
     description: "For established festivals needing more capacity.",
     features: [
-      `${TIER_CONFIG.PRO.limits.participants} Participants`,
+      `${TIER_CONFIG.PRO.limits.students} Students`,
       `${TIER_CONFIG.PRO.limits.events} Events`,
       `${TIER_CONFIG.PRO.limits.judges} Judges`,
       "10 GB Storage",

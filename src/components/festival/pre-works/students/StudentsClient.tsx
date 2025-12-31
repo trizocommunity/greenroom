@@ -24,17 +24,17 @@ import {
 } from "@/components/ui/table";
 import { useCategories } from "@/hooks/useCategories";
 import { useGroups } from "@/hooks/useGroups";
-import { useParticipants } from "@/hooks/useParticipants";
-import { ParticipantDetailsDialog } from "./ParticipantDetailsDialog";
-import { ParticipantDialog } from "./ParticipantDialog";
+import { useStudents } from "@/hooks/useStudents";
+import { StudentDetailsDialog } from "./StudentDetailsDialog";
+import { StudentDialog } from "./StudentDialog";
 
-interface ParticipantsClientProps {
+interface StudentsClientProps {
   festivalId: string;
 }
 
-export function ParticipantsClient({ festivalId }: ParticipantsClientProps) {
-  const { participants, isLoading, deleteParticipant, isDeleting } =
-    useParticipants(festivalId);
+export function StudentsClient({ festivalId }: StudentsClientProps) {
+  const { students, isLoading, deleteStudent, isDeleting } =
+    useStudents(festivalId);
   const { groups } = useGroups(festivalId);
   const { categories } = useCategories(festivalId);
 
@@ -50,7 +50,7 @@ export function ParticipantsClient({ festivalId }: ParticipantsClientProps) {
   }
 
   // Filter Logic
-  const filteredParticipants = participants.filter((p: any) => {
+  const filteredStudents = students.filter((p: any) => {
     // Group Filter
     if (selectedGroup !== "ALL") {
       if (p.groupId !== selectedGroup && p.group?.id !== selectedGroup)
@@ -76,11 +76,11 @@ export function ParticipantsClient({ festivalId }: ParticipantsClientProps) {
           <div className="flex items-center gap-2">
             <User className="h-5 w-5 text-muted-foreground" />
             <span className="font-medium text-sm">
-              Total Participants: {filteredParticipants.length}
+              Total Students: {filteredStudents.length}
             </span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Manage your festival participants here.
+            Manage your festival students here.
           </p>
         </div>
 
@@ -130,7 +130,7 @@ export function ParticipantsClient({ festivalId }: ParticipantsClientProps) {
             </Button>
           )}
 
-          <ParticipantDialog festivalId={festivalId} />
+          <StudentDialog festivalId={festivalId} />
         </div>
       </div>
 
@@ -146,14 +146,14 @@ export function ParticipantsClient({ festivalId }: ParticipantsClientProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredParticipants.map((participant: any) => (
-              <TableRow key={participant.id}>
+            {filteredStudents.map((student: any) => (
+              <TableRow key={student.id}>
                 <TableCell className="font-medium">
                   <div className="flex flex-col">
-                    <span>{participant.name}</span>
-                    {participant.registrationNumber && (
+                    <span>{student.name}</span>
+                    {student.registrationNumber && (
                       <span className="text-xs text-muted-foreground font-mono">
-                        {participant.registrationNumber}
+                        {student.registrationNumber}
                       </span>
                     )}
                   </div>
@@ -163,21 +163,21 @@ export function ParticipantsClient({ festivalId }: ParticipantsClientProps) {
                     <span
                       className="w-2 h-2 rounded-full"
                       style={{
-                        backgroundColor: participant.group?.color || "#2563eb",
+                        backgroundColor: student.group?.color || "#2563eb",
                       }}
                     />
-                    {participant.group?.name || "-"}
+                    {student.group?.name || "-"}
                   </div>
                 </TableCell>
-                <TableCell>{participant.category?.name || "-"}</TableCell>
+                <TableCell>{student.category?.name || "-"}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">
-                  {format(new Date(participant.createdAt), "MMM d, yyyy")}
+                  {format(new Date(student.createdAt), "MMM d, yyyy")}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
-                    <ParticipantDetailsDialog
+                    <StudentDetailsDialog
                       festivalId={festivalId}
-                      participant={participant}
+                      student={student}
                       trigger={
                         <Button
                           variant="ghost"
@@ -188,9 +188,9 @@ export function ParticipantsClient({ festivalId }: ParticipantsClientProps) {
                         </Button>
                       }
                     />
-                    <ParticipantDialog
+                    <StudentDialog
                       festivalId={festivalId}
-                      participant={participant}
+                      student={student}
                       trigger={
                         <Button
                           variant="ghost"
@@ -202,10 +202,10 @@ export function ParticipantsClient({ festivalId }: ParticipantsClientProps) {
                       }
                     />
                     <DeleteDialog
-                      title="Delete Participant"
-                      description="Are you sure? This will remove the participant from all assigned programmes."
+                      title="Delete Student"
+                      description="Are you sure? This will remove the student from all assigned programmes."
                       onDelete={async () => {
-                        await deleteParticipant(participant.id);
+                        await deleteStudent(student.id);
                       }}
                       isDeleting={isDeleting}
                     />
@@ -213,7 +213,7 @@ export function ParticipantsClient({ festivalId }: ParticipantsClientProps) {
                 </TableCell>
               </TableRow>
             ))}
-            {filteredParticipants.length === 0 && (
+            {filteredStudents.length === 0 && (
               <TableRow>
                 <TableCell
                   colSpan={5}
@@ -221,7 +221,7 @@ export function ParticipantsClient({ festivalId }: ParticipantsClientProps) {
                 >
                   <div className="flex flex-col items-center justify-center gap-2">
                     <FileText className="h-8 w-8 text-muted-foreground/50" />
-                    <p>No participants found matching filters.</p>
+                    <p>No students found matching filters.</p>
                   </div>
                 </TableCell>
               </TableRow>

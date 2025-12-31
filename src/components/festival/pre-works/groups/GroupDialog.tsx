@@ -14,15 +14,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useGroups } from "@/hooks/useGroups";
-import { useParticipants } from "@/hooks/useParticipants";
+import { useStudents } from "@/hooks/useStudents";
 
 interface GroupDialogProps {
   festivalId: string;
@@ -40,7 +33,7 @@ export function GroupDialog({
   const [open, setOpen] = useState(false);
   const { createGroup, isCreating, updateGroup, isUpdating } =
     useGroups(festivalId);
-  const { participants } = useParticipants(festivalId); // Fetch participants
+  const { students } = useStudents(festivalId); // Fetch students
 
   const isEditing = !!group;
   const isLoading = isCreating || isUpdating;
@@ -70,18 +63,17 @@ export function GroupDialog({
     "#ec4899", // Pink
   ];
 
-  // Derive group participants for UI
-  const groupParticipants = isEditing
-    ? participants.filter((p: any) => p.groupId === group.id)
+  // Derive group students for UI
+  const groupStudents = isEditing
+    ? students.filter((p: any) => p.groupId === group.id)
     : [];
 
   useEffect(() => {
     if (open) {
       if (group) {
         // Find existing team leaders
-        // We rely on participants list being loaded.
-        // If participants are loading, this might set empty initially, but will update when participants change.
-        const currentLeaders = participants
+        // We rely on students list being loaded.
+        const currentLeaders = students
           .filter((p: any) => p.groupId === group.id && p.isTeamLeader)
           .map((p: any) => p.id);
 
@@ -102,15 +94,7 @@ export function GroupDialog({
         });
       }
     }
-    // We add participants to dependency to ensure team leaders are set correctly if data loads after open
-    // However, checking for user edits is tricky if we auto-update.
-    // Ideally we only set initial state. But with Async data it's hard.
-    // For now, let's assume if dialog JUST opened we set it.
-    // But we need to handle "data arrival".
-    // Let's stick to basic init. If participants load late, the user might see empty checkboxes then they appear checked?
-    // Actually, if we depend on `participants`, it will overwrite user changes if they edit while fetching?
-    // Participants fetch is usually fast and cached.
-  }, [open, group, participants]);
+  }, [open, group, students]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,39 +110,31 @@ export function GroupDialog({
         });
       } else {
         await createGroup({
-          ...formData, // teamLeaderIds ignored for create usually, or we can't assign yet
+          ...formData, // teamLeaderIds ignored for create usually
           seriesStart: Number(formData.seriesStart),
         });
       }
       setOpen(false);
-      // Reset is handled by useEffect on next open
     } catch (error) {
       // Handled hook
     }
   };
 
-  const toggleTeamLeader = (participantId: string) => {
+  const toggleTeamLeader = (studentId: string) => {
     setFormData((prev) => {
-      const isSelected = prev.teamLeaderIds.includes(participantId);
+      const isSelected = prev.teamLeaderIds.includes(studentId);
       if (isSelected) {
         return {
           ...prev,
-          teamLeaderIds: prev.teamLeaderIds.filter(
-            (id) => id !== participantId,
-          ),
+          teamLeaderIds: prev.teamLeaderIds.filter((id) => id !== studentId),
         };
       } else {
-        // Limit to 2 team leaders? User said "Select one or two participants".
-        // Let's allow flexible for now or maybe limit to 2?
-        // "Select one or two participants from the group"
         if (prev.teamLeaderIds.length >= 2) {
-          // Maybe show toasted warning or just don't add?
-          // Let's just allow it for flexibility unless strict.
           return prev;
         }
         return {
           ...prev,
-          teamLeaderIds: [...prev.teamLeaderIds, participantId],
+          teamLeaderIds: [...prev.teamLeaderIds, studentId],
         };
       }
     });
@@ -231,15 +207,15 @@ export function GroupDialog({
             <div className="space-y-2 border-t pt-4">
               <Label>Assign Team Leaders</Label>
               <p className="text-xs text-muted-foreground mb-2">
-                Select up to 2 participants to be Team Leaders.
+                Select up to 2 students to be Team Leaders.
               </p>
-              {groupParticipants.length === 0 ? (
+              {groupStudents.length === 0 ? (
                 <div className="text-sm text-muted-foreground italic">
-                  No participants in this group yet. Add participants first.
+                  No students in this group yet. Add students first.
                 </div>
               ) : (
                 <div className="space-y-2 max-h-[150px] overflow-y-auto bg-muted/10 p-2 rounded border">
-                  {groupParticipants.map((p: any) => (
+                  {groupStudents.map((p: any) => (
                     <label
                       key={p.id}
                       className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 p-1 rounded"

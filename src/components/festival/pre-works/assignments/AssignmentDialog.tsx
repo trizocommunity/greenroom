@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { useAssignments } from "@/hooks/useAssignments";
 import { useGroups } from "@/hooks/useGroups";
-import { useParticipants } from "@/hooks/useParticipants";
+import { useStudents } from "@/hooks/useStudents";
 import { useProgrammes } from "@/hooks/useProgrammes";
 
 interface AssignmentDialogProps {
@@ -48,7 +48,7 @@ export function AssignmentDialog({
     isUpdating,
     assignments, // Need existing assignments to filter duplicates
   } = useAssignments(festivalId);
-  const { participants } = useParticipants(festivalId);
+  const { students } = useStudents(festivalId);
   const { programmes } = useProgrammes(festivalId);
   const { groups } = useGroups(festivalId);
 
@@ -57,32 +57,29 @@ export function AssignmentDialog({
 
   // New State: Selected Group ID
   const [selectedGroupId, setSelectedGroupId] = useState<string>(
-    assignment?.group?.id || assignment?.participant?.group?.id || "",
+    assignment?.group?.id || assignment?.student?.group?.id || "",
   );
 
   const [formData, setFormData] = useState({
     programmeId: "",
-    participantId: "",
+    studentId: "",
   });
-  const [selectedParticipantIds, setSelectedParticipantIds] = useState<
-    string[]
-  >([]);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (open && assignment) {
       setFormData({
         programmeId: assignment.programmeId || "",
-        participantId: assignment.participantId || "",
+        studentId: assignment.studentId || "",
       });
       // For editing, pre-fill group if available (though usually derived)
-      const grpId =
-        assignment.group?.id || assignment.participant?.group?.id || "";
+      const grpId = assignment.group?.id || assignment.student?.group?.id || "";
       setSelectedGroupId(grpId);
-      setSelectedParticipantIds([assignment.participantId].filter(Boolean));
+      setSelectedStudentIds([assignment.studentId].filter(Boolean));
     } else if (open && !assignment) {
-      setFormData({ programmeId: "", participantId: "" });
+      setFormData({ programmeId: "", studentId: "" });
       setSelectedGroupId("");
-      setSelectedParticipantIds([]);
+      setSelectedStudentIds([]);
     }
   }, [open, assignment]);
 
@@ -91,12 +88,6 @@ export function AssignmentDialog({
     (p: any) => p.id === formData.programmeId,
   );
   // Is this a "General" programme (Group Entry) or Individual?
-  // "GENERAL" type often means Group Entry, but let's stick to logic:
-  // If Programme Type is GROUP, we might assign a Group directly OR assign members of a Group?
-  // User Requirements: "Admin must first select Programme -> Select Group -> Filter Participants"
-  // This implies we are assigning Participants (Individual or Group Members).
-
-  // NOTE: Existing logic used `programme.category.type === "GENERAL"`.
   const isGeneral = selectedProgramme?.category?.type === "GENERAL";
 
   // Filter Logic
@@ -104,19 +95,18 @@ export function AssignmentDialog({
   // 2. Must match Category of Programme (unless General which usually allows all?)
   // 3. Must NOT be already assigned to this Programme.
 
-  const filteredParticipants = participants.filter((participant: any) => {
+  const filteredStudents = students.filter((student: any) => {
     // 1. Group Filter
-    if (selectedGroupId && participant.groupId !== selectedGroupId) {
+    if (selectedGroupId && student.groupId !== selectedGroupId) {
       return false;
     }
 
     // 2. Category Eligibility
-    // If NOT General, participant must match category.
-    // If General, usually open to all? Or specific logic?
+    // If NOT General, student must match category.
     if (!isGeneral) {
       if (
         selectedProgramme &&
-        participant.categoryId !== selectedProgramme.categoryId
+        student.categoryId !== selectedProgramme.categoryId
       ) {
         return false;
       }
@@ -125,11 +115,10 @@ export function AssignmentDialog({
     // 3. Duplicate Check
     // Exclude if already assigned to THIS programme
     // Check `assignments` list.
-    // NOTE: This check depends on if we have ALL assignments loaded. `useAssignments` hooks typically load all for festival.
     const isAssigned = assignments.some(
       (a: any) =>
         a.programmeId === formData.programmeId &&
-        a.participantId === participant.id &&
+        a.studentId === student.id &&
         // If editing, exclude current assignment from check (allow keeping same)
         (isEditing ? a.id !== assignment.id : true),
     );
@@ -146,21 +135,17 @@ export function AssignmentDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (readOnly) return;
-    // ... (Existing Submit Logic)
     try {
       if (isEditing && assignment) {
         await updateAssignment({ id: assignment.id, data: formData });
       } else {
         if (isGeneral) {
-          if (selectedParticipantIds.length === 0) return;
-          // If we are assigning "Group Entry", do we assign participantId?
-          // Previously code: createAssignment({ programmeId, participantId: pid })
-          // Assuming General works same way, just bulk.
+          if (selectedStudentIds.length === 0) return;
           await Promise.all(
-            selectedParticipantIds.map((pid) =>
+            selectedStudentIds.map((pid) =>
               createAssignment({
                 programmeId: formData.programmeId,
-                participantId: pid,
+                studentId: pid,
               }),
             ),
           );
@@ -170,18 +155,17 @@ export function AssignmentDialog({
       }
       setOpen(false);
       if (!isEditing) {
-        setFormData({ programmeId: "", participantId: "" });
+        setFormData({ programmeId: "", studentId: "" });
         setSelectedGroupId("");
-        setSelectedParticipantIds([]);
+        setSelectedStudentIds([]);
       }
     } catch (error) {
       // Handled hook
     }
   };
 
-  const toggleParticipant = (id: string) => {
-    // ... (Existing Toggle Logic)
-    setSelectedParticipantIds((prev) => {
+  const toggleStudent = (id: string) => {
+    setSelectedStudentIds((prev) => {
       const isSelected = prev.includes(id);
       if (isSelected) {
         return prev.filter((p) => p !== id);
@@ -216,7 +200,7 @@ export function AssignmentDialog({
               ? "View assignment details."
               : isEditing
                 ? "Modify assignment details."
-                : "Assign a participant to a programme."}
+                : "Assign a student to a programme."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -230,9 +214,9 @@ export function AssignmentDialog({
                 setFormData((prev) => ({
                   ...prev,
                   programmeId: val,
-                  participantId: "",
+                  studentId: "",
                 }));
-                setSelectedParticipantIds([]);
+                setSelectedStudentIds([]);
               }}
               disabled={readOnly || isLoading}
             >
@@ -256,8 +240,8 @@ export function AssignmentDialog({
               value={selectedGroupId}
               onValueChange={(val) => {
                 setSelectedGroupId(val);
-                setFormData((prev) => ({ ...prev, participantId: "" })); // Reset participant
-                setSelectedParticipantIds([]);
+                setFormData((prev) => ({ ...prev, studentId: "" })); // Reset student
+                setSelectedStudentIds([]);
               }}
               disabled={readOnly || !formData.programmeId || isLoading}
             >
@@ -279,52 +263,48 @@ export function AssignmentDialog({
               </SelectContent>
             </Select>
             <p className="text-[10px] text-muted-foreground">
-              Filter participants by group.
+              Filter students by group.
             </p>
           </div>
 
-          {/* 3. Participant Selection */}
+          {/* 3. Student Selection */}
           <div className="space-y-2">
-            <Label>Participant(s)</Label>
+            <Label>Student(s)</Label>
             {!selectedGroupId ? (
               <div className="rounded-md border p-4 text-center text-sm text-muted-foreground bg-muted/20">
-                Select a Group to view eligible participants.
+                Select a Group to view eligible students.
               </div>
             ) : isGeneral && !isEditing ? (
               <div className="rounded-md border p-2">
                 <div className="mb-2 flex items-center justify-between px-2">
-                  <span className="text-sm font-medium">
-                    Select Participants
-                  </span>
+                  <span className="text-sm font-medium">Select Students</span>
                   <Badge variant="secondary">
-                    {selectedParticipantIds.length} / {remainingSlots} selected
+                    {selectedStudentIds.length} / {remainingSlots} selected
                   </Badge>
                 </div>
                 <ScrollArea className="h-[150px]">
                   <div className="space-y-1 p-2">
-                    {filteredParticipants.map((part: any) => {
-                      const isSelected = selectedParticipantIds.includes(
-                        part.id,
-                      );
+                    {filteredStudents.map((stud: any) => {
+                      const isSelected = selectedStudentIds.includes(stud.id);
                       return (
                         <button
                           type="button"
-                          key={part.id}
+                          key={stud.id}
                           className={`flex w-full cursor-pointer items-center justify-between rounded-sm border p-2 text-sm transition-colors hover:bg-muted ${
                             isSelected ? "bg-primary/5 border-primary" : ""
                           }`}
-                          onClick={() => toggleParticipant(part.id)}
+                          onClick={() => toggleStudent(stud.id)}
                         >
-                          <span className="font-medium">{part.name}</span>
+                          <span className="font-medium">{stud.name}</span>
                           {isSelected && (
                             <Check className="h-4 w-4 text-primary" />
                           )}
                         </button>
                       );
                     })}
-                    {filteredParticipants.length === 0 && (
+                    {filteredStudents.length === 0 && (
                       <div className="p-4 text-center text-sm text-muted-foreground">
-                        No eligible participants found in this group.
+                        No eligible students found in this group.
                       </div>
                     )}
                   </div>
@@ -333,30 +313,28 @@ export function AssignmentDialog({
             ) : (
               <Select
                 required
-                value={formData.participantId}
+                value={formData.studentId}
                 onValueChange={(val) =>
-                  setFormData({ ...formData, participantId: val })
+                  setFormData({ ...formData, studentId: val })
                 }
                 disabled={readOnly || isLoading || !selectedGroupId}
               >
                 <SelectTrigger>
                   <SelectValue
                     placeholder={
-                      !selectedGroupId
-                        ? "Select Group first"
-                        : "Select participant"
+                      !selectedGroupId ? "Select Group first" : "Select student"
                     }
                   />
                 </SelectTrigger>
                 <SelectContent>
-                  {filteredParticipants.map((part: any) => (
-                    <SelectItem key={part.id} value={part.id}>
-                      {part.name}
+                  {filteredStudents.map((stud: any) => (
+                    <SelectItem key={stud.id} value={stud.id}>
+                      {stud.name}
                     </SelectItem>
                   ))}
-                  {filteredParticipants.length === 0 && (
+                  {filteredStudents.length === 0 && (
                     <SelectItem value="none" disabled>
-                      No eligible participants found
+                      No eligible students found
                     </SelectItem>
                   )}
                 </SelectContent>

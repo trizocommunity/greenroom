@@ -11,13 +11,13 @@ interface DashboardRightPanelProps {
   daysRemaining?: number | null;
   userRole: FestivalRole | string;
   usage?: {
-    participantsCount: number;
+    studentsCount: number;
     eventsCount: number;
     judgesCount: number;
     storageUsedMB: number;
   };
   limits?: {
-    maxParticipants: number;
+    maxStudents: number;
     maxEvents: number;
     maxJudges: number;
     maxStorageMB: number;

@@ -91,7 +91,7 @@ export function DeleteFestivalButton({
           </DialogTitle>
           <DialogDescription>
             You are about to irreversibly delete <strong>{festivalName}</strong>
-            . This will delete all associated Payments, Participants, and data.
+            . This will delete all associated Payments, Students, and data.
           </DialogDescription>
         </DialogHeader>
 

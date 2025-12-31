@@ -15,7 +15,7 @@ export async function createAssignmentAction(
   festivalId: string,
   data: {
     programmeId: string;
-    participantId?: string;
+    studentId?: string;
     groupId?: string;
   },
 ) {
@@ -65,7 +65,7 @@ export async function updateAssignmentAction(
   id: string,
   data: {
     programmeId?: string;
-    participantId?: string;
+    studentId?: string;
     groupId?: string;
   },
 ) {

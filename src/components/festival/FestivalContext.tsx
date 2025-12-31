@@ -21,15 +21,15 @@ export type FestivalPublicData = {
   orgLocation: string | null;
   establishedYear: number | null;
   // Festival stats
-  participantsCount?: number;
+  studentsCount?: number;
   eventsCount?: number;
   limits?: {
-    maxParticipants: number;
+    maxStudents: number;
     maxEvents?: number;
     maxJudges?: number;
   } | null;
   // Deadlines
-  participantCreationDeadline: string | Date | null;
+  studentCreationDeadline: string | Date | null;
   programmeAssignmentDeadline: string | Date | null;
 };
 

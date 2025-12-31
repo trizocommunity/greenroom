@@ -22,10 +22,8 @@ interface SettingsFormProps {
 export function SettingsForm({ festival }: SettingsFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [deadlines, setDeadlines] = useState({
-    participantCreationDeadline: festival.participantCreationDeadline
-      ? new Date(festival.participantCreationDeadline)
-          .toISOString()
-          .slice(0, 16)
+    studentCreationDeadline: festival.studentCreationDeadline
+      ? new Date(festival.studentCreationDeadline).toISOString().slice(0, 16)
       : "",
     programmeAssignmentDeadline: festival.programmeAssignmentDeadline
       ? new Date(festival.programmeAssignmentDeadline)
@@ -39,8 +37,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
     setIsLoading(true);
     try {
       const res = await updateFestivalDeadlinesAction(festival.id, {
-        participantCreationDeadline:
-          deadlines.participantCreationDeadline || null,
+        studentCreationDeadline: deadlines.studentCreationDeadline || null,
         programmeAssignmentDeadline:
           deadlines.programmeAssignmentDeadline || null,
       });
@@ -68,7 +65,23 @@ export function SettingsForm({ festival }: SettingsFormProps) {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSave} className="space-y-4">
-          {/* Participant Creation Deadline Removed as per requirements */}
+          <div className="grid gap-2">
+            <Label htmlFor="studentCreation">Student Creation Deadline</Label>
+            <Input
+              id="studentCreation"
+              type="datetime-local"
+              value={deadlines.studentCreationDeadline}
+              onChange={(e) =>
+                setDeadlines({
+                  ...deadlines,
+                  studentCreationDeadline: e.target.value,
+                })
+              }
+            />
+            <p className="text-sm text-muted-foreground">
+              Team Leaders cannot create new students after this time.
+            </p>
+          </div>
 
           <div className="grid gap-2">
             <Label htmlFor="programmeAssignment">
@@ -86,8 +99,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
               }
             />
             <p className="text-sm text-muted-foreground">
-              Team Leaders cannot assign participants to programmes after this
-              time.
+              Team Leaders cannot assign students to programmes after this time.
             </p>
           </div>
 

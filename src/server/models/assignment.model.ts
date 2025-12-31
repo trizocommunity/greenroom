@@ -29,7 +29,7 @@ export async function findAssignmentsByProgramme(programmeId: string) {
   return prisma.programmeAssignment.findMany({
     where: { programmeId },
     include: {
-      participant: {
+      student: {
         include: {
           group: true,
         },
@@ -40,9 +40,9 @@ export async function findAssignmentsByProgramme(programmeId: string) {
   });
 }
 
-export async function findAssignmentsByParticipant(participantId: string) {
+export async function findAssignmentsByStudent(studentId: string) {
   return prisma.programmeAssignment.findMany({
-    where: { participantId },
+    where: { studentId },
     include: { programme: true },
     orderBy: { assignedAt: "desc" },
   });
@@ -50,13 +50,13 @@ export async function findAssignmentsByParticipant(participantId: string) {
 
 export async function checkAssignmentExists(
   programmeId: string,
-  participantId: string,
+  studentId: string,
 ) {
   const assignment = await prisma.programmeAssignment.findUnique({
     where: {
-      programmeId_participantId: {
+      programmeId_studentId: {
         programmeId,
-        participantId,
+        studentId,
       },
     },
   });

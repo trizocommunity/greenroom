@@ -5,13 +5,13 @@ import { Progress } from "@/components/ui/progress";
 interface LimitationCardProps {
   tierLabel: string;
   limits: {
-    maxParticipants: number;
+    maxStudents: number;
     maxEvents: number;
     maxJudges: number;
     maxStorageMB: number;
   };
   usage?: {
-    participantsCount: number;
+    studentsCount: number;
     eventsCount: number;
     judgesCount: number;
     storageUsedMB: number;
@@ -23,7 +23,7 @@ export function LimitationCard({
   tierLabel,
   limits,
   usage = {
-    participantsCount: 0,
+    studentsCount: 0,
     eventsCount: 0,
     judgesCount: 0,
     storageUsedMB: 0,
@@ -32,10 +32,10 @@ export function LimitationCard({
 }: LimitationCardProps) {
   const items = [
     {
-      label: "Participants",
+      label: "Students",
       icon: Users,
-      limit: limits.maxParticipants,
-      used: usage.participantsCount,
+      limit: limits.maxStudents,
+      used: usage.studentsCount,
       color: "text-blue-500",
     },
     {

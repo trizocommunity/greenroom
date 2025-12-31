@@ -20,31 +20,31 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAssignments } from "@/hooks/useAssignments";
-import { useParticipants } from "@/hooks/useParticipants";
+import { useStudents } from "@/hooks/useStudents";
 import { useProgrammes } from "@/hooks/useProgrammes";
 
-interface ParticipantDetailsDialogProps {
+interface StudentDetailsDialogProps {
   festivalId: string;
-  participant: any;
+  student: any;
   trigger?: React.ReactNode;
 }
 
-export function ParticipantDetailsDialog({
+export function StudentDetailsDialog({
   festivalId,
-  participant,
+  student,
   trigger,
-}: ParticipantDetailsDialogProps) {
-  // We might want to fetch fresh details or assignments for this participant
-  // Currently, participant object might have some info, but assignments?
-  // We can filter assignments by participantId if we have them all, or fetch.
+}: StudentDetailsDialogProps) {
+  // We might want to fetch fresh details or assignments for this student
+  // Currently, student object might have some info, but assignments?
+  // We can filter assignments by studentId if we have them all, or fetch.
   // Assuming useAssignments loads all assignments for now (which might be heavy but consistent with current app structure).
 
   const { assignments, isLoading } = useAssignments(festivalId);
 
-  const participantAssignments = assignments.filter(
+  const studentAssignments = assignments.filter(
     (a: any) =>
-      a.participantId === participant.id ||
-      a.team?.members.some((tm: any) => tm.participantId === participant.id),
+      a.studentId === student.id ||
+      a.team?.members.some((tm: any) => tm.studentId === student.id),
   );
 
   return (
@@ -59,9 +59,9 @@ export function ParticipantDetailsDialog({
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {participant.name}
+            {student.name}
             <Badge variant="outline" className="ml-2">
-              {participant.registrationNumber}
+              {student.registrationNumber}
             </Badge>
           </DialogTitle>
         </DialogHeader>
@@ -77,10 +77,10 @@ export function ParticipantDetailsDialog({
                 <span
                   className="w-2 h-2 rounded-full"
                   style={{
-                    backgroundColor: participant.group?.color || "#2563eb",
+                    backgroundColor: student.group?.color || "#2563eb",
                   }}
                 />
-                {participant.group?.name}
+                {student.group?.name}
               </div>
             </div>
 
@@ -88,9 +88,7 @@ export function ParticipantDetailsDialog({
               <span className="text-xs text-muted-foreground font-semibold uppercase">
                 Category
               </span>
-              <div className="font-medium mt-1">
-                {participant.category?.name}
-              </div>
+              <div className="font-medium mt-1">{student.category?.name}</div>
             </div>
 
             <div>
@@ -98,18 +96,18 @@ export function ParticipantDetailsDialog({
                 Gender
               </span>
               <div className="font-medium mt-1 capitalize">
-                {participant.gender?.toLowerCase() || "-"}
+                {student.gender?.toLowerCase() || "-"}
               </div>
             </div>
 
             <div className="pt-2 space-y-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Mail className="h-4 w-4" />
-                <span>{participant.email || "No email"}</span>
+                <span>{student.email || "No email"}</span>
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Phone className="h-4 w-4" />
-                <span>{participant.phone || "No phone"}</span>
+                <span>{student.phone || "No phone"}</span>
               </div>
             </div>
           </div>
@@ -118,7 +116,7 @@ export function ParticipantDetailsDialog({
           <div className="md:col-span-2">
             <h4 className="font-semibold mb-3 flex items-center gap-2">
               Assigned Programmes
-              <Badge variant="secondary">{participantAssignments.length}</Badge>
+              <Badge variant="secondary">{studentAssignments.length}</Badge>
             </h4>
 
             <ScrollArea className="h-[300px] border rounded-md">
@@ -136,7 +134,7 @@ export function ParticipantDetailsDialog({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {participantAssignments.map((assignment: any) => (
+                    {studentAssignments.map((assignment: any) => (
                       <TableRow key={assignment.id}>
                         <TableCell className="font-medium">
                           {assignment.programme?.name}
@@ -149,7 +147,7 @@ export function ParticipantDetailsDialog({
                         </TableCell>
                       </TableRow>
                     ))}
-                    {participantAssignments.length === 0 && (
+                    {studentAssignments.length === 0 && (
                       <TableRow>
                         <TableCell
                           colSpan={3}

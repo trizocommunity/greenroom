@@ -20,7 +20,7 @@ export default async function AssignmentsPage({
             Programme Assignments
           </h1>
           <p className="text-muted-foreground">
-            Manage participant assignments to programmes.
+            Manage student assignments to programmes.
           </p>
         </div>
         <DeadlinesCard />

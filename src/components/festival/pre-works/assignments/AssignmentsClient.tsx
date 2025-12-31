@@ -78,14 +78,14 @@ export function AssignmentsClient({
         <CardHeader>
           <CardTitle>Assignments</CardTitle>
           <CardDescription>
-            List of participants assigned to programmes.
+            List of students assigned to programmes.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Participant</TableHead>
+                <TableHead>Student</TableHead>
                 <TableHead>Programme</TableHead>
                 <TableHead>Group</TableHead>
                 <TableHead>Assigned At</TableHead>
@@ -96,12 +96,11 @@ export function AssignmentsClient({
               {assignments.map((assignment: any) => (
                 <TableRow key={assignment.id}>
                   <TableCell className="font-medium">
-                    {assignment.participant?.name || "Group Entry"}
+                    {assignment.student?.name || "Group Entry"}
                   </TableCell>
                   <TableCell>{assignment.programme?.name}</TableCell>
                   <TableCell>
-                    {assignment.group?.name ||
-                      assignment.participant?.group?.name}
+                    {assignment.group?.name || assignment.student?.group?.name}
                   </TableCell>
                   <TableCell>
                     {format(new Date(assignment.assignedAt), "MMM d, yyyy")}

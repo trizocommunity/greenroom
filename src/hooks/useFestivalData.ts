@@ -19,10 +19,10 @@ import {
   getGroupsAction,
 } from "@/server/actions/group.actions";
 import {
-  createParticipantWithServiceAction,
-  deleteParticipantWithServiceAction,
-  getParticipantsAction,
-} from "@/server/actions/participant.actions";
+  createStudentWithServiceAction,
+  deleteStudentWithServiceAction,
+  getStudentsAction,
+} from "@/server/actions/student.actions";
 import {
   createProgrammeAction,
   deleteProgrammeAction,
@@ -170,18 +170,18 @@ export function useDeleteProgramme(festivalId: string) {
 }
 
 // ============================================================================
-// Participants Hooks
+// Students Hooks
 // ============================================================================
 
-export function useParticipants(festivalId: string) {
+export function useStudents(festivalId: string) {
   return useQuery({
-    queryKey: queryKeys.participants.list(festivalId),
-    queryFn: () => getParticipantsAction(festivalId),
+    queryKey: queryKeys.students.list(festivalId),
+    queryFn: () => getStudentsAction(festivalId),
     enabled: !!festivalId,
   });
 }
 
-export function useCreateParticipant(festivalId: string) {
+export function useCreateStudent(festivalId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: {
@@ -192,32 +192,31 @@ export function useCreateParticipant(festivalId: string) {
       phone?: string;
       gender?: string;
       registrationNumber?: string;
-    }) => createParticipantWithServiceAction(festivalId, data),
+    }) => createStudentWithServiceAction(festivalId, data),
     onSuccess: () => {
-      toast.success("Participant created successfully");
+      toast.success("Student created successfully");
       queryClient.invalidateQueries({
-        queryKey: queryKeys.participants.list(festivalId),
+        queryKey: queryKeys.students.list(festivalId),
       });
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to create participant");
+      toast.error(error.message || "Failed to create student");
     },
   });
 }
 
-export function useDeleteParticipant(festivalId: string) {
+export function useDeleteStudent(festivalId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      deleteParticipantWithServiceAction(festivalId, id),
+    mutationFn: (id: string) => deleteStudentWithServiceAction(festivalId, id),
     onSuccess: () => {
-      toast.success("Participant deleted");
+      toast.success("Student deleted");
       queryClient.invalidateQueries({
-        queryKey: queryKeys.participants.list(festivalId),
+        queryKey: queryKeys.students.list(festivalId),
       });
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to delete participant");
+      toast.error(error.message || "Failed to delete student");
     },
   });
 }
@@ -239,7 +238,7 @@ export function useCreateAssignment(festivalId: string) {
   return useMutation({
     mutationFn: (data: {
       programmeId: string;
-      participantId?: string;
+      studentId?: string;
       groupId?: string;
     }) => createAssignmentAction(festivalId, data),
     onSuccess: () => {

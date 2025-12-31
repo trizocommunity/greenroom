@@ -93,14 +93,14 @@ export default async function FestivalDashboardLayout({
     orgLocation: null,
     establishedYear: null,
     // New Stats from Festival
-    participantsCount: festival.participantsCount || 0,
+    studentsCount: festival.studentsCount || 0,
     eventsCount: festival.eventsCount || 0,
     limits: {
-      maxParticipants: 1000,
+      maxStudents: 1000,
       maxEvents: 100,
       maxJudges: 20,
     },
-    participantCreationDeadline: festival.participantCreationDeadline,
+    studentCreationDeadline: festival.studentCreationDeadline,
     programmeAssignmentDeadline: festival.programmeAssignmentDeadline,
   };
 

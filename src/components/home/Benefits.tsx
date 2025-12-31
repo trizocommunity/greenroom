@@ -37,7 +37,7 @@ export default function Benefits() {
           </h2>
           <p className="text-muted-foreground max-w-xl font-medium">
             A judging and scoring experience that feels premium for organizers,
-            judges, and participants alike.
+            judges, and students alike.
           </p>
         </div>
 

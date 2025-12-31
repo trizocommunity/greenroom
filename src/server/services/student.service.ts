@@ -3,16 +3,16 @@ import { findCategoryById } from "@/server/models/category.model";
 import { findFestivalById } from "@/server/models/festival.model";
 import { findGroupById } from "@/server/models/group.model";
 import {
-  createParticipant,
-  deleteParticipant,
-  findParticipantById,
-  findParticipantsByFestival,
-} from "@/server/models/participant.model";
+  createStudent,
+  deleteStudent,
+  findStudentById,
+  findStudentsByFestival,
+} from "@/server/models/student.model";
 import { UsageCounterService } from "./usage-counter.service";
 
-export const ParticipantService = {
+export const StudentService = {
   async getAll(festivalId: string, groupId?: string) {
-    return findParticipantsByFestival(festivalId, groupId);
+    return findStudentsByFestival(festivalId, groupId);
   },
 
   async create(
@@ -42,7 +42,7 @@ export const ParticipantService = {
       throw new Error("Invalid Category");
 
     // 3. Limit Check & Increment (Atomic)
-    await UsageCounterService.incrementUsage(festivalId, "participants", 1);
+    await UsageCounterService.incrementUsage(festivalId, "students", 1);
 
     // 4. Auto-Generate Registration Number if not provided
     let regNumber = data.registrationNumber;
@@ -64,7 +64,7 @@ export const ParticipantService = {
       // Simple approach: seriesStart + count + 1.
       // To be robust against deletions, we should ideally find the MAX current number.
       // For this task, we will use count + 1 for simplicity but respect seriesStart.
-      const currentCount = await prisma.participant.count({
+      const currentCount = await prisma.student.count({
         where: { groupId: data.groupId },
       });
 
@@ -74,7 +74,7 @@ export const ParticipantService = {
 
     // 5. Create
     // TODO: Handle Decrement usage counter on failure if needed (not implemented yet)
-    return await createParticipant({
+    return await createStudent({
       festival: { connect: { id: festivalId } },
       group: { connect: { id: data.groupId } },
       category: { connect: { id: data.categoryId } },
@@ -99,9 +99,9 @@ export const ParticipantService = {
       registrationNumber?: string;
     },
   ) {
-    const existing = await findParticipantById(id);
+    const existing = await findStudentById(id);
     if (!existing || existing.festivalId !== festivalId)
-      throw new Error("Participant not found");
+      throw new Error("Student not found");
 
     // Optional: Validate group/category if they are changing
     // We assume IDs are valid for now or rely on Foreign Key constraints?
@@ -117,7 +117,7 @@ export const ParticipantService = {
         throw new Error("Invalid Category");
     }
 
-    return prisma.participant.update({
+    return prisma.student.update({
       where: { id },
       data: {
         name: data.name,
@@ -132,13 +132,13 @@ export const ParticipantService = {
   },
 
   async delete(id: string, festivalId: string) {
-    const exists = await findParticipantById(id);
+    const exists = await findStudentById(id);
     if (!exists || exists.festivalId !== festivalId)
-      throw new Error("Participant not found");
+      throw new Error("Student not found");
 
     // Decrement usage counter
-    await UsageCounterService.incrementUsage(festivalId, "participants", -1);
+    await UsageCounterService.incrementUsage(festivalId, "students", -1);
 
-    return deleteParticipant(id);
+    return deleteStudent(id);
   },
 };

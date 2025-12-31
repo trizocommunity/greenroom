@@ -58,18 +58,18 @@ export function GroupsClient({ festivalId }: GroupsClientProps) {
                     className="shrink-0 bg-muted/50 text-muted-foreground font-mono text-xs"
                   >
                     <Users className="h-3 w-3 mr-1" />
-                    {group._count?.participants ?? 0}
+                    {group._count?.students ?? 0}
                   </Badge>
                 </div>
 
                 {/* Team Leaders Section */}
-                {group.participants?.some((p: any) => p.isTeamLeader) && (
+                {group.students?.some((p: any) => p.isTeamLeader) && (
                   <div className="flex flex-col gap-1 mt-2">
                     <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
                       Team Leaders
                     </span>
                     <div className="flex flex-wrap gap-1">
-                      {group.participants
+                      {group.students
                         .filter((p: any) => p.isTeamLeader)
                         .map((p: any) => (
                           <Badge
@@ -116,7 +116,7 @@ export function GroupsClient({ festivalId }: GroupsClientProps) {
                   />
                   <DeleteDialog
                     title="Delete Group"
-                    description="Are you sure you want to delete this group? This will also delete all participants in this group."
+                    description="Are you sure you want to delete this group? This will also delete all students in this group."
                     onDelete={async () => {
                       await deleteGroup(group.id);
                     }}
@@ -141,7 +141,7 @@ export function GroupsClient({ festivalId }: GroupsClientProps) {
             <Users className="mx-auto h-8 w-8 text-muted-foreground/50" />
             <h3 className="mt-4 text-lg font-semibold">No groups yet</h3>
             <p className="mb-4 mt-2 text-sm text-muted-foreground max-w-sm">
-              Create a group to start adding participants.
+              Create a group to start adding students.
             </p>
             <GroupDialog festivalId={festivalId} />
           </div>

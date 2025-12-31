@@ -18,29 +18,29 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useCategories } from "@/hooks/useCategories";
 import { useGroups } from "@/hooks/useGroups";
-import { useParticipants } from "@/hooks/useParticipants";
+import { useStudents } from "@/hooks/useStudents";
 import { cn } from "@/lib/utils";
 
-interface ParticipantDialogProps {
+interface StudentDialogProps {
   festivalId: string;
-  participant?: any;
+  student?: any;
   trigger?: React.ReactNode;
   readOnly?: boolean;
 }
 
-export function ParticipantDialog({
+export function StudentDialog({
   festivalId,
-  participant,
+  student,
   trigger,
   readOnly = false,
-}: ParticipantDialogProps) {
+}: StudentDialogProps) {
   const [open, setOpen] = useState(false);
-  const { createParticipant, isCreating, updateParticipant, isUpdating } =
-    useParticipants(festivalId);
+  const { createStudent, isCreating, updateStudent, isUpdating } =
+    useStudents(festivalId);
   const { groups } = useGroups(festivalId);
   const { categories } = useCategories(festivalId);
 
-  const isEditing = !!participant;
+  const isEditing = !!student;
   const isLoading = isCreating || isUpdating;
 
   const [formData, setFormData] = useState({
@@ -62,15 +62,15 @@ export function ParticipantDialog({
 
   useEffect(() => {
     if (open) {
-      if (participant) {
+      if (student) {
         setFormData({
-          name: participant.name || "",
-          email: participant.email || "",
-          phone: participant.phone || "",
-          groupId: participant.groupId || "",
-          categoryId: participant.categoryId || "",
-          gender: participant.gender || "MALE",
-          registrationNumber: participant.registrationNumber || "",
+          name: student.name || "",
+          email: student.email || "",
+          phone: student.phone || "",
+          groupId: student.groupId || "",
+          categoryId: student.categoryId || "",
+          gender: student.gender || "MALE",
+          registrationNumber: student.registrationNumber || "",
         });
       } else {
         // Create Mode
@@ -87,7 +87,7 @@ export function ParticipantDialog({
         });
       }
     }
-  }, [open, participant, groups]); // Added groups to dep to auto-select single group
+  }, [open, student, groups]); // Added groups to dep to auto-select single group
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,10 +98,10 @@ export function ParticipantDialog({
     }
 
     try {
-      if (isEditing && participant) {
-        await updateParticipant({ id: participant.id, data: formData });
+      if (isEditing && student) {
+        await updateStudent({ id: student.id, data: formData });
       } else {
-        await createParticipant(formData);
+        await createStudent(formData);
       }
       setOpen(false);
     } catch (error) {
@@ -120,7 +120,7 @@ export function ParticipantDialog({
         {trigger || (
           <Button disabled={readOnly}>
             <Plus className="mr-2 h-4 w-4" />
-            Add Participant
+            Add Student
           </Button>
         )}
       </DialogTrigger>
@@ -128,17 +128,17 @@ export function ParticipantDialog({
         <DialogHeader>
           <DialogTitle>
             {readOnly
-              ? "Participant Details"
+              ? "Student Details"
               : isEditing
-                ? "Edit Participant"
-                : "Add Participant"}
+                ? "Edit Student"
+                : "Add Student"}
           </DialogTitle>
           <DialogDescription>
             {readOnly
-              ? "View participant information."
+              ? "View student information."
               : isEditing
-                ? "Update participant details."
-                : "Register a new participant."}
+                ? "Update student details."
+                : "Register a new student."}
           </DialogDescription>
         </DialogHeader>
 

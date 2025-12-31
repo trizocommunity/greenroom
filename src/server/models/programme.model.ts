@@ -57,7 +57,7 @@ export async function findProgrammeWithAssignments(id: string) {
       category: true,
       assignments: {
         include: {
-          participant: {
+          student: {
             select: {
               id: true,
               name: true,

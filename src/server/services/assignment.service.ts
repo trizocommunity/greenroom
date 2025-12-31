@@ -6,7 +6,7 @@ import {
   findAssignmentsByProgramme,
 } from "@/server/models/assignment.model";
 import { findFestivalById } from "@/server/models/festival.model";
-import { findParticipantById } from "@/server/models/participant.model";
+import { findStudentById } from "@/server/models/student.model";
 import { findProgrammeById } from "@/server/models/programme.model";
 
 export const AssignmentService = {
@@ -15,7 +15,7 @@ export const AssignmentService = {
       where: { festivalId },
       include: {
         programme: true,
-        participant: true,
+        student: true,
         group: true,
       },
       orderBy: { assignedAt: "desc" },
@@ -28,7 +28,7 @@ export const AssignmentService = {
 
   async create(
     festivalId: string,
-    data: { programmeId: string; participantId?: string; groupId?: string },
+    data: { programmeId: string; studentId?: string; groupId?: string },
   ) {
     const festival = await findFestivalById(festivalId);
     if (festival?.status === "EXPIRED") throw new Error("Festival expired");
@@ -43,40 +43,38 @@ export const AssignmentService = {
       throw new Error(`Max limit reached (${programme.maxEntries})`);
     }
 
-    if (!data.participantId && !data.groupId) {
-      throw new Error("Either participantId or groupId is required");
+    if (!data.studentId && !data.groupId) {
+      throw new Error("Either studentId or groupId is required");
     }
 
-    if (data.participantId) {
-      // Verify Participant
-      const participant = await findParticipantById(data.participantId);
-      if (!participant || participant.festivalId !== festivalId)
-        throw new Error("Invalid Participant");
+    if (data.studentId) {
+      // Verify Student
+      const student = await findStudentById(data.studentId);
+      if (!student || student.festivalId !== festivalId)
+        throw new Error("Invalid Student");
 
       // 2. Category Match Rule (Type Dependent)
-      // If Category is INDIVIDUAL, Participant MUST match category.
-      // If Category is GENERAL, any participant is allowed (per prompt "List all participants").
+      // If Category is INDIVIDUAL, Student MUST match category.
+      // If Category is GENERAL, any student is allowed (per prompt "List all students").
       const isGeneral = programme.category.type === "GENERAL";
 
-      if (!isGeneral && programme.categoryId !== participant.categoryId) {
-        throw new Error(
-          "Participant category does not match Programme category",
-        );
+      if (!isGeneral && programme.categoryId !== student.categoryId) {
+        throw new Error("Student category does not match Programme category");
       }
 
       // Check Duplicate
       const exists = await checkAssignmentExists(
         data.programmeId,
-        data.participantId,
+        data.studentId,
       );
       if (exists) throw new Error("Already assigned");
 
       return createAssignment({
         festival: { connect: { id: festivalId } },
         programme: { connect: { id: data.programmeId } },
-        participant: { connect: { id: data.participantId } },
-        ...(participant.groupId
-          ? { group: { connect: { id: participant.groupId } } }
+        student: { connect: { id: data.studentId } },
+        ...(student.groupId
+          ? { group: { connect: { id: student.groupId } } }
           : {}),
         assignedAt: new Date(),
       });
@@ -94,7 +92,7 @@ export const AssignmentService = {
   async update(
     id: string,
     festivalId: string,
-    data: { programmeId?: string; participantId?: string; groupId?: string },
+    data: { programmeId?: string; studentId?: string; groupId?: string },
   ) {
     const festival = await findFestivalById(festivalId);
     if (festival?.status === "EXPIRED") throw new Error("Festival expired");
@@ -102,17 +100,15 @@ export const AssignmentService = {
     // Fetch existing assignment to check what changed
     const existing = await prisma.programmeAssignment.findUnique({
       where: { id },
-      include: { participant: true, programme: true },
+      include: { student: true, programme: true },
     });
 
     if (!existing) throw new Error("Assignment not found");
     if (existing.festivalId !== festivalId) throw new Error("Invalid festival");
 
     const newProgrammeId = data.programmeId || existing.programmeId;
-    const newParticipantId =
-      data.participantId !== undefined
-        ? data.participantId
-        : existing.participantId;
+    const newStudentId =
+      data.studentId !== undefined ? data.studentId : existing.studentId;
     const newGroupId =
       data.groupId !== undefined ? data.groupId : existing.groupId;
 
@@ -121,48 +117,37 @@ export const AssignmentService = {
     if (!programme || programme.festivalId !== festivalId)
       throw new Error("Invalid Programme");
 
-    if (!newParticipantId && !newGroupId) {
-      throw new Error("Either participantId or groupId is required");
+    if (!newStudentId && !newGroupId) {
+      throw new Error("Either studentId or groupId is required");
     }
 
-    if (newParticipantId) {
-      // Verify Participant
-      const participant = await findParticipantById(newParticipantId);
-      if (!participant || participant.festivalId !== festivalId)
-        throw new Error("Invalid Participant");
+    if (newStudentId) {
+      // Verify Student
+      const student = await findStudentById(newStudentId);
+      if (!student || student.festivalId !== festivalId)
+        throw new Error("Invalid Student");
 
       // Category Match Rule
-      if (programme.categoryId !== participant.categoryId) {
-        throw new Error(
-          "Participant category does not match Programme category",
-        );
+      if (programme.categoryId !== student.categoryId) {
+        throw new Error("Student category does not match Programme category");
       }
 
-      // Check Duplicate (if programme or participant changed)
+      // Check Duplicate (if programme or student changed)
       if (
         newProgrammeId !== existing.programmeId ||
-        newParticipantId !== existing.participantId
+        newStudentId !== existing.studentId
       ) {
         const exists = await checkAssignmentExists(
           newProgrammeId,
-          newParticipantId,
+          newStudentId,
         );
-        if (exists && exists !== true) {
-          // checkAssignmentExists likely returns boolean. If exists, we need to check if it's NOT the current one (ID check).
-          // But checkAssignmentExists uses findUnique by composite key, not returning ID.
-          // If boolean true, it exists.
-          // Wait, `checkAssignmentExists` returns `!!assignment`.
-          // We need to fetch it to check ID?
-          // Or assumption: unique constraint error will catch it?
-          // Better to be explicit.
-          // Let's modify check to find first.
-          // Acutally `checkAssignmentExists` is a boolean wrapper.
-          // I'll manually find to compare ID.
+        if (exists) {
+          // manually check id to distinguish from self (the check assignment helper checks existence by unique key)
           const conflict = await prisma.programmeAssignment.findUnique({
             where: {
-              programmeId_participantId: {
+              programmeId_studentId: {
                 programmeId: newProgrammeId,
-                participantId: newParticipantId,
+                studentId: newStudentId,
               },
             },
           });
@@ -175,23 +160,18 @@ export const AssignmentService = {
         where: { id },
         data: {
           programmeId: newProgrammeId,
-          participantId: newParticipantId,
-          groupId: null, // If individual, clear group override? Or logic specific?
-          // Usually if participant is present, group is derived from participant OR overridden.
-          // If data.groupId is NOT provided, should we keep existing?
-          // Logic in Create: if participant, use participant.group.
-          // In Update: if changing participant, we should update group link too if not explicit.
-          // This is complex. Let's simplify: Update allows changing target prog/participant.
+          studentId: newStudentId,
+          groupId: null,
         },
       });
     }
 
-    // Group-based assignment (NOT fully supported in UI but Logic exists)
+    // Group-based assignment
     return prisma.programmeAssignment.update({
       where: { id },
       data: {
         programmeId: newProgrammeId,
-        participantId: null,
+        studentId: null,
         groupId: newGroupId,
       },
     });
@@ -202,8 +182,8 @@ export const AssignmentService = {
   },
 
   // Aliases for backwards compatibility
-  async assign(festivalId: string, programmeId: string, participantId: string) {
-    return this.create(festivalId, { programmeId, participantId });
+  async assign(festivalId: string, programmeId: string, studentId: string) {
+    return this.create(festivalId, { programmeId, studentId });
   },
 
   async remove(id: string, festivalId?: string) {

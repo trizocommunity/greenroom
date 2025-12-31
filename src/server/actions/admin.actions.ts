@@ -30,7 +30,7 @@ export async function deleteFestivalAdmin(festivalId: string, reason: string) {
   await db.$transaction(async (tx) => {
     // 1. Delete related child entities (cascade should handle most, but be explicit)
     await tx.programmeAssignment.deleteMany({ where: { festivalId } });
-    await tx.participant.deleteMany({ where: { festivalId } });
+    await tx.student.deleteMany({ where: { festivalId } });
     await tx.programme.deleteMany({ where: { festivalId } });
     await tx.group.deleteMany({ where: { festivalId } });
     await tx.category.deleteMany({ where: { festivalId } });

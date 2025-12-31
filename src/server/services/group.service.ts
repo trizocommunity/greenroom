@@ -66,18 +66,18 @@ export const GroupService = {
     if (!exists || exists.festivalId !== festivalId)
       throw new Error("Group not found");
 
-    // If teamLeaderIds provided, we update participants
+    // If teamLeaderIds provided, we update students
     if (data.teamLeaderIds) {
       await db.$transaction(async (tx) => {
-        // 1. Reset all participants in this group
-        await tx.participant.updateMany({
+        // 1. Reset all students in this group
+        await tx.student.updateMany({
           where: { groupId: id },
           data: { isTeamLeader: false },
         });
 
         // 2. Set new team leaders
         if (data.teamLeaderIds && data.teamLeaderIds.length > 0) {
-          await tx.participant.updateMany({
+          await tx.student.updateMany({
             where: {
               id: { in: data.teamLeaderIds },
               groupId: id, // Ensure they belong to this group
@@ -98,9 +98,9 @@ export const GroupService = {
     if (!exists || exists.festivalId !== festivalId)
       throw new Error("Group not found");
 
-    const partCount = (exists as any)._count?.participants ?? 0;
-    if (partCount > 0) {
-      throw new Error("Cannot delete group with participants");
+    const studentCount = (exists as any)._count?.students ?? 0;
+    if (studentCount > 0) {
+      throw new Error("Cannot delete group with students");
     }
 
     return deleteGroup(id);

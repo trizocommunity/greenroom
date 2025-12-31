@@ -2,19 +2,19 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-// New action for hooks - uses ParticipantService
+// New action for hooks - uses StudentService
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 
 import { findFestivalById } from "@/server/models/festival.model";
-import { ParticipantService } from "@/server/services/participant.service";
+import { StudentService } from "@/server/services/student.service";
 
-export async function getParticipantsAction(festivalId: string) {
-  return ParticipantService.getAll(festivalId);
+export async function getStudentsAction(festivalId: string) {
+  return StudentService.getAll(festivalId);
 }
 
-export async function createParticipantWithServiceAction(
+export async function createStudentWithServiceAction(
   festivalId: string,
   data: {
     name: string;
@@ -32,7 +32,7 @@ export async function createParticipantWithServiceAction(
   const festival = await findFestivalById(festivalId);
   if (!festival) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
 
-  return ParticipantService.create(festivalId, {
+  return StudentService.create(festivalId, {
     name: data.name,
     groupId: data.groupId,
     categoryId: data.categoryId,
@@ -43,18 +43,18 @@ export async function createParticipantWithServiceAction(
   });
 }
 
-// New action for hooks - uses ParticipantService
-export async function deleteParticipantWithServiceAction(
+// New action for hooks - uses StudentService
+export async function deleteStudentWithServiceAction(
   festivalId: string,
   id: string,
 ) {
   const session = await getSession();
   if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
 
-  return ParticipantService.delete(id, festivalId);
+  return StudentService.delete(id, festivalId);
 }
 
-export async function updateParticipantAction(
+export async function updateStudentAction(
   festivalId: string,
   id: string,
   data: {
@@ -70,7 +70,7 @@ export async function updateParticipantAction(
   const session = await getSession();
   if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
 
-  return ParticipantService.update(id, festivalId, {
+  return StudentService.update(id, festivalId, {
     name: data.name,
     groupId: data.groupId,
     categoryId: data.categoryId,
@@ -82,7 +82,7 @@ export async function updateParticipantAction(
 }
 
 // Legacy action using FormData - kept for backwards compatibility
-const createParticipantSchema = z.object({
+const createStudentSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email").optional().or(z.literal("")),
   phone: z.string().optional(),
@@ -92,7 +92,7 @@ const createParticipantSchema = z.object({
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).default("MALE"),
 });
 
-export async function createParticipantAction(formData: FormData) {
+export async function createStudentAction(formData: FormData) {
   const rawData = {
     name: formData.get("name"),
     email: formData.get("email"),
@@ -103,7 +103,7 @@ export async function createParticipantAction(formData: FormData) {
     gender: formData.get("gender"),
   };
 
-  const validated = createParticipantSchema.safeParse(rawData);
+  const validated = createStudentSchema.safeParse(rawData);
 
   if (!validated.success) {
     return { error: validated.error.flatten().fieldErrors };
@@ -129,15 +129,15 @@ export async function createParticipantAction(formData: FormData) {
 
       // Hardcoded limit for now or fetch from structure
       const limit = 1000;
-      const currentCount = festival.participantsCount;
+      const currentCount = festival.studentsCount;
 
       if (currentCount >= limit) {
-        throw new Error("Participant limit reached for this festival.");
+        throw new Error("Student limit reached for this festival.");
       }
 
-      // 2. Create Participant
+      // 2. Create Student
       if (email) {
-        const existing = await tx.participant.findFirst({
+        const existing = await tx.student.findFirst({
           where: { festivalId, email },
         });
 
@@ -147,14 +147,6 @@ export async function createParticipantAction(formData: FormData) {
           );
         }
       }
-
-      // Handle missing group/category more gracefully?
-      // For now, we need them if schema requires, but I made them optional in Zod.
-      // However, Prisma requires them if the model says so.
-      // Validating against Prisma schema:
-      // model Participant { groupId String, categoryId String ... }
-      // So they ARE required in DB.
-      // We must provide them or fetch defaults.
 
       let finalGroupId = groupId;
       let finalCategoryId = categoryId;
@@ -180,7 +172,7 @@ export async function createParticipantAction(formData: FormData) {
           );
       }
 
-      await tx.participant.create({
+      await tx.student.create({
         data: {
           festival: { connect: { id: festivalId } },
           group: { connect: { id: finalGroupId } },
@@ -196,7 +188,7 @@ export async function createParticipantAction(formData: FormData) {
       await tx.festival.update({
         where: { id: festivalId },
         data: {
-          participantsCount: { increment: 1 },
+          studentsCount: { increment: 1 },
         },
       });
 
@@ -209,25 +201,25 @@ export async function createParticipantAction(formData: FormData) {
     } catch (e) {}
     return { success: true };
   } catch (error: any) {
-    console.error("Failed to register participant:", error);
-    return { error: error.message || "Failed to register participant" };
+    console.error("Failed to register student:", error);
+    return { error: error.message || "Failed to register student" };
   }
 }
 
-export async function deleteParticipantAction(
-  participantId: string,
+export async function deleteStudentAction(
+  studentId: string,
   festivalId: string,
 ) {
   try {
     await prisma.$transaction(async (tx) => {
-      await tx.participant.delete({
-        where: { id: participantId },
+      await tx.student.delete({
+        where: { id: studentId },
       });
 
       await tx.festival.update({
         where: { id: festivalId },
         data: {
-          participantsCount: { decrement: 1 },
+          studentsCount: { decrement: 1 },
         },
       });
     });
@@ -237,6 +229,6 @@ export async function deleteParticipantAction(
     } catch {}
     return { success: true };
   } catch (error) {
-    return { error: "Failed to delete participant" };
+    return { error: "Failed to delete student" };
   }
 }

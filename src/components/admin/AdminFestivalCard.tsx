@@ -35,7 +35,7 @@ interface AdminFestivalCardProps {
     status: string;
     createdAt: string | Date;
     owner: { email: string };
-    participantsCount?: number;
+    studentsCount?: number;
     eventsCount?: number;
     judgesCount?: number;
   };
@@ -71,7 +71,7 @@ export function AdminFestivalCard({ festival }: AdminFestivalCardProps) {
               </Badge>
               <div className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest flex items-center gap-1">
                 <Calendar className="w-3 h-3" />
-                {format(festival.createdAt, "MMM yyyy")}
+                {format(new Date(festival.createdAt), "MMM yyyy")}
               </div>
             </div>
             <CardTitle className="text-2xl font-black tracking-tight text-foreground group-hover:text-primary transition-colors duration-300 truncate pr-2">
@@ -139,10 +139,10 @@ export function AdminFestivalCard({ festival }: AdminFestivalCardProps) {
             <div className="p-3 rounded-xl bg-muted/30 border border-border/50 text-center space-y-1">
               <Users className="w-4 h-4 mx-auto text-primary/60" />
               <div className="text-lg font-black leading-none">
-                {festival.participantsCount || 0}
+                {festival.studentsCount || 0}
               </div>
               <div className="text-[9px] uppercase tracking-tighter font-bold text-muted-foreground/60">
-                Users
+                Students
               </div>
             </div>
             <div className="p-3 rounded-xl bg-muted/30 border border-border/50 text-center space-y-1">

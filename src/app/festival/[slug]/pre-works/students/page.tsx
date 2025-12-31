@@ -1,11 +1,10 @@
 import { notFound } from "next/navigation";
-import { ParticipantsClient } from "@/components/festival/pre-works/participants/ParticipantsClient";
+import { StudentsClient } from "@/components/festival/pre-works/students/StudentsClient";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
 import { findFestivalBySlugOrId } from "@/server/models/festival.model";
 import { findMemberByFestivalAndUser } from "@/server/models/member.model";
 
-export default async function ParticipantsPage({
+export default async function StudentsPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
@@ -26,14 +25,14 @@ export default async function ParticipantsPage({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Participants</h2>
+        <h2 className="text-3xl font-bold tracking-tight">Students</h2>
         <p className="text-muted-foreground">
-          Manage participants for{" "}
+          Manage students for{" "}
           <span className="font-semibold text-foreground">{festival.name}</span>
         </p>
       </div>
 
-      <ParticipantsClient festivalId={festival.id} />
+      <StudentsClient festivalId={festival.id} />
     </div>
   );
 }

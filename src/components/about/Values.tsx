@@ -16,7 +16,7 @@ const values = [
   },
   {
     title: "Scale",
-    desc: "From 100 to 100,000 participants.",
+    desc: "From 100 to 100,000 students.",
     icon: BarChart,
   },
 ];

@@ -17,7 +17,7 @@ export function useAssignments(festivalId: string) {
   const createMutation = useMutation({
     mutationFn: async (data: {
       programmeId: string;
-      participantId?: string;
+      studentId?: string;
       groupId?: string;
     }) => {
       const result = await createAssignmentAction(festivalId, data);
