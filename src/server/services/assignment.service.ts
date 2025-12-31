@@ -6,8 +6,8 @@ import {
   findAssignmentsByProgramme,
 } from "@/server/models/assignment.model";
 import { findFestivalById } from "@/server/models/festival.model";
-import { findStudentById } from "@/server/models/student.model";
 import { findProgrammeById } from "@/server/models/programme.model";
+import { findStudentById } from "@/server/models/student.model";
 
 export const AssignmentService = {
   async getAll(festivalId: string) {

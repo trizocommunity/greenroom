@@ -24,8 +24,8 @@ import {
 } from "@/components/ui/select";
 import { useAssignments } from "@/hooks/useAssignments";
 import { useGroups } from "@/hooks/useGroups";
-import { useStudents } from "@/hooks/useStudents";
 import { useProgrammes } from "@/hooks/useProgrammes";
+import { useStudents } from "@/hooks/useStudents";
 
 interface AssignmentDialogProps {
   festivalId: string;

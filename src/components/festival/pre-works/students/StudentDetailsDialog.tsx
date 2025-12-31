@@ -20,8 +20,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAssignments } from "@/hooks/useAssignments";
-import { useStudents } from "@/hooks/useStudents";
 import { useProgrammes } from "@/hooks/useProgrammes";
+import { useStudents } from "@/hooks/useStudents";
 
 interface StudentDetailsDialogProps {
   festivalId: string;
