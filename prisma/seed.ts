@@ -1,6 +1,6 @@
-require("dotenv").config();
-const { Client } = require("pg");
-const bcrypt = require("bcryptjs");
+import 'dotenv/config';
+import { Client } from 'pg';
+import bcrypt from 'bcryptjs';
 
 async function main() {
   console.log("Starting direct SQL seed...");
@@ -35,23 +35,15 @@ async function main() {
         [
           "SUPER_ADMIN",
           hashedPassword,
-          "Trizo Community",
+          "Trizo Creatives",
           "Trizo",
-          null,
+          20,
           email,
         ],
       );
     } else {
       console.log("Creating new Super Admin user...");
-      // We need to generate a CUID-like ID or let the DB handle it if it was default generated,
-      // but Prisma usually generates CUIDs in the client.
-      // Since we are bypassing Prisma, we can generate a random string or use a library.
-      // For simplicity, we'll try to let the database handle it if there's a default,
-      // otherwise, we generate a basic random ID.
-      // Looking at schema: id String @id @default(cuid())
-      // The default(cuid()) is a Prisma-level function, it is NOT a database default usually unless mapped.
-
-      // Let's generate a pseudo-cuid
+      // Generate a pseudo-cuid
       const id =
         "c" +
         Math.random().toString(36).substring(2, 15) +

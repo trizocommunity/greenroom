@@ -34,12 +34,12 @@ export const adminService = {
   },
 };
 
-export type AdminFestival = Prisma.PromiseReturnType<
+export type AdminFestival = Awaited<ReturnType<
   typeof adminService.getFestivalsForAdmin
->[number];
-export type AdminUser = Prisma.PromiseReturnType<
+>>[number];
+export type AdminUser = Awaited<ReturnType<
   typeof adminService.getUsersForAdmin
->[number];
-export type AdminPayment = Prisma.PromiseReturnType<
+>>[number];
+export type AdminPayment = Awaited<ReturnType<
   typeof adminService.getPaymentsForAdmin
->[number];
+>>[number];

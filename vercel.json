@@ -6,6 +6,10 @@
       "description": "PostgreSQL database connection string. For production, use a pooled connection.",
       "required": true
     },
+    "DIRECT_URL": {
+      "description": "Direct database connection for migrations",
+      "required": true
+    },
     "JWT_SECRET": {
       "description": "Secret key for JWT token generation",
       "required": true

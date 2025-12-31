@@ -1,0 +1,6 @@
+{
+  "name": "prisma-proxy",
+  "main": "index.ts",
+  "browser": "browser.ts",
+  "types": "index.ts"
+}
