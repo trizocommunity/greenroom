@@ -17,12 +17,21 @@ const navItems = [
   { name: "Contact", href: "/contact" },
 ];
 
+import { getCurrentUser } from "@/server/actions/user.actions";
+
 interface NavbarProps {
   user?: any;
 }
 
-export default function Navbar({ user }: NavbarProps) {
+export default function Navbar({ user: initialUser }: NavbarProps) {
+  const [user, setUser] = React.useState(initialUser);
   const [isOpen, setIsOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!initialUser) {
+      getCurrentUser().then(setUser);
+    }
+  }, [initialUser]);
   const pathname = usePathname();
   const isHome = pathname === "/";
   const [scrolled, setScrolled] = React.useState(false);
