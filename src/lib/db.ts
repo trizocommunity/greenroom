@@ -1,73 +1,65 @@
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../app/generated/prisma/client";
-import { Pool } from "pg";
+import { PrismaClient } from "../app/generated/prisma/client";  // My custom path
+import { Pool, PoolConfig } from "pg";  // Add PoolConfig type
 
 const globalForPrisma = globalThis as unknown as {
   prisma_v2: PrismaClient | undefined;
   pool: Pool | undefined;
 };
 
-// Validate DATABASE_URL
+// 1. Validate DATABASE_URL
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
-  throw new Error(
-    "DATABASE_URL is not defined. Please set it in your environment variables.",
-  );
+  throw new Error("DATABASE_URL is not defined.");
 }
 
-// Configure connection pool with production-ready settings
-const poolConfig = {
+// 2. Production pool config (KEEP MY SETTINGS)
+const poolConfig: PoolConfig = {
   connectionString,
-  // Connection pool settings
-  max: process.env.NODE_ENV === "production" ? 10 : 5, // Maximum pool size
-  min: 2, // Minimum pool size
-  idleTimeoutMillis: 30000, // Close idle connections after 30s
-  connectionTimeoutMillis: 10000, // Timeout for acquiring connection
-  // Keepalive settings for serverless
+  max: process.env.NODE_ENV === "production" ? 10 : 5,
+  min: 2,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
   keepAlive: true,
   keepAliveInitialDelayMillis: 10000,
 };
 
-// Create pool instance (reuse in development)
+// 3. Singleton pool
 export const pool = globalForPrisma.pool ?? new Pool(poolConfig);
-
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.pool = pool;
 }
 
-// Handle pool errors
+// 4. Pool error handler
 pool.on("error", (err) => {
-  console.error("Unexpected database pool error:", err);
+  console.error("Database pool error:", err);
 });
 
-// Create Prisma adapter
+// 5. Prisma adapter
 const adapter = new PrismaPg(pool);
 
-// Configure Prisma Client with appropriate settings
-export const prisma =
-  globalForPrisma.prisma_v2 ??
-  new PrismaClient({
-    adapter,
-    log:
-      process.env.NODE_ENV === "development"
-        ? ["query", "error", "warn"]
-        : ["error"],
-    errorFormat: process.env.NODE_ENV === "development" ? "pretty" : "minimal",
-  });
+// 6. Singleton Prisma Client
+export const prisma = globalForPrisma.prisma_v2 ?? new PrismaClient({
+  adapter,
+  log: process.env.NODE_ENV === "development" 
+    ? ["query", "error", "warn"] 
+    : ["error"],
+  errorFormat: process.env.NODE_ENV === "development" ? "pretty" : "minimal",
+});
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma_v2 = prisma;
 }
 
-// Graceful shutdown handling
-if (process.env.NODE_ENV === "production") {
+// 7. BUILD-SAFE graceful shutdown (FIXES build spam)
+if (process.env.NODE_ENV === "production" && 
+    process.env.NEXT_PHASE !== "phase-production-build") {
   const shutdown = async () => {
-    console.log("Shutting down database connections...");
+    console.log("🛑 Shutting down database...");
     await prisma.$disconnect();
     await pool.end();
     process.exit(0);
   };
-
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
 }
