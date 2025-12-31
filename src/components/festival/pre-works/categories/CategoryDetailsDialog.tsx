@@ -28,7 +28,7 @@ interface CategoryDetailsDialogProps {
     id: string;
     name: string;
     description?: string | null;
-    type?: "INDIVIDUAL" | "GENERAL";
+    type?: "SINGLE" | "GENERAL";
   };
   trigger?: React.ReactNode;
 }

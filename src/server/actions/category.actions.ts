@@ -8,7 +8,7 @@ export async function getCategoriesAction(festivalId: string) {
 
 export async function createCategoryAction(
   festivalId: string,
-  data: { name: string; description?: string; type?: "INDIVIDUAL" | "GENERAL" },
+  data: { name: string; description?: string; type?: "SINGLE" | "GENERAL" },
 ) {
   return CategoryService.create(festivalId, data);
 }
@@ -20,7 +20,7 @@ export async function deleteCategoryAction(festivalId: string, id: string) {
 export async function updateCategoryAction(
   festivalId: string,
   id: string,
-  data: { name: string; description?: string; type?: "INDIVIDUAL" | "GENERAL" },
+  data: { name: string; description?: string; type?: "SINGLE" | "GENERAL" },
 ) {
   return CategoryService.update(id, festivalId, data);
 }

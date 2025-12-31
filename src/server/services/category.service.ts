@@ -26,7 +26,7 @@ export const CategoryService = {
     data: {
       name: string;
       description?: string;
-      type?: "INDIVIDUAL" | "GENERAL";
+      type?: "SINGLE" | "GENERAL";
     },
   ) {
     // 1. Check Festival Status
@@ -50,7 +50,7 @@ export const CategoryService = {
       festival: { connect: { id: festivalId } },
       name: data.name,
       description: data.description,
-      type: data.type || "INDIVIDUAL",
+      type: data.type || "SINGLE",
     });
   },
 
@@ -60,7 +60,7 @@ export const CategoryService = {
     data: {
       name?: string;
       description?: string;
-      type?: "INDIVIDUAL" | "GENERAL";
+      type?: "SINGLE" | "GENERAL";
     },
   ) {
     // 1. Check Festival Status

@@ -213,7 +213,7 @@ model Category {
   festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
   
   name        String
-  type        CategoryType @default(INDIVIDUAL)
+  type        CategoryType @default(SINGLE)
   description String?
   
   programmes  Programme[]
@@ -228,7 +228,7 @@ model Category {
 }
 
 enum CategoryType {
-  INDIVIDUAL
+  SINGLE
   GENERAL
 }
 

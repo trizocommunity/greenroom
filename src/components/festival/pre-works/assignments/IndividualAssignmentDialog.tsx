@@ -63,8 +63,8 @@ export function IndividualAssignmentDialog({
     }
   }, [open]);
 
-  // 1. Categories: Only INDIVIDUAL
-  const individualCategories = categories.filter((c: any) => c.type === "INDIVIDUAL");
+  // 1. Categories: Only SINGLE
+  const individualCategories = categories.filter((c: any) => c.type === "SINGLE");
 
   // 2. Students: Filter by Category
   const filteredStudents = students.filter((s: any) => {

@@ -57,9 +57,9 @@ export function StudentDialog({
 
   const [autoGenerateId, setAutoGenerateId] = useState(true);
 
-  // Filter categories to only show INDIVIDUAL type for creation/editing
+  // Filter categories to only show SINGLE type for creation/editing
   const individualCategories = categories.filter(
-    (c: any) => c.type === "INDIVIDUAL",
+    (c: any) => c.type === "SINGLE",
   );
 
   useEffect(() => {

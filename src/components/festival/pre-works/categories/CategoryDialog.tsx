@@ -29,7 +29,7 @@ interface CategoryDialogProps {
     id: string;
     name: string;
     description?: string | null;
-    type?: "INDIVIDUAL" | "GENERAL";
+    type?: "SINGLE" | "GENERAL";
   };
   trigger?: React.ReactNode;
   readOnly?: boolean;
@@ -50,11 +50,11 @@ export function CategoryDialog({
   const [formData, setFormData] = useState<{
     name: string;
     description: string;
-    type: "INDIVIDUAL" | "GENERAL";
+    type: "SINGLE" | "GENERAL";
   }>({
     name: "",
     description: "",
-    type: "INDIVIDUAL",
+    type: "SINGLE",
   });
 
   useEffect(() => {
@@ -62,10 +62,10 @@ export function CategoryDialog({
       setFormData({
         name: category.name || "",
         description: category.description || "",
-        type: category.type || "INDIVIDUAL",
+        type: (category.type as "SINGLE" | "GENERAL") || "SINGLE",
       });
     } else if (open && !category) {
-      setFormData({ name: "", description: "", type: "INDIVIDUAL" });
+      setFormData({ name: "", description: "", type: "SINGLE" });
     }
   }, [open, category]);
 
@@ -79,7 +79,7 @@ export function CategoryDialog({
       }
       setOpen(false);
       if (!isEditing)
-        setFormData({ name: "", description: "", type: "INDIVIDUAL" });
+        setFormData({ name: "", description: "", type: "SINGLE" });
     } catch (error) {
       // Handled by hook
     }
@@ -130,7 +130,7 @@ export function CategoryDialog({
             <Label>Type</Label>
             <Select
               value={formData.type}
-              onValueChange={(value: "INDIVIDUAL" | "GENERAL") =>
+              onValueChange={(value: "SINGLE" | "GENERAL") =>
                 setFormData({ ...formData, type: value })
               }
               disabled={readOnly}
@@ -139,7 +139,7 @@ export function CategoryDialog({
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="INDIVIDUAL">Individual</SelectItem>
+                <SelectItem value="SINGLE">Single</SelectItem>
                 <SelectItem value="GENERAL">General</SelectItem>
               </SelectContent>
             </Select>
