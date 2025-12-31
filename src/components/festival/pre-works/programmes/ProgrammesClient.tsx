@@ -21,6 +21,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useCategories } from "@/hooks/useCategories";
 import { useProgrammes } from "@/hooks/useProgrammes";
 import { ProgrammeDialog } from "./ProgrammeDialog";
@@ -77,7 +83,27 @@ export function ProgrammesClient({ festivalId }: ProgrammesClientProps) {
               Manage all festival programmes.
             </p>
           </div>
-          <ProgrammeDialog festivalId={festivalId} />
+          <div className="flex flex-col items-end gap-2">
+            {categories.length === 0 ? (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <Button disabled>Add Programme</Button>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Create a category first.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              <ProgrammeDialog
+                festivalId={festivalId}
+                trigger={<Button>Add Programme</Button>}
+              />
+            )}
+          </div>
         </div>
 
         {/* Filters Bar */}

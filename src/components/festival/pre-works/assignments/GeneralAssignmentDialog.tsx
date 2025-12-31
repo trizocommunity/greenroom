@@ -129,7 +129,7 @@ export function GeneralAssignmentDialog({
          {trigger || (
           <Button variant="secondary">
             <Plus className="mr-2 h-4 w-4" />
-            New General Assignment
+            New General
           </Button>
          )}
       </DialogTrigger>

@@ -124,7 +124,7 @@ export function IndividualAssignmentDialog({
         {trigger || (
           <Button>
             <Plus className="mr-2 h-4 w-4" />
-            New Individual Assignment
+            New Individual
           </Button>
         )}
       </DialogTrigger>

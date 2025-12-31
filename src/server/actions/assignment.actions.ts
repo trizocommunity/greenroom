@@ -1,5 +1,7 @@
 "use server";
 
+import { prisma } from "@/lib/db";
+
 import { getSession } from "@/lib/auth/session";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { findFestivalById } from "@/server/models/festival.model";
@@ -35,6 +37,26 @@ export async function createAssignmentAction(
     if (!isAdmin) {
       throw new Error("Programme assignment deadline has passed.");
     }
+  }
+
+  // Validate Dependencies
+  const [categoryCount, groupCount, programmeCount, studentCount] =
+    await Promise.all([
+      prisma.category.count({ where: { festivalId } }),
+      prisma.group.count({ where: { festivalId } }),
+      prisma.programme.count({ where: { festivalId } }),
+      prisma.student.count({ where: { festivalId } }),
+    ]);
+
+  if (
+    categoryCount === 0 ||
+    groupCount === 0 ||
+    programmeCount === 0 ||
+    studentCount === 0
+  ) {
+    throw new Error(
+      "Create categories, groups, programmes & students first.",
+    );
   }
 
   return AssignmentService.create(festivalId, data);

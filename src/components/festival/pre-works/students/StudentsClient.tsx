@@ -22,6 +22,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useCategories } from "@/hooks/useCategories";
 import { useGroups } from "@/hooks/useGroups";
 import { useStudents } from "@/hooks/useStudents";
@@ -130,7 +136,27 @@ export function StudentsClient({ festivalId }: StudentsClientProps) {
             </Button>
           )}
 
-          <StudentDialog festivalId={festivalId} />
+          <div className="flex flex-col items-end gap-2">
+            {groups.length === 0 || categories.length === 0 ? (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <Button disabled>Add Student</Button>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Create groups & categories first.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              <StudentDialog
+                festivalId={festivalId}
+                trigger={<Button>Add Student</Button>}
+              />
+            )}
+          </div>
         </div>
       </div>
 

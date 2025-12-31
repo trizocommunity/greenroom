@@ -32,6 +32,18 @@ export async function createStudentWithServiceAction(
   const festival = await findFestivalById(festivalId);
   if (!festival) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
 
+  // Validate Dependencies
+  const [groupCount, categoryCount] = await Promise.all([
+    prisma.group.count({ where: { festivalId } }),
+    prisma.category.count({ where: { festivalId } }),
+  ]);
+
+  if (groupCount === 0 || categoryCount === 0) {
+    throw new Error(
+      "Create groups & categories first.",
+    );
+  }
+
   return StudentService.create(festivalId, {
     name: data.name,
     groupId: data.groupId,

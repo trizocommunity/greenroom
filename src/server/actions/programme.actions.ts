@@ -1,5 +1,6 @@
 "use server";
 
+import { prisma } from "@/lib/db";
 import { ProgrammeService } from "@/server/services/programme.service";
 
 export async function getProgrammesAction(festivalId: string) {
@@ -24,6 +25,17 @@ export async function createProgrammeAction(
     maxTeamSize?: number;
   },
 ) {
+  // Validate Dependencies
+  const categoryCount = await prisma.category.count({
+    where: { festivalId },
+  });
+
+  if (categoryCount === 0) {
+    throw new Error(
+      "Create a category first.",
+    );
+  }
+
   return ProgrammeService.create(festivalId, {
     name: data.name,
     categoryId: data.categoryId,

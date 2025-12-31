@@ -27,6 +27,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAssignments } from "@/hooks/useAssignments";
+import { useCategories } from "@/hooks/useCategories";
+import { useGroups } from "@/hooks/useGroups";
+import { useProgrammes } from "@/hooks/useProgrammes";
+import { useStudents } from "@/hooks/useStudents";
 import { GeneralAssignmentDialog } from "./GeneralAssignmentDialog";
 import { IndividualAssignmentDialog } from "./IndividualAssignmentDialog";
 import { AssignmentDialog } from "./AssignmentDialog"; // Keep for Edit/View flow if needed, or inline edit logic
@@ -42,6 +46,16 @@ export function AssignmentsClient({
 }: AssignmentsClientProps) {
   const { assignments, isLoading, deleteAssignment, isDeleting } =
     useAssignments(festivalId);
+  const { categories } = useCategories(festivalId);
+  const { groups } = useGroups(festivalId);
+  const { programmes } = useProgrammes(festivalId);
+  const { students } = useStudents(festivalId);
+
+  const missingDependencies =
+    categories.length === 0 ||
+    groups.length === 0 ||
+    programmes.length === 0 ||
+    students.length === 0;
 
   const isReadOnly =
     programmeAssignmentDeadline &&
@@ -69,27 +83,35 @@ export function AssignmentsClient({
   return (
     <div className="space-y-6">
       {/* Header Actions */}
-      <div className="flex justify-end gap-2">
-        {isReadOnly ? (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex gap-2">
-                  <Button disabled variant="outline">New General</Button>
-                  <Button disabled>New Individual</Button>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Assignment deadline has passed.</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        ) : (
-          <>
-            <GeneralAssignmentDialog festivalId={festivalId} />
-            <IndividualAssignmentDialog festivalId={festivalId} />
-          </>
-        )}
+      <div className="flex flex-col items-end gap-2">
+        <div className="flex justify-end gap-2">
+          {isReadOnly || missingDependencies ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex gap-2">
+                    <Button disabled variant="outline">
+                      New General
+                    </Button>
+                    <Button disabled>New Individual</Button>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>
+                    {missingDependencies
+                      ? "Create categories, groups, programmes & students first."
+                      : "Assignment deadline has passed."}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <>
+              <GeneralAssignmentDialog festivalId={festivalId} />
+              <IndividualAssignmentDialog festivalId={festivalId} />
+            </>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6">
