@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { Eye, Loader2, Pencil } from "lucide-react";
+import { Eye, Loader2, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,7 +27,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAssignments } from "@/hooks/useAssignments";
-import { AssignmentDialog } from "./AssignmentDialog";
+import { GeneralAssignmentDialog } from "./GeneralAssignmentDialog";
+import { IndividualAssignmentDialog } from "./IndividualAssignmentDialog";
+import { AssignmentDialog } from "./AssignmentDialog"; // Keep for Edit/View flow if needed, or inline edit logic
 
 interface AssignmentsClientProps {
   festivalId: string;
@@ -53,15 +55,28 @@ export function AssignmentsClient({
     );
   }
 
+  // Split Assignments
+  const generalAssignments = assignments.filter(
+    (a: any) => a.programme?.category?.type === "GENERAL"
+  );
+  const individualAssignments = assignments.filter(
+    (a: any) => a.programme?.category?.type !== "GENERAL"
+  );
+
+  console.log("generalAssignments", generalAssignments);
+  console.log("individualAssignments", individualAssignments);
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
+      {/* Header Actions */}
+      <div className="flex justify-end gap-2">
         {isReadOnly ? (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div>
-                  <Button disabled>New Assignment</Button>
+                <div className="flex gap-2">
+                  <Button disabled variant="outline">New General</Button>
+                  <Button disabled>New Individual</Button>
                 </div>
               </TooltipTrigger>
               <TooltipContent>
@@ -70,100 +85,148 @@ export function AssignmentsClient({
             </Tooltip>
           </TooltipProvider>
         ) : (
-          <AssignmentDialog festivalId={festivalId} />
+          <>
+            <GeneralAssignmentDialog festivalId={festivalId} />
+            <IndividualAssignmentDialog festivalId={festivalId} />
+          </>
         )}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Assignments</CardTitle>
-          <CardDescription>
-            List of students assigned to programmes.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Student</TableHead>
-                <TableHead>Programme</TableHead>
-                <TableHead>Group</TableHead>
-                <TableHead>Assigned At</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {assignments.map((assignment: any) => (
-                <TableRow key={assignment.id}>
-                  <TableCell className="font-medium">
-                    {assignment.student?.name || "Group Entry"}
-                  </TableCell>
-                  <TableCell>{assignment.programme?.name}</TableCell>
-                  <TableCell>
-                    {assignment.group?.name || assignment.student?.group?.name}
-                  </TableCell>
-                  <TableCell>
-                    {format(new Date(assignment.assignedAt), "MMM d, yyyy")}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <AssignmentDialog
-                        festivalId={festivalId}
-                        assignment={assignment}
-                        readOnly
-                        trigger={
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        }
-                      />
-                      {!isReadOnly && (
-                        <>
-                          <AssignmentDialog
-                            festivalId={festivalId}
-                            assignment={assignment}
-                            trigger={
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            }
-                          />
+      <div className="grid grid-cols-1 gap-6">
+        {/* TABLE 1: Individual Programmes */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Individual Programmes</CardTitle>
+            <CardDescription>
+              Performance and competition assignments.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Student</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Programme</TableHead>
+                  <TableHead>Group</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {individualAssignments.map((assignment: any) => (
+                  <TableRow key={assignment.id}>
+                    <TableCell className="font-medium">
+                      {assignment.student?.name}
+                    </TableCell>
+                    <TableCell>
+                       <Badge variant="outline">{assignment.programme?.category?.name || "-"}</Badge>
+                    </TableCell>
+                    <TableCell>{assignment.programme?.name}</TableCell>
+                    <TableCell>
+                      {assignment.group?.name || assignment.student?.group?.name}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                         {/* View/Edit reusing old dialog for now or custom implementation */}
+                         {/* Implementing simpler inline delete/view for clarity as requested split implies creating new flows */}
+                        {!isReadOnly && (
                           <DeleteDialog
-                            title="Delete Assignment"
-                            description="Are you sure you want to remove this assignment?"
+                            title="Remove Assignment"
+                            description="Are you sure?"
                             onDelete={async () => {
                               await deleteAssignment(assignment.id);
                             }}
                             isDeleting={isDeleting}
+                            trigger={
+                               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                  <Trash2 className="h-4 w-4" />
+                               </Button>
+                            }
                           />
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {assignments.length === 0 && (
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {individualAssignments.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      No individual assignments found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        {/* TABLE 2: General Programmes */}
+        <Card>
+          <CardHeader>
+            <CardTitle>General Programmes</CardTitle>
+            <CardDescription>
+              Assignments for common events (Rally, etc).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    No assignments found.
-                  </TableCell>
+                  <TableHead>Student</TableHead>
+                  <TableHead>Programme</TableHead>
+                  <TableHead>Group</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {generalAssignments.map((assignment: any) => (
+                  <TableRow key={assignment.id}>
+                    <TableCell className="font-medium">
+                      {assignment.student?.name}
+                    </TableCell>
+                    <TableCell>{assignment.programme?.name}</TableCell>
+                    <TableCell>
+                      {assignment.group?.name || assignment.student?.group?.name}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        {!isReadOnly && (
+                          <DeleteDialog
+                            title="Remove Assignment"
+                            description="Are you sure?"
+                            onDelete={async () => {
+                              await deleteAssignment(assignment.id);
+                            }}
+                            isDeleting={isDeleting}
+                            trigger={
+                               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                  <Trash2 className="h-4 w-4" />
+                               </Button>
+                            }
+                          />
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {generalAssignments.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={4}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      No general assignments found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
 
       {isReadOnly && (
         <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800 dark:border-yellow-900/50 dark:bg-yellow-900/20 dark:text-yellow-200">

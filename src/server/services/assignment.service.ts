@@ -17,6 +17,7 @@ export const AssignmentService = {
         programme: true,
         student: true,
         group: true,
+        category: true,
       },
       orderBy: { assignedAt: "desc" },
     });

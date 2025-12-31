@@ -47,6 +47,7 @@ export async function updateProgrammeAction(
     type?: string;
     stageType?: string;
     maxEntries?: number;
+    maxTeamSize?: number;
   },
 ) {
   // Map data to service format if needed, or if service accepts partials
@@ -60,5 +61,6 @@ export async function updateProgrammeAction(
       ? (data.stageType as "STAGE" | "NON_STAGE") || "STAGE"
       : undefined,
     maxEntries: data.maxEntries,
+    maxTeamSize: data.maxTeamSize,
   });
 }

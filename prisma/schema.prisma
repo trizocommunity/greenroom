@@ -8,7 +8,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // -----------------------------------------------------------------------------
@@ -220,6 +219,8 @@ model Category {
   programmes  Programme[]
   students    Student[]
 
+  assignments ProgrammeAssignment[] 
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -285,6 +286,9 @@ model ProgrammeAssignment {
 
   groupId       String?
   group         Group? @relation(fields: [groupId], references: [id]) 
+
+  categoryId    String?
+  category      Category? @relation(fields: [categoryId], references: [id]) 
 
   assignedAt    DateTime @default(now())
 
