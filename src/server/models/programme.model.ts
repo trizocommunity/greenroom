@@ -39,7 +39,7 @@ export async function findProgrammesByFestival(
 
   return prisma.programme.findMany({
     where,
-    orderBy: { name: "asc" },
+    orderBy: { createdAt: "desc" },
     include: { category: true, _count: { select: { assignments: true } } },
   });
 }
