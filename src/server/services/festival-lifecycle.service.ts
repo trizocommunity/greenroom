@@ -32,7 +32,6 @@ export const FestivalLifecycleService = {
       });
 
       if (result.count > 0) {
-        console.log(`[Lifecycle] Deleted ${result.count} expired festivals.`);
       }
 
       return result.count;

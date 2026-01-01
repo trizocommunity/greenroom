@@ -128,7 +128,7 @@ export function CreateFestivalModal({
         onOpenChange(false);
         // Redirect to festival dashboard
         if (result.data?.slug) {
-          router.push(`/festival/${result.data.slug}`);
+          router.push(`/dashboard/${result.data.slug}`);
         }
       } else {
         const errorResult = result as any;

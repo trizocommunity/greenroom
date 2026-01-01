@@ -34,10 +34,6 @@ export async function POST(request: Request) {
 
     // Mock Email sending
     const resetUrl = `http://localhost:3000/reset-password?token=${resetToken}`;
-    console.log("------------------------------------------------");
-    console.log(`Password Reset Requested for ${email}`);
-    console.log(`Reset URL: ${resetUrl}`);
-    console.log("------------------------------------------------");
 
     return NextResponse.json({ success: true });
   } catch (error) {

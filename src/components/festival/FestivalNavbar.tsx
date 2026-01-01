@@ -121,7 +121,7 @@ export function FestivalNavbar({
         {/* Right Side - Auth */}
         <div className="hidden md:flex items-center gap-3">
           {isLoggedIn ? (
-            <Link href={`/festival/${festival.slug}`}>
+            <Link href={`/dashboard/${festival.slug}`}>
               <Button
                 size="sm"
                 className="gap-2"
@@ -194,7 +194,7 @@ export function FestivalNavbar({
                     style={{ backgroundColor: festival.accentColor }}
                     onClick={() => {
                       setIsOpen(false);
-                      window.location.href = `/festival/${festival.slug}/dashboard`;
+                      window.location.href = `/dashboard/${festival.slug}`;
                     }}
                   >
                     <LayoutDashboard size={16} />

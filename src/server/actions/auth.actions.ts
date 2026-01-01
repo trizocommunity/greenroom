@@ -115,10 +115,6 @@ export async function forgotPasswordAction(
     // Mock Email sending
     // In a real app, sendEmail(user.email, resetUrl)
     const resetUrl = `http://localhost:3000/reset-password?token=${resetToken}`;
-    console.log("------------------------------------------------");
-    console.log(`Password Reset Requested for ${email}`);
-    console.log(`Reset URL: ${resetUrl}`);
-    console.log("------------------------------------------------");
 
     return { success: true, data: null };
   } catch (error) {

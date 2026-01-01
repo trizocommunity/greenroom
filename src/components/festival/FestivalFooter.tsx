@@ -47,25 +47,25 @@ export function FestivalFooter({ festival }: FestivalFooterProps) {
             </h4>
             <nav className="flex flex-col gap-2">
               <Link
-                href={`/festival/${festival.slug}/about`}
+                href={`/${festival.slug}/about`}
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 About
               </Link>
               <Link
-                href={`/festival/${festival.slug}/sessions`}
+                href={`/${festival.slug}/sessions`}
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 Sessions
               </Link>
               <Link
-                href={`/festival/${festival.slug}/results`}
+                href={`/${festival.slug}/results`}
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 Results
               </Link>
               <Link
-                href={`/festival/${festival.slug}/gallery`}
+                href={`/${festival.slug}/gallery`}
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 Gallery

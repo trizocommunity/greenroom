@@ -25,10 +25,6 @@ export async function initiateFestivalPayment(
     if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
     const userId = session.userId;
 
-    console.log(
-      `[Payment] Initiating festival payment for user ${userId}, tier: ${tier}`,
-    );
-
     const config = TIER_CONFIG[tier];
     if (!config) throw new AppError("Invalid or unavailable tier selected.");
 

@@ -94,7 +94,7 @@ export function FestivalHero({ festival }: FestivalHeroProps) {
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link href={`/festival/${festival.slug}/results`}>
+          <Link href={`/${festival.slug}/results`}>
             <Button
               size="lg"
               className="min-w-[160px]"
@@ -103,7 +103,7 @@ export function FestivalHero({ festival }: FestivalHeroProps) {
               View Results
             </Button>
           </Link>
-          <Link href={`/festival/${festival.slug}/sessions`}>
+          <Link href={`/${festival.slug}/sessions`}>
             <Button variant="outline" size="lg" className="min-w-[160px]">
               Explore Sessions
             </Button>

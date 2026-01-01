@@ -99,7 +99,7 @@ export function AdminFestivalCard({ festival }: AdminFestivalCardProps) {
               </DropdownMenuLabel>
               <DropdownMenuItem asChild>
                 <Link
-                  href={`/festival/${festival.slug}`}
+                  href={`/dashboard/${festival.slug}`}
                   className="rounded-md cursor-pointer"
                 >
                   <LayoutDashboard className="mr-2 h-4 w-4" />

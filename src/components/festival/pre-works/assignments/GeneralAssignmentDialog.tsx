@@ -39,7 +39,8 @@ export function GeneralAssignmentDialog({
   trigger,
 }: GeneralAssignmentDialogProps) {
   const [open, setOpen] = useState(false);
-  const { createAssignment, isCreating, assignments } = useAssignments(festivalId);
+  const { createAssignment, isCreating, assignments } =
+    useAssignments(festivalId);
   const { students } = useStudents(festivalId);
   const { programmes } = useProgrammes(festivalId);
   const { groups } = useGroups(festivalId);
@@ -59,10 +60,14 @@ export function GeneralAssignmentDialog({
   }, [open]);
 
   // 1. Programmes: Only GENERAL
-  const generalProgrammes = programmes.filter((p: any) => p.category?.type === "GENERAL");
+  const generalProgrammes = programmes.filter(
+    (p: any) => p.category?.type === "GENERAL",
+  );
 
   // Selected Programme Details
-  const selectedProgramme = programmes.find((p: any) => p.id === formData.programmeId);
+  const selectedProgramme = programmes.find(
+    (p: any) => p.id === formData.programmeId,
+  );
 
   // 2. Filter Students by Group & Availability
   const availableStudents = students.filter((s: any) => {
@@ -73,7 +78,7 @@ export function GeneralAssignmentDialog({
     if (formData.programmeId) {
       const isAssigned = assignments.some(
         (a: any) =>
-          a.programmeId === formData.programmeId && a.studentId === s.id
+          a.programmeId === formData.programmeId && a.studentId === s.id,
       );
       if (isAssigned) return false;
     }
@@ -85,9 +90,10 @@ export function GeneralAssignmentDialog({
   // TODO: Check if per-group limit logic is more complex, but generally this refers to 'max entries per group'.
   // We need to count how many students from THIS group are already assigned to this programme.
   const currentlyAssignedFromGroup = assignments.filter(
-    (a: any) => 
-      a.programmeId === formData.programmeId && 
-      (a.student?.groupId === formData.groupId || a.group?.id === formData.groupId)
+    (a: any) =>
+      a.programmeId === formData.programmeId &&
+      (a.student?.groupId === formData.groupId ||
+        a.group?.id === formData.groupId),
   ).length;
 
   const remainingSlots = Math.max(0, maxLimit - currentlyAssignedFromGroup);
@@ -113,10 +119,12 @@ export function GeneralAssignmentDialog({
           createAssignment({
             programmeId: formData.programmeId,
             studentId: studentId,
-          })
-        )
+          }),
+        ),
       );
-      toast.success(`Successfully assigned ${selectedStudentIds.length} students`);
+      toast.success(
+        `Successfully assigned ${selectedStudentIds.length} students`,
+      );
       setOpen(false);
     } catch (error) {
       // Hook handles
@@ -126,12 +134,12 @@ export function GeneralAssignmentDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-         {trigger || (
+        {trigger || (
           <Button variant="secondary">
             <Plus className="mr-2 h-4 w-4" />
             New General
           </Button>
-         )}
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-xl">
         <DialogHeader>
@@ -195,26 +203,31 @@ export function GeneralAssignmentDialog({
               <div className="flex items-center justify-between">
                 <Label>Select Students</Label>
                 <Badge variant={remainingSlots === 0 ? "secondary" : "outline"}>
-                   {selectedStudentIds.length} / {remainingSlots} slots
+                  {selectedStudentIds.length} / {remainingSlots} slots
                 </Badge>
               </div>
-              
+
               <ScrollArea className="h-[200px] rounded-md border p-2">
                 <div className="space-y-1">
                   {availableStudents.map((s: any) => {
                     const isSelected = selectedStudentIds.includes(s.id);
                     return (
-                      <div
+                      <button
                         key={s.id}
+                        type="button"
                         className={cn(
-                          "flex items-center justify-between p-2 rounded-sm cursor-pointer hover:bg-muted transition-colors border",
-                          isSelected ? "bg-primary/5 border-primary" : "border-transparent"
+                          "w-full flex items-center justify-between p-2 rounded-sm cursor-pointer hover:bg-muted transition-colors border text-left",
+                          isSelected
+                            ? "bg-primary/5 border-primary"
+                            : "border-transparent",
                         )}
                         onClick={() => toggleStudent(s.id)}
                       >
-                         <span className="text-sm font-medium">{s.name}</span>
-                         {isSelected && <Check className="h-4 w-4 text-primary" />}
-                      </div>
+                        <span className="text-sm font-medium">{s.name}</span>
+                        {isSelected && (
+                          <Check className="h-4 w-4 text-primary" />
+                        )}
+                      </button>
                     );
                   })}
                   {availableStudents.length === 0 && (
@@ -225,7 +238,9 @@ export function GeneralAssignmentDialog({
                 </div>
               </ScrollArea>
               {remainingSlots === 0 && (
-                 <p className="text-xs text-destructive">Limit reached for this group.</p>
+                <p className="text-xs text-destructive">
+                  Limit reached for this group.
+                </p>
               )}
             </div>
           )}
@@ -243,7 +258,10 @@ export function GeneralAssignmentDialog({
               disabled={isCreating || selectedStudentIds.length === 0}
             >
               {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Assign {selectedStudentIds.length > 0 ? `(${selectedStudentIds.length})` : ""}
+              Assign{" "}
+              {selectedStudentIds.length > 0
+                ? `(${selectedStudentIds.length})`
+                : ""}
             </Button>
           </DialogFooter>
         </form>

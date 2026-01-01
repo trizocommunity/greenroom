@@ -39,7 +39,7 @@ export function FestivalDashboardSidebar({
   const pathname = usePathname();
   // const params = useParams(); // Removed unused
 
-  const basePath = `/festival/${festival.slug}`;
+  const basePath = `/dashboard/${festival.slug}`;
   const dashboardPath = basePath;
 
   const menuGroups = getFestivalDashboardSidebarConfig(dashboardPath, role);

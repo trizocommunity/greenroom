@@ -323,7 +323,7 @@ export function BulkUploadFlow<T>({
                   </h3>
                   <button
                     type="button"
-                    className="w-full aspect-[4/3] max-h-[300px] border-2 border-dashed border-primary/20 rounded-3xl bg-primary/5 hover:bg-primary/10 transition-all cursor-pointer group flex flex-col items-center justify-center shadow-inner"
+                    className="w-full aspect-4/3 max-h-[300px] border-2 border-dashed border-primary/20 rounded-3xl bg-primary/5 hover:bg-primary/10 transition-all cursor-pointer group flex flex-col items-center justify-center shadow-inner"
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <div className="bg-background text-primary w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-md group-hover:scale-110 group-hover:shadow-lg transition-all duration-300">
@@ -412,7 +412,7 @@ export function BulkUploadFlow<T>({
                           .sort((a, b) =>
                             a.isValid === b.isValid ? 0 : a.isValid ? -1 : 1,
                           )
-                          .map((row, idx) => (
+                          .map((row) => (
                             <TableRow
                               key={row.id}
                               className={cn(
