@@ -1,8 +1,6 @@
-import { ExternalLink, User } from "lucide-react";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { TIER_CONFIG } from "@/config/pricing";
-import { LogoutButton } from "@/components/auth/LogoutButton";
+import { DashboardRightSidebar } from "@/components/festival/dashboard/DashboardRightSidebar";
 import { FestivalDashboardSidebar } from "@/components/festival/dashboard/FestivalDashboardSidebar";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
 import {
@@ -13,15 +11,17 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Button } from "@/components/ui/button";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { getSession } from "@/lib/auth/session";
+import { getCurrentUser } from "@/lib/auth/current-user";
 import { prisma } from "@/lib/db";
 import { findFestivalBySlugOrId } from "@/server/models/festival.model";
+import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 
 export default async function FestivalDashboardLayout({
   children,
@@ -72,10 +72,13 @@ export default async function FestivalDashboardLayout({
     redirect("/profile?error=expired");
   }
 
+  // ... (previous code)
+
   // 4. Prepare Data
   const tierLimits = TIER_CONFIG[festival.tier || "STANDARD"].limits;
 
   const festivalData = {
+    // ... (festival data construction)
     id: festival.id,
     name: festival.name,
     slug: festival.slug,
@@ -101,8 +104,7 @@ export default async function FestivalDashboardLayout({
     sessionsCount: 0,
     limits: {
       maxStudents: tierLimits.students,
-      maxEvents: tierLimits.events,
-      maxJudges: tierLimits.judges,
+      maxProgrammes: tierLimits.programmes,
       maxSessions: tierLimits.sessions,
       maxStorageMB: tierLimits.storageMB,
     },
@@ -111,6 +113,15 @@ export default async function FestivalDashboardLayout({
   };
 
   const userRole = role;
+
+  // 4b. Fetch User Profile
+  const currentUser = await getCurrentUser();
+
+  const userData = {
+    name: currentUser?.displayName || currentUser?.fullName || "User",
+    email: currentUser?.email || "",
+    image: null, // Add image if available in session/db lookup
+  };
 
   return (
     <SidebarProvider>
@@ -137,40 +148,11 @@ export default async function FestivalDashboardLayout({
           </div>
 
           {/* Header Actions */}
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="hidden md:flex"
-              asChild
-              title="View Public Page"
-            >
-              <Link href={`/${slug}`} target="_blank">
-                <ExternalLink className="h-4 w-4" />
-                <span className="sr-only">View Public Page</span>
-              </Link>
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              className="hidden md:flex"
-              asChild
-              title="My Profile"
-            >
-              <Link href="/profile">
-                <User className="h-4 w-4" />
-                <span className="sr-only">My Profile</span>
-              </Link>
-            </Button>
-
-            <LogoutButton
-              variant="ghost"
-              size="icon"
-              showText={false}
-              showIcon={true}
-              className="hidden md:flex"
-            />
+          <div className="flex items-center gap-3">
+            <Link href={`/${slug}`} target="_blank">
+              <ExternalLink className="h-4 w-4" />
+            </Link>
+            <SidebarTrigger side="right" className="h-8 w-8" />
           </div>
         </header>
 
@@ -180,6 +162,30 @@ export default async function FestivalDashboardLayout({
           </FestivalProvider>
         </main>
       </SidebarInset>
+
+      <DashboardRightSidebar
+        user={userData}
+        festivalSlug={slug}
+        festivalName={festival.name}
+        festivalStatus={festival.status}
+        daysRemaining={
+          festival.expiresAt
+            ? Math.ceil(
+                (new Date(festival.expiresAt).getTime() - Date.now()) /
+                  (1000 * 60 * 60 * 24),
+              )
+            : null
+        }
+        userRole={userRole}
+        usage={{
+          studentsCount: festival._count?.students || 0,
+          programmesCount: festival._count?.programmes || 0,
+          sessionsCount: 0,
+          storageUsedMB: 0, // Placeholder
+        }}
+        limits={festivalData.limits}
+        tierLabel={festival.tier || "Standard"}
+      />
     </SidebarProvider>
   );
 }

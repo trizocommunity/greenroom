@@ -18,7 +18,6 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { getFestivalDashboardSidebarConfig } from "@/config/sidebar.config";
-import { FestivalRoleBadge } from "../FestivalRoleBadge";
 
 interface FestivalDashboardSidebarProps {
   festival: {

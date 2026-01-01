@@ -7,9 +7,8 @@ export const TIER_CONFIG: Record<Tier, any> = {
     durationDays: 30,
     limits: {
       students: 150,
-      events: 100,
+      programmes: 100,
       sessions: 15,
-      judges: 10,
       storageMB: 512, // 0.5 GB
     },
   },
@@ -19,9 +18,8 @@ export const TIER_CONFIG: Record<Tier, any> = {
     durationDays: 90,
     limits: {
       students: 500,
-      events: 250,
+      programmes: 250,
       sessions: 50,
-      judges: 50,
       storageMB: 2048, // 2 GB
     },
   },
@@ -31,9 +29,8 @@ export const TIER_CONFIG: Record<Tier, any> = {
     durationDays: 180,
     limits: {
       students: 1000,
-      events: 500,
+      programmes: 500,
       sessions: 100,
-      judges: 150,
       storageMB: 10240, // 10 GB
     },
   },
@@ -46,6 +43,7 @@ export type PricingTier = {
   description: string;
   features: string[];
   isPopular?: boolean;
+  isCustom?: boolean; // Added Custom Support
 };
 
 export const PRICING_TIERS: PricingTier[] = [
@@ -56,7 +54,7 @@ export const PRICING_TIERS: PricingTier[] = [
     description: "Perfect for small local festivals and beginners.",
     features: [
       `${TIER_CONFIG.BASIC.limits.students} Students`,
-      `${TIER_CONFIG.BASIC.limits.events} Programmes`,
+      `${TIER_CONFIG.BASIC.limits.programmes} Programmes`,
       `${TIER_CONFIG.BASIC.limits.sessions} Sessions`,
       "0.5 GB Storage",
       `${TIER_CONFIG.BASIC.durationDays} Days Active Duration`,
@@ -71,7 +69,7 @@ export const PRICING_TIERS: PricingTier[] = [
     description: "The best value for most growing festivals.",
     features: [
       `${TIER_CONFIG.STANDARD.limits.students} Students`,
-      `${TIER_CONFIG.STANDARD.limits.events} Programmes`,
+      `${TIER_CONFIG.STANDARD.limits.programmes} Programmes`,
       `${TIER_CONFIG.STANDARD.limits.sessions} Sessions`,
       "2 GB Storage",
       `${TIER_CONFIG.STANDARD.durationDays} Days Active Duration`,
@@ -86,7 +84,7 @@ export const PRICING_TIERS: PricingTier[] = [
     description: "For established festivals needing more capacity.",
     features: [
       `${TIER_CONFIG.PRO.limits.students} Students`,
-      `${TIER_CONFIG.PRO.limits.events} Programmes`,
+      `${TIER_CONFIG.PRO.limits.programmes} Programmes`,
       `${TIER_CONFIG.PRO.limits.sessions} Sessions`,
       "10 GB Storage",
       `${TIER_CONFIG.PRO.durationDays} Days Active Duration`,

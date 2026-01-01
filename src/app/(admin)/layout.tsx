@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { AdminHeader } from "@/components/dashboard/AdminHeader";
-import { AppSidebar } from "@/components/dashboard/AppSidebar";
+import { AdminHeader } from "@/components/admin/AdminHeader";
+import { AppSidebar } from "@/components/admin/AppSidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getSession } from "@/lib/auth/session";
 

@@ -26,7 +26,7 @@ export type FestivalPublicData = {
   sessionsCount?: number;
   limits?: {
     maxStudents: number;
-    maxEvents?: number;
+    maxProgrammes?: number;
     maxJudges?: number;
     maxSessions?: number;
     maxStorageMB?: number;

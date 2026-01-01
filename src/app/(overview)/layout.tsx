@@ -1,20 +1,13 @@
 import { redirect } from "next/navigation";
 import DashboardNavbar from "@/components/layout/DashboardNavbar";
-import { getSession } from "@/lib/auth/session";
-import { findUserById } from "@/server/models/user.model";
+import { getCurrentUser } from "@/lib/auth/current-user";
 
 export default async function DashboardLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await getSession();
-
-  if (!session?.userId) {
-    redirect("/login");
-  }
-
-  const user = await findUserById(session.userId);
+  const user = await getCurrentUser();
 
   if (!user) {
     redirect("/login");

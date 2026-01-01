@@ -8,6 +8,7 @@ interface StatusStripProps {
   userRole: string;
   orientation?: "vertical" | "horizontal";
   className?: string;
+  compact?: boolean;
 }
 
 export function StatusStrip({
@@ -16,11 +17,13 @@ export function StatusStrip({
   userRole,
   orientation = "horizontal",
   className,
+  compact = false,
 }: StatusStripProps) {
   return (
     <div
       className={cn(
-        "flex gap-4 p-4 rounded-xl bg-card border shadow-xs",
+        "flex gap-4 rounded-xl bg-card border shadow-xs",
+        compact ? "p-3 gap-2" : "p-4",
         orientation === "vertical" ? "flex-col items-start" : "items-center",
         className,
       )}
