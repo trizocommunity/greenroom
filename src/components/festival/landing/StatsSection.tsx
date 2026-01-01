@@ -10,13 +10,13 @@ interface StatsSectionProps {
 export function StatsSection({ accentColor }: StatsSectionProps) {
   const stats = [
     { label: "Programs", value: "45+", icon: Trophy },
-    { label: "Participants", value: "1,200", icon: Users },
+    { label: "Students", value: "1,200", icon: Users },
     { label: "Days", value: "3", icon: Calendar },
     { label: "Venues", value: "8", icon: MapPin },
   ];
 
   return (
-    <section className="py-20 border-y border-border/40 bg-muted/20">
+    <section className="py-20 border-y border-white/5 bg-white/5 backdrop-blur-sm">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           {stats.map((stat, idx) => (
@@ -28,7 +28,7 @@ export function StatsSection({ accentColor }: StatsSectionProps) {
               viewport={{ once: true }}
               className="flex flex-col items-center justify-center gap-2 group cursor-default"
             >
-              <div className="p-3 rounded-2xl bg-background border border-border/50 shadow-sm mb-2 group-hover:scale-110 transition-transform duration-300">
+              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 shadow-sm mb-2 group-hover:scale-110 transition-transform duration-300">
                 <stat.icon className="w-6 h-6" style={{ color: accentColor }} />
               </div>
               <h3 className="text-3xl md:text-4xl font-bold tracking-tight">

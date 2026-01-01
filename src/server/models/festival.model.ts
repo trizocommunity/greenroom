@@ -1,6 +1,8 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
+// Phase 1 Festival Model
+
 export async function findAllFestivals(
   where: Prisma.FestivalWhereInput = {},
   orderBy: Prisma.FestivalOrderByWithRelationInput = { createdAt: "desc" },
@@ -8,18 +10,21 @@ export async function findAllFestivals(
   return prisma.festival.findMany({
     where,
     orderBy,
+    include: { owner: true },
   });
 }
 
 export async function findFestivalById(id: string) {
   return prisma.festival.findUnique({
     where: { id },
+    include: { owner: true },
   });
 }
 
 export async function findFestivalBySlug(slug: string) {
-  return prisma.festival.findFirst({
+  return prisma.festival.findUnique({
     where: { slug },
+    include: { owner: true },
   });
 }
 
@@ -45,72 +50,25 @@ export async function deleteFestival(id: string) {
   });
 }
 
-export async function isFestivalSlugTaken(slug: string, excludeId?: string) {
-  const where: Prisma.FestivalWhereInput = { slug };
-  if (excludeId) {
-    where.NOT = { id: excludeId };
-  }
-  const existing = await prisma.festival.findFirst({ where });
-  return !!existing;
-}
-
-export async function findFestivalBySlugWithCounts(slug: string) {
-  return prisma.festival.findFirst({
-    where: { slug },
-    include: {
-      _count: {
-        select: {
-          programs: true,
-          teams: true,
-        },
-      },
-    },
+// Helper to check if a user already owns a festival
+export async function findFestivalByOwnerId(ownerId: string) {
+  return prisma.festival.findUnique({
+    where: { ownerId },
+    include: { owner: true },
   });
 }
 
-export async function findFestivalBySlugWithGallery(slug: string) {
-  return prisma.festival.findFirst({
-    where: { slug },
-    include: {
-      galleryImages: {
-        orderBy: { createdAt: "desc" },
-      },
-    },
+export async function findFestivalBySlugOrId(slugOrId: string) {
+  // Try slug first as it is more common in URLs now
+  const bySlug = await prisma.festival.findUnique({
+    where: { slug: slugOrId },
+    include: { owner: true },
   });
-}
+  if (bySlug) return bySlug;
 
-export async function findFestivalBySlugWithNews(slug: string) {
-  return prisma.festival.findFirst({
-    where: { slug },
-    include: {
-      newsItems: {
-        orderBy: { publishedAt: "desc" },
-      },
-    },
-  });
-}
-
-export async function findFestivalBySlugWithResults(slug: string) {
-  return prisma.festival.findFirst({
-    where: { slug },
-    include: {
-      programs: {
-        orderBy: { name: "asc" },
-      },
-      teams: {
-        orderBy: { rank: "asc" },
-      },
-    },
-  });
-}
-
-export async function findFestivalBySlugWithPrograms(slug: string) {
-  return prisma.festival.findFirst({
-    where: { slug },
-    include: {
-      programs: {
-        orderBy: { name: "asc" },
-      },
-    },
+  // Fallback to ID
+  return prisma.festival.findUnique({
+    where: { id: slugOrId },
+    include: { owner: true },
   });
 }

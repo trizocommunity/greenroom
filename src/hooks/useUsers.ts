@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { queryKeys } from "@/lib/query-keys";
 import { userApi } from "@/services/user.api";
 
 export type User = {
@@ -13,8 +14,9 @@ export type User = {
 
 export const useUsers = () => {
   return useQuery({
-    queryKey: ["users"],
+    queryKey: queryKeys.users.all(),
     queryFn: userApi.getAll,
+    staleTime: 1000 * 60 * 2, // 2 minutes
   });
 };
 
@@ -26,7 +28,7 @@ export const useUpdateUser = () => {
       userApi.update(id, data),
     onSuccess: () => {
       toast.success("User updated successfully");
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all() });
     },
     onError: (error) => {
       toast.error(error.message);
@@ -41,7 +43,7 @@ export const useDeleteUser = () => {
     mutationFn: userApi.delete,
     onSuccess: () => {
       toast.success("User deleted successfully");
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all() });
     },
     onError: (error) => {
       toast.error(error.message);

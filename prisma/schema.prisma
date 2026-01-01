@@ -2,159 +2,370 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
-  engineType = "library"
+  provider = "prisma-client"
+  output   = "../src/app/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-model User {
-  id            String     @id @default(cuid())
-  email         String     @unique
-  passwordHash  String
-  globalRole    GlobalRole @default(USER)
-  fullName      String?
-  displayName   String?
-  age           Int?
-  isActive      Boolean    @default(true)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  festivals     Festival[]
-  payments      Payment[]
-}
+// -----------------------------------------------------------------------------
+// Enums
+// -----------------------------------------------------------------------------
 
 enum GlobalRole {
   USER
   SUPER_ADMIN
 }
 
+enum Tier {
+  BASIC
+  STANDARD
+  PRO
+}
+
+enum InstitutionType {
+  COLLEGE
+  MADRASA
+  SCHOOL
+  OTHER
+}
+
 enum FestivalStatus {
-  UPCOMING
-  ONGOING
-  COMPLETED
+  DRAFT // created but locked
+  ACTIVE // unlocked (paid)
+  EXPIRED // past 40 days
+}
+
+// -----------------------------------------------------------------------------
+// Core Models
+// -----------------------------------------------------------------------------
+
+model User {
+  id         String     @id @default(uuid())
+  email      String     @unique
+  password   String 
+  globalRole GlobalRole @default(USER)
+
+  // Profile Fields
+  fullName    String?
+  displayName String?
+  age         Int?
+  isActive    Boolean @default(true)
+
+  festival Festival? // ONE festival max
+  payments Payment[]
+  tokens   PasswordResetToken[]
+  memberOf FestivalMember[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  expires   DateTime
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@map("password_reset_token")
+}
+
+enum PaymentPurpose {
+  FESTIVAL_CREATION
 }
 
 enum PaymentStatus {
   PENDING
-  COMPLETED
+  PAID
   FAILED
-  EXPIRED
+  REFUNDED
 }
 
 model Payment {
-  id              String        @id @default(cuid())
-  userId          String
-  amount          Int           // Amount in paise (100000 = ₹1000)
-  currency        String        @default("INR")
-  status          PaymentStatus @default(PENDING)
-  razorpayOrderId String?       @unique // Razorpay order ID
-  razorpayId      String?       // Razorpay payment ID after success
-  validFrom       DateTime      @default(now())
-  validUntil      DateTime
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  
-  festival        Festival?
-  user            User          @relation(fields: [userId], references: [id])
+  id          String  @id @default(uuid())
+  amount      Int
+  currency    String
+  status      PaymentStatus @default(PENDING)
+  providerId  String // Razorpay Order ID
+  referenceId String? // Razorpay Payment ID
+  receipt     String?
+
+  tier        Tier?  // Stored for immutable record
+
+  purpose     PaymentPurpose @default(FESTIVAL_CREATION)
+  used        Boolean        @default(false)      // True if this payment has been "redeemed"
+
+  validUntil DateTime? 
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  festivalId String?
+  festival   Festival? @relation(fields: [festivalId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("payment")
 }
 
 model Festival {
-  id            String          @id @default(cuid())
-  name          String
-  description   String?
-  startDate     DateTime
-  endDate       DateTime
-  location      String
-  status        FestivalStatus  @default(UPCOMING)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id      String @id @default(uuid())
+  ownerId String @unique
+  owner   User   @relation(fields: [ownerId], references: [id])
+
+  name      String
+  slug      String  @unique
+  description String?
   
-  // Payment & Lifecycle
-  paymentId     String?         @unique
-  payment       Payment?        @relation(fields: [paymentId], references: [id])
-  expiresAt     DateTime?
+  // Organization Details
+  category  String?
+  orgName String?
+  orgDescription String?
+  orgWebsite String?
+  orgLocation String?
+  establishedYear Int?
+
+  // Core Fields
+  institutionType InstitutionType?
+  institutionName String?
+  location        String?
+  expiresAt       DateTime?
+
+  // Founder/Message
+  founderName String?
+  founderMessage String?
+
+  branding  Json?
+  rules     Json?
+  structure Json?
+
+  status   FestivalStatus @default(DRAFT)
+  isLocked Boolean        @default(true)
   
-  // Public site fields
-  slug          String?         @unique
-  tagline       String?
-  accentColor   String          @default("#0F4C45")
-  logo          String?
-  heroImage     String?
+  // Tier & Usage
+  tier        Tier @default(STANDARD)
+  tierLabel   String @default("Standard")
   
-  // Organization info
-  orgName           String
-  orgDescription    String?
-  orgWebsite        String?
-  orgLocation       String?
-  orgEstablishedYear Int?
+  // Usage Counters
+  studentsCount     Int @default(0)
+  eventsCount       Int @default(0)
+  judgesCount       Int @default(0)
+  storageUsedMB     Int @default(0)
+
+  // Deadlines
+  studentCreationDeadline     DateTime?
+  programmeAssignmentDeadline DateTime?
+
+  // Child Entities
+  payments      Payment[]
+  students      Student[]
+  categories    Category[]
+  groups        Group[]
+  programmes    Programme[]
+  programmeAssignments ProgrammeAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members       FestivalMember[]
   
-  // Relations
-  creatorId     String
-  creator       User            @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  
-  // Public content relations
-  programs      Program[]
-  teams         Team[]
-  newsItems     NewsItem[]
-  galleryImages GalleryImage[]
-  
-  @@index([creatorId])
+  @@map("festival")
 }
 
-model Program {
-  id          String   @id @default(cuid())
-  name        String
-  category    String   // "JUNIOR" | "SUBJUNIOR" | "SENIOR"
-  posterUrl   String?
-  createdAt   DateTime @default(now())
-  festivalId  String
-  festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
-  
-  @@index([festivalId])
+enum FestivalRole {
+  ADMIN
+  ANNOUNCER
+  STAGE_MANAGER
 }
 
-model Team {
-  id          String   @id @default(cuid())
-  name        String
-  score       Int      @default(0)
-  rank        Int?
-  createdAt   DateTime @default(now())
-  festivalId  String
-  festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+model FestivalMember {
+  id        String   @id @default(uuid())
   
-  @@index([festivalId])
-}
+  festivalId String
+  festival   Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
 
-model NewsItem {
-  id          String   @id @default(cuid())
-  title       String
-  excerpt     String?
-  content     String
-  publishedAt DateTime @default(now())
-  festivalId  String
-  festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
-  
-  @@index([festivalId])
-}
-
-model GalleryImage {
-  id          String   @id @default(cuid())
-  url         String
-  caption     String?
-  createdAt   DateTime @default(now())
-  festivalId  String
-  festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
-  
-  @@index([festivalId])
-}
-
-model PasswordResetToken {
-  id        String    @id @default(cuid())
   userId    String
-  tokenHash String
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  role      FestivalRole @default(ANNOUNCER)
+  
+  isActive  Boolean @default(true)
+  metadata  Json?   // Store initial password here if absolutely needed for "Show Password" feature
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([festivalId, userId])
+  @@map("festival_member")
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  festivalId  String
+  festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  
+  name        String
+  type        CategoryType @default(SINGLE)
+  description String?
+  
+  programmes  Programme[]
+  students    Student[]
+
+  assignments ProgrammeAssignment[] 
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("category")
+}
+
+enum CategoryType {
+  SINGLE
+  GENERAL
+}
+
+model Programme {
+  id          String        @id @default(uuid())
+  festivalId  String
+  festival    Festival      @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  
+  categoryId  String
+  category    Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  name        String
+  type        ProgrammeType @default(INDIVIDUAL)
+  stageType   StageType     @default(STAGE)
+  maxEntries  Int           @default(1)
+  maxTeamSize Int           @default(1)
+
+  assignments ProgrammeAssignment[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("programme")
+}
+
+model Group {
+  id          String    @id @default(uuid())
+  festivalId  String
+  festival    Festival  @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+
+  name        String
+  color       String    @default("#2563eb")
+  seriesStart Int       @default(100)
+
+  students    Student[]
+  assignments  ProgrammeAssignment[]
+
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("group")
+}
+
+model ProgrammeAssignment {
+  id            String    @id @default(uuid())
+  festivalId    String
+  festival      Festival  @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+
+  programmeId   String
+  programme     Programme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+
+  studentId     String?
+  student       Student?  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  groupId       String?
+  group         Group? @relation(fields: [groupId], references: [id]) 
+
+  categoryId    String?
+  category      Category? @relation(fields: [categoryId], references: [id]) 
+
+  assignedAt    DateTime @default(now())
+
+  @@unique([programmeId, studentId])
+  
+  @@map("programme_assignment")
+}
+
+model Student {
+  id        String   @id @default(uuid())
+  
+  festivalId String
+  festival   Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+
+  groupId    String
+  group      Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  name       String
+  email      String?
+  phone      String?
+  gender     Gender   @default(MALE)
+  
+  registrationNumber String? // Optional initially, but we enforce uniqueness if present
+  isTeamLeader       Boolean @default(false)
+
+  assignments ProgrammeAssignment[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // @@unique([festivalId, phone]) // Keep phone unique if used
+  // We want registrationNumber to be unique per festival IF it exists. 
+  // Prisma doesn't support conditional unique constraints well in all DBs without raw SQL for partial indexes.
+  // But usually for SQLite/Postgres we can just do @@unique([festivalId, registrationNumber]).
+  // However, if registrationNumber is null, multiple nulls are allowed in most DBs (except SQL Server < 2008).
+  // Let's assume standard behavior where multiple NULLs are allowed.
+  // @@unique([festivalId, registrationNumber])
+  @@index([festivalId])
+  @@index([groupId])
+  @@map("student")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorId     String
+  actorRole   String
+  action      String
+  targetType  String
+  targetId    String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@map("audit_log")
+}
+
+enum ProgrammeType {
+  INDIVIDUAL
+  GROUP
+}
+
+enum StageType {
+  STAGE
+  NON_STAGE
+}
+
+enum GroupType {
+  SCHOOL
+  COLLEGE
+  MADRASA
+  OPEN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
 }

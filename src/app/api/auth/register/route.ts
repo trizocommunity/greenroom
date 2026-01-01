@@ -22,10 +22,10 @@ export async function POST(request: Request) {
 
     const user = await createUser({
       email,
-      passwordHash: hashedPassword,
+      password: hashedPassword,
     });
 
-    const { passwordHash: _, ...userWithoutPassword } = user;
+    const { password: _, ...userWithoutPassword } = user;
 
     return NextResponse.json(userWithoutPassword, { status: 201 });
   } catch (error) {

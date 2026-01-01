@@ -2,6 +2,7 @@
 
 import { format } from "date-fns";
 import { Calendar, MapPin } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import type { FestivalPublicData } from "./FestivalContext";
@@ -11,8 +12,8 @@ interface FestivalHeroProps {
 }
 
 export function FestivalHero({ festival }: FestivalHeroProps) {
-  const startDate = new Date(festival.startDate);
-  const endDate = new Date(festival.endDate);
+  const startDate = new Date(festival.startDate || new Date());
+  const endDate = new Date(festival.endDate || new Date());
 
   return (
     <section
@@ -46,9 +47,11 @@ export function FestivalHero({ festival }: FestivalHeroProps) {
         {/* Festival Logo */}
         {festival.logo && (
           <div className="mb-8 flex justify-center">
-            <img
+            <Image
               src={festival.logo}
               alt={festival.name}
+              width={96}
+              height={96}
               className="h-24 w-24 object-contain rounded-xl shadow-lg"
             />
           </div>
@@ -109,7 +112,7 @@ export function FestivalHero({ festival }: FestivalHeroProps) {
       </div>
 
       {/* Bottom fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-24 bg-linear-to-t from-background to-transparent" />
     </section>
   );
 }

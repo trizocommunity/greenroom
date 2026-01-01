@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth/session";
 import * as PaymentController from "@/server/controllers/payment.controller";
 
 // POST /api/payments/create-order - Create a Razorpay order
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     const session = await getSession();
 

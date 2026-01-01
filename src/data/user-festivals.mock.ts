@@ -9,7 +9,7 @@ export const MOCK_JOINED_FESTIVALS = [
   {
     id: "mock-2",
     name: "Tech Fest 2024",
-    role: "PARTICIPANT",
+    role: "ANNOUNCER",
     startDate: new Date("2024-03-15"),
     location: "Kochi, Kerala",
   },

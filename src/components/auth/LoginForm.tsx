@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginSchema } from "@/lib/validations/auth";
 
+import { loginAction } from "@/server/actions/auth.actions";
+
 type FormData = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
@@ -21,6 +23,7 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(loginSchema),
@@ -28,22 +31,26 @@ export function LoginForm() {
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (data: FormData) => {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || "Failed to login");
-      }
-      return response.json();
+      // Server Action call
+      return await loginAction(data);
     },
-    onSuccess: (data) => {
+    onSuccess: (result) => {
+      if (!result.success) {
+        // Handle Validation Errors
+        if (result.fields) {
+          Object.entries(result.fields).forEach(([key, message]) => {
+            setError(key as any, { message });
+          });
+          return;
+        }
+        // Handle General Errors
+        toast.error(result.error);
+        return;
+      }
+
+      // Success
       toast.success("Logged in successfully");
+      const data = result.data;
       if (data.role === "SUPER_ADMIN") {
         router.push("/super-admin");
       } else {
@@ -51,12 +58,8 @@ export function LoginForm() {
       }
       router.refresh();
     },
-    onError: (error) => {
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error("Something went wrong");
-      }
+    onError: (_error) => {
+      toast.error("Something went wrong. Please try again.");
     },
   });
 

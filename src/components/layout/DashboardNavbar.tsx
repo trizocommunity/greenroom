@@ -1,80 +1,51 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
-import { Loader2, LogOut, User } from "lucide-react";
+import type { User } from "@prisma/client";
+import { Menu } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
-import { useRouter } from "next/navigation";
-import * as React from "react";
-import { toast } from "sonner";
+import { LogoutButton } from "@/components/auth/LogoutButton";
+import { ProfileSidebarContent } from "@/components/profile/ProfileSidebarContent";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
-export default function DashboardNavbar({ role }: { role?: string }) {
-  const router = useRouter();
+interface DashboardNavbarProps {
+  user: Pick<User, "fullName" | "displayName" | "age" | "email">;
+}
 
-  const { mutate, isPending } = useMutation({
-    mutationFn: async () => {
-      const response = await fetch("/api/auth/logout", {
-        method: "POST",
-      });
-      if (!response.ok) {
-        throw new Error("Failed to logout");
-      }
-    },
-    onSuccess: () => {
-      // Clear client-side data if needed
-      router.push("/");
-      router.refresh();
-      toast.success("Logged out successfully");
-    },
-    onError: () => {
-      toast.error("Failed to log out");
-    },
-  });
-
-  const homeLink = role === "SUPER_ADMIN" ? "/super-admin" : "/profile";
+export default function DashboardNavbar({ user }: DashboardNavbarProps) {
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-b border-border supports-backdrop-filter:bg-background/60">
-      <div className="mx-auto max-w-5xl px-4  h-20 flex items-center justify-between">
-        {/* Logo - Points to Profile (Home for logged in users) */}
-        <Link href={homeLink} className="flex items-center gap-2 group">
-          <div className="w-8 h-8 bg-primary text-primary-foreground rounded flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">
-            G
-          </div>
-          <span className="font-bold text-xl tracking-tighter uppercase">
-            Greenroom
-          </span>
+    <header className="fixed top-0 left-0 right-0 z-40 backdrop-blur-2xl border-b border-white/10 bg-background/80">
+      <div className="mx-auto max-w-7xl px-4 h-20 flex items-center justify-between">
+        <Link
+          href={"/profile"}
+          className="text-2xl font-black uppercase tracking-tighter text-foreground"
+        >
+          Greenroom
         </Link>
-
-        {/* Dashboard Actions */}
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="uppercase font-bold tracking-wide gap-2 text-muted-foreground hover:text-foreground"
-            onClick={() => mutate()}
-            disabled={isPending}
-          >
-            {isPending ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <LogOut size={16} />
-            )}
-            Log Out
-          </Button>
-
-          {role !== "SUPER_ADMIN" && (
-            <Link href="/profile">
-              <Button
-                size="sm"
-                className="uppercase font-bold tracking-wide gap-2"
-              >
-                <User size={16} />
-                Profile
+        <div className="md:hidden">
+          <Sheet open={isOpen} onOpenChange={setIsOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Menu className="h-5 w-5" />
               </Button>
-            </Link>
-          )}
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0">
+              <div className="py-6 h-full">
+                <ProfileSidebarContent
+                  user={user}
+                  className="px-2"
+                  onLinkClick={() => setIsOpen(false)}
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+        <div className="hidden md:block">
+          <LogoutButton />
         </div>
       </div>
     </header>

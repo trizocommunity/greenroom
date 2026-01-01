@@ -1,0 +1,42 @@
+{
+  "buildCommand": "npm run build",
+  "framework": "nextjs",
+  "env": {
+    "DATABASE_URL": {
+      "description": "PostgreSQL database connection string. For production, use a pooled connection.",
+      "required": true
+    },
+    "DIRECT_URL": {
+      "description": "Direct database connection for migrations",
+      "required": true
+    },
+    "JWT_SECRET": {
+      "description": "Secret key for JWT token generation",
+      "required": true
+    },
+    "RAZORPAY_KEY_ID": {
+      "description": "Razorpay API Key ID",
+      "required": false
+    },
+    "RAZORPAY_KEY_SECRET": {
+      "description": "Razorpay API Key Secret",
+      "required": false
+    },
+    "NODE_ENV": {
+      "value": "production"
+    }
+  },
+  "regions": ["bom1"],
+  "installCommand": "npm install",
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, must-revalidate"
+        }
+      ]
+    }
+  ]
+}

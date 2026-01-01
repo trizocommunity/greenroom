@@ -1,25 +1,13 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
-import {
-  BadgeCheck,
-  Calendar,
-  ChevronsUpDown,
-  CreditCard,
-  GalleryVerticalEnd,
-  LayoutDashboard,
-  LogOut,
-  Settings,
-  Users,
-} from "lucide-react";
+import { ChevronsUpDown, GalleryVerticalEnd, LogOut } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { usePathname } from "next/navigation";
+import { LogoutButton } from "@/components/auth/LogoutButton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -45,28 +33,8 @@ const items = SUPER_ADMIN_SIDEBAR_ITEMS;
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const { isMobile } = useSidebar();
   const { data: user, isLoading } = useCurrentUser();
-
-  const { mutate: logout } = useMutation({
-    mutationFn: async () => {
-      const response = await fetch("/api/auth/logout", {
-        method: "POST",
-      });
-      if (!response.ok) {
-        throw new Error("Failed to logout");
-      }
-    },
-    onSuccess: () => {
-      router.push("/");
-      router.refresh();
-      toast.success("Logged out successfully");
-    },
-    onError: () => {
-      toast.error("Failed to log out");
-    },
-  });
 
   // Get user initials for avatar fallback
   const getInitials = (name: string | null | undefined) => {
@@ -84,18 +52,20 @@ export function AppSidebar() {
   const initials = getInitials(user?.fullName);
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" className="bg-transparent">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/super-admin">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-2xl bg-linear-to-br from-primary to-orange-400 text-white shadow-[0_6px_18px_rgba(124,58,237,0.35)]">
                   <GalleryVerticalEnd className="size-4" />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold">Super Admin</span>
-                  <span className="">Dashboard</span>
+                  <span className="font-semibold text-slate-50">
+                    Super Admin
+                  </span>
+                  <span className="text-xs text-slate-400">Dashboard</span>
                 </div>
               </Link>
             </SidebarMenuButton>
@@ -177,10 +147,12 @@ export function AppSidebar() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => logout()}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Log out
-                </DropdownMenuItem>
+                <LogoutButton>
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log out
+                  </DropdownMenuItem>
+                </LogoutButton>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>

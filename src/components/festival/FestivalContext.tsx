@@ -5,21 +5,35 @@ import { createContext, type ReactNode, useContext } from "react";
 export type FestivalPublicData = {
   id: string;
   name: string;
-  slug: string | null;
+  slug: string | null; // Made nullable in type, but usually present
   description: string | null;
   tagline: string | null;
-  startDate: string;
-  endDate: string;
-  location: string;
+  startDate: string | null; // Dates might be optional now
+  endDate: string | null;
+  location: string | null;
   status: string;
   accentColor: string;
   logo: string | null;
   heroImage: string | null;
-  orgName: string;
+  orgName: string | null;
   orgDescription: string | null;
   orgWebsite: string | null;
   orgLocation: string | null;
-  orgEstablishedYear: number | null;
+  establishedYear: number | null;
+  // Festival stats
+  studentsCount?: number;
+  eventsCount?: number;
+  sessionsCount?: number;
+  limits?: {
+    maxStudents: number;
+    maxEvents?: number;
+    maxJudges?: number;
+    maxSessions?: number;
+    maxStorageMB?: number;
+  } | null;
+  // Deadlines
+  studentCreationDeadline: string | Date | null;
+  programmeAssignmentDeadline: string | Date | null;
 };
 
 const FestivalContext = createContext<FestivalPublicData | null>(null);

@@ -27,9 +27,9 @@ export async function POST(request: Request) {
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
 
     await createPasswordResetToken({
-      userId: user.id,
-      tokenHash,
-      expiresAt,
+      user: { connect: { id: user.id } },
+      token: tokenHash,
+      expires: expiresAt,
     });
 
     // Mock Email sending

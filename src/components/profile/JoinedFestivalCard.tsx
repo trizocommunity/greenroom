@@ -1,39 +1,73 @@
 "use client";
 
-import { format } from "date-fns";
-import { Calendar, MapPin } from "lucide-react";
-import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-
-import type { JoinedFestival } from "@/types/festival";
+import { ExternalLink, LayoutDashboard, Lock } from "lucide-react";
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import type { Festival } from "@/hooks/useFestivals";
 
 interface JoinedFestivalCardProps {
-  festival: JoinedFestival;
+  festival: Festival & { memberRole?: string };
 }
 
 export function JoinedFestivalCard({ festival }: JoinedFestivalCardProps) {
+  const isActive = festival.status === "ACTIVE";
+  const isLocked = festival.isLocked;
+
   return (
-    <Card className="hover:shadow-sm transition-shadow duration-200 border-dashed bg-muted/20">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-md truncate">{festival.name}</h3>
-            <div className="mt-2">
-              <FestivalRoleBadge role={festival.role} />
-            </div>
+    <Card className="group relative overflow-hidden border-none shadow-md bg-background/50 backdrop-blur-sm ring-1 ring-border/50 transition-all duration-300 hover:shadow-lg hover:ring-primary/20">
+      <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-transparent opacity-50 transition-opacity group-hover:opacity-80" />
+
+      <CardContent className="relative p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+        <div className="space-y-2 min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge
+              variant={isActive ? "default" : "secondary"}
+              className={isActive ? "bg-green-500 hover:bg-green-600" : ""}
+            >
+              {festival.status}
+            </Badge>
+            {festival.memberRole && (
+              <Badge variant="secondary" className="font-medium">
+                {festival.memberRole.replace("_", " ")}
+              </Badge>
+            )}
           </div>
+          <h3 className="font-bold text-xl md:text-2xl tracking-tight text-foreground group-hover:text-primary transition-colors duration-300 truncate">
+            {festival.name}
+          </h3>
+          <p className="text-sm text-muted-foreground truncate">
+            {festival.slug}.greenroom.com
+          </p>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        <div className="space-y-2 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-3 w-3 shrink-0" />
-            <span>{format(festival.startDate, "MMM d, yyyy")}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <MapPin className="h-3 w-3 shrink-0" />
-            <span className="truncate">{festival.location}</span>
-          </div>
+
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="flex-1 sm:flex-none border-primary/20 hover:bg-primary/5"
+          >
+            <Link href={`/${festival.slug}`} target="_blank">
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Public Site
+            </Link>
+          </Button>
+
+          {isActive ? (
+            <Button asChild size="sm" className="flex-1 sm:flex-none shadow-sm">
+              <Link href={`/festival/${festival.slug}`}>
+                <LayoutDashboard className="mr-2 h-4 w-4" />
+                Dashboard
+              </Link>
+            </Button>
+          ) : (
+            <Button disabled size="sm" variant="secondary">
+              {isLocked ? <Lock className="mr-2 w-4 h-4" /> : null}
+              {isLocked ? "Locked" : "Inactive"}
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

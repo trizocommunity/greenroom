@@ -1,9 +1,11 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
+// Phase 1 User Model
 export async function findUserById(id: string) {
   return prisma.user.findUnique({
     where: { id },
+    include: { festival: true }, // Max 1 festival
   });
 }
 

@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Image as ImageIcon } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { MOCK_GALLERY } from "@/data/mockFestivalData";
@@ -15,7 +16,7 @@ export function GalleryPreview({ slug }: GalleryPreviewProps) {
   const images = MOCK_GALLERY.slice(0, 4);
 
   return (
-    <section className="py-24 bg-background">
+    <section className="py-24 bg-transparent">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-6">
           <div className="text-center md:text-left">
@@ -44,10 +45,11 @@ export function GalleryPreview({ slug }: GalleryPreviewProps) {
               className={`relative overflow-hidden rounded-2xl group cursor-zoom-in ${i === 0 ? "col-span-2 row-span-2 h-80 md:h-full" : "h-40 md:h-full"}`}
             >
               <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors z-10" />
-              <img
+              <Image
                 src={img}
                 alt={`Gallery ${i}`}
-                className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
+                fill
+                className="object-cover transform group-hover:scale-110 transition-transform duration-700"
               />
             </motion.div>
           ))}

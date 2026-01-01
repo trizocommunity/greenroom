@@ -28,14 +28,15 @@ const audiences = [
 
 export default function TargetAudience() {
   return (
-    <section className="py-32 bg-background border-t border-border">
+    <section className="py-32 bg-transparent border-t border-white/10">
       <div className="container max-w-7xl px-4 md:px-6 mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-end mb-24 gap-8">
-          <h2 className="text-4xl md:text-6xl font-black uppercase tracking-tighter max-w-2xl">
-            Built For <br /> Every Stage
+          <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter max-w-2xl text-foreground">
+            Built for every kind of festival
           </h2>
-          <p className="text-xl text-gray-500 max-w-md mb-2">
-            Scalable architecture for events of any size.
+          <p className="text-base md:text-lg text-muted-foreground max-w-md mb-2 font-medium">
+            From school competitions to large university and cultural fests,
+            Greenroom scales with your stages.
           </p>
         </div>
 
@@ -43,15 +44,19 @@ export default function TargetAudience() {
           {audiences.map((item, i) => (
             <motion.div
               key={i}
-              className="group border border-border p-8 hover:bg-muted transition-colors duration-500"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: i * 0.08 }}
+              className="group border border-white/10 bg-card/20 backdrop-blur-xl p-7 rounded-3xl hover:-translate-y-1 hover:border-primary/30 hover:bg-card/40 transition-all duration-400"
             >
-              <div className="mb-6 p-4 border border-border inline-block group-hover:border-black">
+              <div className="mb-5 p-4 border border-white/10 bg-muted/20 rounded-2xl inline-block group-hover:border-primary/50 group-hover:bg-primary/20 group-hover:text-primary transition-colors">
                 <item.icon size={32} strokeWidth={1} />
               </div>
-              <h3 className="text-2xl font-bold uppercase mb-4 tracking-wide">
+              <h3 className="text-xl font-bold uppercase tracking-tight mb-2 text-foreground">
                 {item.title}
               </h3>
-              <p className="text-gray-400 font-medium leading-relaxed group-hover:text-gray-600">
+              <p className="text-sm md:text-base text-muted-foreground leading-relaxed font-medium">
                 {item.desc}
               </p>
             </motion.div>

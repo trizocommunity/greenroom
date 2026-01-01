@@ -12,20 +12,17 @@ interface FeatureItem {
 interface FeatureSectionProps {
   title: string;
   features: FeatureItem[];
-  variant?: "light" | "dark"; // keeping prop for API compatibility but ignoring visual dark mode
+  variant?: "light" | "dark";
 }
 
 export default function FeatureSection({
   title,
   features,
 }: FeatureSectionProps) {
-  // Enforcing Light Mode always as per request
-  const isDark = false;
-
   return (
-    <section className="py-24 bg-background text-foreground border-t border-border last:border-b">
+    <section className="py-24 bg-transparent text-foreground border-b border-white/10 last:border-b-0">
       <div className="container max-w-7xl px-4 md:px-6 mx-auto">
-        <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-16 border-b-2 inline-block pb-2 border-current">
+        <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-16 border-b-4 border-primary inline-block pb-2 text-foreground">
           {title}
         </h2>
 
@@ -37,13 +34,13 @@ export default function FeatureSection({
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="group"
+              className="group p-8 border border-white/5 rounded-2xl hover:bg-white/5 hover:border-white/10 transition-colors"
             >
               <div className="flex items-center gap-4 mb-6">
-                <div className="p-3 border border-border rounded-none group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                  <item.icon size={24} />
+                <div className="p-3 border border-white/10 rounded-xl bg-primary/10 text-primary group-hover:scale-110 transition-transform">
+                  <item.icon size={26} />
                 </div>
-                <h3 className="text-xl font-bold uppercase tracking-wider">
+                <h3 className="text-xl font-bold uppercase tracking-wider text-foreground">
                   {item.name}
                 </h3>
               </div>

@@ -1,30 +1,64 @@
+import { InstitutionType } from "@prisma/client";
 import { z } from "zod";
 
+export const createFestivalSchema = z.object({
+  paymentId: z.string().uuid(),
+  festivalName: z.string().min(3, "Name must be at least 3 characters").max(50),
+  festivalSlug: z
+    .string()
+    .min(3)
+    .max(50)
+    .regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with dashes")
+    .optional()
+    .or(z.literal("")),
+  institutionType: z.nativeEnum(InstitutionType).optional(),
+  institutionName: z.string().optional(),
+  location: z.string().optional(),
+  description: z.string().optional(),
+});
+
+export const updateFestivalSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  description: z.string().optional().nullable(),
+  orgName: z.string().optional().nullable(),
+  orgDescription: z.string().optional().nullable(),
+  orgWebsite: z
+    .string()
+    .url("Invalid URL")
+    .optional()
+    .nullable()
+    .or(z.literal("")),
+  orgLocation: z.string().optional().nullable(),
+  establishedYear: z
+    .number()
+    .int()
+    .min(1800)
+    .max(new Date().getFullYear())
+    .optional()
+    .nullable(),
+  institutionType: z.nativeEnum(InstitutionType).optional().nullable(),
+  institutionName: z.string().optional().nullable(),
+  location: z.string().optional().nullable(),
+  founderName: z.string().optional().nullable(),
+  founderMessage: z.string().optional().nullable(),
+  slug: z
+    .string()
+    .min(3)
+    .max(50)
+    .regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with dashes")
+    .optional(),
+});
+
+export type CreateFestivalInput = z.infer<typeof createFestivalSchema>;
+export type UpdateFestivalInput = z.infer<typeof updateFestivalSchema>;
+
+// Legacy compatibility if needed
 export const festivalStep1Schema = z.object({
   name: z.string().min(2, "Festival name must be at least 2 characters"),
   slug: z
     .string()
     .min(2, "Slug must be at least 2 characters")
-    .regex(
-      /^[a-z0-9-]+$/,
-      "Slug can only contain lowercase letters, numbers, and hyphens",
-    ),
+    .regex(/^[a-z0-9-]+$/),
   description: z.string().optional(),
-  startDate: z.string().min(1, "Start date is required"),
-  endDate: z.string().min(1, "End date is required"),
   location: z.string().min(2, "Location is required"),
 });
-
-export const festivalStep2Schema = z.object({
-  orgName: z.string().min(2, "Organization name is required"),
-  orgDescription: z.string().optional(),
-  orgWebsite: z.string().url().optional().or(z.literal("")),
-  orgLocation: z.string().optional(),
-  orgEstablishedYear: z.string().optional(),
-});
-
-export const festivalSchema = festivalStep1Schema.merge(festivalStep2Schema);
-
-export type FestivalStep1Data = z.infer<typeof festivalStep1Schema>;
-export type FestivalStep2Data = z.infer<typeof festivalStep2Schema>;
-export type FestivalFormData = z.infer<typeof festivalSchema>;

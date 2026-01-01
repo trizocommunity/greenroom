@@ -37,11 +37,12 @@ export function ResultsTeaser({ accentColor, slug }: ResultsTeaserProps) {
               <span>Latest Updates</span>
             </div>
             <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
-              Celebrating Excellence
+              Transparent results, live and shareable
             </h2>
             <p className="text-lg text-muted-foreground mb-8 text-pretty">
-              The results are rolling in! Witness the triumphs and celebrations
-              as teams compete for the championship.
+              Follow every placement as it happens. Greenroom keeps scores,
+              tiebreakers, and rankings in sync for organizers, judges, and
+              teams.
             </p>
             <Link href={`/festival/${slug}/results`}>
               <Button

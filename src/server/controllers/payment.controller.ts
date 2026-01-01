@@ -1,4 +1,5 @@
-import { PRICING_CONFIG } from "@/config/pricing.config";
+import { Tier } from "@prisma/client";
+import { TIER_CONFIG } from "@/config/pricing";
 import {
   createPayment,
   getActivePaymentForUser,
@@ -11,8 +12,8 @@ import {
   RazorpayService,
 } from "@/server/services/razorpay.service";
 
-const FESTIVAL_PRICE = PRICING_CONFIG.FESTIVAL_PASS.AMOUNT_PAISE;
-const VALIDITY_DAYS = PRICING_CONFIG.FESTIVAL_PASS.VALIDITY_DAYS;
+const FESTIVAL_PRICE = TIER_CONFIG[Tier.BASIC].price * 100; // Legacy fallback
+const VALIDITY_DAYS = TIER_CONFIG[Tier.BASIC].durationDays;
 
 export const createOrder = async (userId: string) => {
   // Business Rule: Prevent duplicate active access
@@ -76,29 +77,47 @@ export const verifyPayment = async (payload: {
 
   // Model Call: Update Status
   // Business Rule: Update to COMPLETED
-  await updatePaymentStatus(payment.id, "COMPLETED", razorpay_payment_id);
+  await updatePaymentStatus(payment.id, "PAID", razorpay_payment_id);
 
   return true;
 };
 
-export const getUserStatus = async (userId: string) => {
+export const getUserStatus = async (userId: string, role: string = "USER") => {
   const activePayment = await getActivePaymentForUser(userId);
+
+  // Check if user already has a festival (for USER role only)
+  // SUPER_ADMINs can create unlimited festivals
+  let hasExistingFestival = false;
+  if (role === "USER") {
+    const { findAllFestivals } = await import("@/server/models/festival.model");
+    const userFestivals = await findAllFestivals({ ownerId: userId });
+    hasExistingFestival = userFestivals.length > 0;
+  }
 
   if (activePayment) {
     return {
       status: "ACTIVE",
-      payment: activePayment,
-      canCreateFestival: true,
+      payment: {
+        ...activePayment,
+        validFrom: activePayment.createdAt,
+      },
+      // canCreateFestival is true ONLY if:
+      // 1. Payment is active, AND
+      // 2. User hasn't created a festival yet (or is SUPER_ADMIN)
+      canCreateFestival: !hasExistingFestival,
     };
   }
 
   const latestPayment = await getLatestPaymentForUser(userId);
 
-  if (latestPayment && latestPayment.status === "COMPLETED") {
+  if (latestPayment && latestPayment.status === "PAID") {
     // Payment exists but expired
     return {
       status: "EXPIRED",
-      payment: latestPayment, // return the expired payment for reference
+      payment: {
+        ...latestPayment,
+        validFrom: latestPayment.createdAt,
+      }, // return the expired payment for reference
       canCreateFestival: false,
     };
   }
@@ -122,12 +141,6 @@ export const getAllPayments = async () => {
           email: true,
         },
       },
-      festival: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
     },
   });
 };
@@ -137,12 +150,5 @@ export const getUserPayments = async (userId: string) => {
   return prisma.payment.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
-    include: {
-      festival: {
-        select: {
-          name: true,
-        },
-      },
-    },
   });
 };

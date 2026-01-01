@@ -18,7 +18,7 @@ export function AdminHeader() {
   const pageName = isUsers ? "Users" : "Dashboard";
 
   return (
-    <header className="fixed top-0 w-full bg-white flex h-16 shrink-0 items-center justify-between gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 z-50 border-b border-border">
+    <header className="fixed top-0 w-full bg-background/80 backdrop-blur-xl flex h-16 shrink-0 items-center justify-between gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 z-50 border-b border-white/10">
       <div className="flex items-center gap-2 px-7">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />

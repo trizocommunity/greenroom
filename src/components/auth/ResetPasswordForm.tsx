@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { resetPasswordSchema } from "@/lib/validations/auth";
+import { resetPasswordAction } from "@/server/actions/auth.actions";
 
 type FormData = z.infer<typeof resetPasswordSchema>;
 
@@ -42,29 +43,26 @@ export function ResetPasswordForm() {
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (data: FormData) => {
-      const response = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || "Failed to reset password");
-      }
+      return await resetPasswordAction(data);
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (!result.success) {
+        if (result.fields) {
+          Object.entries(result.fields).forEach(([key, message]) => {
+            // @ts-expect-error
+            setError(key as any, { message });
+          });
+          return;
+        }
+        toast.error(result.error);
+        return;
+      }
+
       toast.success("Password reset successfully");
       router.push("/login");
     },
-    onError: (error) => {
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error("Something went wrong");
-      }
+    onError: () => {
+      toast.error("Something went wrong. Please try again.");
     },
   });
 

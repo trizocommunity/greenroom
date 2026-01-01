@@ -1,21 +1,29 @@
 import {
+  BarChart3,
   Building2,
   Calendar,
-  Clock,
+  CheckCircle,
+  ClipboardList,
   CreditCard,
+  Edit,
   FileText,
-  FolderTree,
-  Gavel,
   LayoutDashboard,
-  Mic2,
-  MonitorPlay,
-  Network,
+  Megaphone,
   QrCode,
   Settings,
-  UserCog,
+  Shield,
+  Trophy,
   Users,
   UsersRound,
 } from "lucide-react";
+
+export type FestivalRole =
+  | "SUPER_ADMIN"
+  | "ADMIN"
+  | "JUDGE"
+  | "STAGE_MANAGER"
+  | "ANNOUNCER"
+  | "OWNER";
 
 export const SUPER_ADMIN_SIDEBAR_ITEMS = [
   {
@@ -39,6 +47,11 @@ export const SUPER_ADMIN_SIDEBAR_ITEMS = [
     icon: CreditCard,
   },
   {
+    title: "Audit Logs",
+    url: "/super-admin/audit-logs",
+    icon: Shield,
+  },
+  {
     title: "Settings",
     url: "#",
     icon: Settings,
@@ -46,94 +59,190 @@ export const SUPER_ADMIN_SIDEBAR_ITEMS = [
   },
 ];
 
-export const getFestivalDashboardSidebarConfig = (dashboardPath: string) => [
-  {
-    title: "Overview",
-    items: [
-      {
-        title: "Dashboard",
-        href: dashboardPath,
-        icon: LayoutDashboard,
-      },
-    ],
-  },
-  {
-    title: "Pre-works",
-    items: [
-      {
-        title: "Team Leaders",
-        href: `${dashboardPath}/team-leaders`,
-        icon: UserCog,
-      },
-      {
-        title: "Judges",
-        href: `${dashboardPath}/judges`,
-        icon: Gavel,
-      },
-      {
-        title: "Stage Managers",
-        href: `${dashboardPath}/stage-managers`,
-        icon: Mic2,
-      },
-      {
-        title: "Participants",
-        href: `${dashboardPath}/participants`,
-        icon: UsersRound,
-      },
-      {
-        title: "Categories",
-        href: `${dashboardPath}/categories`,
-        icon: FolderTree,
-      },
-      {
-        title: "Programmes",
-        href: `${dashboardPath}/programmes`,
-        icon: FileText,
-      },
-      {
-        title: "Colleges/Schools",
-        href: `${dashboardPath}/colleges`,
-        icon: Building2,
-      },
-      {
-        title: "Groups",
-        href: `${dashboardPath}/groups`,
-        icon: Network,
-      },
-    ],
-  },
-  {
-    title: "Event Works",
-    items: [
-      {
-        title: "Stages",
-        href: `${dashboardPath}/stages`,
-        icon: MonitorPlay,
-      },
-      {
-        title: "Schedule",
-        href: `${dashboardPath}/schedule`,
-        icon: Clock,
-      },
-      {
-        title: "Chest Numbers & QR",
-        href: `${dashboardPath}/chest-numbers`,
-        icon: QrCode,
-      },
-    ],
-  },
-  {
-    title: "On-event Works",
-    items: [],
-  },
-  {
-    title: "Settings",
-    items: [
-      {
-        title: "Festival Settings",
-        href: `${dashboardPath}/settings`,
-        icon: Settings,
-      },
-    ],
-  },
-];
+interface SidebarItem {
+  title: string;
+  href: string;
+  icon: any;
+  allowedRoles?: FestivalRole[];
+  disabled?: boolean;
+}
+
+interface SidebarGroup {
+  title: string;
+  items: SidebarItem[];
+}
+
+export const getFestivalDashboardSidebarConfig = (
+  basePath: string,
+  role: string = "OWNER",
+): SidebarGroup[] => {
+  const isSuperAdmin = role === "SUPER_ADMIN";
+  const normalizedRole = role as FestivalRole;
+
+  const hasAccess = (allowedRoles?: FestivalRole[]) => {
+    if (isSuperAdmin) return true;
+    if (!allowedRoles) return true; // Public/Shared
+    if (allowedRoles.includes("ADMIN") && role === "OWNER") return true; // Owner has Admin rights
+    return allowedRoles.includes(normalizedRole);
+  };
+
+  const groups: SidebarGroup[] = [
+    {
+      title: "", // Top level
+      items: [
+        {
+          title: "Dashboard",
+          href: basePath,
+          icon: LayoutDashboard,
+        },
+        {
+          title: "Settings",
+          href: `${basePath}/settings`,
+          icon: Settings,
+          allowedRoles: ["ADMIN", "OWNER"],
+        },
+        {
+          title: "Members",
+          href: `${basePath}/members`,
+          icon: Users,
+          allowedRoles: ["ADMIN", "OWNER"],
+        },
+      ],
+    },
+    {
+      title: "Pre-Works",
+      items: [
+        {
+          title: "Categories",
+          href: `${basePath}/pre-works/categories`,
+          icon: ClipboardList,
+          allowedRoles: ["ADMIN", "OWNER"],
+        },
+        {
+          title: "Programmes",
+          href: `${basePath}/pre-works/programmes`,
+          icon: FileText,
+          allowedRoles: ["ADMIN", "OWNER"],
+        },
+        {
+          title: "Groups",
+          href: `${basePath}/pre-works/groups`,
+          icon: Building2,
+          allowedRoles: ["ADMIN", "OWNER"],
+        },
+        {
+          title: "Students",
+          href: `${basePath}/pre-works/students`,
+          icon: UsersRound,
+          allowedRoles: ["ADMIN", "OWNER"],
+        },
+        {
+          title: "Assignment",
+          href: `${basePath}/pre-works/assignments`,
+          icon: Edit,
+          allowedRoles: ["ADMIN", "OWNER"],
+        },
+      ],
+    },
+
+    {
+      title: "Event Works",
+      items: [
+        {
+          title: "Chest Numbers",
+          href: `${basePath}/chest-numbers`,
+          icon: CreditCard, // Placeholder
+          allowedRoles: ["ADMIN", "OWNER"],
+        },
+        {
+          title: "QR Codes",
+          href: `${basePath}/qr-codes`,
+          icon: QrCode,
+          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"] as FestivalRole[],
+        },
+        {
+          title: "Stage Management",
+          href: `${basePath}/stage-management`,
+          icon: Megaphone,
+          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
+        },
+        {
+          title: "Schedule",
+          href: `${basePath}/schedule`,
+          icon: Calendar,
+          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
+        },
+      ],
+    },
+    {
+      title: "On-Event Works",
+      items: [
+        {
+          title: "Scan QR",
+          href: `${basePath}/scan`,
+          icon: QrCode,
+          allowedRoles: [
+            "ADMIN",
+            "OWNER",
+            "JUDGE",
+            "STAGE_MANAGER",
+          ] as FestivalRole[],
+        },
+        {
+          title: "Coding/decoding",
+          href: `${basePath}/coding`,
+          icon: Shield,
+          allowedRoles: ["ADMIN", "OWNER", "JUDGE"] as FestivalRole[],
+        },
+        {
+          title: "Mark Completion",
+          href: `${basePath}/completion`,
+          icon: CheckCircle,
+          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
+        },
+        {
+          title: "Stage Navigation",
+          href: `${basePath}/stages`,
+          icon: Megaphone,
+          allowedRoles: [
+            "ADMIN",
+            "OWNER",
+            "JUDGE",
+            "STAGE_MANAGER",
+            "ANNOUNCER",
+          ] as FestivalRole[],
+        },
+      ],
+    },
+    {
+      title: "Summary & Results",
+      items: [
+        {
+          title: "Results",
+          href: `${basePath}/results`,
+          icon: Trophy,
+          allowedRoles: [
+            "ADMIN",
+            "OWNER",
+            "JUDGE",
+            "ANNOUNCER",
+          ] as FestivalRole[],
+        },
+        {
+          title: "Analytics",
+          href: `${basePath}/analytics`,
+          icon: BarChart3,
+          allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
+        },
+      ],
+    },
+  ];
+
+  // Filter groups
+  return groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => hasAccess(item.allowedRoles)),
+    }))
+    .filter((group) => group.items.length > 0);
+};

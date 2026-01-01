@@ -5,14 +5,18 @@ import { Button } from "@/components/ui/button";
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen ">
+    <div className="min-h-screen relative overflow-hidden bg-background">
+      {/* Background blobs */}
+      <div className="absolute inset-x-0 top-0 h-96 bg-primary/10 blur-[120px] -z-10" />
+      <div className="absolute right-0 bottom-0 h-96 w-96 bg-fuchsia-500/10 blur-[120px] -z-10" />
+
       {/* Hero / Intro */}
-      <section className="py-20 min-h-screen container max-w-7xl px-4 md:px-6 mx-auto">
+      <section className="py-24 min-h-[90vh] flex items-center container max-w-7xl px-4 md:px-6 mx-auto">
         <div className="flex flex-col gap-12 text-center md:text-left">
           <div className="max-w-4xl">
-            <h1 className="text-6xl md:text-9xl font-black uppercase tracking-tighter mb-8 leading-[0.8]">
-              We Are <br />{" "}
-              <span className="text-transparent bg-clip-text bg-linear-to-r from-gray-400 to-white">
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-black uppercase tracking-tighter mb-8 leading-tight text-foreground">
+              We are{" "}
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-primary via-fuchsia-500 to-orange-400">
                 Greenroom
               </span>
             </h1>
@@ -24,7 +28,7 @@ export default function AboutPage() {
               <Link href="/contact">
                 <Button
                   size="lg"
-                  className="h-14 px-8 uppercase font-bold tracking-wider rounded-none"
+                  className="h-14 px-10 text-lg font-semibold rounded-full shadow-[0_10px_28px_rgba(124,58,237,0.25)] hover:scale-105 transition-transform"
                 >
                   Join the Revolution
                 </Button>
@@ -38,16 +42,17 @@ export default function AboutPage() {
       <Values />
 
       {/* Origin Story */}
-      <section className="py-32 bg-background text-foreground border-y border-border">
+      <section className="py-32 text-foreground border-y border-white/10 relative">
+        <div className="absolute inset-0 bg-primary/5 -z-10" />
         <div className="container max-w-7xl px-4 md:px-6 mx-auto text-center">
-          <p className="text-3xl md:text-5xl font-black uppercase leading-tight tracking-tighter">
-            "To simplify festival operations so organizers can focus on the art,
-            and judges can focus on the talent."
+          <p className="text-2xl md:text-4xl font-bold uppercase leading-tight tracking-tight text-foreground max-w-4xl mx-auto">
+            &quot;To simplify festival operations so organizers can focus on the
+            art, and judges can focus on the talent.&quot;
           </p>
         </div>
       </section>
 
-      <Values />
+      <div className="h-20" />
     </div>
   );
 }

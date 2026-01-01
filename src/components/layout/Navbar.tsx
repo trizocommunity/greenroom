@@ -17,25 +17,57 @@ const navItems = [
   { name: "Contact", href: "/contact" },
 ];
 
+import { getCurrentUser } from "@/server/actions/user.actions";
+
 interface NavbarProps {
   user?: any;
 }
 
-export default function Navbar({ user }: NavbarProps) {
+export default function Navbar({ user: initialUser }: NavbarProps) {
+  const [user, setUser] = React.useState(initialUser);
   const [isOpen, setIsOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!initialUser) {
+      getCurrentUser().then(setUser);
+    }
+  }, [initialUser]);
   const pathname = usePathname();
+  const isHome = pathname === "/";
+  const [scrolled, setScrolled] = React.useState(false);
+
+  React.useEffect(() => {
+    // For non-home pages, always show the solid navbar
+    if (!isHome) {
+      setScrolled(true);
+      return;
+    }
+
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [isHome]);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-b border-border supports-backdrop-filter:bg-background/60">
+    <header
+      className={cn(
+        "fixed top-0 left-0 right-0 z-50 transition-colors duration-300 bg-transparent",
+        scrolled
+          ? "bg-background/80 backdrop-blur-2xl border-b border-white/10"
+          : "bg-transparent border-transparent",
+      )}
+    >
       <div className="mx-auto max-w-7xl px-4 md:px-6 h-20 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 bg-primary text-primary-foreground rounded flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">
-            G
-          </div>
-          <span className="font-bold text-xl tracking-tighter uppercase">
-            Greenroom
-          </span>
+        <Link
+          href="/"
+          className="text-2xl font-black uppercase tracking-tighter text-foreground"
+        >
+          Greenroom
         </Link>
 
         {/* Desktop Nav */}
@@ -46,7 +78,7 @@ export default function Navbar({ user }: NavbarProps) {
               <Link key={item.href} href={item.href} className="relative py-2">
                 <span
                   className={cn(
-                    "text-sm font-semibold uppercase tracking-wide transition-colors hover:text-primary",
+                    "text-sm font-bold uppercase tracking-widest transition-colors hover:text-primary",
                     isActive ? "text-primary" : "text-muted-foreground",
                   )}
                 >
@@ -70,7 +102,7 @@ export default function Navbar({ user }: NavbarProps) {
             <Link href="/profile">
               <Button
                 size="sm"
-                className="uppercase font-bold tracking-wide gap-2"
+                className="uppercase font-bold tracking-wide gap-2 rounded-full"
               >
                 <User size={16} />
                 Profile
@@ -82,7 +114,7 @@ export default function Navbar({ user }: NavbarProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="uppercase font-bold tracking-wide"
+                  className="font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
                 >
                   Log In
                 </Button>
@@ -90,7 +122,7 @@ export default function Navbar({ user }: NavbarProps) {
               <Link href="/contact">
                 <Button
                   size="sm"
-                  className="uppercase font-bold tracking-wide rounded-none px-6"
+                  className="px-6 rounded-full font-bold uppercase tracking-widest shadow-lg shadow-primary/25"
                 >
                   Get Demo
                 </Button>
@@ -101,7 +133,8 @@ export default function Navbar({ user }: NavbarProps) {
 
         {/* Mobile Toggle */}
         <button
-          className="md:hidden p-2 text-primary"
+          type="button"
+          className="md:hidden p-2 text-foreground"
           onClick={() => setIsOpen(!isOpen)}
         >
           {isOpen ? <X size={24} /> : <Menu size={24} />}
@@ -115,7 +148,7 @@ export default function Navbar({ user }: NavbarProps) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-background border-b border-border overflow-hidden"
+            className="md:hidden bg-background/95 backdrop-blur-2xl border-b border-white/10 overflow-hidden"
           >
             <div className="p-6 flex flex-col gap-4">
               {navItems.map((item) => (
@@ -124,10 +157,10 @@ export default function Navbar({ user }: NavbarProps) {
                   href={item.href}
                   onClick={() => setIsOpen(false)}
                   className={cn(
-                    "text-lg font-bold uppercase tracking-wide py-2 border-b border-gray-50 last:border-0",
+                    "text-base font-bold uppercase tracking-widest py-4 border-b border-white/5 last:border-0",
                     pathname === item.href
                       ? "text-primary pl-2 border-l-4 border-primary"
-                      : "text-gray-400",
+                      : "text-muted-foreground",
                   )}
                 >
                   {item.name}
@@ -136,7 +169,7 @@ export default function Navbar({ user }: NavbarProps) {
               <div className="flex flex-col gap-3 mt-4">
                 {user ? (
                   <Link href="/profile" onClick={() => setIsOpen(false)}>
-                    <Button className="w-full justify-center uppercase font-bold rounded-none gap-2">
+                    <Button className="w-full justify-center gap-2 rounded-full font-bold uppercase">
                       <User size={16} />
                       Profile
                     </Button>
@@ -146,13 +179,13 @@ export default function Navbar({ user }: NavbarProps) {
                     <Link href="/login" onClick={() => setIsOpen(false)}>
                       <Button
                         variant="outline"
-                        className="w-full justify-center uppercase font-bold rounded-none"
+                        className="w-full justify-center rounded-full font-bold uppercase border-white/10 hover:bg-white/10"
                       >
                         Log In
                       </Button>
                     </Link>
                     <Link href="/contact" onClick={() => setIsOpen(false)}>
-                      <Button className="w-full justify-center uppercase font-bold rounded-none">
+                      <Button className="w-full justify-center rounded-full font-bold uppercase shadow-lg shadow-primary/25">
                         Request Demo
                       </Button>
                     </Link>

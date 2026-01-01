@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getSession, updateSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { createAuditLog } from "@/server/services/audit-log.service";
 
 const profileSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
@@ -14,39 +15,41 @@ const profileSchema = z.object({
     .max(120, "Invalid age"),
 });
 
-export async function updateProfile(data: z.infer<typeof profileSchema>) {
-  const session = await getSession();
+import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
+import type { ActionResponse } from "@/types/actions";
 
-  if (!session?.userId) {
-    return { error: "Not authenticated" };
-  }
-
-  const result = profileSchema.safeParse(data);
-
-  if (!result.success) {
-    return {
-      error: "Invalid input data",
-      fields: result.error.flatten().fieldErrors,
-    };
-  }
-
+export async function updateProfile(
+  data: z.infer<typeof profileSchema>,
+): Promise<ActionResponse<any>> {
   try {
+    const session = await getSession();
+
+    if (!session?.userId) {
+      throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+    }
+
+    const parsedData = profileSchema.parse(data);
+
     await prisma.user.update({
       where: { id: session.userId },
       data: {
-        fullName: result.data.fullName,
-        displayName: result.data.displayName,
-        age: result.data.age,
+        fullName: parsedData.fullName,
+        displayName: parsedData.displayName,
+        age: parsedData.age,
       },
     });
 
-    await updateSession({ isOnboarded: true });
+    await createAuditLog({
+      action: "UPDATE_PROFILE",
+      targetType: "USER",
+      targetId: session.userId,
+      metadata: { changes: parsedData },
+    });
 
     revalidatePath("/profile");
-    revalidatePath("/onboarding");
-    return { success: true };
+
+    return { success: true, data: null };
   } catch (error) {
-    console.error("Profile update error:", error);
-    return { error: "Failed to update profile" };
+    return handleActionError(error);
   }
 }

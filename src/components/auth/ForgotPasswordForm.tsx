@@ -15,6 +15,7 @@ import { forgotPasswordSchema } from "@/lib/validations/auth";
 type FormData = z.infer<typeof forgotPasswordSchema>;
 
 import { useMutation } from "@tanstack/react-query";
+import { forgotPasswordAction } from "@/server/actions/auth.actions";
 
 export function ForgotPasswordForm() {
   const {
@@ -27,23 +28,14 @@ export function ForgotPasswordForm() {
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (data: FormData) => {
-      const response = await fetch("/api/auth/forgot-password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to send reset email");
-      }
+      return await forgotPasswordAction(data);
     },
-    onSuccess: () => {
+    onSuccess: (_result) => {
+      // Always show success to prevent user enumeration
       toast.success("If an account exists, we sent a reset link");
     },
     onError: () => {
-      toast.error("Something went wrong");
+      toast.error("Something went wrong. Please try again.");
     },
   });
 

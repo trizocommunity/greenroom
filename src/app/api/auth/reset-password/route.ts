@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     const hashedPassword = await hashPassword(password);
 
     await updateUser(resetTokenRecord.userId, {
-      passwordHash: hashedPassword,
+      password: hashedPassword,
     });
 
     await updatePasswordResetToken(resetTokenRecord.id, {

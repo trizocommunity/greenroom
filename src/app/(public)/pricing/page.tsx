@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LifecycleInfo } from "@/components/pricing/LifecycleInfo";
 import { PricingCard } from "@/components/pricing/PricingCard";
 import { Button } from "@/components/ui/button";
+import { PRICING_TIERS } from "@/config/pricing";
 
 export const metadata = {
   title: "Pricing | Greenroom",
@@ -27,8 +28,20 @@ export default function PricingPage() {
             </p>
           </div>
 
-          {/* Pricing Card */}
-          <PricingCard />
+          {/* Pricing Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16 relative">
+            <div className="absolute inset-x-0 top-10 bottom-10 bg-linear-to-r from-transparent via-primary/5 to-transparent blur-3xl -z-10" />
+            {PRICING_TIERS.map((tier, index) => (
+              <PricingCard key={tier.id} tier={tier} index={index} />
+            ))}
+          </div>
+
+          <div className="text-center mb-16">
+            <p className="text-muted-foreground bg-muted/30 py-3 px-6 rounded-full inline-flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+              Festival identity stays forever. Pay once per festival creation.
+            </p>
+          </div>
 
           {/* Lifecycle Info */}
           <LifecycleInfo />

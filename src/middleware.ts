@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { decrypt } from "@/lib/auth/session";
 
 // 1. Specify protected and public routes
-const protectedRoutes = ["/profile", "/super-admin", "/onboarding"];
+const protectedRoutes = ["/profile", "/super-admin"];
 const publicRoutes = [
   "/login",
   "/register",
@@ -70,9 +70,9 @@ export default async function middleware(req: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    // Rewrite to internal festival route
+    // Rewrite to internal festival route (using (festivalPublic) group implicitly)
     const url = req.nextUrl.clone();
-    url.pathname = `/festival/${festivalSlug}${path === "/" ? "" : path}`;
+    url.pathname = `/${festivalSlug}${path === "/" ? "" : path}`;
     // Remove festival query param after rewrite (for local dev)
     url.searchParams.delete("festival");
     return NextResponse.rewrite(url);
@@ -95,35 +95,25 @@ export default async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/login", req.nextUrl));
   }
 
-  // 5. Onboarding Check
-  const isOnboardingRoute = path === "/onboarding";
-  if (session?.userId) {
-    if (!session.isOnboarded && !isOnboardingRoute) {
-      return NextResponse.redirect(new URL("/onboarding", req.nextUrl));
-    }
-    if (session.isOnboarded && isOnboardingRoute) {
-      return NextResponse.redirect(new URL("/profile", req.nextUrl));
-    }
-  }
-
-  // 6. Strict Access: Redirect to /profile if the user is authenticated and tries to access ANY public route
+  // 6. Strict Access: Redirect to dashboard if authenticated and tries to access ANY public route
   // EXCEPTION: Allow access to festival subdomains so admins can view the public site
   if (
     session?.userId &&
     isPublicRoute &&
     path !== "/profile" &&
-    !isOnboardingRoute &&
+    path !== "/super-admin" &&
     !isFestivalRequest
   ) {
-    return NextResponse.redirect(new URL("/profile", req.nextUrl));
+    const target = session.role === "SUPER_ADMIN" ? "/super-admin" : "/profile";
+    return NextResponse.redirect(new URL(target, req.nextUrl));
   }
 
   // 7. Role-Based Access Control
   const role = session?.role;
 
-  // STRICT RULE: Super Admins cannot access User routes (Profile, Billing, Onboarding)
+  // STRICT RULE: Super Admins cannot access User routes (Profile)
   if (role === "SUPER_ADMIN") {
-    if (path.startsWith("/profile") || path === "/onboarding") {
+    if (path.startsWith("/profile")) {
       return NextResponse.redirect(new URL("/super-admin", req.nextUrl));
     }
     // Redirect root to super-admin dashboard for logged-in super admins

@@ -1,8 +1,7 @@
 "use client";
 
-import type { Festival } from "@prisma/client";
-import { format } from "date-fns";
-import { ExternalLink, GalleryVerticalEnd, LogOut } from "lucide-react";
+import type { FestivalStatus } from "@prisma/client";
+import { GalleryVerticalEnd } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -22,10 +21,14 @@ import { getFestivalDashboardSidebarConfig } from "@/config/sidebar.config";
 import { FestivalRoleBadge } from "../FestivalRoleBadge";
 
 interface FestivalDashboardSidebarProps {
-  festival: Pick<
-    Festival,
-    "name" | "slug" | "accentColor" | "id" | "status" | "expiresAt"
-  >;
+  festival: {
+    id: string;
+    name: string;
+    slug: string; // Used for links
+    status: FestivalStatus | string;
+    accentColor?: string;
+    expiresAt?: Date | string | null;
+  };
   role: string;
 }
 
@@ -34,38 +37,33 @@ export function FestivalDashboardSidebar({
   role,
 }: FestivalDashboardSidebarProps) {
   const pathname = usePathname();
-  const basePath = `/festival/${festival.slug}`;
-  const dashboardPath = `${basePath}/dashboard`;
+  // const params = useParams(); // Removed unused
 
-  const menuGroups = getFestivalDashboardSidebarConfig(dashboardPath);
+  const basePath = `/festival/${festival.slug}`;
+  const dashboardPath = basePath;
+
+  const menuGroups = getFestivalDashboardSidebarConfig(dashboardPath, role);
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
+            <SidebarMenuButton isActive={true} size="lg" asChild>
               <Link href={dashboardPath}>
                 <div
-                  className="flex aspect-square size-10 items-center justify-center rounded-lg text-sidebar-primary-foreground"
+                  className="flex aspect-square size-9 items-center justify-center rounded-lg text-sidebar-primary-foreground"
                   style={{ backgroundColor: festival.accentColor }}
                 >
-                  <GalleryVerticalEnd className="size-5" />
+                  <GalleryVerticalEnd className="size-4" />
                 </div>
-                <div className="flex flex-col gap-1 leading-none">
-                  <span className="font-semibold truncate">
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold capitalize">
                     {festival.name}
                   </span>
-                  <div className="flex items-center gap-2">
-                    <FestivalRoleBadge
-                      role={role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "ADMIN"}
-                    />
-                  </div>
-                  {festival.expiresAt && (
-                    <span className="text-[10px] text-muted-foreground">
-                      Valid until:{" "}
-                      {format(new Date(festival.expiresAt), "dd/MM/yyyy")}
-                    </span>
-                  )}
+                  <span className="truncate text-xs text-muted-foreground">
+                    {role} View
+                  </span>
                 </div>
               </Link>
             </SidebarMenuButton>
@@ -75,57 +73,36 @@ export function FestivalDashboardSidebar({
 
       <SidebarContent>
         {menuGroups.map((group) => (
-          <SidebarGroup key={group.title}>
-            {group.items.length > 0 && (
-              <>
-                <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {group.items.map((item) => {
-                      const isActive = pathname === item.href;
-                      return (
-                        <SidebarMenuItem key={item.title}>
-                          <SidebarMenuButton
-                            asChild
-                            isActive={isActive}
-                            tooltip={item.title}
-                          >
-                            <Link href={item.href}>
-                              <item.icon />
-                              <span>{item.title}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      );
-                    })}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </>
+          <SidebarGroup key={group.title || "main"}>
+            {group.title && group.items.length > 0 && (
+              <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
             )}
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((item) => {
+                  const isActive = pathname === item.href;
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive}
+                        tooltip={item.title}
+                      >
+                        <Link href={item.href}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
           </SidebarGroup>
         ))}
       </SidebarContent>
 
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="View Public Site">
-              <Link href={basePath}>
-                <ExternalLink />
-                <span>View Public Site</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Exit to Main App">
-              <Link href="/profile">
-                <LogOut />
-                <span>Exit to Main App</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
+      <SidebarFooter>{/* Footer actions moved to Right Panel */}</SidebarFooter>
 
       <SidebarRail />
     </Sidebar>
