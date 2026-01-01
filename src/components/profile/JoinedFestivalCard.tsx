@@ -57,7 +57,7 @@ export function JoinedFestivalCard({ festival }: JoinedFestivalCardProps) {
 
           {isActive ? (
             <Button asChild size="sm" className="flex-1 sm:flex-none shadow-sm">
-              <Link href={`/festival/${festival.slug}`}>
+              <Link href={`/dashboard/${festival.slug}`}>
                 <LayoutDashboard className="mr-2 h-4 w-4" />
                 Dashboard
               </Link>

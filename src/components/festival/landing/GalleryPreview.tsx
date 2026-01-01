@@ -27,7 +27,7 @@ export function GalleryPreview({ slug }: GalleryPreviewProps) {
               Highlights from the festival.
             </p>
           </div>
-          <Link href={`/festival/${slug}/gallery`}>
+          <Link href={`/${slug}/gallery`}>
             <Button variant="outline" className="gap-2 rounded-full">
               <ImageIcon className="w-4 h-4" /> View Gallery
             </Button>

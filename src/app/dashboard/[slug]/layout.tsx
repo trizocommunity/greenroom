@@ -124,7 +124,7 @@ export default async function FestivalDashboardLayout({
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem>
-                  <BreadcrumbLink href={`/festival/${slug}`}>
+                  <BreadcrumbLink href={`/dashboard/${slug}`}>
                     Festival
                   </BreadcrumbLink>
                 </BreadcrumbItem>

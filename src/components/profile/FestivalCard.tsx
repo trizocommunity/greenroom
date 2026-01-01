@@ -151,7 +151,7 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
                 asChild
                 className="flex-1 rounded-xl font-bold h-11 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
               >
-                <Link href={`/festival/${festival.slug}`}>
+                <Link href={`/dashboard/${festival.slug}`}>
                   <LayoutDashboard className="mr-2 h-4 w-4" />
                   Dashboard
                 </Link>

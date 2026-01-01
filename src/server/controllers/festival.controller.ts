@@ -99,11 +99,11 @@ export async function update(
 
   // Revalidate old and new paths
   const revalidatePath = (await import("next/cache")).revalidatePath;
-  revalidatePath(`/festival/${existing.slug}`);
+  revalidatePath(`/dashboard/${existing.slug}`);
   if (slug && slug !== existing.slug) {
-    revalidatePath(`/festival/${slug}`);
+    revalidatePath(`/dashboard/${slug}`);
   }
-  revalidatePath(`/festival/${existing.slug}/settings`);
+  revalidatePath(`/dashboard/${existing.slug}/settings`);
 
   // Public Paths
   revalidatePath(`/${existing.slug}`);

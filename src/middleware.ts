@@ -58,13 +58,19 @@ export default async function middleware(req: NextRequest) {
   ) {
     // Prevent access to /dashboard on subdomain
     if (path.includes("/dashboard")) {
-      // Redirect to main app dashboard: app.greenroom.com/festival/{slug}/dashboard
+      // Redirect to main app dashboard: app.greenroom.com/dashboard/{slug}
       // For local dev, we assume main app is on localhost:3000
       const mainAppHost = process.env.NEXT_PUBLIC_APP_URL
         ? new URL(process.env.NEXT_PUBLIC_APP_URL).host
         : "localhost:3000";
+
+      // Remove /dashboard from the path to avoid /dashboard/[slug]/dashboard
+      // If path is exactly "/dashboard", newPath becomes ""
+      // If path is "/dashboard/settings", newPath becomes "/settings"
+      const newPath = path.replace(/^\/dashboard/, "");
+
       const url = new URL(
-        `/festival/${festivalSlug}${path}`,
+        `/dashboard/${festivalSlug}${newPath}`,
         `http://${mainAppHost}`,
       );
       return NextResponse.redirect(url);

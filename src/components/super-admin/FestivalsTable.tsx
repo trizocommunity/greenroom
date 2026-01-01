@@ -58,7 +58,7 @@ export function FestivalsTable() {
 
   const handleManage = (festival: Festival) => {
     // Navigate directly to festival dashboard
-    router.push(`/festival/${festival.slug}`);
+    router.push(`/dashboard/${festival.slug}`);
   };
 
   const handleDelete = () => {

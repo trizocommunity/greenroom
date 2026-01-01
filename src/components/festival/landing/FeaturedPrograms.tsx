@@ -28,7 +28,7 @@ export function FeaturedPrograms({ accentColor, slug }: FeaturedProgramsProps) {
               Don&apos;t miss the flagship events curated for this event.
             </p>
           </div>
-          <Link href={`/festival/${slug}/sessions`} className="hidden md:block">
+          <Link href={`/${slug}/sessions`} className="hidden md:block">
             <Button variant="ghost" className="group">
               View All Programs{" "}
               <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -83,7 +83,7 @@ export function FeaturedPrograms({ accentColor, slug }: FeaturedProgramsProps) {
         </div>
 
         <div className="mt-8 md:hidden">
-          <Link href={`/festival/${slug}/sessions`}>
+          <Link href={`/${slug}/sessions`}>
             <Button variant="outline" className="w-full">
               View All Programs
             </Button>

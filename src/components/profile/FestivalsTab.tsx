@@ -94,7 +94,7 @@ export function FestivalsTab() {
                       size="lg"
                       className="shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-8 h-12"
                     >
-                      <Link href={`/festival/${festival.slug}`}>
+                      <Link href={`/dashboard/${festival.slug}`}>
                         Open Dashboard
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Link>

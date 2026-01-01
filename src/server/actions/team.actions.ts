@@ -80,7 +80,7 @@ export async function createFestivalMember(input: CreateMemberInput) {
       metadata: { festivalId, email, fullName, role },
     });
 
-    revalidatePath(`/festival/${festivalId}/members`);
+    revalidatePath(`/dashboard/${festivalId}/members`);
     // Also revalidate teams just in case old route exists, though it should change
 
     return { success: true };
@@ -170,7 +170,7 @@ export async function revokeFestivalMember(memberId: string) {
     await prisma.festivalMember.delete({
       where: { id: memberId },
     });
-    revalidatePath(`/festival/${member.festivalId}/members`);
+    revalidatePath(`/dashboard/${member.festivalId}/members`);
 
     await createAuditLog({
       action: "REVOKE_MEMBER",

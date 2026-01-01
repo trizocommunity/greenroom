@@ -44,7 +44,7 @@ export function ResultsTeaser({ accentColor, slug }: ResultsTeaserProps) {
               tiebreakers, and rankings in sync for organizers, judges, and
               teams.
             </p>
-            <Link href={`/festival/${slug}/results`}>
+            <Link href={`/${slug}/results`}>
               <Button
                 size="lg"
                 className="rounded-full"
