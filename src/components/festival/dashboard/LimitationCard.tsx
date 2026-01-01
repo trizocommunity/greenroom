@@ -1,24 +1,24 @@
-import { Calendar, Database, Gavel, Users } from "lucide-react";
+import { Calendar, Database, Gavel, Users, LayoutList } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 interface LimitationCardProps {
   tierLabel: string;
   limits: {
     maxStudents: number;
-    maxEvents: number;
-    maxJudges: number;
+    maxProgrammes: number;
     maxSessions?: number;
     maxStorageMB: number;
   };
   usage?: {
     studentsCount: number;
-    eventsCount: number;
+    programmesCount: number;
     sessionsCount?: number;
-    judgesCount: number;
     storageUsedMB: number;
   };
   className?: string;
+  minimal?: boolean;
 }
 
 export function LimitationCard({
@@ -26,12 +26,12 @@ export function LimitationCard({
   limits,
   usage = {
     studentsCount: 0,
-    eventsCount: 0,
-    judgesCount: 0,
+    programmesCount: 0,
     sessionsCount: 0,
     storageUsedMB: 0,
   },
   className,
+  minimal = false,
 }: LimitationCardProps) {
   const items = [
     {
@@ -42,10 +42,10 @@ export function LimitationCard({
       color: "text-blue-500",
     },
     {
-      label: "Events",
-      icon: Calendar,
-      limit: limits.maxEvents,
-      used: usage.eventsCount,
+      label: "Programmes",
+      icon: LayoutList,
+      limit: limits.maxProgrammes,
+      used: usage.programmesCount,
       color: "text-green-500",
     },
     {
@@ -54,14 +54,6 @@ export function LimitationCard({
       limit: limits.maxSessions || 0,
       used: usage.sessionsCount || 0,
       color: "text-orange-500",
-      hidden: !limits.maxSessions,
-    },
-    {
-      label: "Judges",
-      icon: Gavel,
-      limit: limits.maxJudges,
-      used: usage.judgesCount,
-      color: "text-purple-500",
     },
     {
       label: "Storage",
@@ -79,19 +71,26 @@ export function LimitationCard({
           : `${usage.storageUsedMB} MB`,
       color: "text-yellow-500",
     },
-  ].filter((item) => !item.hidden);
+  ];
 
   return (
-    <Card className={className}>
-      <CardHeader className="pb-3 border-b border-white/5 bg-white/5">
-        <CardTitle className="text-sm font-medium tracking-wide text-muted-foreground uppercase flex items-center justify-between">
-          <span>Festival Limits</span>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-100 border border-zinc-700 font-bold">
-            {tierLabel || "Tier"}
-          </span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4 pt-4">
+    <Card
+      className={cn(
+        className,
+        minimal && "bg-transparent border-0 shadow-none p-0",
+      )}
+    >
+      {!minimal && (
+        <CardHeader className="pb-3 border-b border-white/5 bg-white/5">
+          <CardTitle className="text-sm font-medium tracking-wide text-muted-foreground uppercase flex items-center justify-between">
+            <span>Festival Limits</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-100 border border-zinc-700 font-bold">
+              {tierLabel || "Tier"}
+            </span>
+          </CardTitle>
+        </CardHeader>
+      )}
+      <CardContent className={cn("space-y-4 pt-4", minimal && "p-0 space-y-3")}>
         {items.map((item, index) => {
           const percentage = Math.min(
             100,

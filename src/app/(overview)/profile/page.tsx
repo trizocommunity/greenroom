@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { ProfileView } from "@/components/profile/profile-view";
-import { getSession } from "@/lib/auth/session";
-import { findUserById } from "@/server/models/user.model";
+import { getCurrentUser } from "@/lib/auth/current-user";
 
 export const metadata: Metadata = {
   title: "Profile | Greenroom",
@@ -10,13 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ProfilePage() {
-  const session = await getSession();
-
-  if (!session?.userId) {
-    redirect("/login");
-  }
-
-  const user = await findUserById(session.userId);
+  const user = await getCurrentUser();
 
   if (!user) {
     redirect("/login");

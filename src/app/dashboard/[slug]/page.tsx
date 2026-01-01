@@ -1,11 +1,8 @@
 import { format } from "date-fns";
-import { Calendar, HardDrive, Trophy, Users } from "lucide-react";
+import { HardDrive, LayoutList, Users } from "lucide-react";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
 import { findFestivalBySlugOrId } from "@/server/models/festival.model";
-import { findMemberByFestivalAndUser } from "@/server/models/member.model";
 
 export default async function FestivalDashboardPage({
   params,
@@ -19,12 +16,6 @@ export default async function FestivalDashboardPage({
 
   if (!festival) notFound();
 
-  // Fetch current user member role
-  const session = await getSession();
-  const member = session?.userId
-    ? await findMemberByFestivalAndUser(festival.id, session.userId)
-    : null;
-
   // Helper to format numbers
   const fmt = (n: number | undefined) => n?.toLocaleString() || "0";
 
@@ -36,7 +27,7 @@ export default async function FestivalDashboardPage({
             Expires on {new Date(festival.expiresAt).toLocaleDateString()}
           </div>
         )}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -46,7 +37,7 @@ export default async function FestivalDashboardPage({
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {fmt(festival.studentsCount)}
+                {fmt(festival._count?.students)}
               </div>
               <p className="text-xs text-muted-foreground">Registered</p>
             </CardContent>
@@ -54,27 +45,14 @@ export default async function FestivalDashboardPage({
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Events</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Programmes</CardTitle>
+              <LayoutList className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {fmt(festival.eventsCount)}
+                {fmt(festival._count?.programmes)}
               </div>
               <p className="text-xs text-muted-foreground">Scheduled</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Judges</CardTitle>
-              <Trophy className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {fmt(festival.judgesCount)}
-              </div>
-              <p className="text-xs text-muted-foreground">Assigned</p>
             </CardContent>
           </Card>
 

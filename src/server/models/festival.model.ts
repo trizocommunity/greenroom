@@ -62,13 +62,29 @@ export async function findFestivalBySlugOrId(slugOrId: string) {
   // Try slug first as it is more common in URLs now
   const bySlug = await prisma.festival.findUnique({
     where: { slug: slugOrId },
-    include: { owner: true },
+    include: {
+      owner: true,
+      _count: {
+        select: {
+          programmes: true,
+          students: true,
+        },
+      },
+    },
   });
   if (bySlug) return bySlug;
 
   // Fallback to ID
   return prisma.festival.findUnique({
     where: { id: slugOrId },
-    include: { owner: true },
+    include: {
+      owner: true,
+      _count: {
+        select: {
+          programmes: true,
+          students: true,
+        },
+      },
+    },
   });
 }
