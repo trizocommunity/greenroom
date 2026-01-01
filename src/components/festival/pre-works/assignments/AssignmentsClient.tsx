@@ -71,14 +71,11 @@ export function AssignmentsClient({
 
   // Split Assignments
   const generalAssignments = assignments.filter(
-    (a: any) => a.programme?.category?.type === "GENERAL"
+    (a: any) => a.programme?.category?.type === "GENERAL",
   );
   const individualAssignments = assignments.filter(
-    (a: any) => a.programme?.category?.type !== "GENERAL"
+    (a: any) => a.programme?.category?.type !== "GENERAL",
   );
-
-  console.log("generalAssignments", generalAssignments);
-  console.log("individualAssignments", individualAssignments);
 
   return (
     <div className="space-y-6">
@@ -141,16 +138,19 @@ export function AssignmentsClient({
                       {assignment.student?.name}
                     </TableCell>
                     <TableCell>
-                       <Badge variant="outline">{assignment.programme?.category?.name || "-"}</Badge>
+                      <Badge variant="outline">
+                        {assignment.programme?.category?.name || "-"}
+                      </Badge>
                     </TableCell>
                     <TableCell>{assignment.programme?.name}</TableCell>
                     <TableCell>
-                      {assignment.group?.name || assignment.student?.group?.name}
+                      {assignment.group?.name ||
+                        assignment.student?.group?.name}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                         {/* View/Edit reusing old dialog for now or custom implementation */}
-                         {/* Implementing simpler inline delete/view for clarity as requested split implies creating new flows */}
+                        {/* View/Edit reusing old dialog for now or custom implementation */}
+                        {/* Implementing simpler inline delete/view for clarity as requested split implies creating new flows */}
                         {!isReadOnly && (
                           <DeleteDialog
                             title="Remove Assignment"
@@ -160,9 +160,13 @@ export function AssignmentsClient({
                             }}
                             isDeleting={isDeleting}
                             trigger={
-                               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                                  <Trash2 className="h-4 w-4" />
-                               </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             }
                           />
                         )}
@@ -211,7 +215,8 @@ export function AssignmentsClient({
                     </TableCell>
                     <TableCell>{assignment.programme?.name}</TableCell>
                     <TableCell>
-                      {assignment.group?.name || assignment.student?.group?.name}
+                      {assignment.group?.name ||
+                        assignment.student?.group?.name}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -224,9 +229,13 @@ export function AssignmentsClient({
                             }}
                             isDeleting={isDeleting}
                             trigger={
-                               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                                  <Trash2 className="h-4 w-4" />
-                               </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             }
                           />
                         )}
