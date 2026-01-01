@@ -8,11 +8,13 @@ interface LimitationCardProps {
     maxStudents: number;
     maxEvents: number;
     maxJudges: number;
+    maxSessions?: number;
     maxStorageMB: number;
   };
   usage?: {
     studentsCount: number;
     eventsCount: number;
+    sessionsCount?: number;
     judgesCount: number;
     storageUsedMB: number;
   };
@@ -26,6 +28,7 @@ export function LimitationCard({
     studentsCount: 0,
     eventsCount: 0,
     judgesCount: 0,
+    sessionsCount: 0,
     storageUsedMB: 0,
   },
   className,
@@ -44,6 +47,14 @@ export function LimitationCard({
       limit: limits.maxEvents,
       used: usage.eventsCount,
       color: "text-green-500",
+    },
+    {
+      label: "Sessions",
+      icon: Calendar, // Reuse or find new icon
+      limit: limits.maxSessions || 0,
+      used: usage.sessionsCount || 0,
+      color: "text-orange-500",
+      hidden: !limits.maxSessions,
     },
     {
       label: "Judges",
@@ -68,7 +79,7 @@ export function LimitationCard({
           : `${usage.storageUsedMB} MB`,
       color: "text-yellow-500",
     },
-  ];
+  ].filter((item) => !item.hidden);
 
   return (
     <Card className={className}>
@@ -84,7 +95,7 @@ export function LimitationCard({
         {items.map((item, index) => {
           const percentage = Math.min(
             100,
-            Math.max(0, (item.used / item.limit) * 100),
+            Math.max(0, (item.used / (item.limit || 1)) * 100),
           );
 
           return (

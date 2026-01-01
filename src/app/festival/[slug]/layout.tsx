@@ -1,6 +1,7 @@
 import { ExternalLink, User } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { TIER_CONFIG } from "@/config/pricing";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { FestivalDashboardSidebar } from "@/components/festival/dashboard/FestivalDashboardSidebar";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
@@ -72,6 +73,8 @@ export default async function FestivalDashboardLayout({
   }
 
   // 4. Prepare Data
+  const tierLimits = TIER_CONFIG[festival.tier || "STANDARD"].limits;
+
   const festivalData = {
     id: festival.id,
     name: festival.name,
@@ -95,10 +98,13 @@ export default async function FestivalDashboardLayout({
     // New Stats from Festival
     studentsCount: festival.studentsCount || 0,
     eventsCount: festival.eventsCount || 0,
+    sessionsCount: 0,
     limits: {
-      maxStudents: 1000,
-      maxEvents: 100,
-      maxJudges: 20,
+      maxStudents: tierLimits.students,
+      maxEvents: tierLimits.events,
+      maxJudges: tierLimits.judges,
+      maxSessions: tierLimits.sessions,
+      maxStorageMB: tierLimits.storageMB,
     },
     studentCreationDeadline: festival.studentCreationDeadline,
     programmeAssignmentDeadline: festival.programmeAssignmentDeadline,

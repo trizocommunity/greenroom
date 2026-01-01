@@ -14,12 +14,14 @@ interface DashboardRightPanelProps {
     studentsCount: number;
     eventsCount: number;
     judgesCount: number;
+    sessionsCount?: number;
     storageUsedMB: number;
   };
   limits?: {
     maxStudents: number;
     maxEvents: number;
     maxJudges: number;
+    maxSessions?: number;
     maxStorageMB: number;
   };
   tierLabel?: string;

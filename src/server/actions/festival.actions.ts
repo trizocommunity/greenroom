@@ -42,7 +42,7 @@ export async function createFestival(input: CreateFestivalInput) {
 
     // 3. Atomic Transaction
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 40); // 40 Days hard coded
+    expiresAt.setDate(expiresAt.getDate() + (tierConfig.durationDays || 40));
 
     const result = await prisma.$transaction(async (tx) => {
       // Create Festival
