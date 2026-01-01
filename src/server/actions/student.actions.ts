@@ -39,9 +39,7 @@ export async function createStudentWithServiceAction(
   ]);
 
   if (groupCount === 0 || categoryCount === 0) {
-    throw new Error(
-      "Create groups & categories first.",
-    );
+    throw new Error("Create groups & categories first.");
   }
 
   return StudentService.create(festivalId, {
@@ -53,6 +51,104 @@ export async function createStudentWithServiceAction(
     gender: (data.gender as "MALE" | "FEMALE" | "OTHER") || "MALE",
     registrationNumber: data.registrationNumber,
   });
+}
+
+export async function validateStudentsAction(
+  festivalId: string,
+  candidates: { name: string; email?: string }[],
+) {
+  const session = await getSession();
+  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+
+  // 1. Extract non-empty emails and names
+  const emails = candidates
+    .map((c) => c.email?.trim().toLowerCase())
+    .filter((e): e is string => !!e);
+
+  const names = candidates.map((c) => c.name.trim().toLowerCase());
+
+  // 2. Find matches in DB
+  // We check for:
+  // A) Email match (if email provided)
+  // B) Name match (case insensitive)
+
+  const existingStudents = await prisma.student.findMany({
+    where: {
+      festivalId,
+      OR: [
+        { email: { in: emails, mode: "insensitive" } },
+        { name: { in: names, mode: "insensitive" } },
+      ],
+    },
+    select: { name: true, email: true },
+  });
+
+  // 3. Return a Set-like structure for easy client-side lookup
+  // We'll return a map of { normalized_key: reason }
+  const conflicts: Record<string, string> = {};
+
+  existingStudents.forEach((student) => {
+    // Key by Name
+    if (student.name) {
+      conflicts[`name:${student.name.toLowerCase()}`] =
+        "Student name already exists";
+    }
+    // Key by Email
+    if (student.email) {
+      conflicts[`email:${student.email.toLowerCase()}`] =
+        "Student email already exists";
+    }
+  });
+
+  return conflicts;
+}
+
+export async function bulkCreateStudentsAction(
+  festivalId: string,
+  students: {
+    name: string;
+    groupId: string;
+    categoryId: string;
+    gender?: string;
+    email?: string;
+    phone?: string;
+  }[],
+) {
+  const session = await getSession();
+  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+
+  const festival = await findFestivalById(festivalId);
+  if (!festival) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
+
+  let successCount = 0;
+  const errors: { name: string; error: string }[] = [];
+
+  // We process sequentially to ensure ID generation (which depends on count) is correct.
+  // In a real high-perf scenario, we would lock or reserve IDs, but this is sufficient.
+  for (const student of students) {
+    try {
+      await StudentService.create(festivalId, {
+        name: student.name,
+        groupId: student.groupId,
+        categoryId: student.categoryId,
+        email: student.email,
+        phone: student.phone,
+        gender: (student.gender as "MALE" | "FEMALE" | "OTHER") || "MALE",
+      });
+      successCount++;
+    } catch (error: any) {
+      errors.push({
+        name: student.name,
+        error: error.message || "Unknown error",
+      });
+    }
+  }
+
+  try {
+    revalidatePath(`/festival/${festivalId}`);
+  } catch {}
+
+  return { success: true, successCount, errors };
 }
 
 // New action for hooks - uses StudentService

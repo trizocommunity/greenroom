@@ -112,7 +112,6 @@ export async function createFestival(input: CreateFestivalInput) {
 export async function updateFestivalDeadlinesAction(
   festivalId: string,
   data: {
-    studentCreationDeadline?: string | null;
     programmeAssignmentDeadline?: string | null;
   },
 ) {
@@ -146,9 +145,6 @@ export async function updateFestivalDeadlinesAction(
     const updated = await prisma.festival.update({
       where: { id: festivalId },
       data: {
-        studentCreationDeadline: data.studentCreationDeadline
-          ? new Date(data.studentCreationDeadline)
-          : null,
         programmeAssignmentDeadline: data.programmeAssignmentDeadline
           ? new Date(data.programmeAssignmentDeadline)
           : null,

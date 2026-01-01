@@ -1,8 +1,9 @@
 "use client";
 
-import { Check, Hash, Loader2, Plus, User, Users } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
+import { Loader2, Plus, RefreshCw, User, Users, Hash, Tag } from "lucide-react";
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,9 +16,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
 import { useCategories } from "@/hooks/useCategories";
 import { useGroups } from "@/hooks/useGroups";
 import { useStudents } from "@/hooks/useStudents";
@@ -25,378 +23,276 @@ import { cn } from "@/lib/utils";
 
 interface StudentDialogProps {
   festivalId: string;
-  student?: any;
   trigger?: React.ReactNode;
-  readOnly?: boolean;
+  studentToEdit?: {
+    id: string;
+    name: string;
+    email?: string | null;
+    phone?: string | null;
+    gender?: "MALE" | "FEMALE" | "OTHER";
+    group: { id: string; name: string };
+    category: { id: string; name: string };
+    registrationNumber: string;
+  };
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function StudentDialog({
   festivalId,
-  student,
   trigger,
-  readOnly = false,
+  studentToEdit,
+  open: controlledOpen,
+  onOpenChange: setControlledOpen,
 }: StudentDialogProps) {
-  const [open, setOpen] = useState(false);
-  const { createStudent, isCreating, updateStudent, isUpdating } =
-    useStudents(festivalId);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (isControlled && setControlledOpen) ? setControlledOpen : setInternalOpen;
+
+  const isEditing = !!studentToEdit;
   const { groups } = useGroups(festivalId);
   const { categories } = useCategories(festivalId);
+  const { createStudent, updateStudent } = useStudents(festivalId);
 
-  const isEditing = !!student;
-  const isLoading = isCreating || isUpdating;
+  const [isLoading, setIsLoading] = useState(false);
 
+  // Form State
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    phone: "",
     groupId: "",
-    categoryId: "",
-    gender: "MALE",
-    registrationNumber: "",
+    categoryId: "" as string,
+    gender: "MALE" as "MALE" | "FEMALE" | "OTHER",
   });
 
-  const [autoGenerateId, setAutoGenerateId] = useState(true);
+  // Derived State
+  const readOnly = false; // Add Student is always editable for implemented fields
+  const isValid = formData.name && formData.groupId && formData.categoryId;
 
-  // Filter categories to only show SINGLE type for creation/editing
-  const individualCategories = categories.filter(
-    (c: any) => c.type === "SINGLE",
-  );
-
+  // Initialize form when editing or opening
   useEffect(() => {
     if (open) {
-      if (student) {
+      if (studentToEdit) {
         setFormData({
-          name: student.name || "",
-          email: student.email || "",
-          phone: student.phone || "",
-          groupId: student.groupId || "",
-          categoryId: student.categoryId || "",
-          gender: student.gender || "MALE",
-          registrationNumber: student.registrationNumber || "",
+            name: studentToEdit.name,
+            email: studentToEdit.email || "",
+            groupId: studentToEdit.group.id,
+            categoryId: studentToEdit.category.id,
+            gender: studentToEdit.gender || "MALE",
         });
-        setAutoGenerateId(!student.registrationNumber);
       } else {
-        // Create Mode
+        // Reset for new entry
         setFormData({
-          name: "",
-          email: "",
-          phone: "",
-          groupId: groups.length === 1 ? groups[0].id : "",
-          categoryId: "",
-          gender: "MALE",
-          registrationNumber: "",
+            name: "",
+            email: "",
+            groupId: "",
+            categoryId: "" as string,
+            gender: "MALE",
         });
-        setAutoGenerateId(true);
       }
     }
-  }, [open, student, groups]);
+  }, [open, studentToEdit]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (readOnly) return;
-    if (!formData.groupId || !formData.categoryId) return;
+    if (!isValid) return;
 
+    setIsLoading(true);
     try {
-      const dataToSubmit = {
-        ...formData,
-        registrationNumber: autoGenerateId ? "" : formData.registrationNumber,
-      };
-
-      if (isEditing && student) {
-        await updateStudent({ id: student.id, data: dataToSubmit });
+      if (isEditing && studentToEdit) {
+        await updateStudent({
+            id: studentToEdit.id,
+            data: {
+              name: formData.name,
+              email: formData.email || undefined,
+              groupId: formData.groupId,
+              categoryId: formData.categoryId,
+              gender: formData.gender,
+            }
+        });
+        toast.success("Student updated successfully");
       } else {
-        await createStudent(dataToSubmit);
+        await createStudent({
+          name: formData.name,
+          email: formData.email || undefined,
+          groupId: formData.groupId,
+          categoryId: formData.categoryId,
+          gender: formData.gender,
+          // registrationNumber is strictly auto-generated
+        });
+        // Success toast handled by hook/query usually, but adding redundant safety
+        toast.success("Student added successfully");
       }
       setOpen(false);
     } catch (error) {
-      // Handled by hook
+      console.error(error);
+      toast.error(isEditing ? "Failed to update student" : "Failed to create student");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleGroupSelect = (id: string) => {
-    if (readOnly) return;
-    setFormData({ ...formData, groupId: id });
-  };
+  // Filter Categories: Only allow "SINGLE" type categories for individual students
+  const allowedCategories = categories.filter(c => c.type === 'SINGLE');
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {trigger || (
-          <Button disabled={readOnly}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Student
-          </Button>
-        )}
+        {trigger}
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
-        <DialogHeader className="p-6 pb-4 border-b">
-          <DialogTitle className="text-xl flex items-center gap-2">
-            {readOnly ? (
-              <User className="h-5 w-5 text-muted-foreground" />
-            ) : isEditing ? (
-              <User className="h-5 w-5 text-primary" />
-            ) : (
-              <Plus className="h-5 w-5 text-primary" />
-            )}
-            {readOnly ? "Student Details" : isEditing ? "Edit Student" : "Add Student"}
-          </DialogTitle>
-          <DialogDescription>
-            {readOnly
-              ? "View full student information and allocation."
-              : "Enter details and assign this student to a group and category."}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden sm:rounded-2xl border-none shadow-2xl">
+        <form onSubmit={handleSubmit} className="flex flex-col h-full min-h-0 bg-background/95 backdrop-blur-sm">
+          {/* Header */}
+          <DialogHeader className="px-8 py-6 border-b bg-muted/20 flex-shrink-0">
+            <DialogTitle className="text-2xl font-semibold tracking-tight">
+              {readOnly
+                ? "Student Details"
+                : isEditing
+                  ? "Edit Student"
+                  : "Add Student"}
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground/80">
+              {readOnly ? "View student information." : "Enter the details below."}
+            </DialogDescription>
+          </DialogHeader>
 
-        <form
-          onSubmit={handleSubmit}
-          className="flex-1 overflow-hidden flex flex-col"
-        >
-          <ScrollArea className="flex-1 p-6">
-            <fieldset
-              disabled={readOnly}
-              className="grid md:grid-cols-2 gap-8 group-disabled:opacity-100"
-            >
-              {/* LEFT COLUMN: Personal Info */}
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                    <User className="h-4 w-4" />
-                  </div>
-                  <h3 className="font-semibold text-lg tracking-tight">
-                    Personal Information
-                  </h3>
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto px-8 py-6 space-y-8 min-h-0">
+             {!isEditing && groups.length === 0 && (
+                <div className="bg-destructive/10 text-destructive p-4 rounded-xl mb-4 text-sm font-medium flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Please create groups first.
                 </div>
+             )}
 
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name" className="text-xs font-bold uppercase text-muted-foreground">
-                      Full Name <span className="text-destructive">*</span>
-                    </Label>
+             {/* Registration Number (Read Only) */}
+             <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Registration ID</Label>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-primary/5 border border-primary/10 text-primary font-mono text-sm">
+                   <Hash className="h-4 w-4 opacity-50" />
+                   {isEditing && studentToEdit ? (
+                      <span className="font-semibold">{studentToEdit.registrationNumber}</span>
+                   ) : (
+                      <span className="italic opacity-70">Auto-generated (e.g. FEST-G-101)</span>
+                   )}
+                </div>
+             </div>
+
+             {/* Personal Info */}
+             <div className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="name" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Full Name <span className="text-destructive">*</span></Label>
                     <Input
                       id="name"
-                      required
-                      value={formData.name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, name: e.target.value })
-                      }
                       placeholder="e.g. Jane Doe"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      required
+                      autoFocus={!isEditing}
                       className="h-10 text-base"
                     />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase text-muted-foreground">Gender</Label>
+                </div>
+                
+                 <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Gender</Label>
                     <div className="flex flex-wrap gap-2">
-                      {["MALE", "FEMALE", "OTHER"].map((gender) => (
+                      {["MALE", "FEMALE", "OTHER"].map((g) => (
                         <button
+                          key={g}
                           type="button"
-                          key={gender}
-                          onClick={() =>
-                            !readOnly && setFormData({ ...formData, gender })
-                          }
+                          onClick={() => setFormData({ ...formData, gender: g as any })}
                           className={cn(
-                            "flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-all flex items-center justify-center gap-2",
-                            formData.gender === gender
-                              ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                              : "bg-background hover:bg-muted text-muted-foreground",
-                            readOnly && "cursor-default opacity-80",
+                            "px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border",
+                            formData.gender === g
+                              ? "bg-primary text-primary-foreground border-primary shadow-sm scale-105"
+                              : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:bg-muted/50"
                           )}
-                          disabled={readOnly}
                         >
-                          {gender.charAt(0) + gender.slice(1).toLowerCase()}
+                          {g.charAt(0) + g.slice(1).toLowerCase()}
                         </button>
                       ))}
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email" className="text-xs font-bold uppercase text-muted-foreground">
-                        Email Address
-                      </Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) =>
-                          setFormData({ ...formData, email: e.target.value })
-                        }
-                        placeholder="john@example.com"
-                        className="h-9"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="phone" className="text-xs font-bold uppercase text-muted-foreground">
-                        Phone Number
-                      </Label>
-                      <Input
-                        id="phone"
-                        value={formData.phone}
-                        onChange={(e) =>
-                          setFormData({ ...formData, phone: e.target.value })
-                        }
-                        placeholder="+91..."
-                        className="h-9"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* RIGHT COLUMN: Allocation */}
-              <div className="space-y-6">
-                 {/* Mobile Divider */}
-                 <Separator className="md:hidden" />
-                 
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="h-8 w-8 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-600">
-                    <Users className="h-4 w-4" />
-                  </div>
-                  <h3 className="font-semibold text-lg tracking-tight">
-                    Festival Allocation
-                  </h3>
-                </div>
-
-                <div className="space-y-5">
-                   {/* Group Selection */}
+                  
                   <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase text-muted-foreground">
-                      Assign Group <span className="text-destructive">*</span>
-                    </Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {groups.map((group: any) => (
-                        <button
-                          type="button"
-                          key={group.id}
-                          onClick={() => handleGroupSelect(group.id)}
-                          className={cn(
-                            "relative overflow-hidden cursor-pointer p-3 rounded-lg border text-sm transition-all flex items-center gap-3 hover:border-primary/40 text-left",
-                            formData.groupId === group.id
-                              ? "bg-primary/5 border-primary ring-1 ring-primary"
-                              : "bg-background text-muted-foreground",
-                            readOnly && "cursor-default opacity-80",
-                          )}
-                          disabled={readOnly}
-                        >
-                           <div 
-                              className="absolute left-0 top-0 bottom-0 w-1" 
-                              style={{ backgroundColor: group.color || "#2563eb" }} 
-                           />
-                           <span className="font-semibold text-foreground truncate pl-1">{group.name}</span>
-                        </button>
-                      ))}
-                      {groups.length === 0 && (
-                        <p className="text-sm text-destructive font-medium border border-destructive/20 bg-destructive/5 p-2 rounded-md">
-                          No groups found. Please create groups first.
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                    <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Email (Optional)</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="jane@example.com"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="h-10"
+                    />
+                </div>
+             </div>
 
-                  {/* Category Selection */}
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase text-muted-foreground">
-                      Assign Category <span className="text-destructive">*</span>
-                    </Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {individualCategories.map((cat: any) => (
-                        <button
-                          type="button"
-                          key={cat.id}
-                          onClick={() =>
-                            !readOnly &&
-                            setFormData({ ...formData, categoryId: cat.id })
-                          }
-                          className={cn(
-                            "cursor-pointer p-2 px-3 rounded-lg border text-sm transition-all flex flex-col items-start gap-1 hover:border-primary/40 text-left h-full",
-                            formData.categoryId === cat.id
-                              ? "bg-primary/5 border-primary ring-1 ring-primary"
-                              : "bg-background text-muted-foreground",
-                            readOnly && "cursor-default opacity-80",
-                          )}
-                          disabled={readOnly}
-                        >
-                          <div className="flex w-full justify-between items-center">
-                             <span className="font-semibold text-foreground">{cat.name}</span>
-                             <Badge variant="secondary" className="text-[10px] h-4 px-1">{cat.code}</Badge>
-                          </div>
-                        </button>
-                      ))}
-                      {individualCategories.length === 0 && (
-                        <p className="text-sm text-destructive font-medium border border-destructive/20 bg-destructive/5 p-2 rounded-md col-span-full">
-                          No individual categories found.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                   <Separator />
-
-                  {/* Reg Number */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                       <div className="flex items-center gap-2">
-                          <Label htmlFor="auto-id" className="text-sm font-medium cursor-pointer">Auto-generate Student ID</Label>
-                          {autoGenerateId && <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-600 border-emerald-200">Recommended</Badge>}
-                       </div>
-                       <Switch 
-                          id="auto-id" 
-                          checked={autoGenerateId} 
-                          onCheckedChange={setAutoGenerateId}
-                          disabled={readOnly}
-                       />
-                    </div>
-                    
-                    {!autoGenerateId && (
-                      <div className="animate-in fade-in slide-in-from-top-2">
-                         <Label htmlFor="registrationNumber" className="text-xs font-bold uppercase text-muted-foreground mb-1.5 block">
-                            Custom ID <span className="text-destructive">*</span>
-                         </Label>
-                         <div className="relative">
-                            <Hash className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              id="registrationNumber"
-                              value={formData.registrationNumber}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  registrationNumber: e.target.value,
-                                })
-                              }
-                              placeholder="e.g. STU-2024-001"
-                              className="pl-9"
-                              required={!autoGenerateId}
-                            />
-                         </div>
+             {/* Group & Category */}
+             <div className="grid gap-6 sm:grid-cols-1">
+                <div className="space-y-3">
+                   <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                      <Users className="h-3 w-3" /> Group <span className="text-destructive">*</span>
+                   </Label>
+                   {groups.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                         {groups.map((group) => (
+                            <button
+                               key={group.id}
+                               type="button"
+                               onClick={() => setFormData({ ...formData, groupId: group.id })}
+                               className={cn(
+                                  "px-3 py-1.5 rounded-lg text-sm transition-all border",
+                                  formData.groupId === group.id
+                                     ? "bg-indigo-500 text-white border-indigo-600 shadow-md font-medium"
+                                     : "bg-surface text-muted-foreground border-border hover:border-indigo-200 hover:bg-indigo-50/50"
+                               )}
+                            >
+                               {group.name}
+                            </button>
+                         ))}
                       </div>
-                    )}
-                  </div>
+                   ) : (
+                      <p className="text-sm text-muted-foreground italic">No groups found.</p>
+                   )}
                 </div>
-              </div>
-            </fieldset>
-          </ScrollArea>
+                
+                <div className="space-y-3">
+                   <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                      <Tag className="h-3 w-3" /> Category <span className="text-destructive">*</span>
+                   </Label>
+                   {allowedCategories.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                         {allowedCategories.map((cat) => (
+                            <button
+                               key={cat.id}
+                               type="button"
+                               onClick={() => setFormData({ ...formData, categoryId: cat.id })}
+                               className={cn(
+                                  "px-3 py-1.5 rounded-lg text-sm transition-all border",
+                                  formData.categoryId === cat.id
+                                     ? "bg-rose-500 text-white border-rose-600 shadow-md font-medium"
+                                     : "bg-surface text-muted-foreground border-border hover:border-rose-200 hover:bg-rose-50/50"
+                               )}
+                            >
+                               {cat.name}
+                            </button>
+                         ))}
+                      </div>
+                   ) : (
+                      <p className="text-sm text-muted-foreground italic">No individual categories found.</p>
+                   )}
+                </div>
+             </div>
+          </div>
 
-          <DialogFooter className="p-4 bg-muted/20 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={isLoading}
-            >
-              {readOnly ? "Close" : "Cancel"}
+          <DialogFooter className="px-8 py-6 border-t bg-muted/10 flex-shrink-0">
+            <Button variant="ghost" type="button" onClick={() => setOpen(false)} className="hover:bg-muted/50">
+              Cancel
             </Button>
-            {!readOnly && (
-              <Button
-                type="submit"
-                disabled={
-                  isLoading || !formData.groupId || !formData.categoryId || (!autoGenerateId && !formData.registrationNumber)
-                }
-                className="min-w-[120px]"
-              >
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditing ? "Save Changes" : "Create Student"}
-              </Button>
-            )}
+            <Button type="submit" disabled={!isValid || isLoading} className="min-w-[120px] rounded-full shadow-lg hover:shadow-xl transition-all">
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isEditing ? "Save Changes" : "Add Student"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -33,6 +33,7 @@ import { useGroups } from "@/hooks/useGroups";
 import { useStudents } from "@/hooks/useStudents";
 import { StudentDetailsDialog } from "./StudentDetailsDialog";
 import { StudentDialog } from "./StudentDialog";
+import { BulkUploadStudentsModal } from "./BulkUploadStudentsModal";
 
 interface StudentsClientProps {
   festivalId: string;
@@ -77,22 +78,22 @@ export function StudentsClient({ festivalId }: StudentsClientProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-muted/40 p-4 rounded-lg border">
-        <div className="flex flex-col gap-1">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-muted/40 p-4 rounded-lg border">
+        <div className="w-full  md:w-1/2 xl:w-auto flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <User className="h-5 w-5 text-muted-foreground" />
             <span className="font-medium text-sm">
-              Total Students: {filteredStudents.length}
+              Total: {filteredStudents.length}
             </span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Manage your festival students here.
+            Manage your students here.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
           <Select value={selectedGroup} onValueChange={setSelectedGroup}>
-            <SelectTrigger className="w-[180px] h-9 text-xs">
+            <SelectTrigger className="w-full md:w-[180px] h-9 text-xs">
               <SelectValue placeholder="All Groups" />
             </SelectTrigger>
             <SelectContent>
@@ -106,7 +107,7 @@ export function StudentsClient({ festivalId }: StudentsClientProps) {
           </Select>
 
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-[180px] h-9 text-xs">
+            <SelectTrigger className="w-full  md:w-[180px] h-9 text-xs">
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
             <SelectContent>
@@ -142,7 +143,9 @@ export function StudentsClient({ festivalId }: StudentsClientProps) {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div>
-                      <Button disabled>Add Student</Button>
+                      <Button className="w-full md:w-fit" disabled>
+                        Add Student
+                      </Button>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -151,10 +154,15 @@ export function StudentsClient({ festivalId }: StudentsClientProps) {
                 </Tooltip>
               </TooltipProvider>
             ) : (
-              <StudentDialog
-                festivalId={festivalId}
-                trigger={<Button>Add Student</Button>}
-              />
+              <div className="flex flex-wrap w-full gap-2">
+                <BulkUploadStudentsModal festivalId={festivalId} />
+                <StudentDialog
+                  festivalId={festivalId}
+                  trigger={
+                    <Button className="w-full md:w-fit">Add Student</Button>
+                  }
+                />
+              </div>
             )}
           </div>
         </div>
@@ -216,7 +224,7 @@ export function StudentsClient({ festivalId }: StudentsClientProps) {
                     />
                     <StudentDialog
                       festivalId={festivalId}
-                      student={student}
+                      studentToEdit={student}
                       trigger={
                         <Button
                           variant="ghost"
