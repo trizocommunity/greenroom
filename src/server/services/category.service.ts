@@ -92,4 +92,60 @@ export const CategoryService = {
 
     return deleteCategory(id);
   },
+
+  /*
+   * BULK CREATE Categories
+   */
+  async bulkCreate(
+    festivalId: string,
+    categories: {
+      name: string;
+      description?: string;
+      type: "SINGLE" | "GENERAL";
+    }[],
+  ) {
+    // 1. Check Festival Status
+    const festival = await findFestivalById(festivalId);
+    if (!festival) throw new Error("Festival not found");
+    if (festival.status === "EXPIRED") {
+      throw new Error("Festival is expired");
+    }
+
+    // 2. Check Limits
+    const currentCount = await countCategories(festivalId);
+    const limit = TIER_CATEGORY_LIMITS[festival.tier || Tier.STANDARD];
+
+    if (currentCount + categories.length > limit) {
+      throw new Error(
+        `Bulk upload exceeds limit. You can add ${limit - currentCount} more categories.`,
+      );
+    }
+
+    // 3. Deduplicate
+    const existingCats = await findCategoriesByFestival(festivalId);
+    const existingNames = new Set(
+      existingCats.map((c) => c.name.toLowerCase()),
+    );
+
+    const duplicates = categories.filter((c) =>
+      existingNames.has(c.name.toLowerCase()),
+    );
+    if (duplicates.length > 0) {
+      throw new Error(
+        `Duplicate categories found: ${duplicates.map((d) => d.name).join(", ")}`,
+      );
+    }
+
+    // 4. Create Many
+    const data = categories.map((c) => ({
+      festivalId,
+      name: c.name,
+      description: c.description || "",
+      type: c.type || "SINGLE",
+    }));
+
+    return (global as any).prisma.category.createMany({
+      data,
+    });
+  },
 };

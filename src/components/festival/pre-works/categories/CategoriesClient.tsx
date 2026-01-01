@@ -15,6 +15,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { useStudents } from "@/hooks/useStudents";
 import { CategoryDetailsDialog } from "./CategoryDetailsDialog";
 import { CategoryDialog } from "./CategoryDialog";
+import { BulkUploadCategoriesModal } from "./BulkUploadCategoriesModal";
 
 interface CategoriesClientProps {
   festivalId: string;
@@ -45,7 +46,8 @@ export function CategoriesClient({ festivalId }: CategoriesClientProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <BulkUploadCategoriesModal festivalId={festivalId} />
         <CategoryDialog festivalId={festivalId} />
       </div>
 

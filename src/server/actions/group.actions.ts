@@ -38,3 +38,19 @@ export async function updateGroupAction(
     teamLeaderIds: data.teamLeaderIds,
   });
 }
+
+export async function bulkCreateGroupsAction(
+  festivalId: string,
+  groups: { name: string }[],
+) {
+  const safeGroups = groups.map((g) => ({
+    name: g.name.trim(),
+  }));
+
+  try {
+    const result = await GroupService.bulkCreate(festivalId, safeGroups);
+    return { success: true, count: result.count };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}

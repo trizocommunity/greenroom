@@ -112,18 +112,7 @@ export const ProgrammeService = {
       maxTeamSize: p.type === "INDIVIDUAL" ? 1 : p.maxTeamSize || 1,
     }));
 
-    // This requires a `createMany` function in the model or direct prisma client access.
-    // Assuming `prisma.programme.createMany` is intended, but if not, a loop with `createProgramme` would be needed.
-    // For now, I'll keep it as `prisma.programme.createMany` as per the instruction's snippet.
-    // If `prisma` client is not directly available here, this part would need adjustment.
-    // For the purpose of this edit, I'll assume `prisma` is available or that `createMany` is a new model function.
-    // Since `createProgramme` exists, I'll assume a new `createManyProgrammes` function would be needed in the model.
-    // As I cannot modify the model file, I'll leave it as `prisma.programme.createMany` and assume `prisma` is imported.
-    // If `prisma` is not imported, this will cause a runtime error.
-    // For a faithful edit, I'll assume `prisma` is intended to be used directly here.
-    // If `prisma` is not imported, please add `import { prisma } from "@/server/db";` or similar.
-    return (global as any).prisma.programme.createMany({
-      // Using global.prisma as a common pattern for Prisma client in Next.js
+    return prisma.programme.createMany({
       data,
     });
   },
