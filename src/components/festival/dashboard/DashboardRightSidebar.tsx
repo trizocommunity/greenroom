@@ -1,31 +1,27 @@
 "use client";
 
-import { Settings, User, ExternalLink } from "lucide-react";
+import { ExternalLink, Settings, User } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import type { FestivalStatus } from "@prisma/client";
 
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarSeparator,
-} from "@/components/ui/sidebar";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { getAbbreviation } from "@/lib/utils";
 import { LimitationCard } from "@/components/festival/dashboard/LimitationCard";
 import { StatusStrip } from "@/components/festival/dashboard/StatusStrip";
 import type { FestivalRole } from "@/components/festival/FestivalRoleBadge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 
 interface DashboardRightSidebarProps {
+  trigger?: React.ReactNode;
   user?: {
     name?: string | null;
     email?: string | null;
@@ -53,6 +49,8 @@ interface DashboardRightSidebarProps {
 }
 
 export function DashboardRightSidebar({
+  festivalSlug,
+  trigger,
   user,
   festivalName,
   daysRemaining,
@@ -69,92 +67,107 @@ export function DashboardRightSidebar({
   };
 
   return (
-    <Sidebar side="right" collapsible="icon" className="border-l">
-      <SidebarHeader className="h-14 flex items-center justify-center border-b px-2">
-        <div className="flex items-center gap-2 w-full group-data-[collapsible=icon]:justify-center">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={safeUser.avatar} alt={safeUser.name} />
-            <AvatarFallback>{safeUser.initials}</AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col text-sm leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="font-semibold truncate">{safeUser.name}</span>
-            <span className="text-xs text-muted-foreground truncate">
-              {safeUser.email}
-            </span>
+    <Sheet>
+      {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
+      <SheetContent
+        side="right"
+        className="w-full sm:w-[350px] p-0 flex flex-col"
+      >
+        <SheetHeader className="h-16 flex flex-row items-center border-b px-4 space-y-0">
+          <div className="flex items-center gap-3 w-full">
+            <Avatar className="h-9 w-9">
+              <AvatarImage src={safeUser.avatar} alt={safeUser.name} />
+              <AvatarFallback>{safeUser.initials}</AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col text-sm leading-tight text-left">
+              <SheetTitle className="text-sm font-semibold truncate leading-none mb-1">
+                {safeUser.name}
+              </SheetTitle>
+              <span className="text-xs text-muted-foreground truncate">
+                {safeUser.email}
+              </span>
+            </div>
           </div>
+        </SheetHeader>
+
+        <ScrollArea className="flex-1">
+          <div className="p-4 space-y-6">
+            {/* Account Section */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                Account
+              </h4>
+              <Link
+                href="/profile"
+                className="flex items-center gap-2 text-sm p-2 hover:bg-accent rounded-md transition-colors"
+              >
+                <User className="h-4 w-4" />
+                <span>My Profile</span>
+              </Link>
+              <Link
+                href="/settings"
+                className="flex items-center gap-2 text-sm p-2 hover:bg-accent rounded-md transition-colors"
+              >
+                <Settings className="h-4 w-4" />
+                <span>Settings</span>
+              </Link>
+              <Link
+                href={`/${festivalSlug}`}
+                className="flex md:hidden items-center gap-2 text-sm p-2 hover:bg-accent rounded-md transition-colors"
+                target="_blank"
+              >
+                <ExternalLink className="h-4 w-4" />
+                <span>Public View</span>
+              </Link>
+            </div>
+
+            <Separator />
+
+            {/* Status Section */}
+            {festivalName && (
+              <div className="space-y-4">
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Status
+                </h4>
+                <StatusStrip
+                  festivalName={festivalName}
+                  daysRemaining={daysRemaining}
+                  userRole={userRole || "Viewer"}
+                  orientation="vertical"
+                  compact={true}
+                />
+              </div>
+            )}
+
+            {festivalName && usage && limits && <Separator />}
+
+            {/* Usage Section */}
+            {usage && limits && (
+              <div className="space-y-4">
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Usage & Limits
+                </h4>
+                <LimitationCard
+                  tierLabel={tierLabel || "Standard"}
+                  limits={limits}
+                  usage={usage}
+                  className="bg-transparent border-0 shadow-none p-0"
+                  minimal={true}
+                />
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+
+        <div className="p-4 border-t mt-auto">
+          <LogoutButton
+            variant="ghost"
+            className="w-full justify-start gap-2 px-2"
+            showText={true}
+            showIcon={true}
+          />
         </div>
-      </SidebarHeader>
-
-      <SidebarContent className="">
-        {/* Status Section */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Account</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="My Profile">
-                  <Link href="/profile">
-                    <User className="h-4 w-4" />
-                    <span>My Profile</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Settings">
-                  <Link href="/settings">
-                    <Settings className="h-4 w-4" />
-                    <span>Settings</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {festivalName && (
-          <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-            <SidebarGroupLabel>Status</SidebarGroupLabel>
-            <SidebarGroupContent className=" px-2 pt-2">
-              <StatusStrip
-                festivalName={festivalName}
-                daysRemaining={daysRemaining}
-                userRole={userRole || "Viewer"}
-                orientation="vertical"
-                compact={true}
-              />
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {/* Usage Section */}
-        {usage && limits && (
-          <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-            <SidebarGroupLabel>Usage</SidebarGroupLabel>
-            <SidebarGroupContent className="pt-2 px-2">
-              <LimitationCard
-                tierLabel={tierLabel || "Standard"}
-                limits={limits}
-                usage={usage}
-                className="bg-transparent border-0 shadow-none p-0"
-                minimal={true}
-              />
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-      </SidebarContent>
-
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <LogoutButton
-              variant="ghost"
-              className="w-full justify-start gap-2 px-2.5"
-              showText={true}
-              showIcon={true}
-            />
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
-    </Sidebar>
+      </SheetContent>
+    </Sheet>
   );
 }

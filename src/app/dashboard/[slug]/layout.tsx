@@ -11,6 +11,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { Button } from "@/components/ui/button";
 import {
   SidebarInset,
   SidebarProvider,
@@ -21,7 +22,7 @@ import { getCurrentUser } from "@/lib/auth/current-user";
 import { prisma } from "@/lib/db";
 import { findFestivalBySlugOrId } from "@/server/models/festival.model";
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Menu } from "lucide-react";
 
 export default async function FestivalDashboardLayout({
   children,
@@ -130,7 +131,7 @@ export default async function FestivalDashboardLayout({
       <SidebarInset>
         <header className="sticky top-0 z-10 w-full flex h-14 shrink-0 items-center justify-between border-b bg-background/95 backdrop-blur px-8 shadow-sm">
           <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-2 h-8 w-8" />
+            <SidebarTrigger className="hidden md:block -ml-2 h-8 w-8" />
             <div className="mr-2 h-4 w-px bg-border" />
             <Breadcrumb>
               <BreadcrumbList>
@@ -149,10 +150,38 @@ export default async function FestivalDashboardLayout({
 
           {/* Header Actions */}
           <div className="flex items-center gap-3">
-            <Link href={`/${slug}`} target="_blank">
+            <Link href={`/${slug}`} className="hidden md:block" target="_blank">
               <ExternalLink className="h-4 w-4" />
             </Link>
-            <SidebarTrigger side="right" className="h-8 w-8" />
+            <DashboardRightSidebar
+              trigger={
+                <Button variant="ghost" size="icon" className="-mr-2">
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">Toggle user menu</span>
+                </Button>
+              }
+              user={userData}
+              festivalSlug={slug}
+              festivalName={festival.name}
+              festivalStatus={festival.status}
+              daysRemaining={
+                festival.expiresAt
+                  ? Math.ceil(
+                      (new Date(festival.expiresAt).getTime() - Date.now()) /
+                        (1000 * 60 * 60 * 24),
+                    )
+                  : null
+              }
+              userRole={userRole}
+              usage={{
+                studentsCount: festival._count?.students || 0,
+                programmesCount: festival._count?.programmes || 0,
+                sessionsCount: 0,
+                storageUsedMB: 0, // Placeholder
+              }}
+              limits={festivalData.limits}
+              tierLabel={festival.tier || "Standard"}
+            />
           </div>
         </header>
 
@@ -162,30 +191,6 @@ export default async function FestivalDashboardLayout({
           </FestivalProvider>
         </main>
       </SidebarInset>
-
-      <DashboardRightSidebar
-        user={userData}
-        festivalSlug={slug}
-        festivalName={festival.name}
-        festivalStatus={festival.status}
-        daysRemaining={
-          festival.expiresAt
-            ? Math.ceil(
-                (new Date(festival.expiresAt).getTime() - Date.now()) /
-                  (1000 * 60 * 60 * 24),
-              )
-            : null
-        }
-        userRole={userRole}
-        usage={{
-          studentsCount: festival._count?.students || 0,
-          programmesCount: festival._count?.programmes || 0,
-          sessionsCount: 0,
-          storageUsedMB: 0, // Placeholder
-        }}
-        limits={festivalData.limits}
-        tierLabel={festival.tier || "Standard"}
-      />
     </SidebarProvider>
   );
 }
