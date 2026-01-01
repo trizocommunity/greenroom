@@ -9,6 +9,7 @@ import {
   findStudentsByFestival,
 } from "@/server/models/student.model";
 import { UsageCounterService } from "./usage-counter.service";
+import { TIER_CONFIG } from "@/config/pricing";
 
 export const StudentService = {
   async getAll(festivalId: string, groupId?: string) {
@@ -42,6 +43,19 @@ export const StudentService = {
       throw new Error("Invalid Category");
 
     // 3. Limit Check & Increment (Atomic)
+    const count = await prisma.student.count({
+      where: { festivalId },
+    });
+
+    // Import TIER_CONFIG and Tier type if not at top of file, or assume imports added
+    // Check Limit
+    const tierLimit = TIER_CONFIG[festival.tier || "STANDARD"].limits.students;
+    if (count >= tierLimit) {
+      throw new Error(
+        `Student limit reached for this tier (${tierLimit}). Upgrade to add more.`,
+      );
+    }
+
     await UsageCounterService.incrementUsage(festivalId, "students", 1);
 
     // 4. Auto-Generate Registration Number if not provided

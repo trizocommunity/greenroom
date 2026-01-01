@@ -146,7 +146,7 @@ export const GroupService = {
       color: defaultColors[Math.floor(Math.random() * defaultColors.length)],
     }));
 
-    return (global as any).prisma.group.createMany({
+    return db.group.createMany({
       data,
     });
   },

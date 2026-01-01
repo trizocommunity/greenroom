@@ -8,6 +8,7 @@ import {
   updateCategory,
 } from "@/server/models/category.model";
 import { findFestivalById } from "@/server/models/festival.model";
+import { prisma } from "@/lib/db";
 
 // Hardcoded limits for categories based on Tier
 const TIER_CATEGORY_LIMITS = {
@@ -144,7 +145,7 @@ export const CategoryService = {
       type: c.type || "SINGLE",
     }));
 
-    return (global as any).prisma.category.createMany({
+    return prisma.category.createMany({
       data,
     });
   },

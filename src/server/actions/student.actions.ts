@@ -9,6 +9,7 @@ import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 
 import { findFestivalById } from "@/server/models/festival.model";
 import { StudentService } from "@/server/services/student.service";
+import { TIER_CONFIG } from "@/config/pricing";
 
 export async function getStudentsAction(festivalId: string) {
   return StudentService.getAll(festivalId);
@@ -119,6 +120,23 @@ export async function bulkCreateStudentsAction(
 
   const festival = await findFestivalById(festivalId);
   if (!festival) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
+
+  // Check Limits (Pre-flight)
+  const tierLimit = TIER_CONFIG[festival.tier || "STANDARD"].limits.students;
+  const currentCount = await prisma.student.count({ where: { festivalId } });
+
+  if (currentCount + students.length > tierLimit) {
+    return {
+      success: false,
+      successCount: 0,
+      errors: [
+        {
+          name: "ALL",
+          error: `Batch exceeds limit. You can add ${tierLimit - currentCount} more.`,
+        },
+      ],
+    };
+  }
 
   let successCount = 0;
   const errors: { name: string; error: string }[] = [];
