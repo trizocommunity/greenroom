@@ -10,7 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
   BulkUploadFlow,
-  ParsedItem,
+  type ParsedItem,
 } from "@/components/common/bulk-upload/BulkUploadFlow";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -347,7 +347,7 @@ export function BulkUploadStudentsModal({
           ? `email:${p.data.email.toLowerCase()}`
           : "";
 
-        let newErrors = [...p.errors];
+        const newErrors = [...p.errors];
         let isValid = p.isValid;
 
         if (conflicts[nameKey]) {
