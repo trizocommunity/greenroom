@@ -30,6 +30,7 @@ import {
 import { useCategories } from "@/hooks/useCategories";
 import { useProgrammes } from "@/hooks/useProgrammes";
 import { ProgrammeDialog } from "./ProgrammeDialog";
+import { BulkUploadProgrammesModal } from "./BulkUploadProgrammesModal";
 
 interface ProgrammesClientProps {
   festivalId: string;
@@ -98,10 +99,13 @@ export function ProgrammesClient({ festivalId }: ProgrammesClientProps) {
                 </Tooltip>
               </TooltipProvider>
             ) : (
-              <ProgrammeDialog
-                festivalId={festivalId}
-                trigger={<Button>Add Programme</Button>}
-              />
+              <div className="flex gap-2">
+                <BulkUploadProgrammesModal festivalId={festivalId} />
+                <ProgrammeDialog
+                  festivalId={festivalId}
+                  trigger={<Button>Add Programme</Button>}
+                />
+              </div>
             )}
           </div>
         </div>
