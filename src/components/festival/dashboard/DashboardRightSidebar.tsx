@@ -1,9 +1,15 @@
 "use client";
 
+import type { FestivalStatus } from "@prisma/client";
 import { ExternalLink, Settings, User } from "lucide-react";
 import Link from "next/link";
-import type { FestivalStatus } from "@prisma/client";
-
+import { LogoutButton } from "@/components/auth/LogoutButton";
+import { LimitationCard } from "@/components/festival/dashboard/LimitationCard";
+import { StatusStrip } from "@/components/festival/dashboard/StatusStrip";
+import type { FestivalRole } from "@/components/festival/FestivalRoleBadge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
   SheetContent,
@@ -11,14 +17,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogoutButton } from "@/components/auth/LogoutButton";
 import { getAbbreviation } from "@/lib/utils";
-import { LimitationCard } from "@/components/festival/dashboard/LimitationCard";
-import { StatusStrip } from "@/components/festival/dashboard/StatusStrip";
-import type { FestivalRole } from "@/components/festival/FestivalRoleBadge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 
 interface DashboardRightSidebarProps {
   trigger?: React.ReactNode;

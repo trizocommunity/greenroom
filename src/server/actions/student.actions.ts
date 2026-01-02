@@ -2,14 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { TIER_CONFIG } from "@/config/pricing";
 // New action for hooks - uses StudentService
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
-
 import { findFestivalById } from "@/server/models/festival.model";
 import { StudentService } from "@/server/services/student.service";
-import { TIER_CONFIG } from "@/config/pricing";
 
 export async function getStudentsAction(festivalId: string) {
   return StudentService.getAll(festivalId);

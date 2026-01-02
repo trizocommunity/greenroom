@@ -13,9 +13,9 @@ import {
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { useCategories } from "@/hooks/useCategories";
 import { useStudents } from "@/hooks/useStudents";
+import { BulkUploadCategoriesModal } from "./BulkUploadCategoriesModal";
 import { CategoryDetailsDialog } from "./CategoryDetailsDialog";
 import { CategoryDialog } from "./CategoryDialog";
-import { BulkUploadCategoriesModal } from "./BulkUploadCategoriesModal";
 
 interface CategoriesClientProps {
   festivalId: string;

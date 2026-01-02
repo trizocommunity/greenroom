@@ -1,11 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 import {
   APP_URL,
-  MAIN_DOMAIN,
-  PROTECTED_PATHS,
   authRoutes,
   isProtectedRoute,
   isPublicRoute,
+  MAIN_DOMAIN,
+  PROTECTED_PATHS,
 } from "@/config/routes";
 import { decrypt } from "@/lib/auth/session";
 

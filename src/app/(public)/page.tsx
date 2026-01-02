@@ -4,7 +4,7 @@ import Hero from "@/components/home/Hero";
 import ProblemSolution from "@/components/home/ProblemSolution";
 import TargetAudience from "@/components/home/TargetAudience";
 
-export const dynamic = 'force-static';
+export const dynamic = "force-static";
 
 export default function Home() {
   return (

@@ -1,8 +1,7 @@
 "use server";
 
-import { prisma } from "@/lib/db";
-
 import { getSession } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { findFestivalById } from "@/server/models/festival.model";
 import { findMemberByFestivalAndUser } from "@/server/models/member.model";
@@ -54,9 +53,7 @@ export async function createAssignmentAction(
     programmeCount === 0 ||
     studentCount === 0
   ) {
-    throw new Error(
-      "Create categories, groups, programmes & students first.",
-    );
+    throw new Error("Create categories, groups, programmes & students first.");
   }
 
   return AssignmentService.create(festivalId, data);
