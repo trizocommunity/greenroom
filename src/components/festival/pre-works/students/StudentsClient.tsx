@@ -31,9 +31,9 @@ import {
 import { useCategories } from "@/hooks/useCategories";
 import { useGroups } from "@/hooks/useGroups";
 import { useStudents } from "@/hooks/useStudents";
+import { BulkUploadStudentsModal } from "./BulkUploadStudentsModal";
 import { StudentDetailsDialog } from "./StudentDetailsDialog";
 import { StudentDialog } from "./StudentDialog";
-import { BulkUploadStudentsModal } from "./BulkUploadStudentsModal";
 
 interface StudentsClientProps {
   festivalId: string;

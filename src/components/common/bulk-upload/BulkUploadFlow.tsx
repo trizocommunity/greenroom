@@ -1,22 +1,24 @@
 "use client";
 
-import * as XLSX from "xlsx";
 import {
   AlertCircle,
   Check,
+  ChevronLeft,
+  ChevronRight,
   CloudUpload,
   Download,
+  Edit2,
   FileSpreadsheet,
   Loader2,
   Trash2,
-  Edit2,
   Upload,
   X,
-  ChevronRight,
-  ChevronLeft,
 } from "lucide-react";
-import { useRef, useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { v4 as uuidv4 } from "uuid";
+import * as XLSX from "xlsx";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,6 +28,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
   TableBody,
@@ -35,9 +38,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { v4 as uuidv4 } from "uuid";
 
 // --- Types ---
 

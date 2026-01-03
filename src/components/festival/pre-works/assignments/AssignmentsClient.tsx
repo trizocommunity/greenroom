@@ -31,9 +31,9 @@ import { useCategories } from "@/hooks/useCategories";
 import { useGroups } from "@/hooks/useGroups";
 import { useProgrammes } from "@/hooks/useProgrammes";
 import { useStudents } from "@/hooks/useStudents";
+import { AssignmentDialog } from "./AssignmentDialog"; // Keep for Edit/View flow if needed, or inline edit logic
 import { GeneralAssignmentDialog } from "./GeneralAssignmentDialog";
 import { IndividualAssignmentDialog } from "./IndividualAssignmentDialog";
-import { AssignmentDialog } from "./AssignmentDialog"; // Keep for Edit/View flow if needed, or inline edit logic
 
 interface AssignmentsClientProps {
   festivalId: string;

@@ -29,8 +29,8 @@ import {
 } from "@/components/ui/tooltip";
 import { useCategories } from "@/hooks/useCategories";
 import { useProgrammes } from "@/hooks/useProgrammes";
-import { ProgrammeDialog } from "./ProgrammeDialog";
 import { BulkUploadProgrammesModal } from "./BulkUploadProgrammesModal";
+import { ProgrammeDialog } from "./ProgrammeDialog";
 
 interface ProgrammesClientProps {
   festivalId: string;
