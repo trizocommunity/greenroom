@@ -21,7 +21,9 @@ export function useProgrammes(festivalId: string) {
       categoryId: string;
       type?: string;
       stageType?: string;
-      maxEntries?: number;
+      maxParticipantsPerGroup?: number;
+      maxTeamsPerGroup?: number;
+      maxStudentsPerTeam?: number;
     }) => {
       const result = await createProgrammeAction(festivalId, data);
       return result;

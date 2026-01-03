@@ -40,8 +40,9 @@ export const ProgrammeService = {
       categoryId: string;
       type: "INDIVIDUAL" | "GROUP";
       stageType: "STAGE" | "NON_STAGE";
-      maxEntries?: number;
-      maxTeamSize?: number;
+      maxParticipantsPerGroup?: number;
+      maxTeamsPerGroup?: number;
+      maxStudentsPerTeam?: number;
     },
   ) {
     // 1. Check Tier Limits
@@ -67,8 +68,9 @@ export const ProgrammeService = {
       category: { connect: { id: data.categoryId } },
       type: data.type,
       stageType: data.stageType,
-      maxEntries: data.maxEntries || 1, // Default to 1
-      maxTeamSize: data.type === "INDIVIDUAL" ? 1 : data.maxTeamSize || 1, // Force 1 for individual
+      maxParticipantsPerGroup: data.maxParticipantsPerGroup || 1,
+      maxTeamsPerGroup: data.maxTeamsPerGroup || 1,
+      maxStudentsPerTeam: data.maxStudentsPerTeam || 1,
     });
   },
 
@@ -82,8 +84,9 @@ export const ProgrammeService = {
       categoryId: string;
       type: "INDIVIDUAL" | "GROUP";
       stageType: "STAGE" | "NON_STAGE";
-      maxEntries?: number;
-      maxTeamSize?: number;
+      maxParticipantsPerGroup?: number;
+      maxTeamsPerGroup?: number;
+      maxStudentsPerTeam?: number;
     }[],
   ) {
     // Replaced prisma.festival.findUnique with existing findFestivalById
@@ -108,8 +111,9 @@ export const ProgrammeService = {
       categoryId: p.categoryId,
       type: p.type,
       stageType: p.stageType,
-      maxEntries: p.maxEntries || 1,
-      maxTeamSize: p.type === "INDIVIDUAL" ? 1 : p.maxTeamSize || 1,
+      maxParticipantsPerGroup: p.maxParticipantsPerGroup || 1,
+      maxTeamsPerGroup: p.maxTeamsPerGroup || 1,
+      maxStudentsPerTeam: p.maxStudentsPerTeam || 1,
     }));
 
     return prisma.programme.createMany({
@@ -128,8 +132,9 @@ export const ProgrammeService = {
       categoryId?: string;
       type?: "INDIVIDUAL" | "GROUP";
       stageType?: "STAGE" | "NON_STAGE";
-      maxEntries?: number;
-      maxTeamSize?: number;
+      maxParticipantsPerGroup?: number;
+      maxTeamsPerGroup?: number;
+      maxStudentsPerTeam?: number;
     },
   ) {
     // Verify ownership via getDetails (throws if not found)
@@ -143,7 +148,9 @@ export const ProgrammeService = {
         : undefined,
       type: data.type,
       stageType: data.stageType,
-      maxEntries: data.maxEntries,
+      maxParticipantsPerGroup: data.maxParticipantsPerGroup,
+      maxTeamsPerGroup: data.maxTeamsPerGroup,
+      maxStudentsPerTeam: data.maxStudentsPerTeam,
     });
   },
 

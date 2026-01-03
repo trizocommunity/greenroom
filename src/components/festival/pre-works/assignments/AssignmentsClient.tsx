@@ -1,7 +1,14 @@
 "use client";
 
-import { format } from "date-fns";
-import { Eye, Loader2, Pencil, Trash2 } from "lucide-react";
+import { useState, useMemo } from "react";
+import {
+  Loader2,
+  Trash2,
+  Plus,
+  Filter,
+  Search,
+  CalendarDays,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +19,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -20,15 +35,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useAssignments } from "@/hooks/useAssignments";
 import { useCategories } from "@/hooks/useCategories";
 import { useGroups } from "@/hooks/useGroups";
+import { AssignmentModal } from "./AssignmentModal";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 import { useProgrammes } from "@/hooks/useProgrammes";
 import { useStudents } from "@/hooks/useStudents";
 import { AssignmentDialog } from "./AssignmentDialog"; // Keep for Edit/View flow if needed, or inline edit logic
@@ -48,18 +60,58 @@ export function AssignmentsClient({
     useAssignments(festivalId);
   const { categories } = useCategories(festivalId);
   const { groups } = useGroups(festivalId);
-  const { programmes } = useProgrammes(festivalId);
-  const { students } = useStudents(festivalId);
 
-  const missingDependencies =
-    categories.length === 0 ||
-    groups.length === 0 ||
-    programmes.length === 0 ||
-    students.length === 0;
+  const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
+
+  // Global Filters
+  const [filterGroup, setFilterGroup] = useState<string>("ALL");
+  const [filterCategory, setFilterCategory] = useState<string>("ALL");
+  const [filterType, setFilterType] = useState<string>("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const isReadOnly =
-    programmeAssignmentDeadline &&
+    !!programmeAssignmentDeadline &&
     new Date() > new Date(programmeAssignmentDeadline);
+
+  // Derived Data
+  const filteredAssignments = useMemo(() => {
+    return assignments.filter((a: any) => {
+      // 1. Group Filter
+      if (filterGroup !== "ALL") {
+        const assignmentGroupId = a.group?.id || a.student?.groupId;
+        if (assignmentGroupId !== filterGroup) return false;
+      }
+
+      // 2. Category Filter
+      if (filterCategory !== "ALL") {
+        const categoryId = a.category?.id || a.programme?.categoryId; // Use assignment category or programme category
+        if (categoryId !== filterCategory) return false;
+      }
+
+      // 3. Type Filter (Programme Type: INDIVIDUAL / GROUP)
+      if (filterType !== "ALL") {
+        if (a.programme?.type !== filterType) return false;
+      }
+
+      // 4. Search
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const studentName = a.student?.name?.toLowerCase() || "";
+        const programmeName = a.programme?.name?.toLowerCase() || "";
+        const groupName =
+          (a.group?.name || a.student?.group?.name)?.toLowerCase() || "";
+        if (
+          !studentName.includes(query) &&
+          !programmeName.includes(query) &&
+          !groupName.includes(query)
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [assignments, filterGroup, filterCategory, filterType, searchQuery]);
 
   if (isLoading) {
     return (
@@ -69,92 +121,186 @@ export function AssignmentsClient({
     );
   }
 
-  // Split Assignments
-  const generalAssignments = assignments.filter(
-    (a: any) => a.programme?.category?.type === "GENERAL",
-  );
-  const individualAssignments = assignments.filter(
-    (a: any) => a.programme?.category?.type !== "GENERAL",
-  );
-
   return (
     <div className="space-y-6">
-      {/* Header Actions */}
-      <div className="flex flex-col items-end gap-2">
-        <div className="flex justify-end gap-2">
-          {isReadOnly || missingDependencies ? (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex gap-2">
-                    <Button disabled variant="outline">
-                      New General
-                    </Button>
-                    <Button disabled>New Individual</Button>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>
-                    {missingDependencies
-                      ? "Create categories, groups, programmes & students first."
-                      : "Assignment deadline has passed."}
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          ) : (
-            <>
-              <GeneralAssignmentDialog festivalId={festivalId} />
-              <IndividualAssignmentDialog festivalId={festivalId} />
-            </>
-          )}
-        </div>
+      <AssignmentModal
+        festivalId={festivalId}
+        open={assignmentModalOpen}
+        onOpenChange={setAssignmentModalOpen}
+      />
+
+      {/* Header Section */}
+      <div className="flex justify-end border-b pb-4">
+        <Button
+          onClick={() => setAssignmentModalOpen(true)}
+          disabled={isReadOnly}
+          className="shrink-0"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          New Assignment
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
-        {/* TABLE 1: Individual Programmes */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Individual Programmes</CardTitle>
-            <CardDescription>
-              Performance and competition assignments.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
+      {/* Top Filter Section */}
+      <Card>
+        <CardContent className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Group Filter */}
+          <div className="space-y-1">
+            <span className="text-xs font-medium text-muted-foreground">
+              Group
+            </span>
+            <Select value={filterGroup} onValueChange={setFilterGroup}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="All Groups" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Groups</SelectItem>
+                {groups.map((g: any) => (
+                  <SelectItem key={g.id} value={g.id}>
+                    {g.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Category Filter */}
+          <div className="space-y-1">
+            <span className="text-xs font-medium text-muted-foreground">
+              Category
+            </span>
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Categories</SelectItem>
+                {categories.map((c: any) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Programme Type Filter */}
+          <div className="space-y-1">
+            <span className="text-xs font-medium text-muted-foreground">
+              Type
+            </span>
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Types</SelectItem>
+                <SelectItem value="INDIVIDUAL">Individual</SelectItem>
+                <SelectItem value="GROUP">Group</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Search */}
+          <div className="space-y-1">
+            <span className="text-xs font-medium text-muted-foreground">
+              Search
+            </span>
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Student, Programme, Group..."
+                className="pl-8 h-9"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Final Assignment Table */}
+      <Card>
+        <CardHeader className="p-4 py-3 border-b bg-muted/5 flex flex-row items-center justify-between">
+          <div className="text-sm font-medium text-muted-foreground">
+            Total Assignments:{" "}
+            <span className="text-foreground font-bold">
+              {filteredAssignments.length}
+            </span>
+          </div>
+          {/* Possible Bulk actions here later */}
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Programme</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Assigned Student</TableHead>
+                <TableHead>Group</TableHead>
+                <TableHead>Assigned At</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredAssignments.length === 0 ? (
                 <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Programme</TableHead>
-                  <TableHead>Group</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableCell
+                    colSpan={6}
+                    className="h-32 text-center text-muted-foreground"
+                  >
+                    No assignments found matching your filters.
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {individualAssignments.map((assignment: any) => (
+              ) : (
+                filteredAssignments.map((assignment: any) => (
                   <TableRow key={assignment.id}>
                     <TableCell className="font-medium">
-                      {assignment.student?.name}
+                      {assignment.programme?.name}
+                      {assignment.programme?.type === "GROUP" && (
+                        <Badge
+                          variant="secondary"
+                          className="ml-2 text-[10px] h-5"
+                        >
+                          Team {assignment.teamNumber || 1}
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">
-                        {assignment.programme?.category?.name || "-"}
+                      <Badge variant="outline" className="font-normal">
+                        {assignment.category?.name ||
+                          assignment.programme?.category?.name}
                       </Badge>
                     </TableCell>
-                    <TableCell>{assignment.programme?.name}</TableCell>
+                    <TableCell>
+                      {assignment.student ? (
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">
+                            {assignment.student.name}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground italic">
+                          Start Sheet Only
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       {assignment.group?.name ||
-                        assignment.student?.group?.name}
+                        assignment.student?.group?.name ||
+                        "-"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-xs">
+                      {assignment.assignedAt
+                        ? format(new Date(assignment.assignedAt), "PP")
+                        : "-"}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        {/* View/Edit reusing old dialog for now or custom implementation */}
-                        {/* Implementing simpler inline delete/view for clarity as requested split implies creating new flows */}
                         {!isReadOnly && (
                           <DeleteDialog
                             title="Remove Assignment"
-                            description="Are you sure?"
+                            description={`Are you sure you want to remove ${assignment.student?.name} from ${assignment.programme?.name}?`}
                             onDelete={async () => {
                               await deleteAssignment(assignment.id);
                             }}
@@ -163,7 +309,7 @@ export function AssignmentsClient({
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -173,97 +319,12 @@ export function AssignmentsClient({
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
-                {individualAssignments.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="h-24 text-center text-muted-foreground"
-                    >
-                      No individual assignments found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        {/* TABLE 2: General Programmes */}
-        <Card>
-          <CardHeader>
-            <CardTitle>General Programmes</CardTitle>
-            <CardDescription>
-              Assignments for common events (Rally, etc).
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Programme</TableHead>
-                  <TableHead>Group</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {generalAssignments.map((assignment: any) => (
-                  <TableRow key={assignment.id}>
-                    <TableCell className="font-medium">
-                      {assignment.student?.name}
-                    </TableCell>
-                    <TableCell>{assignment.programme?.name}</TableCell>
-                    <TableCell>
-                      {assignment.group?.name ||
-                        assignment.student?.group?.name}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        {!isReadOnly && (
-                          <DeleteDialog
-                            title="Remove Assignment"
-                            description="Are you sure?"
-                            onDelete={async () => {
-                              await deleteAssignment(assignment.id);
-                            }}
-                            isDeleting={isDeleting}
-                            trigger={
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            }
-                          />
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {generalAssignments.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={4}
-                      className="h-24 text-center text-muted-foreground"
-                    >
-                      No general assignments found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
-
-      {isReadOnly && (
-        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800 dark:border-yellow-900/50 dark:bg-yellow-900/20 dark:text-yellow-200">
-          Assignment deadline has passed. Read-only mode active.
-        </div>
-      )}
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -60,8 +60,9 @@ export function ProgrammeDialog({
     categoryId: "",
     type: "INDIVIDUAL",
     stageType: "STAGE",
-    maxEntries: 1,
-    maxTeamSize: 1,
+    maxParticipantsPerGroup: 1,
+    maxTeamsPerGroup: 1,
+    maxStudentsPerTeam: 1,
   });
 
   const isEditing = !!programme;
@@ -82,8 +83,9 @@ export function ProgrammeDialog({
           categoryId: programme.categoryId || "",
           type: programme.type || "INDIVIDUAL",
           stageType: programme.stageType || "STAGE",
-          maxEntries: programme.maxEntries || 1,
-          maxTeamSize: programme.maxTeamSize || 1,
+          maxParticipantsPerGroup: programme.maxParticipantsPerGroup || 1,
+          maxTeamsPerGroup: programme.maxTeamsPerGroup || 1,
+          maxStudentsPerTeam: programme.maxStudentsPerTeam || 1,
         });
       } else {
         setFormData({
@@ -91,8 +93,9 @@ export function ProgrammeDialog({
           categoryId: "",
           type: "INDIVIDUAL",
           stageType: "STAGE",
-          maxEntries: 1,
-          maxTeamSize: 1,
+          maxParticipantsPerGroup: 1,
+          maxTeamsPerGroup: 1,
+          maxStudentsPerTeam: 1,
         });
       }
     }
@@ -102,13 +105,6 @@ export function ProgrammeDialog({
   const selectedCategory = categories.find(
     (c: any) => c.id === formData.categoryId,
   );
-
-  // Effect to auto-update maxTeamSize based on type
-  useEffect(() => {
-    if (formData.type === "INDIVIDUAL" && formData.maxTeamSize !== 1) {
-      setFormData((prev) => ({ ...prev, maxTeamSize: 1 }));
-    }
-  }, [formData.type, formData.maxTeamSize]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,8 +122,9 @@ export function ProgrammeDialog({
           categoryId: "",
           type: "INDIVIDUAL",
           stageType: "STAGE",
-          maxEntries: 1,
-          maxTeamSize: 1,
+          maxParticipantsPerGroup: 1,
+          maxTeamsPerGroup: 1,
+          maxStudentsPerTeam: 1,
         });
       }
     } catch (error) {
@@ -165,15 +162,24 @@ export function ProgrammeDialog({
               </Badge>
             </div>
           </div>
-          <div className="space-y-1">
-            <span className="text-muted-foreground">Max Entries/Group</span>
-            <div className="font-medium">{details.maxEntries}</div>
-          </div>
-          {details.type === "GROUP" && (
+          {details.type === "INDIVIDUAL" ? (
             <div className="space-y-1">
-              <span className="text-muted-foreground">Team Size</span>
-              <div className="font-medium">{details.maxTeamSize}</div>
+              <span className="text-muted-foreground">Max Entries/Group</span>
+              <div className="font-medium">
+                {details.maxParticipantsPerGroup}
+              </div>
             </div>
+          ) : (
+            <>
+              <div className="space-y-1">
+                <span className="text-muted-foreground">Max Teams/Group</span>
+                <div className="font-medium">{details.maxTeamsPerGroup}</div>
+              </div>
+              <div className="space-y-1">
+                <span className="text-muted-foreground">Students/Team</span>
+                <div className="font-medium">{details.maxStudentsPerTeam}</div>
+              </div>
+            </>
           )}
         </div>
 
@@ -355,45 +361,67 @@ export function ProgrammeDialog({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="maxEntries">
-                  {formData.type === "GROUP"
-                    ? "Max Teams (per Group)"
-                    : "Max Entries (per Group)"}
-                </Label>
-                <Input
-                  id="maxEntries"
-                  type="number"
-                  min={1}
-                  required
-                  value={formData.maxEntries}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      maxEntries: parseInt(e.target.value, 10),
-                    })
-                  }
-                  disabled={readOnly || isLoadingAction}
-                />
-              </div>
-              {formData.type === "GROUP" && (
+              {formData.type === "INDIVIDUAL" ? (
                 <div className="space-y-2">
-                  <Label htmlFor="maxTeamSize">Max Students (per Team)</Label>
+                  <Label htmlFor="maxParticipantsPerGroup">
+                    Max Entries (per Group)
+                  </Label>
                   <Input
-                    id="maxTeamSize"
+                    id="maxParticipantsPerGroup"
                     type="number"
                     min={1}
                     required
-                    value={formData.maxTeamSize}
+                    value={formData.maxParticipantsPerGroup}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        maxTeamSize: parseInt(e.target.value, 10),
+                        maxParticipantsPerGroup: parseInt(e.target.value, 10),
                       })
                     }
                     disabled={readOnly || isLoadingAction}
                   />
                 </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="maxTeamsPerGroup">
+                      Max Teams (per Group)
+                    </Label>
+                    <Input
+                      id="maxTeamsPerGroup"
+                      type="number"
+                      min={1}
+                      required
+                      value={formData.maxTeamsPerGroup}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          maxTeamsPerGroup: parseInt(e.target.value, 10),
+                        })
+                      }
+                      disabled={readOnly || isLoadingAction}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="maxStudentsPerTeam">
+                      Max Students (per Team)
+                    </Label>
+                    <Input
+                      id="maxStudentsPerTeam"
+                      type="number"
+                      min={1}
+                      required
+                      value={formData.maxStudentsPerTeam}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          maxStudentsPerTeam: parseInt(e.target.value, 10),
+                        })
+                      }
+                      disabled={readOnly || isLoadingAction}
+                    />
+                  </div>
+                </>
               )}
             </div>
 

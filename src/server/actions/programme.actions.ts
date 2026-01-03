@@ -21,8 +21,9 @@ export async function createProgrammeAction(
     categoryId: string;
     type?: string;
     stageType?: string;
-    maxEntries?: number;
-    maxTeamSize?: number;
+    maxParticipantsPerGroup?: number;
+    maxTeamsPerGroup?: number;
+    maxStudentsPerTeam?: number;
   },
 ) {
   // Validate Dependencies
@@ -39,8 +40,9 @@ export async function createProgrammeAction(
     categoryId: data.categoryId,
     type: (data.type as "INDIVIDUAL" | "GROUP") || "INDIVIDUAL",
     stageType: (data.stageType as "STAGE" | "NON_STAGE") || "STAGE",
-    maxEntries: data.maxEntries,
-    maxTeamSize: data.maxTeamSize,
+    maxParticipantsPerGroup: data.maxParticipantsPerGroup,
+    maxTeamsPerGroup: data.maxTeamsPerGroup,
+    maxStudentsPerTeam: data.maxStudentsPerTeam,
   });
 }
 
@@ -57,8 +59,9 @@ export async function bulkCreateProgrammesAction(
     categoryId: string;
     type: string;
     stageType: string;
-    maxEntries?: number;
-    maxTeamSize?: number;
+    maxParticipantsPerGroup?: number;
+    maxTeamsPerGroup?: number;
+    maxStudentsPerTeam?: number;
   }[],
 ) {
   // Service handles final limit check & DB insertion
@@ -68,8 +71,9 @@ export async function bulkCreateProgrammesAction(
     categoryId: p.categoryId,
     type: (p.type as "INDIVIDUAL" | "GROUP") || "INDIVIDUAL",
     stageType: (p.stageType as "STAGE" | "NON_STAGE") || "STAGE",
-    maxEntries: p.maxEntries,
-    maxTeamSize: p.maxTeamSize,
+    maxParticipantsPerGroup: p.maxParticipantsPerGroup,
+    maxTeamsPerGroup: p.maxTeamsPerGroup,
+    maxStudentsPerTeam: p.maxStudentsPerTeam,
   }));
 
   try {
@@ -93,8 +97,9 @@ export async function updateProgrammeAction(
     categoryId?: string;
     type?: string;
     stageType?: string;
-    maxEntries?: number;
-    maxTeamSize?: number;
+    maxParticipantsPerGroup?: number;
+    maxTeamsPerGroup?: number;
+    maxStudentsPerTeam?: number;
   },
 ) {
   // Map data to service format if needed, or if service accepts partials
@@ -107,7 +112,8 @@ export async function updateProgrammeAction(
     stageType: data.stageType
       ? (data.stageType as "STAGE" | "NON_STAGE") || "STAGE"
       : undefined,
-    maxEntries: data.maxEntries,
-    maxTeamSize: data.maxTeamSize,
+    maxParticipantsPerGroup: data.maxParticipantsPerGroup,
+    maxTeamsPerGroup: data.maxTeamsPerGroup,
+    maxStudentsPerTeam: data.maxStudentsPerTeam,
   });
 }

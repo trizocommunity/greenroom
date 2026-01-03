@@ -59,6 +59,40 @@ export async function createAssignmentAction(
   return AssignmentService.create(festivalId, data);
 }
 
+export async function bulkCreateAssignmentAction(
+  festivalId: string,
+  assignments: {
+    programmeId: string;
+    studentId: string;
+    teamNumber?: number;
+  }[],
+) {
+  const session = await getSession();
+  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+
+  const festival = await findFestivalById(festivalId);
+
+  // Deadline Check
+  if (
+    festival?.programmeAssignmentDeadline &&
+    new Date() > festival.programmeAssignmentDeadline
+  ) {
+    const isAdmin = festival.ownerId === session.userId;
+    if (!isAdmin) {
+      throw new Error("Programme assignment deadline has passed.");
+    }
+  }
+
+  if (assignments.length === 0) return [];
+
+  // Dependencies check not strictly needed per item if we assume bulk flow comes from a valid state,
+  // but good to keep safe. The Service handles detail validation.
+  // We can do a quick count check here if we want to fail fast for empty festival,
+  // but let's rely on service validation for simplicity and robustness.
+
+  return AssignmentService.bulkCreate(festivalId, assignments);
+}
+
 export async function deleteAssignmentAction(festivalId: string, id: string) {
   const session = await getSession();
   if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);

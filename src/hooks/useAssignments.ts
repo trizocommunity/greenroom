@@ -71,5 +71,28 @@ export function useAssignments(festivalId: string) {
     isUpdating: updateMutation.isPending,
     deleteAssignment: deleteMutation.mutateAsync,
     isDeleting: deleteMutation.isPending,
+    bulkCreateAssignment: useMutation({
+      mutationFn: async (
+        assignments: {
+          programmeId: string;
+          studentId: string;
+          teamNumber?: number;
+        }[],
+      ) => {
+        const { bulkCreateAssignmentAction } = await import(
+          "@/server/actions/assignment.actions"
+        );
+        return bulkCreateAssignmentAction(festivalId, assignments);
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: ["assignments", festivalId],
+        });
+        toast.success("Assignments created successfully");
+      },
+      onError: (error: any) => {
+        toast.error(error.message || "Failed to create assignments");
+      },
+    }).mutateAsync,
   };
 }

@@ -207,13 +207,13 @@ export function ProgrammesClient({ festivalId }: ProgrammesClientProps) {
                 <TableCell className="text-xs">
                   {programme.type === "INDIVIDUAL" ? (
                     <span className="text-muted-foreground">
-                      Max Entries: {programme.maxEntries}
+                      Max Entries: {programme.maxParticipantsPerGroup}
                     </span>
                   ) : (
                     <div className="flex flex-col">
-                      <span>Max Teams: {programme.maxEntries}</span>
+                      <span>Max Teams: {programme.maxTeamsPerGroup}</span>
                       <span className="text-muted-foreground">
-                        Size: {programme.maxTeamSize}
+                        Size: {programme.maxStudentsPerTeam}
                       </span>
                     </div>
                   )}

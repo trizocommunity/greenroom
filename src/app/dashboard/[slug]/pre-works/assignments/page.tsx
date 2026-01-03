@@ -14,7 +14,7 @@ export default async function AssignmentsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 lg:flex-row items-start lg:items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
             Programme Assignments

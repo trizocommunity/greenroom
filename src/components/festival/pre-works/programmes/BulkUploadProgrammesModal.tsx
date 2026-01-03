@@ -29,7 +29,6 @@ import {
 } from "@/components/ui/select";
 import { useCategories } from "@/hooks/useCategories";
 import { bulkCreateProgrammesAction } from "@/server/actions/programme.actions";
-
 // --- Types & Schema ---
 
 type ProgrammeType = "INDIVIDUAL" | "GROUP";
@@ -41,28 +40,20 @@ interface ProgrammeData {
   categoryId?: string;
   type: ProgrammeType;
   stageType: StageType;
-  maxEntries: number;
-  maxTeamSize: number;
+  maxParticipantsPerGroup: number;
+  maxTeamsPerGroup: number;
+  maxStudentsPerTeam: number;
 }
 
-const ProgrammeSchema = z
-  .object({
-    name: z.string().min(1, "Name is required"),
-    categoryId: z.string().min(1, "Category is required"),
-    type: z.enum(["INDIVIDUAL", "GROUP"]),
-    stageType: z.enum(["STAGE", "NON_STAGE"]),
-    maxEntries: z.coerce.number().min(1, "Must be at least 1"),
-    maxTeamSize: z.coerce.number().min(1, "Must be at least 1"),
-  })
-  .superRefine((data, ctx) => {
-    if (data.type === "INDIVIDUAL" && data.maxTeamSize > 1) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Max Team Size must be 1 for Individual events",
-        path: ["maxTeamSize"],
-      });
-    }
-  });
+const ProgrammeSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  categoryId: z.string().min(1, "Category is required"),
+  type: z.enum(["INDIVIDUAL", "GROUP"]),
+  stageType: z.enum(["STAGE", "NON_STAGE"]),
+  maxParticipantsPerGroup: z.coerce.number().min(1, "Must be at least 1"),
+  maxTeamsPerGroup: z.coerce.number().min(1, "Must be at least 1"),
+  maxStudentsPerTeam: z.coerce.number().min(1, "Must be at least 1"),
+});
 
 type ProgrammeFormValues = z.infer<typeof ProgrammeSchema>;
 
@@ -86,8 +77,9 @@ function ProgrammeEditForm({
       categoryId: data.categoryId || "",
       type: data.type,
       stageType: data.stageType,
-      maxEntries: data.maxEntries,
-      maxTeamSize: data.maxTeamSize,
+      maxParticipantsPerGroup: data.maxParticipantsPerGroup,
+      maxTeamsPerGroup: data.maxTeamsPerGroup,
+      maxStudentsPerTeam: data.maxStudentsPerTeam,
     },
   });
 
@@ -102,8 +94,9 @@ function ProgrammeEditForm({
       categoryName: category?.name || "",
       type: values.type,
       stageType: values.stageType,
-      maxEntries: values.maxEntries,
-      maxTeamSize: values.type === "INDIVIDUAL" ? 1 : values.maxTeamSize,
+      maxParticipantsPerGroup: values.maxParticipantsPerGroup,
+      maxTeamsPerGroup: values.maxTeamsPerGroup,
+      maxStudentsPerTeam: values.maxStudentsPerTeam,
     });
   };
 
@@ -159,9 +152,6 @@ function ProgrammeEditForm({
                 <Select
                   onValueChange={(val) => {
                     field.onChange(val);
-                    if (val === "INDIVIDUAL") {
-                      form.setValue("maxTeamSize", 1);
-                    }
                   }}
                   defaultValue={field.value}
                 >
@@ -207,36 +197,50 @@ function ProgrammeEditForm({
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="maxEntries"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Max Entries</FormLabel>
-                <FormControl>
-                  <Input type="number" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="maxTeamSize"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Max Team Size</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    {...field}
-                    disabled={watchType === "INDIVIDUAL"}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {watchType === "INDIVIDUAL" ? (
+            <FormField
+              control={form.control}
+              name="maxParticipantsPerGroup"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Max Entries (per Group)</FormLabel>
+                  <FormControl>
+                    <Input type="number" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : (
+            <>
+              <FormField
+                control={form.control}
+                name="maxTeamsPerGroup"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Max Teams (per Group)</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="maxStudentsPerTeam"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Max Students (per Team)</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </>
+          )}
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
@@ -316,27 +320,32 @@ export function BulkUploadProgrammesModal({
       errors.push(`Invalid Stage Type: ${stageTypeRaw}`);
     }
 
-    // 4. Numeric Validation
-    let maxEntries = 1;
+    // 4. Numeric Validation - Mapping Logic
+    // Col 4: Max Entries (Group Limit)
+    // Col 5: Max Team Size (If Group)
+
+    let maxParticipantsPerGroup = 1;
+    let maxTeamsPerGroup = 1;
+    let maxStudentsPerTeam = 1;
+
     if (maxEntriesRaw) {
-      const parsedEntries = parseInt(maxEntriesRaw.toString(), 10);
-      if (!Number.isNaN(parsedEntries) && parsedEntries > 0)
-        maxEntries = parsedEntries;
+      const parsedVal = parseInt(maxEntriesRaw.toString(), 10);
+      if (!Number.isNaN(parsedVal) && parsedVal > 0) {
+        if (type === "INDIVIDUAL") maxParticipantsPerGroup = parsedVal;
+        else maxTeamsPerGroup = parsedVal;
+      }
     }
 
-    let maxTeamSize = 1;
     if (type === "GROUP") {
       if (maxTeamSizeRaw) {
         const parsedSize = parseInt(maxTeamSizeRaw.toString(), 10);
         if (!Number.isNaN(parsedSize) && parsedSize > 0)
-          maxTeamSize = parsedSize;
+          maxStudentsPerTeam = parsedSize;
         else errors.push("Invalid Max Team Size");
       } else {
-        errors.push("Max Team Size required for Group events");
+        // Default to 1 or error?
+        maxStudentsPerTeam = 1; // Default
       }
-    } else {
-      // Force 1 for individual
-      maxTeamSize = 1;
     }
 
     return {
@@ -347,8 +356,9 @@ export function BulkUploadProgrammesModal({
         categoryName,
         type,
         stageType,
-        maxEntries,
-        maxTeamSize,
+        maxParticipantsPerGroup,
+        maxTeamsPerGroup,
+        maxStudentsPerTeam,
         categoryId: category?.id,
       },
       isValid: errors.length === 0,
@@ -362,8 +372,9 @@ export function BulkUploadProgrammesModal({
       categoryId: p.categoryId!,
       type: p.type,
       stageType: p.stageType,
-      maxEntries: p.maxEntries,
-      maxTeamSize: p.maxTeamSize,
+      maxParticipantsPerGroup: p.maxParticipantsPerGroup,
+      maxTeamsPerGroup: p.maxTeamsPerGroup,
+      maxStudentsPerTeam: p.maxStudentsPerTeam,
     }));
 
     const result = await bulkCreateProgrammesAction(
@@ -430,13 +441,19 @@ export function BulkUploadProgrammesModal({
               <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100">
                 {item.stageType === "STAGE" ? "Stage" : "Non-Stage"}
               </span>
-              <span className="bg-zinc-50 text-zinc-600 px-2 py-0.5 rounded border border-zinc-200">
-                Max: {item.maxEntries}
-              </span>
-              {item.type === "GROUP" && (
-                <span className="bg-zinc-100 text-zinc-700 px-2 py-0.5 rounded border border-zinc-200">
-                  Team: {item.maxTeamSize}
+              {item.type === "INDIVIDUAL" ? (
+                <span className="bg-zinc-50 text-zinc-600 px-2 py-0.5 rounded border border-zinc-200">
+                  Max Entries/Group: {item.maxParticipantsPerGroup}
                 </span>
+              ) : (
+                <>
+                  <span className="bg-zinc-50 text-zinc-600 px-2 py-0.5 rounded border border-zinc-200">
+                    Max Teams/Group: {item.maxTeamsPerGroup}
+                  </span>
+                  <span className="bg-zinc-100 text-zinc-700 px-2 py-0.5 rounded border border-zinc-200">
+                    Students/Team: {item.maxStudentsPerTeam}
+                  </span>
+                </>
               )}
             </div>
           ),

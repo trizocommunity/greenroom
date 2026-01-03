@@ -148,6 +148,7 @@ function SidebarProvider({
   const leftState = leftOpen ? "expanded" : "collapsed";
   const rightState = rightOpen ? "expanded" : "collapsed";
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: derived values are stable based on open state
   const contextValue = React.useMemo<SidebarContextProps>(
     () => ({
       // Legacy/Default aliases mapping to LEFT sidebar
@@ -174,14 +175,12 @@ function SidebarProvider({
       setOpenMobileRight,
     }),
     [
-      leftState,
       leftOpen,
       setLeftOpen,
       isMobile,
       openMobileLeft,
       setOpenMobileLeft,
       toggleLeftSidebar,
-      rightState,
       rightOpen,
       setRightOpen,
       toggleRightSidebar,

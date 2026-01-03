@@ -40,7 +40,9 @@ export function CreateProgrammeDialog({
     categoryId: "",
     type: "INDIVIDUAL",
     stageType: "STAGE",
-    maxEntries: 1,
+    maxParticipantsPerGroup: 1,
+    maxTeamsPerGroup: 1,
+    maxStudentsPerTeam: 1,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,7 +55,9 @@ export function CreateProgrammeDialog({
         categoryId: "",
         type: "INDIVIDUAL",
         stageType: "STAGE",
-        maxEntries: 1,
+        maxParticipantsPerGroup: 1,
+        maxTeamsPerGroup: 1,
+        maxStudentsPerTeam: 1,
       });
     } catch (error) {
       // Handled by hook
@@ -143,21 +147,66 @@ export function CreateProgrammeDialog({
               </Select>
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="maxEntries">Max Entries (per Group)</Label>
-            <Input
-              id="maxEntries"
-              type="number"
-              min={1}
-              required
-              value={formData.maxEntries}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  maxEntries: parseInt(e.target.value, 10),
-                })
-              }
-            />
+          <div className="grid grid-cols-2 gap-4">
+            {formData.type === "INDIVIDUAL" ? (
+              <div className="space-y-2">
+                <Label htmlFor="maxParticipantsPerGroup">
+                  Max Entries (per Group)
+                </Label>
+                <Input
+                  id="maxParticipantsPerGroup"
+                  type="number"
+                  min={1}
+                  required
+                  value={formData.maxParticipantsPerGroup}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      maxParticipantsPerGroup: parseInt(e.target.value, 10),
+                    })
+                  }
+                />
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="maxTeamsPerGroup">
+                    Max Teams (per Group)
+                  </Label>
+                  <Input
+                    id="maxTeamsPerGroup"
+                    type="number"
+                    min={1}
+                    required
+                    value={formData.maxTeamsPerGroup}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        maxTeamsPerGroup: parseInt(e.target.value, 10),
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="maxStudentsPerTeam">
+                    Max Students (per Team)
+                  </Label>
+                  <Input
+                    id="maxStudentsPerTeam"
+                    type="number"
+                    min={1}
+                    required
+                    value={formData.maxStudentsPerTeam}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        maxStudentsPerTeam: parseInt(e.target.value, 10),
+                      })
+                    }
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           <DialogFooter>

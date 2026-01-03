@@ -86,7 +86,10 @@ export function GeneralAssignmentDialog({
     return true;
   });
 
-  const maxLimit = selectedProgramme?.maxEntries || 1000;
+  const maxLimit =
+    selectedProgramme?.maxParticipantsPerGroup ||
+    selectedProgramme?.maxTeamsPerGroup ||
+    1000;
   // TODO: Check if per-group limit logic is more complex, but generally this refers to 'max entries per group'.
   // We need to count how many students from THIS group are already assigned to this programme.
   const currentlyAssignedFromGroup = assignments.filter(
@@ -135,7 +138,7 @@ export function GeneralAssignmentDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button variant="secondary">
+          <Button className="w-full lg:w-fit" variant="secondary">
             <Plus className="mr-2 h-4 w-4" />
             New General
           </Button>
