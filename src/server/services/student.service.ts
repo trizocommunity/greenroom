@@ -1,3 +1,4 @@
+import { TIER_CONFIG } from "@/config/pricing";
 import { prisma } from "@/lib/db";
 import { findCategoryById } from "@/server/models/category.model";
 import { findFestivalById } from "@/server/models/festival.model";
@@ -9,7 +10,6 @@ import {
   findStudentsByFestival,
 } from "@/server/models/student.model";
 import { UsageCounterService } from "./usage-counter.service";
-import { TIER_CONFIG } from "@/config/pricing";
 
 export const StudentService = {
   async getAll(festivalId: string, groupId?: string) {

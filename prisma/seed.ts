@@ -1,6 +1,6 @@
-import 'dotenv/config';
-import { Client } from 'pg';
-import bcrypt from 'bcryptjs';
+import "dotenv/config";
+import bcrypt from "bcryptjs";
+import { Client } from "pg";
 
 async function main() {
   console.log("Starting direct SQL seed...");
@@ -32,14 +32,7 @@ async function main() {
       console.log("User exists, updating role...");
       await client.query(
         'UPDATE "user" SET "globalRole" = $1, "password" = $2, "fullName" = $3, "displayName" = $4, "age" = $5 WHERE email = $6',
-        [
-          "SUPER_ADMIN",
-          hashedPassword,
-          "Trizo Creatives",
-          "Trizo",
-          20,
-          email,
-        ],
+        ["SUPER_ADMIN", hashedPassword, "Trizo Creatives", "Trizo", 20, email],
       );
     } else {
       console.log("Creating new Super Admin user...");

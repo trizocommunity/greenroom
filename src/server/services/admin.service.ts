@@ -34,12 +34,12 @@ export const adminService = {
   },
 };
 
-export type AdminFestival = Awaited<ReturnType<
-  typeof adminService.getFestivalsForAdmin
->>[number];
-export type AdminUser = Awaited<ReturnType<
-  typeof adminService.getUsersForAdmin
->>[number];
-export type AdminPayment = Awaited<ReturnType<
-  typeof adminService.getPaymentsForAdmin
->>[number];
+export type AdminFestival = Awaited<
+  ReturnType<typeof adminService.getFestivalsForAdmin>
+>[number];
+export type AdminUser = Awaited<
+  ReturnType<typeof adminService.getUsersForAdmin>
+>[number];
+export type AdminPayment = Awaited<
+  ReturnType<typeof adminService.getPaymentsForAdmin>
+>[number];

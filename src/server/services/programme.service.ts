@@ -1,7 +1,7 @@
 import { Prisma, Tier } from "@prisma/client";
+import { TIER_CONFIG } from "@/config/pricing";
 import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
-import { TIER_CONFIG } from "@/config/pricing";
 import { findCategoryById } from "@/server/models/category.model";
 import { findFestivalById } from "@/server/models/festival.model";
 import {

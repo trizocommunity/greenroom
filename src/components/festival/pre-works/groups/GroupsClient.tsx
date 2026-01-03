@@ -5,9 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { useGroups } from "@/hooks/useGroups";
+import { BulkUploadGroupsModal } from "./BulkUploadGroupsModal";
 import { GroupDetailsDialog } from "./GroupDetailsDialog";
 import { GroupDialog } from "./GroupDialog";
-import { BulkUploadGroupsModal } from "./BulkUploadGroupsModal";
 
 interface GroupsClientProps {
   festivalId: string;

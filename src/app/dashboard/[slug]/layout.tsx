@@ -1,5 +1,6 @@
+import { ExternalLink, Menu } from "lucide-react";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { TIER_CONFIG } from "@/config/pricing";
 import { DashboardRightSidebar } from "@/components/festival/dashboard/DashboardRightSidebar";
 import { FestivalDashboardSidebar } from "@/components/festival/dashboard/FestivalDashboardSidebar";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
@@ -17,12 +18,11 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { getSession } from "@/lib/auth/session";
+import { TIER_CONFIG } from "@/config/pricing";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { findFestivalBySlugOrId } from "@/server/models/festival.model";
-import Link from "next/link";
-import { ExternalLink, Menu } from "lucide-react";
 
 export default async function FestivalDashboardLayout({
   children,

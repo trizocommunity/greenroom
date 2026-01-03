@@ -1,8 +1,7 @@
 "use server";
 
-import { prisma } from "@/lib/db";
-
 import { getSession } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { findFestivalById } from "@/server/models/festival.model";
 import { findMemberByFestivalAndUser } from "@/server/models/member.model";

@@ -41,6 +41,11 @@ import { useGroups } from "@/hooks/useGroups";
 import { AssignmentModal } from "./AssignmentModal";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { useProgrammes } from "@/hooks/useProgrammes";
+import { useStudents } from "@/hooks/useStudents";
+import { AssignmentDialog } from "./AssignmentDialog"; // Keep for Edit/View flow if needed, or inline edit logic
+import { GeneralAssignmentDialog } from "./GeneralAssignmentDialog";
+import { IndividualAssignmentDialog } from "./IndividualAssignmentDialog";
 
 interface AssignmentsClientProps {
   festivalId: string;

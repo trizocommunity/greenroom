@@ -1,4 +1,5 @@
 import { Prisma, Tier } from "@prisma/client";
+import { prisma } from "@/lib/db";
 import {
   countCategories,
   createCategory,
@@ -8,7 +9,6 @@ import {
   updateCategory,
 } from "@/server/models/category.model";
 import { findFestivalById } from "@/server/models/festival.model";
-import { prisma } from "@/lib/db";
 
 // Hardcoded limits for categories based on Tier
 const TIER_CATEGORY_LIMITS = {
