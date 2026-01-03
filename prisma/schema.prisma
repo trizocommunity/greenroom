@@ -243,8 +243,9 @@ model Programme {
   name        String
   type        ProgrammeType @default(INDIVIDUAL)
   stageType   StageType     @default(STAGE)
-  maxEntries  Int           @default(1)
-  maxTeamSize Int           @default(1)
+  maxParticipantsPerGroup Int @default(1) // For Individual: Max assignments per group
+  maxTeamsPerGroup        Int @default(1) // For Group: Max teams per group
+  maxStudentsPerTeam      Int @default(1) // For Group: Max students per team
 
   assignments ProgrammeAssignment[]
 
@@ -289,6 +290,8 @@ model ProgrammeAssignment {
 
   categoryId    String?
   category      Category? @relation(fields: [categoryId], references: [id]) 
+
+  teamNumber    Int      @default(1)
 
   assignedAt    DateTime @default(now())
 

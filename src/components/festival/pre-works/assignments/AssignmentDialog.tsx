@@ -128,7 +128,11 @@ export function AssignmentDialog({
   });
 
   // Max Limit Logic
-  const maxLimit = selectedProgramme?.maxEntries || 1;
+  const maxLimit = selectedProgramme
+    ? selectedProgramme.type === "INDIVIDUAL"
+      ? selectedProgramme.maxParticipantsPerGroup || 1
+      : selectedProgramme.maxTeamsPerGroup || 1
+    : 1;
   const currentCount = selectedProgramme?._count?.assignments || 0;
   const remainingSlots = Math.max(0, maxLimit - currentCount);
 

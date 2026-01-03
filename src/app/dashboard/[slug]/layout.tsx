@@ -131,7 +131,9 @@ export default async function FestivalDashboardLayout({
       <SidebarInset>
         <header className="sticky top-0 z-10 w-full flex h-14 shrink-0 items-center justify-between border-b bg-background/95 backdrop-blur px-8 shadow-sm">
           <div className="flex items-center gap-2">
-            <SidebarTrigger className="hidden md:block -ml-2 h-8 w-8" />
+            <span className="hidden md:block ">
+              <SidebarTrigger className="h-8 w-8" />
+            </span>
             <div className="mr-2 h-4 w-px bg-border" />
             <Breadcrumb>
               <BreadcrumbList>
@@ -149,13 +151,15 @@ export default async function FestivalDashboardLayout({
           </div>
 
           {/* Header Actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <Link href={`/${slug}`} className="hidden md:block" target="_blank">
-              <ExternalLink className="h-4 w-4" />
+              <Button variant="ghost" size="icon">
+                <ExternalLink className="h-4 w-4" />
+              </Button>
             </Link>
             <DashboardRightSidebar
               trigger={
-                <Button variant="ghost" size="icon" className="-mr-2">
+                <Button variant="ghost" size="icon" className="">
                   <Menu className="h-5 w-5" />
                   <span className="sr-only">Toggle user menu</span>
                 </Button>

@@ -433,7 +433,7 @@ export function BulkUploadFlow<T>({
 
                               <TableCell className="w-[150px]">
                                 {row.isValid ? (
-                                  <div className="text-xs text-emerald-600 font-medium flex items-center gap-1.5 bg-emerald-50/50 w-fit px-2 py-1 rounded-full border border-emerald-100">
+                                  <div className="text-xs text-emerald-600 font-medium flex items-center gap-1.5 bg-emerald-50/10 w-fit px-2 py-1 rounded-full border border-emerald-100">
                                     <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />{" "}
                                     Ready
                                   </div>
@@ -481,16 +481,16 @@ export function BulkUploadFlow<T>({
           )}
 
           {step === "COMPLETION" && (
-            <div className="flex flex-col items-center justify-center space-y-8 p-12 text-center h-full animate-in fade-in zoom-in-95 duration-500">
+            <div className="flex flex-col items-center justify-center space-y-10 p-12 text-center h-full animate-in fade-in zoom-in-95 duration-500">
               <div className="relative">
-                <div className="absolute inset-0 bg-emerald-100 blur-xl rounded-full opacity-50 animate-pulse" />
+                <div className="absolute inset-0 bg-emerald-100 blur-lg rounded-full opacity-50 animate-pulse" />
                 <div className="h-32 w-32 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center relative shadow-sm border border-emerald-100">
                   <Check className="h-16 w-16" />
                 </div>
               </div>
 
-              <div className="space-y-4 max-w-md">
-                <h3 className="text-3xl font-bold tracking-tight text-emerald-950">
+              <div className="space-y-1 max-w-md">
+                <h3 className="text-3xl font-bold tracking-tight text-green-500">
                   Import Complete!
                 </h3>
                 <p className="text-muted-foreground text-lg">
