@@ -1,23 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import {
-  Loader2,
-  Trash2,
-  Plus,
-  Filter,
-  Search,
-  CalendarDays,
-} from "lucide-react";
+import { format } from "date-fns";
+import { Loader2, Plus, Search, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { Input } from "@/components/ui/input";
 import {
@@ -39,13 +27,6 @@ import { useAssignments } from "@/hooks/useAssignments";
 import { useCategories } from "@/hooks/useCategories";
 import { useGroups } from "@/hooks/useGroups";
 import { AssignmentModal } from "./AssignmentModal";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { useProgrammes } from "@/hooks/useProgrammes";
-import { useStudents } from "@/hooks/useStudents";
-import { AssignmentDialog } from "./AssignmentDialog"; // Keep for Edit/View flow if needed, or inline edit logic
-import { GeneralAssignmentDialog } from "./GeneralAssignmentDialog";
-import { IndividualAssignmentDialog } from "./IndividualAssignmentDialog";
 
 interface AssignmentsClientProps {
   festivalId: string;
