@@ -1,12 +1,27 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Grid2X2,
+  Plus,
+  Trash2,
+  Users,
+  X,
+} from "lucide-react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -14,27 +29,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { useAssignments } from "@/hooks/useAssignments";
 import { useCategories } from "@/hooks/useCategories";
 import { useGroups } from "@/hooks/useGroups";
 import { useProgrammes } from "@/hooks/useProgrammes";
 import { useStudents } from "@/hooks/useStudents";
-import { useAssignments } from "@/hooks/useAssignments";
-import {
-  Check,
-  Plus,
-  Trash2,
-  X,
-  AlertCircle,
-  ArrowRight,
-  ArrowLeft,
-  Users,
-  Grid2X2,
-} from "lucide-react";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface AssignmentModalProps {

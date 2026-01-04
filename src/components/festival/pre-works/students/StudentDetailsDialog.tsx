@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, Loader2, Mail, Phone, Users } from "lucide-react";
+import { Eye, Loader2, Mail, Phone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,8 +20,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAssignments } from "@/hooks/useAssignments";
-import { useProgrammes } from "@/hooks/useProgrammes";
-import { useStudents } from "@/hooks/useStudents";
 
 interface StudentDetailsDialogProps {
   festivalId: string;

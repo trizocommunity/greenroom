@@ -7,7 +7,6 @@ import {
   FileCheck,
   Layout,
   ListRestart,
-  Megaphone,
   Printer,
   ShieldAlert,
   Users,

@@ -7,7 +7,7 @@ import {
   findValidPasswordResetToken,
   updatePasswordResetToken,
 } from "@/server/models/password-reset-token.model";
-import { findUserById, updateUser } from "@/server/models/user.model";
+import { updateUser } from "@/server/models/user.model";
 
 export async function POST(request: Request) {
   try {

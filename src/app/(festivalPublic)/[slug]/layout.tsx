@@ -3,7 +3,6 @@ import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { FestivalFooter } from "@/components/festival/FestivalFooter";
 import { FestivalNavbar } from "@/components/festival/FestivalNavbar";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db"; // Direct prisma usage for simple festival fetch or use a loader
 import { findFestivalBySlug } from "@/server/models/festival.model"; // Use existing model if available
 
 export default async function FestivalLayout({

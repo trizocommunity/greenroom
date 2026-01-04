@@ -1,6 +1,5 @@
 "use client";
 
-import { format } from "date-fns";
 import { Loader2, Plus, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -100,11 +99,6 @@ export function ProgrammeDialog({
       }
     }
   }, [open, programme]);
-
-  // Derived state
-  const selectedCategory = categories.find(
-    (c: any) => c.id === formData.categoryId,
-  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

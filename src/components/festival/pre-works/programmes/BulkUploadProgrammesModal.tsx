@@ -9,7 +9,6 @@ import {
   BulkUploadFlow,
   type ParsedItem,
 } from "@/components/common/bulk-upload/BulkUploadFlow";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -29,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { useCategories } from "@/hooks/useCategories";
 import { bulkCreateProgrammesAction } from "@/server/actions/programme.actions";
+
 // --- Types & Schema ---
 
 type ProgrammeType = "INDIVIDUAL" | "GROUP";
