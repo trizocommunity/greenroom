@@ -3,7 +3,6 @@
 import { format, isPast } from "date-fns";
 import { CalendarClock } from "lucide-react";
 import { useFestival } from "@/components/festival/FestivalContext";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 
 export function DeadlinesCard() {
