@@ -142,12 +142,7 @@ export function BulkUploadGroupsModal({
       title="Bulk Upload Groups"
       templateName="groups_template.xlsx"
       templateHeaders={["Group Name"]}
-      templateData={[
-        ["Red House"],
-        ["Blue House"],
-        ["Green House"],
-        ["Yellow House"],
-      ]}
+      templateData={[["(Group Name)"]]}
       parseRow={parseGroupRow}
       onCommit={handleCommit}
       EditComponent={GroupEditForm}

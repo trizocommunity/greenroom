@@ -409,8 +409,14 @@ export function BulkUploadProgrammesModal({
         "Max Team Size (If Group)",
       ]}
       templateData={[
-        ["Solo Singing", "Music", "Individual", "Stage", "1", "1"],
-        ["Group Dance", "Dance", "Group", "Stage", "5", "10"],
+        [
+          "(Programme Name)",
+          "(Category Name)",
+          "(Individual/Group)",
+          "(Stage/Non-Stage)",
+          "(Max Entries/Teams per Group - default 1)",
+          "(Max Students per Team - default 1)",
+        ],
       ]}
       parseRow={parseProgrammeRow}
       onCommit={handleCommit}

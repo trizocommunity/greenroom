@@ -116,6 +116,8 @@ export async function bulkCreateStudentsAction(
     gender?: string;
     email?: string;
     phone?: string;
+    age?: number;
+    standard?: string;
   }[],
 ) {
   const session = await getSession();
@@ -155,6 +157,8 @@ export async function bulkCreateStudentsAction(
         email: student.email,
         phone: student.phone,
         gender: (student.gender as "MALE" | "FEMALE" | "OTHER") || "MALE",
+        age: student.age,
+        standard: student.standard,
       });
       successCount++;
     } catch (error: any) {

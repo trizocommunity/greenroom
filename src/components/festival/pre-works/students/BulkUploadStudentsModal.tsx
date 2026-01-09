@@ -45,6 +45,8 @@ interface ParticipantData {
   categoryName: string;
   groupId?: string; // Optional because it might be invalid initially
   categoryId?: string;
+  age?: number;
+  standard?: string;
 }
 
 const ParticipantSchema = z.object({
@@ -54,6 +56,8 @@ const ParticipantSchema = z.object({
   gender: z.enum(["MALE", "FEMALE", "OTHER"]),
   groupId: z.string().min(1, "Group is required"),
   categoryId: z.string().min(1, "Category is required"),
+  age: z.number().optional(),
+  standard: z.string().optional(),
 });
 
 type ParticipantFormValues = z.infer<typeof ParticipantSchema>;
@@ -82,6 +86,8 @@ function ParticipantEditForm({
       gender: (data.gender as any) || "MALE",
       groupId: data.groupId || "",
       categoryId: data.categoryId || "",
+      age: data.age,
+      standard: data.standard,
     },
   });
 
@@ -99,6 +105,8 @@ function ParticipantEditForm({
       categoryId: values.categoryId,
       groupName: group?.name || "",
       categoryName: category?.name || "",
+      age: values.age,
+      standard: values.standard,
     });
   };
 
@@ -229,6 +237,43 @@ function ParticipantEditForm({
           )}
         />
 
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="age"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Age</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    {...field}
+                    placeholder="Optional"
+                    onChange={(e) =>
+                      field.onChange(e.target.valueAsNumber || undefined)
+                    }
+                    value={field.value ?? ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="standard"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Class/Standard</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="Optional" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
@@ -268,10 +313,18 @@ export function BulkUploadStudentsModal({
     const categoryName = row[2]?.toString().trim() || "";
     const genderRaw = row[3]?.toString().trim().toUpperCase() || "";
     const email = row[4]?.toString().trim() || "";
-    const phone = row[5]?.toString().trim() || ""; // Fixed index to match template logic
+    const phone = row[5]?.toString().trim() || "";
+    const ageRaw = row[6];
+    const standard = row[7]?.toString().trim() || "";
 
     const errors: string[] = [];
     if (!name) errors.push("Name is required");
+
+    let age: number | undefined;
+    if (ageRaw) {
+      const parsedAge = parseInt(ageRaw.toString(), 10);
+      if (!Number.isNaN(parsedAge) && parsedAge > 0) age = parsedAge;
+    }
 
     // Loose match for group
     const group = groups.find(
@@ -318,6 +371,8 @@ export function BulkUploadStudentsModal({
         categoryName,
         groupId: group?.id,
         categoryId: category?.id,
+        age,
+        standard,
       },
       isValid: errors.length === 0,
       errors,
@@ -372,6 +427,8 @@ export function BulkUploadStudentsModal({
       gender: s.gender,
       email: s.email,
       phone: s.phone,
+      age: s.age,
+      standard: s.standard,
     }));
 
     const result = await bulkCreateStudentsAction(festivalId, studentsToCreate);
@@ -406,15 +463,19 @@ export function BulkUploadStudentsModal({
         "Gender",
         "Email",
         "Phone",
+        "Age",
+        "Class/Standard",
       ]}
       templateData={[
         [
-          "John Doe",
-          "Group A",
-          "Solo Singing",
-          "Male",
-          "john@example.com",
-          "9876543210",
+          "(Name)",
+          "(Group Name)",
+          "(Category Name)",
+          "(Male/Female/Other)",
+          "(Email - Optional)",
+          "(Phone - Optional)",
+          "(Age - Optional)",
+          "(Class/Standard - Optional)",
         ],
       ]}
       parseRow={parseParticipantRow}
