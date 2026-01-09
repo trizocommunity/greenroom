@@ -4,14 +4,8 @@ import { notFound, redirect } from "next/navigation";
 import { DashboardRightSidebar } from "@/components/festival/dashboard/DashboardRightSidebar";
 import { FestivalDashboardSidebar } from "@/components/festival/dashboard/FestivalDashboardSidebar";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
+// Removed unused breadcrumb imports
+import { DashboardBreadcrumb } from "@/components/festival/dashboard/DashboardBreadcrumb";
 import { Button } from "@/components/ui/button";
 import {
   SidebarInset,
@@ -135,19 +129,7 @@ export default async function FestivalDashboardLayout({
               <SidebarTrigger className="h-8 w-8" />
             </span>
             <div className="mr-2 h-4 w-px bg-border" />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbLink href={`/dashboard/${slug}`}>
-                    Festival
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Dashboard</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
+            <DashboardBreadcrumb slug={slug} />{" "}
           </div>
 
           {/* Header Actions */}
