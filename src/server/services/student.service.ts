@@ -26,6 +26,8 @@ export const StudentService = {
       categoryId: string;
       gender?: "MALE" | "FEMALE" | "OTHER";
       registrationNumber?: string;
+      age?: number;
+      standard?: string;
     },
   ) {
     const festival = await findFestivalById(festivalId);
@@ -97,6 +99,8 @@ export const StudentService = {
       email: data.email || undefined,
       phone: data.phone,
       registrationNumber: regNumber,
+      age: data.age,
+      standard: data.standard,
     });
   },
 
@@ -111,6 +115,8 @@ export const StudentService = {
       categoryId?: string;
       gender?: "MALE" | "FEMALE" | "OTHER";
       registrationNumber?: string;
+      age?: number;
+      standard?: string;
     },
   ) {
     const existing = await findStudentById(id);
@@ -141,6 +147,8 @@ export const StudentService = {
         phone: data.phone,
         gender: data.gender,
         registrationNumber: data.registrationNumber,
+        age: data.age,
+        standard: data.standard,
       },
     });
   },

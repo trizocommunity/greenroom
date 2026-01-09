@@ -24,6 +24,8 @@ export async function createStudentWithServiceAction(
     phone?: string;
     gender?: string;
     registrationNumber?: string;
+    age?: number;
+    standard?: string;
   },
 ) {
   const session = await getSession();
@@ -50,6 +52,8 @@ export async function createStudentWithServiceAction(
     phone: data.phone,
     gender: (data.gender as "MALE" | "FEMALE" | "OTHER") || "MALE",
     registrationNumber: data.registrationNumber,
+    age: data.age,
+    standard: data.standard,
   });
 }
 
@@ -190,6 +194,8 @@ export async function updateStudentAction(
     phone?: string;
     gender?: string;
     registrationNumber?: string;
+    age?: number;
+    standard?: string;
   },
 ) {
   const session = await getSession();
@@ -203,6 +209,8 @@ export async function updateStudentAction(
     phone: data.phone,
     gender: data.gender as any,
     registrationNumber: data.registrationNumber,
+    age: data.age,
+    standard: data.standard,
   });
 }
 

@@ -119,12 +119,6 @@ export const getFestivalDashboardSidebarConfig = (
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {
-          title: "Programmes",
-          href: `${basePath}/pre-works/programmes`,
-          icon: FileText,
-          allowedRoles: ["ADMIN", "OWNER"],
-        },
-        {
           title: "Groups",
           href: `${basePath}/pre-works/groups`,
           icon: Building2,
@@ -134,6 +128,12 @@ export const getFestivalDashboardSidebarConfig = (
           title: "Students",
           href: `${basePath}/pre-works/students`,
           icon: UsersRound,
+          allowedRoles: ["ADMIN", "OWNER"],
+        },
+        {
+          title: "Programmes",
+          href: `${basePath}/pre-works/programmes`,
+          icon: FileText,
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {

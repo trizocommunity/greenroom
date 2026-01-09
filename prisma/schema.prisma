@@ -319,6 +319,9 @@ model Student {
   
   registrationNumber String? // Optional initially, but we enforce uniqueness if present
   isTeamLeader       Boolean @default(false)
+  
+  age                Int?
+  standard           String? // Class/Standard
 
   assignments ProgrammeAssignment[]
   
