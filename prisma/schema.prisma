@@ -317,7 +317,7 @@ model Student {
   phone      String?
   gender     Gender   @default(MALE)
   
-  registrationNumber String? // Optional initially, but we enforce uniqueness if present
+  // registrationNumber String? // Removed as per request
   isTeamLeader       Boolean @default(false)
   
   age                Int?
@@ -329,12 +329,6 @@ model Student {
   updatedAt DateTime @updatedAt
 
   // @@unique([festivalId, phone]) // Keep phone unique if used
-  // We want registrationNumber to be unique per festival IF it exists. 
-  // Prisma doesn't support conditional unique constraints well in all DBs without raw SQL for partial indexes.
-  // But usually for SQLite/Postgres we can just do @@unique([festivalId, registrationNumber]).
-  // However, if registrationNumber is null, multiple nulls are allowed in most DBs (except SQL Server < 2008).
-  // Let's assume standard behavior where multiple NULLs are allowed.
-  // @@unique([festivalId, registrationNumber])
   @@index([festivalId])
   @@index([groupId])
   @@map("student")

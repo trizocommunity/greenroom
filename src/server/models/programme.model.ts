@@ -61,7 +61,7 @@ export async function findProgrammeWithAssignments(id: string) {
             select: {
               id: true,
               name: true,
-              registrationNumber: true,
+
               group: true,
             },
           },

@@ -23,7 +23,7 @@ export async function createStudentWithServiceAction(
     email?: string;
     phone?: string;
     gender?: string;
-    registrationNumber?: string;
+
     age?: number;
     standard?: string;
   },
@@ -51,7 +51,7 @@ export async function createStudentWithServiceAction(
     email: data.email,
     phone: data.phone,
     gender: (data.gender as "MALE" | "FEMALE" | "OTHER") || "MALE",
-    registrationNumber: data.registrationNumber,
+
     age: data.age,
     standard: data.standard,
   });
@@ -197,7 +197,7 @@ export async function updateStudentAction(
     email?: string;
     phone?: string;
     gender?: string;
-    registrationNumber?: string;
+
     age?: number;
     standard?: string;
   },
@@ -212,7 +212,7 @@ export async function updateStudentAction(
     email: data.email,
     phone: data.phone,
     gender: data.gender as any,
-    registrationNumber: data.registrationNumber,
+
     age: data.age,
     standard: data.standard,
   });

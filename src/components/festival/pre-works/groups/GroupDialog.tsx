@@ -231,11 +231,6 @@ export function GroupDialog({
                         }
                       />
                       <span className="flex-1">{p.name}</span>
-                      {p.registrationNumber && (
-                        <span className="text-xs text-muted-foreground font-mono">
-                          {p.registrationNumber}
-                        </span>
-                      )}
                     </label>
                   ))}
                 </div>

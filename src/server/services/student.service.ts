@@ -25,7 +25,7 @@ export const StudentService = {
       groupId: string;
       categoryId: string;
       gender?: "MALE" | "FEMALE" | "OTHER";
-      registrationNumber?: string;
+
       age?: number;
       standard?: string;
     },
@@ -60,34 +60,6 @@ export const StudentService = {
 
     await UsageCounterService.incrementUsage(festivalId, "students", 1);
 
-    // 4. Auto-Generate Registration Number if not provided
-    let regNumber = data.registrationNumber;
-
-    if (!regNumber) {
-      // Format: [FESTIVAL_INITIALS]-[GROUP_INITIAL]-[SERIES_NUMBER]
-
-      // Helper to get initials (e.g., "Arts Fest" -> "AF", "Red" -> "R")
-      const getInitials = (str: string) =>
-        str
-          .split(" ")
-          .map((w) => w[0])
-          .join("")
-          .toUpperCase();
-      const festInitials = getInitials(festival.name);
-      const groupInitial = getInitials(group.name).substring(0, 1); // Take first char only for group
-
-      // Calculate Series Number
-      // Simple approach: seriesStart + count + 1.
-      // To be robust against deletions, we should ideally find the MAX current number.
-      // For this task, we will use count + 1 for simplicity but respect seriesStart.
-      const currentCount = await prisma.student.count({
-        where: { groupId: data.groupId },
-      });
-
-      const seriesNumber = (group.seriesStart || 100) + currentCount + 1;
-      regNumber = `${festInitials}-${groupInitial}-${seriesNumber}`;
-    }
-
     // 5. Create
     // TODO: Handle Decrement usage counter on failure if needed (not implemented yet)
     return await createStudent({
@@ -98,7 +70,7 @@ export const StudentService = {
       gender: data.gender,
       email: data.email || undefined,
       phone: data.phone,
-      registrationNumber: regNumber,
+
       age: data.age,
       standard: data.standard,
     });
@@ -114,7 +86,7 @@ export const StudentService = {
       groupId?: string;
       categoryId?: string;
       gender?: "MALE" | "FEMALE" | "OTHER";
-      registrationNumber?: string;
+
       age?: number;
       standard?: string;
     },
@@ -146,7 +118,7 @@ export const StudentService = {
         email: data.email,
         phone: data.phone,
         gender: data.gender,
-        registrationNumber: data.registrationNumber,
+
         age: data.age,
         standard: data.standard,
       },

@@ -32,7 +32,7 @@ interface StudentDialogProps {
     gender?: "MALE" | "FEMALE" | "OTHER";
     group: { id: string; name: string };
     category: { id: string; name: string };
-    registrationNumber: string;
+
     age?: number;
     standard?: string;
   };
@@ -132,7 +132,6 @@ export function StudentDialog({
           gender: formData.gender,
           age: formData.age,
           standard: formData.standard || undefined,
-          // registrationNumber is strictly auto-generated
         });
         // Success toast handled by hook/query usually, but adding redundant safety
         toast.success("Student added successfully");
@@ -183,25 +182,6 @@ export function StudentDialog({
                 groups first.
               </div>
             )}
-
-            {/* Registration Number (Read Only) */}
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Registration ID
-              </Label>
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-primary/5 border border-primary/10 text-primary font-mono text-sm">
-                <Hash className="h-4 w-4 opacity-50" />
-                {isEditing && studentToEdit ? (
-                  <span className="font-semibold">
-                    {studentToEdit.registrationNumber}
-                  </span>
-                ) : (
-                  <span className="italic opacity-70">
-                    Auto-generated (e.g. FEST-G-101)
-                  </span>
-                )}
-              </div>
-            </div>
 
             {/* Personal Info */}
             <div className="space-y-4">
