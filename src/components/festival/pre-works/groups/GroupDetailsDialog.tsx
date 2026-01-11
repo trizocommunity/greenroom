@@ -37,7 +37,7 @@ interface Member {
 interface Student {
   id: string;
   name: string;
-  registrationNumber?: string | null;
+
   email?: string | null;
   group?: { id: string };
   groupId?: string | null;
@@ -105,7 +105,7 @@ export function GroupDetailsDialog({
                     <TableRow>
                       <TableHead>Check</TableHead>
                       <TableHead>Name</TableHead>
-                      <TableHead>Reg. No</TableHead>
+
                       <TableHead>Email</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -128,9 +128,7 @@ export function GroupDetailsDialog({
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {p.registrationNumber || "-"}
-                        </TableCell>
+
                         <TableCell className="text-xs text-muted-foreground">
                           {p.email || "-"}
                         </TableCell>
@@ -139,7 +137,7 @@ export function GroupDetailsDialog({
                     {groupStudents.length === 0 && (
                       <TableRow>
                         <TableCell
-                          colSpan={4}
+                          colSpan={3}
                           className="h-24 text-center text-muted-foreground"
                         >
                           No students found in this group.

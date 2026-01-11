@@ -58,9 +58,6 @@ export function StudentDetailsDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {student.name}
-            <Badge variant="outline" className="ml-2">
-              {student.registrationNumber}
-            </Badge>
           </DialogTitle>
         </DialogHeader>
 

@@ -238,9 +238,7 @@ export function BulkUploadCategoriesModal({
         "Type (Single/General)",
       ]}
       templateData={[
-        ["Music", "Vocal and Instrumental Events", "Single"],
-        ["Off-Stage", "Writing and Drawing", "Single"],
-        ["General", "Common events for everyone", "General"],
+        ["(Category Name)", "(Description - Optional)", "(Single/General)"],
       ]}
       parseRow={parseCategoryRow}
       onCommit={handleCommit}

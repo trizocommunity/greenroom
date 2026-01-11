@@ -191,7 +191,7 @@ export function ProgrammeDialog({
                   <TableRow>
                     <TableHead className="w-[50px]">#</TableHead>
                     <TableHead>Student</TableHead>
-                    <TableHead>Reg. No</TableHead>
+
                     <TableHead>Group</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -209,9 +209,7 @@ export function ProgrammeDialog({
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {assignment.student?.registrationNumber || "-"}
-                      </TableCell>
+
                       <TableCell>
                         {assignment.student?.group?.name ? (
                           <Badge variant="outline" className="text-[10px] h-5">
@@ -226,7 +224,7 @@ export function ProgrammeDialog({
                   {assignments.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={4}
+                        colSpan={3}
                         className="h-24 text-center text-muted-foreground"
                       >
                         <div className="flex flex-col items-center justify-center gap-1">

@@ -23,7 +23,9 @@ export async function createStudentWithServiceAction(
     email?: string;
     phone?: string;
     gender?: string;
-    registrationNumber?: string;
+
+    age?: number;
+    standard?: string;
   },
 ) {
   const session = await getSession();
@@ -49,7 +51,9 @@ export async function createStudentWithServiceAction(
     email: data.email,
     phone: data.phone,
     gender: (data.gender as "MALE" | "FEMALE" | "OTHER") || "MALE",
-    registrationNumber: data.registrationNumber,
+
+    age: data.age,
+    standard: data.standard,
   });
 }
 
@@ -112,6 +116,8 @@ export async function bulkCreateStudentsAction(
     gender?: string;
     email?: string;
     phone?: string;
+    age?: number;
+    standard?: string;
   }[],
 ) {
   const session = await getSession();
@@ -151,6 +157,8 @@ export async function bulkCreateStudentsAction(
         email: student.email,
         phone: student.phone,
         gender: (student.gender as "MALE" | "FEMALE" | "OTHER") || "MALE",
+        age: student.age,
+        standard: student.standard,
       });
       successCount++;
     } catch (error: any) {
@@ -189,7 +197,9 @@ export async function updateStudentAction(
     email?: string;
     phone?: string;
     gender?: string;
-    registrationNumber?: string;
+
+    age?: number;
+    standard?: string;
   },
 ) {
   const session = await getSession();
@@ -202,7 +212,9 @@ export async function updateStudentAction(
     email: data.email,
     phone: data.phone,
     gender: data.gender as any,
-    registrationNumber: data.registrationNumber,
+
+    age: data.age,
+    standard: data.standard,
   });
 }
 

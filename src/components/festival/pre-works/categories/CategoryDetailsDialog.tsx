@@ -95,7 +95,7 @@ export function CategoryDetailsDialog({
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
-                    <TableHead>Reg. No</TableHead>
+
                     <TableHead>Group</TableHead>
                     {category.type === "GENERAL" && (
                       <TableHead>Category</TableHead>
@@ -106,9 +106,7 @@ export function CategoryDetailsDialog({
                   {filteredStudents.map((p: any) => (
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">{p.name}</TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {p.registrationNumber || "-"}
-                      </TableCell>
+
                       <TableCell>{p.group?.name || "-"}</TableCell>
                       {category.type === "GENERAL" && (
                         <TableCell>

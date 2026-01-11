@@ -32,7 +32,9 @@ interface StudentDialogProps {
     gender?: "MALE" | "FEMALE" | "OTHER";
     group: { id: string; name: string };
     category: { id: string; name: string };
-    registrationNumber: string;
+
+    age?: number;
+    standard?: string;
   };
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -65,6 +67,8 @@ export function StudentDialog({
     groupId: "",
     categoryId: "" as string,
     gender: "MALE" as "MALE" | "FEMALE" | "OTHER",
+    age: undefined as number | undefined,
+    standard: "" as string | undefined,
   });
 
   // Derived State
@@ -81,6 +85,8 @@ export function StudentDialog({
           groupId: studentToEdit.group.id,
           categoryId: studentToEdit.category.id,
           gender: studentToEdit.gender || "MALE",
+          age: studentToEdit.age,
+          standard: studentToEdit.standard,
         });
       } else {
         // Reset for new entry
@@ -90,6 +96,8 @@ export function StudentDialog({
           groupId: "",
           categoryId: "" as string,
           gender: "MALE",
+          age: undefined,
+          standard: "",
         });
       }
     }
@@ -110,6 +118,8 @@ export function StudentDialog({
             groupId: formData.groupId,
             categoryId: formData.categoryId,
             gender: formData.gender,
+            age: formData.age,
+            standard: formData.standard,
           },
         });
         toast.success("Student updated successfully");
@@ -120,7 +130,8 @@ export function StudentDialog({
           groupId: formData.groupId,
           categoryId: formData.categoryId,
           gender: formData.gender,
-          // registrationNumber is strictly auto-generated
+          age: formData.age,
+          standard: formData.standard || undefined,
         });
         // Success toast handled by hook/query usually, but adding redundant safety
         toast.success("Student added successfully");
@@ -172,25 +183,6 @@ export function StudentDialog({
               </div>
             )}
 
-            {/* Registration Number (Read Only) */}
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Registration ID
-              </Label>
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-primary/5 border border-primary/10 text-primary font-mono text-sm">
-                <Hash className="h-4 w-4 opacity-50" />
-                {isEditing && studentToEdit ? (
-                  <span className="font-semibold">
-                    {studentToEdit.registrationNumber}
-                  </span>
-                ) : (
-                  <span className="italic opacity-70">
-                    Auto-generated (e.g. FEST-G-101)
-                  </span>
-                )}
-              </div>
-            </div>
-
             {/* Personal Info */}
             <div className="space-y-4">
               <div className="space-y-2">
@@ -211,6 +203,49 @@ export function StudentDialog({
                   autoFocus={!isEditing}
                   className="h-10 text-base"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="age"
+                    className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                  >
+                    Age
+                  </Label>
+                  <Input
+                    id="age"
+                    type="number"
+                    placeholder="e.g. 18"
+                    value={formData.age || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        age: e.target.value
+                          ? parseInt(e.target.value)
+                          : undefined,
+                      })
+                    }
+                    className="h-10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="standard"
+                    className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                  >
+                    Class/Standard
+                  </Label>
+                  <Input
+                    id="standard"
+                    placeholder="e.g. 12-A"
+                    value={formData.standard || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, standard: e.target.value })
+                    }
+                    className="h-10"
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">

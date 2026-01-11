@@ -175,7 +175,7 @@ export function StudentsClient({ festivalId }: StudentsClientProps) {
               <TableHead>Name</TableHead>
               <TableHead>Group</TableHead>
               <TableHead>Category</TableHead>
-              <TableHead>Registered</TableHead>
+              <TableHead>Created At</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -185,9 +185,9 @@ export function StudentsClient({ festivalId }: StudentsClientProps) {
                 <TableCell className="font-medium">
                   <div className="flex flex-col">
                     <span>{student.name}</span>
-                    {student.registrationNumber && (
-                      <span className="text-xs text-muted-foreground font-mono">
-                        {student.registrationNumber}
+                    {student.chestNumber && (
+                      <span className="text-xs font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded w-fit">
+                        {student.chestNumber}
                       </span>
                     )}
                   </div>
@@ -207,6 +207,7 @@ export function StudentsClient({ festivalId }: StudentsClientProps) {
                 <TableCell className="text-xs text-muted-foreground">
                   {format(new Date(student.createdAt), "MMM d, yyyy")}
                 </TableCell>
+
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <StudentDetailsDialog

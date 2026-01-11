@@ -191,7 +191,6 @@ export function useCreateStudent(festivalId: string) {
       email?: string;
       phone?: string;
       gender?: string;
-      registrationNumber?: string;
     }) => createStudentWithServiceAction(festivalId, data),
     onSuccess: () => {
       toast.success("Student created successfully");
