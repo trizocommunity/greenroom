@@ -60,9 +60,9 @@ export default async function ChestNumbersPage({ params }: PageProps) {
   }
 
   return (
-    <div className="space-y-6 container mx-auto py-8">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Chest Numbers</h1>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-3xl font-bold tracking-tight">Chest Numbers</h2>
         <p className="text-muted-foreground">
           Manage and generate unique chest numbers based on categories.
         </p>

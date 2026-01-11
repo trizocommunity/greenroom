@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { X, User, FileText, Filter } from "lucide-react";
 
 interface ChestNumberTableProps {
   students: any[];
@@ -60,28 +60,25 @@ export function ChestNumberTable({ students }: ChestNumberTableProps) {
   const hasActiveFilters = categoryFilter !== "all" || groupFilter !== "all";
 
   return (
-    <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="w-[200px]">
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {options.categories.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {c}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+    <div className="space-y-6">
+      {/* Header & Filters */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-muted/40 p-4 rounded-lg border">
+        <div className="w-full md:w-1/2 xl:w-auto flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <User className="h-5 w-5 text-muted-foreground" />
+            <span className="font-medium text-sm">
+              Total: {filteredStudents.length}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            View generated chest numbers below.
+          </p>
         </div>
-        <div className="w-[200px]">
+
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
           <Select value={groupFilter} onValueChange={setGroupFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by Group" />
+            <SelectTrigger className="w-full md:w-[180px] h-9 text-xs">
+              <SelectValue placeholder="All Groups" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Groups</SelectItem>
@@ -92,25 +89,36 @@ export function ChestNumberTable({ students }: ChestNumberTableProps) {
               ))}
             </SelectContent>
           </Select>
-        </div>
 
-        {hasActiveFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearFilters}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <X className="mr-2 h-4 w-4" />
-            Clear Filters
-          </Button>
-        )}
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-full md:w-[180px] h-9 text-xs">
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {options.categories.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {c}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <div className="ml-auto text-sm text-muted-foreground">
-          Showing {filteredStudents.length} of {students.length} students
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9"
+              onClick={clearFilters}
+              title="Clear Filters"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
+      {/* Table */}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -128,7 +136,7 @@ export function ChestNumberTable({ students }: ChestNumberTableProps) {
                   {student.chestNumber ? (
                     <Badge
                       variant="outline"
-                      className="font-mono text-lg px-3 py-1 bg-primary/5 border-primary/20 text-primary"
+                      className="font-mono text-base px-2.5 py-0.5 bg-primary/10 border-primary/20 text-primary"
                     >
                       {student.chestNumber}
                     </Badge>
@@ -139,7 +147,17 @@ export function ChestNumberTable({ students }: ChestNumberTableProps) {
                   )}
                 </TableCell>
                 <TableCell className="font-medium">{student.name}</TableCell>
-                <TableCell>{student.group?.name || "-"}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="w-2 h-2 rounded-full"
+                      style={{
+                        backgroundColor: student.group?.color || "#2563eb",
+                      }}
+                    />
+                    {student.group?.name || "-"}
+                  </div>
+                </TableCell>
                 <TableCell>{student.category?.name || "-"}</TableCell>
               </TableRow>
             ))}
@@ -149,7 +167,10 @@ export function ChestNumberTable({ students }: ChestNumberTableProps) {
                   colSpan={4}
                   className="h-24 text-center text-muted-foreground"
                 >
-                  No students found matching filters.
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <FileText className="h-8 w-8 text-muted-foreground/50" />
+                    <p>No students found matching filters.</p>
+                  </div>
                 </TableCell>
               </TableRow>
             )}
