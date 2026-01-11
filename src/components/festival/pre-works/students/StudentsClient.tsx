@@ -185,6 +185,11 @@ export function StudentsClient({ festivalId }: StudentsClientProps) {
                 <TableCell className="font-medium">
                   <div className="flex flex-col">
                     <span>{student.name}</span>
+                    {student.chestNumber && (
+                      <span className="text-xs font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded w-fit">
+                        {student.chestNumber}
+                      </span>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>

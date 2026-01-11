@@ -150,25 +150,25 @@ export const getFestivalDashboardSidebarConfig = (
       items: [
         {
           title: "Chest Numbers",
-          href: `${basePath}/chest-numbers`,
+          href: `${basePath}/event-works/chest-numbers`,
           icon: CreditCard, // Placeholder
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {
           title: "QR Codes",
-          href: `${basePath}/qr-codes`,
+          href: `${basePath}/event-works/qr-codes`,
           icon: QrCode,
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"] as FestivalRole[],
         },
         {
           title: "Stage Management",
-          href: `${basePath}/stage-management`,
+          href: `${basePath}/event-works/stage-management`,
           icon: Megaphone,
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
         },
         {
           title: "Schedule",
-          href: `${basePath}/schedule`,
+          href: `${basePath}/event-works/schedule`,
           icon: Calendar,
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
         },

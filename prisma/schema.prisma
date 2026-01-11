@@ -164,6 +164,10 @@ model Festival {
   studentCreationDeadline     DateTime?
   programmeAssignmentDeadline DateTime?
 
+  // Settings
+  chestNumberSettings Json? // { prefix: string, nextSequence: number }
+
+
   // Child Entities
   payments      Payment[]
   students      Student[]
@@ -318,6 +322,7 @@ model Student {
   gender     Gender   @default(MALE)
   
   // registrationNumber String? // Removed as per request
+  chestNumber        String? // Generated Chest Number
   isTeamLeader       Boolean @default(false)
   
   age                Int?
@@ -331,6 +336,7 @@ model Student {
   // @@unique([festivalId, phone]) // Keep phone unique if used
   @@index([festivalId])
   @@index([groupId])
+  @@unique([festivalId, chestNumber])
   @@map("student")
 }
 
