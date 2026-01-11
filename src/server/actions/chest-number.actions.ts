@@ -14,6 +14,7 @@ export async function getChestNumberSettings(festivalId: string) {
     nextSequence?: number;
     categories?: Record<string, number>;
     categoryCodes?: Record<string, string>;
+    numberingStyle?: "ALPHANUMERIC" | "NUMERIC";
   } | null;
 }
 
@@ -23,26 +24,34 @@ export async function saveChestNumberSettings(
     prefix: string;
     categories?: Record<string, number>;
     categoryCodes?: Record<string, string>;
+    numberingStyle?: "ALPHANUMERIC" | "NUMERIC";
   },
 ) {
   const session = await getSession();
   if (!session?.userId) throw new Error("Unauthorized");
 
-  const updatedFestival = await prisma.festival.update({
+  await prisma.festival.update({
     where: { id: festivalId },
     data: {
       chestNumberSettings: {
         prefix: settings.prefix,
         categories: settings.categories,
         categoryCodes: settings.categoryCodes,
+        numberingStyle: settings.numberingStyle || "ALPHANUMERIC",
       },
     },
+  });
+
+  const updatedFestival = await prisma.festival.findUnique({
+    where: { id: festivalId },
     select: { slug: true },
   });
 
-  revalidatePath(
-    `/dashboard/${updatedFestival.slug}/event-works/chest-numbers`,
-  );
+  if (updatedFestival) {
+    revalidatePath(
+      `/dashboard/${updatedFestival.slug}/event-works/chest-numbers`,
+    );
+  }
 }
 
 export async function generateChestNumbers(festivalId: string) {
@@ -61,13 +70,20 @@ export async function generateChestNumbers(festivalId: string) {
     prefix: string;
     categories?: Record<string, number>;
     categoryCodes?: Record<string, string>;
+    numberingStyle?: "ALPHANUMERIC" | "NUMERIC";
   } | null;
 
   if (!settings) throw new Error("Settings not configured");
 
-  const prefix = settings.prefix.endsWith("-")
-    ? settings.prefix
-    : `${settings.prefix}-`;
+  const style = settings.numberingStyle || "ALPHANUMERIC";
+
+  // Prefix Logic
+  let prefixStr = "";
+  if (style === "ALPHANUMERIC") {
+    prefixStr = settings.prefix.endsWith("-")
+      ? settings.prefix
+      : `${settings.prefix}-`;
+  }
 
   // 2. Fetch existing chest numbers to avoid collision
   const existingStudents = await prisma.student.findMany({
@@ -118,19 +134,22 @@ export async function generateChestNumbers(festivalId: string) {
       categorySequences[catId] = 1;
     }
 
-    // Use custom code or fallback to first letter
-    const catInitial = codes[catId]
-      ? codes[catId].toUpperCase()
-      : student.category.name.charAt(0).toUpperCase();
+    // Code Logic
+    let catInitial = "";
+    if (style === "ALPHANUMERIC") {
+      catInitial = codes[catId]
+        ? codes[catId].toUpperCase()
+        : student.category.name.charAt(0).toUpperCase();
+    }
 
     const formattedSeq = String(currentSeq).padStart(2, "0");
-    let chestNumber = `${prefix}${catInitial}${formattedSeq}`;
+    let chestNumber = `${prefixStr}${catInitial}${formattedSeq}`;
 
     // Find next available number
     while (existingNumbers.has(chestNumber)) {
       currentSeq++;
       const nextFormattedSeq = String(currentSeq).padStart(2, "0");
-      chestNumber = `${prefix}${catInitial}${nextFormattedSeq}`;
+      chestNumber = `${prefixStr}${catInitial}${nextFormattedSeq}`;
     }
 
     updates.push(
@@ -157,6 +176,7 @@ export async function generateChestNumbers(festivalId: string) {
         prefix: settings.prefix, // Keep original prefix string
         categories: categorySequences,
         categoryCodes: settings.categoryCodes, // Preserve codes
+        numberingStyle: style,
       },
     },
   });
@@ -179,25 +199,25 @@ export async function resetChestNumbers(festivalId: string) {
   });
 
   // 2. Reset sequences in settings
-  // We keep the prefix but clear the category sequences so they restart
-  // Or do we keep them? If we want to "start from 01", we must reset them.
-  const festival = await prisma.festival.findUnique({
+  // User requested "reset completely", so we wipe the entire settings object.
+  // This will return the page to the "Not Configured" state.
+  await prisma.festival.update({
     where: { id: festivalId },
-    select: { chestNumberSettings: true, slug: true },
+    data: {
+      chestNumberSettings: {},
+    },
   });
 
-  if (festival?.chestNumberSettings) {
-    const currentSettings = festival.chestNumberSettings as any;
-    await prisma.festival.update({
-      where: { id: festivalId },
-      data: {
-        chestNumberSettings: {
-          ...currentSettings,
-          categories: {}, // Reset sequences
-        },
-      },
-    });
-  }
+  revalidatePath(`/dashboard/${festivalId}/event-works/chest-numbers`); // Attempt to revalidate by ID or find festival first
+
+  // Actually we need the slug to revalidate correctly if we are using slug in path.
+  // The festival object is fetched above? No, we need to fetch it or use the one we might have.
+  // Let's look at previous code.
+
+  const festival = await prisma.festival.findUnique({
+    where: { id: festivalId },
+    select: { slug: true },
+  });
 
   if (festival) {
     revalidatePath(`/dashboard/${festival.slug}/event-works/chest-numbers`);
@@ -207,11 +227,13 @@ export async function resetChestNumbers(festivalId: string) {
 export async function updateAllChestNumbers(
   festivalId: string,
   newPrefix: string,
+  newCategoryCodes?: Record<string, string>,
+  numberingStyle?: "ALPHANUMERIC" | "NUMERIC",
 ) {
   const session = await getSession();
   if (!session?.userId) throw new Error("Unauthorized");
 
-  // 1. Get current settings and categories
+  // 1. Get current settings
   const festival = await prisma.festival.findUnique({
     where: { id: festivalId },
     select: { chestNumberSettings: true, slug: true },
@@ -221,10 +243,8 @@ export async function updateAllChestNumbers(
   const settings = festival.chestNumberSettings as {
     categories?: Record<string, number>;
     categoryCodes?: Record<string, string>;
+    numberingStyle?: "ALPHANUMERIC" | "NUMERIC";
   } | null;
-
-  // Reset sequences to start (or keep existing logic? user said "Edit prefix... change all").
-  // Safest strategy: Regenerate all based on existing start numbers or defaults.
 
   const allStudents = await prisma.student.findMany({
     where: {
@@ -235,27 +255,59 @@ export async function updateAllChestNumbers(
     orderBy: { createdAt: "asc" },
   });
 
-  const prefix = newPrefix.endsWith("-") ? newPrefix : `${newPrefix}-`;
+  // Determine final style:
+  // 1. Use passed style if any
+  // 2. Else infer from inputs (if prefix is empty & codes empty -> Numeric)
+  // 3. Else fallback to existing settings style
+  // 4. Default ALPHANUMERIC
+  let style: "ALPHANUMERIC" | "NUMERIC" = "ALPHANUMERIC";
+
+  if (numberingStyle) {
+    style = numberingStyle;
+  } else if (
+    newPrefix === "" &&
+    (!newCategoryCodes || Object.keys(newCategoryCodes).length === 0)
+  ) {
+    style = "NUMERIC";
+  } else {
+    style = settings?.numberingStyle || "ALPHANUMERIC";
+  }
+
+  // Prefix Logic
+  let prefixStr = "";
+  if (style === "ALPHANUMERIC") {
+    prefixStr = newPrefix.endsWith("-") ? newPrefix : `${newPrefix}-`;
+  }
+
   const updates = [];
   const categorySequences: Record<string, number> = {};
-  const codes = settings?.categoryCodes || {};
+
+  // Use new codes if provided, otherwise fallback to existing settings or defaults
+  // For numeric, codes should be ignored/empty
+  const codes =
+    style === "NUMERIC"
+      ? {}
+      : newCategoryCodes || settings?.categoryCodes || {};
 
   for (const student of allStudents) {
-    // Use code or fallback
-    const catInitial = codes[student.categoryId]
-      ? codes[student.categoryId].toUpperCase()
-      : student.category.name.charAt(0).toUpperCase();
+    // Determine Code
+    let catInitial = "";
+    if (style === "ALPHANUMERIC") {
+      catInitial = codes[student.categoryId]
+        ? codes[student.categoryId].toUpperCase()
+        : student.category.name.charAt(0).toUpperCase();
+    }
 
     let seq = 1;
 
     // Try to preserve existing number if possible
     if (student.chestNumber) {
-      const parts = student.chestNumber.split("-");
-      if (parts.length > 0) {
-        const lastPart = parts[parts.length - 1]; // e.g. K100
-        // Remove first char if it is a letter
-        const numPart = lastPart.replace(/^[A-Z]/, "");
-        const parsed = parseInt(numPart);
+      // If switching styles, preserving number is tricky.
+      // ALPH -> NUM: FEST-A-01 -> 1 ? or 01?
+      // We parse number from end.
+      const matches = student.chestNumber.match(/(\d+)$/);
+      if (matches) {
+        const parsed = parseInt(matches[0]);
         if (!Number.isNaN(parsed)) seq = parsed;
       }
     }
@@ -265,22 +317,8 @@ export async function updateAllChestNumbers(
       categorySequences[student.categoryId] = 1;
     }
 
-    // We use the preserved 'seq' but we must ensure no collision if we are changing prefix.
-    // Since we are updating ALL, we just need to avoid collision within the new set.
-    // But if multiple students map to same seq (from different prefixes?), that's bad.
-    // But assuming they were unique before, they should be unique now if category initial is same.
-    // Let's assume seq is unique enough.
-
-    // Wait, if we use the simple counter method, we guarantee uniqueness and order.
-    // If we really want to just SWAP prefix, we should rely on the preserved number.
-
-    // But if we are introducing the "Category Initial" now, we might be changing format from `OLD-100` to `NEW-K100`.
-    // `OLD-100` has seq 100.
-    // `NEW-K100` uses seq 100.
-    // That seems fine.
-
     const formattedSeq = String(seq).padStart(2, "0");
-    const chestNumber = `${prefix}${catInitial}${formattedSeq}`;
+    const chestNumber = `${prefixStr}${catInitial}${formattedSeq}`;
 
     updates.push(
       prisma.student.update({
@@ -304,7 +342,8 @@ export async function updateAllChestNumbers(
       chestNumberSettings: {
         prefix: newPrefix,
         categories: categorySequences,
-        categoryCodes: settings?.categoryCodes,
+        categoryCodes: codes,
+        numberingStyle: style,
       },
     },
   });

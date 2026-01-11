@@ -29,30 +29,15 @@ export default async function ChestNumbersPage({ params }: PageProps) {
   // Filter for SINGLE categories only
   const singleCategories = categories.filter((c) => c.type === "SINGLE");
 
-  // Sort students: Pending first, then by chest number/name
   const students = studentsRaw.sort((a, b) => {
-    // If a is pending (null/empty) and b is not, a comes first (-1)
     if (!a.chestNumber && b.chestNumber) return -1;
-    // If a is not pending and b is, b comes first (1)
     if (a.chestNumber && !b.chestNumber) return 1;
-    // Otherwise keep original order (or sort by name/created)
     return 0;
   });
 
-  // Calculate pending count (only for SINGLE categories or generally all that need generation?)
-  // Logic in generation filters for SINGLE categories.
-  // We should count students in SINGLE categories who don't have chest numbers.
   const pendingCount = students.filter(
     (s) => !s.chestNumber && s.category?.type === "SINGLE",
   ).length;
-
-  // Filter logic:
-  // If NO settings exist => Show Initial Setup (centered)
-  // If settings EXIST => Show Compact Header + Table
-  // However, we might need adjustments if we want to allow re-configuring categories.
-  // For now stick to existing pattern: Settings exist -> Compact Mode.
-
-  const isSetup = !settings;
 
   async function handleRevalidate() {
     "use server";
@@ -62,36 +47,23 @@ export default async function ChestNumbersPage({ params }: PageProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Chest Numbers</h2>
+        <h1 className="text-2xl font-bold tracking-tight">Chest Numbers</h1>
         <p className="text-muted-foreground">
           Manage and generate unique chest numbers based on categories.
         </p>
       </div>
 
-      {isSetup ? (
-        <div className="mt-12">
-          <ChestNumberSetup
-            festivalId={festivalId}
-            categories={singleCategories}
-            initialSettings={null}
-            onGenerated={handleRevalidate}
-            pendingCount={pendingCount}
-          />
-        </div>
-      ) : (
-        <div className="space-y-6">
-          <ChestNumberSetup
-            festivalId={festivalId}
-            categories={singleCategories}
-            initialSettings={settings}
-            onGenerated={handleRevalidate}
-            compact
-            pendingCount={pendingCount}
-          />
+      <div className="space-y-6">
+        <ChestNumberSetup
+          festivalId={festivalId}
+          categories={singleCategories}
+          initialSettings={settings}
+          onGenerated={handleRevalidate}
+          pendingCount={pendingCount}
+        />
 
-          <ChestNumberTable students={students} />
-        </div>
-      )}
+        <ChestNumberTable students={students} />
+      </div>
     </div>
   );
 }
