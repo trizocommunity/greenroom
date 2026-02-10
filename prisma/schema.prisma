@@ -73,6 +73,7 @@ model PasswordResetToken {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   usedAt    DateTime?
   createdAt DateTime  @default(now())
+  updatedAt DateTime @updatedAt @default(now())
 
   @@map("password_reset_token")
 }
@@ -301,6 +302,8 @@ model ProgrammeAssignment {
   teamNumber    Int      @default(1)
 
   assignedAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt @default(now())
 
   @@unique([programmeId, studentId])
   

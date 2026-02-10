@@ -50,7 +50,7 @@ export function AdminEditFestivalModal({
   const router = useRouter();
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(updateFestivalSchema),
+    resolver: zodResolver(updateFestivalSchema) as any,
     defaultValues: {
       name: "",
       slug: "",
@@ -58,12 +58,14 @@ export function AdminEditFestivalModal({
       orgName: "",
       orgWebsite: "",
       orgLocation: "",
-      establishedYear: undefined,
-      institutionType: undefined,
+      establishedYear: null,
+      institutionType: null,
       institutionName: "",
       location: "",
       founderName: "",
       founderMessage: "",
+      startDate: null,
+      endDate: null,
     },
   });
 

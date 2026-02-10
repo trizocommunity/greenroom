@@ -56,7 +56,7 @@ export function EditFestivalModal({
   const router = useRouter();
   const queryClient = useQueryClient();
   const form = useForm<FormValues>({
-    resolver: zodResolver(updateFestivalSchema),
+    resolver: zodResolver(updateFestivalSchema) as any,
     defaultValues: {
       name: festival?.name || "",
       description: festival?.description || "",

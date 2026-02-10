@@ -61,7 +61,7 @@ export function CreateFestivalModal({
   const router = useRouter();
   const queryClient = useQueryClient();
   const form = useForm<FormData>({
-    resolver: zodResolver(createFestivalSchema),
+    resolver: zodResolver(createFestivalSchema) as any,
     defaultValues: {
       paymentId,
       festivalName: "",
