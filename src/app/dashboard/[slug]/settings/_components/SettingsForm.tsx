@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { updateFestivalDeadlinesAction } from "@/server/actions/festival.actions";
+import { updateFestivalSettingsAction } from "@/server/actions/festival.actions";
 
 interface SettingsFormProps {
   festival: any;
@@ -21,11 +21,17 @@ interface SettingsFormProps {
 
 export function SettingsForm({ festival }: SettingsFormProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [deadlines, setDeadlines] = useState({
+  const [formData, setFormData] = useState({
     programmeAssignmentDeadline: festival.programmeAssignmentDeadline
       ? new Date(festival.programmeAssignmentDeadline)
           .toISOString()
           .slice(0, 16)
+      : "",
+    startDate: festival.startDate
+      ? new Date(festival.startDate).toISOString().slice(0, 10)
+      : "",
+    endDate: festival.endDate
+      ? new Date(festival.endDate).toISOString().slice(0, 10)
       : "",
   });
 
@@ -33,15 +39,17 @@ export function SettingsForm({ festival }: SettingsFormProps) {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const res = await updateFestivalDeadlinesAction(festival.id, {
+      const res = await updateFestivalSettingsAction(festival.id, {
         programmeAssignmentDeadline:
-          deadlines.programmeAssignmentDeadline || null,
+          formData.programmeAssignmentDeadline || null,
+        startDate: formData.startDate ? new Date(formData.startDate) : null,
+        endDate: formData.endDate ? new Date(formData.endDate) : null,
       });
 
       if (res.success) {
-        toast.success("Deadlines updated successfully");
+        toast.success("Settings updated successfully");
       } else {
-        toast.error("Failed to update deadlines");
+        toast.error("Failed to update settings");
       }
     } catch (error) {
       toast.error("Something went wrong");
@@ -53,14 +61,38 @@ export function SettingsForm({ festival }: SettingsFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Deadlines & Access Control</CardTitle>
+        <CardTitle>Festival Configuration</CardTitle>
         <CardDescription>
-          Set sensitive deadlines. After these dates, Team Leaders will have
-          Read-Only access.
+          Manage dates, deadlines, and access controls.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSave} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="startDate">Start Date</Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={formData.startDate}
+                onChange={(e) =>
+                  setFormData({ ...formData, startDate: e.target.value })
+                }
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="endDate">End Date</Label>
+              <Input
+                id="endDate"
+                type="date"
+                value={formData.endDate}
+                onChange={(e) =>
+                  setFormData({ ...formData, endDate: e.target.value })
+                }
+              />
+            </div>
+          </div>
+
           <div className="grid gap-2">
             <Label htmlFor="programmeAssignment">
               Programme Assignment Deadline
@@ -68,10 +100,10 @@ export function SettingsForm({ festival }: SettingsFormProps) {
             <Input
               id="programmeAssignment"
               type="datetime-local"
-              value={deadlines.programmeAssignmentDeadline}
+              value={formData.programmeAssignmentDeadline}
               onChange={(e) =>
-                setDeadlines({
-                  ...deadlines,
+                setFormData({
+                  ...formData,
                   programmeAssignmentDeadline: e.target.value,
                 })
               }

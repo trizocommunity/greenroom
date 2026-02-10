@@ -42,7 +42,10 @@ import {
 } from "@/lib/validations/festival";
 import { createFestival } from "@/server/actions/festival.actions";
 
-type FormData = CreateFestivalInput;
+type FormData = Omit<CreateFestivalInput, "startDate" | "endDate"> & {
+  startDate?: string | Date;
+  endDate?: string | Date;
+};
 
 interface CreateFestivalModalProps {
   open: boolean;
@@ -67,6 +70,8 @@ export function CreateFestivalModal({
       institutionName: "",
       institutionType: undefined,
       location: "",
+      startDate: undefined,
+      endDate: undefined,
     },
   });
 
@@ -74,23 +79,6 @@ export function CreateFestivalModal({
   const festivalName = watch("festivalName");
   const festivalSlug = watch("festivalSlug");
 
-  // Auto-generate slug from name if user hasn't manually edited it
-  // We can track manual edits by checking if the slug matches the derived name slug
-  // or simply auto-update until the user focuses/changes the slug field.
-  // A simpler approach: use a state to track "isDirty" for slug?
-  // Or just update if the current slug is effectively the "default" version of the previous name?
-  // Let's use form.formState.dirtyFields.festivalSlug.
-
-  // Actually, we can just use an effect that updates it if the field isn't dirty.
-  // But react-hook-form's dirty state might be tricky if we programmatically set value.
-  // Instead, let's just update prompt user to verify.
-  // Or: Just let user edit manually. If empty, we can auto-fill on blur of name?
-  // Let's go with: Update generated slug AS LONG AS `festivalSlug` field hasn't been explicitly touched/modified by user.
-
-  // However, specifically requested: "give already have slug ... user need only changes the slug"
-  // So we just default it.
-
-  // Let's just listen to festivalName changes
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
 
   useEffect(() => {
@@ -105,7 +93,6 @@ export function CreateFestivalModal({
 
   const onSubmit = async (data: FormData) => {
     try {
-      // Use the slug from the form data (it should be populated now)
       const slug =
         data.festivalSlug ||
         data.festivalName
@@ -113,8 +100,19 @@ export function CreateFestivalModal({
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/^-+|-+$/g, "");
 
+      // Ensure dates are Dates if they are strings (zod resolver handles this usually but let's be safe)
+      // Actually createsFestival expects CreateFestivalInput where startDate is Date.
+      // But data has string | Date.
+      // Zod parser in backend will handle coercion too if we used coerce in backend validation?
+      // No, we used coerce in Frontend validation.
+      // So 'data' coming out of handleSubmit is actually the RESULT of validation, so it SHOULD be Dates.
+      // But Typescript 'FormData' override says string | Date.
+      // We can cast `data` to `CreateFestivalInput`.
+
+      const validData = data as CreateFestivalInput;
+
       const result = await createFestival({
-        ...data,
+        ...validData,
         festivalSlug: slug,
         paymentId,
       });
@@ -124,9 +122,8 @@ export function CreateFestivalModal({
         queryClient.invalidateQueries({ queryKey: queryKeys.festivals.all() });
         queryClient.invalidateQueries({ queryKey: queryKeys.payments.all() });
         form.reset();
-        setIsSlugManuallyEdited(false); // Reset state
+        setIsSlugManuallyEdited(false);
         onOpenChange(false);
-        // Redirect to festival dashboard
         if (result.data?.slug) {
           router.push(`/dashboard/${result.data.slug}`);
         }
@@ -134,14 +131,12 @@ export function CreateFestivalModal({
         const errorResult = result as any;
         if (errorResult.fields) {
           if (errorResult.fields.slug || errorResult.fields.festivalSlug) {
-            // Now we can show error on the actual slug field
             form.setError("festivalSlug", {
               message:
                 "This subdomain is already taken. Please choose another.",
             });
             return;
           }
-          // Generic field errors
           Object.entries(errorResult.fields).forEach(([key, message]) => {
             if (key === "slug") return;
             form.setError(key as any, { message: message as string });
@@ -228,6 +223,58 @@ export function CreateFestivalModal({
                   </FormItem>
                 )}
               />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="startDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Start Date</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field}
+                          value={
+                            field.value instanceof Date
+                              ? field.value.toISOString().split("T")[0]
+                              : typeof field.value === "string"
+                                ? field.value
+                                : ""
+                          }
+                          onChange={(e) => field.onChange(e.target.value)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="endDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>End Date</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field}
+                          value={
+                            field.value instanceof Date
+                              ? field.value.toISOString().split("T")[0]
+                              : typeof field.value === "string"
+                                ? field.value
+                                : ""
+                          }
+                          onChange={(e) => field.onChange(e.target.value)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <FormField
                 control={form.control}

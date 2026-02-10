@@ -137,6 +137,8 @@ model Festival {
   institutionType InstitutionType?
   institutionName String?
   location        String?
+  startDate       DateTime?
+  endDate         DateTime?
   expiresAt       DateTime?
 
   // Founder/Message
@@ -175,6 +177,7 @@ model Festival {
   groups        Group[]
   programmes    Programme[]
   programmeAssignments ProgrammeAssignment[]
+  stages        Stage[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -374,4 +377,21 @@ enum Gender {
   MALE
   FEMALE
   OTHER
+}
+
+model Stage {
+  id          String   @id @default(uuid())
+  festivalId  String
+  festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  
+  // Who created it (User Name or ID)
+  createdBy   String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("stage")
 }

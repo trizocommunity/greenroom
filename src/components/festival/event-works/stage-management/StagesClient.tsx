@@ -1,0 +1,175 @@
+"use client";
+
+import { deleteStage } from "@/server/actions/stage.actions";
+import { Stage } from "@prisma/client";
+import { Edit, Megaphone, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { StageDialog } from "./StageDialog";
+
+interface StagesClientProps {
+  festivalId: string;
+  stages: Stage[];
+}
+
+export function StagesClient({ festivalId, stages }: StagesClientProps) {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedStage, setSelectedStage] = useState<Stage | undefined>(
+    undefined,
+  );
+  const [stageToDelete, setStageToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleCreate = () => {
+    setSelectedStage(undefined);
+    setIsDialogOpen(true);
+  };
+
+  const handleEdit = (stage: Stage) => {
+    setSelectedStage(stage);
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!stageToDelete) return;
+    try {
+      setIsDeleting(true);
+      await deleteStage(stageToDelete);
+      toast.success("Stage deleted successfully");
+      setStageToDelete(null);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete stage");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">
+            Stage Management
+          </h2>
+          <p className="text-muted-foreground">
+            Create and manage stages for your festival events.
+          </p>
+        </div>
+        <Button onClick={handleCreate} className="gap-2">
+          <Plus className="h-4 w-4" />
+          Create Stage
+        </Button>
+      </div>
+
+      {stages.length === 0 ? (
+        <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg bg-muted/20">
+          <div className="p-4 bg-primary/10 rounded-full mb-4">
+            <Megaphone className="h-8 w-8 text-primary" />
+          </div>
+          <h3 className="text-lg font-semibold">No Stages Created</h3>
+          <p className="text-muted-foreground text-center max-w-sm mt-1 mb-4">
+            Get started by creating your first stage. Stages are where your
+            programmes will be conducted.
+          </p>
+          <Button onClick={handleCreate}>Create Stage</Button>
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {stages.map((stage) => (
+            <Card key={stage.id} className="relative group overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 pl-8">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                  onClick={() => handleEdit(stage)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => setStageToDelete(stage.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+              <CardHeader>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 bg-primary/10 rounded-md">
+                    <Megaphone className="h-4 w-4 text-primary" />
+                  </div>
+                  <CardTitle className="text-lg">{stage.name}</CardTitle>
+                </div>
+
+                <CardDescription className="line-clamp-2 min-h-[2.5em]">
+                  {stage.description || "No description provided."}
+                </CardDescription>
+
+                <div className="pt-2 flex items-center gap-2 text-xs text-muted-foreground mt-2 border-t">
+                  <span>Created by:</span>
+                  <span className="font-medium text-foreground">
+                    {stage.createdBy || "System"}
+                  </span>
+                </div>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <StageDialog
+        festivalId={festivalId}
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        stageToEdit={selectedStage}
+        onSuccess={() => {
+          // Revalidation handled by server action
+        }}
+      />
+
+      <AlertDialog
+        open={!!stageToDelete}
+        onOpenChange={(open) => !open && setStageToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this stage?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              stage.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

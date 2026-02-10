@@ -142,16 +142,11 @@ export const getFestivalDashboardSidebarConfig = (
           icon: Edit,
           allowedRoles: ["ADMIN", "OWNER"],
         },
-      ],
-    },
-
-    {
-      title: "Event Works",
-      items: [
+        // Merged items from old "Event Works"
         {
           title: "Chest Numbers",
           href: `${basePath}/event-works/chest-numbers`,
-          icon: CreditCard, // Placeholder
+          icon: CreditCard,
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {
@@ -174,8 +169,9 @@ export const getFestivalDashboardSidebarConfig = (
         },
       ],
     },
+
     {
-      title: "On-Event Works",
+      title: "Event Works", // Renamed from "On-Event Works"
       items: [
         {
           title: "Scan QR",
@@ -215,7 +211,7 @@ export const getFestivalDashboardSidebarConfig = (
       ],
     },
     {
-      title: "Summary & Results",
+      title: "Post-Event Works", // Renamed from "Summary & Results"
       items: [
         {
           title: "Results",

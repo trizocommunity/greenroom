@@ -62,6 +62,8 @@ export async function createFestival(input: CreateFestivalInput) {
           institutionName: data.institutionName,
           location: data.location,
           description: data.description,
+          startDate: data.startDate,
+          endDate: data.endDate,
           ownerId: session.userId,
           status: "ACTIVE",
           expiresAt: expiresAt,
@@ -109,10 +111,12 @@ export async function createFestival(input: CreateFestivalInput) {
   }
 }
 
-export async function updateFestivalDeadlinesAction(
+export async function updateFestivalSettingsAction(
   festivalId: string,
   data: {
     programmeAssignmentDeadline?: string | null;
+    startDate?: Date | null;
+    endDate?: Date | null;
   },
 ) {
   try {
@@ -147,7 +151,15 @@ export async function updateFestivalDeadlinesAction(
       data: {
         programmeAssignmentDeadline: data.programmeAssignmentDeadline
           ? new Date(data.programmeAssignmentDeadline)
-          : null,
+          : undefined, // undefined to only update if provided/changed? Or explicit null?
+        // Logic: if key exists in data, update it.
+        ...(data.programmeAssignmentDeadline !== undefined && {
+          programmeAssignmentDeadline: data.programmeAssignmentDeadline
+            ? new Date(data.programmeAssignmentDeadline)
+            : null,
+        }),
+        ...(data.startDate !== undefined && { startDate: data.startDate }),
+        ...(data.endDate !== undefined && { endDate: data.endDate }),
       },
     });
 

@@ -15,11 +15,15 @@ export const createFestivalSchema = z.object({
   institutionName: z.string().optional(),
   location: z.string().optional(),
   description: z.string().optional(),
+  startDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().optional(),
 });
 
 export const updateFestivalSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional().nullable(),
+  startDate: z.coerce.date().optional().nullable(),
+  endDate: z.coerce.date().optional().nullable(),
   orgName: z.string().optional().nullable(),
   orgDescription: z.string().optional().nullable(),
   orgWebsite: z

@@ -81,14 +81,18 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
       );
     }
 
-    if (joinedFestivals && joinedFestivals.length > 0) {
+    const filteredFestivals = joinedFestivals?.filter(
+      (f: any) => f.memberRole !== "ADMIN",
+    );
+
+    if (filteredFestivals && filteredFestivals.length > 0) {
       return (
         <div className="space-y-4">
           <h3 className="text-xl font-semibold tracking-tight">
             Joined Festivals
           </h3>
           <div className="grid gap-6">
-            {joinedFestivals.map((f: any) => (
+            {filteredFestivals.map((f: any) => (
               <JoinedFestivalCard key={f.id} festival={f} />
             ))}
           </div>
