@@ -34,6 +34,7 @@ import { useStudents } from "@/hooks/useStudents";
 import { BulkUploadStudentsModal } from "./BulkUploadStudentsModal";
 import { StudentDetailsDialog } from "./StudentDetailsDialog";
 import { StudentDialog } from "./StudentDialog";
+import { FeatureGate } from "@/components/common/FeatureGate";
 
 interface StudentsClientProps {
   festivalId: string;
@@ -155,7 +156,12 @@ export function StudentsClient({ festivalId }: StudentsClientProps) {
               </TooltipProvider>
             ) : (
               <div className="flex flex-wrap w-full gap-2">
-                <BulkUploadStudentsModal festivalId={festivalId} />
+                <FeatureGate
+                  feature="studentBulkUpload"
+                  requiredTier="STANDARD"
+                >
+                  <BulkUploadStudentsModal festivalId={festivalId} />
+                </FeatureGate>
                 <StudentDialog
                   festivalId={festivalId}
                   trigger={

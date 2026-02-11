@@ -185,12 +185,6 @@ export const getFestivalDashboardSidebarConfig = (
           ] as FestivalRole[],
         },
         {
-          title: "Coding/decoding",
-          href: `${basePath}/coding`,
-          icon: Shield,
-          allowedRoles: ["ADMIN", "OWNER", "JUDGE"] as FestivalRole[],
-        },
-        {
           title: "Mark Completion",
           href: `${basePath}/completion`,
           icon: CheckCircle,
@@ -208,11 +202,6 @@ export const getFestivalDashboardSidebarConfig = (
             "ANNOUNCER",
           ] as FestivalRole[],
         },
-      ],
-    },
-    {
-      title: "Post-Event Works", // Renamed from "Summary & Results"
-      items: [
         {
           title: "Results",
           href: `${basePath}/results`,

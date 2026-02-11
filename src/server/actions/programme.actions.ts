@@ -24,6 +24,7 @@ export async function createProgrammeAction(
     maxParticipantsPerGroup?: number;
     maxTeamsPerGroup?: number;
     maxStudentsPerTeam?: number;
+    maxPoints?: number;
   },
 ) {
   // Validate Dependencies
@@ -100,6 +101,7 @@ export async function updateProgrammeAction(
     maxParticipantsPerGroup?: number;
     maxTeamsPerGroup?: number;
     maxStudentsPerTeam?: number;
+    maxPoints?: number;
   },
 ) {
   // Map data to service format if needed, or if service accepts partials

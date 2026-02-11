@@ -73,6 +73,7 @@ export default async function FestivalLayout({
     limits: null,
     studentCreationDeadline: festival.studentCreationDeadline,
     programmeAssignmentDeadline: festival.programmeAssignmentDeadline,
+    tier: festival.tier,
   };
 
   return (

@@ -105,49 +105,4 @@ export const GroupService = {
 
     return deleteGroup(id);
   },
-
-  async bulkCreate(festivalId: string, groups: { name: string }[]) {
-    const festival = await findFestivalById(festivalId);
-    if (!festival) throw new Error("Festival not found");
-    if (festival.status === "EXPIRED") throw new Error("Festival is expired");
-
-    // Deduplicate against existing groups
-    const existingGroups = await findGroupsByFestival(festivalId);
-    const existingNames = new Set(
-      existingGroups.map((g) => g.name.toLowerCase()),
-    );
-
-    const duplicates = groups.filter((g) =>
-      existingNames.has(g.name.toLowerCase()),
-    );
-    if (duplicates.length > 0) {
-      throw new Error(
-        `Duplicate groups found: ${duplicates.map((d) => d.name).join(", ")}`,
-      );
-    }
-
-    const defaultColors = [
-      "#ef4444",
-      "#f97316",
-      "#f59e0b",
-      "#84cc16",
-      "#10b981",
-      "#06b6d4",
-      "#3b82f6",
-      "#6366f1",
-      "#8b5cf6",
-      "#ec4899",
-    ];
-
-    const data = groups.map((g) => ({
-      festivalId,
-      name: g.name,
-      seriesStart: 100, // Default
-      color: defaultColors[Math.floor(Math.random() * defaultColors.length)],
-    }));
-
-    return db.group.createMany({
-      data,
-    });
-  },
 };

@@ -78,6 +78,7 @@ export default async function FestivalDashboardLayout({
     name: festival.name,
     slug: festival.slug,
     status: festival.status,
+    tier: festival.tier,
     accentColor: "#000000",
     expiresAt: festival.expiresAt,
     description: festival.description || "",
@@ -95,12 +96,14 @@ export default async function FestivalDashboardLayout({
     establishedYear: null,
     // New Stats from Festival
     studentsCount: festival.studentsCount || 0,
+    programmesCount: festival.programmesCount || 0,
     eventsCount: festival.eventsCount || 0,
-    sessionsCount: 0,
+    stagesCount: festival.stagesCount || 0,
     limits: {
       maxStudents: tierLimits.students,
       maxProgrammes: tierLimits.programmes,
-      maxSessions: tierLimits.sessions,
+      maxEvents: tierLimits.events,
+      maxStages: tierLimits.stages,
       maxStorageMB: tierLimits.storageMB,
     },
     studentCreationDeadline: festival.studentCreationDeadline,
@@ -120,63 +123,68 @@ export default async function FestivalDashboardLayout({
 
   return (
     <SidebarProvider>
-      <FestivalDashboardSidebar festival={festivalData} role={userRole} />
+      <FestivalProvider festival={festivalData}>
+        <FestivalDashboardSidebar festival={festivalData} role={userRole} />
 
-      <SidebarInset>
-        <header className="sticky top-0 z-10 w-full flex h-14 shrink-0 items-center justify-between border-b bg-background/95 backdrop-blur px-8 shadow-sm">
-          <div className="flex items-center gap-2">
-            <span className="hidden md:block ">
-              <SidebarTrigger className="h-8 w-8" />
-            </span>
-            <div className="mr-2 h-4 w-px bg-border" />
-            <DashboardBreadcrumb slug={slug} />{" "}
-          </div>
+        <SidebarInset>
+          <header className="sticky top-0 z-10 w-full flex h-14 shrink-0 items-center justify-between border-b bg-background/95 backdrop-blur px-8 shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="hidden md:block ">
+                <SidebarTrigger className="h-8 w-8" />
+              </span>
+              <div className="mr-2 h-4 w-px bg-border" />
+              <DashboardBreadcrumb slug={slug} />{" "}
+            </div>
 
-          {/* Header Actions */}
-          <div className="flex items-center gap-2">
-            <Link href={`/${slug}`} className="hidden md:block" target="_blank">
-              <Button variant="ghost" size="icon">
-                <ExternalLink className="h-4 w-4" />
-              </Button>
-            </Link>
-            <DashboardRightSidebar
-              trigger={
-                <Button variant="ghost" size="icon" className="">
-                  <Menu className="h-5 w-5" />
-                  <span className="sr-only">Toggle user menu</span>
+            {/* Header Actions */}
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/${slug}`}
+                className="hidden md:block"
+                target="_blank"
+              >
+                <Button variant="ghost" size="icon">
+                  <ExternalLink className="h-4 w-4" />
                 </Button>
-              }
-              user={userData}
-              festivalSlug={slug}
-              festivalName={festival.name}
-              festivalStatus={festival.status}
-              daysRemaining={
-                festival.expiresAt
-                  ? Math.ceil(
-                      (new Date(festival.expiresAt).getTime() - Date.now()) /
-                        (1000 * 60 * 60 * 24),
-                    )
-                  : null
-              }
-              userRole={userRole}
-              usage={{
-                studentsCount: festival._count?.students || 0,
-                programmesCount: festival._count?.programmes || 0,
-                sessionsCount: 0,
-                storageUsedMB: 0, // Placeholder
-              }}
-              limits={festivalData.limits}
-              tierLabel={festival.tier || "Standard"}
-            />
-          </div>
-        </header>
+              </Link>
+              <DashboardRightSidebar
+                trigger={
+                  <Button variant="ghost" size="icon" className="">
+                    <Menu className="h-5 w-5" />
+                    <span className="sr-only">Toggle user menu</span>
+                  </Button>
+                }
+                user={userData}
+                festivalSlug={slug}
+                festivalName={festival.name}
+                festivalStatus={festival.status}
+                daysRemaining={
+                  festival.expiresAt
+                    ? Math.ceil(
+                        (new Date(festival.expiresAt).getTime() - Date.now()) /
+                          (1000 * 60 * 60 * 24),
+                      )
+                    : null
+                }
+                userRole={userRole}
+                usage={{
+                  studentsCount: festival._count?.students || 0,
+                  programmesCount: festival._count?.programmes || 0,
+                  eventsCount: festival.eventsCount || 0,
+                  stagesCount: festival.stagesCount || 0,
+                  storageUsedMB: 0, // Placeholder
+                }}
+                limits={festivalData.limits}
+                tierLabel={festival.tier || "Standard"}
+              />
+            </div>
+          </header>
 
-        <main className="flex flex-1 flex-col gap-6 p-8 relative overflow-hidden">
-          <FestivalProvider festival={festivalData}>
+          <main className="flex flex-1 flex-col gap-6 p-8 relative overflow-hidden">
             {children}
-          </FestivalProvider>
-        </main>
-      </SidebarInset>
+          </main>
+        </SidebarInset>
+      </FestivalProvider>
     </SidebarProvider>
   );
 }

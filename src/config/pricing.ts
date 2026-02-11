@@ -6,10 +6,84 @@ export const TIER_CONFIG: Record<Tier, any> = {
     label: "Basic",
     durationDays: 30,
     limits: {
-      students: 150,
+      students: 250,
       programmes: 100,
-      sessions: 15,
+      events: 10, // Public events (talks, ceremonies)
+      stages: 2,
       storageMB: 512, // 0.5 GB
+    },
+    features: {
+      // Pre-Works Access
+      categories: true,
+      groups: true,
+      students: true,
+      programmes: true,
+      assignments: true,
+
+      // Event-Works Access
+      chestNumbers: true,
+      results: true,
+      stageManagement: false,
+      schedule: false,
+
+      // Team & Collaboration
+      maxTeamMembers: 1, // Owner only, no additional members
+      members: false, // No team member management UI
+      roleBasedAccess: false,
+
+      // Import/Export
+      studentImport: true, // CSV import allowed
+      studentBulkUpload: false, // No bulk upload
+      programmeBulkUpload: false, // No bulk upload
+      pdfExport: true,
+      excelExport: false,
+
+      // Communication
+      emailNotifications: false,
+      whatsappSupport: true, // 24h response time
+      smsNotifications: false,
+      bulkNotifications: false,
+
+      // Reporting & Analytics
+      advancedAnalytics: false,
+      customReports: false,
+
+      // Certificates & QR
+      qrCodes: false,
+      autoCertificates: false,
+      customCertificateTemplates: false,
+      bulkCertificateGeneration: false,
+
+      // Landing Page
+      publicLandingPage: true, // Basic version only (title + results)
+      fullLandingPage: false,
+      landingPageBuilder: false,
+
+      // Branding
+      customUrl: false,
+      customDomain: false,
+      logoUpload: true, // Basic logo upload only
+      customColors: false,
+      whiteLabel: false,
+
+      // Advanced Features
+      apiAccess: false,
+      webhooks: false,
+      liveScoreboard: false,
+      liveResults: false,
+      multiFestivalManagement: false,
+
+      // Settings
+      festivalSettings: false, // No settings page access
+      advancedSettings: false,
+
+      // Support
+      supportLevel: "whatsapp",
+      supportResponseTime: 24, // hours
+
+      // Post-Expiry Behavior
+      postExpiryAccess: "delete", // Data will be deleted on expiry
+      dataRetentionDays: 0, // No retention, immediate deletion
     },
   },
   STANDARD: {
@@ -19,7 +93,8 @@ export const TIER_CONFIG: Record<Tier, any> = {
     limits: {
       students: 500,
       programmes: 250,
-      sessions: 50,
+      events: 25, // Public events (talks, ceremonies)
+      stages: 20,
       storageMB: 2048, // 2 GB
     },
   },
@@ -28,9 +103,10 @@ export const TIER_CONFIG: Record<Tier, any> = {
     label: "Pro",
     durationDays: 180,
     limits: {
-      students: 1000,
-      programmes: 500,
-      sessions: 100,
+      students: 2000,
+      programmes: 1000, // Effectively unlimited
+      events: 100, // Public events (talks, ceremonies)
+      stages: 50, // Effectively unlimited
       storageMB: 10240, // 10 GB
     },
   },
@@ -55,7 +131,8 @@ export const PRICING_TIERS: PricingTier[] = [
     features: [
       `${TIER_CONFIG.BASIC.limits.students} Students`,
       `${TIER_CONFIG.BASIC.limits.programmes} Programmes`,
-      `${TIER_CONFIG.BASIC.limits.sessions} Sessions`,
+      `${TIER_CONFIG.BASIC.limits.events} Public Events`,
+      `${TIER_CONFIG.BASIC.limits.stages} Stages`,
       "0.5 GB Storage",
       `${TIER_CONFIG.BASIC.durationDays} Days Active Duration`,
       "Read-only access afterwards",
@@ -70,7 +147,8 @@ export const PRICING_TIERS: PricingTier[] = [
     features: [
       `${TIER_CONFIG.STANDARD.limits.students} Students`,
       `${TIER_CONFIG.STANDARD.limits.programmes} Programmes`,
-      `${TIER_CONFIG.STANDARD.limits.sessions} Sessions`,
+      `${TIER_CONFIG.STANDARD.limits.events} Public Events`,
+      `${TIER_CONFIG.STANDARD.limits.stages} Stages`,
       "2 GB Storage",
       `${TIER_CONFIG.STANDARD.durationDays} Days Active Duration`,
       "Read-only access afterwards",
@@ -84,8 +162,9 @@ export const PRICING_TIERS: PricingTier[] = [
     description: "For established festivals needing more capacity.",
     features: [
       `${TIER_CONFIG.PRO.limits.students} Students`,
-      `${TIER_CONFIG.PRO.limits.programmes} Programmes`,
-      `${TIER_CONFIG.PRO.limits.sessions} Sessions`,
+      "Unlimited Programmes",
+      `${TIER_CONFIG.PRO.limits.events} Public Events`,
+      "Unlimited Stages",
       "10 GB Storage",
       `${TIER_CONFIG.PRO.durationDays} Days Active Duration`,
       "Read-only access afterwards",

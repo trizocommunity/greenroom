@@ -1,6 +1,7 @@
 import { findFestivalBySlug } from "@/server/models/festival.model";
 import { getStages } from "@/server/actions/stage.actions";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { FeatureService } from "@/lib/features";
 import { StagesClient } from "@/components/festival/event-works/stage-management/StagesClient";
 
 interface PageProps {
@@ -13,6 +14,15 @@ export default async function StageManagementPage({ params }: PageProps) {
 
   if (!festival) {
     notFound();
+  }
+
+  // Feature Access Check
+  if (
+    !FeatureService.isFeatureEnabled(festival.tier as any, "stageManagement")
+  ) {
+    redirect(
+      `/dashboard/${slug}?error=upgrade_required&feature=stageManagement`,
+    );
   }
 
   const stages = await getStages(festival.id);

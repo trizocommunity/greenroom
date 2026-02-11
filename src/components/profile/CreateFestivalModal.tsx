@@ -51,12 +51,14 @@ interface CreateFestivalModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   paymentId: string;
+  tier?: string;
 }
 
 export function CreateFestivalModal({
   open,
   onOpenChange,
   paymentId,
+  tier,
 }: CreateFestivalModalProps) {
   const router = useRouter();
   const queryClient = useQueryClient();

@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
 
+import { UsageCounterService } from "@/server/services/usage-counter.service";
+
 export type StageData = {
   name: string;
   description?: string;
@@ -22,13 +24,19 @@ export async function createStage(festivalId: string, data: StageData) {
   const createdBy =
     user?.displayName || user?.fullName || user?.email || "Unknown";
 
-  await prisma.stage.create({
-    data: {
-      festivalId,
-      name: data.name,
-      description: data.description,
-      createdBy,
-    },
+  await prisma.$transaction(async (tx) => {
+    // Check and Increment Limit
+    await UsageCounterService.incrementUsage(festivalId, "stages", 1, tx);
+
+    // Create Stage
+    await tx.stage.create({
+      data: {
+        festivalId,
+        name: data.name,
+        description: data.description,
+        createdBy,
+      },
+    });
   });
 
   const festival = await prisma.festival.findUnique({
@@ -72,8 +80,20 @@ export async function deleteStage(stageId: string) {
 
   if (!stage) throw new Error("Stage not found");
 
-  await prisma.stage.delete({
-    where: { id: stageId },
+  await prisma.$transaction(async (tx) => {
+    await tx.stage.delete({
+      where: { id: stageId },
+    });
+
+    // Decrement Usage manually or via service if supported (Service only increments)
+    // UsageCounterService logic: if (currentUsage + amount > maxLimit).
+    // If amount is negative (-1), limit check passes (assuming currentUsage >= 0), and increment becomes decrement.
+    await UsageCounterService.incrementUsage(
+      stage.festivalId,
+      "stages",
+      -1,
+      tx,
+    );
   });
 
   revalidatePath(

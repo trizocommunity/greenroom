@@ -1,11 +1,8 @@
-import { Prisma, Tier } from "@prisma/client";
-import { TIER_CONFIG } from "@/config/pricing";
 import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
-import { findCategoryById } from "@/server/models/category.model";
 import { findFestivalById } from "@/server/models/festival.model";
+import { UsageCounterService } from "./usage-counter.service";
 import {
-  countProgrammes,
   createProgramme,
   deleteProgramme,
   findProgrammeById,
@@ -43,35 +40,38 @@ export const ProgrammeService = {
       maxParticipantsPerGroup?: number;
       maxTeamsPerGroup?: number;
       maxStudentsPerTeam?: number;
+      maxPoints?: number;
     },
   ) {
-    // 1. Check Tier Limits
-    // Replaced prisma.festival.findUnique with existing findFestivalById
-    const festival = await findFestivalById(festivalId);
+    // 1. Check Tier Limits & Increment
+    await UsageCounterService.incrementUsage(festivalId, "programmes");
 
-    if (!festival) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
-
-    const tierLimit = TIER_CONFIG[festival.tier || Tier.STANDARD].limits.events; // "events" = programmes
-    // Replaced prisma.programme.count with existing countProgrammes
-    const currentCount = await countProgrammes(festivalId);
-
-    if (currentCount >= tierLimit) {
-      throw new Error(
-        `Programme limit reached for this tier (${tierLimit}). Upgrade to add more.`,
-      );
+    try {
+      // Replaced prisma.programme.create with existing createProgramme
+      return await createProgramme({
+        festival: { connect: { id: festivalId } },
+        name: data.name,
+        category: { connect: { id: data.categoryId } },
+        type: data.type,
+        stageType: data.stageType,
+        maxParticipantsPerGroup: data.maxParticipantsPerGroup || 1,
+        maxTeamsPerGroup: data.maxTeamsPerGroup || 1,
+        maxStudentsPerTeam: data.maxStudentsPerTeam || 1,
+      });
+    } catch (error) {
+      // Rollback usage on error
+      // UsageCounterService validation happens before create.
+      // If create fails, we technically skewed the counter.
+      // Ideally wrap in transaction or decrement.
+      // For now, simpler to leave as is or basic try/catch rollback
+      // To keep it robust without big refactor:
+      await UsageCounterService.incrementUsage(
+        festivalId,
+        "programmes",
+        -1,
+      ).catch(() => {});
+      throw error;
     }
-
-    // Replaced prisma.programme.create with existing createProgramme
-    return createProgramme({
-      festival: { connect: { id: festivalId } },
-      name: data.name,
-      category: { connect: { id: data.categoryId } },
-      type: data.type,
-      stageType: data.stageType,
-      maxParticipantsPerGroup: data.maxParticipantsPerGroup || 1,
-      maxTeamsPerGroup: data.maxTeamsPerGroup || 1,
-      maxStudentsPerTeam: data.maxStudentsPerTeam || 1,
-    });
   },
 
   /*
@@ -94,31 +94,36 @@ export const ProgrammeService = {
 
     if (!festival) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
 
-    const tierLimit = TIER_CONFIG[festival.tier || Tier.STANDARD].limits.events;
-    // Replaced prisma.programme.count with existing countProgrammes
-    const currentCount = await countProgrammes(festivalId);
-
-    if (currentCount + programmes.length > tierLimit) {
-      throw new Error(
-        `Bulk upload exceeds limit. You can add ${tierLimit - currentCount} more programmes.`,
-      );
-    }
-
-    // Convert to Prisma CreateMany Input
-    const data = programmes.map((p) => ({
+    await UsageCounterService.incrementUsage(
       festivalId,
-      name: p.name,
-      categoryId: p.categoryId,
-      type: p.type,
-      stageType: p.stageType,
-      maxParticipantsPerGroup: p.maxParticipantsPerGroup || 1,
-      maxTeamsPerGroup: p.maxTeamsPerGroup || 1,
-      maxStudentsPerTeam: p.maxStudentsPerTeam || 1,
-    }));
+      "programmes",
+      programmes.length,
+    );
 
-    return prisma.programme.createMany({
-      data,
-    });
+    try {
+      // Convert to Prisma CreateMany Input
+      const data = programmes.map((p) => ({
+        festivalId,
+        name: p.name,
+        categoryId: p.categoryId,
+        type: p.type,
+        stageType: p.stageType,
+        maxParticipantsPerGroup: p.maxParticipantsPerGroup || 1,
+        maxTeamsPerGroup: p.maxTeamsPerGroup || 1,
+        maxStudentsPerTeam: p.maxStudentsPerTeam || 1,
+      }));
+
+      return await prisma.programme.createMany({
+        data,
+      });
+    } catch (error) {
+      await UsageCounterService.incrementUsage(
+        festivalId,
+        "programmes",
+        -programmes.length,
+      ).catch(() => {});
+      throw error;
+    }
   },
 
   /*
@@ -135,6 +140,7 @@ export const ProgrammeService = {
       maxParticipantsPerGroup?: number;
       maxTeamsPerGroup?: number;
       maxStudentsPerTeam?: number;
+      maxPoints?: number;
     },
   ) {
     // Verify ownership via getDetails (throws if not found)
@@ -165,6 +171,12 @@ export const ProgrammeService = {
     if (assignmentCount > 0) {
       throw new Error("Cannot delete programme with existing assignments");
     }
+
+    await UsageCounterService.incrementUsage(
+      festivalId,
+      "programmes",
+      -1,
+    ).catch(() => {});
 
     return deleteProgramme(id);
   },

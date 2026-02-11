@@ -35,13 +35,15 @@ interface DashboardRightSidebarProps {
   usage?: {
     studentsCount: number;
     programmesCount: number;
-    sessionsCount?: number;
+    eventsCount?: number;
+    stagesCount?: number;
     storageUsedMB: number;
   };
   limits?: {
     maxStudents: number;
     maxProgrammes: number;
-    maxSessions?: number;
+    maxEvents?: number;
+    maxStages?: number;
     maxStorageMB: number;
   };
   tierLabel?: string;
@@ -148,8 +150,20 @@ export function DashboardRightSidebar({
                 </h4>
                 <LimitationCard
                   tierLabel={tierLabel || "Standard"}
-                  limits={limits}
-                  usage={usage}
+                  limits={{
+                    maxStudents: limits.maxStudents,
+                    maxProgrammes: limits.maxProgrammes,
+                    maxEvents: limits.maxEvents,
+                    maxStages: limits.maxStages,
+                    maxStorageMB: limits.maxStorageMB,
+                  }}
+                  usage={{
+                    studentsCount: usage.studentsCount,
+                    programmesCount: usage.programmesCount,
+                    eventsCount: usage.eventsCount,
+                    stagesCount: usage.stagesCount,
+                    storageUsedMB: usage.storageUsedMB,
+                  }}
                   className="bg-transparent border-0 shadow-none p-0"
                   minimal={true}
                 />

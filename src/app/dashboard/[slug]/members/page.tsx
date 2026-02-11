@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { FeatureService } from "@/lib/features";
 import { findFestivalBySlug } from "@/server/models/festival.model";
 import { MembersClient } from "./_components/MembersClient";
 
@@ -10,6 +11,11 @@ export default async function MembersPage({
   const { slug } = await params;
   const festival = await findFestivalBySlug(slug);
   if (!festival) return notFound();
+
+  // Feature Access Check
+  if (!FeatureService.isFeatureEnabled(festival.tier as any, "members")) {
+    redirect(`/dashboard/${slug}?error=upgrade_required&feature=members`);
+  }
 
   return (
     <div className="space-y-6">

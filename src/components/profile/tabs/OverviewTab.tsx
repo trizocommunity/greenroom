@@ -215,6 +215,7 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
                 open={isCreateModalOpen}
                 paymentId={credit.id}
                 onOpenChange={setIsCreateModalOpen}
+                tier={credit.tier || undefined}
               />
             </>
           ) : (

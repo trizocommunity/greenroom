@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { findFestivalBySlug } from "@/server/models/festival.model";
+import { FeatureService } from "@/lib/features";
 import { SettingsForm } from "./_components/SettingsForm";
 
 export default async function SettingsPage({
@@ -14,6 +15,13 @@ export default async function SettingsPage({
   const { slug } = await params;
   const festival = await findFestivalBySlug(slug);
   if (!festival) return notFound();
+
+  // Feature Access Check
+  if (
+    !FeatureService.isFeatureEnabled(festival.tier as any, "festivalSettings")
+  ) {
+    redirect(`/dashboard/${slug}?error=upgrade_required&feature=settings`);
+  }
 
   // Basic ownership check for Settings page access
   if (festival.ownerId !== session.userId) {

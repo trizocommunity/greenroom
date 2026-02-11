@@ -23,8 +23,9 @@ export type Festival = {
   tier?: string;
   tierLabel?: string;
   studentsCount?: number;
+  programmesCount?: number;
   eventsCount?: number;
-  judgesCount?: number;
+  stagesCount?: number;
   storageUsedMB?: number;
 };
 

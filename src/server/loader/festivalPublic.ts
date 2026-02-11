@@ -17,6 +17,7 @@ export type PublicFestivalData = {
     founderMessage: string | null;
     branding: any;
     status: FestivalStatus;
+    tier: string | null;
     studentCreationDeadline: Date | null;
     programmeAssignmentDeadline: Date | null;
   };
@@ -49,6 +50,7 @@ export async function getPublicFestivalData(
       founderMessage: true,
       branding: true,
       status: true,
+      tier: true,
       isLocked: true,
       createdAt: true,
       expiresAt: true,
