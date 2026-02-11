@@ -145,25 +145,25 @@ export const getFestivalDashboardSidebarConfig = (
         // Merged items from old "Event Works"
         {
           title: "Chest Numbers",
-          href: `${basePath}/event-works/chest-numbers`,
+          href: `${basePath}/pre-works/chest-numbers`,
           icon: CreditCard,
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {
           title: "QR Codes",
-          href: `${basePath}/event-works/qr-codes`,
+          href: `${basePath}/pre-works/qr-codes`,
           icon: QrCode,
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"] as FestivalRole[],
         },
         {
           title: "Stage Management",
-          href: `${basePath}/event-works/stage-management`,
+          href: `${basePath}/pre-works/stage-management`,
           icon: Megaphone,
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
         },
         {
           title: "Schedule",
-          href: `${basePath}/event-works/schedule`,
+          href: `${basePath}/pre-works/schedule`,
           icon: Calendar,
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
         },
@@ -174,37 +174,19 @@ export const getFestivalDashboardSidebarConfig = (
       title: "Event Works", // Renamed from "On-Event Works"
       items: [
         {
-          title: "Scan QR",
-          href: `${basePath}/scan`,
-          icon: QrCode,
+          title: "Results",
+          href: `${basePath}/event-works/results`,
+          icon: ClipboardList,
           allowedRoles: [
             "ADMIN",
             "OWNER",
             "JUDGE",
-            "STAGE_MANAGER",
-          ] as FestivalRole[],
-        },
-        {
-          title: "Mark Completion",
-          href: `${basePath}/completion`,
-          icon: CheckCircle,
-          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
-        },
-        {
-          title: "Stage Navigation",
-          href: `${basePath}/stages`,
-          icon: Megaphone,
-          allowedRoles: [
-            "ADMIN",
-            "OWNER",
-            "JUDGE",
-            "STAGE_MANAGER",
             "ANNOUNCER",
           ] as FestivalRole[],
         },
         {
-          title: "Results",
-          href: `${basePath}/results`,
+          title: "Leaderboard",
+          href: `${basePath}/event-works/leaderboard`,
           icon: Trophy,
           allowedRoles: [
             "ADMIN",

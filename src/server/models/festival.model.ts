@@ -88,3 +88,12 @@ export async function findFestivalBySlugOrId(slugOrId: string) {
     },
   });
 }
+
+export async function updateTeamStandings(festivalId: string, standings: any) {
+  return prisma.festival.update({
+    where: { id: festivalId },
+    data: {
+      teamStandings: standings,
+    },
+  });
+}

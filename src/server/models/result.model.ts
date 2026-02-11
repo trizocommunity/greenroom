@@ -4,7 +4,6 @@ export interface ResultInput {
   festivalId: string;
   programmeId: string;
   assignmentId: string;
-  score?: number | null;
   grade?: string | null;
   position?: number | null;
   points?: number;
@@ -13,7 +12,6 @@ export interface ResultInput {
 }
 
 export interface ResultUpdate {
-  score?: number | null;
   grade?: string | null;
   position?: number | null;
   points?: number;
@@ -192,7 +190,6 @@ export class ResultModel {
       where: { assignmentId },
       create: data,
       update: {
-        score: data.score,
         grade: data.grade,
         position: data.position,
         points: data.points,

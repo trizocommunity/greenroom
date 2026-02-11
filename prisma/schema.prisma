@@ -170,6 +170,9 @@ model Festival {
 
   // Settings
   chestNumberSettings Json? // { prefix: string, nextSequence: number }
+  
+  // Decoupled Leaderboard Snapshot
+  teamStandings Json? // Stores the "Published" state of the leaderboard
 
 
   // Child Entities
@@ -328,7 +331,7 @@ model Result {
   assignment    ProgrammeAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   
   // Scoring & Ranking
-  score         Float?              // Total marks/score
+
   grade         String?             // A+, A, B+, B, C, etc.
   position      Int?                // 1, 2, 3 (rank within programme)
   points        Int                 @default(0) // Points awarded based on position

@@ -2,12 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { ResultModel } from "@/server/models/result.model";
+import { getSession } from "@/lib/auth/session";
 
 export interface SaveResultInput {
   festivalId: string;
   programmeId: string;
   assignmentId: string;
-  score?: number | null;
   grade?: string | null;
   position?: number | null;
   points?: number;
@@ -21,7 +21,8 @@ export interface SaveResultInput {
 export async function saveResult(data: SaveResultInput) {
   try {
     const result = await ResultModel.upsert(data.assignmentId, data);
-    revalidatePath(`/dashboard/${data.festivalId}/results`);
+    revalidatePath(`/dashboard/${data.festivalId}/event-works/results`);
+    revalidatePath(`/dashboard/${data.festivalId}/event-works/team-status`);
     revalidatePath(`/${data.festivalId}/results`);
     return { success: true, data: result };
   } catch (error) {
@@ -36,7 +37,8 @@ export async function saveResult(data: SaveResultInput) {
 export async function deleteResult(resultId: string, festivalSlug: string) {
   try {
     await ResultModel.delete(resultId);
-    revalidatePath(`/dashboard/${festivalSlug}/results`);
+    revalidatePath(`/dashboard/${festivalSlug}/event-works/results`);
+    revalidatePath(`/dashboard/${festivalSlug}/event-works/leaderboard`);
     revalidatePath(`/${festivalSlug}/results`);
     return { success: true };
   } catch (error) {
@@ -55,7 +57,8 @@ export async function toggleResultPublish(
 ) {
   try {
     await ResultModel.togglePublish(resultId, isPublished);
-    revalidatePath(`/dashboard/${festivalSlug}/results`);
+    revalidatePath(`/dashboard/${festivalSlug}/event-works/results`);
+    revalidatePath(`/dashboard/${festivalSlug}/event-works/leaderboard`);
     revalidatePath(`/${festivalSlug}/results`);
     return { success: true };
   } catch (error) {
@@ -74,7 +77,8 @@ export async function bulkPublishProgrammeResults(
 ) {
   try {
     await ResultModel.bulkPublishByProgramme(programmeId, isPublished);
-    revalidatePath(`/dashboard/${festivalSlug}/results`);
+    revalidatePath(`/dashboard/${festivalSlug}/event-works/results`);
+    revalidatePath(`/dashboard/${festivalSlug}/event-works/leaderboard`);
     revalidatePath(`/${festivalSlug}/results`);
     return { success: true };
   } catch (error) {
@@ -93,7 +97,8 @@ export async function bulkPublishAllResults(
 ) {
   try {
     await ResultModel.bulkPublishByFestival(festivalId, isPublished);
-    revalidatePath(`/dashboard/${festivalSlug}/results`);
+    revalidatePath(`/dashboard/${festivalSlug}/event-works/results`);
+    revalidatePath(`/dashboard/${festivalSlug}/event-works/leaderboard`);
     revalidatePath(`/${festivalSlug}/results`);
     return { success: true };
   } catch (error) {
@@ -138,5 +143,40 @@ export async function getProgrammeResults(programmeId: string) {
   } catch (error) {
     console.error("Error fetching programme results:", error);
     return { success: false, error: "Failed to fetch results" };
+  }
+}
+
+/**
+ * Publish the current calculated team standings to the festival record
+ */
+export async function publishTeamStandings(
+  festivalId: string,
+  standings: any[],
+  festivalSlug: string,
+) {
+  try {
+    const session = await getSession();
+    if (!session || !session.userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // We need to import this dynamically or move it to a better place to avoid circular deps if any
+    // checks festival.model.ts for "updateTeamStandings"
+    const { updateTeamStandings } = await import(
+      "@/server/models/festival.model"
+    );
+
+    // Ensure standings is a plain object/array for Prisma JSON
+    // This strips any non-serializable data and ensures it matches the Json type
+    const standingsJson = JSON.parse(JSON.stringify(standings));
+
+    await updateTeamStandings(festivalId, standingsJson);
+
+    revalidatePath(`/${festivalSlug}`);
+    revalidatePath(`/${festivalSlug}/results`);
+    return { success: true };
+  } catch (error) {
+    console.error("Error publishing standings:", error);
+    return { success: false, error: "Failed to publish standings" };
   }
 }

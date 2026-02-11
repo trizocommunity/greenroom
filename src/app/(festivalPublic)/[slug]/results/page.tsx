@@ -55,6 +55,7 @@ export default async function ResultsPage({
         festivalName={festival.name}
         accentColor={accentColor}
         results={results}
+        teamStandings={festival.teamStandings as any[]}
       />
     </div>
   );

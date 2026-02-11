@@ -20,6 +20,7 @@ export type PublicFestivalData = {
     tier: string | null;
     studentCreationDeadline: Date | null;
     programmeAssignmentDeadline: Date | null;
+    teamStandings: any; // Using any for JSON type flexibility
   };
   // Simplified "Event" data (mapped from Festival)
   event: {
@@ -57,6 +58,7 @@ export async function getPublicFestivalData(
       location: true,
       studentCreationDeadline: true,
       programmeAssignmentDeadline: true,
+      teamStandings: true,
     },
   });
 

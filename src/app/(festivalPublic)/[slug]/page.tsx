@@ -146,12 +146,14 @@ export default async function FestivalPage({
         <ResultsTeaser
           accentColor={displayData.accentColor}
           slug={displayData.slug}
+          results={publishedResults as any}
         />
       ) : (
         <ResultsList
           festivalName={displayData.name}
           accentColor={displayData.accentColor}
           results={publishedResults}
+          teamStandings={festival.teamStandings as any}
         />
       )}
 

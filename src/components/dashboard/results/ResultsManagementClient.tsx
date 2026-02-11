@@ -50,25 +50,13 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import {
-  saveResult,
-  bulkPublishProgrammeResults,
-  deleteResult,
-} from "@/server/actions/results";
+import { saveResult, deleteResult } from "@/server/actions/results";
 import {
   calculateGrade,
   calculatePosition,
-  calculatePositionPoints,
-  validateScore,
   getGradeBadgeColor,
 } from "@/lib/results-calculator";
 import { cn } from "@/lib/utils";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 type Programme = {
   id: string;
@@ -82,7 +70,6 @@ type Programme = {
     group: { id: string; name: string } | null;
     result: {
       id: string;
-      score: number | null;
       grade: string | null;
       position: number | null;
       points: number;
@@ -169,7 +156,7 @@ export function ResultsManagementClient({
         // Base counts (Students)
         const totalParticipants = prog.assignments.length;
         const enteredScores = prog.assignments.filter(
-          (a) => a.result?.score != null,
+          (a) => a.result?.points != null,
         ).length;
         const publishedCount = prog.assignments.filter(
           (a) => a.result?.isPublished,
@@ -188,7 +175,7 @@ export function ResultsManagementClient({
           prog.assignments.forEach((a) => {
             const teamId = getTeamIdentifier(a, "GROUP");
             uniqueTeams.add(teamId);
-            if (a.result?.score != null) scoredTeams.add(teamId);
+            if (a.result?.points != null) scoredTeams.add(teamId);
             if (a.result?.isPublished) publishedTeams.add(teamId);
           });
 
@@ -277,34 +264,45 @@ export function ResultsManagementClient({
     // Map to store scores by Team Identifier
     const teamScoresMap = new Map<string, number>();
 
-    // First pass: Collect all valid scores (from Input or DB)
+    // First pass: Collect all valid points (from Input or DB)
     currentProgramme.assignments.forEach((assignment) => {
       const teamId = getTeamIdentifier(assignment, currentProgramme.type);
 
-      const inputScore = scores[teamId];
-      const dbScore = assignment.result?.score;
+      const inputPoints = scores[teamId]; // "scores" state now holds points
+      const dbPoints = assignment.result?.points; // Use points from DB
 
-      const finalScore = inputScore !== undefined ? inputScore : dbScore;
+      // Use input first, then DB points. If entry exists but point is 0, it might be real 0.
+      // But we need to distinguish between "not entered" and "0".
+      // Let's assume if result exists, points are valid.
+      const finalPoints =
+        inputPoints !== undefined
+          ? inputPoints
+          : assignment.result
+            ? dbPoints
+            : undefined;
 
-      if (finalScore !== undefined && finalScore !== null && finalScore >= 0) {
-        teamScoresMap.set(teamId, finalScore);
+      if (
+        finalPoints !== undefined &&
+        finalPoints !== null &&
+        finalPoints >= 0
+      ) {
+        teamScoresMap.set(teamId, finalPoints);
       }
     });
 
-    const validScores = Array.from(teamScoresMap.values());
+    const validPoints = Array.from(teamScoresMap.values());
 
     return currentProgramme.assignments.map((assignment) => {
       const teamId = getTeamIdentifier(assignment, currentProgramme.type);
-      const score = teamScoresMap.get(teamId) ?? null;
+      const points = teamScoresMap.get(teamId) ?? null;
 
-      if (score === null || score < 0) {
+      if (points === null || points < 0) {
         return {
           assignmentId: assignment.id,
           teamId,
           chestNumber: assignment.student?.chestNumber || "N/A",
           studentName: assignment.student?.name || "Unknown",
           displayName: getTeamName(assignment, currentProgramme.type),
-          score: null,
           grade: "-",
           position: "-",
           points: 0,
@@ -314,9 +312,10 @@ export function ResultsManagementClient({
         };
       }
 
-      const gradeData = calculateGrade(score);
-      const position = calculatePosition(score, validScores);
-      const positionPoints = calculatePositionPoints(position);
+      // Calculate Grade based on Points (10/10 basis)
+      const gradeData = calculateGrade(points);
+      // Calculate Position based on Points comparison
+      const position = calculatePosition(points, validPoints);
 
       return {
         assignmentId: assignment.id,
@@ -324,10 +323,9 @@ export function ResultsManagementClient({
         chestNumber: assignment.student?.chestNumber || "N/A",
         studentName: assignment.student?.name || "Unknown",
         displayName: getTeamName(assignment, currentProgramme.type),
-        score,
         grade: gradeData.grade,
         position,
-        points: positionPoints,
+        points: points, // Use entered points directly
         remarks: gradeData.remarks,
         hasExisting: !!assignment.result,
         resultId: assignment.result?.id,
@@ -336,12 +334,12 @@ export function ResultsManagementClient({
   };
 
   const results = calculateResults();
-  const hasAnyScore = results.some((r) => r.score !== null);
+  const hasAnyScore = results.some((r) => r.points !== null && r.points >= 0); // naming kept for minimal diff
 
   const handleScoreChange = (teamId: string, value: string) => {
-    const score = parseFloat(value);
-    if (!Number.isNaN(score)) {
-      setScores((prev) => ({ ...prev, [teamId]: score }));
+    const points = parseFloat(value);
+    if (!Number.isNaN(points)) {
+      setScores((prev) => ({ ...prev, [teamId]: points }));
     } else {
       setScores((prev) => {
         const newScores = { ...prev };
@@ -354,7 +352,7 @@ export function ResultsManagementClient({
   const handleSaveResults = async () => {
     if (!currentProgramme) return;
 
-    const resultsToSave = results.filter((r) => r.score !== null);
+    const resultsToSave = results.filter((r) => r.points !== null);
     if (resultsToSave.length === 0) return;
 
     startTransition(async () => {
@@ -366,7 +364,6 @@ export function ResultsManagementClient({
           festivalId: festival.id,
           programmeId: currentProgramme.id,
           assignmentId: result.assignmentId,
-          score: result.score!,
           grade: result.grade,
           position: result.position as number,
           points: result.points,
@@ -381,32 +378,11 @@ export function ResultsManagementClient({
       if (errorCount === 0) {
         toast.success(`Results saved successfully`);
         setScores({});
+        setSelectedCategory("");
+        setSelectedProgramme("");
         setIsModalOpen(false);
-        window.location.reload();
       } else {
         toast.error(`Failed to save ${errorCount} results`);
-      }
-    });
-  };
-
-  const handleToggleProgrammePublish = async (
-    programmeId: string,
-    publish: boolean,
-  ) => {
-    startTransition(async () => {
-      const response = await bulkPublishProgrammeResults(
-        programmeId,
-        publish,
-        festival.slug,
-      );
-
-      if (response?.success) {
-        toast.success(
-          `Programme results ${publish ? "published" : "unpublished"}!`,
-        );
-        window.location.reload();
-      } else {
-        toast.error(`Failed to update results`);
       }
     });
   };
@@ -497,7 +473,7 @@ export function ResultsManagementClient({
     >();
 
     results
-      .filter((r) => r.score !== null)
+      .filter((r) => r.points !== null)
       .forEach((r) => {
         const existing = uniqueResultMap.get(r.teamId);
         if (existing) {
@@ -511,7 +487,7 @@ export function ResultsManagementClient({
       });
 
     return Array.from(uniqueResultMap.values()).sort(
-      (a, b) => (b.score as number) - (a.score as number),
+      (a, b) => (b.points as number) - (a.points as number),
     );
   }, [results, currentProgramme]);
 
@@ -713,7 +689,7 @@ export function ResultsManagementClient({
                                     );
                                     const currentScore =
                                       scores[teamId] ??
-                                      assignment.result?.score ??
+                                      assignment.result?.points ??
                                       "";
                                     const displayName =
                                       currentProgramme.type === "GROUP"
@@ -758,10 +734,10 @@ export function ResultsManagementClient({
                                           <Input
                                             id={`score-${teamId}`}
                                             type="number"
-                                            step="0.1"
+                                            step="0.5" // Allow half points input
                                             min="0"
                                             max="10"
-                                            placeholder="0-10"
+                                            placeholder="Pts"
                                             value={currentScore}
                                             onChange={(e) =>
                                               handleScoreChange(
@@ -881,7 +857,7 @@ export function ResultsManagementClient({
                                         </TableCell>
                                         <TableCell className="text-center">
                                           <span className="font-mono font-bold text-base text-primary">
-                                            {result.score?.toFixed(1)}
+                                            {result.points?.toFixed(1)}
                                           </span>
                                         </TableCell>
                                         <TableCell className="text-center">
@@ -942,10 +918,7 @@ export function ResultsManagementClient({
                               size="lg"
                             >
                               <Check className="w-5 h-5" />
-                              Save {groupedPreviewResults.length}{" "}
-                              {groupedPreviewResults.length === 1
-                                ? "Result"
-                                : "Results"}
+                              Save Result
                             </Button>
                           </div>
                         )}
@@ -1036,7 +1009,6 @@ export function ResultsManagementClient({
                     <TableHead>Programme</TableHead>
                     <TableHead className="text-center">Participants</TableHead>
                     <TableHead className="text-center">Status</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
                     <TableHead className="text-right w-16">Edit</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1090,58 +1062,7 @@ export function ResultsManagementClient({
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <TooltipProvider>
-                          <div className="flex justify-end">
-                            {prog.stats.status === "published" ||
-                            prog.stats.status === "partial-published" ? (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() =>
-                                  handleToggleProgrammePublish(prog.id, false)
-                                }
-                                disabled={isPending}
-                                className="gap-2 text-destructive hover:text-destructive/90"
-                              >
-                                <EyeOff className="w-3 h-3" />
-                                Unpublish
-                              </Button>
-                            ) : prog.stats.status === "ready" ? (
-                              <Button
-                                size="sm"
-                                onClick={() =>
-                                  handleToggleProgrammePublish(prog.id, true)
-                                }
-                                disabled={isPending}
-                                className="gap-2 bg-green-600 hover:bg-green-700 text-white border-none"
-                              >
-                                <Eye className="w-3 h-3" />
-                                Publish
-                              </Button>
-                            ) : (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      disabled
-                                      className="gap-2 opacity-50"
-                                    >
-                                      <Eye className="w-3 h-3" />
-                                      Publish
-                                    </Button>
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Enter all scores to publish</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                          </div>
-                        </TooltipProvider>
-                      </TableCell>
+
                       <TableCell className="text-right">
                         <Button
                           size="icon"

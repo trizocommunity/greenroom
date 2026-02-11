@@ -3,8 +3,8 @@
  * Automatic grade and position calculation based on score
  */
 
-export interface ScoreInput {
-  score: number;
+export interface PointsInput {
+  points: number;
   maxPoints: number;
 }
 
@@ -20,14 +20,14 @@ export interface CalculatedResult {
 const MAX_POINTS = 10;
 
 /**
- * Calculate grade based on score (out of 10)
+ * Calculate grade based on points (out of 10)
  */
-export function calculateGrade(score: number): {
+export function calculateGrade(points: number): {
   grade: string;
   percentage: number;
   remarks: string;
 } {
-  const percentage = (score / MAX_POINTS) * 100;
+  const percentage = (points / MAX_POINTS) * 100;
 
   let grade: string;
   let remarks: string;
@@ -82,33 +82,33 @@ export function calculatePositionPoints(position: number): number {
 }
 
 /**
- * Calculate position (rank) based on score among all scores
+ * Calculate position (rank) based on points among all points
  */
-export function calculatePosition(score: number, allScores: number[]): number {
-  // Sort scores in descending order and find unique values
-  const uniqueScores = Array.from(new Set(allScores)).sort((a, b) => b - a);
+export function calculatePosition(points: number, allPoints: number[]): number {
+  // Sort points in descending order and find unique values
+  const uniquePoints = Array.from(new Set(allPoints)).sort((a, b) => b - a);
 
   // Find the position (1-indexed)
-  const position = uniqueScores.indexOf(score) + 1;
+  const position = uniquePoints.indexOf(points) + 1;
 
   return position > 0 ? position : 1; // Default to 1 if not found
 }
 
 /**
- * Validate score input (out of 10)
+ * Validate points input (out of 10)
  */
-export function validateScore(score: number): {
+export function validatePoints(points: number): {
   valid: boolean;
   error?: string;
 } {
-  if (score < 0) {
-    return { valid: false, error: "Score cannot be negative" };
+  if (points < 0) {
+    return { valid: false, error: "Points cannot be negative" };
   }
 
-  if (score > MAX_POINTS) {
+  if (points > MAX_POINTS) {
     return {
       valid: false,
-      error: `Score cannot exceed ${MAX_POINTS} points`,
+      error: `Points cannot exceed ${MAX_POINTS} points`,
     };
   }
 

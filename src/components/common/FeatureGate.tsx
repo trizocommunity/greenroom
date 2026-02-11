@@ -76,20 +76,12 @@ export function FeatureGate({
 
   // Feature is available - render children
   if (hasAccess) {
-    return className ? (
-      <div className={className}>{children}</div>
-    ) : (
-      <>{children}</>
-    );
+    return className ? <div className={className}>{children}</div> : children;
   }
 
   // Feature not available - check for fallback
   if (fallback) {
-    return className ? (
-      <div className={className}>{fallback}</div>
-    ) : (
-      <>{fallback}</>
-    );
+    return className ? <div className={className}>{fallback}</div> : fallback;
   }
 
   // Show upgrade trigger if tier specified
