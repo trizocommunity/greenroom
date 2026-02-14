@@ -56,10 +56,12 @@ export function EditFestivalModal({
   const router = useRouter();
   const queryClient = useQueryClient();
   const form = useForm<FormValues>({
-    resolver: zodResolver(updateFestivalSchema),
+    resolver: zodResolver(updateFestivalSchema) as any,
     defaultValues: {
       name: festival?.name || "",
       description: festival?.description || "",
+      startDate: festival?.startDate ? new Date(festival.startDate) : null,
+      endDate: festival?.endDate ? new Date(festival.endDate) : null,
       orgName: festival?.orgName || "",
       orgDescription: festival?.orgDescription || "",
       orgWebsite: festival?.orgWebsite || "",
@@ -179,6 +181,56 @@ export function EditFestivalModal({
                                     className="resize-none min-h-[100px]"
                                     {...field}
                                     value={field.value || ""}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="startDate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Start Date</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="date"
+                                    {...field}
+                                    value={
+                                      field.value instanceof Date
+                                        ? field.value
+                                            .toISOString()
+                                            .split("T")[0]
+                                        : typeof field.value === "string"
+                                          ? field.value
+                                          : ""
+                                    }
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="endDate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>End Date</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="date"
+                                    {...field}
+                                    value={
+                                      field.value instanceof Date
+                                        ? field.value
+                                            .toISOString()
+                                            .split("T")[0]
+                                        : typeof field.value === "string"
+                                          ? field.value
+                                          : ""
+                                    }
                                   />
                                 </FormControl>
                                 <FormMessage />

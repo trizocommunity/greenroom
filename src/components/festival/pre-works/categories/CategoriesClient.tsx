@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardList, Eye, Loader2, Pencil, Trash2 } from "lucide-react";
+import { ClipboardList, Eye, Loader2, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +13,6 @@ import {
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { useCategories } from "@/hooks/useCategories";
 import { useStudents } from "@/hooks/useStudents";
-import { BulkUploadCategoriesModal } from "./BulkUploadCategoriesModal";
 import { CategoryDetailsDialog } from "./CategoryDetailsDialog";
 import { CategoryDialog } from "./CategoryDialog";
 
@@ -47,7 +46,6 @@ export function CategoriesClient({ festivalId }: CategoriesClientProps) {
   return (
     <div className="space-y-6">
       <div className="flex justify-end gap-2">
-        <BulkUploadCategoriesModal festivalId={festivalId} />
         <CategoryDialog festivalId={festivalId} />
       </div>
 

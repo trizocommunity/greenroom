@@ -4,6 +4,7 @@ import { Eye, FileText, Filter, Loader2, Pencil } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { FeatureGate } from "@/components/common/FeatureGate";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
   Select,
@@ -99,7 +100,12 @@ export function ProgrammesClient({ festivalId }: ProgrammesClientProps) {
               </TooltipProvider>
             ) : (
               <div className="flex gap-2">
-                <BulkUploadProgrammesModal festivalId={festivalId} />
+                <FeatureGate
+                  feature="programmeBulkUpload"
+                  requiredTier="STANDARD"
+                >
+                  <BulkUploadProgrammesModal festivalId={festivalId} />
+                </FeatureGate>
                 <ProgrammeDialog
                   festivalId={festivalId}
                   trigger={<Button>Add Programme</Button>}

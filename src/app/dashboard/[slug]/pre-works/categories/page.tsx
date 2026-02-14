@@ -13,13 +13,11 @@ export default async function CategoriesPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Categories</h1>
-          <p className="text-muted-foreground">
-            Define categories for your festival events (e.g. Juniors, Seniors).
-          </p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Categories</h1>
+        <p className="text-muted-foreground">
+          Define categories for your festival events (e.g. Juniors, Seniors).
+        </p>
       </div>
       <CategoriesClient festivalId={festival.id} />
     </div>

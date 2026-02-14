@@ -31,17 +31,57 @@ interface FestivalDashboardSidebarProps {
   role: string;
 }
 
+import { useFeatures } from "@/hooks/useFeature";
+
 export function FestivalDashboardSidebar({
   festival,
   role,
 }: FestivalDashboardSidebarProps) {
   const pathname = usePathname();
-  // const params = useParams(); // Removed unused
+  const features = useFeatures();
 
   const basePath = `/dashboard/${festival.slug}`;
   const dashboardPath = basePath;
 
-  const menuGroups = getFestivalDashboardSidebarConfig(dashboardPath, role);
+  const rawMenuGroups = getFestivalDashboardSidebarConfig(dashboardPath, role);
+
+  // Filter menu items based on features
+  const menuGroups = rawMenuGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        // Core features
+        if (item.title === "Settings" && !features.canAccessSettings)
+          return false;
+        if (item.title === "Members" && !features.canManageMembers)
+          return false;
+
+        // Stage Management
+        if (item.title === "Stage Management" && !features.canManageStages)
+          return false;
+        if (item.title === "Schedule" && !features.canManageSchedule)
+          return false;
+        if (
+          ["Stage Navigation", "Mark Completion"].includes(item.title) &&
+          !features.canManageStages
+        )
+          return false;
+
+        // QR Code Features
+        if (
+          ["QR Codes", "Scan QR"].includes(item.title) &&
+          !features.canGenerateQR
+        )
+          return false;
+
+        // Analytics
+        if (item.title === "Analytics" && !features.hasAdvancedAnalytics)
+          return false;
+
+        return true;
+      }),
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <Sidebar collapsible="icon">

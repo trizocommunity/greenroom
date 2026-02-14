@@ -3,9 +3,12 @@ import { notFound } from "next/navigation";
 import { FeaturedPrograms } from "@/components/festival/landing/FeaturedPrograms";
 import { GalleryPreview } from "@/components/festival/landing/GalleryPreview";
 import { HeroSection } from "@/components/festival/landing/HeroSection";
+import { ResultsList } from "@/components/festival/landing/ResultsList";
 import { ResultsTeaser } from "@/components/festival/landing/ResultsTeaser";
 import { StatsSection } from "@/components/festival/landing/StatsSection";
 import { getPublicFestivalData } from "@/server/loader/festivalPublic";
+import { getPublicFestivalResults } from "@/server/loader/festivalResults";
+import { FeatureService } from "@/lib/features";
 
 export async function generateMetadata({
   params,
@@ -46,17 +49,26 @@ export default async function FestivalPage({
     notFound();
   }
 
+  // ...
   const { festival, event } = data;
+
+  // Check Feature Access
+  const fullLandingPage = FeatureService.isFeatureEnabled(
+    festival.tier as any,
+    "fullLandingPage",
+  );
 
   // HANDLE NO EVENT (Should be rare unless blocked)
   if (!event) {
     return (
       <div className="flex flex-col min-h-[80vh] items-center justify-center p-4 text-center space-y-6">
-        {/* ... render coming soon ... */}
         <p>Event not active.</p>
       </div>
     );
   }
+
+  // Fetch published results for display
+  const publishedResults = await getPublicFestivalResults(festival.id);
 
   // MERGE DATA FOR COMPONENTS
   const displayData = {
@@ -69,6 +81,7 @@ export default async function FestivalPage({
     endDate: event.endDate.toISOString(),
     location: event.location || festival.orgLocation || "",
     status: festival.status,
+    tier: festival.tier || "STANDARD",
     accentColor:
       festival.branding &&
       typeof festival.branding === "object" &&
@@ -96,14 +109,16 @@ export default async function FestivalPage({
     studentCreationDeadline: festival.studentCreationDeadline,
     programmeAssignmentDeadline: festival.programmeAssignmentDeadline,
   };
-
   return (
     <div className="flex flex-col min-h-screen relative">
-      <HeroSection festival={displayData} />
-      <StatsSection accentColor={displayData.accentColor} />
+      <HeroSection festival={displayData} basicMode={!fullLandingPage} />
+
+      {fullLandingPage && (
+        <StatsSection accentColor={displayData.accentColor} />
+      )}
 
       {/* About Section */}
-      {displayData.description && (
+      {fullLandingPage && displayData.description && (
         <section className="py-24 px-4 bg-background border-t border-white/10 relative overflow-hidden">
           <div className="absolute inset-x-0 top-0 h-40 bg-linear-to-b from-primary/5 to-transparent blur-3xl -z-10" />
           <div className="max-w-3xl mx-auto text-center space-y-6">
@@ -120,15 +135,29 @@ export default async function FestivalPage({
         </section>
       )}
 
-      <FeaturedPrograms
-        accentColor={displayData.accentColor}
-        slug={displayData.slug}
-      />
-      <ResultsTeaser
-        accentColor={displayData.accentColor}
-        slug={displayData.slug}
-      />
-      <GalleryPreview slug={displayData.slug} />
+      {fullLandingPage && (
+        <FeaturedPrograms
+          accentColor={displayData.accentColor}
+          slug={displayData.slug}
+        />
+      )}
+
+      {fullLandingPage ? (
+        <ResultsTeaser
+          accentColor={displayData.accentColor}
+          slug={displayData.slug}
+          results={publishedResults as any}
+        />
+      ) : (
+        <ResultsList
+          festivalName={displayData.name}
+          accentColor={displayData.accentColor}
+          results={publishedResults}
+          teamStandings={festival.teamStandings as any}
+        />
+      )}
+
+      {fullLandingPage && <GalleryPreview slug={displayData.slug} />}
     </div>
   );
 }

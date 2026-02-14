@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { useGroups } from "@/hooks/useGroups";
-import { BulkUploadGroupsModal } from "./BulkUploadGroupsModal";
 import { GroupDetailsDialog } from "./GroupDetailsDialog";
 import { GroupDialog } from "./GroupDialog";
 
@@ -27,7 +26,6 @@ export function GroupsClient({ festivalId }: GroupsClientProps) {
   return (
     <div className="space-y-6">
       <div className="flex justify-end gap-2">
-        <BulkUploadGroupsModal festivalId={festivalId} />
         <GroupDialog festivalId={festivalId} />
       </div>
 

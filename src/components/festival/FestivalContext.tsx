@@ -12,6 +12,7 @@ export type FestivalPublicData = {
   endDate: string | null;
   location: string | null;
   status: string;
+  tier: string;
   accentColor: string;
   logo: string | null;
   heroImage: string | null;
@@ -22,13 +23,14 @@ export type FestivalPublicData = {
   establishedYear: number | null;
   // Festival stats
   studentsCount?: number;
+  programmesCount?: number;
   eventsCount?: number;
-  sessionsCount?: number;
+  stagesCount?: number;
   limits?: {
     maxStudents: number;
     maxProgrammes?: number;
-    maxJudges?: number;
-    maxSessions?: number;
+    maxEvents?: number;
+    maxStages?: number;
     maxStorageMB?: number;
   } | null;
   // Deadlines

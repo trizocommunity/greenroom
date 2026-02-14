@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { ResultsList } from "@/components/festival/landing/ResultsList";
 import { getPublicFestivalData } from "@/server/loader/festivalPublic";
+import { getPublicFestivalResults } from "@/server/loader/festivalResults";
 
 export async function generateMetadata({
   params,
@@ -37,13 +39,24 @@ export default async function ResultsPage({
   if (!data) return notFound();
   const { festival } = data;
 
+  const accentColor =
+    festival.branding &&
+    typeof festival.branding === "object" &&
+    "colors" in festival.branding
+      ? (festival.branding as any).colors?.primary || "#000000"
+      : "#000000";
+
+  // Fetch published results
+  const results = await getPublicFestivalResults(festival.id);
+
   return (
-    <div className="py-24 text-center">
-      <h1 className="text-3xl font-bold mb-4">Results</h1>
-      <p className="text-muted-foreground">
-        Competition results for {festival.name} will be published here.
-      </p>
-      {/* TODO: Fetch and display results */}
+    <div className="bg-background min-h-screen pt-20">
+      <ResultsList
+        festivalName={festival.name}
+        accentColor={accentColor}
+        results={results}
+        teamStandings={festival.teamStandings as any[]}
+      />
     </div>
   );
 }

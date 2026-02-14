@@ -36,7 +36,7 @@ export async function findAssignmentsByProgramme(programmeId: string) {
       },
       group: true,
     },
-    orderBy: { assignedAt: "desc" },
+    orderBy: { createdAt: "desc" },
   });
 }
 
@@ -44,7 +44,7 @@ export async function findAssignmentsByStudent(studentId: string) {
   return prisma.programmeAssignment.findMany({
     where: { studentId },
     include: { programme: true },
-    orderBy: { assignedAt: "desc" },
+    orderBy: { createdAt: "desc" },
   });
 }
 

@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 
 interface HeroSectionProps {
   festival: FestivalPublicData;
+  basicMode?: boolean;
 }
 
-export function HeroSection({ festival }: HeroSectionProps) {
+export function HeroSection({ festival, basicMode = false }: HeroSectionProps) {
   return (
     <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden">
       {/* Abstract Background */}
@@ -60,15 +61,17 @@ export function HeroSection({ festival }: HeroSectionProps) {
                 View Results
               </Button>
             </Link>
-            <Link href={`/festival/${festival.slug}/sessions`}>
-              <Button
-                size="lg"
-                variant="outline"
-                className="rounded-full h-12 px-8 text-base bg-background/50 backdrop-blur-sm border-foreground/10 hover:bg-background/80"
-              >
-                Explore Programs <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
+            {!basicMode && (
+              <Link href={`/festival/${festival.slug}/sessions`}>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="rounded-full h-12 px-8 text-base bg-background/50 backdrop-blur-sm border-foreground/10 hover:bg-background/80"
+                >
+                  Explore Programs <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            )}
           </div>
         </motion.div>
       </div>

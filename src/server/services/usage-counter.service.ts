@@ -19,7 +19,7 @@ export const UsageCounterService = {
    */
   async incrementUsage(
     festivalId: string,
-    resource: "students" | "events" | "judges" | "storage",
+    resource: "students" | "programmes" | "events" | "stages" | "storage",
     amount = 1,
     tx?: Prisma.TransactionClient,
   ) {
@@ -47,15 +47,20 @@ export const UsageCounterService = {
         maxLimit = limits.students;
         fieldToUpdate = "studentsCount";
         break;
+      case "programmes":
+        currentUsage = festival.programmesCount;
+        maxLimit = limits.programmes;
+        fieldToUpdate = "programmesCount";
+        break;
       case "events":
         currentUsage = festival.eventsCount;
-        maxLimit = limits.events;
+        maxLimit = limits.events || 999; // No limit enforced for public events by default
         fieldToUpdate = "eventsCount";
         break;
-      case "judges":
-        currentUsage = festival.judgesCount;
-        maxLimit = limits.judges;
-        fieldToUpdate = "judgesCount";
+      case "stages":
+        currentUsage = festival.stagesCount;
+        maxLimit = limits.stages;
+        fieldToUpdate = "stagesCount";
         break;
       case "storage":
         currentUsage = festival.storageUsedMB;

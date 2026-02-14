@@ -38,6 +38,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ChestNumberSetupProps {
   festivalId: string;
@@ -49,7 +50,6 @@ interface ChestNumberSetupProps {
     categoryCodes?: Record<string, string>;
   } | null;
   onGenerated: () => void;
-  compact?: boolean;
   pendingCount?: number;
 }
 
@@ -58,15 +58,17 @@ export function ChestNumberSetup({
   categories,
   initialSettings,
   onGenerated,
-  compact = false,
   pendingCount = 0,
 }: ChestNumberSetupProps) {
   const [prefix, setPrefix] = useState(initialSettings?.prefix || "");
   const [categoryStarts, setCategoryStarts] = useState<Record<string, string>>(
     () => {
       const starts: Record<string, string> = {};
-      categories.forEach((c: any) => {
-        starts[c.id] = initialSettings?.categories?.[c.id]?.toString() || "1";
+      categories.forEach((c: any, index: number) => {
+        // Default to 100, 200, 300... if not configured
+        const defaultStart = ((index + 1) * 100).toString();
+        starts[c.id] =
+          initialSettings?.categories?.[c.id]?.toString() || defaultStart;
       });
       return starts;
     },
@@ -93,6 +95,37 @@ export function ChestNumberSetup({
   const [editPrefix, setEditPrefix] = useState(initialSettings?.prefix || "");
   const [isUpdatingPrefix, setIsUpdatingPrefix] = useState(false);
 
+  // State for Edit Mode (inside Modal)
+  const [editCategoryCodes, setEditCategoryCodes] = useState<
+    Record<string, string>
+  >({});
+  const [editCategoryStarts, setEditCategoryStarts] = useState<
+    Record<string, string>
+  >({});
+
+  const [numberingStyle, setNumberingStyle] = useState<
+    "ALPHANUMERIC" | "NUMERIC"
+  >("ALPHANUMERIC");
+
+  // Determine if configured based on categories being present in settings, not just prefix
+  const isConfigured =
+    !!initialSettings &&
+    Object.keys(initialSettings.categories || {}).length > 0;
+
+  // Initialize edit state
+  const handleOpenEdit = () => {
+    setEditPrefix(prefix);
+    // Detect style from current settings
+    if (!prefix && Object.keys(categoryCodes).every((k) => !categoryCodes[k])) {
+      setNumberingStyle("NUMERIC");
+    } else {
+      setNumberingStyle("ALPHANUMERIC");
+    }
+    setEditCategoryCodes({ ...categoryCodes });
+    setEditCategoryStarts({ ...categoryStarts });
+    setIsEditOpen(true);
+  };
+
   const handleStartChange = (catId: string, val: string) => {
     setCategoryStarts((prev) => ({ ...prev, [catId]: val }));
   };
@@ -104,18 +137,54 @@ export function ChestNumberSetup({
   const getPreview = (currentPrefix: string) => {
     if (!categories.length) return "No Categories";
     const demoCat = categories[0];
-    const code =
-      categoryCodes[demoCat.id] || demoCat.name.charAt(0).toUpperCase();
     const start = parseInt(categoryStarts[demoCat.id] || "1");
     const formattedStart = String(start).padStart(2, "0");
 
-    const safePrefix = currentPrefix.endsWith("-")
-      ? currentPrefix
-      : `${currentPrefix}-`;
-
-    if (!currentPrefix && !currentPrefix.length) {
-      return `<PREFIX>-${code}${formattedStart}`;
+    // Numeric Mode Preview
+    if (
+      !currentPrefix &&
+      Object.keys(categoryCodes).every((k) => !categoryCodes[k])
+    ) {
+      return `${formattedStart}`;
     }
+
+    // Alphanumeric Preview
+    const code =
+      categoryCodes[demoCat.id] || demoCat.name.charAt(0).toUpperCase();
+    const safePrefix =
+      currentPrefix && currentPrefix.endsWith("-")
+        ? currentPrefix
+        : currentPrefix
+          ? `${currentPrefix}-`
+          : ""; // No prefix logic if empty, though alphanumeric usually has one.
+
+    return `${safePrefix}${code}${formattedStart}`;
+  };
+
+  // Helper to get preview for EDIT state
+  const handleEditCodeChange = (catId: string, val: string) => {
+    setEditCategoryCodes((prev) => ({ ...prev, [catId]: val.toUpperCase() }));
+  };
+
+  const getEditPreview = (currentPrefix: string) => {
+    if (!categories.length) return "No Categories";
+    const demoCat = categories[0];
+    const start = parseInt(editCategoryStarts[demoCat.id] || "1");
+    const formattedStart = String(start).padStart(2, "0");
+
+    if (numberingStyle === "NUMERIC") {
+      return `${formattedStart}`;
+    }
+
+    const code =
+      editCategoryCodes[demoCat.id] || demoCat.name.charAt(0).toUpperCase();
+
+    const safePrefix =
+      currentPrefix && currentPrefix.endsWith("-")
+        ? currentPrefix
+        : currentPrefix
+          ? `${currentPrefix}-`
+          : "";
 
     return `${safePrefix}${code}${formattedStart}`;
   };
@@ -167,17 +236,66 @@ export function ChestNumberSetup({
     }
   };
 
-  const handleUpdatePrefix = async () => {
-    if (!editPrefix) return toast.error("Prefix is required");
+  const handleUpdateConfiguration = async () => {
+    if (numberingStyle === "ALPHANUMERIC" && !editPrefix) {
+      return toast.error("Prefix is required for Alphanumeric style");
+    }
+
+    const categoryConfig: Record<string, number> = {};
+    for (const cat of categories) {
+      // Logic for Numeric: No codes needed
+      if (numberingStyle === "ALPHANUMERIC" && !editCategoryCodes[cat.id]) {
+        return toast.error(`Code is required for ${cat.name}`);
+      }
+
+      const val = parseInt(editCategoryStarts[cat.id]);
+      if (Number.isNaN(val)) {
+        return toast.error(`Invalid start number for ${cat.name}`);
+      }
+      categoryConfig[cat.id] = val;
+    }
+
     try {
       setIsUpdatingPrefix(true);
-      await updateAllChestNumbers(festivalId, editPrefix);
-      toast.success("Prefix updated and chest numbers regenerated.");
+
+      const codesToSave = numberingStyle === "NUMERIC" ? {} : editCategoryCodes;
+      const prefixToSave = numberingStyle === "NUMERIC" ? "" : editPrefix;
+
+      // Ensure empty codes for numeric
+      if (numberingStyle === "NUMERIC") {
+        // We might need to explicitly clear them in DB if switching modes
+        // but updateAllChestNumbers takes codes.
+        // Let's rely on init check.
+      }
+
+      if (!isConfigured) {
+        await saveChestNumberSettings(festivalId, {
+          prefix: prefixToSave,
+          categories: categoryConfig,
+          categoryCodes: codesToSave,
+          numberingStyle: numberingStyle,
+        });
+        const result = await generateChestNumbers(festivalId);
+        toast.success(result.message);
+      } else {
+        await updateAllChestNumbers(
+          festivalId,
+          prefixToSave,
+          codesToSave,
+          numberingStyle,
+        );
+        toast.success("Configuration updated and chest numbers regenerated.");
+      }
+
       setIsEditOpen(false);
-      setPrefix(editPrefix);
+
+      setPrefix(prefixToSave);
+      setCategoryCodes(codesToSave);
+      setCategoryStarts(editCategoryStarts);
+
       onGenerated();
     } catch (error: any) {
-      toast.error(error.message || "Failed to update prefix");
+      toast.error(error.message || "Failed to update configuration");
     } finally {
       setIsUpdatingPrefix(false);
     }
@@ -188,6 +306,19 @@ export function ChestNumberSetup({
       setIsResetting(true);
       await resetChestNumbers(festivalId);
       toast.success("Chest numbers cleared and sequences reset.");
+
+      // Reset local state to defaults
+      setPrefix("");
+
+      const defaultStarts: Record<string, string> = {};
+      const defaultCodes: Record<string, string> = {};
+      categories.forEach((c: any, index: number) => {
+        defaultStarts[c.id] = ((index + 1) * 100).toString(); // Default to 100, 200, 300...
+        defaultCodes[c.id] = c.name.charAt(0).toUpperCase();
+      });
+      setCategoryStarts(defaultStarts);
+      setCategoryCodes(defaultCodes);
+
       onGenerated();
     } catch (error: any) {
       toast.error("Failed to reset chest numbers");
@@ -196,216 +327,208 @@ export function ChestNumberSetup({
     }
   };
 
-  if (compact) {
-    return (
-      <div className="flex flex-col gap-4 p-4 border rounded-lg bg-muted/20">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="p-2 bg-primary/10 rounded-full">
-              <Settings2 className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-sm">
-                Chest Number Configuration
-              </h3>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                Prefix: <span className="font-mono font-medium">{prefix}</span>
-                <span className="text-muted-foreground/50">|</span>
-                Example:{" "}
-                <span className="font-mono text-xs">{getPreview(prefix)}</span>
-                <button
-                  type="button"
-                  onClick={() => setIsEditOpen(true)}
-                  className="p-1 hover:bg-muted rounded-full"
-                  title="Edit Prefix"
-                >
-                  <Pencil className="h-3 w-3" />
-                </button>
-              </div>
+  // Remove Card logic, always return header view
+  return (
+    <div className="flex flex-col gap-4 p-4 border rounded-lg bg-muted/20">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="p-2 bg-primary/10 rounded-full">
+            <Settings2 className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-sm">
+              Chest Number Configuration
+            </h3>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              {isConfigured ? (
+                <div className="text-xs text-muted-foreground">
+                  Configured for {categories.length} categories.
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <div className="px-2 py-0.5 rounded-full bg-destructive/10 text-destructive text-xs font-medium border border-destructive/20">
+                    Not Configured
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                >
-                  {isResetting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Reset All"
-                  )}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Reset all chest numbers?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will remove chest numbers from ALL students and reset
-                    the generation logic. This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleReset}
-                    className="bg-destructive hover:bg-destructive/90"
-                  >
-                    Reset All
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            <Button
-              onClick={handleSaveAndGenerate}
-              disabled={isGenerating || pendingCount === 0}
-              variant={pendingCount === 0 ? "outline" : "default"}
-            >
-              {isGenerating ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : null}
-              {pendingCount > 0
-                ? `Generate for ${pendingCount} New Students`
-                : "No New Students"}
+        </div>
+        <div className="flex items-center gap-2">
+          {!isConfigured && (
+            <Button size="sm" onClick={handleOpenEdit} className="gap-2">
+              <Settings2 className="h-4 w-4" />
+              Configure Now
             </Button>
-          </div>
-        </div>
-        <div className="text-xs text-muted-foreground ml-12">
-          Configured for {categories.length} categories.
-        </div>
+          )}
 
-        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Update Prefix</DialogTitle>
-              <DialogDescription>
-                Changing the prefix will update ALL existing chest numbers to
-                match the new prefix.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-4 space-y-4">
-              <div>
-                <Label>New Prefix</Label>
+          {isConfigured && (
+            <>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    {isResetting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Reset All"
+                    )}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      Reset all chest numbers?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will remove chest numbers from ALL students and reset
+                      the generation logic. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleReset}
+                      className="bg-destructive hover:bg-destructive/90"
+                    >
+                      Reset All
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              <Button
+                onClick={handleSaveAndGenerate}
+                disabled={isGenerating || pendingCount === 0}
+                variant={pendingCount === 0 ? "outline" : "default"}
+              >
+                {isGenerating ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                {pendingCount > 0
+                  ? `Generate for ${pendingCount} New Students`
+                  : "No New Students"}
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Chest Number Configuration</DialogTitle>
+            <DialogDescription>
+              Define the format for chest numbers. Choose style and set
+              sequences.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2 space-y-6">
+            <Tabs
+              value={numberingStyle}
+              onValueChange={(v) => setNumberingStyle(v as any)}
+              className="w-full"
+            >
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="ALPHANUMERIC">
+                  Alphanumeric (e.g. FEST-A-01)
+                </TabsTrigger>
+                <TabsTrigger value="NUMERIC">
+                  Numeric Only (e.g. 101)
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            {/* Prefix Section - Only for Alphanumeric */}
+            {numberingStyle === "ALPHANUMERIC" && (
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <Label>Prefix (e.g. FEST)</Label>
+                  <div className="text-xs text-muted-foreground font-mono">
+                    Preview: {getEditPreview(editPrefix)}
+                  </div>
+                </div>
                 <Input
                   value={editPrefix}
                   onChange={(e) => setEditPrefix(e.target.value.toUpperCase())}
-                  placeholder="Enter new prefix"
+                  placeholder="Enter prefix"
                 />
               </div>
-              <div className="p-3 bg-muted rounded-md text-sm flex items-center gap-2">
-                <span className="text-muted-foreground">Preview:</span>
-                <span className="font-mono font-medium">
-                  {getPreview(editPrefix)}
-                </span>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEditOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleUpdatePrefix} disabled={isUpdatingPrefix}>
-                {isUpdatingPrefix && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Update All
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    );
-  }
-
-  return (
-    <Card className="max-w-xl mx-auto">
-      <CardHeader>
-        <CardTitle>Chest Number Setup</CardTitle>
-        <CardDescription>
-          Define the logic for generating chest numbers. Enter a global prefix
-          and starting numbers for each category.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <Label>Prefix (e.g. FEST)</Label>
-            <div className="text-xs text-muted-foreground font-mono">
-              Preview: {getPreview(prefix)}
-            </div>
-          </div>
-          <div className="text-xs text-muted-foreground">
-            The system will automatically append a hyphen if missing (e.g.
-            FEST-).
-          </div>
-          <Input
-            placeholder="Enter prefix"
-            value={prefix}
-            onChange={(e) => setPrefix(e.target.value.toUpperCase())}
-          />
-        </div>
-
-        <div className="space-y-3">
-          <Label>Category Sequences</Label>
-          <div className="border rounded-md divide-y">
-            {categories.map((cat: any) => (
-              <div
-                key={cat.id}
-                className="flex items-center justify-between p-3 text-sm"
-              >
-                <span className="font-medium">{cat.name}</span>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1">
-                    <span className="text-muted-foreground text-xs whitespace-nowrap">
-                      Code:
-                    </span>
-                    <Input
-                      className="w-16 h-8 font-mono uppercase"
-                      value={categoryCodes[cat.id]}
-                      onChange={(e) => handleCodeChange(cat.id, e.target.value)}
-                      placeholder={cat.name.charAt(0)}
-                      maxLength={3}
-                    />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-muted-foreground text-xs whitespace-nowrap">
-                      Start:
-                    </span>
-                    <Input
-                      className="w-20 h-8"
-                      type="number"
-                      value={categoryStarts[cat.id]}
-                      onChange={(e) =>
-                        handleStartChange(cat.id, e.target.value)
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-            {categories.length === 0 && (
-              <div className="p-4 text-center text-muted-foreground text-xs">
-                No 'Single' type categories found.
+            )}
+            {/* Preview for Numeric */}
+            {numberingStyle === "NUMERIC" && (
+              <div className="text-xs text-muted-foreground font-mono text-center p-2 bg-muted/50 rounded">
+                Preview Format: {getEditPreview(editPrefix)}
               </div>
             )}
-          </div>
-        </div>
 
-        <Button
-          className="w-full"
-          onClick={handleSaveAndGenerate}
-          disabled={isSaving || isGenerating || pendingCount === 0}
-        >
-          {(isSaving || isGenerating) && (
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          )}
-          {pendingCount > 0
-            ? `Continue & Generate (${pendingCount} students)`
-            : "No students to generate"}
-        </Button>
-      </CardContent>
-    </Card>
+            {/* Categories Section */}
+            <div className="space-y-3">
+              <Label>Category Sequences</Label>
+              <div className="border rounded-md divide-y max-h-[400px] overflow-y-auto">
+                {categories.map((cat: any) => (
+                  <div
+                    key={cat.id}
+                    className="flex items-center justify-between p-3 text-sm"
+                  >
+                    <span className="font-medium">{cat.name}</span>
+                    <div className="flex items-center gap-2">
+                      {numberingStyle === "ALPHANUMERIC" && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground text-xs whitespace-nowrap">
+                            Code:
+                          </span>
+                          <Input
+                            className="w-16 h-8 font-mono uppercase"
+                            value={editCategoryCodes[cat.id]}
+                            onChange={(e) =>
+                              handleEditCodeChange(cat.id, e.target.value)
+                            }
+                            placeholder={cat.name.charAt(0)}
+                            maxLength={3}
+                          />
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1">
+                        <span className="text-muted-foreground text-xs whitespace-nowrap">
+                          Start:
+                        </span>
+                        <Input
+                          className="w-20 h-8"
+                          type="number"
+                          value={editCategoryStarts[cat.id]}
+                          onChange={(e) =>
+                            setEditCategoryStarts((prev) => ({
+                              ...prev,
+                              [cat.id]: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdateConfiguration}
+              disabled={isUpdatingPrefix}
+            >
+              {isUpdatingPrefix && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {isConfigured ? "Update All" : "Save & Generate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

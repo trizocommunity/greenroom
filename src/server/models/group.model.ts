@@ -30,7 +30,7 @@ export async function findGroupById(id: string) {
 export async function findGroupsByFestival(festivalId: string) {
   return prisma.group.findMany({
     where: { festivalId },
-    orderBy: { name: "asc" },
+    orderBy: { createdAt: "asc" },
     include: {
       _count: { select: { students: true } },
       students: {

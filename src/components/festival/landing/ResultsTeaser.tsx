@@ -1,19 +1,40 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Medal, Trophy } from "lucide-react";
+import { ArrowRight, Trophy } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { MOCK_RESULTS } from "@/data/mockFestivalData";
+
+interface Result {
+  id: string;
+  programName: string;
+  winner: string;
+  team: string; // Group name
+  position: number;
+}
 
 interface ResultsTeaserProps {
   accentColor: string;
   slug: string;
+  results: Result[];
 }
 
-export function ResultsTeaser({ accentColor, slug }: ResultsTeaserProps) {
-  const topResult = MOCK_RESULTS.find((r) => r.position === 1);
-  const runnersUp = MOCK_RESULTS.filter((r) => r.position > 1).slice(0, 2);
+export function ResultsTeaser({
+  accentColor,
+  slug,
+  results,
+}: ResultsTeaserProps) {
+  // Filter for actual positions
+  const rankedResults = results.filter((r) => r.position > 0);
+  const topResult = rankedResults.find((r) => r.position === 1);
+  const runnersUp = rankedResults
+    .filter((r) => r.position > 1)
+    .sort((a, b) => a.position - b.position)
+    .slice(0, 2);
+
+  if (!topResult && runnersUp.length === 0) {
+    return null; // Don't show if no results
+  }
 
   return (
     <section className="py-24 relative overflow-hidden bg-dot-pattern">
@@ -55,9 +76,10 @@ export function ResultsTeaser({ accentColor, slug }: ResultsTeaserProps) {
             </Link>
           </motion.div>
 
+          {/* Right Side: Showcase */}
           <div className="grid gap-4">
-            {/* Winner Card */}
-            {topResult && (
+            {/* If no top result but have others, just show list. If top result exists, show big card. */}
+            {topResult ? (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 whileInView={{ opacity: 1, scale: 1 }}
@@ -69,21 +91,24 @@ export function ResultsTeaser({ accentColor, slug }: ResultsTeaserProps) {
                   <Trophy className="w-24 h-24 text-yellow-500" />
                 </div>
                 <div className="relative">
-                  <span className="text-sm font-medium text-muted-foreground">
+                  <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
                     {topResult.programName}
                   </span>
                   <h3 className="text-2xl font-bold mt-1 mb-2">
                     Winner: {topResult.winner}
                   </h3>
-                  <p
-                    className="font-medium text-lg"
-                    style={{ color: accentColor }}
-                  >
-                    {topResult.team}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Team:</span>
+                    <p
+                      className="font-bold text-lg"
+                      style={{ color: accentColor }}
+                    >
+                      {topResult.team}
+                    </p>
+                  </div>
                 </div>
               </motion.div>
-            )}
+            ) : null}
 
             {/* Runners Up */}
             {runnersUp.map((result, i) => (
@@ -93,17 +118,17 @@ export function ResultsTeaser({ accentColor, slug }: ResultsTeaserProps) {
                 whileInView={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.2 + i * 0.1 }}
                 viewport={{ once: true }}
-                className="p-5 rounded-xl bg-muted/50 border border-border flex items-center justify-between"
+                className="p-5 rounded-xl bg-muted/50 border border-border flex items-center justify-between hover:bg-muted/80 transition-colors"
               >
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">
                     {result.programName}
                   </p>
-                  <p className="font-semibold">{result.winner}</p>
-                  <p className="text-sm text-muted-foreground">{result.team}</p>
+                  <p className="font-semibold text-base">{result.winner}</p>
+                  <p className="text-xs text-muted-foreground">{result.team}</p>
                 </div>
                 <div className="flex items-center justify-center w-8 h-8 rounded-full bg-background border shadow-sm font-bold text-sm">
-                  {result.position}
+                  #{result.position}
                 </div>
               </motion.div>
             ))}

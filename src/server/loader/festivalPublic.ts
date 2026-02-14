@@ -17,8 +17,10 @@ export type PublicFestivalData = {
     founderMessage: string | null;
     branding: any;
     status: FestivalStatus;
+    tier: string | null;
     studentCreationDeadline: Date | null;
     programmeAssignmentDeadline: Date | null;
+    teamStandings: any; // Using any for JSON type flexibility
   };
   // Simplified "Event" data (mapped from Festival)
   event: {
@@ -49,12 +51,14 @@ export async function getPublicFestivalData(
       founderMessage: true,
       branding: true,
       status: true,
+      tier: true,
       isLocked: true,
       createdAt: true,
       expiresAt: true,
       location: true,
       studentCreationDeadline: true,
       programmeAssignmentDeadline: true,
+      teamStandings: true,
     },
   });
 

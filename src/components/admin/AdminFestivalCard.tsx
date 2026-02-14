@@ -7,7 +7,7 @@ import {
   LayoutDashboard,
   MoreVertical,
   Pencil,
-  Scale,
+  MapPin,
   Trophy,
   Users,
 } from "lucide-react";
@@ -36,8 +36,9 @@ interface AdminFestivalCardProps {
     createdAt: string | Date;
     owner: { email: string };
     studentsCount?: number;
+    programmesCount?: number;
     eventsCount?: number;
-    judgesCount?: number;
+    stagesCount?: number;
   };
 }
 
@@ -148,19 +149,19 @@ export function AdminFestivalCard({ festival }: AdminFestivalCardProps) {
             <div className="p-3 rounded-xl bg-muted/30 border border-border/50 text-center space-y-1">
               <Trophy className="w-4 h-4 mx-auto text-primary/60" />
               <div className="text-lg font-black leading-none">
-                {festival.eventsCount || 0}
+                {festival.programmesCount || 0}
               </div>
               <div className="text-[9px] uppercase tracking-tighter font-bold text-muted-foreground/60">
-                Events
+                Programmes
               </div>
             </div>
             <div className="p-3 rounded-xl bg-muted/30 border border-border/50 text-center space-y-1">
-              <Scale className="w-4 h-4 mx-auto text-primary/60" />
+              <MapPin className="w-4 h-4 mx-auto text-primary/60" />
               <div className="text-lg font-black leading-none">
-                {festival.judgesCount || 0}
+                {festival.stagesCount || 0}
               </div>
               <div className="text-[9px] uppercase tracking-tighter font-bold text-muted-foreground/60">
-                Judges
+                Stages
               </div>
             </div>
           </div>

@@ -73,6 +73,7 @@ model PasswordResetToken {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   usedAt    DateTime?
   createdAt DateTime  @default(now())
+  updatedAt DateTime @updatedAt @default(now())
 
   @@map("password_reset_token")
 }
@@ -137,6 +138,8 @@ model Festival {
   institutionType InstitutionType?
   institutionName String?
   location        String?
+  startDate       DateTime?
+  endDate         DateTime?
   expiresAt       DateTime?
 
   // Founder/Message
@@ -156,8 +159,9 @@ model Festival {
   
   // Usage Counters
   studentsCount     Int @default(0)
-  eventsCount       Int @default(0)
-  judgesCount       Int @default(0)
+  programmesCount   Int @default(0) // Student competition programmes count
+  eventsCount       Int @default(0) // Public events (Talks, Ceremonies) count
+  stagesCount       Int @default(0)
   storageUsedMB     Int @default(0)
 
   // Deadlines
@@ -166,6 +170,9 @@ model Festival {
 
   // Settings
   chestNumberSettings Json? // { prefix: string, nextSequence: number }
+  
+  // Decoupled Leaderboard Snapshot
+  teamStandings Json? // Stores the "Published" state of the leaderboard
 
 
   // Child Entities
@@ -174,7 +181,10 @@ model Festival {
   categories    Category[]
   groups        Group[]
   programmes    Programme[]
+  events        Event[] // Public Events (Talks, Ceremonies)
   programmeAssignments ProgrammeAssignment[]
+  stages        Stage[]
+  results       Result[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -252,6 +262,7 @@ model Programme {
   maxStudentsPerTeam      Int @default(1) // For Group: Max students per team
 
   assignments ProgrammeAssignment[]
+  results     Result[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -297,11 +308,42 @@ model ProgrammeAssignment {
 
   teamNumber    Int      @default(1)
 
+  result        Result?
+
   assignedAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt @default(now())
 
   @@unique([programmeId, studentId])
   
   @@map("programme_assignment")
+}
+
+model Result {
+  id            String              @id @default(uuid())
+  festivalId    String
+  festival      Festival            @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  
+  programmeId   String
+  programme     Programme           @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+  
+  assignmentId  String              @unique
+  assignment    ProgrammeAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  
+  // Scoring & Ranking
+
+  grade         String?             // A+, A, B+, B, C, etc.
+  position      Int?                // 1, 2, 3 (rank within programme)
+  points        Int                 @default(0) // Points awarded based on position
+  
+  // Metadata
+  remarks       String?             // Judge comments/feedback
+  isPublished   Boolean             @default(false) // Control public visibility
+  
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  
+  @@map("result")
 }
 
 model Student {
@@ -374,4 +416,47 @@ enum Gender {
   MALE
   FEMALE
   OTHER
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  festivalId  String
+  festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  date        DateTime?
+  location    String? // Could link to Stage but keeping flexible for public events
+  
+  // Optional: Type
+  type        EventType @default(GENERAL)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("event")
+}
+
+enum EventType {
+  GENERAL
+  CEREMONY
+  TALK
+  CONCERT
+}
+
+model Stage {
+  id          String   @id @default(uuid())
+  festivalId  String
+  festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  
+  // Who created it (User Name or ID)
+  createdBy   String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("stage")
 }

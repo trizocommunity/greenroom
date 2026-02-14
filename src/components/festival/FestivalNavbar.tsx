@@ -39,6 +39,14 @@ export function FestivalNavbar({
   // Current page extraction
   const currentPage = pathname.replace(linkBase, "") || "/";
 
+  const isBasic = festival.tier === "BASIC";
+  const activeNavItems = isBasic
+    ? [
+        { name: "Home", href: "/" },
+        { name: "Results", href: "#results" },
+      ]
+    : navItems;
+
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
@@ -87,7 +95,7 @@ export function FestivalNavbar({
 
         {/* Desktop Nav - Center */}
         <nav className="hidden md:flex items-center gap-6">
-          {navItems.map((item) => {
+          {activeNavItems.map((item) => {
             // Handle Home specially
             const href =
               item.href === "/" ? linkBase : `${linkBase}${item.href}`;
@@ -162,7 +170,7 @@ export function FestivalNavbar({
             className="md:hidden bg-background border-b border-border overflow-hidden"
           >
             <div className="p-4 flex flex-col gap-2">
-              {navItems.map((item) => {
+              {activeNavItems.map((item) => {
                 const href =
                   item.href === "/" ? linkBase : `${linkBase}${item.href}`;
                 const isActive = currentPage === item.href;

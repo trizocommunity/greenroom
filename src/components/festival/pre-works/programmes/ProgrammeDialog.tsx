@@ -367,7 +367,8 @@ export function ProgrammeDialog({
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        maxParticipantsPerGroup: parseInt(e.target.value, 10),
+                        maxParticipantsPerGroup:
+                          parseInt(e.target.value, 10) || 1,
                       })
                     }
                     disabled={readOnly || isLoadingAction}
@@ -388,7 +389,7 @@ export function ProgrammeDialog({
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          maxTeamsPerGroup: parseInt(e.target.value, 10),
+                          maxTeamsPerGroup: parseInt(e.target.value, 10) || 1,
                         })
                       }
                       disabled={readOnly || isLoadingAction}
@@ -407,7 +408,7 @@ export function ProgrammeDialog({
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          maxStudentsPerTeam: parseInt(e.target.value, 10),
+                          maxStudentsPerTeam: parseInt(e.target.value, 10) || 1,
                         })
                       }
                       disabled={readOnly || isLoadingAction}
