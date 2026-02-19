@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ResultsManagementClient } from "@/components/dashboard/results/ResultsManagementClient";
 import { prisma } from "@/lib/db";
+import { EmptyState } from "@/components/common/EmptyState";
+import { ClipboardList } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Results Management",
@@ -50,6 +52,27 @@ export default async function ResultsPage({
 
   if (!festival) {
     return notFound();
+  }
+
+  // Check for assignments
+  const assignmentCount = await prisma.programmeAssignment.count({
+    where: {
+      programme: {
+        festivalId: festival.id,
+      },
+    },
+  });
+
+  if (assignmentCount === 0) {
+    return (
+      <EmptyState
+        title="No Assignments Found"
+        description="Results can only be managed after students are assigned to programmes."
+        actionLabel="Go to Assignments"
+        actionLink={`/dashboard/${slug}/pre-works/assignments`}
+        icon={ClipboardList}
+      />
+    );
   }
 
   return (

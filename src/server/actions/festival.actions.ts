@@ -36,8 +36,8 @@ export async function createFestival(input: CreateFestivalInput) {
       throw new AppError("Payment purpose mismatch.");
     }
 
-    // Resolve Tier (Default to STANDARD if missing)
-    const tier = payment.tier || "STANDARD";
+    // Resolve Tier (Default to BASIC if missing)
+    const tier = payment.tier || "BASIC";
     const tierConfig = TIER_CONFIG[tier];
 
     // 3. Atomic Transaction
@@ -115,8 +115,9 @@ export async function updateFestivalSettingsAction(
   festivalId: string,
   data: {
     programmeAssignmentDeadline?: string | null;
-    startDate?: Date | null;
-    endDate?: Date | null;
+    startDate?: string | null;
+    endDate?: string | null;
+    scoringSystem?: "POSITION_BASED" | "SCORE_BASED";
   },
 ) {
   try {
@@ -151,15 +152,22 @@ export async function updateFestivalSettingsAction(
       data: {
         programmeAssignmentDeadline: data.programmeAssignmentDeadline
           ? new Date(data.programmeAssignmentDeadline)
-          : undefined, // undefined to only update if provided/changed? Or explicit null?
+          : undefined,
         // Logic: if key exists in data, update it.
         ...(data.programmeAssignmentDeadline !== undefined && {
           programmeAssignmentDeadline: data.programmeAssignmentDeadline
             ? new Date(data.programmeAssignmentDeadline)
             : null,
         }),
-        ...(data.startDate !== undefined && { startDate: data.startDate }),
-        ...(data.endDate !== undefined && { endDate: data.endDate }),
+        ...(data.startDate !== undefined && {
+          startDate: data.startDate ? new Date(data.startDate) : null,
+        }),
+        ...(data.endDate !== undefined && {
+          endDate: data.endDate ? new Date(data.endDate) : null,
+        }),
+        ...(data.scoringSystem !== undefined && {
+          scoringSystem: data.scoringSystem,
+        }),
       },
     });
 

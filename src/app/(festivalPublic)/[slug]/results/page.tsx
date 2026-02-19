@@ -56,6 +56,7 @@ export default async function ResultsPage({
         accentColor={accentColor}
         results={results}
         teamStandings={festival.teamStandings as any[]}
+        scoringSystem={festival.scoringSystem || "POSITION_BASED"}
       />
     </div>
   );

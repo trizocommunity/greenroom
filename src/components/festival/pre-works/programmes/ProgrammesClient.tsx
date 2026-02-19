@@ -100,10 +100,7 @@ export function ProgrammesClient({ festivalId }: ProgrammesClientProps) {
               </TooltipProvider>
             ) : (
               <div className="flex gap-2">
-                <FeatureGate
-                  feature="programmeBulkUpload"
-                  requiredTier="STANDARD"
-                >
+                <FeatureGate feature="programmeBulkUpload">
                   <BulkUploadProgrammesModal festivalId={festivalId} />
                 </FeatureGate>
                 <ProgrammeDialog

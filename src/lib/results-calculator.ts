@@ -82,6 +82,23 @@ export function calculatePositionPoints(position: number): number {
 }
 
 /**
+ * Calculate points based on scoring system
+ * @param scoringSystem - "POSITION_BASED" or "SCORE_BASED"
+ * @param score - Judge's score (out of 10)
+ * @param position - Calculated rank
+ */
+export function calculatePoints(
+  scoringSystem: "POSITION_BASED" | "SCORE_BASED",
+  score: number,
+  position: number,
+): number {
+  if (scoringSystem === "SCORE_BASED") {
+    return score;
+  }
+  return calculatePositionPoints(position);
+}
+
+/**
  * Calculate position (rank) based on points among all points
  */
 export function calculatePosition(points: number, allPoints: number[]): number {

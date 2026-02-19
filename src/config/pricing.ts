@@ -74,7 +74,7 @@ export const TIER_CONFIG: Record<Tier, any> = {
       multiFestivalManagement: false,
 
       // Settings
-      festivalSettings: false, // No settings page access
+      festivalSettings: true, // Settings page access enabled for config
       advancedSettings: false,
 
       // Support
@@ -139,36 +139,36 @@ export const PRICING_TIERS: PricingTier[] = [
     ],
     isPopular: false,
   },
-  {
-    id: "STANDARD",
-    name: "Standard",
-    price: TIER_CONFIG.STANDARD.price,
-    description: "The best value for most growing festivals.",
-    features: [
-      `${TIER_CONFIG.STANDARD.limits.students} Students`,
-      `${TIER_CONFIG.STANDARD.limits.programmes} Programmes`,
-      `${TIER_CONFIG.STANDARD.limits.events} Public Events`,
-      `${TIER_CONFIG.STANDARD.limits.stages} Stages`,
-      "2 GB Storage",
-      `${TIER_CONFIG.STANDARD.durationDays} Days Active Duration`,
-      "Read-only access afterwards",
-    ],
-    isPopular: true,
-  },
-  {
-    id: "PRO",
-    name: "Pro",
-    price: TIER_CONFIG.PRO.price,
-    description: "For established festivals needing more capacity.",
-    features: [
-      `${TIER_CONFIG.PRO.limits.students} Students`,
-      "Unlimited Programmes",
-      `${TIER_CONFIG.PRO.limits.events} Public Events`,
-      "Unlimited Stages",
-      "10 GB Storage",
-      `${TIER_CONFIG.PRO.durationDays} Days Active Duration`,
-      "Read-only access afterwards",
-    ],
-    isPopular: false,
-  },
+  // {
+  //   id: "STANDARD",
+  //   name: "Standard",
+  //   price: TIER_CONFIG.STANDARD.price,
+  //   description: "The best value for most growing festivals.",
+  //   features: [
+  //     `${TIER_CONFIG.STANDARD.limits.students} Students`,
+  //     `${TIER_CONFIG.STANDARD.limits.programmes} Programmes`,
+  //     `${TIER_CONFIG.STANDARD.limits.events} Public Events`,
+  //     `${TIER_CONFIG.STANDARD.limits.stages} Stages`,
+  //     "2 GB Storage",
+  //     `${TIER_CONFIG.STANDARD.durationDays} Days Active Duration`,
+  //     "Read-only access afterwards",
+  //   ],
+  //   isPopular: true,
+  // },
+  // {
+  //   id: "PRO",
+  //   name: "Pro",
+  //   price: TIER_CONFIG.PRO.price,
+  //   description: "For established festivals needing more capacity.",
+  //   features: [
+  //     `${TIER_CONFIG.PRO.limits.students} Students`,
+  //     "Unlimited Programmes",
+  //     `${TIER_CONFIG.PRO.limits.events} Public Events`,
+  //     "Unlimited Stages",
+  //     "10 GB Storage",
+  //     `${TIER_CONFIG.PRO.durationDays} Days Active Duration`,
+  //     "Read-only access afterwards",
+  //   ],
+  //   isPopular: false,
+  // },
 ];

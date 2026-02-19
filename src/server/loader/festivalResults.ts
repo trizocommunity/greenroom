@@ -10,6 +10,7 @@ export interface PublicResult {
   team: string;
   position: number;
   points: number;
+  score?: number;
   grade?: string | null;
 }
 
@@ -71,6 +72,7 @@ export async function getPublicFestivalResults(
           group: string;
           position: number;
           points: number;
+          score: number;
           grade: string | null;
         }
       >();
@@ -91,6 +93,7 @@ export async function getPublicFestivalResults(
             group: result.assignment.group?.name || "N/A",
             position: result.position || 999,
             points: result.points,
+            score: result.score,
             grade: result.grade,
           });
         }
@@ -108,6 +111,7 @@ export async function getPublicFestivalResults(
           team: teamResult.group,
           position: teamResult.position,
           points: teamResult.points,
+          score: teamResult.score,
           grade: teamResult.grade,
         });
       });
@@ -124,6 +128,7 @@ export async function getPublicFestivalResults(
           team: result.assignment.group?.name || "N/A",
           position: result.position || 999,
           points: result.points,
+          score: result.score,
           grade: result.grade,
         });
       });

@@ -2,17 +2,19 @@
 
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Trophy, Medal, Crown, X, ChevronRight } from "lucide-react";
+import { Search, Trophy, Medal, Crown, ChevronRight } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export interface Result {
@@ -25,6 +27,7 @@ export interface Result {
   team: string; // This is the group name
   position: number;
   points: number;
+  score?: number;
   grade?: string | null;
 }
 
@@ -40,6 +43,7 @@ interface ResultsListProps {
   accentColor: string; // We'll essentially use this as the primary active color
   results: Result[];
   teamStandings?: TeamStanding[];
+  scoringSystem?: "POSITION_BASED" | "SCORE_BASED";
 }
 
 export function ResultsList({
@@ -50,6 +54,9 @@ export function ResultsList({
 }: ResultsListProps) {
   const [activeTab, setActiveTab] = useState<"program" | "team">("program");
   const [searchQuery, setSearchQuery] = useState("");
+  const [programTypeFilter, setProgramTypeFilter] = useState<
+    "ALL" | "INDIVIDUAL" | "GROUP"
+  >("ALL");
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
 
   // --- Data Processing ---
@@ -77,6 +84,7 @@ export function ResultsList({
         id: first.programmeId,
         name: first.programName,
         category: first.category,
+        type: first.programmeType,
         results: progResults.sort((a, b) => a.position - b.position),
       };
     });
@@ -84,14 +92,24 @@ export function ResultsList({
 
   // 3. Filter Programs
   const filteredPrograms = useMemo(() => {
-    if (!searchQuery) return programs;
-    const lowerQuery = searchQuery.toLowerCase();
-    return programs.filter(
-      (p) =>
-        p.name.toLowerCase().includes(lowerQuery) ||
-        p.category.toLowerCase().includes(lowerQuery),
-    );
-  }, [programs, searchQuery]);
+    let filtered = programs;
+
+    // Filter by Type
+    if (programTypeFilter !== "ALL") {
+      filtered = filtered.filter((p) => p.type === programTypeFilter);
+    }
+
+    // Filter by Search
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (p) =>
+          p.name.toLowerCase().includes(lowerQuery) ||
+          p.category.toLowerCase().includes(lowerQuery),
+      );
+    }
+    return filtered;
+  }, [programs, searchQuery, programTypeFilter]);
 
   // 4. Calculate Team Points (or use provided snapshot)
   const teamStandings = useMemo(() => {
@@ -196,16 +214,41 @@ export function ResultsList({
             transition={{ duration: 0.3 }}
             className="space-y-6"
           >
-            {/* Search Bar */}
-            <div className="relative max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by program or category.."
-                className="pl-10 h-11 bg-card shadow-sm border-muted transition-all focus:ring-2"
-                style={{ "--ring": accentColor } as React.CSSProperties}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+            {/* Search & Filter Bar */}
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by program or category.."
+                  className="pl-10 h-11 bg-card shadow-sm border-muted transition-all focus:ring-2"
+                  style={{ "--ring": accentColor } as React.CSSProperties}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              {/* Programme Type Filter */}
+              <div className="flex bg-muted p-1 rounded-lg shrink-0">
+                {(["ALL", "INDIVIDUAL", "GROUP"] as const).map((type) => (
+                  <button
+                    type="button"
+                    key={type}
+                    onClick={() => setProgramTypeFilter(type)}
+                    className={cn(
+                      "px-4 py-2 rounded-md text-xs font-bold transition-all",
+                      programTypeFilter === type
+                        ? "bg-background shadow-sm text-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {type === "ALL"
+                      ? "All"
+                      : type === "INDIVIDUAL"
+                        ? "Individual"
+                        : "Group"}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Program Grid */}
@@ -438,6 +481,11 @@ export function ResultsList({
                             >
                               {result.points} pts
                             </div>
+                            {result.score !== undefined && (
+                              <div className="text-xs text-muted-foreground font-medium mb-1">
+                                Score: {result.score}
+                              </div>
+                            )}
                             <div className="flex items-center justify-end gap-2 mt-1">
                               {result.grade && (
                                 <span className="text-[10px] font-bold px-1.5 py-0.5 bg-green-100 text-green-700 rounded border border-green-200">

@@ -29,10 +29,12 @@ export default function PricingPage() {
           </div>
 
           {/* Pricing Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16 relative">
+          <div className="flex flex-col md:flex-row justify-center gap-8 mb-16 relative">
             <div className="absolute inset-x-0 top-10 bottom-10 bg-linear-to-r from-transparent via-primary/5 to-transparent blur-3xl -z-10" />
             {PRICING_TIERS.map((tier, index) => (
-              <PricingCard key={tier.id} tier={tier} index={index} />
+              <div key={tier.id} className="w-full max-w-sm">
+                <PricingCard tier={tier} index={index} />
+              </div>
             ))}
           </div>
 

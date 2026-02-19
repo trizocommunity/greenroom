@@ -156,10 +156,7 @@ export function StudentsClient({ festivalId }: StudentsClientProps) {
               </TooltipProvider>
             ) : (
               <div className="flex flex-wrap w-full gap-2">
-                <FeatureGate
-                  feature="studentBulkUpload"
-                  requiredTier="STANDARD"
-                >
+                <FeatureGate feature="studentBulkUpload">
                   <BulkUploadStudentsModal festivalId={festivalId} />
                 </FeatureGate>
                 <StudentDialog
