@@ -3,7 +3,7 @@ import { ProgrammesClient } from "@/components/festival/pre-works/programmes/Pro
 import { findFestivalBySlug } from "@/server/models/festival.model";
 import { prisma } from "@/lib/db";
 import { EmptyState } from "@/components/common/EmptyState";
-import { Tags } from "lucide-react";
+import { Tags, Users } from "lucide-react";
 
 export default async function ProgrammesPage({
   params,
@@ -30,6 +30,23 @@ export default async function ProgrammesPage({
         actionLabel="Create Categories"
         actionLink={`/dashboard/${festival.slug}/pre-works/categories`}
         icon={Tags}
+      />
+    );
+  }
+
+  // Check for students
+  const studentCount = await prisma.student.count({
+    where: { festivalId: festival.id },
+  });
+
+  if (studentCount === 0) {
+    return (
+      <EmptyState
+        title="No Students Found"
+        description="You need to create students before you can manage programmes."
+        actionLabel="Create Students"
+        actionLink={`/dashboard/${festival.slug}/pre-works/students`}
+        icon={Users}
       />
     );
   }
