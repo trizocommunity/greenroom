@@ -22,6 +22,7 @@ import {
   Crown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
   CardContent,
@@ -606,7 +607,7 @@ export function ResultsManagementClient({
                       Simple guide to scoring and points.
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4 pt-2">
+                  <div className="space-y-4">
                     <div className="space-y-2">
                       <h4 className="font-bold text-sm flex items-center gap-2">
                         <Medal className="w-4 h-4 text-yellow-500" /> Scoring
@@ -622,50 +623,84 @@ export function ResultsManagementClient({
                         <Trophy className="w-4 h-4 text-orange-500" /> Points
                         for Groups
                       </h4>
-                      <p className="text-sm text-muted-foreground">
-                        Winners earn points for their group. More points mean a
-                        better chance at winning the championship.
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Winners earn points for their group depending on the
+                        scoring system.
                       </p>
-                      {festival.scoringSystem === "SCORE_BASED" ? (
-                        <p className="text-sm font-medium mt-2">
-                          Points are equal to the judge's score.
-                          <br />
-                          <span className="text-muted-foreground font-normal">
-                            Example: Score 9.5 = 9.5 Points.
-                          </span>
-                        </p>
-                      ) : (
-                        <ul className="list-disc list-inside text-sm text-muted-foreground ml-2">
-                          <li>
-                            <span className="font-bold text-foreground">
-                              1st Place:
-                            </span>{" "}
-                            10 Points
-                          </li>
-                          <li>
-                            <span className="font-bold text-foreground">
-                              2nd Place:
-                            </span>{" "}
-                            7 Points
-                          </li>
-                          <li>
-                            <span className="font-bold text-foreground">
-                              3rd Place:
-                            </span>{" "}
-                            5 Points
-                          </li>
-                        </ul>
-                      )}
-                    </div>
 
-                    <div className="space-y-2">
-                      <h4 className="font-bold text-sm flex items-center gap-2">
-                        <Crown className="w-4 h-4 text-primary" /> Championship
-                      </h4>
-                      <p className="text-sm text-muted-foreground">
-                        The group with the most points at the end of the
-                        festival wins the Championship Trophy.
-                      </p>
+                      <Tabs
+                        defaultValue={
+                          festival.scoringSystem === "SCORE_BASED"
+                            ? "score"
+                            : "position"
+                        }
+                        className="w-full"
+                      >
+                        <TabsList className="grid w-full grid-cols-2">
+                          <TabsTrigger value="position">
+                            Position Based
+                          </TabsTrigger>
+                          <TabsTrigger value="score">Score Based</TabsTrigger>
+                        </TabsList>
+                        <TabsContent
+                          value="position"
+                          className="space-y-2 mt-4 border rounded-md p-4"
+                        >
+                          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            Point System
+                          </span>
+                          <ul className="space-y-2 text-sm">
+                            <li className="flex justify-between items-center border-b pb-2">
+                              <span className="font-medium">1st Place</span>
+                              <span className="font-bold text-primary">
+                                10 Pts
+                              </span>
+                            </li>
+                            <li className="flex justify-between items-center border-b pb-2">
+                              <span className="font-medium">2nd Place</span>
+                              <span className="font-bold text-primary">
+                                7 Pts
+                              </span>
+                            </li>
+                            <li className="flex justify-between items-center border-b pb-2">
+                              <span className="font-medium">3rd Place</span>
+                              <span className="font-bold text-primary">
+                                5 Pts
+                              </span>
+                            </li>
+                            <li className="flex justify-between items-center pt-1 text-muted-foreground">
+                              <span>A Grade (No Position)</span>
+                              <span>5 Pts</span>
+                            </li>
+                            <li className="flex justify-between items-center text-muted-foreground">
+                              <span>B Grade (No Position)</span>
+                              <span>3 Pts</span>
+                            </li>
+                          </ul>
+                          <p className="text-xs text-muted-foreground mt-2 italic">
+                            * Only the highest points apply (e.g., 1st Place
+                            gets 10, not 10 + 5 for A Grade).
+                          </p>
+                        </TabsContent>
+                        <TabsContent
+                          value="score"
+                          className="space-y-4 mt-4 border rounded-md p-4"
+                        >
+                          <div className="text-center py-4 space-y-2">
+                            <span className="text-2xl font-bold block">
+                              Points = Score
+                            </span>
+                            <p className="text-sm text-muted-foreground">
+                              The points awarded to the group are exactly equal
+                              to the score given by the judge.
+                            </p>
+                          </div>
+                          <div className="bg-muted p-3 rounded text-sm flex justify-between items-center">
+                            <span>Judge Score: 9.5</span>
+                            <span className="font-bold">Group Points: 9.5</span>
+                          </div>
+                        </TabsContent>
+                      </Tabs>
                     </div>
                   </div>
                 </DialogContent>

@@ -1,22 +1,6 @@
-/**
- * Upgrade Trigger Component
- *
- * Displays a locked feature with an upgrade prompt.
- * Shows a tooltip on hover explaining which tier unlocks the feature.
- *
- * @example
- * ```tsx
- * <UpgradeTrigger feature="Excel Export" requiredTier="STANDARD">
- *   <Button disabled>
- *     <Lock className="w-4 h-4 mr-2" />
- *     Export Excel
- *   </Button>
- * </UpgradeTrigger>
- * ```
- */
-
 "use client";
 
+import { PRICING_TIERS } from "@/config/pricing";
 import { Info, Lock, Zap } from "lucide-react";
 import {
   Tooltip,
@@ -56,9 +40,6 @@ interface UpgradeTriggerProps {
   inline?: boolean;
 }
 
-/**
- * Wraps a locked feature with upgrade prompt
- */
 export function UpgradeTrigger({
   feature,
   requiredTier,
@@ -68,8 +49,16 @@ export function UpgradeTrigger({
 }: UpgradeTriggerProps) {
   const router = useRouter();
 
+  const isTierAvailable = PRICING_TIERS.some((t) => t.id === requiredTier);
+
+  if (!isTierAvailable) {
+    return null;
+  }
+
   const handleUpgradeClick = () => {
-    router.push("/pricing");
+    if (isTierAvailable) {
+      router.push("/pricing");
+    }
   };
 
   const tierInfo = {
@@ -100,9 +89,10 @@ export function UpgradeTrigger({
             size="sm"
             className={cn("shadow-lg", tier.bgColor, "hover:opacity-90")}
             onClick={handleUpgradeClick}
+            disabled={!isTierAvailable}
           >
             <Zap className="w-3.5 h-3.5 mr-1.5" />
-            Upgrade to {tier.name}
+            {isTierAvailable ? `Upgrade to ${tier.name}` : "Not Available"}
           </Button>
         </div>
       </div>
@@ -163,9 +153,10 @@ export function UpgradeTrigger({
                 size="sm"
                 className="w-full mt-2"
                 onClick={handleUpgradeClick}
+                disabled={!isTierAvailable}
               >
                 <Zap className="w-3.5 h-3.5 mr-1.5" />
-                View Pricing
+                {isTierAvailable ? "View Pricing" : "Not Available"}
               </Button>
             </div>
           </TooltipContent>

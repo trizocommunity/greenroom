@@ -5,6 +5,8 @@ import { ChestNumberSetup } from "@/components/festival/event-works/chest-number
 import { ChestNumberTable } from "@/components/festival/event-works/chest-numbers/ChestNumberTable";
 import { findFestivalBySlugOrId } from "@/server/models/festival.model";
 import { revalidatePath } from "next/cache";
+import { EmptyState } from "@/components/common/EmptyState";
+import { UserPlus } from "lucide-react";
 
 interface PageProps {
   params: Promise<{
@@ -34,6 +36,18 @@ export default async function ChestNumbersPage({ params }: PageProps) {
     if (a.chestNumber && !b.chestNumber) return 1;
     return 0;
   });
+
+  if (students.length === 0) {
+    return (
+      <EmptyState
+        title="No Students Found"
+        description="You need to add students before generating chest numbers."
+        actionLabel="Add Students"
+        actionLink={`/dashboard/${slug}/pre-works/students`}
+        icon={UserPlus} // Need to import UserPlus
+      />
+    );
+  }
 
   const pendingCount = students.filter(
     (s) => !s.chestNumber && s.category?.type === "SINGLE",

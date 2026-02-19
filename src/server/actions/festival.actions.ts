@@ -36,8 +36,8 @@ export async function createFestival(input: CreateFestivalInput) {
       throw new AppError("Payment purpose mismatch.");
     }
 
-    // Resolve Tier (Default to STANDARD if missing)
-    const tier = payment.tier || "STANDARD";
+    // Resolve Tier (Default to BASIC if missing)
+    const tier = payment.tier || "BASIC";
     const tierConfig = TIER_CONFIG[tier];
 
     // 3. Atomic Transaction

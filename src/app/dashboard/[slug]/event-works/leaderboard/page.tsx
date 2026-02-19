@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { LeaderboardClient } from "@/components/dashboard/leaderboard/LeaderboardClient";
+import { EmptyState } from "@/components/common/EmptyState";
+import { Trophy } from "lucide-react";
 
 export default async function TeamStatusPage({
   params,
@@ -41,6 +43,27 @@ export default async function TeamStatusPage({
 
   if (!festival) {
     return notFound();
+  }
+
+  // Check for assignments
+  const assignmentCount = await prisma.programmeAssignment.count({
+    where: {
+      programme: {
+        festivalId: festival.id,
+      },
+    },
+  });
+
+  if (assignmentCount === 0) {
+    return (
+      <EmptyState
+        title="No Data Available"
+        description="Leaderboard will be populated once assignments and results are available."
+        actionLabel="Go to Assignments"
+        actionLink={`/dashboard/${slug}/pre-works/assignments`}
+        icon={Trophy}
+      />
+    );
   }
 
   return (
