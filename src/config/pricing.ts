@@ -74,7 +74,7 @@ export const TIER_CONFIG: Record<Tier, any> = {
       multiFestivalManagement: false,
 
       // Settings
-      festivalSettings: false, // No settings page access
+      festivalSettings: true, // Settings page access enabled for config
       advancedSettings: false,
 
       // Support

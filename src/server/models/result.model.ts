@@ -6,6 +6,7 @@ export interface ResultInput {
   assignmentId: string;
   grade?: string | null;
   position?: number | null;
+  score?: number;
   points?: number;
   remarks?: string | null;
   isPublished?: boolean;
@@ -14,6 +15,7 @@ export interface ResultInput {
 export interface ResultUpdate {
   grade?: string | null;
   position?: number | null;
+  score?: number;
   points?: number;
   remarks?: string | null;
   isPublished?: boolean;
@@ -192,6 +194,7 @@ export class ResultModel {
       update: {
         grade: data.grade,
         position: data.position,
+        score: data.score,
         points: data.points,
         remarks: data.remarks,
         isPublished: data.isPublished,

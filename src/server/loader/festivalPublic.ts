@@ -20,6 +20,7 @@ export type PublicFestivalData = {
     tier: string | null;
     studentCreationDeadline: Date | null;
     programmeAssignmentDeadline: Date | null;
+    scoringSystem: "POSITION_BASED" | "SCORE_BASED";
     teamStandings: any; // Using any for JSON type flexibility
   };
   // Simplified "Event" data (mapped from Festival)
@@ -58,6 +59,7 @@ export async function getPublicFestivalData(
       location: true,
       studentCreationDeadline: true,
       programmeAssignmentDeadline: true,
+      scoringSystem: true,
       teamStandings: true,
     },
   });

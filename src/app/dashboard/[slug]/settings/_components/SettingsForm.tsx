@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { Loader2, Lock } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { updateFestivalSettingsAction } from "@/server/actions/festival.actions";
 
 interface SettingsFormProps {
@@ -33,6 +40,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
     endDate: festival.endDate
       ? new Date(festival.endDate).toISOString().slice(0, 10)
       : "",
+    scoringSystem: festival.scoringSystem || "POSITION_BASED",
   });
 
   const handleSave = async (e: React.FormEvent) => {
@@ -42,8 +50,11 @@ export function SettingsForm({ festival }: SettingsFormProps) {
       const res = await updateFestivalSettingsAction(festival.id, {
         programmeAssignmentDeadline:
           formData.programmeAssignmentDeadline || null,
-        startDate: formData.startDate ? new Date(formData.startDate) : null,
-        endDate: formData.endDate ? new Date(formData.endDate) : null,
+        startDate: formData.startDate || null,
+        endDate: formData.endDate || null,
+        scoringSystem: formData.scoringSystem as
+          | "POSITION_BASED"
+          | "SCORE_BASED",
       });
 
       if (res.success) {
@@ -67,7 +78,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSave} className="space-y-4">
+        <form onSubmit={handleSave} className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="startDate">Start Date</Label>
@@ -94,24 +105,56 @@ export function SettingsForm({ festival }: SettingsFormProps) {
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="programmeAssignment">
-              Programme Assignment Deadline
-            </Label>
-            <Input
-              id="programmeAssignment"
-              type="datetime-local"
-              value={formData.programmeAssignmentDeadline}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  programmeAssignmentDeadline: e.target.value,
-                })
-              }
-            />
-            <p className="text-sm text-muted-foreground">
-              Team Leaders cannot assign students to programmes after this time.
-            </p>
+            <Label htmlFor="scoringSystem">Scoring System</Label>
+            <div className="p-4 border rounded-lg space-y-4">
+              <Select
+                value={formData.scoringSystem}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, scoringSystem: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Scoring System" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="POSITION_BASED">
+                    Position Based (Traditional)
+                  </SelectItem>
+                  <SelectItem value="SCORE_BASED">
+                    Score Based (Points = Score)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                {formData.scoringSystem === "POSITION_BASED"
+                  ? "Points are awarded based on rank: 1st Place (10pts), 2nd (7pts), 3rd (5pts)."
+                  : "Points are equal to the judge's score. E.g., Score 9.5 = 9.5 Points."}
+              </p>
+            </div>
           </div>
+
+          {festival.tier !== "BASIC" && (
+            <div className="grid gap-2">
+              <Label htmlFor="programmeAssignment">
+                Programme Assignment Deadline
+              </Label>
+              <Input
+                id="programmeAssignment"
+                type="datetime-local"
+                value={formData.programmeAssignmentDeadline}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    programmeAssignmentDeadline: e.target.value,
+                  })
+                }
+              />
+              <p className="text-sm text-muted-foreground">
+                Team Leaders cannot assign students to programmes after this
+                time.
+              </p>
+            </div>
+          )}
 
           <div className="flex justify-end">
             <Button type="submit" disabled={isLoading}>

@@ -14,6 +14,12 @@ import {
   Pencil,
   Trash2,
   Users,
+  Lock,
+  Unlock,
+  HelpCircle,
+  Medal,
+  Trophy,
+  Crown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,10 +56,16 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { saveResult, deleteResult } from "@/server/actions/results";
+import {
+  saveResult,
+  deleteResult,
+  bulkPublishProgrammeResults,
+} from "@/server/actions/results";
 import {
   calculateGrade,
   calculatePosition,
+  calculatePoints,
+  calculatePositionPoints,
   getGradeBadgeColor,
 } from "@/lib/results-calculator";
 import { cn } from "@/lib/utils";
@@ -72,11 +84,24 @@ type Programme = {
       id: string;
       grade: string | null;
       position: number | null;
+      score: number;
       points: number;
       remarks: string | null;
       isPublished: boolean;
     } | null;
   }>;
+  stats?: {
+    totalParticipants: number;
+    enteredScores: number;
+    publishedCount: number;
+    isFullyScored: boolean;
+    status:
+      | "published"
+      | "ready"
+      | "in-progress"
+      | "not-started"
+      | "partial-published";
+  };
 };
 
 type Category = {
@@ -88,13 +113,23 @@ type Festival = {
   id: string;
   name: string;
   slug: string;
+  scoringSystem?: "POSITION_BASED" | "SCORE_BASED";
 };
 
 interface ResultsManagementClientProps {
   festival: Festival;
   programmes: Programme[];
   categories: Category[];
-  existingResults: any[];
+  existingResults: Array<{
+    id: string;
+    grade: string | null;
+    position: number | null;
+    score: number;
+    points: number;
+    remarks: string | null;
+    isPublished: boolean;
+    assignmentId: string;
+  }>;
 }
 
 // Helper to identify teams
@@ -119,9 +154,7 @@ const getTeamName = (assignment: Programme["assignments"][0], type: string) => {
 
 const getSubLabel = (assignment: Programme["assignments"][0], type: string) => {
   if (type === "GROUP") {
-    return `${
-      assignment.student?.name ? `${assignment.student.name} • ` : ""
-    }Team ${assignment.teamNumber || 1}`;
+    return `Team ${assignment.teamNumber || 1}`;
   }
   return `#${assignment.student?.chestNumber || "N/A"}`;
 };
@@ -137,17 +170,12 @@ export function ResultsManagementClient({
   const [scores, setScores] = useState<Record<string, number>>({});
   const [isPending, startTransition] = useTransition();
 
+  // View Details Modal State - REMOVED
+
   // Filter states for main table
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
-
-  // Filter programmes by selected category in modal
-  const filteredModalProgrammes = selectedCategory
-    ? programmes.filter((p) => p.category.id === selectedCategory)
-    : [];
-
-  const currentProgramme = programmes.find((p) => p.id === selectedProgramme);
 
   // Compute Programme Stats and Status
   const programmeStats = useMemo(() => {
@@ -156,7 +184,7 @@ export function ResultsManagementClient({
         // Base counts (Students)
         const totalParticipants = prog.assignments.length;
         const enteredScores = prog.assignments.filter(
-          (a) => a.result?.points != null,
+          (a) => a.result?.score != null,
         ).length;
         const publishedCount = prog.assignments.filter(
           (a) => a.result?.isPublished,
@@ -175,7 +203,7 @@ export function ResultsManagementClient({
           prog.assignments.forEach((a) => {
             const teamId = getTeamIdentifier(a, "GROUP");
             uniqueTeams.add(teamId);
-            if (a.result?.points != null) scoredTeams.add(teamId);
+            if (a.result?.score != null) scoredTeams.add(teamId);
             if (a.result?.isPublished) publishedTeams.add(teamId);
           });
 
@@ -222,6 +250,15 @@ export function ResultsManagementClient({
       });
   }, [programmes]);
 
+  // Filter programmes by selected category in modal
+  const filteredModalProgrammes = selectedCategory
+    ? programmeStats.filter((p) => p.category.id === selectedCategory)
+    : [];
+
+  const currentProgramme = programmeStats.find(
+    (p) => p.id === selectedProgramme,
+  );
+
   // Filter programmes for the table
   const filteredTableProgrammes = useMemo(() => {
     // Hide Not Started programmes by default
@@ -264,39 +301,33 @@ export function ResultsManagementClient({
     // Map to store scores by Team Identifier
     const teamScoresMap = new Map<string, number>();
 
-    // First pass: Collect all valid points (from Input or DB)
+    // First pass: Collect all valid scores (from Input or DB)
     currentProgramme.assignments.forEach((assignment) => {
       const teamId = getTeamIdentifier(assignment, currentProgramme.type);
 
-      const inputPoints = scores[teamId]; // "scores" state now holds points
-      const dbPoints = assignment.result?.points; // Use points from DB
+      const inputScore = scores[teamId]; // "scores" state holds judge scores
+      const dbScore = assignment.result?.score; // Use score from DB
 
-      // Use input first, then DB points. If entry exists but point is 0, it might be real 0.
-      // But we need to distinguish between "not entered" and "0".
-      // Let's assume if result exists, points are valid.
-      const finalPoints =
-        inputPoints !== undefined
-          ? inputPoints
+      // Use input first, then DB score.
+      const finalScore =
+        inputScore !== undefined
+          ? inputScore
           : assignment.result
-            ? dbPoints
+            ? dbScore
             : undefined;
 
-      if (
-        finalPoints !== undefined &&
-        finalPoints !== null &&
-        finalPoints >= 0
-      ) {
-        teamScoresMap.set(teamId, finalPoints);
+      if (finalScore !== undefined && finalScore !== null && finalScore >= 0) {
+        teamScoresMap.set(teamId, finalScore);
       }
     });
 
-    const validPoints = Array.from(teamScoresMap.values());
+    const validScores = Array.from(teamScoresMap.values());
 
     return currentProgramme.assignments.map((assignment) => {
       const teamId = getTeamIdentifier(assignment, currentProgramme.type);
-      const points = teamScoresMap.get(teamId) ?? null;
+      const score = teamScoresMap.get(teamId) ?? null;
 
-      if (points === null || points < 0) {
+      if (score === null || score < 0) {
         return {
           assignmentId: assignment.id,
           teamId,
@@ -305,6 +336,7 @@ export function ResultsManagementClient({
           displayName: getTeamName(assignment, currentProgramme.type),
           grade: "-",
           position: "-",
+          score: 0,
           points: 0,
           remarks: "-",
           hasExisting: !!assignment.result,
@@ -312,10 +344,17 @@ export function ResultsManagementClient({
         };
       }
 
-      // Calculate Grade based on Points (10/10 basis)
-      const gradeData = calculateGrade(points);
-      // Calculate Position based on Points comparison
-      const position = calculatePosition(points, validPoints);
+      // Calculate Grade based on Score (10/10 basis)
+      const gradeData = calculateGrade(score);
+      // Calculate Position based on Score comparison
+      const position = calculatePosition(score, validScores);
+      // Calculate Leaderboard Points based on Position
+      // Calculate Leaderboard Points based on Position
+      const leaderboardPoints = calculatePoints(
+        festival.scoringSystem || "POSITION_BASED",
+        score,
+        position,
+      );
 
       return {
         assignmentId: assignment.id,
@@ -325,7 +364,8 @@ export function ResultsManagementClient({
         displayName: getTeamName(assignment, currentProgramme.type),
         grade: gradeData.grade,
         position,
-        points: points, // Use entered points directly
+        score: score, // Judge score
+        points: leaderboardPoints, // Leaderboard points
         remarks: gradeData.remarks,
         hasExisting: !!assignment.result,
         resultId: assignment.result?.id,
@@ -334,7 +374,7 @@ export function ResultsManagementClient({
   };
 
   const results = calculateResults();
-  const hasAnyScore = results.some((r) => r.points !== null && r.points >= 0); // naming kept for minimal diff
+  const hasAnyScore = results.some((r) => r.score !== null && r.score > 0);
 
   const handleScoreChange = (teamId: string, value: string) => {
     const points = parseFloat(value);
@@ -349,10 +389,10 @@ export function ResultsManagementClient({
     }
   };
 
-  const handleSaveResults = async () => {
+  const handleSaveResults = async (shouldPublish = false) => {
     if (!currentProgramme) return;
 
-    const resultsToSave = results.filter((r) => r.points !== null);
+    const resultsToSave = results.filter((r) => r.score !== null);
     if (resultsToSave.length === 0) return;
 
     startTransition(async () => {
@@ -365,10 +405,12 @@ export function ResultsManagementClient({
           programmeId: currentProgramme.id,
           assignmentId: result.assignmentId,
           grade: result.grade,
-          position: result.position as number,
+          position:
+            result.position !== "-" ? (result.position as number) : null,
+          score: result.score,
           points: result.points,
           remarks: result.remarks,
-          isPublished: false,
+          isPublished: shouldPublish,
         });
 
         if (response?.success) successCount++;
@@ -376,13 +418,39 @@ export function ResultsManagementClient({
       }
 
       if (errorCount === 0) {
-        toast.success(`Results saved successfully`);
+        toast.success(
+          shouldPublish
+            ? "Results published successfully"
+            : "Results saved successfully",
+        );
         setScores({});
         setSelectedCategory("");
         setSelectedProgramme("");
         setIsModalOpen(false);
       } else {
         toast.error(`Failed to save ${errorCount} results`);
+      }
+    });
+  };
+
+  const handlePublishProgramme = (
+    programmeId: string,
+    isPublished: boolean,
+  ) => {
+    startTransition(async () => {
+      const response = await bulkPublishProgrammeResults(
+        programmeId,
+        isPublished,
+        festival.slug,
+      );
+      if (response.success) {
+        toast.success(
+          isPublished
+            ? "Results published successfully"
+            : "Results unpublished successfully",
+        );
+      } else {
+        toast.error("Failed to update status");
       }
     });
   };
@@ -473,7 +541,7 @@ export function ResultsManagementClient({
     >();
 
     results
-      .filter((r) => r.points !== null)
+      .filter((r) => r.score !== null)
       .forEach((r) => {
         const existing = uniqueResultMap.get(r.teamId);
         if (existing) {
@@ -487,7 +555,7 @@ export function ResultsManagementClient({
       });
 
     return Array.from(uniqueResultMap.values()).sort(
-      (a, b) => (b.points as number) - (a.points as number),
+      (a, b) => (b.score as number) - (a.score as number),
     );
   }, [results, currentProgramme]);
 
@@ -521,6 +589,87 @@ export function ResultsManagementClient({
               </CardDescription>
             </div>
             <div className="flex gap-2">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="gap-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <HelpCircle className="w-4 h-4" />
+                    How it Works
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-xl">
+                  <DialogHeader>
+                    <DialogTitle>How Results work?</DialogTitle>
+                    <DialogDescription>
+                      Simple guide to scoring and points.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 pt-2">
+                    <div className="space-y-2">
+                      <h4 className="font-bold text-sm flex items-center gap-2">
+                        <Medal className="w-4 h-4 text-yellow-500" /> Scoring
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        Judges give a score out of 10. This score decides the
+                        Grade (like A, B, C).
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-bold text-sm flex items-center gap-2">
+                        <Trophy className="w-4 h-4 text-orange-500" /> Points
+                        for Groups
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        Winners earn points for their group. More points mean a
+                        better chance at winning the championship.
+                      </p>
+                      {festival.scoringSystem === "SCORE_BASED" ? (
+                        <p className="text-sm font-medium mt-2">
+                          Points are equal to the judge's score.
+                          <br />
+                          <span className="text-muted-foreground font-normal">
+                            Example: Score 9.5 = 9.5 Points.
+                          </span>
+                        </p>
+                      ) : (
+                        <ul className="list-disc list-inside text-sm text-muted-foreground ml-2">
+                          <li>
+                            <span className="font-bold text-foreground">
+                              1st Place:
+                            </span>{" "}
+                            10 Points
+                          </li>
+                          <li>
+                            <span className="font-bold text-foreground">
+                              2nd Place:
+                            </span>{" "}
+                            7 Points
+                          </li>
+                          <li>
+                            <span className="font-bold text-foreground">
+                              3rd Place:
+                            </span>{" "}
+                            5 Points
+                          </li>
+                        </ul>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-bold text-sm flex items-center gap-2">
+                        <Crown className="w-4 h-4 text-primary" /> Championship
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        The group with the most points at the end of the
+                        festival wins the Championship Trophy.
+                      </p>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
               <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                 <DialogTrigger asChild>
                   <Button className="gap-2" suppressHydrationWarning>
@@ -543,6 +692,7 @@ export function ResultsManagementClient({
                   <div className="space-y-5 mt-4">
                     {/* Programme Selection - Compact */}
                     <div className="grid md:grid-cols-2 gap-3">
+                      {/* ... (Selectors remain same) ... */}
                       <div className="space-y-1.5">
                         <Label
                           htmlFor="modal-category"
@@ -647,13 +797,40 @@ export function ResultsManagementClient({
                               </span>
                             </div>
                           </div>
-                          <Badge
-                            variant="secondary"
-                            className="gap-1.5 font-medium"
-                          >
-                            <Sparkles className="w-3.5 h-3.5" />
-                            Auto
-                          </Badge>
+                          {/* Unpublish Control if Published */}
+                          {currentProgramme.stats?.status === "published" ||
+                          currentProgramme.stats?.status ===
+                            "partial-published" ? (
+                            <div className="flex items-center gap-3 ml-auto">
+                              <div className="flex items-center text-amber-700 dark:text-amber-400 text-sm font-medium gap-2 px-3 py-1 bg-amber-100 dark:bg-amber-900/30 rounded-md border border-amber-200 dark:border-amber-700/50">
+                                <Lock className="w-4 h-4" />
+                                <span>Results Locked</span>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 gap-2 border-amber-200 dark:border-amber-700/50 hover:bg-amber-100 dark:hover:bg-amber-900/20 text-amber-700 dark:text-amber-400"
+                                onClick={() =>
+                                  handlePublishProgramme(
+                                    currentProgramme.id,
+                                    false,
+                                  )
+                                }
+                                disabled={isPending}
+                              >
+                                <Unlock className="w-3.5 h-3.5" />
+                                Unpublish to Edit
+                              </Button>
+                            </div>
+                          ) : (
+                            <Badge
+                              variant="secondary"
+                              className="gap-1.5 font-medium ml-auto"
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                              Auto
+                            </Badge>
+                          )}
                         </div>
 
                         {/* Grouped Score Input Grid - More Compact & Highlighted */}
@@ -689,7 +866,7 @@ export function ResultsManagementClient({
                                     );
                                     const currentScore =
                                       scores[teamId] ??
-                                      assignment.result?.points ??
+                                      assignment.result?.score ??
                                       "";
                                     const displayName =
                                       currentProgramme.type === "GROUP"
@@ -700,11 +877,27 @@ export function ResultsManagementClient({
                                       typeof currentScore === "number" ||
                                       currentScore !== "";
 
+                                    const teamMembers =
+                                      currentProgramme?.type === "GROUP"
+                                        ? currentProgramme.assignments
+                                            .filter(
+                                              (a) =>
+                                                getTeamIdentifier(
+                                                  a,
+                                                  "GROUP",
+                                                ) === teamId,
+                                            )
+                                            .map((a) => a.student?.name)
+                                            .filter(Boolean)
+                                            .join(", ")
+                                        : assignment.student?.name || "";
+
                                     return (
                                       <div
                                         key={teamId}
+                                        title={teamMembers}
                                         className={cn(
-                                          "relative group rounded-lg border-2 transition-all duration-200",
+                                          "relative group rounded-lg border-2 transition-all duration-200 cursor-help",
                                           isFilled
                                             ? "border-primary/30 bg-primary/5"
                                             : "border-border hover:border-primary/20 bg-card",
@@ -731,27 +924,56 @@ export function ResultsManagementClient({
                                           )}
 
                                           {/* Score Input */}
-                                          <Input
-                                            id={`score-${teamId}`}
-                                            type="number"
-                                            step="0.5" // Allow half points input
-                                            min="0"
-                                            max="10"
-                                            placeholder="Pts"
-                                            value={currentScore}
-                                            onChange={(e) =>
-                                              handleScoreChange(
-                                                teamId,
-                                                e.target.value,
-                                              )
-                                            }
-                                            className={cn(
-                                              "text-center font-mono font-bold h-9 transition-all",
-                                              isFilled &&
-                                                "ring-2 ring-primary/20",
+                                          <div className="relative">
+                                            <Input
+                                              id={`score-${teamId}`}
+                                              type="number"
+                                              step="0.5" // Allow half points input
+                                              min="0"
+                                              max="10"
+                                              placeholder={
+                                                currentProgramme.stats
+                                                  ?.status === "published" ||
+                                                currentProgramme.stats
+                                                  ?.status ===
+                                                  "partial-published"
+                                                  ? "Locked"
+                                                  : "Pts"
+                                              }
+                                              value={currentScore}
+                                              disabled={
+                                                currentProgramme.stats
+                                                  ?.status === "published" ||
+                                                currentProgramme.stats
+                                                  ?.status ===
+                                                  "partial-published"
+                                              }
+                                              onChange={(e) =>
+                                                handleScoreChange(
+                                                  teamId,
+                                                  e.target.value,
+                                                )
+                                              }
+                                              className={cn(
+                                                "text-center font-mono font-bold h-9 transition-all",
+                                                isFilled &&
+                                                  "ring-2 ring-primary/20",
+                                                (currentProgramme.stats
+                                                  ?.status === "published" ||
+                                                  currentProgramme.stats
+                                                    ?.status ===
+                                                    "partial-published") &&
+                                                  "bg-muted/50 text-muted-foreground cursor-not-allowed",
+                                              )}
+                                              suppressHydrationWarning
+                                            />
+                                            {(currentProgramme.stats?.status ===
+                                              "published" ||
+                                              currentProgramme.stats?.status ===
+                                                "partial-published") && (
+                                              <Lock className="w-3 h-3 text-muted-foreground/50 absolute top-3 right-2" />
                                             )}
-                                            suppressHydrationWarning
-                                          />
+                                          </div>
 
                                           {/* Student Name/Sub-label */}
                                           {currentProgramme.type ===
@@ -764,7 +986,17 @@ export function ResultsManagementClient({
                                           {currentProgramme.type ===
                                             "GROUP" && (
                                             <p className="text-[10px] text-muted-foreground text-center truncate mt-1 px-1">
-                                              {subLabel}
+                                              {/* Show Count of members */}
+                                              {
+                                                currentProgramme.assignments.filter(
+                                                  (a) =>
+                                                    getTeamIdentifier(
+                                                      a,
+                                                      "GROUP",
+                                                    ) === teamId,
+                                                ).length
+                                              }{" "}
+                                              Members
                                             </p>
                                           )}
                                         </div>
@@ -817,6 +1049,9 @@ export function ResultsManagementClient({
                                       Score
                                     </TableHead>
                                     <TableHead className="text-center font-bold">
+                                      Points
+                                    </TableHead>
+                                    <TableHead className="text-center font-bold">
                                       Grade
                                     </TableHead>
                                     <TableHead className="text-center font-bold">
@@ -857,8 +1092,13 @@ export function ResultsManagementClient({
                                         </TableCell>
                                         <TableCell className="text-center">
                                           <span className="font-mono font-bold text-base text-primary">
-                                            {result.points?.toFixed(1)}
+                                            {result.score?.toFixed(1)}
                                           </span>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                          <Badge variant="secondary">
+                                            {result.points} pts
+                                          </Badge>
                                         </TableCell>
                                         <TableCell className="text-center">
                                           <Badge
@@ -899,7 +1139,13 @@ export function ResultsManagementClient({
                                                 result.teamId,
                                               )
                                             }
-                                            disabled={isPending}
+                                            disabled={
+                                              isPending ||
+                                              currentProgramme.stats?.status ===
+                                                "published" ||
+                                              currentProgramme.stats?.status ===
+                                                "partial-published"
+                                            }
                                           >
                                             <Trash2 className="w-3.5 h-3.5" />
                                           </Button>
@@ -912,13 +1158,23 @@ export function ResultsManagementClient({
                             </div>
 
                             <Button
-                              onClick={handleSaveResults}
-                              disabled={isPending}
-                              className="w-full gap-2 h-11 text-base font-bold bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg"
+                              onClick={() => handleSaveResults(false)}
+                              disabled={
+                                isPending ||
+                                currentProgramme.stats?.status === "published"
+                              }
+                              className="w-full h-11 text-base font-bold"
                               size="lg"
                             >
-                              <Check className="w-5 h-5" />
-                              Save Result
+                              {currentProgramme.stats?.status ===
+                              "published" ? (
+                                <span className="flex items-center gap-2">
+                                  <Lock className="w-4 h-4" />
+                                  Results Locked (Unpublish to Save)
+                                </span>
+                              ) : (
+                                "Save Changes"
+                              )}
                             </Button>
                           </div>
                         )}
@@ -1064,14 +1320,16 @@ export function ResultsManagementClient({
                       </TableCell>
 
                       <TableCell className="text-right">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => handleEditResult(prog)}
-                          className="h-8 w-8"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditResult(prog)}
+                            title="Edit Results"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

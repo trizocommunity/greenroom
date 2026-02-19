@@ -31,9 +31,36 @@ import {
   publishTeamStandings,
 } from "@/server/actions/results";
 import Link from "next/link";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { getGradeBadgeColor } from "@/lib/results-calculator";
+import { Eye } from "lucide-react";
+
+const getTeamName = (assignment: any, type: string) => {
+  if (type === "GROUP" && assignment.group) {
+    return assignment.group.name;
+  }
+  return assignment.student?.name || "Unknown";
+};
+
+const getTeamIdentifier = (assignment: any, type: string) => {
+  if (type === "GROUP") {
+    // Group by visible identity: Group Name + Team Number
+    // This is more robust when group IDs might be unique per student but they are meant to be in the same team
+    const groupName = assignment.group?.name || "No Group";
+    const teamNum = assignment.teamNumber || 1;
+    return `${groupName}-${teamNum}`;
+  }
+  return assignment.id;
+};
 
 // Types matching what's passed from the page
-interface TeamStatusClientProps {
+interface LeaderboardClientProps {
   festival: {
     id: string;
     name: string;
@@ -45,15 +72,94 @@ interface TeamStatusClientProps {
   publishedStandings?: any[]; // Added prop
 }
 
-export function TeamStatusClient({
+export function LeaderboardClient({
   festival,
   programmes,
   results, // This contains ALL results, including unpublished ones
   publishedStandings = [], // Default to empty array
-}: TeamStatusClientProps) {
+}: LeaderboardClientProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [isPending, startTransition] = useTransition();
+
+  // View Details Modal State
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [viewProgramme, setViewProgramme] = useState<any | null>(null);
+
+  // View Details Calculation
+  const viewDetailsResults = useMemo(() => {
+    if (!viewProgramme) return [];
+
+    if (viewProgramme.type === "GROUP") {
+      // Group by Team
+      const teamMap = new Map<string, any>();
+
+      viewProgramme.assignments.forEach((assignment: any) => {
+        // Only consider assignments with results for the results view
+        if (assignment.result?.score == null) return;
+
+        const teamId = getTeamIdentifier(assignment, "GROUP");
+
+        if (!teamMap.has(teamId)) {
+          // Try to find a valid group name if available, otherwise construct one
+          const groupName =
+            assignment.group?.name || `Team ${assignment.teamNumber}`;
+
+          teamMap.set(teamId, {
+            assignmentId: assignment.id, // Use the first found assignment ID as key
+            displayName: groupName,
+            subText:
+              assignment.teamNumber > 0 ? `Team ${assignment.teamNumber}` : "",
+            chestNumber: "",
+            grade: assignment.result.grade,
+            score: assignment.result.score,
+            points: assignment.result.points,
+            position: assignment.result.position || 0,
+            remarks: assignment.result.remarks,
+            memberCount: 0,
+          });
+        }
+
+        const entry = teamMap.get(teamId);
+        entry.memberCount++;
+      });
+
+      return Array.from(teamMap.values()).sort((a: any, b: any) => {
+        if (a.position && b.position) return a.position - b.position;
+        return (b.score || 0) - (a.score || 0);
+      });
+    } else {
+      // INDIVIDUAL
+      const details = viewProgramme.assignments
+        .filter((a: any) => a.result?.score != null)
+        .map((assignment: any) => {
+          const result = assignment.result!;
+          return {
+            assignmentId: assignment.id,
+            displayName: assignment.student?.name || "Unknown Student",
+            subText: "",
+            chestNumber: assignment.student?.chestNumber
+              ? `#${assignment.student.chestNumber}`
+              : "",
+            grade: result.grade,
+            score: result.score,
+            points: result.points,
+            position: result.position || 0,
+            remarks: result.remarks,
+          };
+        });
+
+      return details.sort((a: any, b: any) => {
+        if (a.position && b.position) return a.position - b.position;
+        return (b.score || 0) - (a.score || 0);
+      });
+    }
+  }, [viewProgramme]);
+
+  const handleViewDetails = (programme: any) => {
+    setViewProgramme(programme);
+    setIsViewModalOpen(true);
+  };
 
   // --- Leaderboard Calculation (Live Preview) ---
   const teamStandings = useMemo(() => {
@@ -109,15 +215,32 @@ export function TeamStatusClient({
     }
     return progs
       .map((p) => {
-        // Check status
-        const total = p.assignments.length;
-        const published = p.assignments.filter(
-          (a: any) => a.result?.isPublished,
-        ).length;
-        const completed = p.assignments.filter(
+        // Effective Counts (Teams for Groups, Students for Individual)
+        let finalTotal = p.assignments.length;
+        let finalCompleted = p.assignments.filter(
           (a: any) =>
             a.result?.points !== undefined && a.result?.points !== null,
         ).length;
+        let finalPublished = p.assignments.filter(
+          (a: any) => a.result?.isPublished,
+        ).length;
+
+        if (p.type === "GROUP") {
+          const uniqueTeams = new Set<string>();
+          const completedTeams = new Set<string>();
+          const publishedTeams = new Set<string>();
+
+          p.assignments.forEach((a: any) => {
+            const teamId = getTeamIdentifier(a, "GROUP");
+            uniqueTeams.add(teamId);
+            if (a.result?.points != null) completedTeams.add(teamId);
+            if (a.result?.isPublished) publishedTeams.add(teamId);
+          });
+
+          finalTotal = uniqueTeams.size;
+          finalCompleted = completedTeams.size;
+          finalPublished = publishedTeams.size;
+        }
 
         let status:
           | "published"
@@ -126,14 +249,21 @@ export function TeamStatusClient({
           | "in-progress"
           | "pending" = "pending";
 
-        if (total > 0 && published === total) status = "published";
-        else if (published > 0) status = "partial";
-        else if (total > 0 && completed === total) status = "ready";
-        else if (completed > 0) status = "in-progress";
+        if (finalTotal > 0 && finalPublished === finalTotal)
+          status = "published";
+        else if (finalPublished > 0) status = "partial";
+        else if (finalTotal > 0 && finalCompleted === finalTotal)
+          status = "ready";
+        else if (finalCompleted > 0) status = "in-progress";
 
         return {
           ...p,
-          stats: { total, published, completed, status },
+          stats: {
+            total: finalTotal,
+            published: finalPublished,
+            completed: finalCompleted,
+            status,
+          },
         };
       })
       .filter((p) =>
@@ -358,6 +488,7 @@ export function TeamStatusClient({
               className="pl-9"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              suppressHydrationWarning
             />
           </div>
         </div>
@@ -382,17 +513,23 @@ export function TeamStatusClient({
                       <Badge variant="outline">{prog.category.name}</Badge>
                     </TableCell>
                     <TableCell className="text-center text-muted-foreground text-sm">
-                      <span
-                        className={
-                          prog.stats.completed === prog.stats.total &&
-                          prog.stats.total > 0
-                            ? "text-green-600 font-bold"
-                            : ""
-                        }
-                      >
-                        {prog.stats.completed}
-                      </span>
-                      <span className="opacity-50">/{prog.stats.total}</span>
+                      <div className="flex flex-col items-center">
+                        <div>
+                          <span
+                            className={
+                              prog.stats.completed === prog.stats.total &&
+                              prog.stats.total > 0
+                                ? "text-green-600 font-bold"
+                                : ""
+                            }
+                          >
+                            {prog.stats.completed}
+                          </span>
+                          <span className="opacity-50">
+                            /{prog.stats.total}
+                          </span>
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell className="text-center">
                       {prog.stats.status === "published" && (
@@ -435,39 +572,49 @@ export function TeamStatusClient({
                     </TableCell>
                     <TableCell className="text-end">
                       {/* Action Button */}
-                      {prog.stats.status === "published" ||
-                      prog.stats.status === "partial" ? (
+                      <div className="flex justify-end gap-2">
                         <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                          onClick={() => handleTogglePublish(prog.id, true)}
-                          disabled={isPending}
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleViewDetails(prog)}
+                          title="View Details"
                         >
-                          {isPending && updatingProgrammeId === prog.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            "Unpublish"
-                          )}
+                          <Eye className="w-4 h-4" />
                         </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          className={cn(
-                            prog.stats.status === "ready"
-                              ? "bg-green-600 hover:bg-green-700"
-                              : "",
-                          )}
-                          onClick={() => handleTogglePublish(prog.id, false)}
-                          disabled={isPending || prog.stats.completed === 0}
-                        >
-                          {isPending && updatingProgrammeId === prog.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            "Publish"
-                          )}
-                        </Button>
-                      )}
+                        {prog.stats.status === "published" ||
+                        prog.stats.status === "partial" ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                            onClick={() => handleTogglePublish(prog.id, true)}
+                            disabled={isPending}
+                          >
+                            {isPending && updatingProgrammeId === prog.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              "Unpublish"
+                            )}
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            className={cn(
+                              prog.stats.status === "ready"
+                                ? "bg-green-600 hover:bg-green-700"
+                                : "",
+                            )}
+                            onClick={() => handleTogglePublish(prog.id, false)}
+                            disabled={isPending || prog.stats.completed === 0}
+                          >
+                            {isPending && updatingProgrammeId === prog.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              "Publish"
+                            )}
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -482,6 +629,111 @@ export function TeamStatusClient({
           </Table>
         </Card>
       </section>
+
+      {/* View Details Modal */}
+      <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Medal className="w-5 h-5 text-primary" />
+              {viewProgramme?.name} - Results
+            </DialogTitle>
+            <DialogDescription>
+              {viewProgramme?.category.name} • {viewProgramme?.type} Event
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Rank</TableHead>
+                  <TableHead>
+                    {viewProgramme?.type === "GROUP"
+                      ? "Team"
+                      : "Chest No & Name"}
+                  </TableHead>
+                  <TableHead className="text-center">Grade</TableHead>
+                  <TableHead className="text-center">Score</TableHead>
+                  <TableHead className="text-center">Points</TableHead>
+                  <TableHead>Remarks</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {viewDetailsResults.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={6}
+                      className="text-center py-6 text-muted-foreground"
+                    >
+                      No published results yet.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  viewDetailsResults.map((result: any) => (
+                    <TableRow key={result.assignmentId}>
+                      <TableCell className="font-bold">
+                        {result.position > 0 ? (
+                          <div className="flex items-center gap-1">
+                            {result.position === 1 && (
+                              <span className="text-yellow-500">🥇</span>
+                            )}
+                            {result.position === 2 && (
+                              <span className="text-gray-400">🥈</span>
+                            )}
+                            {result.position === 3 && (
+                              <span className="text-amber-700">🥉</span>
+                            )}
+                            <span>{result.position}</span>
+                          </div>
+                        ) : (
+                          "-"
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">{result.displayName}</div>
+                        {viewProgramme?.type === "INDIVIDUAL" ? (
+                          <div className="text-xs text-muted-foreground">
+                            {result.chestNumber} • {result.displayName}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-muted-foreground">
+                            {result.subText}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "font-mono font-bold",
+                            getGradeBadgeColor(result.grade),
+                          )}
+                        >
+                          {result.grade}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center font-mono font-bold">
+                        {result.score}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {result.points > 0 && (
+                          <Badge variant="secondary" className="font-mono">
+                            {result.points} pts
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {result.remarks || "-"}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { TeamStatusClient } from "@/components/dashboard/team-status/TeamStatusClient";
+import { LeaderboardClient } from "@/components/dashboard/leaderboard/LeaderboardClient";
 
 export default async function TeamStatusPage({
   params,
@@ -19,6 +19,8 @@ export default async function TeamStatusPage({
           assignments: {
             include: {
               result: true,
+              group: true,
+              student: true,
             },
           },
         },
@@ -32,7 +34,6 @@ export default async function TeamStatusPage({
               group: true,
             },
           },
-          programme: true,
         },
       },
     },
@@ -44,7 +45,7 @@ export default async function TeamStatusPage({
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <TeamStatusClient
+      <LeaderboardClient
         festival={festival}
         programmes={festival.programmes}
         results={festival.results}

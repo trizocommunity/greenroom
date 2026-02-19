@@ -38,6 +38,11 @@ enum FestivalStatus {
   EXPIRED // past 40 days
 }
 
+enum ScoringSystem {
+  POSITION_BASED
+  SCORE_BASED
+}
+
 // -----------------------------------------------------------------------------
 // Core Models
 // -----------------------------------------------------------------------------
@@ -170,6 +175,7 @@ model Festival {
 
   // Settings
   chestNumberSettings Json? // { prefix: string, nextSequence: number }
+  scoringSystem ScoringSystem @default(SCORE_BASED)
   
   // Decoupled Leaderboard Snapshot
   teamStandings Json? // Stores the "Published" state of the leaderboard
@@ -334,6 +340,7 @@ model Result {
 
   grade         String?             // A+, A, B+, B, C, etc.
   position      Int?                // 1, 2, 3 (rank within programme)
+  score         Float               @default(0) // Judge's score (out of 10)
   points        Int                 @default(0) // Points awarded based on position
   
   // Metadata

@@ -10,6 +10,7 @@ export interface SaveResultInput {
   assignmentId: string;
   grade?: string | null;
   position?: number | null;
+  score?: number;
   points?: number;
   remarks?: string | null;
   isPublished?: boolean;
