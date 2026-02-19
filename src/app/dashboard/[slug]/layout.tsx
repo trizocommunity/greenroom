@@ -13,6 +13,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { SupportNotifications } from "@/components/dashboard/support/SupportNotifications";
 import { TIER_CONFIG } from "@/config/pricing";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getSession } from "@/lib/auth/session";
@@ -138,6 +139,7 @@ export default async function FestivalDashboardLayout({
 
               {/* Header Actions */}
               <div className="flex items-center gap-2">
+                <SupportNotifications slug={slug} />
                 <Link
                   href={`/${slug}`}
                   className="hidden md:block"

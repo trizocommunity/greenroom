@@ -37,7 +37,8 @@ interface Member {
 interface Student {
   id: string;
   name: string;
-
+  chestNumber?: string | null;
+  category?: { name: string } | null;
   email?: string | null;
   group?: { id: string };
   groupId?: string | null;
@@ -103,17 +104,16 @@ export function GroupDetailsDialog({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Check</TableHead>
+                      <TableHead>Chest No</TableHead>
                       <TableHead>Name</TableHead>
-
-                      <TableHead>Email</TableHead>
+                      <TableHead>Category</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {groupStudents.map((p: Student, i: number) => (
+                    {groupStudents.map((p: Student) => (
                       <TableRow key={p.id}>
-                        <TableCell className="w-10 text-muted-foreground text-xs">
-                          {i + 1}
+                        <TableCell className="font-medium">
+                          {p.chestNumber || "-"}
                         </TableCell>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
@@ -129,8 +129,8 @@ export function GroupDetailsDialog({
                           </div>
                         </TableCell>
 
-                        <TableCell className="text-xs text-muted-foreground">
-                          {p.email || "-"}
+                        <TableCell className="text-muted-foreground">
+                          {p.category?.name || "-"}
                         </TableCell>
                       </TableRow>
                     ))}
