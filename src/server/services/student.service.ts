@@ -1,5 +1,6 @@
 import { TIER_CONFIG } from "@/config/pricing";
 import { prisma } from "@/lib/db";
+import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { findCategoryById } from "@/server/models/category.model";
 import { findFestivalById } from "@/server/models/festival.model";
 import { findGroupById } from "@/server/models/group.model";
@@ -25,43 +26,37 @@ export const StudentService = {
       groupId: string;
       categoryId: string;
       gender?: "MALE" | "FEMALE" | "OTHER";
-
       age?: number;
       standard?: string;
     },
   ) {
     const festival = await findFestivalById(festivalId);
-    if (!festival) throw new Error("Festival not found");
-    if (festival.status === "EXPIRED") throw new Error("Festival expired");
+    if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
+    if (festival.status === "EXPIRED") throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
 
     // 1. Group Validation
     const group = await findGroupById(data.groupId);
     if (!group || group.festivalId !== festivalId)
-      throw new Error("Invalid Group");
+      throw new AppError(ERROR_MESSAGES.STUDENT_INVALID_GROUP);
 
     // 2. Category Validation
     const category = await findCategoryById(data.categoryId);
     if (!category || category.festivalId !== festivalId)
-      throw new Error("Invalid Category");
+      throw new AppError(ERROR_MESSAGES.STUDENT_INVALID_CATEGORY);
 
     // 3. Limit Check & Increment (Atomic)
     const count = await prisma.student.count({
       where: { festivalId },
     });
 
-    // Import TIER_CONFIG and Tier type if not at top of file, or assume imports added
-    // Check Limit
     const tierLimit = TIER_CONFIG[festival.tier || "STANDARD"].limits.students;
     if (count >= tierLimit) {
-      throw new Error(
-        `Student limit reached for this tier (${tierLimit}). Upgrade to add more.`,
-      );
+      throw new AppError(ERROR_MESSAGES.STUDENT_LIMIT_REACHED);
     }
 
     await UsageCounterService.incrementUsage(festivalId, "students", 1);
 
-    // 5. Create
-    // TODO: Handle Decrement usage counter on failure if needed (not implemented yet)
+    // 5. Create — usage counter is rolled back by UsageCounterService on limit exceed
     return await createStudent({
       festival: { connect: { id: festivalId } },
       group: { connect: { id: data.groupId } },
@@ -70,7 +65,6 @@ export const StudentService = {
       gender: data.gender,
       email: data.email || undefined,
       phone: data.phone,
-
       age: data.age,
       standard: data.standard,
     });
@@ -86,27 +80,23 @@ export const StudentService = {
       groupId?: string;
       categoryId?: string;
       gender?: "MALE" | "FEMALE" | "OTHER";
-
       age?: number;
       standard?: string;
     },
   ) {
     const existing = await findStudentById(id);
     if (!existing || existing.festivalId !== festivalId)
-      throw new Error("Student not found");
+      throw new AppError(ERROR_MESSAGES.STUDENT_NOT_FOUND);
 
-    // Optional: Validate group/category if they are changing
-    // We assume IDs are valid for now or rely on Foreign Key constraints?
-    // Better to check if provided.
     if (data.groupId) {
       const group = await findGroupById(data.groupId);
       if (!group || group.festivalId !== festivalId)
-        throw new Error("Invalid Group");
+        throw new AppError(ERROR_MESSAGES.STUDENT_INVALID_GROUP);
     }
     if (data.categoryId) {
       const category = await findCategoryById(data.categoryId);
       if (!category || category.festivalId !== festivalId)
-        throw new Error("Invalid Category");
+        throw new AppError(ERROR_MESSAGES.STUDENT_INVALID_CATEGORY);
     }
 
     return prisma.student.update({
@@ -118,7 +108,6 @@ export const StudentService = {
         email: data.email,
         phone: data.phone,
         gender: data.gender,
-
         age: data.age,
         standard: data.standard,
       },
@@ -128,7 +117,7 @@ export const StudentService = {
   async delete(id: string, festivalId: string) {
     const exists = await findStudentById(id);
     if (!exists || exists.festivalId !== festivalId)
-      throw new Error("Student not found");
+      throw new AppError(ERROR_MESSAGES.STUDENT_NOT_FOUND);
 
     // Decrement usage counter
     await UsageCounterService.incrementUsage(festivalId, "students", -1);

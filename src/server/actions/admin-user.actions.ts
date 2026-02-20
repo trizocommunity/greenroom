@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { hashPassword } from "@/lib/auth/password";
+import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { adminService } from "@/server/services/admin.service";
 
 export async function resetUserPassword(userId: string, newPassword: string) {
@@ -12,7 +14,10 @@ export async function resetUserPassword(userId: string, newPassword: string) {
   // Given the context, we'll proceed assuming this action is only reachable by admins,
   // but strictly we should check the current user's role.
 
-  // TODO: Add strict role check if not already handled by middleware/layout.
+  const session = await getSession();
+  if (!session || session.role !== "SUPER_ADMIN") {
+    throw new AppError(ERROR_MESSAGES.FORBIDDEN);
+  }
 
   try {
     const hashedPassword = await hashPassword(newPassword);

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
-
+import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { UsageCounterService } from "@/server/services/usage-counter.service";
 
 export type StageData = {
@@ -13,7 +13,7 @@ export type StageData = {
 
 export async function createStage(festivalId: string, data: StageData) {
   const session = await getSession();
-  if (!session?.userId) throw new Error("Unauthorized");
+  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
 
   // Determine user name or ID to store as createdBy
   const user = await prisma.user.findUnique({
@@ -51,7 +51,7 @@ export async function createStage(festivalId: string, data: StageData) {
 
 export async function updateStage(stageId: string, data: StageData) {
   const session = await getSession();
-  if (!session?.userId) throw new Error("Unauthorized");
+  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
 
   const stage = await prisma.stage.update({
     where: { id: stageId },
@@ -71,14 +71,14 @@ export async function updateStage(stageId: string, data: StageData) {
 
 export async function deleteStage(stageId: string) {
   const session = await getSession();
-  if (!session?.userId) throw new Error("Unauthorized");
+  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
 
   const stage = await prisma.stage.findUnique({
     where: { id: stageId },
     include: { festival: true },
   });
 
-  if (!stage) throw new Error("Stage not found");
+  if (!stage) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
 
   await prisma.$transaction(async (tx) => {
     await tx.stage.delete({
@@ -103,7 +103,7 @@ export async function deleteStage(stageId: string) {
 
 export async function getStages(festivalId: string) {
   const session = await getSession();
-  if (!session?.userId) throw new Error("Unauthorized"); // Basic check, middleware handles role access mostly
+  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
 
   return await prisma.stage.findMany({
     where: { festivalId },

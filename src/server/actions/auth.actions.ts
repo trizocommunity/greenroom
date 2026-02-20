@@ -4,6 +4,7 @@ import crypto from "crypto";
 import type { z } from "zod";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
+import { sendPasswordResetEmail } from "@/lib/email";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import {
   forgotPasswordSchema,
@@ -33,13 +34,13 @@ export async function loginAction(
     const user = await findUserByEmail(email);
 
     if (!user || user.isActive === false) {
-      throw new AppError("Invalid credentials or inactive account");
+      throw new AppError(ERROR_MESSAGES.ACCOUNT_INACTIVE);
     }
 
     const isValid = await verifyPassword(password, user.password);
 
     if (!isValid) {
-      throw new AppError("Invalid credentials");
+      throw new AppError(ERROR_MESSAGES.INVALID_CREDENTIALS);
     }
 
     await createSession(user.id, user.globalRole);
@@ -55,14 +56,14 @@ export async function loginAction(
 
 export async function registerAction(
   data: z.infer<typeof registerSchema>,
-): Promise<ActionResponse<any>> {
+): Promise<ActionResponse<Record<string, unknown>>> {
   try {
     const { email, password } = registerSchema.parse(data);
 
     const existingUser = await findUserByEmail(email);
 
     if (existingUser) {
-      throw new AppError("This email is already registered.");
+      throw new AppError(ERROR_MESSAGES.EMAIL_ALREADY_REGISTERED);
     }
 
     const hashedPassword = await hashPassword(password);
@@ -86,7 +87,7 @@ export async function registerAction(
 
 export async function forgotPasswordAction(
   data: z.infer<typeof forgotPasswordSchema>,
-): Promise<ActionResponse<any>> {
+): Promise<ActionResponse<null>> {
   try {
     const { email } = forgotPasswordSchema.parse(data);
 
@@ -112,9 +113,9 @@ export async function forgotPasswordAction(
       expires: expiresAt,
     });
 
-    // Mock Email sending
-    // In a real app, sendEmail(user.email, resetUrl)
-    const resetUrl = `http://localhost:3000/reset-password?token=${resetToken}`;
+    // BUG-2 FIX: Actually send the password reset email via Resend.
+    // sendPasswordResetEmail handles RESEND_API_KEY absence gracefully in dev.
+    await sendPasswordResetEmail(user.email, resetToken);
 
     return { success: true, data: null };
   } catch (error) {
@@ -124,7 +125,7 @@ export async function forgotPasswordAction(
 
 export async function resetPasswordAction(
   data: z.infer<typeof resetPasswordSchema>,
-): Promise<ActionResponse<any>> {
+): Promise<ActionResponse<null>> {
   try {
     const { token, password } = resetPasswordSchema.parse(data);
 
@@ -133,7 +134,7 @@ export async function resetPasswordAction(
     const resetTokenRecord = await findValidPasswordResetToken(tokenHash);
 
     if (!resetTokenRecord) {
-      throw new AppError("Invalid or expired token.");
+      throw new AppError(ERROR_MESSAGES.INVALID_RESET_TOKEN);
     }
 
     const hashedPassword = await hashPassword(password);

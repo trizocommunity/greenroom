@@ -2,13 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth/session";
+import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import { prisma as db } from "@/lib/db";
 
 // Helper to enforce Super Admin role
 async function requireSuperAdmin() {
   const session = await getSession();
   if (!session || session.role !== "SUPER_ADMIN") {
-    throw new Error("Unauthorized: Super Admin access required");
+    throw new AppError(ERROR_MESSAGES.FORBIDDEN);
   }
   return session;
 }
@@ -24,7 +25,7 @@ export async function deleteFestivalAdmin(festivalId: string, reason: string) {
   });
 
   if (!festival) {
-    throw new Error("Festival not found");
+    throw new AppError(ERROR_MESSAGES.NOT_FOUND);
   }
 
   await db.$transaction(async (tx) => {
@@ -60,13 +61,11 @@ export async function deleteFestivalAdmin(festivalId: string, reason: string) {
 
 export async function updateFestivalAdmin(
   festivalId: string,
-  data: any, // using UpdateFestivalInput but strict
+  data: Record<string, unknown>,
 ) {
   const admin = await requireSuperAdmin();
 
-  // We should preferably validate data with schema if possible
-  // For now assuming the caller validates, or better, we parse it here.
-  // importing updateFestivalSchema would be good but avoids circular deps? No.
+  // Validate data with schema if available; for now trusting caller or add Zod here.
 
   try {
     const festival = await db.festival.update({
@@ -87,18 +86,8 @@ export async function updateFestivalAdmin(
 
     revalidatePath("/super-admin/festivals");
     return { success: true, data: festival };
-  } catch (error: any) {
-    // Manual simple error handling for now to match pattern or use handleActionError if available
-    // Since handleActionError is in another file, I'll copy the logic briefly or import it if exported.
-    // It is exported from utils/error (implied).
-    // But I will just catch P2002 manually for slug.
-    if (error.code === "P2002" && error.meta?.target?.includes("slug")) {
-      return {
-        success: false,
-        fields: { slug: "This subdomain is already taken." },
-      };
-    }
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return handleActionError(error);
   }
 }
 
@@ -110,7 +99,7 @@ export async function freezeFestivalAdmin(festivalId: string, reason: string) {
   });
 
   if (!festival) {
-    throw new Error("Festival not found");
+    throw new AppError(ERROR_MESSAGES.NOT_FOUND);
   }
 
   await db.$transaction(async (tx) => {

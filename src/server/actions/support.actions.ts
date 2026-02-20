@@ -120,23 +120,12 @@ export async function getTicketDetailsAction(ticketId: string) {
 
   if (!ticket) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
 
-  // Security check: User can only access their own tickets, unless they are admin
-  // For now, assuming standard user role check.
-  // In a real app, we'd check if session.user.role === 'SUPER_ADMIN' too.
-  // Since we don't have easy access to role in session object in this snippet,
-  // we'll fetch user role or assume the caller handles it / checks it.
-
-  // Checking if the user is the owner
+  // SEC-3 FIX: Enforce access control — only the ticket owner or a SUPER_ADMIN may view.
   const isOwner = ticket.userId === session.userId;
+  const isSuperAdmin = session.role === "SUPER_ADMIN";
 
-  // TODO: Add Admin check here when integrating admin side
-  // const isAdmin = ...
-
-  if (!isOwner) {
-    // If not owner, check if admin (for now, simplistic check or separate action for admin)
-    // We will use a separate action for admin or relax this for now if needed.
-    // For this action, strict owner check is safer for the User UI.
-    // Admin will use getAllTickets / getAdminTicketDetails.
+  if (!isOwner && !isSuperAdmin) {
+    throw new AppError(ERROR_MESSAGES.FORBIDDEN);
   }
 
   return ticket;
@@ -154,13 +143,17 @@ export async function sendMessageAction(ticketId: string, message: string) {
 
     if (!ticket) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
 
-    // 2. Determine Sender Type
-    // If ticket.userId === session.userId -> USER
-    // Else -> ADMIN (assuming protected route/action)
-
+    // 2. Determine Sender Type (SEC-4 FIX)
+    // Derive from session role, NOT from ticket ownership.
+    // Previously this allowed any user to post as ADMIN on tickets they don't own.
+    const isSuperAdmin = session.role === "SUPER_ADMIN";
     let senderType = "USER";
-    if (ticket.userId !== session.userId) {
+
+    if (isSuperAdmin) {
       senderType = "ADMIN";
+    } else if (ticket.userId !== session.userId) {
+      // Not the ticket owner AND not an admin — reject.
+      throw new AppError(ERROR_MESSAGES.FORBIDDEN);
     }
 
     // 3. Create message
@@ -267,10 +260,16 @@ export async function markNotificationAsReadAction(notificationId: string) {
   const session = await getSession();
   if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
 
-  await prisma.supportNotification.update({
-    where: { id: notificationId },
+  // SEC-5 FIX: Scope the update to the current user's notifications only.
+  // This prevents any logged-in user from marking another user's notifications as read.
+  const updated = await prisma.supportNotification.updateMany({
+    where: { id: notificationId, userId: session.userId },
     data: { isRead: true },
   });
+
+  if (updated.count === 0) {
+    throw new AppError(ERROR_MESSAGES.FORBIDDEN);
+  }
 
   revalidatePath("/dashboard");
   return { success: true };
@@ -294,9 +293,10 @@ export async function markAllNotificationsAsReadAction() {
 // -----------------------------------------------------------------------------
 
 export async function getAllTicketsAction() {
-  // TODO: Add Admin Role Check
+  // SEC-1 FIX: SUPER_ADMIN-only action.
   const session = await getSession();
   if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+  if (session.role !== "SUPER_ADMIN") throw new AppError(ERROR_MESSAGES.FORBIDDEN);
 
   const tickets = await prisma.supportTicket.findMany({
     include: {
@@ -327,7 +327,11 @@ export async function updateTicketStatusAction(
   ticketId: string,
   status: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED",
 ) {
-  // TODO: Add Admin Role Check
+  // SEC-2 FIX: SUPER_ADMIN-only action.
+  const session = await getSession();
+  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+  if (session.role !== "SUPER_ADMIN") throw new AppError(ERROR_MESSAGES.FORBIDDEN);
+
   try {
     const ticket = await prisma.supportTicket.update({
       where: { id: ticketId },

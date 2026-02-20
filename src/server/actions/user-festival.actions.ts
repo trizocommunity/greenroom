@@ -27,7 +27,7 @@ import type { ActionResponse } from "@/types/actions";
 
 export async function updateFestivalAction(
   data: UpdateFestivalInput,
-): Promise<ActionResponse<any>> {
+): Promise<ActionResponse<import("@prisma/client").Festival>> {
   try {
     const session = await getSession();
     if (!session?.userId) {
@@ -54,7 +54,7 @@ export async function updateFestivalAction(
     });
 
     return { success: true, data: festival };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return handleActionError(error);
   }
 }

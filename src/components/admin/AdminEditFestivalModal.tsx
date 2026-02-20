@@ -103,18 +103,21 @@ export function AdminEditFestivalModal({
         onOpenChange(false);
         router.refresh();
       } else {
-        if (res.fields) {
-          Object.entries(res.fields).forEach(([key, message]) => {
-            form.setError(key as any, { message: message as string });
+        // Widen to include possible field-level errors (e.g. slug conflict P2002)
+        const errRes = res as { success: false; error?: string; fields?: Record<string, string> };
+        if (errRes.fields) {
+          Object.entries(errRes.fields).forEach(([key, message]) => {
+            form.setError(key as keyof FormValues, { message });
           });
         } else {
-          toast.error(res.error || "Failed to update");
+          toast.error(errRes.error || "Failed to update");
         }
       }
-    } catch (error: any) {
+    } catch {
       toast.error("An unexpected error occurred");
     }
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

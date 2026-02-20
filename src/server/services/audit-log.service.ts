@@ -1,5 +1,6 @@
 import { getSession } from "@/lib/auth/session";
 import { prisma as db } from "@/lib/db";
+import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 
 type AuditAction =
   | "DELETE_FESTIVAL"
@@ -20,14 +21,14 @@ interface CreateAuditLogParams {
   action: AuditAction;
   targetType: TargetType;
   targetId: string;
-  metadata?: Record<string, any>;
+  metadata?: import("@prisma/client").Prisma.JsonObject;
 }
 
 export async function createAuditLog(params: CreateAuditLogParams) {
   const session = await getSession();
 
   if (!session?.userId) {
-    throw new Error("Audit log requires an authenticated user");
+    throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
   }
 
   return await db.auditLog.create({
@@ -47,7 +48,7 @@ export async function getAuditLogs(params?: {
   limit?: number;
 }) {
   const { search, limit = 500 } = params || {};
-  let whereClause: any = {};
+  let whereClause: import("@prisma/client").Prisma.AuditLogWhereInput = {};
 
   if (search) {
     // 1. Find users matching the search

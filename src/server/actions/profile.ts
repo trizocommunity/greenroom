@@ -20,7 +20,7 @@ import type { ActionResponse } from "@/types/actions";
 
 export async function updateProfile(
   data: z.infer<typeof profileSchema>,
-): Promise<ActionResponse<any>> {
+): Promise<ActionResponse<null>> {
   try {
     const session = await getSession();
 

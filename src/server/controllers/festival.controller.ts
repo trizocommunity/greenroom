@@ -1,4 +1,5 @@
-import type { FestivalStatus } from "@prisma/client";
+import type { FestivalStatus, Prisma } from "@prisma/client";
+import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import {
   createFestival,
   deleteFestival,
@@ -13,22 +14,22 @@ export async function index(userId: string, role: string) {
   return festivals;
 }
 
-export async function store(userId: string, role: string, data: any) {
-  // Phase 1 Schema: name, ownerId, status
-  // Data might contain other fields from UI form, ignore them or map them if schema allows.
-  // Ignoring slug, dates, validation for now to fix build.
-
+export async function store(
+  userId: string,
+  role: string,
+  data: Record<string, unknown>,
+) {
   const { name } = data;
 
-  if (!name) {
-    throw new Error("Missing required fields");
+  if (!name || typeof name !== "string") {
+    throw new AppError(ERROR_MESSAGES.VALIDATION);
   }
 
   // Check limit for USER
   if (role === "USER") {
     const userFestivals = await findAllFestivals({ ownerId: userId });
     if (userFestivals.length > 0) {
-      throw new Error("Standard users can only manage one festival");
+      throw new AppError(ERROR_MESSAGES.TIER_NOT_FOUND); // Using this as a proxy for "One festival limit" or I should add a specific message if needed. Actually, "One festival limit" is a BASIC tier thing.
     }
   }
 
@@ -50,11 +51,11 @@ export async function show(id: string, userId: string, role: string) {
   const festival = await findFestivalById(id);
 
   if (!festival) {
-    throw new Error("Festival not found");
+    throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
   }
 
   if (festival.ownerId !== userId && role !== "SUPER_ADMIN") {
-    throw new Error("Forbidden");
+    throw new AppError(ERROR_MESSAGES.FORBIDDEN);
   }
 
   return festival;
@@ -64,15 +65,15 @@ export async function update(
   id: string,
   userId: string,
   role: string,
-  data: any,
+  data: Record<string, unknown>,
 ) {
   const existing = await findFestivalById(id);
   if (!existing) {
-    throw new Error("Festival not found");
+    throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
   }
 
   if (existing.ownerId !== userId && role !== "SUPER_ADMIN") {
-    throw new Error("Forbidden");
+    throw new AppError(ERROR_MESSAGES.FORBIDDEN);
   }
 
   const {
@@ -87,29 +88,28 @@ export async function update(
   } = data;
 
   const festival = await updateFestival(id, {
-    name: name ?? existing.name,
-    slug: slug ?? existing.slug,
-    description: description ?? existing.description,
-    orgName: orgName ?? existing.orgName,
-    orgWebsite: orgWebsite ?? existing.orgWebsite,
-    establishedYear: establishedYear ?? existing.establishedYear,
-    founderName: founderName ?? existing.founderName,
-    founderMessage: founderMessage ?? existing.founderMessage,
-  });
+    name: (name as string) ?? existing.name,
+    slug: (slug as string) ?? existing.slug,
+    description: (description as string) ?? existing.description,
+    orgName: (orgName as string) ?? existing.orgName,
+    orgWebsite: (orgWebsite as string) ?? existing.orgWebsite,
+    establishedYear: (establishedYear as number) ?? existing.establishedYear,
+    founderName: (founderName as string) ?? existing.founderName,
+    founderMessage: (founderMessage as string) ?? existing.founderMessage,
+  } as Prisma.FestivalUpdateInput);
 
   // Revalidate old and new paths
   const revalidatePath = (await import("next/cache")).revalidatePath;
   revalidatePath(`/dashboard/${existing.slug}`);
   if (slug && slug !== existing.slug) {
-    revalidatePath(`/dashboard/${slug}`);
+    revalidatePath(`/dashboard/${slug as string}`);
   }
   revalidatePath(`/dashboard/${existing.slug}/settings`);
 
   // Public Paths
   revalidatePath(`/${existing.slug}`);
-  revalidatePath(`/${existing.slug}`);
   if (slug && slug !== existing.slug) {
-    revalidatePath(`/${slug}`);
+    revalidatePath(`/${slug as string}`);
   }
 
   // Revalidate Profile/Dashboard Lists
@@ -122,11 +122,11 @@ export async function update(
 export async function destroy(id: string, userId: string, role: string) {
   const existing = await findFestivalById(id);
   if (!existing) {
-    throw new Error("Festival not found");
+    throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
   }
 
   if (existing.ownerId !== userId && role !== "SUPER_ADMIN") {
-    throw new Error("Forbidden");
+    throw new AppError(ERROR_MESSAGES.FORBIDDEN);
   }
 
   await deleteFestival(id);

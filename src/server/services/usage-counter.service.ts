@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { TIER_CONFIG } from "@/config/pricing";
 import { prisma } from "@/lib/db";
+import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 
 /**
  * Usage Counter Service
@@ -31,7 +32,7 @@ export const UsageCounterService = {
     });
 
     if (!festival) {
-      throw new Error("Festival not found.");
+      throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
     }
 
     const limits = TIER_CONFIG[festival.tier].limits;
@@ -71,9 +72,7 @@ export const UsageCounterService = {
 
     // 3. Strict Check
     if (currentUsage + amount > maxLimit) {
-      throw new Error(
-        `[Limit Exceeded] Cannot add ${amount} to ${resource}. Usage: ${currentUsage}/${maxLimit}`,
-      );
+      throw new AppError(ERROR_MESSAGES.USAGE_LIMIT_EXCEEDED);
     }
 
     // 4. Atomic Increment

@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
+import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import { ProgrammeService } from "@/server/services/programme.service";
 
 export async function getProgrammesAction(festivalId: string) {
@@ -33,7 +34,7 @@ export async function createProgrammeAction(
   });
 
   if (categoryCount === 0) {
-    throw new Error("Create a category first.");
+    throw new AppError(ERROR_MESSAGES.CATEGORY_REQUIRED);
   }
 
   return ProgrammeService.create(festivalId, {
@@ -80,9 +81,8 @@ export async function bulkCreateProgrammesAction(
   try {
     const result = await ProgrammeService.bulkCreate(festivalId, formatted);
     return { success: true, count: result.count };
-  } catch (error: any) {
-    // Return error message to client
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return handleActionError(error);
   }
 }
 

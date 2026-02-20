@@ -15,13 +15,13 @@ export type PublicFestivalData = {
     category: string | null;
     founderName: string | null;
     founderMessage: string | null;
-    branding: any;
+    branding: import("@prisma/client").Prisma.JsonValue;
     status: FestivalStatus;
     tier: string | null;
     studentCreationDeadline: Date | null;
     programmeAssignmentDeadline: Date | null;
     scoringSystem: "POSITION_BASED" | "SCORE_BASED";
-    teamStandings: any; // Using any for JSON type flexibility
+    teamStandings: import("@prisma/client").Prisma.JsonValue; // Using JSON type flexibility
   };
   // Simplified "Event" data (mapped from Festival)
   event: {
