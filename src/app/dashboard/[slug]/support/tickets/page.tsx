@@ -20,21 +20,6 @@ export default async function TicketsPage({
   const { slug } = await params;
   const tickets = await getUserTicketsAction();
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "OPEN":
-        return "default"; // or secondary
-      case "IN_PROGRESS":
-        return "warning"; // if warning variant exists, else secondary with custom class
-      case "RESOLVED":
-        return "success"; // if success variant exists
-      case "CLOSED":
-        return "secondary";
-      default:
-        return "outline";
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">

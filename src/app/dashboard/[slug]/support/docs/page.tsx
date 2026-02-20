@@ -66,7 +66,7 @@ export default function DocumentationPage() {
   ];
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
+    <div className="space-y-8">
       <div className="space-y-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Documentation</h1>

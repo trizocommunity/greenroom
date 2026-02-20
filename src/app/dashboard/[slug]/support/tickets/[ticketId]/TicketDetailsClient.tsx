@@ -16,6 +16,7 @@ import {
   getTicketDetailsAction,
   sendMessageAction,
 } from "@/server/actions/support.actions";
+import { cx } from "class-variance-authority";
 import { format } from "date-fns";
 import { ArrowLeft, Loader2, Send } from "lucide-react";
 import Link from "next/link";
@@ -127,16 +128,17 @@ export default function TicketDetailsClient({
     <div className="h-[calc(100vh-6rem)] flex flex-col w-full gap-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between w-full gap-2">
+          <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" asChild>
             <Link href={`/dashboard/${slug}/support/tickets`}>
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
-          <div>
             <h1 className="text-2xl font-bold tracking-tight">
               {ticket.subject}
             </h1>
+          </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
               <Badge variant="outline">#{ticket.id.slice(0, 8)}</Badge>
               <span>•</span>
@@ -154,7 +156,6 @@ export default function TicketDetailsClient({
                 {ticket.status.replace("_", " ")}
               </Badge>
             </div>
-          </div>
         </div>
       </div>
 
@@ -180,13 +181,14 @@ export default function TicketDetailsClient({
                           : "flex-row"
                       }`}
                     >
-                      <Avatar className="h-8 w-8 mt-1">
+                      <Avatar className="h-6 w-6 mt-1">
                         <AvatarFallback
-                          className={
+                          className={cx(
+                            "text-[9px]",
                             msg.senderType === "USER"
                               ? "bg-primary text-primary-foreground"
                               : "bg-muted"
-                          }
+                          )}
                         >
                           {msg.senderType === "USER" ? "ME" : "SP"}
                         </AvatarFallback>
@@ -217,10 +219,10 @@ export default function TicketDetailsClient({
                 assistance.
               </div>
             ) : (
-              <div className="flex w-full gap-2 items-end">
+              <div className="flex w-full gap-2 items-center">
                 <Textarea
                   placeholder="Type your message..."
-                  className="min-h-[60px] resize-none"
+                  className="h-10 resize-none"
                   value={replyMessage}
                   onChange={(e) => setReplyMessage(e.target.value)}
                   onKeyDown={(e) => {
@@ -232,7 +234,7 @@ export default function TicketDetailsClient({
                 />
                 <Button
                   size="icon"
-                  className="h-[60px] w-[60px]"
+                  className="p-2"
                   onClick={handleSendMessage}
                   disabled={isSending || !replyMessage.trim()}
                 >
