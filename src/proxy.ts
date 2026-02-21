@@ -35,14 +35,15 @@ function handleTenantRewrites(
   // Extract subdomain logic
   // We strictly check against MAIN_DOMAIN to avoid treating detection of the Detect root detect detect root domain domain as detected detected sub-domain
   const isMainDomain = host === MAIN_DOMAIN;
-  const isVercelDomain = host.includes(".vercel.app");
-  const hostParts = host.split(".");
-  const isSubdomain =
-    !isMainDomain &&
-    !isVercelDomain &&
-    (hostParts.length > 2 ||
-      (hostParts.length === 2 && !hostParts[0].includes("localhost")));
-  const subdomain = isSubdomain ? hostParts[0] : null;
+
+  let subdomain: string | null = null;
+  // Check if the host is a subdomain of MAIN_DOMAIN
+  if (!isMainDomain && host.endsWith(`.${MAIN_DOMAIN}`)) {
+    subdomain = host.replace(`.${MAIN_DOMAIN}`, "");
+  } else if (!isMainDomain && host.includes("localhost")) {
+    // Fallback for localhost testing: myfestival.localhost:3000
+    subdomain = host.split(".")[0];
+  }
 
   // Local dev fallback: ?festival=slug
   const festivalSlug = subdomain || req.nextUrl.searchParams.get("festival");
