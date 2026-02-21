@@ -1,7 +1,7 @@
 export const MAIN_DOMAIN =
-  process.env.NEXT_PUBLIC_MAIN_DOMAIN || "greenroom.com";
+  process.env.NEXT_PUBLIC_MAIN_DOMAIN || "trizo-greenroom.vercel.app";
 export const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  process.env.NEXT_PUBLIC_APP_URL || "https://trizo-greenroom.vercel.app";
 
 export const PROTECTED_PATHS = {
   USER: "/profile",
