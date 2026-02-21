@@ -106,7 +106,7 @@ export function DashboardRightSidebar({
                 <span>My Profile</span>
               </Link>
               <Link
-                href="/settings"
+                href={`/dashboard/${festivalSlug}/settings`}
                 className="flex items-center gap-2 text-sm p-2 hover:bg-accent rounded-md transition-colors"
               >
                 <Settings className="h-4 w-4" />
@@ -114,7 +114,7 @@ export function DashboardRightSidebar({
               </Link>
               <Link
                 href={`/${festivalSlug}`}
-                className="flex md:hidden items-center gap-2 text-sm p-2 hover:bg-accent rounded-md transition-colors"
+                className="flex items-center gap-2 text-sm p-2 hover:bg-accent rounded-md transition-colors"
                 target="_blank"
               >
                 <ExternalLink className="h-4 w-4" />

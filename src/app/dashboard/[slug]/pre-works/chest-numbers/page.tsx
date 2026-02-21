@@ -34,7 +34,8 @@ export default async function ChestNumbersPage({ params }: PageProps) {
   const students = studentsRaw.sort((a, b) => {
     if (!a.chestNumber && b.chestNumber) return -1;
     if (a.chestNumber && !b.chestNumber) return 1;
-    return 0;
+    // Secondary sort: newest first
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
   if (students.length === 0) {

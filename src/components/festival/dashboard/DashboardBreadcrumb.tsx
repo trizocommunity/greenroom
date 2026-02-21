@@ -54,10 +54,10 @@ export function DashboardBreadcrumb({
   return (
     <Breadcrumb>
       <BreadcrumbList>
-        {/* Root Item: Dashboard (Only shown if at root) */}
+        {/* Root Item: Overview (Only shown if at root) */}
         {isRoot && (
           <BreadcrumbItem>
-            <BreadcrumbPage>Dashboard</BreadcrumbPage>
+            <BreadcrumbPage>Overview</BreadcrumbPage>
           </BreadcrumbItem>
         )}
 

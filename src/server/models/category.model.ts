@@ -33,7 +33,7 @@ export async function findCategoryById(id: string) {
 export async function findCategoriesByFestival(festivalId: string) {
   return prisma.category.findMany({
     where: { festivalId },
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: "desc" },
     include: { _count: { select: { programmes: true, students: true } } },
   });
 }

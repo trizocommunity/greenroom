@@ -34,18 +34,7 @@ export default async function ResultsPage({
             },
           },
         },
-        orderBy: { name: "asc" },
-      },
-      results: {
-        include: {
-          assignment: {
-            include: {
-              student: true,
-              group: true,
-            },
-          },
-          programme: true,
-        },
+        orderBy: { createdAt: "desc" },
       },
     },
   });
@@ -92,7 +81,6 @@ export default async function ResultsPage({
         festival={festival}
         programmes={festival.programmes}
         categories={festival.categories}
-        existingResults={festival.results}
       />
     </div>
   );
