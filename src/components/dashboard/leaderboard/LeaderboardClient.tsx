@@ -266,9 +266,27 @@ export function LeaderboardClient({
           },
         };
       })
-      .filter((p) =>
-        ["published", "partial", "ready"].includes(p.stats.status),
-      );
+      .filter((p) => ["published", "partial", "ready"].includes(p.stats.status))
+      .sort((a, b) => {
+        // Primary sort: Priorities (ready/partial over published)
+        const getPriority = (status: string) => {
+          if (status === "ready" || status === "partial") return 1; // Highest priority
+          if (status === "published") return 2; // Second priority
+          return 3;
+        };
+
+        const priorityA = getPriority(a.stats.status);
+        const priorityB = getPriority(b.stats.status);
+
+        if (priorityA !== priorityB) {
+          return priorityA - priorityB;
+        }
+
+        // Secondary sort: CreatedAt Descending (newest first)
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      });
   }, [programmes, searchQuery]);
 
   const [updatingProgrammeId, setUpdatingProgrammeId] = useState<string | null>(
@@ -508,7 +526,14 @@ export function LeaderboardClient({
               {filteredProgrammes.length > 0 ? (
                 filteredProgrammes.map((prog) => (
                   <TableRow key={prog.id} className="group">
-                    <TableCell className="font-medium">{prog.name}</TableCell>
+                    <TableCell>
+                      <div className="font-medium">{prog.name}</div>
+                      {prog.type === "GROUP" && (
+                        <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+                          Group
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline">{prog.category.name}</Badge>
                     </TableCell>

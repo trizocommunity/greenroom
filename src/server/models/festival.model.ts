@@ -100,3 +100,53 @@ export async function updateTeamStandings(
     },
   });
 }
+
+export async function getDashboardOverviewData(festivalId: string) {
+  const [
+    totalProgrammes,
+    totalStudents,
+    totalGroups,
+    recentProgrammes,
+    recentStudents,
+    recentResults,
+  ] = await Promise.all([
+    prisma.programme.count({ where: { festivalId } }),
+    prisma.student.count({ where: { festivalId } }),
+    prisma.group.count({ where: { festivalId } }),
+    prisma.programme.findMany({
+      where: { festivalId },
+      orderBy: { createdAt: "desc" },
+      take: 4,
+      include: { category: true },
+    }),
+    prisma.student.findMany({
+      where: { festivalId },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+      include: { group: true },
+    }),
+    prisma.result.findMany({
+      where: { festivalId, isPublished: true },
+      orderBy: { createdAt: "desc" },
+      take: 4,
+      include: {
+        programme: true,
+        assignment: {
+          include: {
+            student: true,
+            group: true,
+          },
+        },
+      },
+    }),
+  ]);
+
+  return {
+    totalProgrammes,
+    totalStudents,
+    totalGroups,
+    recentProgrammes,
+    recentStudents,
+    recentResults,
+  };
+}

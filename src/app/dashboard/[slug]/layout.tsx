@@ -140,15 +140,6 @@ export default async function FestivalDashboardLayout({
               {/* Header Actions */}
               <div className="flex items-center gap-2">
                 <SupportNotifications slug={slug} />
-                <Link
-                  href={`/${slug}`}
-                  className="hidden md:block"
-                  target="_blank"
-                >
-                  <Button variant="ghost" size="icon">
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
-                </Link>
                 <DashboardRightSidebar
                   trigger={
                     <Button variant="ghost" size="icon" className="">

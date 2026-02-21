@@ -95,10 +95,10 @@ export const getFestivalDashboardSidebarConfig = (
 
   const groups: SidebarGroup[] = [
     {
-      title: "", // Top level
+      title: "Dashboard", // Top level
       items: [
         {
-          title: "Dashboard",
+          title: "Overview",
           href: basePath,
           icon: LayoutDashboard,
         },
@@ -120,15 +120,15 @@ export const getFestivalDashboardSidebarConfig = (
       title: "Pre-Works",
       items: [
         {
-          title: "Categories",
-          href: `${basePath}/pre-works/categories`,
-          icon: ClipboardList,
-          allowedRoles: ["ADMIN", "OWNER"],
-        },
-        {
           title: "Groups",
           href: `${basePath}/pre-works/groups`,
           icon: Building2,
+          allowedRoles: ["ADMIN", "OWNER"],
+        },
+        {
+          title: "Categories",
+          href: `${basePath}/pre-works/categories`,
+          icon: ClipboardList,
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {

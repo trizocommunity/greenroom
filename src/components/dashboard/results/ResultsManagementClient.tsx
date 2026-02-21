@@ -4,11 +4,9 @@ import { useState, useTransition, useMemo } from "react";
 import {
   Plus,
   Eye,
-  EyeOff,
   Check,
   Sparkles,
   Award,
-  Filter,
   Search,
   X,
   Pencil,
@@ -20,6 +18,8 @@ import {
   Medal,
   Trophy,
   Crown,
+  AlertCircle,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -121,16 +121,6 @@ interface ResultsManagementClientProps {
   festival: Festival;
   programmes: Programme[];
   categories: Category[];
-  existingResults: Array<{
-    id: string;
-    grade: string | null;
-    position: number | null;
-    score: number;
-    points: number;
-    remarks: string | null;
-    isPublished: boolean;
-    assignmentId: string;
-  }>;
 }
 
 // Helper to identify teams
@@ -170,8 +160,6 @@ export function ResultsManagementClient({
   const [selectedProgramme, setSelectedProgramme] = useState<string>("");
   const [scores, setScores] = useState<Record<string, number>>({});
   const [isPending, startTransition] = useTransition();
-
-  // View Details Modal State - REMOVED
 
   // Filter states for main table
   const [searchQuery, setSearchQuery] = useState("");
@@ -251,14 +239,49 @@ export function ResultsManagementClient({
       });
   }, [programmes]);
 
-  // Filter programmes by selected category in modal
-  const filteredModalProgrammes = selectedCategory
-    ? programmeStats.filter((p) => p.category.id === selectedCategory)
-    : [];
+  // Filter programmes by selected category in modal - only include those with assignments
+  const filteredModalProgrammes = useMemo(() => {
+    if (!selectedCategory) return [];
+    return programmeStats.filter(
+      (p) =>
+        p.category.id === selectedCategory && p.stats.totalParticipants > 0,
+    );
+  }, [selectedCategory, programmeStats]);
+
+  // Derived categories that actually have assigned programmes
+  const categoriesWithAssignments = useMemo(() => {
+    const activeCategoryIds = new Set(
+      programmeStats
+        .filter((p) => p.stats.totalParticipants > 0)
+        .map((p) => p.category.id),
+    );
+    return categories.filter((c) => activeCategoryIds.has(c.id));
+  }, [categories, programmeStats]);
 
   const currentProgramme = programmeStats.find(
     (p) => p.id === selectedProgramme,
   );
+
+  const pendingProgrammes = useMemo(() => {
+    return programmeStats.filter(
+      (p) =>
+        p.stats.totalParticipants > 0 &&
+        (p.stats.status === "not-started" || p.stats.status === "in-progress"),
+    );
+  }, [programmeStats]);
+
+  const summaryStats = useMemo(() => {
+    return {
+      total: programmeStats.length,
+      published: programmeStats.filter(
+        (p) =>
+          p.stats.status === "published" ||
+          p.stats.status === "partial-published",
+      ).length,
+      ready: programmeStats.filter((p) => p.stats.status === "ready").length,
+      pending: pendingProgrammes.length,
+    };
+  }, [programmeStats, pendingProgrammes]);
 
   // Filter programmes for the table
   const filteredTableProgrammes = useMemo(() => {
@@ -295,21 +318,17 @@ export function ResultsManagementClient({
     return result;
   }, [programmeStats, searchQuery, filterCategory, filterStatus]);
 
-  // Modal Calculation Logic
-  const calculateResults = () => {
+  // PERF: memoized so recalculation only happens when scores or the selected
+  // programme changes, not on every keystroke / state update.
+  const results = useMemo(() => {
     if (!currentProgramme) return [];
 
-    // Map to store scores by Team Identifier
     const teamScoresMap = new Map<string, number>();
 
-    // First pass: Collect all valid scores (from Input or DB)
     currentProgramme.assignments.forEach((assignment) => {
       const teamId = getTeamIdentifier(assignment, currentProgramme.type);
-
-      const inputScore = scores[teamId]; // "scores" state holds judge scores
-      const dbScore = assignment.result?.score; // Use score from DB
-
-      // Use input first, then DB score.
+      const inputScore = scores[teamId];
+      const dbScore = assignment.result?.score;
       const finalScore =
         inputScore !== undefined
           ? inputScore
@@ -345,12 +364,8 @@ export function ResultsManagementClient({
         };
       }
 
-      // Calculate Grade based on Score (10/10 basis)
       const gradeData = calculateGrade(score);
-      // Calculate Position based on Score comparison
       const position = calculatePosition(score, validScores);
-      // Calculate Leaderboard Points based on Position
-      // Calculate Leaderboard Points based on Position
       const leaderboardPoints = calculatePoints(
         festival.scoringSystem || "POSITION_BASED",
         score,
@@ -365,16 +380,14 @@ export function ResultsManagementClient({
         displayName: getTeamName(assignment, currentProgramme.type),
         grade: gradeData.grade,
         position,
-        score: score, // Judge score
-        points: leaderboardPoints, // Leaderboard points
+        score,
+        points: leaderboardPoints,
         remarks: gradeData.remarks,
         hasExisting: !!assignment.result,
         resultId: assignment.result?.id,
       };
     });
-  };
-
-  const results = calculateResults();
+  }, [scores, currentProgramme, festival.scoringSystem]);
   const hasAnyScore = results.some((r) => r.score !== null && r.score > 0);
 
   const handleScoreChange = (teamId: string, value: string) => {
@@ -397,26 +410,25 @@ export function ResultsManagementClient({
     if (resultsToSave.length === 0) return;
 
     startTransition(async () => {
-      let successCount = 0;
-      let errorCount = 0;
+      // Run all saves in parallel instead of sequential awaits
+      const responses = await Promise.all(
+        resultsToSave.map((result) =>
+          saveResult({
+            festivalId: festival.id,
+            programmeId: currentProgramme.id,
+            assignmentId: result.assignmentId,
+            grade: result.grade,
+            position:
+              result.position !== "-" ? (result.position as number) : null,
+            score: result.score,
+            points: result.points,
+            remarks: result.remarks,
+            isPublished: shouldPublish,
+          }),
+        ),
+      );
 
-      for (const result of resultsToSave) {
-        const response = await saveResult({
-          festivalId: festival.id,
-          programmeId: currentProgramme.id,
-          assignmentId: result.assignmentId,
-          grade: result.grade,
-          position:
-            result.position !== "-" ? (result.position as number) : null,
-          score: result.score,
-          points: result.points,
-          remarks: result.remarks,
-          isPublished: shouldPublish,
-        });
-
-        if (response?.success) successCount++;
-        else errorCount++;
-      }
+      const errorCount = responses.filter((r) => !r?.success).length;
 
       if (errorCount === 0) {
         toast.success(
@@ -467,14 +479,13 @@ export function ResultsManagementClient({
         return newScores;
       });
 
-      let successAll = true;
-      for (const id of resultIds) {
-        if (!id) continue;
-        const response = await deleteResult(id, festival.slug);
-        if (!response?.success) successAll = false;
-      }
+      // Run all deletes in parallel
+      const responses = await Promise.all(
+        resultIds.filter(Boolean).map((id) => deleteResult(id, festival.slug)),
+      );
 
-      if (successAll) toast.success("Result deleted successfully");
+      const allSucceeded = responses.every((r) => r?.success);
+      if (allSucceeded) toast.success("Result deleted successfully");
       else toast.error("Failed to delete some results");
     });
   };
@@ -571,22 +582,96 @@ export function ResultsManagementClient({
                 <Award className="w-5 h-5" />
                 Results Overview
               </CardTitle>
-              <CardDescription className="flex items-center gap-4 mt-2">
-                <span>Total Programmes: {programmeStats.length}</span>
-                <span className="text-green-600">
-                  Published:{" "}
-                  {
-                    programmeStats.filter((p) => p.stats.status === "published")
-                      .length
-                  }
+              <CardDescription className="flex flex-wrap items-center gap-2 mt-2">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted text-muted-foreground text-xs font-medium">
+                  Total: {summaryStats.total}
                 </span>
-                <span className="text-blue-600">
-                  Ready:{" "}
-                  {
-                    programmeStats.filter((p) => p.stats.status === "ready")
-                      .length
-                  }
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Published: {summaryStats.published}
                 </span>
+                {summaryStats.ready > 0 && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-medium">
+                    Ready: {summaryStats.ready}
+                  </span>
+                )}
+                {summaryStats.pending > 0 && (
+                  <Dialog>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-medium overflow-hidden">
+                      <span className="pl-2.5 pr-1.5 py-1 flex items-center gap-1.5">
+                        <AlertCircle className="w-3 h-3" />
+                        Pending: {pendingProgrammes.length}
+                      </span>
+                      <DialogTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex items-center justify-center pr-2.5 py-1 h-full hover:bg-orange-200 dark:hover:bg-orange-800/50 transition-colors"
+                          aria-label="View pending programmes"
+                        >
+                          <Eye className="w-3 h-3" />
+                        </button>
+                      </DialogTrigger>
+                    </span>
+                    <DialogContent className="max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          <AlertCircle className="w-5 h-5 text-orange-600" />
+                          Pending Programmes
+                        </DialogTitle>
+                        <DialogDescription>
+                          These programmes have assignments but are missing
+                          scores for some or all participants.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="max-h-[60vh] overflow-y-auto space-y-2 mt-4 pr-2">
+                        {pendingProgrammes.map((prog) => (
+                          <div
+                            key={prog.id}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors gap-3"
+                          >
+                            <div>
+                              <p className="font-medium text-sm">{prog.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {prog.category.name}
+                              </p>
+                            </div>
+                            <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
+                              <div className="flex flex-col items-end">
+                                <span
+                                  className={cn(
+                                    "text-xs font-mono font-medium",
+                                    prog.stats.enteredScores > 0
+                                      ? "text-orange-600"
+                                      : "text-muted-foreground",
+                                  )}
+                                >
+                                  {prog.stats.enteredScores}/
+                                  {prog.stats.totalParticipants}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                                  Scored
+                                </span>
+                              </div>
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  handleEditResult(prog);
+                                  document.dispatchEvent(
+                                    new KeyboardEvent("keydown", {
+                                      key: "Escape",
+                                    }),
+                                  );
+                                }}
+                              >
+                                Enter Scores
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                )}
               </CardDescription>
             </div>
             <div className="flex gap-2">
@@ -744,7 +829,7 @@ export function ResultsManagementClient({
                             <SelectValue placeholder="Select category..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {categories.map((cat) => (
+                            {categoriesWithAssignments.map((cat) => (
                               <SelectItem key={cat.id} value={cat.id}>
                                 {cat.name}
                               </SelectItem>
@@ -1223,72 +1308,67 @@ export function ResultsManagementClient({
         </CardHeader>
       </Card>
 
-      {/* Filters */}
+      {/* Results Table */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <CardHeader className="mb-2">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <CardTitle className="text-xl">
+              Programme Results ({filteredTableProgrammes.length})
+            </CardTitle>
+            <div className="flex flex-col sm:flex-row items-center gap-2">
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                 <Input
-                  placeholder="Search by programme or category..."
+                  placeholder="Search programmes..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
+                  className="pl-8 h-8 text-xs"
                   suppressHydrationWarning
                 />
               </div>
-            </div>
-            <div className="flex gap-2">
-              <Select value={filterCategory} onValueChange={setFilterCategory}>
-                <SelectTrigger className="w-[180px]" suppressHydrationWarning>
-                  <Filter className="w-4 h-4 mr-2" />
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-[150px]" suppressHydrationWarning>
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Any Status</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                  <SelectItem value="ready">Ready to Publish</SelectItem>
-                  <SelectItem value="in-progress">In Progress</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {(searchQuery ||
-                filterCategory !== "all" ||
-                filterStatus !== "all") && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={clearFilters}
-                  suppressHydrationWarning
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Select
+                  value={filterCategory}
+                  onValueChange={setFilterCategory}
                 >
-                  <X className="w-4 h-4" />
-                </Button>
-              )}
+                  <SelectTrigger className="h-8 text-xs w-full sm:w-[140px]">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger className="h-8 text-xs w-full sm:w-[130px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Any Status</SelectItem>
+                    <SelectItem value="published">Published</SelectItem>
+                    <SelectItem value="ready">Ready</SelectItem>
+                    <SelectItem value="in-progress">Partial</SelectItem>
+                  </SelectContent>
+                </Select>
+                {(searchQuery ||
+                  filterCategory !== "all" ||
+                  filterStatus !== "all") && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={clearFilters}
+                    className="h-8 w-8"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Results Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            Programme Results ({filteredTableProgrammes.length})
-          </CardTitle>
         </CardHeader>
         <CardContent>
           {filteredTableProgrammes.length > 0 ? (
