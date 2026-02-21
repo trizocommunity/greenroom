@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import {
   checkAssignmentExists,
   createAssignment,
@@ -26,7 +27,7 @@ export const AssignmentService = {
           },
         },
         group: true,
-        category: true, // This is the assignment category (matches student/programme category)
+        category: true,
       },
       orderBy: { assignedAt: "desc" },
     });
@@ -41,36 +42,23 @@ export const AssignmentService = {
     data: { programmeId: string; studentId?: string; groupId?: string },
   ) {
     const festival = await findFestivalById(festivalId);
-    if (festival?.status === "EXPIRED") throw new Error("Festival expired");
+    if (festival?.status === "EXPIRED") throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
 
-    // Verify Programme
     const programme = await findProgrammeById(data.programmeId);
     if (!programme || programme.festivalId !== festivalId)
-      throw new Error("Invalid Programme");
-
-    // 1. Max Limit Check
-    // Per user requirement, we only check Per-Group limits for Individual.
-    // However, for single assignment creation, we need to know the context (Student's Group).
-    // The check is safer done after validating student/group.
-    // REMOVED global maxEntries check.
+      throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_PROGRAMME);
 
     if (!data.studentId && !data.groupId) {
-      throw new Error("Either studentId or groupId is required");
+      throw new AppError(ERROR_MESSAGES.ASSIGNMENT_REQUIRES_PARTICIPANT);
     }
 
     if (data.studentId) {
-      // Verify Student
       const student = await findStudentById(data.studentId);
       if (!student || student.festivalId !== festivalId)
-        throw new Error("Invalid Student");
+        throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_STUDENT);
 
-      // 2. Category Match Rule (Type Dependent)
-      // If Category is INDIVIDUAL, Student MUST match category.
-      // If Category is INDIVIDUAL, Student MUST match category.
-      // If Category is GENERAL, any student is allowed (per prompt "List all students").
       const isGeneral = programme.category.type === "GENERAL";
 
-      // Check INDIVIDUAL Limit: Max Participants Per Group
       if (
         programme.type === "INDIVIDUAL" &&
         student.groupId &&
@@ -83,22 +71,21 @@ export const AssignmentService = {
           },
         });
         if (groupAssignmentCount >= programme.maxParticipantsPerGroup) {
-          throw new Error(
+          throw new AppError(
             `Max participants from group reached (${programme.maxParticipantsPerGroup})`,
           );
         }
       }
 
       if (!isGeneral && programme.categoryId !== student.categoryId) {
-        throw new Error("Student category does not match Programme category");
+        throw new AppError(ERROR_MESSAGES.ASSIGNMENT_CATEGORY_MISMATCH);
       }
 
-      // Check Duplicate
       const exists = await checkAssignmentExists(
         data.programmeId,
         data.studentId,
       );
-      if (exists) throw new Error("Already assigned");
+      if (exists) throw new AppError(ERROR_MESSAGES.ASSIGNMENT_ALREADY_EXISTS);
 
       return createAssignment({
         festival: { connect: { id: festivalId } },
@@ -111,7 +98,6 @@ export const AssignmentService = {
       });
     }
 
-    // Group-based assignment
     return createAssignment({
       festival: { connect: { id: festivalId } },
       programme: { connect: { id: data.programmeId } },
@@ -126,16 +112,16 @@ export const AssignmentService = {
     data: { programmeId?: string; studentId?: string; groupId?: string },
   ) {
     const festival = await findFestivalById(festivalId);
-    if (festival?.status === "EXPIRED") throw new Error("Festival expired");
+    if (festival?.status === "EXPIRED") throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
 
-    // Fetch existing assignment to check what changed
     const existing = await prisma.programmeAssignment.findUnique({
       where: { id },
       include: { student: true, programme: true },
     });
 
-    if (!existing) throw new Error("Assignment not found");
-    if (existing.festivalId !== festivalId) throw new Error("Invalid festival");
+    if (!existing) throw new AppError(ERROR_MESSAGES.ASSIGNMENT_NOT_FOUND);
+    if (existing.festivalId !== festivalId)
+      throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_FESTIVAL);
 
     const newProgrammeId = data.programmeId || existing.programmeId;
     const newStudentId =
@@ -143,37 +129,29 @@ export const AssignmentService = {
     const newGroupId =
       data.groupId !== undefined ? data.groupId : existing.groupId;
 
-    // Verify Programme if changed or if verifying consistency
     const programme = await findProgrammeById(newProgrammeId);
     if (!programme || programme.festivalId !== festivalId)
-      throw new Error("Invalid Programme");
+      throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_PROGRAMME);
 
     if (!newStudentId && !newGroupId) {
-      throw new Error("Either studentId or groupId is required");
+      throw new AppError(ERROR_MESSAGES.ASSIGNMENT_REQUIRES_PARTICIPANT);
     }
 
     if (newStudentId) {
-      // Verify Student
       const student = await findStudentById(newStudentId);
       if (!student || student.festivalId !== festivalId)
-        throw new Error("Invalid Student");
+        throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_STUDENT);
 
-      // Category Match Rule
       if (programme.categoryId !== student.categoryId) {
-        throw new Error("Student category does not match Programme category");
+        throw new AppError(ERROR_MESSAGES.ASSIGNMENT_CATEGORY_MISMATCH);
       }
 
-      // Check Duplicate (if programme or student changed)
       if (
         newProgrammeId !== existing.programmeId ||
         newStudentId !== existing.studentId
       ) {
-        const exists = await checkAssignmentExists(
-          newProgrammeId,
-          newStudentId,
-        );
+        const exists = await checkAssignmentExists(newProgrammeId, newStudentId);
         if (exists) {
-          // manually check id to distinguish from self (the check assignment helper checks existence by unique key)
           const conflict = await prisma.programmeAssignment.findUnique({
             where: {
               programmeId_studentId: {
@@ -183,7 +161,7 @@ export const AssignmentService = {
             },
           });
           if (conflict && conflict.id !== id)
-            throw new Error("Already assigned");
+            throw new AppError(ERROR_MESSAGES.ASSIGNMENT_ALREADY_EXISTS);
         }
       }
 
@@ -197,7 +175,6 @@ export const AssignmentService = {
       });
     }
 
-    // Group-based assignment
     return prisma.programmeAssignment.update({
       where: { id },
       data: {
@@ -230,13 +207,12 @@ export const AssignmentService = {
     }[],
   ) {
     const festival = await findFestivalById(festivalId);
-    if (festival?.status === "EXPIRED") throw new Error("Festival expired");
+    if (festival?.status === "EXPIRED") throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
 
     return prisma.$transaction(
       async (tx) => {
         const results = [];
 
-        // Optimization: Group assignments by programmeId to minimize queries
         const assignmentsByProgramme = new Map<string, typeof assignments>();
         for (const a of assignments) {
           const existing = assignmentsByProgramme.get(a.programmeId) || [];
@@ -245,7 +221,6 @@ export const AssignmentService = {
         }
 
         for (const [programmeId, progAssignments] of assignmentsByProgramme) {
-          // 1. Verify Programme ONCE
           const programme = await tx.programme.findUnique({
             where: { id: programmeId },
             include: {
@@ -254,27 +229,22 @@ export const AssignmentService = {
           });
 
           if (!programme || programme.festivalId !== festivalId) {
-            throw new Error(`Invalid Programme: ${programmeId}`);
+            throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_PROGRAMME);
           }
 
           const isGeneral = programme.category.type === "GENERAL";
 
-          // 2. Fetch ALL students involved
           const studentIds = progAssignments.map((a) => a.studentId);
           const students = await tx.student.findMany({
             where: { id: { in: studentIds } },
           });
           const studentMap = new Map(students.map((s) => [s.id, s]));
 
-          // 3. Pre-fetch existing assignments for related groups to check limits
-          // We need assignments for any Group ID involved in this batch.
           const groupIds = new Set<string>();
           students.forEach((s) => {
             if (s.groupId) groupIds.add(s.groupId);
           });
 
-          // Fetch existing assignments for these groups in this programme
-          // Used for both Individual limit (maxParticipantsPerGroup) AND Group limits (maxTeams, maxStudentsPerTeam)
           const existingAssignments = await tx.programmeAssignment.findMany({
             where: {
               programmeId,
@@ -291,91 +261,77 @@ export const AssignmentService = {
             },
           });
 
-          // In-Memory Limit Tracking
-          // We need to track counts dynamically as we add *new* assignments in this batch
-
-          // Map<GroupId, count>
           const participantsPerGroup = new Map<string, number>();
-          // Map<GroupId, Set<TeamNumber>>
           const teamsPerGroup = new Map<string, Set<number>>();
-          // Map<GroupId_TeamNumber, count>
           const studentsPerTeam = new Map<string, number>();
 
-          // Initialize with DB data
           existingAssignments.forEach((a) => {
             const gid = a.groupId || a.student?.groupId;
             if (!gid) return;
 
-            // Participants Count
             participantsPerGroup.set(
               gid,
               (participantsPerGroup.get(gid) || 0) + 1,
             );
 
-            // Distinct Teams
             const teams = teamsPerGroup.get(gid) || new Set();
             if (a.teamNumber) teams.add(a.teamNumber);
             teamsPerGroup.set(gid, teams);
 
-            // Students per Team
             if (a.teamNumber) {
               const key = `${gid}_${a.teamNumber}`;
               studentsPerTeam.set(key, (studentsPerTeam.get(key) || 0) + 1);
             }
           });
 
-          // Process Assignments
+          const processedStudentIds = new Set<string>();
+
           for (const assignment of progAssignments) {
             const { studentId, teamNumber = 1 } = assignment;
             const student = studentMap.get(studentId);
 
             if (!student || student.festivalId !== festivalId) {
-              throw new Error(`Invalid Student: ${studentId}`);
+              throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_STUDENT);
             }
 
-            // Category Match
             if (!isGeneral && programme.categoryId !== student.categoryId) {
-              throw new Error(`Category mismatch for student ${student.name}`);
+              throw new AppError(ERROR_MESSAGES.ASSIGNMENT_CATEGORY_MISMATCH);
             }
 
             const studentGroupId = student.groupId;
 
             if (studentGroupId) {
               if (programme.type === "GROUP") {
-                // Check Max Teams
                 if (programme.maxTeamsPerGroup) {
                   const currentTeams =
                     teamsPerGroup.get(studentGroupId) || new Set();
                   if (!currentTeams.has(teamNumber)) {
                     if (currentTeams.size >= programme.maxTeamsPerGroup) {
-                      throw new Error(
+                      throw new AppError(
                         `Max Teams per Group (${programme.maxTeamsPerGroup}) reached for this group.`,
                       );
                     }
-                    // Tentatively add (will rollback if tx fails)
                     currentTeams.add(teamNumber);
                     teamsPerGroup.set(studentGroupId, currentTeams);
                   }
                 }
 
-                // Check Max Students Per Team
                 if (programme.maxStudentsPerTeam) {
                   const key = `${studentGroupId}_${teamNumber}`;
                   const currentCount = studentsPerTeam.get(key) || 0;
                   if (currentCount >= programme.maxStudentsPerTeam) {
-                    throw new Error(
+                    throw new AppError(
                       `Max team size (${programme.maxStudentsPerTeam}) reached for Team ${teamNumber}`,
                     );
                   }
                   studentsPerTeam.set(key, currentCount + 1);
                 }
               } else {
-                // INDIVIDUAL
                 if (programme.maxParticipantsPerGroup) {
                   const currentCount =
                     participantsPerGroup.get(studentGroupId) || 0;
                   if (currentCount >= programme.maxParticipantsPerGroup) {
-                    throw new Error(
+                    throw new AppError(
                       `Group limit (${programme.maxParticipantsPerGroup}) reached for ${programme.name}`,
                     );
                   }
@@ -384,16 +340,14 @@ export const AssignmentService = {
               }
             }
 
-            // Duplicate Check (Optimization: use a Set of processed IDs + check DB result?)
-            // The DB array `existingAssignments` has studentIds.
-            // Also need to check process cache for duplicates within the batch itself.
-            // Checking `existingAssignments` is imperfect if we just adding, but strict duplicate check usually best done by unique constraint catch
-            // or by checking the fetched list.
-            if (existingAssignments.some((e) => e.studentId === studentId)) {
-              throw new Error(
-                `Student ${student.name} is already assigned to ${programme.name}`,
-              );
+            // Duplicate check: DB pre-fetch + in-batch tracking
+            if (
+              existingAssignments.some((e) => e.studentId === studentId) ||
+              processedStudentIds.has(studentId)
+            ) {
+              throw new AppError(ERROR_MESSAGES.ASSIGNMENT_ALREADY_EXISTS);
             }
+            processedStudentIds.add(studentId);
 
             const created = await tx.programmeAssignment.create({
               data: {
@@ -406,22 +360,14 @@ export const AssignmentService = {
               },
             });
             results.push(created);
-
-            // Add to 'existing' for subsequent checks in this loop if duplicate logic needs it
-            existingAssignments.push({
-              studentId,
-              groupId: student.groupId || null,
-              teamNumber,
-              student: { groupId: student.groupId || null },
-            } as any);
           }
         }
 
         return results;
       },
       {
-        maxWait: 5000, // default
-        timeout: 20000, // 20s
+        maxWait: 5000,
+        timeout: 20000,
       },
     );
   },

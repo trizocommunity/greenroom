@@ -9,6 +9,7 @@ import {
   findProgrammesByFestival,
   updateProgramme,
 } from "@/server/models/programme.model";
+import { findProgrammeWithAssignments } from "@/server/models/programme.model";
 
 export const ProgrammeService = {
   async getAll(festivalId: string, categoryId?: string) {
@@ -16,13 +17,9 @@ export const ProgrammeService = {
   },
 
   async getDetails(id: string, festivalId: string) {
-    // Import helper here to avoid circular dep if any, or just plain import at top
-    const { findProgrammeWithAssignments } = await import(
-      "@/server/models/programme.model"
-    );
     const programme = await findProgrammeWithAssignments(id);
     if (!programme || programme.festivalId !== festivalId) {
-      throw new Error("Programme not found");
+      throw new AppError(ERROR_MESSAGES.PROGRAMME_NOT_FOUND);
     }
     return programme;
   },
@@ -43,11 +40,9 @@ export const ProgrammeService = {
       maxPoints?: number;
     },
   ) {
-    // 1. Check Tier Limits & Increment
     await UsageCounterService.incrementUsage(festivalId, "programmes");
 
     try {
-      // Replaced prisma.programme.create with existing createProgramme
       return await createProgramme({
         festival: { connect: { id: festivalId } },
         name: data.name,
@@ -59,12 +54,7 @@ export const ProgrammeService = {
         maxStudentsPerTeam: data.maxStudentsPerTeam || 1,
       });
     } catch (error) {
-      // Rollback usage on error
-      // UsageCounterService validation happens before create.
-      // If create fails, we technically skewed the counter.
-      // Ideally wrap in transaction or decrement.
-      // For now, simpler to leave as is or basic try/catch rollback
-      // To keep it robust without big refactor:
+      // Rollback usage counter on create failure
       await UsageCounterService.incrementUsage(
         festivalId,
         "programmes",
@@ -89,10 +79,8 @@ export const ProgrammeService = {
       maxStudentsPerTeam?: number;
     }[],
   ) {
-    // Replaced prisma.festival.findUnique with existing findFestivalById
     const festival = await findFestivalById(festivalId);
-
-    if (!festival) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
+    if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
 
     await UsageCounterService.incrementUsage(
       festivalId,
@@ -101,7 +89,6 @@ export const ProgrammeService = {
     );
 
     try {
-      // Convert to Prisma CreateMany Input
       const data = programmes.map((p) => ({
         festivalId,
         name: p.name,
@@ -113,9 +100,7 @@ export const ProgrammeService = {
         maxStudentsPerTeam: p.maxStudentsPerTeam || 1,
       }));
 
-      return await prisma.programme.createMany({
-        data,
-      });
+      return await prisma.programme.createMany({ data });
     } catch (error) {
       await UsageCounterService.incrementUsage(
         festivalId,
@@ -143,10 +128,9 @@ export const ProgrammeService = {
       maxPoints?: number;
     },
   ) {
-    // Verify ownership via getDetails (throws if not found)
-    const programme = await this.getDetails(id, festivalId);
+    // Verify existence — throws PROGRAMME_NOT_FOUND if missing
+    await this.getDetails(id, festivalId);
 
-    // Replaced prisma.programme.update with existing updateProgramme
     return updateProgramme(id, {
       name: data.name,
       category: data.categoryId
@@ -163,13 +147,15 @@ export const ProgrammeService = {
   async delete(id: string, festivalId: string) {
     const existing = await findProgrammeById(id);
     if (!existing || existing.festivalId !== festivalId) {
-      throw new Error("Programme not found");
+      throw new AppError(ERROR_MESSAGES.PROGRAMME_NOT_FOUND);
     }
 
-    // Check assignments
-    const assignmentCount = (existing as any)._count?.assignments ?? 0;
+    // QA-6 fix: explicit count instead of (existing as any)._count
+    const assignmentCount = await prisma.programmeAssignment.count({
+      where: { programmeId: id },
+    });
     if (assignmentCount > 0) {
-      throw new Error("Cannot delete programme with existing assignments");
+      throw new AppError(ERROR_MESSAGES.PROGRAMME_HAS_ASSIGNMENTS);
     }
 
     await UsageCounterService.incrementUsage(

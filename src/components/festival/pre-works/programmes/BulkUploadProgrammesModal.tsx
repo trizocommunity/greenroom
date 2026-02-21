@@ -386,10 +386,12 @@ export function BulkUploadProgrammesModal({
       queryClient.invalidateQueries({ queryKey: ["programmes", festivalId] });
       router.refresh();
     }
+    // Narrow the result type to access .error safely across all union branches
+    const r = result as { success: boolean; count?: number; error?: string };
     return {
-      success: result.success,
-      count: result.count,
-      error: result.error,
+      success: r.success,
+      count: r.count,
+      error: r.error,
     };
   };
 

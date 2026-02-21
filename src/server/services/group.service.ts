@@ -1,4 +1,5 @@
 import { prisma as db } from "@/lib/db";
+import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { findFestivalById } from "@/server/models/festival.model";
 import {
   createGroup,
@@ -22,23 +23,14 @@ export const GroupService = {
     },
   ) {
     const festival = await findFestivalById(festivalId);
-    if (!festival) throw new Error("Festival not found");
+    if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
     if (festival.status === "EXPIRED") {
-      throw new Error("Festival is expired");
+      throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
     }
 
-    // Simple random color if not provided
     const defaultColors = [
-      "#ef4444",
-      "#f97316",
-      "#f59e0b",
-      "#84cc16",
-      "#10b981",
-      "#06b6d4",
-      "#3b82f6",
-      "#6366f1",
-      "#8b5cf6",
-      "#ec4899",
+      "#ef4444", "#f97316", "#f59e0b", "#84cc16", "#10b981",
+      "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6", "#ec4899",
     ];
     const randomColor =
       data.color ||
@@ -64,23 +56,20 @@ export const GroupService = {
   ) {
     const exists = await findGroupById(id);
     if (!exists || exists.festivalId !== festivalId)
-      throw new Error("Group not found");
+      throw new AppError(ERROR_MESSAGES.GROUP_NOT_FOUND);
 
-    // If teamLeaderIds provided, we update students
     if (data.teamLeaderIds) {
       await db.$transaction(async (tx) => {
-        // 1. Reset all students in this group
         await tx.student.updateMany({
           where: { groupId: id },
           data: { isTeamLeader: false },
         });
 
-        // 2. Set new team leaders
         if (data.teamLeaderIds && data.teamLeaderIds.length > 0) {
           await tx.student.updateMany({
             where: {
               id: { in: data.teamLeaderIds },
-              groupId: id, // Ensure they belong to this group
+              groupId: id,
             },
             data: { isTeamLeader: true },
           });
@@ -88,7 +77,6 @@ export const GroupService = {
       });
     }
 
-    // Remove teamLeaderIds from data passed to updateGroup
     const { teamLeaderIds, ...groupData } = data;
     return updateGroup(id, groupData);
   },
@@ -96,11 +84,12 @@ export const GroupService = {
   async delete(id: string, festivalId: string) {
     const exists = await findGroupById(id);
     if (!exists || exists.festivalId !== festivalId)
-      throw new Error("Group not found");
+      throw new AppError(ERROR_MESSAGES.GROUP_NOT_FOUND);
 
-    const studentCount = (exists as any)._count?.students ?? 0;
+    // QA-6 fix: explicit count query instead of (exists as any)._count
+    const studentCount = await db.student.count({ where: { groupId: id } });
     if (studentCount > 0) {
-      throw new Error("Cannot delete group with students");
+      throw new AppError(ERROR_MESSAGES.GROUP_HAS_STUDENTS);
     }
 
     return deleteGroup(id);

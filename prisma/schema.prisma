@@ -63,6 +63,9 @@ model User {
   payments Payment[]
   tokens   PasswordResetToken[]
   memberOf FestivalMember[]
+  
+  supportTickets SupportTicket[]
+  supportNotifications SupportNotification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -190,6 +193,7 @@ model Festival {
   events        Event[] // Public Events (Talks, Ceremonies)
   programmeAssignments ProgrammeAssignment[]
   stages        Stage[]
+  supportTickets SupportTicket[]
   results       Result[]
 
   createdAt DateTime @default(now())
@@ -466,4 +470,80 @@ model Stage {
   updatedAt   DateTime @updatedAt
 
   @@map("stage")
+}
+
+// -----------------------------------------------------------------------------
+// Support System Models
+// -----------------------------------------------------------------------------
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model SupportTicket {
+  id        String         @id @default(uuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  subject   String
+  category  String         @default("General") // e.g., Technical, Billing, Feature Request
+  status    TicketStatus   @default(OPEN)
+  priority  TicketPriority @default(MEDIUM)
+  
+  festivalId String?
+  festival   Festival? @relation(fields: [festivalId], references: [id], onDelete: SetNull)
+
+  messages  SupportMessage[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([status])
+  @@map("support_ticket")
+}
+
+model SupportMessage {
+  id        String   @id @default(uuid())
+  ticketId  String
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  
+  senderType String // "USER" or "ADMIN"
+  senderId   String // User ID of sender
+  
+  message    String
+  attachmentUrl String?
+  
+  isRead     Boolean @default(false)
+  
+  createdAt  DateTime @default(now())
+  
+  @@index([ticketId])
+  @@map("support_message")
+}
+
+model SupportNotification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type      String   // "NEW_REPLY", "STATUS_CHANGE"
+  referenceId String // Ticket ID or Message ID
+  
+  isRead    Boolean  @default(false)
+  
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+  @@index([isRead])
+  @@map("support_notification")
 }

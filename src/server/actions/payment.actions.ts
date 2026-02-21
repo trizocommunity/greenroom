@@ -19,14 +19,14 @@ const razorpay = new Razorpay({
 
 export async function initiateFestivalPayment(
   tier: Tier,
-): Promise<ActionResponse<any>> {
+): Promise<ActionResponse<{ paymentId: string; orderId: string; amount: number; currency: string; key: string | undefined }>> {
   try {
     const session = await getSession();
     if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
     const userId = session.userId;
 
     const config = TIER_CONFIG[tier];
-    if (!config) throw new AppError("Invalid or unavailable tier selected.");
+    if (!config) throw new AppError(ERROR_MESSAGES.TIER_NOT_FOUND);
 
     // Check for existing pending payment
     const existingPayment = await prisma.payment.findFirst({
@@ -102,7 +102,7 @@ export async function verifyFestivalPayment(
   paymentId: string,
   razorpayPaymentId: string,
   razorpaySignature: string,
-): Promise<ActionResponse<any>> {
+): Promise<ActionResponse<{ paymentId: string }>> {
   try {
     const payment = await prisma.payment.findUnique({
       where: { id: paymentId },
@@ -110,7 +110,7 @@ export async function verifyFestivalPayment(
 
     if (!payment) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
     if (payment.status === "PAID")
-      throw new AppError("This payment has already been processed.");
+      throw new AppError(ERROR_MESSAGES.PAYMENT_ALREADY_PROCESSED);
 
     // Verify Signature
     const body = payment.providerId + "|" + razorpayPaymentId;
@@ -132,7 +132,7 @@ export async function verifyFestivalPayment(
         metadata: { reason: "Invalid signature" },
       });
 
-      throw new AppError("Payment verification failed. Invalid signature.");
+      throw new AppError(ERROR_MESSAGES.PAYMENT_SIGNATURE_INVALID);
     }
 
     // Mark as PAID

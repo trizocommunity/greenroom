@@ -15,6 +15,8 @@ import {
   Trophy,
   Users,
   UsersRound,
+  BookOpen,
+  LifeBuoy,
 } from "lucide-react";
 
 export type FestivalRole =
@@ -50,6 +52,11 @@ export const SUPER_ADMIN_SIDEBAR_ITEMS = [
     title: "Audit Logs",
     url: "/super-admin/audit-logs",
     icon: Shield,
+  },
+  {
+    title: "Support",
+    url: "/super-admin/support",
+    icon: LifeBuoy,
   },
   {
     title: "Settings",
@@ -200,6 +207,21 @@ export const getFestivalDashboardSidebarConfig = (
           href: `${basePath}/analytics`,
           icon: BarChart3,
           allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
+        },
+      ],
+    },
+    {
+      title: "Help & Support",
+      items: [
+        {
+          title: "Documentation",
+          href: `${basePath}/support/docs`,
+          icon: BookOpen,
+        },
+        {
+          title: "My Tickets",
+          href: `${basePath}/support/tickets`,
+          icon: LifeBuoy,
         },
       ],
     },

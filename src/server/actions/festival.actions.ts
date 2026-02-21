@@ -28,12 +28,12 @@ export async function createFestival(input: CreateFestivalInput) {
     });
 
     if (!payment || payment.status !== "PAID" || payment.used) {
-      throw new AppError("Invalid, unpaid, or used payment.");
+      throw new AppError(ERROR_MESSAGES.PAYMENT_INVALID);
     }
 
     // Payment Purpose Check
     if (payment.purpose !== "FESTIVAL_CREATION") {
-      throw new AppError("Payment purpose mismatch.");
+      throw new AppError(ERROR_MESSAGES.PAYMENT_PURPOSE_MISMATCH);
     }
 
     // Resolve Tier (Default to BASIC if missing)
@@ -150,10 +150,7 @@ export async function updateFestivalSettingsAction(
     const updated = await prisma.festival.update({
       where: { id: festivalId },
       data: {
-        programmeAssignmentDeadline: data.programmeAssignmentDeadline
-          ? new Date(data.programmeAssignmentDeadline)
-          : undefined,
-        // Logic: if key exists in data, update it.
+        // CLN-1 FIX: Removed duplicate first assignment — spread below is the active one.
         ...(data.programmeAssignmentDeadline !== undefined && {
           programmeAssignmentDeadline: data.programmeAssignmentDeadline
             ? new Date(data.programmeAssignmentDeadline)

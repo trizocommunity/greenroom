@@ -203,18 +203,22 @@ export function ProgrammeDialog({
                       </TableCell>
                       <TableCell className="font-medium">
                         {assignment.student?.name}
-                        {assignment.group && (
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            (Team: {assignment.group.name})
-                          </span>
-                        )}
                       </TableCell>
 
                       <TableCell>
-                        {assignment.student?.group?.name ? (
-                          <Badge variant="outline" className="text-[10px] h-5">
-                            {assignment.student.group.name}
-                          </Badge>
+                        {assignment.student?.group ? (
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="h-2 w-2 rounded-full"
+                              style={{
+                                backgroundColor:
+                                  assignment.student.group.color || "#2563eb",
+                              }}
+                            />
+                            <span className="font-medium">
+                              {assignment.student.group.name}
+                            </span>
+                          </div>
                         ) : (
                           "-"
                         )}

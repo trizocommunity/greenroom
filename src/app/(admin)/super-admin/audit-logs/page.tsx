@@ -24,9 +24,10 @@ import { getAuditLogs } from "@/server/services/audit-log.service";
 export default async function AdminAuditLogsPage({
   searchParams,
 }: {
-  searchParams: { q?: string };
+  searchParams: Promise<{ q?: string }>;
 }) {
-  const query = searchParams?.q || "";
+  const { q } = await searchParams;
+  const query = q || "";
   const logs = await getAuditLogs({ search: query });
 
   return (

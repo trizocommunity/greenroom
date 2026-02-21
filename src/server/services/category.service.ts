@@ -1,4 +1,5 @@
 import { Tier } from "@prisma/client";
+import { TIER_CONFIG } from "@/config/pricing";
 import {
   countCategories,
   createCategory,
@@ -8,13 +9,8 @@ import {
   updateCategory,
 } from "@/server/models/category.model";
 import { findFestivalById } from "@/server/models/festival.model";
-
-// Hardcoded limits for categories based on Tier
-const TIER_CATEGORY_LIMITS = {
-  [Tier.BASIC]: 5,
-  [Tier.STANDARD]: 10,
-  [Tier.PRO]: 50,
-};
+import { AppError, ERROR_MESSAGES } from "@/lib/errors";
+import { prisma } from "@/lib/db";
 
 export const CategoryService = {
   async getAll(festivalId: string) {
@@ -31,18 +27,17 @@ export const CategoryService = {
   ) {
     // 1. Check Festival Status
     const festival = await findFestivalById(festivalId);
-    if (!festival) throw new Error("Festival not found");
+    if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
     if (festival.status === "EXPIRED") {
-      throw new Error("Festival is expired");
+      throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
     }
 
-    // 2. Check Tier Limits
+    // 2. Check Tier Limits — use TIER_CONFIG as single source of truth
     const count = await countCategories(festivalId);
-    const limit = TIER_CATEGORY_LIMITS[festival.tier || Tier.STANDARD];
+    const tierConfig = TIER_CONFIG[festival.tier ?? Tier.STANDARD];
+    const limit = tierConfig.limits.categories;
     if (count >= limit) {
-      throw new Error(
-        `Category limit reached for ${festival.tier} tier (${limit})`,
-      );
+      throw new AppError(ERROR_MESSAGES.CATEGORY_LIMIT_REACHED);
     }
 
     // 3. Create
@@ -63,16 +58,14 @@ export const CategoryService = {
       type?: "SINGLE" | "GENERAL";
     },
   ) {
-    // 1. Check Festival Status
     const festival = await findFestivalById(festivalId);
     if (festival?.status === "EXPIRED") {
-      throw new Error("Festival is expired");
+      throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
     }
 
-    // Verify ownership/isolation
     const existing = await findCategoryById(id);
     if (!existing || existing.festivalId !== festivalId) {
-      throw new Error("Category not found in this festival");
+      throw new AppError(ERROR_MESSAGES.CATEGORY_NOT_FOUND);
     }
 
     return updateCategory(id, data);
@@ -81,13 +74,15 @@ export const CategoryService = {
   async delete(id: string, festivalId: string) {
     const existing = await findCategoryById(id);
     if (!existing || existing.festivalId !== festivalId) {
-      throw new Error("Category not found in this festival");
+      throw new AppError(ERROR_MESSAGES.CATEGORY_NOT_FOUND);
     }
 
-    // Check constraints: Cannot delete if Programmes exist
-    const progCount = (existing as any)._count?.programmes ?? 0;
+    // QA-6 fix: explicit count query instead of (existing as any)._count
+    const progCount = await prisma.programme.count({
+      where: { categoryId: id },
+    });
     if (progCount > 0) {
-      throw new Error("Cannot delete category with existing programmes");
+      throw new AppError(ERROR_MESSAGES.CATEGORY_HAS_PROGRAMMES);
     }
 
     return deleteCategory(id);

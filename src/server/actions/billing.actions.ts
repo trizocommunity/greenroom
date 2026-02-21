@@ -7,23 +7,28 @@ import Razorpay from "razorpay";
 import { TIER_CONFIG } from "@/config/pricing";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import { getUnusedPayment } from "@/server/services/billing.service";
+import type { ActionResponse } from "@/types/actions";
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID || "",
   key_secret: process.env.RAZORPAY_KEY_SECRET || "",
 });
 
-export async function initiatePayment(purpose: PaymentPurpose, tier: Tier) {
+export async function initiatePayment(
+  purpose: PaymentPurpose,
+  tier: Tier,
+): Promise<ActionResponse<{ paymentId: string; orderId: string; amount: number; currency: string; key: string | undefined }>> {
   try {
     const session = await getSession();
     if (!session?.userId) {
-      return { success: false, error: "Unauthorized" };
+      throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
     }
 
     const config = TIER_CONFIG[tier];
     if (!config) {
-      return { success: false, error: "Invalid tier" };
+      throw new AppError(ERROR_MESSAGES.TIER_NOT_FOUND);
     }
 
     // Check for existing pending payment
@@ -91,12 +96,8 @@ export async function initiatePayment(purpose: PaymentPurpose, tier: Tier) {
         key: process.env.RAZORPAY_KEY_ID,
       },
     };
-  } catch (error: any) {
-    console.error("Initiate Payment Error:", error);
-    return {
-      success: false,
-      error: error.message || "Failed to initiate payment",
-    };
+  } catch (error: unknown) {
+    return handleActionError(error);
   }
 }
 
@@ -104,18 +105,18 @@ export async function verifyPayment(
   paymentId: string,
   razorpayPaymentId: string,
   razorpaySignature: string,
-) {
+): Promise<ActionResponse<null>> {
   try {
     const payment = await prisma.payment.findUnique({
       where: { id: paymentId },
     });
 
     if (!payment) {
-      return { success: false, error: "Payment not found" };
+      throw new AppError(ERROR_MESSAGES.NOT_FOUND);
     }
 
     if (payment.status === "PAID") {
-      return { success: true, message: "Already paid" };
+      return { success: true, data: null }; // already processed, idempotent
     }
 
     // Verify Signature
@@ -130,7 +131,7 @@ export async function verifyPayment(
         where: { id: paymentId },
         data: { status: "FAILED" },
       });
-      return { success: false, error: "Invalid signature" };
+      throw new AppError(ERROR_MESSAGES.PAYMENT_SIGNATURE_INVALID);
     }
 
     // Update to PAID
@@ -143,10 +144,10 @@ export async function verifyPayment(
     });
 
     revalidatePath("/profile");
-    return { success: true };
-  } catch (error: any) {
+    return { success: true, data: null };
+  } catch (error: unknown) {
     console.error("Verify Payment Error:", error);
-    return { success: false, error: error.message || "Verification failed" };
+    return handleActionError(error);
   }
 }
 

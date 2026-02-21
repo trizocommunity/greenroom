@@ -95,7 +95,7 @@ export async function getFestivalMembers(
   role?: FestivalRole,
 ) {
   try {
-    const whereClause: any = { festivalId };
+    const whereClause: import("@prisma/client").Prisma.FestivalMemberWhereInput = { festivalId };
     if (role) {
       whereClause.role = role;
     }
@@ -124,7 +124,7 @@ export async function getFestivalMembers(
       email: m.user.email,
       role: m.role,
       status: m.isActive ? "Active" : "Disabled",
-      initialPassword: (m.metadata as any)?.initialPassword || null,
+      initialPassword: (m.metadata as Record<string, unknown>)?.initialPassword as string | null || null,
       createdAt: m.createdAt,
     }));
   } catch (error) {

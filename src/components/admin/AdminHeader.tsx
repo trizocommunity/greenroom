@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { SupportNotifications } from "@/components/dashboard/support/SupportNotifications";
 
 export function AdminHeader() {
   const pathname = usePathname();
@@ -18,7 +19,7 @@ export function AdminHeader() {
   const pageName = isUsers ? "Users" : "Dashboard";
 
   return (
-    <header className="fixed top-0 w-full bg-background/80 backdrop-blur-xl flex h-16 shrink-0 items-center justify-between gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 z-50 border-b border-white/10">
+    <header className="sticky top-0 z-10 w-full bg-background/80 backdrop-blur-xl flex h-16 shrink-0 items-center justify-between gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 border-b border-white/10">
       <div className="flex items-center gap-2 px-7">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
@@ -29,6 +30,9 @@ export function AdminHeader() {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
+      </div>
+      <div className="px-7">
+        <SupportNotifications isAdmin={true} />
       </div>
     </header>
   );

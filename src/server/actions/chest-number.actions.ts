@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
 
@@ -73,7 +74,7 @@ export async function generateChestNumbers(festivalId: string) {
     numberingStyle?: "ALPHANUMERIC" | "NUMERIC";
   } | null;
 
-  if (!settings) throw new Error("Settings not configured");
+  if (!settings) throw new AppError(ERROR_MESSAGES.CHEST_SETTINGS_NOT_CONFIGURED);
 
   const style = settings.numberingStyle || "ALPHANUMERIC";
 
@@ -190,7 +191,15 @@ export async function generateChestNumbers(festivalId: string) {
 
 export async function resetChestNumbers(festivalId: string) {
   const session = await getSession();
-  if (!session?.userId) throw new Error("Unauthorized");
+  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+
+  // CLN-2 FIX: Fetch the slug FIRST so we revalidate the correct path once.
+  const festival = await prisma.festival.findUnique({
+    where: { id: festivalId },
+    select: { slug: true },
+  });
+
+  if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
 
   // 1. Clear student chest numbers
   await prisma.student.updateMany({
@@ -198,9 +207,7 @@ export async function resetChestNumbers(festivalId: string) {
     data: { chestNumber: null },
   });
 
-  // 2. Reset sequences in settings
-  // User requested "reset completely", so we wipe the entire settings object.
-  // This will return the page to the "Not Configured" state.
+  // 2. Reset sequences in settings — wipe to return to "Not Configured" state.
   await prisma.festival.update({
     where: { id: festivalId },
     data: {
@@ -208,20 +215,7 @@ export async function resetChestNumbers(festivalId: string) {
     },
   });
 
-  revalidatePath(`/dashboard/${festivalId}/event-works/chest-numbers`); // Attempt to revalidate by ID or find festival first
-
-  // Actually we need the slug to revalidate correctly if we are using slug in path.
-  // The festival object is fetched above? No, we need to fetch it or use the one we might have.
-  // Let's look at previous code.
-
-  const festival = await prisma.festival.findUnique({
-    where: { id: festivalId },
-    select: { slug: true },
-  });
-
-  if (festival) {
-    revalidatePath(`/dashboard/${festival.slug}/event-works/chest-numbers`);
-  }
+  revalidatePath(`/dashboard/${festival.slug}/event-works/chest-numbers`);
 }
 
 export async function updateAllChestNumbers(

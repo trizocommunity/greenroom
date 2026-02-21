@@ -125,7 +125,7 @@ export function StudentDetailsDialog({
                     <TableRow>
                       <TableHead>Programme</TableHead>
                       <TableHead>Type</TableHead>
-                      <TableHead>Code</TableHead>
+                      <TableHead>Stage Type</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -138,7 +138,7 @@ export function StudentDetailsDialog({
                           {assignment.programme?.type}
                         </TableCell>
                         <TableCell className="text-xs font-mono text-muted-foreground">
-                          {assignment.programme?.code}
+                          {assignment.programme?.stageType}
                         </TableCell>
                       </TableRow>
                     ))}

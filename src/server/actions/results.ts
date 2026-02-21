@@ -152,7 +152,7 @@ export async function getProgrammeResults(programmeId: string) {
  */
 export async function publishTeamStandings(
   festivalId: string,
-  standings: any[],
+  standings: Record<string, unknown>[],
   festivalSlug: string,
 ) {
   try {
