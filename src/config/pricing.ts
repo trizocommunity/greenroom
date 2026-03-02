@@ -358,7 +358,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
 };
 
 export type PricingTier = {
-  id: string;
+  id: Tier;
   name: string;
   price: number;
   description: string;

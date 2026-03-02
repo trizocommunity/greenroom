@@ -1,11 +1,11 @@
 "use client";
 
+import type { Tier } from "@prisma/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { queryKeys } from "@/lib/query-keys";
 import { loadRazorpay } from "@/lib/razorpay";
-import { checkUnusedCredit } from "@/server/actions/billing.actions";
 import {
   initiateFestivalPayment,
   verifyFestivalPayment,
@@ -15,7 +15,7 @@ export function useFestivalPayment() {
   const [loading, setLoading] = useState(false);
   const queryClient = useQueryClient();
 
-  const handlePay = async (tier: any, onSuccess?: (credit: any) => void) => {
+  const handlePay = async (tier: Tier, onSuccess?: (credit: unknown) => void) => {
     setLoading(true);
     try {
       const isLoaded = await loadRazorpay();

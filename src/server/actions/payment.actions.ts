@@ -104,11 +104,16 @@ export async function verifyFestivalPayment(
   razorpaySignature: string,
 ): Promise<ActionResponse<{ paymentId: string }>> {
   try {
+    const session = await getSession();
+    if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+
     const payment = await prisma.payment.findUnique({
       where: { id: paymentId },
     });
 
     if (!payment) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
+    if (payment.userId !== session.userId)
+      throw new AppError(ERROR_MESSAGES.FORBIDDEN);
     if (payment.status === "PAID")
       throw new AppError(ERROR_MESSAGES.PAYMENT_ALREADY_PROCESSED);
 

@@ -1,54 +1,15 @@
-import { Tier } from "@prisma/client";
-import { TIER_CONFIG } from "@/config/pricing";
 import {
-  createPayment,
   getActivePaymentForUser,
   getLatestPaymentForUser,
   getPaymentByOrderId,
   updatePaymentStatus,
 } from "@/server/models/payment.model";
-import {
-  RAZORPAY_KEY_ID,
-  RazorpayService,
-} from "@/server/services/razorpay.service";
+import { RazorpayService } from "@/server/services/razorpay.service";
 
-const FESTIVAL_PRICE = TIER_CONFIG[Tier.BASIC].price * 100; // Legacy fallback
-const VALIDITY_DAYS = TIER_CONFIG[Tier.BASIC].durationDays;
-
-export const createOrder = async (userId: string) => {
-  // Business Rule: Prevent duplicate active access
-  const activePayment = await getActivePaymentForUser(userId);
-  if (activePayment) {
-    throw new Error("You already have an active festival pass");
-  }
-
-  const receipt = `rcpt_${userId.slice(-10)}_${Date.now().toString().slice(-8)}`;
-  const notes = { userId, purpose: "festival_pass" };
-
-  // Service Call: Create Order
-  const order = await RazorpayService.createOrder(
-    FESTIVAL_PRICE,
-    "INR",
-    receipt,
-    notes,
-  );
-
-  // Model Call: Store Record
-  await createPayment({
-    userId,
-    amount: FESTIVAL_PRICE,
-    currency: "INR",
-    validityDays: VALIDITY_DAYS,
-    razorpayOrderId: order.id as string,
-  });
-
-  return {
-    orderId: order.id,
-    amount: FESTIVAL_PRICE,
-    currency: "INR",
-    keyId: RAZORPAY_KEY_ID,
-  };
-};
+/**
+ * Festival payment creation is done via server action initiateFestivalPayment
+ * so that tier and purpose are always set. Use that for new flows.
+ */
 
 export const verifyPayment = async (payload: {
   razorpay_order_id: string;

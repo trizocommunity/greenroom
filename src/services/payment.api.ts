@@ -30,11 +30,6 @@ export const paymentApi = {
     return data;
   },
 
-  createOrder: async () => {
-    const { data } = await api.post("/payments/create-order");
-    return data;
-  },
-
   verify: async (payload: {
     razorpay_order_id: string;
     razorpay_payment_id: string;

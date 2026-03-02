@@ -1,5 +1,6 @@
 "use client";
 
+import type { Tier } from "@prisma/client";
 import { ArrowRight, Check, Loader2, Plus, Sparkles } from "lucide-react";
 import { useState } from "react";
 import {
@@ -41,7 +42,7 @@ interface OverviewTabProps {
 export function OverviewTab({ displayName, userId }: OverviewTabProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [confirmationTier, setConfirmationTier] = useState<string | null>(null);
+  const [confirmationTier, setConfirmationTier] = useState<Tier | null>(null);
 
   const { data: festival, isLoading: isFestivalLoading } = useMyFestival();
   const { data: joinedFestivals, isLoading: isJoinedLoading } =
@@ -51,7 +52,7 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
 
   const basicTier = PRICING_TIERS.find((t) => t.id === "BASIC");
 
-  const handlePayClick = (tierId: string) => {
+  const handlePayClick = (tierId: Tier) => {
     setConfirmationTier(tierId);
   };
 
