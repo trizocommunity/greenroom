@@ -19,13 +19,17 @@ export const RazorpayService = {
     amount: number,
     currency: string,
     receipt: string,
-    notes: Record<string, string>,
+    notes: Record<string, string | number | undefined>,
   ) {
+    const stringNotes: Record<string, string> = {};
+    for (const [k, v] of Object.entries(notes)) {
+      if (v !== undefined) stringNotes[k] = String(v);
+    }
     return razorpay.orders.create({
       amount,
       currency,
       receipt,
-      notes,
+      notes: stringNotes,
     });
   },
 

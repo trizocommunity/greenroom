@@ -3,18 +3,13 @@
 import type { PaymentPurpose, Tier } from "@prisma/client";
 import crypto from "crypto";
 import { revalidatePath } from "next/cache";
-import Razorpay from "razorpay";
 import { TIER_CONFIG } from "@/config/pricing";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
+import { RazorpayService } from "@/server/services/razorpay.service";
 import { getUnusedPayment } from "@/server/services/billing.service";
 import type { ActionResponse } from "@/types/actions";
-
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || "",
-  key_secret: process.env.RAZORPAY_KEY_SECRET || "",
-});
 
 export async function initiatePayment(
   purpose: PaymentPurpose,
@@ -58,19 +53,17 @@ export async function initiatePayment(
       };
     }
 
-    // Create Razorpay Order
-    const options = {
-      amount: config.price * 100, // Amount in paise
-      currency: "INR",
-      receipt: `rcpt_${Date.now()}`.substring(0, 40),
-      notes: {
+    // Create Razorpay Order (single place for Razorpay init: razorpay.service)
+    const order = await RazorpayService.createOrder(
+      config.price * 100,
+      "INR",
+      `rcpt_${Date.now()}`.substring(0, 40),
+      {
         userId: session.userId,
         purpose,
         tier,
       },
-    };
-
-    const order = await razorpay.orders.create(options);
+    );
 
     // Create Payment Record (Pending)
     const payment = await prisma.payment.create({
@@ -91,8 +84,8 @@ export async function initiatePayment(
       data: {
         paymentId: payment.id,
         orderId: order.id,
-        amount: options.amount,
-        currency: options.currency,
+        amount: config.price * 100,
+        currency: "INR",
         key: process.env.RAZORPAY_KEY_ID,
       },
     };

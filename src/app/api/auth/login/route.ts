@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { formatApiError } from "@/lib/api-error";
 import { verifyPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import { loginSchema } from "@/lib/validations/auth";
@@ -32,15 +33,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, role: user.globalRole });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: (error as any).errors },
-        { status: 400 },
-      );
-    }
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    const payload = formatApiError(error);
+    const status = error instanceof z.ZodError ? 400 : 500;
+    return NextResponse.json(payload, { status });
   }
 }

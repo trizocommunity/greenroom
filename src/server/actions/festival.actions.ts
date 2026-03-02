@@ -168,7 +168,7 @@ export async function updateFestivalSettingsAction(
       },
     });
 
-    revalidatePath(`/festival/${festival.slug}/settings`);
+    revalidatePath(`/dashboard/${festival.slug}/settings`);
     return { success: true, data: updated };
   } catch (error) {
     return handleActionError(error);

@@ -27,9 +27,15 @@ export async function saveResult(data: SaveResultInput) {
     await assertFestivalAccess(session, data.festivalId);
 
     const result = await ResultModel.upsert(data.assignmentId, data);
-    revalidatePath(`/dashboard/${data.festivalId}/event-works/results`);
-    revalidatePath(`/dashboard/${data.festivalId}/event-works/team-status`);
-    revalidatePath(`/${data.festivalId}/results`);
+    const festival = await prisma.festival.findUnique({
+      where: { id: data.festivalId },
+      select: { slug: true },
+    });
+    if (festival) {
+      revalidatePath(`/dashboard/${festival.slug}/event-works/results`);
+      revalidatePath(`/dashboard/${festival.slug}/event-works/team-status`);
+      revalidatePath(`/${festival.slug}/results`);
+    }
     return { success: true, data: result };
   } catch (error) {
     console.error("Error saving result:", error);

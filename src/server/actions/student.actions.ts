@@ -172,7 +172,7 @@ export async function bulkCreateStudentsAction(
   }
 
   try {
-    revalidatePath(`/festival/${festivalId}`);
+    revalidatePath(`/dashboard/${festival.slug}/pre-works/students`);
   } catch {}
 
   return { success: true, successCount, errors };

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { getSession } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
 import { handleActionError } from "@/lib/errors";
 import { MemberService } from "@/server/services/member.service";
 import type { ActionResponse } from "@/types/actions";
@@ -25,7 +26,11 @@ export async function addMemberAction(
     const session = await getSession();
     await assertFestivalAccess(session, festivalId);
     const result = await MemberService.addMember(festivalId, data);
-    revalidatePath(`/festival/${festivalId}/members`);
+    const festival = await prisma.festival.findUnique({
+      where: { id: festivalId },
+      select: { slug: true },
+    });
+    if (festival) revalidatePath(`/dashboard/${festival.slug}/members`);
     return { success: true, data: result };
   } catch (error: unknown) {
     return handleActionError(error);
@@ -40,7 +45,11 @@ export async function removeMemberAction(
     const session = await getSession();
     await assertFestivalAccess(session, festivalId);
     await MemberService.removeMember(festivalId, memberId);
-    revalidatePath(`/festival/${festivalId}/members`);
+    const festival = await prisma.festival.findUnique({
+      where: { id: festivalId },
+      select: { slug: true },
+    });
+    if (festival) revalidatePath(`/dashboard/${festival.slug}/members`);
     return { success: true, data: null };
   } catch (error: unknown) {
     return handleActionError(error);

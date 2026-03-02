@@ -80,8 +80,11 @@ export async function createFestivalMember(input: CreateMemberInput) {
       metadata: { festivalId, email, fullName, role },
     });
 
-    revalidatePath(`/dashboard/${festivalId}/members`);
-    // Also revalidate teams just in case old route exists, though it should change
+    const festival = await prisma.festival.findUnique({
+      where: { id: festivalId },
+      select: { slug: true },
+    });
+    if (festival) revalidatePath(`/dashboard/${festival.slug}/members`);
 
     return { success: true };
   } catch (error) {
@@ -170,7 +173,12 @@ export async function revokeFestivalMember(memberId: string) {
     await prisma.festivalMember.delete({
       where: { id: memberId },
     });
-    revalidatePath(`/dashboard/${member.festivalId}/members`);
+
+    const festival = await prisma.festival.findUnique({
+      where: { id: member.festivalId },
+      select: { slug: true },
+    });
+    if (festival) revalidatePath(`/dashboard/${festival.slug}/members`);
 
     await createAuditLog({
       action: "REVOKE_MEMBER",

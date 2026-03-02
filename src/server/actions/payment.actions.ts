@@ -1,21 +1,15 @@
 "use server";
 
-import type { Prisma, Tier } from "@prisma/client";
+import type { Tier } from "@prisma/client";
 import crypto from "crypto";
 import { revalidatePath } from "next/cache";
-import Razorpay from "razorpay";
 import { TIER_CONFIG } from "@/config/pricing";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import { createAuditLog } from "@/server/services/audit-log.service";
+import { RazorpayService } from "@/server/services/razorpay.service";
 import type { ActionResponse } from "@/types/actions";
-
-// Initialize Razorpay
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || "",
-  key_secret: process.env.RAZORPAY_KEY_SECRET || "",
-});
 
 export async function initiateFestivalPayment(
   tier: Tier,
@@ -55,19 +49,17 @@ export async function initiateFestivalPayment(
       };
     }
 
-    // Create Razorpay Order
-    const options = {
-      amount: config.price * 100,
-      currency: "INR",
-      receipt: `rcpt_${Date.now()}`.substring(0, 40),
-      notes: {
+    // Create Razorpay Order (single place for Razorpay init: razorpay.service)
+    const order = await RazorpayService.createOrder(
+      config.price * 100,
+      "INR",
+      `rcpt_${Date.now()}`.substring(0, 40),
+      {
         userId,
         tier,
         type: "FESTIVAL_CREATION",
       },
-    };
-
-    const order = await razorpay.orders.create(options);
+    );
 
     // Create Pending Payment Record
     const payment = await prisma.payment.create({
@@ -90,7 +82,7 @@ export async function initiateFestivalPayment(
         orderId: order.id,
         amount: config.price * 100,
         currency: "INR",
-        key: process.env.RAZORPAY_KEY_ID,
+        key: process.env.RAZORPAY_KEY_ID ?? undefined,
       },
     };
   } catch (error) {
