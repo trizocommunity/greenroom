@@ -1,4 +1,3 @@
-export const systemConfig = {
-  // Flag to enable the new Payment-First flow for Festival creation.
-  paymentFirstFlowEnabled: false,
-};
+/**
+ * App-wide config. Add feature flags or toggles here when they are wired to UI/routing.
+ */

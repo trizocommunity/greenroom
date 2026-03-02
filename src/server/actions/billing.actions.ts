@@ -1,13 +1,15 @@
 "use server";
 
 import type { PaymentPurpose, Tier } from "@prisma/client";
-import crypto from "crypto";
 import { revalidatePath } from "next/cache";
 import { TIER_CONFIG } from "@/config/pricing";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
-import { RazorpayService } from "@/server/services/razorpay.service";
+import {
+  getRazorpayKeyId,
+  RazorpayService,
+} from "@/server/services/razorpay.service";
 import { getUnusedPayment } from "@/server/services/billing.service";
 import type { ActionResponse } from "@/types/actions";
 
@@ -48,7 +50,7 @@ export async function initiatePayment(
           orderId: existingPayment.providerId,
           amount: config.price * 100,
           currency: "INR",
-          key: process.env.RAZORPAY_KEY_ID,
+          key: getRazorpayKeyId(),
         },
       };
     }
@@ -86,7 +88,7 @@ export async function initiatePayment(
         orderId: order.id,
         amount: config.price * 100,
         currency: "INR",
-        key: process.env.RAZORPAY_KEY_ID,
+        key: getRazorpayKeyId(),
       },
     };
   } catch (error: unknown) {
@@ -112,14 +114,12 @@ export async function verifyPayment(
       return { success: true, data: null }; // already processed, idempotent
     }
 
-    // Verify Signature
-    const body = payment.providerId + "|" + razorpayPaymentId;
-    const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "")
-      .update(body.toString())
-      .digest("hex");
-
-    if (expectedSignature !== razorpaySignature) {
+    const isValid = RazorpayService.verifyPaymentSignature(
+      payment.providerId,
+      razorpayPaymentId,
+      razorpaySignature,
+    );
+    if (!isValid) {
       await prisma.payment.update({
         where: { id: paymentId },
         data: { status: "FAILED" },

@@ -1,18 +1,30 @@
 import crypto from "crypto";
 import Razorpay from "razorpay";
 
-if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-  console.warn(
-    "Razorpay credentials not configured. Payment integration will not work.",
-  );
+function getRazorpayKeys(): { key_id: string; key_secret: string } {
+  const key_id = process.env.RAZORPAY_KEY_ID;
+  const key_secret = process.env.RAZORPAY_KEY_SECRET;
+  if (!key_id || !key_secret) {
+    throw new Error(
+      "Razorpay credentials are required. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in your environment.",
+    );
+  }
+  return { key_id, key_secret };
 }
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || "",
-  key_secret: process.env.RAZORPAY_KEY_SECRET || "",
-});
+let razorpayInstance: Razorpay | null = null;
 
-export const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || "";
+function getRazorpay(): Razorpay {
+  if (!razorpayInstance) {
+    const { key_id, key_secret } = getRazorpayKeys();
+    razorpayInstance = new Razorpay({ key_id, key_secret });
+  }
+  return razorpayInstance;
+}
+
+export function getRazorpayKeyId(): string {
+  return getRazorpayKeys().key_id;
+}
 
 export const RazorpayService = {
   async createOrder(
@@ -25,7 +37,7 @@ export const RazorpayService = {
     for (const [k, v] of Object.entries(notes)) {
       if (v !== undefined) stringNotes[k] = String(v);
     }
-    return razorpay.orders.create({
+    return getRazorpay().orders.create({
       amount,
       currency,
       receipt,
@@ -38,9 +50,10 @@ export const RazorpayService = {
     paymentId: string,
     signature: string,
   ): boolean {
+    const { key_secret } = getRazorpayKeys();
     const body = orderId + "|" + paymentId;
     const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "")
+      .createHmac("sha256", key_secret)
       .update(body)
       .digest("hex");
 

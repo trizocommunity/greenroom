@@ -12,72 +12,21 @@
  * const maxMembers = FeatureService.getFeatureValue<number>('BASIC', 'maxTeamMembers');
  */
 
+import type { TierFeatures } from "@/config/pricing";
 import { TIER_CONFIG } from "@/config/pricing";
 import type { Tier } from "@prisma/client";
 
+/** Derived from TierFeatures so config and feature paths cannot drift. */
+export type FeaturePath = keyof TierFeatures;
+
 /**
- * Type-safe feature paths that can be checked
+ * Coerce nullable tier to Tier for feature checks. Use before isFeatureEnabled/getFeatureValue.
  */
-export type FeaturePath =
-  // Pre-Works Access
-  | "categories"
-  | "groups"
-  | "students"
-  | "programmes"
-  | "assignments"
-  // Event-Works Access
-  | "chestNumbers"
-  | "results"
-  | "stageManagement"
-  | "schedule"
-  // Team & Collaboration
-  | "members"
-  | "maxTeamMembers"
-  | "roleBasedAccess"
-  // Import/Export
-  | "studentImport"
-  | "studentBulkUpload"
-  | "programmeBulkUpload"
-  | "pdfExport"
-  | "excelExport"
-  // Communication
-  | "emailNotifications"
-  | "whatsappSupport"
-  | "smsNotifications"
-  | "bulkNotifications"
-  // Reporting & Analytics
-  | "advancedAnalytics"
-  | "customReports"
-  // Certificates & QR
-  | "qrCodes"
-  | "autoCertificates"
-  | "customCertificateTemplates"
-  | "bulkCertificateGeneration"
-  // Landing Page
-  | "publicLandingPage"
-  | "fullLandingPage"
-  | "landingPageBuilder"
-  // Branding
-  | "customUrl"
-  | "customDomain"
-  | "logoUpload"
-  | "customColors"
-  | "whiteLabel"
-  // Advanced Features
-  | "apiAccess"
-  | "webhooks"
-  | "liveScoreboard"
-  | "liveResults"
-  | "multiFestivalManagement"
-  // Settings
-  | "festivalSettings"
-  | "advancedSettings"
-  // Support
-  | "supportLevel"
-  | "supportResponseTime"
-  // Post-Expiry
-  | "postExpiryAccess"
-  | "dataRetentionDays";
+export function getTierForFeatureCheck(
+  tier: Tier | null | undefined,
+): Tier {
+  return tier ?? "STANDARD";
+}
 
 /**
  * Feature Service - Centralized feature flag management

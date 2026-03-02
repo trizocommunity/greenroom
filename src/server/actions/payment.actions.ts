@@ -8,7 +8,10 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import { createAuditLog } from "@/server/services/audit-log.service";
-import { RazorpayService } from "@/server/services/razorpay.service";
+import {
+  getRazorpayKeyId,
+  RazorpayService,
+} from "@/server/services/razorpay.service";
 import type { ActionResponse } from "@/types/actions";
 
 export async function initiateFestivalPayment(
@@ -44,7 +47,7 @@ export async function initiateFestivalPayment(
           orderId: existingPayment.providerId,
           amount: config.price * 100,
           currency: "INR",
-          key: process.env.RAZORPAY_KEY_ID,
+          key: getRazorpayKeyId(),
         },
       };
     }
@@ -82,7 +85,7 @@ export async function initiateFestivalPayment(
         orderId: order.id,
         amount: config.price * 100,
         currency: "INR",
-        key: process.env.RAZORPAY_KEY_ID ?? undefined,
+        key: getRazorpayKeyId(),
       },
     };
   } catch (error) {

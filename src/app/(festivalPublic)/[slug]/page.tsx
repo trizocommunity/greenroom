@@ -8,7 +8,7 @@ import { ResultsTeaser } from "@/components/festival/landing/ResultsTeaser";
 import { StatsSection } from "@/components/festival/landing/StatsSection";
 import { getPublicFestivalData } from "@/server/loader/festivalPublic";
 import { getPublicFestivalResults } from "@/server/loader/festivalResults";
-import { FeatureService } from "@/lib/features";
+import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 
 export async function generateMetadata({
   params,
@@ -54,7 +54,7 @@ export default async function FestivalPage({
 
   // Check Feature Access
   const fullLandingPage = FeatureService.isFeatureEnabled(
-    festival.tier as any,
+    getTierForFeatureCheck(festival.tier),
     "fullLandingPage",
   );
 
