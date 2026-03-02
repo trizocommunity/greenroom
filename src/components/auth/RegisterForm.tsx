@@ -46,7 +46,8 @@ export function RegisterForm() {
       }
 
       toast.success("Account created successfully");
-      router.push("/login");
+      router.push("/profile");
+      router.refresh();
     },
     onError: () => {
       toast.error("Something went wrong. Please try again.");

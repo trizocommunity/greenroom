@@ -73,9 +73,7 @@ export async function registerAction(
       password: hashedPassword,
     });
 
-    // Create session for new user? Currently register route just returns user.
-    // Usually auto-login is nice, but keeping behavior same as API route for now:
-    // API route returns 201 and user. No session creation.
+    await createSession(user.id, user.globalRole);
 
     const { password: _, ...userWithoutPassword } = user;
 

@@ -1,10 +1,8 @@
-import { ExternalLink, Menu } from "lucide-react";
-import Link from "next/link";
+import { Menu } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { DashboardRightSidebar } from "@/components/festival/dashboard/DashboardRightSidebar";
 import { FestivalDashboardSidebar } from "@/components/festival/dashboard/FestivalDashboardSidebar";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
-import QueryProvider from "@/components/providers/QueryProvider";
 // Removed unused breadcrumb imports
 import { DashboardBreadcrumb } from "@/components/festival/dashboard/DashboardBreadcrumb";
 import { Button } from "@/components/ui/button";
@@ -124,12 +122,11 @@ export default async function FestivalDashboardLayout({
   };
 
   return (
-    <QueryProvider>
-      <SidebarProvider>
-        <FestivalProvider festival={festivalData}>
-          <FestivalDashboardSidebar festival={festivalData} role={userRole} />
+    <SidebarProvider>
+      <FestivalProvider festival={festivalData}>
+        <FestivalDashboardSidebar festival={festivalData} role={userRole} />
 
-          <SidebarInset>
+        <SidebarInset>
             <header className="sticky top-0 z-10 w-full flex h-14 shrink-0 items-center justify-between border-b bg-background/95 backdrop-blur px-4 md:px-8 shadow-sm">
               <div className="flex items-center gap-2">
                 <SidebarTrigger className="h-8 w-8" />
@@ -166,7 +163,7 @@ export default async function FestivalDashboardLayout({
                     programmesCount: festival._count?.programmes || 0,
                     eventsCount: festival.eventsCount || 0,
                     stagesCount: festival.stagesCount || 0,
-                    storageUsedMB: 0, // Placeholder
+                    storageUsedMB: festival.storageUsedMB ?? 0,
                   }}
                   limits={festivalData.limits}
                   tierLabel={festival.tier || "Standard"}
@@ -177,9 +174,8 @@ export default async function FestivalDashboardLayout({
             <main className="flex flex-1 flex-col gap-4 md:gap-6 p-4 md:p-8 relative overflow-hidden">
               {children}
             </main>
-          </SidebarInset>
-        </FestivalProvider>
-      </SidebarProvider>
-    </QueryProvider>
+        </SidebarInset>
+      </FestivalProvider>
+    </SidebarProvider>
   );
 }

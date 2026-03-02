@@ -1,26 +1,15 @@
 "use server";
 
+import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { findFestivalById } from "@/server/models/festival.model";
-import { findMemberByFestivalAndUser } from "@/server/models/member.model";
 import { AssignmentService } from "@/server/services/assignment.service";
 
 export async function getAssignmentsAction(festivalId: string) {
   const session = await getSession();
-  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
-
-  // Check if owner or member
-  const isOwner = await prisma.festival.findFirst({
-    where: { id: festivalId, ownerId: session.userId },
-  });
-
-  if (!isOwner) {
-    const isMember = await findMemberByFestivalAndUser(festivalId, session.userId);
-    if (!isMember) throw new AppError(ERROR_MESSAGES.FORBIDDEN);
-  }
-
+  await assertFestivalAccess(session, festivalId);
   return AssignmentService.getAll(festivalId);
 }
 
@@ -33,7 +22,7 @@ export async function createAssignmentAction(
   },
 ) {
   const session = await getSession();
-  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+  await assertFestivalAccess(session, festivalId);
 
   const festival = await findFestivalById(festivalId);
 
@@ -43,8 +32,6 @@ export async function createAssignmentAction(
     new Date() > festival.programmeAssignmentDeadline
   ) {
     const isAdmin = festival.ownerId === session.userId;
-    // Also likely check if member role is ADMIN?
-    // For now keeping existing logic (Owner only bypass) as requested scope is removing Team Leader.
     if (!isAdmin) {
       throw new AppError(ERROR_MESSAGES.ASSIGNMENT_DEADLINE_PASSED);
     }
@@ -80,7 +67,7 @@ export async function bulkCreateAssignmentAction(
   }[],
 ) {
   const session = await getSession();
-  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+  await assertFestivalAccess(session, festivalId);
 
   const festival = await findFestivalById(festivalId);
 
@@ -107,7 +94,7 @@ export async function bulkCreateAssignmentAction(
 
 export async function deleteAssignmentAction(festivalId: string, id: string) {
   const session = await getSession();
-  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+  await assertFestivalAccess(session, festivalId);
 
   const festival = await findFestivalById(festivalId);
 
@@ -135,7 +122,7 @@ export async function updateAssignmentAction(
   },
 ) {
   const session = await getSession();
-  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+  await assertFestivalAccess(session, festivalId);
 
   const festival = await findFestivalById(festivalId);
 

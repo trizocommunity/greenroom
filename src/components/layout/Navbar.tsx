@@ -17,20 +17,25 @@ const navItems = [
   { name: "Contact", href: "/contact" },
 ];
 
-import { getCurrentUser } from "@/server/actions/user.actions";
-
 interface NavbarProps {
-  user?: any;
+  user?: { id: string } | null;
 }
 
 export default function Navbar({ user: initialUser }: NavbarProps) {
-  const [user, setUser] = React.useState(initialUser);
+  const [user, setUser] = React.useState<{ id: string } | null | undefined>(
+    initialUser ?? undefined,
+  );
   const [isOpen, setIsOpen] = React.useState(false);
 
   React.useEffect(() => {
-    if (!initialUser) {
-      getCurrentUser().then(setUser);
+    if (initialUser != null) {
+      setUser(initialUser);
+      return;
     }
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setUser(data?.id ? data : null))
+      .catch(() => setUser(null));
   }, [initialUser]);
   const pathname = usePathname();
   const isHome = pathname === "/";

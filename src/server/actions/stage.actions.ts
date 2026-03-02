@@ -1,8 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/db";
+import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { getSession } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { UsageCounterService } from "@/server/services/usage-counter.service";
 
@@ -13,11 +14,11 @@ export type StageData = {
 
 export async function createStage(festivalId: string, data: StageData) {
   const session = await getSession();
-  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+  await assertFestivalAccess(session, festivalId);
 
   // Determine user name or ID to store as createdBy
   const user = await prisma.user.findUnique({
-    where: { id: session.userId },
+    where: { id: session?.userId },
     select: { fullName: true, displayName: true, email: true },
   });
 
@@ -51,9 +52,14 @@ export async function createStage(festivalId: string, data: StageData) {
 
 export async function updateStage(stageId: string, data: StageData) {
   const session = await getSession();
-  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+  const stage = await prisma.stage.findUnique({
+    where: { id: stageId },
+    select: { festivalId: true },
+  });
+  if (!stage) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
+  await assertFestivalAccess(session, stage.festivalId);
 
-  const stage = await prisma.stage.update({
+  const updated = await prisma.stage.update({
     where: { id: stageId },
     data: {
       name: data.name,
@@ -62,23 +68,23 @@ export async function updateStage(stageId: string, data: StageData) {
     include: { festival: true },
   });
 
-  if (stage.festival) {
+  if (updated.festival) {
     revalidatePath(
-      `/dashboard/${stage.festival.slug}/event-works/stage-management`,
+      `/dashboard/${updated.festival.slug}/event-works/stage-management`,
     );
   }
 }
 
 export async function deleteStage(stageId: string) {
   const session = await getSession();
-  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
-
   const stage = await prisma.stage.findUnique({
     where: { id: stageId },
     include: { festival: true },
   });
 
   if (!stage) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
+
+  await assertFestivalAccess(session, stage.festivalId);
 
   await prisma.$transaction(async (tx) => {
     await tx.stage.delete({
@@ -103,7 +109,7 @@ export async function deleteStage(stageId: string) {
 
 export async function getStages(festivalId: string) {
   const session = await getSession();
-  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+  await assertFestivalAccess(session, festivalId);
 
   return await prisma.stage.findMany({
     where: { festivalId },

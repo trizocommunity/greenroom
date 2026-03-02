@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { TIER_CONFIG } from "@/config/pricing";
-// New action for hooks - uses StudentService
+import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
@@ -11,6 +11,8 @@ import { findFestivalById } from "@/server/models/festival.model";
 import { StudentService } from "@/server/services/student.service";
 
 export async function getStudentsAction(festivalId: string) {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
   return StudentService.getAll(festivalId);
 }
 
@@ -29,7 +31,7 @@ export async function createStudentWithServiceAction(
   },
 ) {
   const session = await getSession();
-  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+  await assertFestivalAccess(session, festivalId);
 
   const festival = await findFestivalById(festivalId);
   if (!festival) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
@@ -62,7 +64,7 @@ export async function validateStudentsAction(
   candidates: { name: string; email?: string }[],
 ) {
   const session = await getSession();
-  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+  await assertFestivalAccess(session, festivalId);
 
   // 1. Extract non-empty emails and names
   const emails = candidates
@@ -121,7 +123,7 @@ export async function bulkCreateStudentsAction(
   }[],
 ) {
   const session = await getSession();
-  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+  await assertFestivalAccess(session, festivalId);
 
   const festival = await findFestivalById(festivalId);
   if (!festival) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
@@ -182,7 +184,7 @@ export async function deleteStudentWithServiceAction(
   id: string,
 ) {
   const session = await getSession();
-  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+  await assertFestivalAccess(session, festivalId);
 
   return StudentService.delete(id, festivalId);
 }
@@ -203,7 +205,7 @@ export async function updateStudentAction(
   },
 ) {
   const session = await getSession();
-  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+  await assertFestivalAccess(session, festivalId);
 
   return StudentService.update(id, festivalId, {
     name: data.name,

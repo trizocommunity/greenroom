@@ -2,8 +2,9 @@ import { notFound } from "next/navigation";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { FestivalFooter } from "@/components/festival/FestivalFooter";
 import { FestivalNavbar } from "@/components/festival/FestivalNavbar";
+import { getBrandingFromJson } from "@/types/festival";
 import { getSession } from "@/lib/auth/session";
-import { findFestivalBySlug } from "@/server/models/festival.model"; // Use existing model if available
+import { findFestivalBySlug } from "@/server/models/festival.model";
 
 export default async function FestivalLayout({
   children,
@@ -34,6 +35,8 @@ export default async function FestivalLayout({
   const session = await getSession();
   const isLoggedIn = !!session?.userId;
 
+  const branding = getBrandingFromJson(festival.branding);
+
   // Transform for client component
   const festivalData = {
     id: festival.id,
@@ -45,24 +48,9 @@ export default async function FestivalLayout({
     endDate: new Date().toISOString(), // Placeholder
     location: festival.orgLocation || "",
     status: festival.status,
-    accentColor:
-      festival.branding &&
-      typeof festival.branding === "object" &&
-      "colors" in festival.branding
-        ? (festival.branding as any).colors?.primary || "#000000"
-        : "#000000",
-    logo:
-      festival.branding &&
-      typeof festival.branding === "object" &&
-      "logo" in festival.branding
-        ? (festival.branding as any).logo
-        : null,
-    heroImage:
-      festival.branding &&
-      typeof festival.branding === "object" &&
-      "heroImage" in festival.branding
-        ? (festival.branding as any).heroImage
-        : null,
+    accentColor: branding?.colors?.primary ?? "#000000",
+    logo: branding?.logo ?? null,
+    heroImage: branding?.heroImage ?? null,
     orgName: festival.orgName || "",
     orgDescription: festival.orgDescription || "",
     orgWebsite: festival.orgWebsite || "",

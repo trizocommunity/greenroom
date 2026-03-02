@@ -1,8 +1,12 @@
 "use server";
 
+import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
+import { getSession } from "@/lib/auth/session";
 import { GroupService } from "@/server/services/group.service";
 
 export async function getGroupsAction(festivalId: string) {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
   return GroupService.getAll(festivalId);
 }
 
@@ -10,6 +14,8 @@ export async function createGroupAction(
   festivalId: string,
   data: { name: string; seriesStart?: number; color?: string },
 ) {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
   return GroupService.create(festivalId, {
     name: data.name,
     seriesStart: data.seriesStart,
@@ -18,6 +24,8 @@ export async function createGroupAction(
 }
 
 export async function deleteGroupAction(festivalId: string, id: string) {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
   return GroupService.delete(id, festivalId);
 }
 
@@ -31,6 +39,8 @@ export async function updateGroupAction(
     teamLeaderIds?: string[];
   },
 ) {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
   return GroupService.update(id, festivalId, {
     name: data.name,
     seriesStart: data.seriesStart,

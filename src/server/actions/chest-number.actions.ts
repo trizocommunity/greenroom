@@ -1,11 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
+import { getSession } from "@/lib/auth/session";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { prisma } from "@/lib/db";
-import { getSession } from "@/lib/auth/session";
 
 export async function getChestNumberSettings(festivalId: string) {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
+
   const festival = await prisma.festival.findUnique({
     where: { id: festivalId },
     select: { chestNumberSettings: true },
@@ -29,7 +33,7 @@ export async function saveChestNumberSettings(
   },
 ) {
   const session = await getSession();
-  if (!session?.userId) throw new Error("Unauthorized");
+  await assertFestivalAccess(session, festivalId);
 
   await prisma.festival.update({
     where: { id: festivalId },
@@ -57,7 +61,7 @@ export async function saveChestNumberSettings(
 
 export async function generateChestNumbers(festivalId: string) {
   const session = await getSession();
-  if (!session?.userId) throw new Error("Unauthorized");
+  await assertFestivalAccess(session, festivalId);
 
   // 1. Get Settings
   const festival = await prisma.festival.findUnique({
@@ -191,9 +195,8 @@ export async function generateChestNumbers(festivalId: string) {
 
 export async function resetChestNumbers(festivalId: string) {
   const session = await getSession();
-  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+  await assertFestivalAccess(session, festivalId);
 
-  // CLN-2 FIX: Fetch the slug FIRST so we revalidate the correct path once.
   const festival = await prisma.festival.findUnique({
     where: { id: festivalId },
     select: { slug: true },
@@ -225,7 +228,7 @@ export async function updateAllChestNumbers(
   numberingStyle?: "ALPHANUMERIC" | "NUMERIC",
 ) {
   const session = await getSession();
-  if (!session?.userId) throw new Error("Unauthorized");
+  await assertFestivalAccess(session, festivalId);
 
   // 1. Get current settings
   const festival = await prisma.festival.findUnique({

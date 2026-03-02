@@ -1,10 +1,14 @@
 "use server";
 
+import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
+import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import { ProgrammeService } from "@/server/services/programme.service";
 
 export async function getProgrammesAction(festivalId: string) {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
   return ProgrammeService.getAll(festivalId);
 }
 
@@ -12,6 +16,8 @@ export async function getProgrammeDetailsAction(
   festivalId: string,
   id: string,
 ) {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
   return ProgrammeService.getDetails(id, festivalId);
 }
 
@@ -28,6 +34,9 @@ export async function createProgrammeAction(
     maxPoints?: number;
   },
 ) {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
+
   // Validate Dependencies
   const categoryCount = await prisma.category.count({
     where: { festivalId },
@@ -66,6 +75,9 @@ export async function bulkCreateProgrammesAction(
     maxStudentsPerTeam?: number;
   }[],
 ) {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
+
   // Service handles final limit check & DB insertion
   // We just map the string enums to strict types
   const formatted = programmes.map((p) => ({
@@ -87,6 +99,8 @@ export async function bulkCreateProgrammesAction(
 }
 
 export async function deleteProgrammeAction(festivalId: string, id: string) {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
   return ProgrammeService.delete(id, festivalId);
 }
 
@@ -104,7 +118,9 @@ export async function updateProgrammeAction(
     maxPoints?: number;
   },
 ) {
-  // Map data to service format if needed, or if service accepts partials
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
+
   return ProgrammeService.update(id, festivalId, {
     name: data.name,
     categoryId: data.categoryId,

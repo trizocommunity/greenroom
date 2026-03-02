@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { ResultModel } from "@/server/models/result.model";
+import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { getSession } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
+import { ResultModel } from "@/server/models/result.model";
 
 export interface SaveResultInput {
   festivalId: string;
@@ -21,6 +23,9 @@ export interface SaveResultInput {
  */
 export async function saveResult(data: SaveResultInput) {
   try {
+    const session = await getSession();
+    await assertFestivalAccess(session, data.festivalId);
+
     const result = await ResultModel.upsert(data.assignmentId, data);
     revalidatePath(`/dashboard/${data.festivalId}/event-works/results`);
     revalidatePath(`/dashboard/${data.festivalId}/event-works/team-status`);
@@ -37,6 +42,14 @@ export async function saveResult(data: SaveResultInput) {
  */
 export async function deleteResult(resultId: string, festivalSlug: string) {
   try {
+    const session = await getSession();
+    const result = await prisma.result.findUnique({
+      where: { id: resultId },
+      select: { festivalId: true },
+    });
+    if (!result) return { success: false, error: "Result not found" };
+    await assertFestivalAccess(session, result.festivalId);
+
     await ResultModel.delete(resultId);
     revalidatePath(`/dashboard/${festivalSlug}/event-works/results`);
     revalidatePath(`/dashboard/${festivalSlug}/event-works/leaderboard`);
@@ -57,6 +70,14 @@ export async function toggleResultPublish(
   festivalSlug: string,
 ) {
   try {
+    const session = await getSession();
+    const result = await prisma.result.findUnique({
+      where: { id: resultId },
+      select: { festivalId: true },
+    });
+    if (!result) return { success: false, error: "Result not found" };
+    await assertFestivalAccess(session, result.festivalId);
+
     await ResultModel.togglePublish(resultId, isPublished);
     revalidatePath(`/dashboard/${festivalSlug}/event-works/results`);
     revalidatePath(`/dashboard/${festivalSlug}/event-works/leaderboard`);
@@ -77,6 +98,14 @@ export async function bulkPublishProgrammeResults(
   festivalSlug: string,
 ) {
   try {
+    const session = await getSession();
+    const programme = await prisma.programme.findUnique({
+      where: { id: programmeId },
+      select: { festivalId: true },
+    });
+    if (!programme) return { success: false, error: "Programme not found" };
+    await assertFestivalAccess(session, programme.festivalId);
+
     await ResultModel.bulkPublishByProgramme(programmeId, isPublished);
     revalidatePath(`/dashboard/${festivalSlug}/event-works/results`);
     revalidatePath(`/dashboard/${festivalSlug}/event-works/leaderboard`);
@@ -97,6 +126,9 @@ export async function bulkPublishAllResults(
   festivalSlug: string,
 ) {
   try {
+    const session = await getSession();
+    await assertFestivalAccess(session, festivalId);
+
     await ResultModel.bulkPublishByFestival(festivalId, isPublished);
     revalidatePath(`/dashboard/${festivalSlug}/event-works/results`);
     revalidatePath(`/dashboard/${festivalSlug}/event-works/leaderboard`);
@@ -113,6 +145,9 @@ export async function bulkPublishAllResults(
  */
 export async function getFestivalResults(festivalId: string) {
   try {
+    const session = await getSession();
+    await assertFestivalAccess(session, festivalId);
+
     const results = await ResultModel.findByFestival(festivalId, false);
     return { success: true, data: results };
   } catch (error) {
@@ -157,9 +192,7 @@ export async function publishTeamStandings(
 ) {
   try {
     const session = await getSession();
-    if (!session || !session.userId) {
-      return { success: false, error: "Unauthorized" };
-    }
+    await assertFestivalAccess(session, festivalId);
 
     // We need to import this dynamically or move it to a better place to avoid circular deps if any
     // checks festival.model.ts for "updateTeamStandings"
