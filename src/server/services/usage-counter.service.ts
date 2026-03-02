@@ -1,6 +1,7 @@
-import type { Prisma, Tier } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { TIER_CONFIG } from "@/config/pricing";
 import { prisma } from "@/lib/db";
+import { getResolvedTier } from "@/lib/tier";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 
 /**
@@ -35,8 +36,7 @@ export const UsageCounterService = {
       throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
     }
 
-    const tier: Tier = festival.tier ?? "STANDARD";
-    const limits = TIER_CONFIG[tier].limits;
+    const limits = TIER_CONFIG[getResolvedTier(festival.tier)].limits;
 
     // 2. Map resource to fields
     let currentUsage = 0;

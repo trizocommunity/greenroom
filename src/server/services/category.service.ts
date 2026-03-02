@@ -1,5 +1,5 @@
-import { Tier } from "@prisma/client";
 import { TIER_CONFIG } from "@/config/pricing";
+import { getResolvedTier } from "@/lib/tier";
 import {
   countCategories,
   createCategory,
@@ -34,7 +34,7 @@ export const CategoryService = {
 
     // 2. Check Tier Limits — use TIER_CONFIG as single source of truth
     const count = await countCategories(festivalId);
-    const tierConfig = TIER_CONFIG[festival.tier ?? Tier.STANDARD];
+    const tierConfig = TIER_CONFIG[getResolvedTier(festival.tier)];
     const limit = tierConfig.limits.categories;
     if (count >= limit) {
       throw new AppError(ERROR_MESSAGES.CATEGORY_LIMIT_REACHED);

@@ -30,7 +30,8 @@ import {
 } from "@/components/ui/tooltip";
 import { getDashboardOverviewData } from "@/server/models/festival.model";
 import { FeatureService } from "@/lib/features";
-import type { Tier, Festival } from "@prisma/client";
+import { getResolvedTier } from "@/lib/tier";
+import type { Festival } from "@prisma/client";
 
 interface OverviewWidgetsProps {
   festival: Festival;
@@ -40,7 +41,7 @@ export default async function OverviewWidgets({
   festival,
 }: OverviewWidgetsProps) {
   const overviewData = await getDashboardOverviewData(festival.id);
-  const tier = (festival.tier as Tier) || "BASIC";
+  const tier = getResolvedTier(festival.tier);
   const slug = festival.slug;
 
   const canAccessSettings = FeatureService.isFeatureEnabled(

@@ -20,6 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FeatureService } from "@/lib/features";
+import { getResolvedTier } from "@/lib/tier";
 import { updateFestivalSettingsAction } from "@/server/actions/festival.actions";
 
 interface SettingsFormProps {
@@ -133,7 +135,10 @@ export function SettingsForm({ festival }: SettingsFormProps) {
             </div>
           </div>
 
-          {festival.tier !== "BASIC" && (
+          {FeatureService.isFeatureEnabled(
+            getResolvedTier(festival.tier),
+            "programmeAssignmentDeadline",
+          ) && (
             <div className="grid gap-2">
               <Label htmlFor="programmeAssignment">
                 Programme Assignment Deadline

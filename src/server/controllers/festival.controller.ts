@@ -25,11 +25,12 @@ export async function store(
     throw new AppError(ERROR_MESSAGES.VALIDATION);
   }
 
-  // Check limit for USER
+  // One-festival limit: BASIC plan allows only one festival per user. When STANDARD/PRO are
+  // implemented, this will be driven by TIER_CONFIG[tier].features.multiFestivalManagement.
   if (role === "USER") {
     const userFestivals = await findAllFestivals({ ownerId: userId });
     if (userFestivals.length > 0) {
-      throw new AppError(ERROR_MESSAGES.TIER_NOT_FOUND); // Using this as a proxy for "One festival limit" or I should add a specific message if needed. Actually, "One festival limit" is a BASIC tier thing.
+      throw new AppError(ERROR_MESSAGES.TIER_NOT_FOUND);
     }
   }
 

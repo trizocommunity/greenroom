@@ -9,6 +9,7 @@ import { StatsSection } from "@/components/festival/landing/StatsSection";
 import { getPublicFestivalData } from "@/server/loader/festivalPublic";
 import { getPublicFestivalResults } from "@/server/loader/festivalResults";
 import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
+import { getResolvedTier } from "@/lib/tier";
 
 export async function generateMetadata({
   params,
@@ -81,7 +82,7 @@ export default async function FestivalPage({
     endDate: event.endDate.toISOString(),
     location: event.location || festival.orgLocation || "",
     status: festival.status,
-    tier: festival.tier || "STANDARD",
+    tier: getResolvedTier(festival.tier),
     accentColor:
       festival.branding &&
       typeof festival.branding === "object" &&

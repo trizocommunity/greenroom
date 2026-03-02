@@ -1,5 +1,6 @@
 import { TIER_CONFIG } from "@/config/pricing";
 import { prisma } from "@/lib/db";
+import { getResolvedTier } from "@/lib/tier";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { findCategoryById } from "@/server/models/category.model";
 import { findFestivalById } from "@/server/models/festival.model";
@@ -49,7 +50,7 @@ export const StudentService = {
       where: { festivalId },
     });
 
-    const tierLimit = TIER_CONFIG[festival.tier || "STANDARD"].limits.students;
+    const tierLimit = TIER_CONFIG[getResolvedTier(festival.tier)].limits.students;
     if (count >= tierLimit) {
       throw new AppError(ERROR_MESSAGES.STUDENT_LIMIT_REACHED);
     }

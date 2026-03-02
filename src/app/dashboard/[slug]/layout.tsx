@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/sidebar";
 import { SupportNotifications } from "@/components/dashboard/support/SupportNotifications";
 import { TIER_CONFIG } from "@/config/pricing";
+import { getResolvedTier } from "@/lib/tier";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
@@ -70,7 +71,7 @@ export default async function FestivalDashboardLayout({
   // ... (previous code)
 
   // 4. Prepare Data
-  const tierLimits = TIER_CONFIG[festival.tier || "STANDARD"].limits;
+  const tierLimits = TIER_CONFIG[getResolvedTier(festival.tier)].limits;
 
   const festivalData = {
     // ... (festival data construction)
@@ -166,7 +167,7 @@ export default async function FestivalDashboardLayout({
                     storageUsedMB: festival.storageUsedMB ?? 0,
                   }}
                   limits={festivalData.limits}
-                  tierLabel={festival.tier || "Standard"}
+                  tierLabel={TIER_CONFIG[getResolvedTier(festival.tier)].label}
                 />
               </div>
             </header>

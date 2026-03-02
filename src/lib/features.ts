@@ -15,17 +15,19 @@
 import type { TierFeatures } from "@/config/pricing";
 import { TIER_CONFIG } from "@/config/pricing";
 import type { Tier } from "@prisma/client";
+import { getResolvedTier } from "@/lib/tier";
 
 /** Derived from TierFeatures so config and feature paths cannot drift. */
 export type FeaturePath = keyof TierFeatures;
 
 /**
  * Coerce nullable tier to Tier for feature checks. Use before isFeatureEnabled/getFeatureValue.
+ * Delegates to tier.ts for consistent default (BASIC).
  */
 export function getTierForFeatureCheck(
   tier: Tier | null | undefined,
 ): Tier {
-  return tier ?? "STANDARD";
+  return getResolvedTier(tier);
 }
 
 /**

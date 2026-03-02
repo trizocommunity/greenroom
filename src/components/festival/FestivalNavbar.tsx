@@ -7,6 +7,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { getResolvedTier, isBasicTier } from "@/lib/tier";
 import { cn } from "@/lib/utils";
 import type { FestivalPublicData } from "./FestivalContext";
 
@@ -39,7 +40,7 @@ export function FestivalNavbar({
   // Current page extraction
   const currentPage = pathname.replace(linkBase, "") || "/";
 
-  const isBasic = festival.tier === "BASIC";
+  const isBasic = isBasicTier(festival.tier);
   const activeNavItems = isBasic
     ? [
         { name: "Home", href: "/" },

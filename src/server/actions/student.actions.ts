@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { TIER_CONFIG } from "@/config/pricing";
 import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
+import { getResolvedTier } from "@/lib/tier";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
@@ -129,7 +130,7 @@ export async function bulkCreateStudentsAction(
   if (!festival) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
 
   // Check Limits (Pre-flight)
-  const tierLimit = TIER_CONFIG[festival.tier || "STANDARD"].limits.students;
+  const tierLimit = TIER_CONFIG[getResolvedTier(festival.tier)].limits.students;
   const currentCount = await prisma.student.count({ where: { festivalId } });
 
   if (currentCount + students.length > tierLimit) {

@@ -25,7 +25,7 @@
 
 import { useFestival } from "@/components/festival/FestivalContext";
 import { FeatureService, type FeaturePath } from "@/lib/features";
-import type { Tier } from "@prisma/client";
+import { getResolvedTier } from "@/lib/tier";
 
 /**
  * Hook to check if a feature is enabled for the current festival's tier
@@ -40,7 +40,7 @@ import type { Tier } from "@prisma/client";
  */
 export function useFeature(featurePath: FeaturePath): boolean {
   const festival = useFestival();
-  const tier = (festival?.tier as Tier) || "BASIC";
+  const tier = getResolvedTier(festival?.tier);
 
   return FeatureService.isFeatureEnabled(tier, featurePath);
 }
@@ -59,7 +59,7 @@ export function useFeature(featurePath: FeaturePath): boolean {
  */
 export function useFeatureValue<T = any>(featurePath: FeaturePath): T | null {
   const festival = useFestival();
-  const tier = (festival?.tier as Tier) || "BASIC";
+  const tier = getResolvedTier(festival?.tier);
 
   return FeatureService.getFeatureValue<T>(tier, featurePath);
 }
@@ -79,7 +79,7 @@ export function useSupportLevel(
   requiredLevel: "whatsapp" | "priority" | "premium",
 ): boolean {
   const festival = useFestival();
-  const tier = (festival?.tier as Tier) || "BASIC";
+  const tier = getResolvedTier(festival?.tier);
 
   return FeatureService.hasSupportLevel(tier, requiredLevel);
 }
@@ -97,7 +97,7 @@ export function useSupportLevel(
  */
 export function useMaxTeamMembers(): number {
   const festival = useFestival();
-  const tier = (festival?.tier as Tier) || "BASIC";
+  const tier = getResolvedTier(festival?.tier);
 
   return FeatureService.getMaxTeamMembers(tier);
 }
@@ -109,7 +109,7 @@ export function useMaxTeamMembers(): number {
  */
 export function useHasUnlimitedTeamMembers(): boolean {
   const festival = useFestival();
-  const tier = (festival?.tier as Tier) || "BASIC";
+  const tier = getResolvedTier(festival?.tier);
 
   return FeatureService.hasUnlimitedTeamMembers(tier);
 }

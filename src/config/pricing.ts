@@ -67,6 +67,7 @@ export interface TierFeatures {
   // Settings
   festivalSettings: boolean;
   advancedSettings: boolean;
+  programmeAssignmentDeadline: boolean;
 
   // Support
   supportLevel: "whatsapp" | "email" | "priority" | "dedicated";
@@ -171,6 +172,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       // Settings
       festivalSettings: true,
       advancedSettings: false,
+      programmeAssignmentDeadline: false,
 
       // Support
       supportLevel: "whatsapp",
@@ -258,6 +260,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       // Settings
       festivalSettings: true,
       advancedSettings: true,
+      programmeAssignmentDeadline: true,
 
       // Support — email support with faster response
       supportLevel: "email",
@@ -345,6 +348,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       // Settings
       festivalSettings: true,
       advancedSettings: true,
+      programmeAssignmentDeadline: true,
 
       // Support — priority support with 4h SLA
       supportLevel: "priority",
