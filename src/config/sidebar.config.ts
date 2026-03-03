@@ -149,13 +149,6 @@ export const getFestivalDashboardSidebarConfig = (
           icon: Edit,
           allowedRoles: ["ADMIN", "OWNER"],
         },
-        // Merged items from old "Event Works"
-        {
-          title: "Chest Numbers",
-          href: `${basePath}/pre-works/chest-numbers`,
-          icon: CreditCard,
-          allowedRoles: ["ADMIN", "OWNER"],
-        },
         {
           title: "QR Codes",
           href: `${basePath}/pre-works/qr-codes`,

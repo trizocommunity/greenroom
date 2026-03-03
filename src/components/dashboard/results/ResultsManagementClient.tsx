@@ -1119,11 +1119,9 @@ export function ResultsManagementClient({
         <CardHeader className="p-3 border-b bg-muted/5">
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-2 mr-auto">
-                {summaryStats.ready && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-medium">
                     Ready: {summaryStats.ready}
                   </span>
-                )}
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium">
                   <CheckCircle2 className="w-3 h-3" />
                   Published: {summaryStats.published}

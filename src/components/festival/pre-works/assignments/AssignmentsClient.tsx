@@ -301,9 +301,20 @@ export function AssignmentsClient({
                   row.kind === "individual" ? (
                     <TableRow key={row.assignment.id}>
                       <TableCell className="text-sm">
-                        {row.assignment.group?.name ||
-                          row.assignment.student?.group?.name ||
-                          "—"}
+                         <div className="flex items-center gap-2">
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{
+                              backgroundColor:
+                                row.assignment.group?.color ||
+                                row.assignment.student?.group?.color ||
+                                "#2563eb",
+                            }}
+                          />
+                          {row.assignment.group?.name ||
+                            row.assignment.student?.group?.name ||
+                            "—"}
+                        </div>
                       </TableCell>
                       <TableCell className="font-medium text-sm">
                         {row.assignment.student?.name ?? (
@@ -357,12 +368,27 @@ export function AssignmentsClient({
                     <TableRow
                       key={`team-${row.programme?.id}-${row.groupId}-${row.teamNumber}`}
                     >
-                      <TableCell className="text-sm">{row.groupName}</TableCell>
+                      <TableCell className="text-sm">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{
+                              backgroundColor:
+                                groups.find((g: any) => g.id === row.groupId)
+                                  ?.color || "#2563eb",
+                            }}
+                          />
+                          {row.groupName}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-sm">
                         <span className="font-medium">
-                          {row.assignments
-                            .map((a: any) => a.student?.name ?? "—")
-                            .join(", ")}
+                          {row.assignments.length > 0
+                            ? `${row.assignments[0]?.student?.name ?? "—"}`
+                            : "—"}
+                            {row.assignments.length > 1 && (
+                              <span className="text-muted-foreground text-xs"> and Team</span>
+                            )}
                         </span>
                         <Button
                           variant="ghost"

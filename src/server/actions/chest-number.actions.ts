@@ -53,9 +53,7 @@ export async function saveChestNumberSettings(
   });
 
   if (updatedFestival) {
-    revalidatePath(
-      `/dashboard/${updatedFestival.slug}/event-works/chest-numbers`,
-    );
+    revalidatePath(`/dashboard/${updatedFestival.slug}/pre-works/students`);
   }
 }
 
@@ -82,12 +80,18 @@ export async function generateChestNumbers(festivalId: string) {
 
   const style = settings.numberingStyle || "ALPHANUMERIC";
 
-  // Prefix Logic
+  // ALPHANUMERIC requires a non-empty prefix; NUMERIC uses no prefix
+  if (
+    style === "ALPHANUMERIC" &&
+    (settings.prefix == null || String(settings.prefix).trim() === "")
+  ) {
+    throw new AppError(ERROR_MESSAGES.CHEST_SETTINGS_NOT_CONFIGURED);
+  }
+
   let prefixStr = "";
-  if (style === "ALPHANUMERIC") {
-    prefixStr = settings.prefix.endsWith("-")
-      ? settings.prefix
-      : `${settings.prefix}-`;
+  if (style === "ALPHANUMERIC" && settings.prefix != null) {
+    const p = String(settings.prefix).trim();
+    prefixStr = p.endsWith("-") ? p : `${p}-`;
   }
 
   // 2. Fetch existing chest numbers to avoid collision
@@ -186,7 +190,7 @@ export async function generateChestNumbers(festivalId: string) {
     },
   });
 
-  revalidatePath(`/dashboard/${festival.slug}/event-works/chest-numbers`);
+  revalidatePath(`/dashboard/${festival.slug}/pre-works/students`);
   return {
     count: updates.length,
     message: `Chest numbers generated for ${updates.length} students.`,
@@ -218,7 +222,99 @@ export async function resetChestNumbers(festivalId: string) {
     },
   });
 
-  revalidatePath(`/dashboard/${festival.slug}/event-works/chest-numbers`);
+  revalidatePath(`/dashboard/${festival.slug}/pre-works/students`);
+}
+
+export async function assignChestNumberForNewStudent(
+  festivalId: string,
+  studentId: string,
+) {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
+
+  const student = await prisma.student.findUnique({
+    where: { id: studentId, festivalId },
+    include: { category: true },
+  });
+  if (!student || student.category?.type !== "SINGLE") return;
+
+  const festival = await prisma.festival.findUnique({
+    where: { id: festivalId },
+    select: { chestNumberSettings: true },
+  });
+  if (!festival) return;
+
+  const settings = festival.chestNumberSettings as {
+    prefix?: string;
+    categories?: Record<string, number>;
+    categoryCodes?: Record<string, string>;
+    numberingStyle?: "ALPHANUMERIC" | "NUMERIC";
+  } | null;
+
+  if (!settings) return;
+  const style = settings.numberingStyle || "ALPHANUMERIC";
+  // NUMERIC does not require prefix; ALPHANUMERIC does
+  if (
+    style === "ALPHANUMERIC" &&
+    (settings.prefix == null || String(settings.prefix).trim() === "")
+  ) {
+    return;
+  }
+
+  let prefixStr = "";
+  if (style === "ALPHANUMERIC" && settings.prefix != null) {
+    const p = String(settings.prefix).trim();
+    prefixStr = p.endsWith("-") ? p : `${p}-`;
+  }
+
+  const existingNumbers = new Set(
+    (
+      await prisma.student.findMany({
+        where: { festivalId, chestNumber: { not: null } },
+        select: { chestNumber: true },
+      })
+    ).map((s) => s.chestNumber),
+  );
+
+  const catId = student.categoryId;
+  const categorySequences = settings.categories ? { ...settings.categories } : {};
+  let currentSeq = categorySequences[catId];
+  if (currentSeq === undefined) {
+    currentSeq = 1;
+    categorySequences[catId] = 1;
+  }
+
+  const codes = settings.categoryCodes || {};
+  let catInitial = "";
+  if (style === "ALPHANUMERIC") {
+    catInitial = codes[catId]
+      ? codes[catId].toUpperCase()
+      : (student.category?.name?.charAt(0) ?? "X").toUpperCase();
+  }
+
+  let chestNumber = `${prefixStr}${catInitial}${String(currentSeq).padStart(2, "0")}`;
+  while (existingNumbers.has(chestNumber)) {
+    currentSeq++;
+    chestNumber = `${prefixStr}${catInitial}${String(currentSeq).padStart(2, "0")}`;
+  }
+  categorySequences[catId] = currentSeq + 1;
+
+  await prisma.student.update({
+    where: { id: studentId },
+    data: { chestNumber },
+  });
+
+  await prisma.festival.update({
+    where: { id: festivalId },
+    data: {
+      chestNumberSettings: {
+        prefix: style === "NUMERIC" ? "" : (settings.prefix ?? ""),
+        categories: categorySequences,
+        categoryCodes: settings.categoryCodes ?? {},
+        numberingStyle: style,
+      },
+    },
+  });
 }
 
 export async function updateAllChestNumbers(
@@ -345,5 +441,5 @@ export async function updateAllChestNumbers(
     },
   });
 
-  revalidatePath(`/dashboard/${festival.slug}/event-works/chest-numbers`);
+  revalidatePath(`/dashboard/${festival.slug}/pre-works/students`);
 }

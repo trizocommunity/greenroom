@@ -4,7 +4,6 @@ import { format } from "date-fns";
 import { Eye, FileText, Loader2, Pencil, Plus, X } from "lucide-react";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
@@ -36,16 +35,39 @@ import { BulkUploadStudentsModal } from "./BulkUploadStudentsModal";
 import { StudentDetailsDialog } from "./StudentDetailsDialog";
 import { StudentDialog } from "./StudentDialog";
 import { FeatureGate } from "@/components/common/FeatureGate";
+import { ChestNumberSetup } from "@/components/festival/event-works/chest-numbers/ChestNumberSetup";
 
 interface StudentsClientProps {
   festivalId: string;
+  festivalSlug: string;
+  initialChestSettings: {
+    prefix: string;
+    nextSequence?: number;
+    categories?: Record<string, number>;
+    categoryCodes?: Record<string, string>;
+    numberingStyle?: "ALPHANUMERIC" | "NUMERIC";
+  } | null;
+  onChestRevalidate: () => void;
 }
 
-export function StudentsClient({ festivalId }: StudentsClientProps) {
+export function StudentsClient({
+  festivalId,
+  initialChestSettings,
+  onChestRevalidate,
+}: StudentsClientProps) {
   const { students, isLoading, deleteStudent, isDeleting } =
     useStudents(festivalId);
   const { groups } = useGroups(festivalId);
   const { categories } = useCategories(festivalId);
+
+  const singleCategories = (categories ?? []).filter(
+    (c: any) => c.type === "SINGLE",
+  );
+  const pendingChestCount = (students ?? []).filter(
+    (s: any) =>
+      !s.chestNumber &&
+      s.category?.type === "SINGLE",
+  ).length;
 
   const [selectedGroup, setSelectedGroup] = useState<string>("ALL");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
@@ -80,18 +102,29 @@ export function StudentsClient({ festivalId }: StudentsClientProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="mb-10 flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Students</h1>
         <div className="flex items-center gap-2">
           <HowItWorksButton
             title="How Students work"
-            description="Students are the participants in your festival."
+            description="Students and chest numbers."
           >
+            <p className="text-sm text-muted-foreground">
+              <strong>Configure chest numbers first</strong> (prefix, category
+              codes, numbering style) at the top of this page, then add
+              students. New students get a chest number automatically when
+              config is valid.
+            </p>
             <p className="text-sm text-muted-foreground">
               Add students and assign them to a <strong>group</strong> and{" "}
               <strong>category</strong>. Groups represent schools or teams;
               categories define competition segments. You need at least one group
               and one category before adding students.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              For existing data you can <strong>reset</strong> (clear all
+              numbers and config), <strong>reconfigure</strong>, then{" "}
+              <strong>generate</strong> again for all students.
             </p>
             <p className="text-sm text-muted-foreground">
               Use bulk upload to add many students at once. Then assign them to
@@ -129,6 +162,14 @@ export function StudentsClient({ festivalId }: StudentsClientProps) {
           )}
         </div>
       </div>
+
+      <ChestNumberSetup
+        festivalId={festivalId}
+        categories={singleCategories}
+        initialSettings={initialChestSettings}
+        onGenerated={onChestRevalidate}
+        pendingCount={pendingChestCount}
+      />
 
       <Card>
         <CardHeader className="p-3 border-b bg-muted/5">
@@ -185,6 +226,7 @@ export function StudentsClient({ festivalId }: StudentsClientProps) {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
+              <TableHead>Chest No</TableHead>
               <TableHead>Group</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Created At</TableHead>
@@ -194,15 +236,15 @@ export function StudentsClient({ festivalId }: StudentsClientProps) {
           <TableBody>
             {filteredStudents.map((student: any) => (
               <TableRow key={student.id}>
-                <TableCell className="font-medium">
-                  <div className="flex flex-col">
-                    <span>{student.name}</span>
-                    {student.chestNumber && (
-                      <span className="text-xs font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded w-fit">
-                        {student.chestNumber}
-                      </span>
-                    )}
-                  </div>
+                <TableCell className="font-medium">{student.name}</TableCell>
+                <TableCell>
+                  {student.chestNumber ? (
+                    <span className="font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded text-xs">
+                      {student.chestNumber}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground text-xs">—</span>
+                  )}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
@@ -263,7 +305,7 @@ export function StudentsClient({ festivalId }: StudentsClientProps) {
             {filteredStudents.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={5}
+                  colSpan={6}
                   className="h-24 text-center text-muted-foreground"
                 >
                   <div className="flex flex-col items-center justify-center gap-2">

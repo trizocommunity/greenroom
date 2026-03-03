@@ -1,6 +1,7 @@
 "use client";
 
-import { Eye, Loader2, Mail, Phone } from "lucide-react";
+import { format } from "date-fns";
+import { Eye, Loader2, Mail, Phone, Crown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,110 +55,129 @@ export function StudentDetailsDialog({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] flex flex-col p-4 sm:p-5">
+        <DialogHeader className="shrink-0 pb-2">
+          <DialogTitle className="text-base sm:text-lg truncate pr-8">
             {student.name}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
-          {/* Info Column */}
-          <div className="space-y-4 border-r pr-4">
+        <ScrollArea className="flex-1 min-h-0 -mx-1 px-1">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
+            {/* Complete details column */}
+            <div className="space-y-2.5 sm:border-r sm:pr-4 sm:border-b-0 border-b pb-3 sm:pb-0">
             <div>
-              <span className="text-xs text-muted-foreground font-semibold uppercase">
-                Group
-              </span>
-              <div className="font-medium flex items-center gap-2 mt-1">
+              <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide">Chest No</span>
+              <div className="text-sm mt-0.5">
+                {student.chestNumber ? (
+                  <Badge variant="secondary" className="font-mono text-[10px] h-5 px-1.5">
+                    {student.chestNumber}
+                  </Badge>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </div>
+            </div>
+            <div>
+              <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide">Group</span>
+              <div className="text-sm flex items-center gap-1.5 mt-0.5">
                 <span
-                  className="w-2 h-2 rounded-full"
-                  style={{
-                    backgroundColor: student.group?.color || "#2563eb",
-                  }}
+                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ backgroundColor: student.group?.color || "#2563eb" }}
                 />
-                {student.group?.name}
+                {student.group?.name ?? "—"}
               </div>
             </div>
-
             <div>
-              <span className="text-xs text-muted-foreground font-semibold uppercase">
-                Category
-              </span>
-              <div className="font-medium mt-1">{student.category?.name}</div>
+              <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide">Category</span>
+              <div className="text-sm mt-0.5">{student.category?.name ?? "—"}</div>
             </div>
-
             <div>
-              <span className="text-xs text-muted-foreground font-semibold uppercase">
-                Gender
-              </span>
-              <div className="font-medium mt-1 capitalize">
-                {student.gender?.toLowerCase() || "-"}
+              <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide">Gender</span>
+              <div className="text-sm mt-0.5 capitalize">{student.gender?.toLowerCase() ?? "—"}</div>
+            </div>
+            {(student.age != null || (student.standard != null && student.standard !== "")) && (
+              <div className="flex gap-4 pt-1 border-t">
+                {student.age != null && (
+                  <div>
+                    <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide">Age</span>
+                    <div className="text-sm mt-0.5">{student.age}</div>
+                  </div>
+                )}
+                {student.standard != null && student.standard !== "" && (
+                  <div>
+                    <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide">Class</span>
+                    <div className="text-sm mt-0.5">{student.standard}</div>
+                  </div>
+                )}
+              </div>
+            )}
+            {student.isTeamLeader && (
+              <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-500 text-xs">
+                <Crown className="h-3.5 w-3.5" />
+                <span>Team leader</span>
+              </div>
+            )}
+            <div className="pt-1.5 space-y-1 border-t text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Mail className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{student.email || "No email"}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Phone className="h-3.5 w-3.5 shrink-0" />
+                {student.phone || "No phone"}
               </div>
             </div>
-
-            <div className="pt-2 space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Mail className="h-4 w-4" />
-                <span>{student.email || "No email"}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Phone className="h-4 w-4" />
-                <span>{student.phone || "No phone"}</span>
-              </div>
+            <div className="pt-1.5 border-t text-[11px] text-muted-foreground space-y-0.5">
+              {student.createdAt && <div>Created {format(new Date(student.createdAt), "PP")}</div>}
+              {student.updatedAt && <div>Updated {format(new Date(student.updatedAt), "PP")}</div>}
             </div>
           </div>
 
-          {/* Programmes Column */}
-          <div className="md:col-span-2">
-            <h4 className="font-semibold mb-3 flex items-center gap-2">
+          {/* Programmes */}
+          <div className="sm:col-span-2 min-w-0">
+            <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
               Assigned Programmes
-              <Badge variant="secondary">{studentAssignments.length}</Badge>
+              <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{studentAssignments.length}</Badge>
             </h4>
-
-            <ScrollArea className="h-[300px] border rounded-md">
+            <div className="border rounded-md overflow-hidden">
               {isLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Programme</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Stage Type</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {studentAssignments.map((assignment: any) => (
-                      <TableRow key={assignment.id}>
-                        <TableCell className="font-medium">
-                          {assignment.programme?.name}
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          {assignment.programme?.type}
-                        </TableCell>
-                        <TableCell className="text-xs font-mono text-muted-foreground">
-                          {assignment.programme?.stageType}
-                        </TableCell>
+                <ScrollArea className="h-[200px] sm:h-[220px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="py-1.5 text-xs">Programme</TableHead>
+                        <TableHead className="py-1.5 text-xs w-20">Type</TableHead>
+                        <TableHead className="py-1.5 text-xs w-24">Stage</TableHead>
                       </TableRow>
-                    ))}
-                    {studentAssignments.length === 0 && (
-                      <TableRow>
-                        <TableCell
-                          colSpan={3}
-                          className="text-center text-muted-foreground h-24"
-                        >
-                          Not assigned to any programmes.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {studentAssignments.map((assignment: any) => (
+                        <TableRow key={assignment.id} className="border-b last:border-0">
+                          <TableCell className="py-1.5 text-xs font-medium">{assignment.programme?.name}</TableCell>
+                          <TableCell className="py-1.5 text-[11px] text-muted-foreground">{assignment.programme?.type}</TableCell>
+                          <TableCell className="py-1.5 text-[11px] font-mono text-muted-foreground">{assignment.programme?.stageType}</TableCell>
+                        </TableRow>
+                      ))}
+                      {studentAssignments.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center text-muted-foreground text-xs py-6">
+                            Not assigned to any programmes.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
               )}
-            </ScrollArea>
+            </div>
           </div>
         </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );

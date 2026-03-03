@@ -10,6 +10,7 @@ import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { findFestivalById } from "@/server/models/festival.model";
 import { StudentService } from "@/server/services/student.service";
+import { assignChestNumberForNewStudent } from "@/server/actions/chest-number.actions";
 
 export async function getStudentsAction(festivalId: string) {
   const session = await getSession();
@@ -47,7 +48,7 @@ export async function createStudentWithServiceAction(
     throw new Error("Create groups & categories first.");
   }
 
-  return StudentService.create(festivalId, {
+  const newStudent = await StudentService.create(festivalId, {
     name: data.name,
     groupId: data.groupId,
     categoryId: data.categoryId,
@@ -58,6 +59,11 @@ export async function createStudentWithServiceAction(
     age: data.age,
     standard: data.standard,
   });
+  await assignChestNumberForNewStudent(festivalId, newStudent.id);
+  try {
+    revalidatePath(`/dashboard/${festival.slug}/pre-works/students`);
+  } catch {}
+  return newStudent;
 }
 
 export async function validateStudentsAction(
@@ -153,7 +159,7 @@ export async function bulkCreateStudentsAction(
   // In a real high-perf scenario, we would lock or reserve IDs, but this is sufficient.
   for (const student of students) {
     try {
-      await StudentService.create(festivalId, {
+      const newStudent = await StudentService.create(festivalId, {
         name: student.name,
         groupId: student.groupId,
         categoryId: student.categoryId,
@@ -163,6 +169,7 @@ export async function bulkCreateStudentsAction(
         age: student.age,
         standard: student.standard,
       });
+      await assignChestNumberForNewStudent(festivalId, newStudent.id);
       successCount++;
     } catch (error: unknown) {
       errors.push({

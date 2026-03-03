@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -48,6 +49,7 @@ interface ChestNumberSetupProps {
     nextSequence?: number;
     categories?: Record<string, number>;
     categoryCodes?: Record<string, string>;
+    numberingStyle?: "ALPHANUMERIC" | "NUMERIC";
   } | null;
   onGenerated: () => void;
   pendingCount?: number;
@@ -60,6 +62,13 @@ export function ChestNumberSetup({
   onGenerated,
   pendingCount = 0,
 }: ChestNumberSetupProps) {
+  const queryClient = useQueryClient();
+
+  const invalidateStudentsAndNotify = () => {
+    queryClient.invalidateQueries({ queryKey: ["students", festivalId] });
+    onGenerated();
+  };
+
   const [prefix, setPrefix] = useState(initialSettings?.prefix || "");
   const [categoryStarts, setCategoryStarts] = useState<Record<string, string>>(
     () => {
@@ -105,7 +114,7 @@ export function ChestNumberSetup({
 
   const [numberingStyle, setNumberingStyle] = useState<
     "ALPHANUMERIC" | "NUMERIC"
-  >("ALPHANUMERIC");
+  >(initialSettings?.numberingStyle || "ALPHANUMERIC");
 
   // Determine if configured based on categories being present in settings, not just prefix
   const isConfigured =
@@ -124,41 +133,6 @@ export function ChestNumberSetup({
     setEditCategoryCodes({ ...categoryCodes });
     setEditCategoryStarts({ ...categoryStarts });
     setIsEditOpen(true);
-  };
-
-  const handleStartChange = (catId: string, val: string) => {
-    setCategoryStarts((prev) => ({ ...prev, [catId]: val }));
-  };
-
-  const handleCodeChange = (catId: string, val: string) => {
-    setCategoryCodes((prev) => ({ ...prev, [catId]: val.toUpperCase() }));
-  };
-
-  const getPreview = (currentPrefix: string) => {
-    if (!categories.length) return "No Categories";
-    const demoCat = categories[0];
-    const start = parseInt(categoryStarts[demoCat.id] || "1");
-    const formattedStart = String(start).padStart(2, "0");
-
-    // Numeric Mode Preview
-    if (
-      !currentPrefix &&
-      Object.keys(categoryCodes).every((k) => !categoryCodes[k])
-    ) {
-      return `${formattedStart}`;
-    }
-
-    // Alphanumeric Preview
-    const code =
-      categoryCodes[demoCat.id] || demoCat.name.charAt(0).toUpperCase();
-    const safePrefix =
-      currentPrefix && currentPrefix.endsWith("-")
-        ? currentPrefix
-        : currentPrefix
-          ? `${currentPrefix}-`
-          : ""; // No prefix logic if empty, though alphanumeric usually has one.
-
-    return `${safePrefix}${code}${formattedStart}`;
   };
 
   // Helper to get preview for EDIT state
@@ -190,36 +164,44 @@ export function ChestNumberSetup({
   };
 
   const handleSaveAndGenerate = async () => {
-    if (!prefix) {
-      toast.error("Prefix is required");
-      return;
+    const isNumeric = numberingStyle === "NUMERIC";
+
+    if (!isNumeric) {
+      if (!prefix || !prefix.trim()) {
+        toast.error("Prefix is required for Alphanumeric style");
+        return;
+      }
     }
 
     const categoryConfig: Record<string, number> = {};
     const codeConfig: Record<string, string> = {};
 
     for (const cat of categories) {
-      const val = parseInt(categoryStarts[cat.id]);
+      const startVal = categoryStarts[cat.id];
+      const val = parseInt(startVal ?? "", 10);
       if (Number.isNaN(val)) {
         toast.error(`Invalid start number for ${cat.name}`);
         return;
       }
       categoryConfig[cat.id] = val;
 
-      const code = categoryCodes[cat.id];
-      if (!code) {
-        toast.error(`Code is required for ${cat.name}`);
-        return;
+      if (!isNumeric) {
+        const code = categoryCodes[cat.id];
+        if (!code || !code.trim()) {
+          toast.error(`Code is required for ${cat.name} (Alphanumeric)`);
+          return;
+        }
+        codeConfig[cat.id] = code;
       }
-      codeConfig[cat.id] = code;
     }
 
     try {
       setIsSaving(true);
       await saveChestNumberSettings(festivalId, {
-        prefix,
+        prefix: isNumeric ? "" : (prefix ?? ""),
         categories: categoryConfig,
-        categoryCodes: codeConfig,
+        categoryCodes: isNumeric ? {} : codeConfig,
+        numberingStyle: numberingStyle,
       });
 
       setIsSaving(false);
@@ -227,7 +209,7 @@ export function ChestNumberSetup({
       const result = await generateChestNumbers(festivalId);
 
       toast.success(result.message);
-      onGenerated();
+      invalidateStudentsAndNotify();
     } catch (error: any) {
       toast.error(error.message || "Failed to process");
     } finally {
@@ -293,7 +275,7 @@ export function ChestNumberSetup({
       setCategoryCodes(codesToSave);
       setCategoryStarts(editCategoryStarts);
 
-      onGenerated();
+      invalidateStudentsAndNotify();
     } catch (error: any) {
       toast.error(error.message || "Failed to update configuration");
     } finally {
@@ -319,7 +301,7 @@ export function ChestNumberSetup({
       setCategoryStarts(defaultStarts);
       setCategoryCodes(defaultCodes);
 
-      onGenerated();
+      invalidateStudentsAndNotify();
     } catch (error: any) {
       toast.error("Failed to reset chest numbers");
     } finally {
@@ -400,18 +382,19 @@ export function ChestNumberSetup({
                 </AlertDialogContent>
               </AlertDialog>
 
+              {pendingCount > 0 && (
               <Button
                 onClick={handleSaveAndGenerate}
                 disabled={isGenerating || pendingCount === 0}
                 variant={pendingCount === 0 ? "outline" : "default"}
+                size="sm"
               >
                 {isGenerating ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : null}
-                {pendingCount > 0
-                  ? `Generate for ${pendingCount} New Students`
-                  : "No New Students"}
+                Generate ${pendingCount} New
               </Button>
+              )}
             </>
           )}
         </div>
@@ -482,7 +465,7 @@ export function ChestNumberSetup({
                           </span>
                           <Input
                             className="w-16 h-8 font-mono uppercase"
-                            value={editCategoryCodes[cat.id]}
+                            value={editCategoryCodes[cat.id] ?? ""}
                             onChange={(e) =>
                               handleEditCodeChange(cat.id, e.target.value)
                             }
@@ -498,7 +481,7 @@ export function ChestNumberSetup({
                         <Input
                           className="w-20 h-8"
                           type="number"
-                          value={editCategoryStarts[cat.id]}
+                          value={editCategoryStarts[cat.id] ?? ""}
                           onChange={(e) =>
                             setEditCategoryStarts((prev) => ({
                               ...prev,
