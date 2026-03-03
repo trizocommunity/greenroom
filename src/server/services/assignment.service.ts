@@ -189,6 +189,31 @@ export const AssignmentService = {
     return deleteAssignment(id);
   },
 
+  /**
+   * Delete all assignments for a GROUP programme team (programmeId + groupId + teamNumber).
+   * Used when the UI shows one row per team and user removes the team.
+   */
+  async deleteByTeam(
+    festivalId: string,
+    programmeId: string,
+    groupId: string,
+    teamNumber: number,
+  ) {
+    const festival = await findFestivalById(festivalId);
+    if (festival?.status === "EXPIRED")
+      throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
+
+    const result = await prisma.programmeAssignment.deleteMany({
+      where: {
+        festivalId,
+        programmeId,
+        groupId,
+        teamNumber,
+      },
+    });
+    return result;
+  },
+
   // Aliases for backwards compatibility
   async assign(festivalId: string, programmeId: string, studentId: string) {
     return this.create(festivalId, { programmeId, studentId });

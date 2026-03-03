@@ -118,6 +118,7 @@ export async function updateFestivalSettingsAction(
     startDate?: string | null;
     endDate?: string | null;
     scoringSystem?: "POSITION_BASED" | "SCORE_BASED";
+    maxResultScore?: number | null;
   },
 ) {
   try {
@@ -164,6 +165,9 @@ export async function updateFestivalSettingsAction(
         }),
         ...(data.scoringSystem !== undefined && {
           scoringSystem: data.scoringSystem,
+        }),
+        ...(data.maxResultScore !== undefined && {
+          maxResultScore: data.maxResultScore,
         }),
       },
     });

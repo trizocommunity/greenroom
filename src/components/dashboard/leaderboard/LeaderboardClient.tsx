@@ -10,13 +10,20 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  ExternalLink,
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -40,6 +47,7 @@ import {
 } from "@/components/ui/dialog";
 import { getGradeBadgeColor } from "@/lib/results-calculator";
 import { Eye } from "lucide-react";
+import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 
 const getTeamName = (assignment: any, type: string) => {
   if (type === "GROUP" && assignment.group) {
@@ -80,6 +88,7 @@ export function LeaderboardClient({
 }: LeaderboardClientProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterProgrammeType, setFilterProgrammeType] = useState<string>("all");
   const [isPending, startTransition] = useTransition();
 
   // View Details Modal State
@@ -213,6 +222,9 @@ export function LeaderboardClient({
           p.category?.name.toLowerCase().includes(lower),
       );
     }
+    if (filterProgrammeType !== "all") {
+      progs = progs.filter((p) => p.type === filterProgrammeType);
+    }
     return progs
       .map((p) => {
         // Effective Counts (Teams for Groups, Students for Individual)
@@ -287,7 +299,7 @@ export function LeaderboardClient({
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
       });
-  }, [programmes, searchQuery]);
+  }, [programmes, searchQuery, filterProgrammeType]);
 
   const [updatingProgrammeId, setUpdatingProgrammeId] = useState<string | null>(
     null,
@@ -316,63 +328,74 @@ export function LeaderboardClient({
     });
   };
 
-  return (
-    <div className="space-y-8">
-      {/* Top Section: Live Leaderboard Preview */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              <Crown className="w-6 h-6 text-yellow-500" />
-              Live Team Standings
-            </h2>
-            <p className="text-muted-foreground">
-              Based on <strong>PUBLISHED</strong> results only. Publish
-              individual programme results below to update this list.
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            {/* Link to Public Page */}
-            <div className="flex gap-2">
-              <Button
-                variant="default"
-                size="sm"
-                className="gap-2 bg-green-600 hover:bg-green-700"
-                onClick={() => {
-                  setUpdatingProgrammeId("standings");
-                  startTransition(async () => {
-                    try {
-                      const res = await publishTeamStandings(
-                        festival.id,
-                        teamStandings,
-                        festival.slug,
-                      );
-                      if (res.success) {
-                        toast.success(
-                          "Team Standings published to public page",
-                        );
-                        router.refresh();
-                      } else {
-                        toast.error("Failed to publish standings");
-                      }
-                    } finally {
-                      setUpdatingProgrammeId(null);
-                    }
-                  });
-                }}
-                disabled={isPending}
-              >
-                {isPending && updatingProgrammeId === "standings" ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="w-4 h-4" />
-                )}
-                Publish Standings
-              </Button>
-            </div>
-          </div>
-        </div>
+  const hasTableFilters =
+    searchQuery !== "" || filterProgrammeType !== "all";
 
+  const clearTableFilters = () => {
+    setSearchQuery("");
+    setFilterProgrammeType("all");
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">Leaderboard</h1>
+        <div className="flex items-center gap-2">
+          <HowItWorksButton
+            title="How Leaderboard works"
+            description="Team standings from published programme results."
+          >
+            <p className="text-sm text-muted-foreground">
+              <strong>Live Standings</strong> show the current totals from all
+              published programme results. They update as you publish or
+              unpublish results.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              <strong>Publish Standings</strong> copies the live snapshot to the
+              public festival page so visitors can see the leaderboard. Use the
+              table below to publish or unpublish results per programme first.
+            </p>
+          </HowItWorksButton>
+          <Button
+            variant="default"
+            size="sm"
+            className="gap-2 bg-green-600 hover:bg-green-700"
+            onClick={() => {
+            setUpdatingProgrammeId("standings");
+            startTransition(async () => {
+              try {
+                const res = await publishTeamStandings(
+                  festival.id,
+                  teamStandings,
+                  festival.slug,
+                );
+                if (res.success) {
+                  toast.success(
+                    "Team Standings published to public page",
+                  );
+                  router.refresh();
+                } else {
+                  toast.error("Failed to publish standings");
+                }
+              } finally {
+                setUpdatingProgrammeId(null);
+              }
+            });
+          }}
+          disabled={isPending}
+        >
+          {isPending && updatingProgrammeId === "standings" ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4" />
+          )}
+          Publish Standings
+        </Button>
+        </div>
+      </div>
+
+      {/* Standings: Live + Published */}
+      <section className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Live Standings Column */}
           <Card className="p-0 overflow-hidden border-yellow-500/20">
@@ -490,28 +513,51 @@ export function LeaderboardClient({
         </div>
       </section>
 
-      {/* Second Section: Results Publishing Management */}
-      <section className="space-y-4 pt-8 border-t">
-        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold">Manage Results</h2>
-            <p className="text-muted-foreground">
-              Publish or unpublish results for each programme.
-            </p>
+      {/* Manage Results: one Card with filters in header, table in content */}
+      <Card>
+        <CardHeader className="p-3 border-b bg-muted/5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground mr-auto">
+              {filteredProgrammes.length} programme
+              {filteredProgrammes.length !== 1 ? "s" : ""}
+            </span>
+            <div className="relative w-full sm:w-48">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search..."
+                className="pl-7 h-8 text-xs"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                suppressHydrationWarning
+              />
+            </div>
+            <Select
+              value={filterProgrammeType}
+              onValueChange={setFilterProgrammeType}
+            >
+              <SelectTrigger className="h-8 text-xs w-[100px]">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="INDIVIDUAL">Individual</SelectItem>
+                <SelectItem value="GROUP">Team</SelectItem>
+              </SelectContent>
+            </Select>
+            {hasTableFilters && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={clearTableFilters}
+                title="Clear filters"
+              >
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            )}
           </div>
-          <div className="relative w-full md:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search programmes..."
-              className="pl-9"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              suppressHydrationWarning
-            />
-          </div>
-        </div>
-
-        <Card>
+        </CardHeader>
+        <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
@@ -652,8 +698,8 @@ export function LeaderboardClient({
               )}
             </TableBody>
           </Table>
-        </Card>
-      </section>
+        </CardContent>
+      </Card>
 
       {/* View Details Modal */}
       <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>

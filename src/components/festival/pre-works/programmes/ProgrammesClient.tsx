@@ -1,9 +1,11 @@
 "use client";
 
-import { Eye, FileText, Filter, Loader2, Pencil } from "lucide-react";
+import { Eye, FileText, Loader2, Pencil, Plus, X } from "lucide-react";
+import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { FeatureGate } from "@/components/common/FeatureGate";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
@@ -71,115 +73,128 @@ export function ProgrammesClient({ festivalId }: ProgrammesClientProps) {
     return true;
   });
 
+  const hasFilters =
+    categoryFilter !== "ALL" ||
+    stageTypeFilter !== "ALL" ||
+    typeFilter !== "ALL";
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 bg-background p-4 rounded-lg border shadow-sm">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold tracking-tight">Programmes</h2>
-              <Badge variant="secondary">{filteredProgrammes.length}</Badge>
-            </div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">Programmes</h1>
+        <div className="flex items-center gap-2">
+          <HowItWorksButton
+            title="How Programmes work"
+            description="Programmes are the events or competitions in your festival."
+          >
             <p className="text-sm text-muted-foreground">
-              Manage all festival programmes.
+              <strong>Type:</strong> Individual = one participant per entry;
+              Team = one team per entry (multiple members). <strong>Stage
+              type:</strong> Stage or Off-Stage is for organisation only.
             </p>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            {categories.length === 0 ? (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div>
-                      <Button disabled>Add Programme</Button>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Create a category first.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : (
-              <div className="flex gap-2">
-                <FeatureGate feature="programmeBulkUpload">
-                  <BulkUploadProgrammesModal festivalId={festivalId} />
-                </FeatureGate>
-                <ProgrammeDialog
-                  festivalId={festivalId}
-                  trigger={<Button>Add Programme</Button>}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Filters Bar */}
-        <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[180px] h-8 text-xs">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Filter className="h-3 w-3" />
-                <SelectValue placeholder="All Categories" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Categories</SelectItem>
-              {categories.map((c: any) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[150px] h-8 text-xs">
-              <SelectValue placeholder="All Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Types</SelectItem>
-              <SelectItem value="INDIVIDUAL">Individual</SelectItem>
-              <SelectItem value="GROUP">Group</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={stageTypeFilter} onValueChange={setStageTypeFilter}>
-            <SelectTrigger className="w-[150px] h-8 text-xs">
-              <SelectValue placeholder="All Stages" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Stages</SelectItem>
-              <SelectItem value="STAGE">Stage</SelectItem>
-              <SelectItem value="NON_STAGE">Off-Stage</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {(categoryFilter !== "ALL" ||
-            stageTypeFilter !== "ALL" ||
-            typeFilter !== "ALL") && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 px-2 text-xs"
-              onClick={() => {
-                setCategoryFilter("ALL");
-                setStageTypeFilter("ALL");
-                setTypeFilter("ALL");
-              }}
-            >
-              Reset
-            </Button>
+            <p className="text-sm text-muted-foreground">
+              Create categories first, then add programmes. After that, assign
+              students or teams from the Assignments page.
+            </p>
+          </HowItWorksButton>
+          {categories.length === 0 ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <Button disabled>Add Programme</Button>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Create a category first.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <>
+              <FeatureGate feature="programmeBulkUpload">
+                <BulkUploadProgrammesModal festivalId={festivalId} />
+              </FeatureGate>
+              <ProgrammeDialog
+                festivalId={festivalId}
+                trigger={
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Programme
+                  </Button>
+                }
+              />
+            </>
           )}
         </div>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
+      <Card>
+        <CardHeader className="p-3 border-b bg-muted/5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground mr-auto">
+              {filteredProgrammes.length} row{filteredProgrammes.length !== 1 ? "s" : ""}
+            </span>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="h-8 w-[130px] text-xs">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All</SelectItem>
+                <SelectItem value="INDIVIDUAL">Individual</SelectItem>
+                <SelectItem value="GROUP">Team</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="h-8 w-[130px] text-xs">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All categories</SelectItem>
+                {categories.map((c: any) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={stageTypeFilter} onValueChange={setStageTypeFilter}>
+              <SelectTrigger className="h-8 w-[110px] text-xs">
+                <SelectValue placeholder="Stage" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All</SelectItem>
+                <SelectItem value="STAGE">Stage</SelectItem>
+                <SelectItem value="NON_STAGE">Off-Stage</SelectItem>
+              </SelectContent>
+            </Select>
+            {hasFilters && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => {
+                  setCategoryFilter("ALL");
+                  setStageTypeFilter("ALL");
+                  setTypeFilter("ALL");
+                }}
+                title="Clear filters"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Category</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Stage Type</TableHead>
+              <TableHead>Programme type</TableHead>
+              <TableHead className="text-muted-foreground font-normal">
+                Stage
+              </TableHead>
               <TableHead>Limits</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -192,19 +207,17 @@ export function ProgrammesClient({ festivalId }: ProgrammesClientProps) {
                   {programme.category?.name || "No Category"}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="text-[10px]">
-                    {programme.type}
+                  <Badge
+                    variant={programme.type === "GROUP" ? "secondary" : "outline"}
+                    className="text-[10px] font-medium"
+                  >
+                    {programme.type === "GROUP" ? "Team" : "Individual"}
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <Badge
-                    variant={
-                      programme.stageType === "STAGE" ? "default" : "secondary"
-                    }
-                    className="text-[10px]"
-                  >
+                  <span className="text-[10px] text-muted-foreground">
                     {programme.stageType === "STAGE" ? "Stage" : "Off-Stage"}
-                  </Badge>
+                  </span>
                 </TableCell>
                 <TableCell className="text-xs">
                   {programme.type === "INDIVIDUAL" ? (
@@ -268,7 +281,8 @@ export function ProgrammesClient({ festivalId }: ProgrammesClientProps) {
             )}
           </TableBody>
         </Table>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

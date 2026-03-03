@@ -1,6 +1,9 @@
 /**
  * Results Calculation Utilities
- * Automatic grade and position calculation based on score
+ *
+ * Rule: Grade is derived only from the judge's score (result), on a scale 0 to maxScore.
+ * Scoring system (POSITION_BASED vs SCORE_BASED) affects leaderboard points only, not grade.
+ * Flow: result (score) → grade; result + position → points (for leaderboard).
  */
 
 export interface PointsInput {
@@ -14,20 +17,33 @@ export interface CalculatedResult {
   remarks: string;
 }
 
-/**
- * Fixed maximum points for all programmes
- */
-const MAX_POINTS = 10;
+/** Default maximum score (judge gives 0 to this value). */
+const DEFAULT_MAX_SCORE = 10;
 
 /**
- * Calculate grade based on points (out of 10)
+ * Calculate grade from the judge's score (result) only.
+ * Score is on scale 0 to maxScore (default 10). Grade is never based on position or leaderboard points.
+ *
+ * @param score - Judge's score (the result / points given), 0 to maxScore
+ * @param maxScore - Maximum possible score (default 10)
  */
-export function calculateGrade(points: number): {
+export function calculateGrade(
+  score: number,
+  maxScore: number = DEFAULT_MAX_SCORE,
+): {
   grade: string;
   percentage: number;
   remarks: string;
 } {
-  const percentage = (points / MAX_POINTS) * 100;
+  if (maxScore <= 0) {
+    return {
+      grade: "E",
+      percentage: 0,
+      remarks: "Needs Improvement",
+    };
+  }
+  const rawPercentage = (score / maxScore) * 100;
+  const percentage = Math.min(100, Math.max(0, rawPercentage));
 
   let grade: string;
   let remarks: string;
@@ -82,10 +98,12 @@ export function calculatePositionPoints(position: number): number {
 }
 
 /**
- * Calculate points based on scoring system
+ * Calculate leaderboard points based on scoring system.
+ * This does not affect grade; grade is always from score only.
+ *
  * @param scoringSystem - "POSITION_BASED" or "SCORE_BASED"
- * @param score - Judge's score (out of 10)
- * @param position - Calculated rank
+ * @param score - Judge's score (result)
+ * @param position - Calculated rank (1, 2, 3...)
  */
 export function calculatePoints(
   scoringSystem: "POSITION_BASED" | "SCORE_BASED",
@@ -93,50 +111,51 @@ export function calculatePoints(
   position: number,
 ): number {
   if (scoringSystem === "SCORE_BASED") {
-    return score;
+    return Math.round(score);
   }
   return calculatePositionPoints(position);
 }
 
 /**
- * Calculate position (rank) based on points among all points
+ * Calculate position (rank) based on score among all scores.
+ * Uses the judge's scores (results), not leaderboard points.
  */
-export function calculatePosition(points: number, allPoints: number[]): number {
-  // Sort points in descending order and find unique values
-  const uniquePoints = Array.from(new Set(allPoints)).sort((a, b) => b - a);
-
-  // Find the position (1-indexed)
-  const position = uniquePoints.indexOf(points) + 1;
-
-  return position > 0 ? position : 1; // Default to 1 if not found
+export function calculatePosition(
+  score: number,
+  allScores: number[],
+): number {
+  const uniqueScores = Array.from(new Set(allScores)).sort((a, b) => b - a);
+  const position = uniqueScores.indexOf(score) + 1;
+  return position > 0 ? position : 1;
 }
 
 /**
- * Validate points input (out of 10)
+ * Validate score input (judge's result, 0 to maxScore).
  */
-export function validatePoints(points: number): {
+export function validatePoints(
+  score: number,
+  maxScore: number = DEFAULT_MAX_SCORE,
+): {
   valid: boolean;
   error?: string;
 } {
-  if (points < 0) {
-    return { valid: false, error: "Points cannot be negative" };
+  if (score < 0) {
+    return { valid: false, error: "Score cannot be negative" };
   }
-
-  if (points > MAX_POINTS) {
+  if (score > maxScore) {
     return {
       valid: false,
-      error: `Points cannot exceed ${MAX_POINTS} points`,
+      error: `Score cannot exceed ${maxScore}`,
     };
   }
-
   return { valid: true };
 }
 
 /**
- * Format points for display
+ * Format score for display
  */
-export function formatPoints(points: number): string {
-  return points.toFixed(2);
+export function formatPoints(score: number): string {
+  return score.toFixed(2);
 }
 
 /**

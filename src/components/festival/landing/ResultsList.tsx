@@ -273,9 +273,17 @@ export function ResultsList({
 
                       {/* Text Content */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-base truncate uppercase tracking-tight text-foreground/90 group-hover:text-foreground">
-                          {program.name}
-                        </h3>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-bold text-base truncate uppercase tracking-tight text-foreground/90 group-hover:text-foreground">
+                            {program.name}
+                          </h3>
+                          <Badge
+                            variant={program.type === "GROUP" ? "secondary" : "outline"}
+                            className="text-[10px] uppercase"
+                          >
+                            {program.type === "GROUP" ? "Team" : "Individual"}
+                          </Badge>
+                        </div>
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                           {program.category}
                         </p>
@@ -420,19 +428,27 @@ export function ResultsList({
               return (
                 <>
                   <DialogHeader className="p-6 pb-2 border-b bg-muted/10">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <Badge
                         variant="outline"
                         className="uppercase text-[10px] tracking-widest"
                       >
                         {program.category}
                       </Badge>
+                      <Badge
+                        variant={program.type === "GROUP" ? "secondary" : "outline"}
+                        className="uppercase text-[10px]"
+                      >
+                        {program.type === "GROUP" ? "Team" : "Individual"}
+                      </Badge>
                     </div>
                     <DialogTitle className="text-xl md:text-2xl font-bold uppercase">
                       {program.name}
                     </DialogTitle>
                     <DialogDescription>
-                      Full results list (Top performes & Grades)
+                      {program.type === "GROUP"
+                        ? "Team results (rank & grades)"
+                        : "Participant results (rank & grades)"}
                     </DialogDescription>
                   </DialogHeader>
 
@@ -466,8 +482,14 @@ export function ResultsList({
                                 {result.position}
                               </div>
                               <div>
+                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                  {program.type === "GROUP" ? "Team" : "Participant"}
+                                </p>
                                 <p className="font-bold text-sm">
                                   {result.winner}
+                                </p>
+                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">
+                                  Group / School
                                 </p>
                                 <p className="text-xs text-muted-foreground">
                                   {result.team}

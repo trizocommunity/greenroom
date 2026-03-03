@@ -112,6 +112,35 @@ export async function deleteAssignmentAction(festivalId: string, id: string) {
   return AssignmentService.delete(id, festivalId);
 }
 
+export async function deleteTeamAssignmentAction(
+  festivalId: string,
+  programmeId: string,
+  groupId: string,
+  teamNumber: number,
+) {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
+
+  const festival = await findFestivalById(festivalId);
+
+  if (
+    festival?.programmeAssignmentDeadline &&
+    new Date() > festival.programmeAssignmentDeadline
+  ) {
+    const isAdmin = festival.ownerId === session.userId;
+    if (!isAdmin) {
+      throw new AppError(ERROR_MESSAGES.ASSIGNMENT_DEADLINE_PASSED_ADMIN);
+    }
+  }
+
+  return AssignmentService.deleteByTeam(
+    festivalId,
+    programmeId,
+    groupId,
+    teamNumber,
+  );
+}
+
 export async function updateAssignmentAction(
   festivalId: string,
   id: string,

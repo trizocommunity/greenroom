@@ -44,17 +44,5 @@ export default async function StudentsPage({
     ? await findMemberByFestivalAndUser(festival.id, session.userId)
     : null;
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Students</h2>
-        <p className="text-muted-foreground">
-          Manage students for{" "}
-          <span className="font-semibold text-foreground">{festival.name}</span>
-        </p>
-      </div>
-
-      <StudentsClient festivalId={festival.id} />
-    </div>
-  );
+  return <StudentsClient festivalId={festival.id} />;
 }

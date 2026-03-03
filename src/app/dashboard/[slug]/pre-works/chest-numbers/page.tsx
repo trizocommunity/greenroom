@@ -3,6 +3,7 @@ import { getStudentsAction } from "@/server/actions/student.actions";
 import { getCategoriesAction } from "@/server/actions/category.actions";
 import { ChestNumberSetup } from "@/components/festival/event-works/chest-numbers/ChestNumberSetup";
 import { ChestNumberTable } from "@/components/festival/event-works/chest-numbers/ChestNumberTable";
+import { ChestNumberHowItWorks } from "@/components/festival/event-works/chest-numbers/ChestNumberHowItWorks";
 import { findFestivalBySlugOrId } from "@/server/models/festival.model";
 import { revalidatePath } from "next/cache";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -60,15 +61,18 @@ export default async function ChestNumbersPage({ params }: PageProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Chest Numbers</h1>
-        <p className="text-muted-foreground">
-          Manage and generate unique chest numbers based on categories.
-        </p>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Chest Numbers</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">
+            Manage and generate unique chest numbers based on categories.
+          </p>
+        </div>
+        <ChestNumberHowItWorks />
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-4">
         <ChestNumberSetup
           festivalId={festivalId}
           categories={singleCategories}

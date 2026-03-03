@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import {
   createAssignmentAction,
   deleteAssignmentAction,
+  deleteTeamAssignmentAction,
   getAssignmentsAction,
 } from "@/server/actions/assignment.actions";
 
@@ -46,6 +47,32 @@ export function useAssignments(festivalId: string) {
     },
   });
 
+  const deleteTeamMutation = useMutation({
+    mutationFn: async ({
+      programmeId,
+      groupId,
+      teamNumber,
+    }: {
+      programmeId: string;
+      groupId: string;
+      teamNumber: number;
+    }) => {
+      return deleteTeamAssignmentAction(
+        festivalId,
+        programmeId,
+        groupId,
+        teamNumber,
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["assignments", festivalId] });
+      toast.success("Team removed from programme");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to remove team");
+    },
+  });
+
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
       const { updateAssignmentAction } = await import(
@@ -70,7 +97,9 @@ export function useAssignments(festivalId: string) {
     updateAssignment: updateMutation.mutateAsync,
     isUpdating: updateMutation.isPending,
     deleteAssignment: deleteMutation.mutateAsync,
+    deleteTeamAssignment: deleteTeamMutation.mutateAsync,
     isDeleting: deleteMutation.isPending,
+    isDeletingTeam: deleteTeamMutation.isPending,
     bulkCreateAssignment: useMutation({
       mutationFn: async (
         assignments: {

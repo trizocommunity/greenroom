@@ -43,6 +43,10 @@ export function SettingsForm({ festival }: SettingsFormProps) {
       ? new Date(festival.endDate).toISOString().slice(0, 10)
       : "",
     scoringSystem: festival.scoringSystem || "POSITION_BASED",
+    maxResultScore:
+      festival.maxResultScore != null
+        ? String(festival.maxResultScore)
+        : "10",
   });
 
   const handleSave = async (e: React.FormEvent) => {
@@ -57,6 +61,13 @@ export function SettingsForm({ festival }: SettingsFormProps) {
         scoringSystem: formData.scoringSystem as
           | "POSITION_BASED"
           | "SCORE_BASED",
+        maxResultScore:
+          formData.maxResultScore != null && formData.maxResultScore !== ""
+            ? (() => {
+                const n = parseInt(formData.maxResultScore, 10);
+                return Number.isNaN(n) ? null : n;
+              })()
+            : null,
       });
 
       if (res.success) {
@@ -129,9 +140,35 @@ export function SettingsForm({ festival }: SettingsFormProps) {
               </Select>
               <p className="text-sm text-muted-foreground">
                 {formData.scoringSystem === "POSITION_BASED"
-                  ? "Points are awarded based on rank: 1st Place (10pts), 2nd (7pts), 3rd (5pts)."
-                  : "Points are equal to the judge's score. E.g., Score 9.5 = 9.5 Points."}
+                  ? "Points are awarded based on rank: 1st Place (10pts), 2nd (7pts), 3rd (5pts). Grade is always out of 10."
+                  : "Points are equal to the judge's score. Set max score below so grades are calculated as a percentage (e.g. 80/80 = A+, 60/80 = B+)."}
               </p>
+              {formData.scoringSystem === "SCORE_BASED" && (
+                <div className="grid gap-2 pt-2">
+                  <Label htmlFor="maxResultScore">
+                    Max score (for grading)
+                  </Label>
+                  <Input
+                    id="maxResultScore"
+                    type="number"
+                    min={1}
+                    max={1000}
+                    placeholder="10"
+                    value={formData.maxResultScore}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        maxResultScore: e.target.value,
+                      })
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Judge enters scores from 0 to this value. Grade = (score ÷
+                    max) × 100. E.g. max 80 → 80/80 = A+, 60/80 = B+, 29/80 =
+                    C.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

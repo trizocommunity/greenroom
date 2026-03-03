@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { AssignmentsClient } from "@/components/festival/pre-works/assignments/AssignmentsClient";
-import { DeadlinesCard } from "@/components/festival/pre-works/DeadlinesCard";
 import { findFestivalBySlug } from "@/server/models/festival.model";
 import { prisma } from "@/lib/db";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -50,22 +49,9 @@ export default async function AssignmentsPage({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 lg:flex-row items-start lg:items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Programme Assignments
-          </h1>
-          <p className="text-muted-foreground">
-            Manage student assignments to programmes.
-          </p>
-        </div>
-        <DeadlinesCard />
-      </div>
-      <AssignmentsClient
-        festivalId={festival.id}
-        programmeAssignmentDeadline={festival.programmeAssignmentDeadline}
-      />
-    </div>
+    <AssignmentsClient
+      festivalId={festival.id}
+      programmeAssignmentDeadline={festival.programmeAssignmentDeadline}
+    />
   );
 }

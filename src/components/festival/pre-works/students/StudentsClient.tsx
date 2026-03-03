@@ -1,11 +1,12 @@
 "use client";
 
 import { format } from "date-fns";
-import { Eye, FileText, Filter, Loader2, Pencil, User, X } from "lucide-react";
+import { Eye, FileText, Loader2, Pencil, Plus, X } from "lucide-react";
+import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { useState } from "react";
-import { useFestival } from "@/components/festival/FestivalContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
   Select,
@@ -78,101 +79,109 @@ export function StudentsClient({ festivalId }: StudentsClientProps) {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-muted/40 p-4 rounded-lg border">
-        <div className="w-full  md:w-1/2 xl:w-auto flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <User className="h-5 w-5 text-muted-foreground" />
-            <span className="font-medium text-sm">
-              Total: {filteredStudents.length}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Manage your students here.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <Select value={selectedGroup} onValueChange={setSelectedGroup}>
-            <SelectTrigger className="w-full md:w-[180px] h-9 text-xs">
-              <SelectValue placeholder="All Groups" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Groups</SelectItem>
-              {groups.map((g: any) => (
-                <SelectItem key={g.id} value={g.id}>
-                  {g.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-full  md:w-[180px] h-9 text-xs">
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Categories</SelectItem>
-              {categories
-                .filter((c: any) => c.type !== "GENERAL")
-                .map((c: any) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-
-          {(selectedGroup !== "ALL" || selectedCategory !== "ALL") && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9"
-              onClick={() => {
-                setSelectedGroup("ALL");
-                setSelectedCategory("ALL");
-              }}
-              title="Clear Filters"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">Students</h1>
+        <div className="flex items-center gap-2">
+          <HowItWorksButton
+            title="How Students work"
+            description="Students are the participants in your festival."
+          >
+            <p className="text-sm text-muted-foreground">
+              Add students and assign them to a <strong>group</strong> and{" "}
+              <strong>category</strong>. Groups represent schools or teams;
+              categories define competition segments. You need at least one group
+              and one category before adding students.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Use bulk upload to add many students at once. Then assign them to
+              programmes from the Assignments page.
+            </p>
+          </HowItWorksButton>
+          {groups.length === 0 || categories.length === 0 ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <Button disabled>Add Student</Button>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Create groups & categories first.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <>
+            <FeatureGate feature="studentBulkUpload">
+              <BulkUploadStudentsModal festivalId={festivalId} />
+            </FeatureGate>
+            <StudentDialog
+              festivalId={festivalId}
+              trigger={
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Student
+                </Button>
+              }
+            />
+            </>
           )}
-
-          <div className="flex flex-col items-end gap-2">
-            {groups.length === 0 || categories.length === 0 ? (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div>
-                      <Button className="w-full md:w-fit" disabled>
-                        Add Student
-                      </Button>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Create groups & categories first.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : (
-              <div className="flex flex-wrap w-full gap-2">
-                <FeatureGate feature="studentBulkUpload">
-                  <BulkUploadStudentsModal festivalId={festivalId} />
-                </FeatureGate>
-                <StudentDialog
-                  festivalId={festivalId}
-                  trigger={
-                    <Button className="w-full md:w-fit">Add Student</Button>
-                  }
-                />
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
+      <Card>
+        <CardHeader className="p-3 border-b bg-muted/5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground mr-auto">
+              {filteredStudents.length} row{filteredStudents.length !== 1 ? "s" : ""}
+            </span>
+            <Select value={selectedGroup} onValueChange={setSelectedGroup}>
+              <SelectTrigger className="h-8 w-[130px] text-xs">
+                <SelectValue placeholder="Group" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All groups</SelectItem>
+                {groups.map((g: any) => (
+                  <SelectItem key={g.id} value={g.id}>
+                    {g.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="h-8 w-[130px] text-xs">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All categories</SelectItem>
+                {categories
+                  .filter((c: any) => c.type !== "GENERAL")
+                  .map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            {(selectedGroup !== "ALL" || selectedCategory !== "ALL") && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => {
+                  setSelectedGroup("ALL");
+                  setSelectedCategory("ALL");
+                }}
+                title="Clear filters"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
@@ -266,7 +275,8 @@ export function StudentsClient({ festivalId }: StudentsClientProps) {
             )}
           </TableBody>
         </Table>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

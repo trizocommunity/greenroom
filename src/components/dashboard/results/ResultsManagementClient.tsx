@@ -14,7 +14,6 @@ import {
   Users,
   Lock,
   Unlock,
-  HelpCircle,
   Medal,
   Trophy,
   Crown,
@@ -70,6 +69,7 @@ import {
   getGradeBadgeColor,
 } from "@/lib/results-calculator";
 import { cn } from "@/lib/utils";
+import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 
 type Programme = {
   id: string;
@@ -115,6 +115,8 @@ type Festival = {
   name: string;
   slug: string;
   scoringSystem?: "POSITION_BASED" | "SCORE_BASED";
+  /** For SCORE_BASED: max score judge can give (e.g. 80). Grade = (score/maxResultScore)*100. Default 10. */
+  maxResultScore?: number | null;
 };
 
 interface ResultsManagementClientProps {
@@ -165,6 +167,7 @@ export function ResultsManagementClient({
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterProgrammeType, setFilterProgrammeType] = useState<string>("all");
 
   // Compute Programme Stats and Status
   const programmeStats = useMemo(() => {
@@ -315,8 +318,12 @@ export function ResultsManagementClient({
       }
     }
 
+    if (filterProgrammeType !== "all") {
+      result = result.filter((p) => p.type === filterProgrammeType);
+    }
+
     return result;
-  }, [programmeStats, searchQuery, filterCategory, filterStatus]);
+  }, [programmeStats, searchQuery, filterCategory, filterStatus, filterProgrammeType]);
 
   // PERF: memoized so recalculation only happens when scores or the selected
   // programme changes, not on every keystroke / state update.
@@ -364,7 +371,14 @@ export function ResultsManagementClient({
         };
       }
 
-      const gradeData = calculateGrade(score);
+      // Position-based: grade out of 10. Score-based: grade out of festival.maxResultScore (e.g. 80).
+      const maxScore =
+        festival.scoringSystem === "SCORE_BASED" &&
+        festival.maxResultScore != null &&
+        festival.maxResultScore > 0
+          ? festival.maxResultScore
+          : 10;
+      const gradeData = calculateGrade(score, maxScore);
       const position = calculatePosition(score, validScores);
       const leaderboardPoints = calculatePoints(
         festival.scoringSystem || "POSITION_BASED",
@@ -512,6 +526,7 @@ export function ResultsManagementClient({
     setSearchQuery("");
     setFilterCategory("all");
     setFilterStatus("all");
+    setFilterProgrammeType("all");
   };
 
   // Group assignments for UI Rendering (Inputs) with Section Support
@@ -571,9 +586,617 @@ export function ResultsManagementClient({
     );
   }, [results, currentProgramme]);
 
+  const hasTableFilters =
+    searchQuery ||
+    filterCategory !== "all" ||
+    filterStatus !== "all" ||
+    filterProgrammeType !== "all";
+
   return (
-    <div className="space-y-6">
-      {/* Header and Filters (Unchanged mostly) */}
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">
+          Results Management
+        </h1>
+        <div className="flex gap-2">
+          <HowItWorksButton
+            title="How Results work?"
+            description="Simple guide to scoring and points."
+          >
+            <div className="space-y-2">
+              <h4 className="font-bold text-sm flex items-center gap-2">
+                <Medal className="w-4 h-4 text-yellow-500" /> Scoring
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                Judges give a score out of 10. This score decides the Grade
+                (like A, B, C).
+              </p>
+            </div>
+            <div className="space-y-2">
+              <h4 className="font-bold text-sm flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-orange-500" /> Points for
+                Groups
+              </h4>
+              <p className="text-sm text-muted-foreground mb-4">
+                Winners earn points for their group depending on the scoring
+                system.
+              </p>
+              <Tabs
+                defaultValue={
+                  festival.scoringSystem === "SCORE_BASED"
+                    ? "score"
+                    : "position"
+                }
+                className="w-full"
+              >
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="position">Position Based</TabsTrigger>
+                  <TabsTrigger value="score">Score Based</TabsTrigger>
+                </TabsList>
+                <TabsContent
+                  value="position"
+                  className="space-y-2 mt-4 border rounded-md p-4"
+                >
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Point System
+                  </span>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex justify-between items-center border-b pb-2">
+                      <span className="font-medium">1st Place</span>
+                      <span className="font-bold text-primary">10 Pts</span>
+                    </li>
+                    <li className="flex justify-between items-center border-b pb-2">
+                      <span className="font-medium">2nd Place</span>
+                      <span className="font-bold text-primary">7 Pts</span>
+                    </li>
+                    <li className="flex justify-between items-center border-b pb-2">
+                      <span className="font-medium">3rd Place</span>
+                      <span className="font-bold text-primary">5 Pts</span>
+                    </li>
+                    <li className="flex justify-between items-center pt-1 text-muted-foreground">
+                      <span>A Grade (No Position)</span>
+                      <span>5 Pts</span>
+                    </li>
+                    <li className="flex justify-between items-center text-muted-foreground">
+                      <span>B Grade (No Position)</span>
+                      <span>3 Pts</span>
+                    </li>
+                  </ul>
+                  <p className="text-xs text-muted-foreground mt-2 italic">
+                    * Only the highest points apply (e.g., 1st Place gets 10,
+                    not 10 + 5 for A Grade).
+                  </p>
+                </TabsContent>
+                <TabsContent
+                  value="score"
+                  className="space-y-4 mt-4 border rounded-md p-4"
+                >
+                  <div className="text-center py-4 space-y-2">
+                    <span className="text-2xl font-bold block">
+                      Points = Score
+                    </span>
+                    <p className="text-sm text-muted-foreground">
+                      The points awarded to the group are exactly equal to the
+                      score given by the judge.
+                    </p>
+                  </div>
+                  <div className="bg-muted p-3 rounded text-sm flex justify-between items-center">
+                    <span>Judge Score: 9.5</span>
+                    <span className="font-bold">Group Points: 9.5</span>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+          </HowItWorksButton>
+          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2" suppressHydrationWarning>
+                <Plus className="w-4 h-4" />
+                Enter Results
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-blue-600" />
+                  Enter Programme Results
+                </DialogTitle>
+                <DialogDescription>
+                  Select a programme and enter scores. Grades and positions will
+                  be calculated automatically.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-5 mt-4">
+                {/* Programme Selection - Compact */}
+                <div className="grid md:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="modal-category"
+                      className="text-xs font-medium"
+                    >
+                      Category
+                    </Label>
+                    <Select
+                      value={selectedCategory}
+                      onValueChange={handleCategoryChange}
+                      disabled={selectedProgramme !== "" && hasAnyScore}
+                    >
+                      <SelectTrigger id="modal-category" className="h-9">
+                        <SelectValue placeholder="Select category..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categoriesWithAssignments.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="modal-programme"
+                      className="text-xs font-medium"
+                    >
+                      Programme
+                    </Label>
+                    <Select
+                      value={selectedProgramme}
+                      onValueChange={handleProgrammeChange}
+                      disabled={
+                        !selectedCategory ||
+                        filteredModalProgrammes.length === 0
+                      }
+                    >
+                      <SelectTrigger id="modal-programme" className="h-9">
+                        <SelectValue
+                          placeholder={
+                            !selectedCategory
+                              ? "Select category first..."
+                              : "Select programme..."
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filteredModalProgrammes.length > 0 ? (
+                          filteredModalProgrammes.map((prog) => (
+                            <SelectItem key={prog.id} value={prog.id}>
+                              {prog.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                            No programmes available
+                          </div>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Score Entry Section */}
+                {currentProgramme && (
+                  <div className="space-y-4">
+                    {/* Compact Programme Info with Progress */}
+                    <div className="flex items-center justify-between p-3 bg-gradient-to-r from-primary/5 to-primary/0 rounded-lg border border-primary/10">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-bold text-base">
+                            {currentProgramme.name}
+                          </h3>
+                          {currentProgramme.type === "GROUP" && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] h-5 border-primary/30"
+                            >
+                              <Users className="w-3 h-3 mr-1" />
+                              Group
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <span className="font-medium text-primary">
+                              {Object.keys(scores).length}
+                            </span>
+                            <span>/</span>
+                            <span>
+                              {Object.values(groupedInputs).flat().length}
+                            </span>
+                            <span>
+                              {currentProgramme.type === "GROUP"
+                                ? "teams scored"
+                                : "scored"}
+                            </span>
+                          </span>
+                          <span className="w-px h-3 bg-border" />
+                          <span>
+                            {currentProgramme.type === "GROUP"
+                              ? `${Object.values(groupedInputs).flat().length} teams`
+                              : `${currentProgramme.assignments.length} participants`}
+                          </span>
+                        </div>
+                      </div>
+                      {/* Unpublish Control if Published */}
+                      {currentProgramme.stats?.status === "published" ||
+                      currentProgramme.stats?.status ===
+                        "partial-published" ? (
+                        <div className="flex items-center gap-3 ml-auto">
+                          <div className="flex items-center text-amber-700 dark:text-amber-400 text-sm font-medium gap-2 px-3 py-1 bg-amber-100 dark:bg-amber-900/30 rounded-md border border-amber-200 dark:border-amber-700/50">
+                            <Lock className="w-4 h-4" />
+                            <span>Results Locked</span>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 gap-2 border-amber-200 dark:border-amber-700/50 hover:bg-amber-100 dark:hover:bg-amber-900/20 text-amber-700 dark:text-amber-400"
+                            onClick={() =>
+                              handlePublishProgramme(
+                                currentProgramme.id,
+                                false,
+                              )
+                            }
+                            disabled={isPending}
+                          >
+                            <Unlock className="w-3.5 h-3.5" />
+                            Unpublish to Edit
+                          </Button>
+                        </div>
+                      ) : (
+                        <Badge
+                          variant="secondary"
+                          className="gap-1.5 font-medium ml-auto"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          Auto
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Grouped Score Input Grid - More Compact & Highlighted */}
+                    <div className="space-y-5">
+                      {Object.entries(groupedInputs).map(
+                        ([groupName, assignments]) => (
+                          <div key={groupName} className="space-y-2.5">
+                            {groupName !== "All Participants" && (
+                              <div className="flex items-center gap-2 pb-1.5 border-b">
+                                <h4 className="font-bold text-sm">
+                                  {groupName}
+                                </h4>
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[10px] h-4 px-1.5"
+                                >
+                                  {assignments.length}{" "}
+                                  {assignments.length === 1 ? "team" : "teams"}
+                                </Badge>
+                              </div>
+                            )}
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
+                              {assignments.map((assignment) => {
+                                const teamId = getTeamIdentifier(
+                                  assignment,
+                                  currentProgramme.type,
+                                );
+                                const subLabel = getSubLabel(
+                                  assignment,
+                                  currentProgramme.type,
+                                );
+                                const currentScore =
+                                  scores[teamId] ??
+                                  assignment.result?.score ??
+                                  "";
+                                const displayName =
+                                  currentProgramme.type === "GROUP"
+                                    ? `Team ${assignment.teamNumber || 1}`
+                                    : assignment.student?.chestNumber || "N/A";
+                                const isFilled =
+                                  typeof currentScore === "number" ||
+                                  currentScore !== "";
+
+                                const teamMembers =
+                                  currentProgramme?.type === "GROUP"
+                                    ? currentProgramme.assignments
+                                        .filter(
+                                          (a) =>
+                                            getTeamIdentifier(
+                                              a,
+                                              "GROUP",
+                                            ) === teamId,
+                                        )
+                                        .map((a) => a.student?.name)
+                                        .filter(Boolean)
+                                        .join(", ")
+                                    : assignment.student?.name || "";
+
+                                return (
+                                  <div
+                                    key={teamId}
+                                    title={teamMembers}
+                                    className={cn(
+                                      "relative group rounded-lg border-2 transition-all duration-200 cursor-help",
+                                      isFilled
+                                        ? "border-primary/30 bg-primary/5"
+                                        : "border-border hover:border-primary/20 bg-card",
+                                    )}
+                                  >
+                                    {/* Highlighted Chest Number/Team Badge */}
+                                    <div className="p-2 pb-1.5">
+                                      {currentProgramme.type === "GROUP" ? (
+                                        <div className="flex items-center justify-center mb-1.5">
+                                          <Badge
+                                            variant="outline"
+                                            className="font-bold text-xs px-2 py-0.5 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/30"
+                                          >
+                                            <Users className="w-3 h-3 mr-1" />
+                                            {displayName}
+                                          </Badge>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center justify-center mb-1.5">
+                                          <Badge className="font-bold text-sm px-3 py-1 bg-gradient-to-br from-primary to-primary/80 shadow-sm">
+                                            #{displayName}
+                                          </Badge>
+                                        </div>
+                                      )}
+
+                                      {/* Score Input */}
+                                      <div className="relative">
+                                        <Input
+                                          id={`score-${teamId}`}
+                                          type="number"
+                                          step="0.5"
+                                          min="0"
+                                          max="10"
+                                          placeholder={
+                                            currentProgramme.stats
+                                              ?.status === "published" ||
+                                            currentProgramme.stats?.status ===
+                                              "partial-published"
+                                              ? "Locked"
+                                              : "Pts"
+                                          }
+                                          value={currentScore}
+                                          disabled={
+                                            currentProgramme.stats
+                                              ?.status === "published" ||
+                                            currentProgramme.stats?.status ===
+                                              "partial-published"
+                                          }
+                                          onChange={(e) =>
+                                            handleScoreChange(
+                                              teamId,
+                                              e.target.value,
+                                            )
+                                          }
+                                          className={cn(
+                                            "text-center font-mono font-bold h-9 transition-all",
+                                            isFilled && "ring-2 ring-primary/20",
+                                            (currentProgramme.stats
+                                              ?.status === "published" ||
+                                              currentProgramme.stats?.status ===
+                                                "partial-published") &&
+                                              "bg-muted/50 text-muted-foreground cursor-not-allowed",
+                                          )}
+                                          suppressHydrationWarning
+                                        />
+                                        {(currentProgramme.stats?.status ===
+                                          "published" ||
+                                          currentProgramme.stats?.status ===
+                                            "partial-published") && (
+                                          <Lock className="w-3 h-3 text-muted-foreground/50 absolute top-3 right-2" />
+                                        )}
+                                      </div>
+
+                                      {/* Student Name/Sub-label */}
+                                      {currentProgramme.type ===
+                                        "INDIVIDUAL" &&
+                                        assignment.student?.name && (
+                                          <p className="text-[10px] text-muted-foreground text-center truncate mt-1 px-1 font-medium">
+                                            {assignment.student.name}
+                                          </p>
+                                        )}
+                                      {currentProgramme.type === "GROUP" && (
+                                        <p className="text-[10px] text-muted-foreground text-center truncate mt-1 px-1">
+                                          {currentProgramme.assignments.filter(
+                                            (a) =>
+                                              getTeamIdentifier(
+                                                a,
+                                                "GROUP",
+                                              ) === teamId,
+                                          ).length}{" "}
+                                          Members
+                                        </p>
+                                      )}
+                                    </div>
+
+                                    {/* Filled Indicator */}
+                                    {isFilled && (
+                                      <div className="absolute top-1 right-1">
+                                        <Check className="w-3 h-3 text-primary" />
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ),
+                      )}
+                    </div>
+
+                    {/* Results Preview */}
+                    {hasAnyScore && (
+                      <div className="space-y-3 pt-2 border-t mt-4">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-bold text-sm flex items-center gap-2">
+                            <Eye className="w-4 h-4 text-primary" />
+                            Preview Results
+                          </h4>
+                          <Badge variant="secondary" className="text-xs">
+                            {groupedPreviewResults.length}{" "}
+                            {groupedPreviewResults.length === 1
+                              ? "Entry"
+                              : "Entries"}
+                          </Badge>
+                        </div>
+                        <div className="border rounded-lg overflow-hidden max-h-72 overflow-y-auto bg-muted/20">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-muted/50">
+                                <TableHead className="font-bold">
+                                  {currentProgramme.type === "GROUP"
+                                    ? "Team"
+                                    : "Chest"}
+                                </TableHead>
+                                <TableHead className="font-bold">
+                                  {currentProgramme.type === "GROUP"
+                                    ? "Info"
+                                    : "Name"}
+                                </TableHead>
+                                <TableHead className="text-center font-bold">
+                                  Score
+                                </TableHead>
+                                <TableHead className="text-center font-bold">
+                                  Points
+                                </TableHead>
+                                <TableHead className="text-center font-bold">
+                                  Grade
+                                </TableHead>
+                                <TableHead className="text-center font-bold">
+                                  Rank
+                                </TableHead>
+                                <TableHead className="w-12"></TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {groupedPreviewResults.map(
+                                (result, index) => (
+                                  <TableRow
+                                    key={result.teamId}
+                                    className={cn(
+                                      "transition-colors",
+                                      index < 3 && "bg-primary/5",
+                                    )}
+                                  >
+                                    <TableCell>
+                                      {currentProgramme.type === "GROUP" ? (
+                                        <Badge
+                                          variant="outline"
+                                          className="font-bold"
+                                        >
+                                          <Users className="w-3 h-3 mr-1" />
+                                          {result.displayName}
+                                        </Badge>
+                                      ) : (
+                                        <Badge className="font-bold bg-primary">
+                                          #{result.chestNumber}
+                                        </Badge>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-sm font-medium">
+                                      {currentProgramme.type === "GROUP"
+                                        ? "Team Score"
+                                        : result.studentName}
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      <span className="font-mono font-bold text-base text-primary">
+                                        {result.score?.toFixed(1)}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      <Badge variant="secondary">
+                                        {result.points} pts
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      <Badge
+                                        className={cn(
+                                          getGradeBadgeColor(result.grade),
+                                          "font-bold",
+                                        )}
+                                      >
+                                        {result.grade}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      <Badge
+                                        variant={
+                                          index < 3 ? "default" : "outline"
+                                        }
+                                        className={cn(
+                                          "font-mono font-bold",
+                                          index === 0 &&
+                                            "bg-yellow-500 text-yellow-950",
+                                          index === 1 &&
+                                            "bg-gray-400 text-gray-950",
+                                          index === 2 &&
+                                            "bg-orange-600 text-orange-950",
+                                        )}
+                                      >
+                                        #{result.position}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-7 w-7 text-destructive hover:text-destructive/90 hover:bg-destructive/10"
+                                        onClick={() =>
+                                          handleDeleteResult(
+                                            result.allResultIds,
+                                            result.teamId,
+                                          )
+                                        }
+                                        disabled={
+                                          isPending ||
+                                          currentProgramme.stats?.status ===
+                                            "published" ||
+                                          currentProgramme.stats?.status ===
+                                            "partial-published"
+                                        }
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                ),
+                              )}
+                            </TableBody>
+                          </Table>
+                        </div>
+
+                        <Button
+                          onClick={() => handleSaveResults(false)}
+                          disabled={
+                            isPending ||
+                            currentProgramme.stats?.status === "published"
+                          }
+                          className="w-full h-11 text-base font-bold"
+                          size="lg"
+                        >
+                          {currentProgramme.stats?.status === "published" ? (
+                            <span className="flex items-center gap-2">
+                              <Lock className="w-4 h-4" />
+                              Results Locked (Unpublish to Save)
+                            </span>
+                          ) : (
+                            "Save Changes"
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {/* Overview card — stats only */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -674,711 +1297,91 @@ export function ResultsManagementClient({
                 )}
               </CardDescription>
             </div>
-            <div className="flex gap-2">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="gap-2 text-muted-foreground hover:text-foreground"
-                  >
-                    <HelpCircle className="w-4 h-4" />
-                    How it Works
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-xl">
-                  <DialogHeader>
-                    <DialogTitle>How Results work?</DialogTitle>
-                    <DialogDescription>
-                      Simple guide to scoring and points.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <h4 className="font-bold text-sm flex items-center gap-2">
-                        <Medal className="w-4 h-4 text-yellow-500" /> Scoring
-                      </h4>
-                      <p className="text-sm text-muted-foreground">
-                        Judges give a score out of 10. This score decides the
-                        Grade (like A, B, C).
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <h4 className="font-bold text-sm flex items-center gap-2">
-                        <Trophy className="w-4 h-4 text-orange-500" /> Points
-                        for Groups
-                      </h4>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Winners earn points for their group depending on the
-                        scoring system.
-                      </p>
-
-                      <Tabs
-                        defaultValue={
-                          festival.scoringSystem === "SCORE_BASED"
-                            ? "score"
-                            : "position"
-                        }
-                        className="w-full"
-                      >
-                        <TabsList className="grid w-full grid-cols-2">
-                          <TabsTrigger value="position">
-                            Position Based
-                          </TabsTrigger>
-                          <TabsTrigger value="score">Score Based</TabsTrigger>
-                        </TabsList>
-                        <TabsContent
-                          value="position"
-                          className="space-y-2 mt-4 border rounded-md p-4"
-                        >
-                          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                            Point System
-                          </span>
-                          <ul className="space-y-2 text-sm">
-                            <li className="flex justify-between items-center border-b pb-2">
-                              <span className="font-medium">1st Place</span>
-                              <span className="font-bold text-primary">
-                                10 Pts
-                              </span>
-                            </li>
-                            <li className="flex justify-between items-center border-b pb-2">
-                              <span className="font-medium">2nd Place</span>
-                              <span className="font-bold text-primary">
-                                7 Pts
-                              </span>
-                            </li>
-                            <li className="flex justify-between items-center border-b pb-2">
-                              <span className="font-medium">3rd Place</span>
-                              <span className="font-bold text-primary">
-                                5 Pts
-                              </span>
-                            </li>
-                            <li className="flex justify-between items-center pt-1 text-muted-foreground">
-                              <span>A Grade (No Position)</span>
-                              <span>5 Pts</span>
-                            </li>
-                            <li className="flex justify-between items-center text-muted-foreground">
-                              <span>B Grade (No Position)</span>
-                              <span>3 Pts</span>
-                            </li>
-                          </ul>
-                          <p className="text-xs text-muted-foreground mt-2 italic">
-                            * Only the highest points apply (e.g., 1st Place
-                            gets 10, not 10 + 5 for A Grade).
-                          </p>
-                        </TabsContent>
-                        <TabsContent
-                          value="score"
-                          className="space-y-4 mt-4 border rounded-md p-4"
-                        >
-                          <div className="text-center py-4 space-y-2">
-                            <span className="text-2xl font-bold block">
-                              Points = Score
-                            </span>
-                            <p className="text-sm text-muted-foreground">
-                              The points awarded to the group are exactly equal
-                              to the score given by the judge.
-                            </p>
-                          </div>
-                          <div className="bg-muted p-3 rounded text-sm flex justify-between items-center">
-                            <span>Judge Score: 9.5</span>
-                            <span className="font-bold">Group Points: 9.5</span>
-                          </div>
-                        </TabsContent>
-                      </Tabs>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-              <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogTrigger asChild>
-                  <Button className="gap-2" suppressHydrationWarning>
-                    <Plus className="w-4 h-4" />
-                    Enter Results
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      <Sparkles className="w-5 h-5 text-blue-600" />
-                      Enter Programme Results
-                    </DialogTitle>
-                    <DialogDescription>
-                      Select a programme and enter scores. Grades and positions
-                      will be calculated automatically.
-                    </DialogDescription>
-                  </DialogHeader>
-
-                  <div className="space-y-5 mt-4">
-                    {/* Programme Selection - Compact */}
-                    <div className="grid md:grid-cols-2 gap-3">
-                      {/* ... (Selectors remain same) ... */}
-                      <div className="space-y-1.5">
-                        <Label
-                          htmlFor="modal-category"
-                          className="text-xs font-medium"
-                        >
-                          Category
-                        </Label>
-                        <Select
-                          value={selectedCategory}
-                          onValueChange={handleCategoryChange}
-                          disabled={selectedProgramme !== "" && hasAnyScore}
-                        >
-                          <SelectTrigger id="modal-category" className="h-9">
-                            <SelectValue placeholder="Select category..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {categoriesWithAssignments.map((cat) => (
-                              <SelectItem key={cat.id} value={cat.id}>
-                                {cat.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label
-                          htmlFor="modal-programme"
-                          className="text-xs font-medium"
-                        >
-                          Programme
-                        </Label>
-                        <Select
-                          value={selectedProgramme}
-                          onValueChange={handleProgrammeChange}
-                          disabled={
-                            !selectedCategory ||
-                            filteredModalProgrammes.length === 0
-                          }
-                        >
-                          <SelectTrigger id="modal-programme" className="h-9">
-                            <SelectValue
-                              placeholder={
-                                !selectedCategory
-                                  ? "Select category first..."
-                                  : "Select programme..."
-                              }
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {filteredModalProgrammes.length > 0 ? (
-                              filteredModalProgrammes.map((prog) => (
-                                <SelectItem key={prog.id} value={prog.id}>
-                                  {prog.name}
-                                </SelectItem>
-                              ))
-                            ) : (
-                              <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                                No programmes available
-                              </div>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* Score Entry Section */}
-                    {currentProgramme && (
-                      <div className="space-y-4">
-                        {/* Compact Programme Info with Progress */}
-                        <div className="flex items-center justify-between p-3 bg-gradient-to-r from-primary/5 to-primary/0 rounded-lg border border-primary/10">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-bold text-base">
-                                {currentProgramme.name}
-                              </h3>
-                              {currentProgramme.type === "GROUP" && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px] h-5 border-primary/30"
-                                >
-                                  <Users className="w-3 h-3 mr-1" />
-                                  Group
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <span className="font-medium text-primary">
-                                  {Object.keys(scores).length}
-                                </span>
-                                <span>/</span>
-                                <span>
-                                  {Object.values(groupedInputs).flat().length}
-                                </span>
-                                <span>scored</span>
-                              </span>
-                              <span className="w-px h-3 bg-border" />
-                              <span>
-                                {currentProgramme.assignments.length}{" "}
-                                participants
-                              </span>
-                            </div>
-                          </div>
-                          {/* Unpublish Control if Published */}
-                          {currentProgramme.stats?.status === "published" ||
-                          currentProgramme.stats?.status ===
-                            "partial-published" ? (
-                            <div className="flex items-center gap-3 ml-auto">
-                              <div className="flex items-center text-amber-700 dark:text-amber-400 text-sm font-medium gap-2 px-3 py-1 bg-amber-100 dark:bg-amber-900/30 rounded-md border border-amber-200 dark:border-amber-700/50">
-                                <Lock className="w-4 h-4" />
-                                <span>Results Locked</span>
-                              </div>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 gap-2 border-amber-200 dark:border-amber-700/50 hover:bg-amber-100 dark:hover:bg-amber-900/20 text-amber-700 dark:text-amber-400"
-                                onClick={() =>
-                                  handlePublishProgramme(
-                                    currentProgramme.id,
-                                    false,
-                                  )
-                                }
-                                disabled={isPending}
-                              >
-                                <Unlock className="w-3.5 h-3.5" />
-                                Unpublish to Edit
-                              </Button>
-                            </div>
-                          ) : (
-                            <Badge
-                              variant="secondary"
-                              className="gap-1.5 font-medium ml-auto"
-                            >
-                              <Sparkles className="w-3.5 h-3.5" />
-                              Auto
-                            </Badge>
-                          )}
-                        </div>
-
-                        {/* Grouped Score Input Grid - More Compact & Highlighted */}
-                        <div className="space-y-5">
-                          {Object.entries(groupedInputs).map(
-                            ([groupName, assignments]) => (
-                              <div key={groupName} className="space-y-2.5">
-                                {groupName !== "All Participants" && (
-                                  <div className="flex items-center gap-2 pb-1.5 border-b">
-                                    <h4 className="font-bold text-sm">
-                                      {groupName}
-                                    </h4>
-                                    <Badge
-                                      variant="secondary"
-                                      className="text-[10px] h-4 px-1.5"
-                                    >
-                                      {assignments.length}{" "}
-                                      {assignments.length === 1
-                                        ? "Team"
-                                        : "Teams"}
-                                    </Badge>
-                                  </div>
-                                )}
-                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
-                                  {assignments.map((assignment) => {
-                                    const teamId = getTeamIdentifier(
-                                      assignment,
-                                      currentProgramme.type,
-                                    );
-                                    const subLabel = getSubLabel(
-                                      assignment,
-                                      currentProgramme.type,
-                                    );
-                                    const currentScore =
-                                      scores[teamId] ??
-                                      assignment.result?.score ??
-                                      "";
-                                    const displayName =
-                                      currentProgramme.type === "GROUP"
-                                        ? `Team ${assignment.teamNumber || 1}`
-                                        : assignment.student?.chestNumber ||
-                                          "N/A";
-                                    const isFilled =
-                                      typeof currentScore === "number" ||
-                                      currentScore !== "";
-
-                                    const teamMembers =
-                                      currentProgramme?.type === "GROUP"
-                                        ? currentProgramme.assignments
-                                            .filter(
-                                              (a) =>
-                                                getTeamIdentifier(
-                                                  a,
-                                                  "GROUP",
-                                                ) === teamId,
-                                            )
-                                            .map((a) => a.student?.name)
-                                            .filter(Boolean)
-                                            .join(", ")
-                                        : assignment.student?.name || "";
-
-                                    return (
-                                      <div
-                                        key={teamId}
-                                        title={teamMembers}
-                                        className={cn(
-                                          "relative group rounded-lg border-2 transition-all duration-200 cursor-help",
-                                          isFilled
-                                            ? "border-primary/30 bg-primary/5"
-                                            : "border-border hover:border-primary/20 bg-card",
-                                        )}
-                                      >
-                                        {/* Highlighted Chest Number/Team Badge */}
-                                        <div className="p-2 pb-1.5">
-                                          {currentProgramme.type === "GROUP" ? (
-                                            <div className="flex items-center justify-center mb-1.5">
-                                              <Badge
-                                                variant="outline"
-                                                className="font-bold text-xs px-2 py-0.5 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/30"
-                                              >
-                                                <Users className="w-3 h-3 mr-1" />
-                                                {displayName}
-                                              </Badge>
-                                            </div>
-                                          ) : (
-                                            <div className="flex items-center justify-center mb-1.5">
-                                              <Badge className="font-bold text-sm px-3 py-1 bg-gradient-to-br from-primary to-primary/80 shadow-sm">
-                                                #{displayName}
-                                              </Badge>
-                                            </div>
-                                          )}
-
-                                          {/* Score Input */}
-                                          <div className="relative">
-                                            <Input
-                                              id={`score-${teamId}`}
-                                              type="number"
-                                              step="0.5" // Allow half points input
-                                              min="0"
-                                              max="10"
-                                              placeholder={
-                                                currentProgramme.stats
-                                                  ?.status === "published" ||
-                                                currentProgramme.stats
-                                                  ?.status ===
-                                                  "partial-published"
-                                                  ? "Locked"
-                                                  : "Pts"
-                                              }
-                                              value={currentScore}
-                                              disabled={
-                                                currentProgramme.stats
-                                                  ?.status === "published" ||
-                                                currentProgramme.stats
-                                                  ?.status ===
-                                                  "partial-published"
-                                              }
-                                              onChange={(e) =>
-                                                handleScoreChange(
-                                                  teamId,
-                                                  e.target.value,
-                                                )
-                                              }
-                                              className={cn(
-                                                "text-center font-mono font-bold h-9 transition-all",
-                                                isFilled &&
-                                                  "ring-2 ring-primary/20",
-                                                (currentProgramme.stats
-                                                  ?.status === "published" ||
-                                                  currentProgramme.stats
-                                                    ?.status ===
-                                                    "partial-published") &&
-                                                  "bg-muted/50 text-muted-foreground cursor-not-allowed",
-                                              )}
-                                              suppressHydrationWarning
-                                            />
-                                            {(currentProgramme.stats?.status ===
-                                              "published" ||
-                                              currentProgramme.stats?.status ===
-                                                "partial-published") && (
-                                              <Lock className="w-3 h-3 text-muted-foreground/50 absolute top-3 right-2" />
-                                            )}
-                                          </div>
-
-                                          {/* Student Name/Sub-label */}
-                                          {currentProgramme.type ===
-                                            "INDIVIDUAL" &&
-                                            assignment.student?.name && (
-                                              <p className="text-[10px] text-muted-foreground text-center truncate mt-1 px-1 font-medium">
-                                                {assignment.student.name}
-                                              </p>
-                                            )}
-                                          {currentProgramme.type ===
-                                            "GROUP" && (
-                                            <p className="text-[10px] text-muted-foreground text-center truncate mt-1 px-1">
-                                              {/* Show Count of members */}
-                                              {
-                                                currentProgramme.assignments.filter(
-                                                  (a) =>
-                                                    getTeamIdentifier(
-                                                      a,
-                                                      "GROUP",
-                                                    ) === teamId,
-                                                ).length
-                                              }{" "}
-                                              Members
-                                            </p>
-                                          )}
-                                        </div>
-
-                                        {/* Filled Indicator */}
-                                        {isFilled && (
-                                          <div className="absolute top-1 right-1">
-                                            <Check className="w-3 h-3 text-primary" />
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            ),
-                          )}
-                        </div>
-
-                        {/* Results Preview */}
-                        {hasAnyScore && (
-                          <div className="space-y-3 pt-2 border-t mt-4">
-                            <div className="flex items-center justify-between">
-                              <h4 className="font-bold text-sm flex items-center gap-2">
-                                <Eye className="w-4 h-4 text-primary" />
-                                Preview Results
-                              </h4>
-                              <Badge variant="secondary" className="text-xs">
-                                {groupedPreviewResults.length}{" "}
-                                {groupedPreviewResults.length === 1
-                                  ? "Entry"
-                                  : "Entries"}
-                              </Badge>
-                            </div>
-                            <div className="border rounded-lg overflow-hidden max-h-72 overflow-y-auto bg-muted/20">
-                              <Table>
-                                <TableHeader>
-                                  <TableRow className="bg-muted/50">
-                                    <TableHead className="font-bold">
-                                      {currentProgramme.type === "GROUP"
-                                        ? "Team"
-                                        : "Chest"}
-                                    </TableHead>
-                                    <TableHead className="font-bold">
-                                      {currentProgramme.type === "GROUP"
-                                        ? "Info"
-                                        : "Name"}
-                                    </TableHead>
-                                    <TableHead className="text-center font-bold">
-                                      Score
-                                    </TableHead>
-                                    <TableHead className="text-center font-bold">
-                                      Points
-                                    </TableHead>
-                                    <TableHead className="text-center font-bold">
-                                      Grade
-                                    </TableHead>
-                                    <TableHead className="text-center font-bold">
-                                      Rank
-                                    </TableHead>
-                                    <TableHead className="w-12"></TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {groupedPreviewResults.map(
-                                    (result, index) => (
-                                      <TableRow
-                                        key={result.teamId}
-                                        className={cn(
-                                          "transition-colors",
-                                          index < 3 && "bg-primary/5",
-                                        )}
-                                      >
-                                        <TableCell>
-                                          {currentProgramme.type === "GROUP" ? (
-                                            <Badge
-                                              variant="outline"
-                                              className="font-bold"
-                                            >
-                                              <Users className="w-3 h-3 mr-1" />
-                                              {result.displayName}
-                                            </Badge>
-                                          ) : (
-                                            <Badge className="font-bold bg-primary">
-                                              #{result.chestNumber}
-                                            </Badge>
-                                          )}
-                                        </TableCell>
-                                        <TableCell className="text-sm font-medium">
-                                          {currentProgramme.type === "GROUP"
-                                            ? "Team Score"
-                                            : result.studentName}
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                          <span className="font-mono font-bold text-base text-primary">
-                                            {result.score?.toFixed(1)}
-                                          </span>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                          <Badge variant="secondary">
-                                            {result.points} pts
-                                          </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                          <Badge
-                                            className={cn(
-                                              getGradeBadgeColor(result.grade),
-                                              "font-bold",
-                                            )}
-                                          >
-                                            {result.grade}
-                                          </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                          <Badge
-                                            variant={
-                                              index < 3 ? "default" : "outline"
-                                            }
-                                            className={cn(
-                                              "font-mono font-bold",
-                                              index === 0 &&
-                                                "bg-yellow-500 text-yellow-950",
-                                              index === 1 &&
-                                                "bg-gray-400 text-gray-950",
-                                              index === 2 &&
-                                                "bg-orange-600 text-orange-950",
-                                            )}
-                                          >
-                                            #{result.position}
-                                          </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                          <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            className="h-7 w-7 text-destructive hover:text-destructive/90 hover:bg-destructive/10"
-                                            onClick={() =>
-                                              handleDeleteResult(
-                                                result.allResultIds,
-                                                result.teamId,
-                                              )
-                                            }
-                                            disabled={
-                                              isPending ||
-                                              currentProgramme.stats?.status ===
-                                                "published" ||
-                                              currentProgramme.stats?.status ===
-                                                "partial-published"
-                                            }
-                                          >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                          </Button>
-                                        </TableCell>
-                                      </TableRow>
-                                    ),
-                                  )}
-                                </TableBody>
-                              </Table>
-                            </div>
-
-                            <Button
-                              onClick={() => handleSaveResults(false)}
-                              disabled={
-                                isPending ||
-                                currentProgramme.stats?.status === "published"
-                              }
-                              className="w-full h-11 text-base font-bold"
-                              size="lg"
-                            >
-                              {currentProgramme.stats?.status ===
-                              "published" ? (
-                                <span className="flex items-center gap-2">
-                                  <Lock className="w-4 h-4" />
-                                  Results Locked (Unpublish to Save)
-                                </span>
-                              ) : (
-                                "Save Changes"
-                              )}
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
           </div>
         </CardHeader>
       </Card>
 
-      {/* Results Table */}
+      {/* Programme Results table */}
       <Card>
-        <CardHeader className="mb-2">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <CardTitle className="text-xl">
-              Programme Results ({filteredTableProgrammes.length})
-            </CardTitle>
-            <div className="flex flex-col sm:flex-row items-center gap-2">
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Search programmes..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 h-8 text-xs"
-                  suppressHydrationWarning
-                />
-              </div>
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Select
-                  value={filterCategory}
-                  onValueChange={setFilterCategory}
-                >
-                  <SelectTrigger className="h-8 text-xs w-full sm:w-[140px]">
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="h-8 text-xs w-full sm:w-[130px]">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Any Status</SelectItem>
-                    <SelectItem value="published">Published</SelectItem>
-                    <SelectItem value="ready">Ready</SelectItem>
-                    <SelectItem value="in-progress">Partial</SelectItem>
-                  </SelectContent>
-                </Select>
-                {(searchQuery ||
-                  filterCategory !== "all" ||
-                  filterStatus !== "all") && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={clearFilters}
-                    className="h-8 w-8"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </Button>
-                )}
-              </div>
+        <CardHeader className="p-3 border-b bg-muted/5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground mr-auto">
+              {filteredTableProgrammes.length} programme
+              {filteredTableProgrammes.length !== 1 ? "s" : ""}
+            </span>
+            <div className="relative w-full sm:w-48">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-7 h-8 text-xs"
+                suppressHydrationWarning
+              />
             </div>
+            <Select
+              value={filterCategory}
+              onValueChange={setFilterCategory}
+            >
+              <SelectTrigger className="h-8 text-xs w-[130px]">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="h-8 text-xs w-[110px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any</SelectItem>
+                <SelectItem value="published">Published</SelectItem>
+                <SelectItem value="ready">Ready</SelectItem>
+                <SelectItem value="in-progress">Partial</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={filterProgrammeType}
+              onValueChange={setFilterProgrammeType}
+            >
+              <SelectTrigger className="h-8 text-xs w-[100px]">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="INDIVIDUAL">Individual</SelectItem>
+                <SelectItem value="GROUP">Team</SelectItem>
+              </SelectContent>
+            </Select>
+            {hasTableFilters && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={clearFilters}
+                className="h-8 w-8"
+                title="Clear filters"
+              >
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            )}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {filteredTableProgrammes.length > 0 ? (
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
+            <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Category</TableHead>
                     <TableHead>Programme</TableHead>
-                    <TableHead className="text-center">Participants</TableHead>
+                    <TableHead className="text-center">
+                      Participants / Teams
+                    </TableHead>
                     <TableHead className="text-center">Status</TableHead>
                     <TableHead className="text-right w-16">Edit</TableHead>
                   </TableRow>
@@ -1400,6 +1403,11 @@ export function ResultsManagementClient({
                       <TableCell className="text-center font-mono">
                         {prog.stats.enteredScores}/
                         {prog.stats.totalParticipants}
+                        {prog.type === "GROUP" && (
+                          <span className="text-[10px] text-muted-foreground ml-1">
+                            teams
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="text-center">
                         {prog.stats.status === "published" ? (
@@ -1450,7 +1458,6 @@ export function ResultsManagementClient({
                   ))}
                 </TableBody>
               </Table>
-            </div>
           ) : (
             <div className="text-center py-16">
               <Award className="w-16 h-16 mx-auto text-muted-foreground opacity-20 mb-4" />
