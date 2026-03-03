@@ -23,6 +23,8 @@ export default async function StudentsPage({
     notFound();
   }
 
+  const slug = festival.slug;
+
   // Check for categories
   const categoryCount = await prisma.category.count({
     where: { festivalId: festival.id },
@@ -47,9 +49,10 @@ export default async function StudentsPage({
 
   const initialChestSettings = await getChestNumberSettings(festival.id);
 
+  const studentsPath = `/dashboard/${slug}/pre-works/students` as const;
   async function handleChestRevalidate() {
     "use server";
-    revalidatePath(`/dashboard/${festival.slug}/pre-works/students`);
+    revalidatePath(studentsPath);
   }
 
   return (
