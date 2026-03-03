@@ -67,13 +67,11 @@ export default async function TeamStatusPage({
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
       <LeaderboardClient
         festival={festival}
         programmes={festival.programmes}
         results={festival.results}
         publishedStandings={festival.teamStandings as any[]}
       />
-    </div>
-  );
+    );
 }
