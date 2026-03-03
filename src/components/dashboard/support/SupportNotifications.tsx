@@ -7,24 +7,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  getUserNotificationsAction,
-  markAllNotificationsAsReadAction,
-  markNotificationAsReadAction,
-} from "@/server/actions/support.actions";
+import { useSupportNotifications } from "@/hooks/useSupportNotifications";
 import { format } from "date-fns";
 import { Bell } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
-
-interface Notification {
-  id: string;
-  type: string;
-  referenceId: string;
-  isRead: boolean;
-  createdAt: Date;
-}
+import { useState } from "react";
 
 export function SupportNotifications({
   slug,
@@ -33,50 +20,20 @@ export function SupportNotifications({
   slug?: string;
   isAdmin?: boolean;
 }) {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+  } = useSupportNotifications();
 
-  const fetchNotifications = useCallback(async () => {
-    try {
-      const data = await getUserNotificationsAction();
-      setNotifications(Array.isArray(data) ? data : []);
-      setUnreadCount(
-        Array.isArray(data) ? data.filter((n: any) => !n.isRead).length : 0,
-      );
-    } catch {
-      setNotifications([]);
-      setUnreadCount(0);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000); // Poll every 30s
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
-
-  const handleMarkAsRead = async (id: string) => {
-    try {
-      await markNotificationAsReadAction(id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch (error) {
-      toast.error("Failed to update notification");
-    }
+  const handleMarkAsRead = (id: string) => {
+    markAsRead(id);
   };
 
-  const handleMarkAllAsRead = async () => {
-    try {
-      await markAllNotificationsAsReadAction();
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-      setUnreadCount(0);
-      toast.success("All notifications marked as read");
-    } catch (error) {
-      toast.error("Failed to update notifications");
-    }
+  const handleMarkAllAsRead = () => {
+    markAllAsRead();
   };
 
   return (
@@ -118,7 +75,6 @@ export function SupportNotifications({
                       ? "New Ticket"
                       : "Update";
 
-                // @ts-ignore
                 const subject = notification.ticketSubject;
 
                 return (

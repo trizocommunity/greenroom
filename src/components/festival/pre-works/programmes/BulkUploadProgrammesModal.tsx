@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { queryKeys } from "@/lib/query-keys";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import {
@@ -266,7 +266,6 @@ export function BulkUploadProgrammesModal({
   trigger,
 }: BulkUploadProgrammesModalProps) {
   const queryClient = useQueryClient();
-  const router = useRouter();
 
   const { categories, isLoading } = useCategories(festivalId);
 
@@ -383,8 +382,7 @@ export function BulkUploadProgrammesModal({
     );
 
     if (result.success) {
-      queryClient.invalidateQueries({ queryKey: ["programmes", festivalId] });
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: queryKeys.programmes.list(festivalId) });
     }
     // Narrow the result type to access .error safely across all union branches
     const r = result as { success: boolean; count?: number; error?: string };

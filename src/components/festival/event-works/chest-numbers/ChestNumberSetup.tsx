@@ -2,18 +2,12 @@
 
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Settings2, Pencil } from "lucide-react";
+import { Loader2, Settings2 } from "lucide-react";
 import {
   generateChestNumbers,
   saveChestNumberSettings,
@@ -41,9 +35,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+type CategoryItem = { id: string; name: string };
+
 interface ChestNumberSetupProps {
   festivalId: string;
-  categories: any[];
+  categories: CategoryItem[];
   initialSettings: {
     prefix: string;
     nextSequence?: number;
@@ -65,7 +61,7 @@ export function ChestNumberSetup({
   const queryClient = useQueryClient();
 
   const invalidateStudentsAndNotify = () => {
-    queryClient.invalidateQueries({ queryKey: ["students", festivalId] });
+    queryClient.invalidateQueries({ queryKey: queryKeys.students.list(festivalId) });
     onGenerated();
   };
 
@@ -73,7 +69,7 @@ export function ChestNumberSetup({
   const [categoryStarts, setCategoryStarts] = useState<Record<string, string>>(
     () => {
       const starts: Record<string, string> = {};
-      categories.forEach((c: any, index: number) => {
+      categories.forEach((c: CategoryItem, index: number) => {
         // Default to 100, 200, 300... if not configured
         const defaultStart = ((index + 1) * 100).toString();
         starts[c.id] =
@@ -86,7 +82,7 @@ export function ChestNumberSetup({
   const [categoryCodes, setCategoryCodes] = useState<Record<string, string>>(
     () => {
       const codes: Record<string, string> = {};
-      categories.forEach((c: any) => {
+      categories.forEach((c: CategoryItem) => {
         codes[c.id] =
           initialSettings?.categoryCodes?.[c.id] ||
           c.name.charAt(0).toUpperCase();
@@ -210,8 +206,8 @@ export function ChestNumberSetup({
 
       toast.success(result.message);
       invalidateStudentsAndNotify();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to process");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to process");
     } finally {
       setIsSaving(false);
       setIsGenerating(false);
@@ -276,8 +272,10 @@ export function ChestNumberSetup({
       setCategoryStarts(editCategoryStarts);
 
       invalidateStudentsAndNotify();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update configuration");
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update configuration",
+      );
     } finally {
       setIsUpdatingPrefix(false);
     }
@@ -294,16 +292,18 @@ export function ChestNumberSetup({
 
       const defaultStarts: Record<string, string> = {};
       const defaultCodes: Record<string, string> = {};
-      categories.forEach((c: any, index: number) => {
-        defaultStarts[c.id] = ((index + 1) * 100).toString(); // Default to 100, 200, 300...
+      categories.forEach((c: CategoryItem, index: number) => {
+        defaultStarts[c.id] = ((index + 1) * 100).toString();
         defaultCodes[c.id] = c.name.charAt(0).toUpperCase();
       });
       setCategoryStarts(defaultStarts);
       setCategoryCodes(defaultCodes);
 
       invalidateStudentsAndNotify();
-    } catch (error: any) {
-      toast.error("Failed to reset chest numbers");
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to reset chest numbers",
+      );
     } finally {
       setIsResetting(false);
     }
@@ -411,7 +411,9 @@ export function ChestNumberSetup({
           <div className="py-2 space-y-6">
             <Tabs
               value={numberingStyle}
-              onValueChange={(v) => setNumberingStyle(v as any)}
+              onValueChange={(v) =>
+                setNumberingStyle(v as "ALPHANUMERIC" | "NUMERIC")
+              }
               className="w-full"
             >
               <TabsList className="grid w-full grid-cols-2">
@@ -451,7 +453,7 @@ export function ChestNumberSetup({
             <div className="space-y-3">
               <Label>Category Sequences</Label>
               <div className="border rounded-md divide-y max-h-[400px] overflow-y-auto">
-                {categories.map((cat: any) => (
+                {categories.map((cat: CategoryItem) => (
                   <div
                     key={cat.id}
                     className="flex items-center justify-between p-3 text-sm"

@@ -25,6 +25,7 @@ export const queryKeys = {
     lists: () => ["festivals", "list"] as const,
     list: (filters?: Record<string, unknown>) =>
       ["festivals", "list", { ...filters }] as const,
+    joined: (userId: string) => ["festivals", "joined", userId] as const,
     details: () => ["festivals", "detail"] as const,
     detail: (id: string) => ["festivals", "detail", id] as const,
   },
@@ -43,6 +44,8 @@ export const queryKeys = {
   programmes: {
     all: () => ["programmes"] as const,
     list: (festivalId: string) => ["programmes", "list", festivalId] as const,
+    detail: (festivalId: string, programmeId: string) =>
+      ["programmes", "detail", festivalId, programmeId] as const,
   },
   students: {
     all: () => ["students"] as const,
@@ -51,6 +54,10 @@ export const queryKeys = {
   assignments: {
     all: () => ["assignments"] as const,
     list: (festivalId: string) => ["assignments", "list", festivalId] as const,
+  },
+  members: {
+    all: () => ["members"] as const,
+    list: (festivalId: string) => ["members", "list", festivalId] as const,
   },
 
   /**
@@ -65,6 +72,8 @@ export const queryKeys = {
     unusedCredit: (userId?: string) =>
       ["payments", "unused-credit", { userId }] as const,
     history: (userId?: string) => ["payments", "history", { userId }] as const,
+    billingHistory: (userId?: string) =>
+      ["payments", "billingHistory", { userId }] as const,
     details: () => ["payments", "detail"] as const,
     detail: (id: string) => ["payments", "detail", id] as const,
   },
@@ -79,6 +88,15 @@ export const queryKeys = {
       ["users", "list", { ...filters }] as const,
     details: () => ["users", "detail"] as const,
     detail: (id: string) => ["users", "detail", id] as const,
+  },
+
+  /**
+   * Support / Notifications
+   */
+  support: {
+    all: () => ["support"] as const,
+    notifications: (userId?: string) =>
+      ["support", "notifications", { userId }] as const,
   },
 
   /**

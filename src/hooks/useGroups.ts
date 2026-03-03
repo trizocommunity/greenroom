@@ -1,17 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { queryKeys } from "@/lib/query-keys";
 import {
   createGroupAction,
   deleteGroupAction,
   getGroupsAction,
+  updateGroupAction,
 } from "@/server/actions/group.actions";
+
+const STALE_TIME_MS = 2 * 60 * 1000;
+const GC_TIME_MS = 5 * 60 * 1000;
 
 export function useGroups(festivalId: string) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["groups", festivalId],
+    queryKey: queryKeys.groups.list(festivalId),
     queryFn: () => getGroupsAction(festivalId),
+    staleTime: STALE_TIME_MS,
+    gcTime: GC_TIME_MS,
+    enabled: !!festivalId,
   });
 
   const createMutation = useMutation({
@@ -24,7 +32,7 @@ export function useGroups(festivalId: string) {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["groups", festivalId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(festivalId) });
       toast.success("Group created successfully");
     },
     onError: (error: any) => {
@@ -38,7 +46,7 @@ export function useGroups(festivalId: string) {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["groups", festivalId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(festivalId) });
       toast.success("Group deleted successfully");
     },
     onError: (error: any) => {
@@ -58,14 +66,9 @@ export function useGroups(festivalId: string) {
         color?: string;
         teamLeaderIds?: string[];
       };
-    }) => {
-      const { updateGroupAction } = await import(
-        "@/server/actions/group.actions"
-      );
-      return updateGroupAction(festivalId, id, data);
-    },
+    }) => updateGroupAction(festivalId, id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["groups", festivalId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(festivalId) });
       toast.success("Group updated successfully");
     },
     onError: (error: any) => {

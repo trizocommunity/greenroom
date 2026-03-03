@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { queryKeys } from "@/lib/query-keys";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import {
@@ -297,7 +297,6 @@ export function BulkUploadStudentsModal({
   trigger,
 }: BulkUploadStudentsModalProps) {
   const queryClient = useQueryClient();
-  const router = useRouter();
 
   const { groups, isLoading: loadingGroups } = useGroups(festivalId);
   const { categories, isLoading: loadingCategories } =
@@ -434,8 +433,7 @@ export function BulkUploadStudentsModal({
     const result = await bulkCreateStudentsAction(festivalId, studentsToCreate);
 
     if (result.successCount > 0) {
-      queryClient.invalidateQueries({ queryKey: ["students", festivalId] });
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.list(festivalId) });
     }
 
     const success = result.errors.length === 0;

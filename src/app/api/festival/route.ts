@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { formatApiError } from "@/lib/api-error";
+import { systemConfig } from "@/lib/config";
 import { getSession } from "@/lib/auth/session";
 import {
   createFestival,
@@ -55,7 +56,6 @@ export async function POST(request: Request) {
     }
 
     // [New Phase 2] Payment Enforcement
-    const { systemConfig } = await import("@/lib/config");
     let paymentIdToConsume: string | null = null;
 
     if (systemConfig.paymentFirstFlowEnabled) {

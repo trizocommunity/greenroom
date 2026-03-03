@@ -1,17 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { queryKeys } from "@/lib/query-keys";
 import {
   createCategoryAction,
   deleteCategoryAction,
   getCategoriesAction,
 } from "@/server/actions/category.actions";
 
+const STALE_TIME_MS = 2 * 60 * 1000;
+const GC_TIME_MS = 5 * 60 * 1000;
+
 export function useCategories(festivalId: string) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["categories", festivalId],
+    queryKey: queryKeys.categories.list(festivalId),
     queryFn: () => getCategoriesAction(festivalId),
+    staleTime: STALE_TIME_MS,
+    gcTime: GC_TIME_MS,
+    enabled: !!festivalId,
   });
 
   const createMutation = useMutation({
@@ -20,7 +27,7 @@ export function useCategories(festivalId: string) {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["categories", festivalId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.categories.list(festivalId) });
       toast.success("Category created successfully");
     },
     onError: (error: any) => {
@@ -36,15 +43,13 @@ export function useCategories(festivalId: string) {
       id: string;
       data: { name: string; description?: string };
     }) => {
-      // Import this from actions if not imported yet?
-      // I'll need to update imports at the top.
       const { updateCategoryAction } = await import(
         "@/server/actions/category.actions"
       );
       return updateCategoryAction(festivalId, id, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["categories", festivalId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.categories.list(festivalId) });
       toast.success("Category updated successfully");
     },
     onError: (error: any) => {
@@ -58,7 +63,7 @@ export function useCategories(festivalId: string) {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["categories", festivalId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.categories.list(festivalId) });
       toast.success("Category deleted successfully");
     },
     onError: (error: any) => {

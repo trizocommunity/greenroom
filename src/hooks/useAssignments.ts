@@ -1,18 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { queryKeys } from "@/lib/query-keys";
 import {
   createAssignmentAction,
   deleteAssignmentAction,
   deleteTeamAssignmentAction,
   getAssignmentsAction,
+  updateAssignmentAction,
+  bulkCreateAssignmentAction,
 } from "@/server/actions/assignment.actions";
+
+const STALE_TIME_MS = 2 * 60 * 1000;
+const GC_TIME_MS = 5 * 60 * 1000;
 
 export function useAssignments(festivalId: string) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["assignments", festivalId],
+    queryKey: queryKeys.assignments.list(festivalId),
     queryFn: () => getAssignmentsAction(festivalId),
+    staleTime: STALE_TIME_MS,
+    gcTime: GC_TIME_MS,
+    enabled: !!festivalId,
   });
 
   const createMutation = useMutation({
@@ -25,7 +34,7 @@ export function useAssignments(festivalId: string) {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["assignments", festivalId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.assignments.list(festivalId) });
       toast.success("Assignment created successfully");
     },
     onError: (error: any) => {
@@ -39,7 +48,7 @@ export function useAssignments(festivalId: string) {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["assignments", festivalId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.assignments.list(festivalId) });
       toast.success("Assignment deleted successfully");
     },
     onError: (error: any) => {
@@ -65,7 +74,7 @@ export function useAssignments(festivalId: string) {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["assignments", festivalId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.assignments.list(festivalId) });
       toast.success("Team removed from programme");
     },
     onError: (error: any) => {
@@ -75,17 +84,33 @@ export function useAssignments(festivalId: string) {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const { updateAssignmentAction } = await import(
-        "@/server/actions/assignment.actions"
-      );
       return updateAssignmentAction(festivalId, id, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["assignments", festivalId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.assignments.list(festivalId) });
       toast.success("Assignment updated successfully");
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to update assignment");
+    },
+  });
+
+  const bulkCreateMutation = useMutation({
+    mutationFn: async (
+      assignments: {
+        programmeId: string;
+        studentId: string;
+        teamNumber?: number;
+      }[],
+    ) => bulkCreateAssignmentAction(festivalId, assignments),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.assignments.list(festivalId),
+      });
+      toast.success("Assignments created successfully");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to create assignments");
     },
   });
 
@@ -100,28 +125,6 @@ export function useAssignments(festivalId: string) {
     deleteTeamAssignment: deleteTeamMutation.mutateAsync,
     isDeleting: deleteMutation.isPending,
     isDeletingTeam: deleteTeamMutation.isPending,
-    bulkCreateAssignment: useMutation({
-      mutationFn: async (
-        assignments: {
-          programmeId: string;
-          studentId: string;
-          teamNumber?: number;
-        }[],
-      ) => {
-        const { bulkCreateAssignmentAction } = await import(
-          "@/server/actions/assignment.actions"
-        );
-        return bulkCreateAssignmentAction(festivalId, assignments);
-      },
-      onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: ["assignments", festivalId],
-        });
-        toast.success("Assignments created successfully");
-      },
-      onError: (error: any) => {
-        toast.error(error.message || "Failed to create assignments");
-      },
-    }).mutateAsync,
+    bulkCreateAssignment: bulkCreateMutation.mutateAsync,
   };
 }

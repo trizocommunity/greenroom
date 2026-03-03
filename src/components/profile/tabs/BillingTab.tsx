@@ -6,11 +6,10 @@ import {
   CheckCircle2,
   Clock,
   CreditCard,
-  Loader2,
   Receipt,
   XCircle,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,23 +21,15 @@ import {
 } from "@/components/ui/card";
 import { BillingHistorySkeleton } from "@/components/ui/Skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getBillingHistory } from "@/server/actions/billing.actions";
+import { useBillingHistory } from "@/hooks/useBillingHistory";
 import { PaymentDetailsModal } from "../modals/PaymentDetailsModal";
 
 export function BillingTab() {
-  const [payments, setPayments] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: payments = [], isLoading } = useBillingHistory();
   const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-  useEffect(() => {
-    getBillingHistory().then((data) => {
-      setPayments(data || []);
-      setLoading(false);
-    });
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-8 animate-in fade-in duration-700">
         <div className="space-y-2">

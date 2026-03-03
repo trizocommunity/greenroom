@@ -23,6 +23,7 @@ export async function createAssignmentAction(
 ) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
+  const userId = session!.userId;
 
   const festival = await findFestivalById(festivalId);
 
@@ -31,7 +32,7 @@ export async function createAssignmentAction(
     festival?.programmeAssignmentDeadline &&
     new Date() > festival.programmeAssignmentDeadline
   ) {
-    const isAdmin = festival.ownerId === session.userId;
+    const isAdmin = festival.ownerId === userId;
     if (!isAdmin) {
       throw new AppError(ERROR_MESSAGES.ASSIGNMENT_DEADLINE_PASSED);
     }
@@ -68,6 +69,7 @@ export async function bulkCreateAssignmentAction(
 ) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
+  const userId = session!.userId;
 
   const festival = await findFestivalById(festivalId);
 
@@ -76,7 +78,7 @@ export async function bulkCreateAssignmentAction(
     festival?.programmeAssignmentDeadline &&
     new Date() > festival.programmeAssignmentDeadline
   ) {
-    const isAdmin = festival.ownerId === session.userId;
+    const isAdmin = festival.ownerId === userId;
     if (!isAdmin) {
       throw new AppError(ERROR_MESSAGES.ASSIGNMENT_DEADLINE_PASSED);
     }
@@ -95,6 +97,7 @@ export async function bulkCreateAssignmentAction(
 export async function deleteAssignmentAction(festivalId: string, id: string) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
+  const userId = session!.userId;
 
   const festival = await findFestivalById(festivalId);
 
@@ -103,7 +106,7 @@ export async function deleteAssignmentAction(festivalId: string, id: string) {
     festival?.programmeAssignmentDeadline &&
     new Date() > festival.programmeAssignmentDeadline
   ) {
-    const isAdmin = festival.ownerId === session.userId;
+    const isAdmin = festival.ownerId === userId;
     if (!isAdmin) {
       throw new AppError(ERROR_MESSAGES.ASSIGNMENT_DEADLINE_PASSED_ADMIN);
     }
@@ -120,6 +123,7 @@ export async function deleteTeamAssignmentAction(
 ) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
+  const userId = session!.userId;
 
   const festival = await findFestivalById(festivalId);
 
@@ -127,7 +131,7 @@ export async function deleteTeamAssignmentAction(
     festival?.programmeAssignmentDeadline &&
     new Date() > festival.programmeAssignmentDeadline
   ) {
-    const isAdmin = festival.ownerId === session.userId;
+    const isAdmin = festival.ownerId === userId;
     if (!isAdmin) {
       throw new AppError(ERROR_MESSAGES.ASSIGNMENT_DEADLINE_PASSED_ADMIN);
     }
@@ -152,6 +156,7 @@ export async function updateAssignmentAction(
 ) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
+  const userId = session!.userId;
 
   const festival = await findFestivalById(festivalId);
 
@@ -160,7 +165,7 @@ export async function updateAssignmentAction(
     festival?.programmeAssignmentDeadline &&
     new Date() > festival.programmeAssignmentDeadline
   ) {
-    const isAdmin = festival.ownerId === session.userId;
+    const isAdmin = festival.ownerId === userId;
     if (!isAdmin) {
       throw new AppError(ERROR_MESSAGES.ASSIGNMENT_DEADLINE_PASSED_ADMIN);
     }

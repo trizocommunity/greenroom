@@ -1,8 +1,11 @@
 "use server";
 
+import type { Prisma } from "@/app/generated/prisma/client";
 import { revalidatePath } from "next/cache";
+import type { ActionResponse } from "@/types/actions";
 import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { getSession } from "@/lib/auth/session";
+import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import { prisma } from "@/lib/db";
 import { ResultModel } from "@/server/models/result.model";
 
@@ -18,10 +21,19 @@ export interface SaveResultInput {
   isPublished?: boolean;
 }
 
+function revalidateResultsPaths(slug: string, options?: { includeTeamStatus?: boolean }) {
+  revalidatePath(`/dashboard/${slug}/event-works/results`);
+  revalidatePath(`/dashboard/${slug}/event-works/leaderboard`);
+  if (options?.includeTeamStatus) {
+    revalidatePath(`/dashboard/${slug}/event-works/team-status`);
+  }
+  revalidatePath(`/${slug}/results`);
+}
+
 /**
  * Save or update a result for a programme assignment
  */
-export async function saveResult(data: SaveResultInput) {
+export async function saveResult(data: SaveResultInput): Promise<ActionResponse<Awaited<ReturnType<typeof ResultModel.upsert>>>> {
   try {
     const session = await getSession();
     await assertFestivalAccess(session, data.festivalId);
@@ -32,38 +44,32 @@ export async function saveResult(data: SaveResultInput) {
       select: { slug: true },
     });
     if (festival) {
-      revalidatePath(`/dashboard/${festival.slug}/event-works/results`);
-      revalidatePath(`/dashboard/${festival.slug}/event-works/team-status`);
-      revalidatePath(`/${festival.slug}/results`);
+      revalidateResultsPaths(festival.slug, { includeTeamStatus: true });
     }
     return { success: true, data: result };
   } catch (error) {
-    console.error("Error saving result:", error);
-    return { success: false, error: "Failed to save result" };
+    return handleActionError(error);
   }
 }
 
 /**
  * Delete a result
  */
-export async function deleteResult(resultId: string, festivalSlug: string) {
+export async function deleteResult(resultId: string, festivalSlug: string): Promise<ActionResponse<void>> {
   try {
     const session = await getSession();
     const result = await prisma.result.findUnique({
       where: { id: resultId },
       select: { festivalId: true },
     });
-    if (!result) return { success: false, error: "Result not found" };
+    if (!result) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
     await assertFestivalAccess(session, result.festivalId);
 
     await ResultModel.delete(resultId);
-    revalidatePath(`/dashboard/${festivalSlug}/event-works/results`);
-    revalidatePath(`/dashboard/${festivalSlug}/event-works/leaderboard`);
-    revalidatePath(`/${festivalSlug}/results`);
-    return { success: true };
+    revalidateResultsPaths(festivalSlug);
+    return { success: true, data: undefined };
   } catch (error) {
-    console.error("Error deleting result:", error);
-    return { success: false, error: "Failed to delete result" };
+    return handleActionError(error);
   }
 }
 
@@ -74,24 +80,21 @@ export async function bulkPublishProgrammeResults(
   programmeId: string,
   isPublished: boolean,
   festivalSlug: string,
-) {
+): Promise<ActionResponse<void>> {
   try {
     const session = await getSession();
     const programme = await prisma.programme.findUnique({
       where: { id: programmeId },
       select: { festivalId: true },
     });
-    if (!programme) return { success: false, error: "Programme not found" };
+    if (!programme) throw new AppError(ERROR_MESSAGES.PROGRAMME_NOT_FOUND);
     await assertFestivalAccess(session, programme.festivalId);
 
     await ResultModel.bulkPublishByProgramme(programmeId, isPublished);
-    revalidatePath(`/dashboard/${festivalSlug}/event-works/results`);
-    revalidatePath(`/dashboard/${festivalSlug}/event-works/leaderboard`);
-    revalidatePath(`/${festivalSlug}/results`);
-    return { success: true };
+    revalidateResultsPaths(festivalSlug);
+    return { success: true, data: undefined };
   } catch (error) {
-    console.error("Error bulk publishing programme results:", error);
-    return { success: false, error: "Failed to update results" };
+    return handleActionError(error);
   }
 }
 
@@ -102,28 +105,23 @@ export async function publishTeamStandings(
   festivalId: string,
   standings: Record<string, unknown>[],
   festivalSlug: string,
-) {
+): Promise<ActionResponse<void>> {
   try {
     const session = await getSession();
     await assertFestivalAccess(session, festivalId);
 
-    // We need to import this dynamically or move it to a better place to avoid circular deps if any
-    // checks festival.model.ts for "updateTeamStandings"
     const { updateTeamStandings } = await import(
       "@/server/models/festival.model"
     );
-
-    // Ensure standings is a plain object/array for Prisma JSON
-    // This strips any non-serializable data and ensures it matches the Json type
-    const standingsJson = JSON.parse(JSON.stringify(standings));
-
+    const standingsJson = JSON.parse(
+      JSON.stringify(standings),
+    ) as Prisma.InputJsonValue;
     await updateTeamStandings(festivalId, standingsJson);
 
     revalidatePath(`/${festivalSlug}`);
     revalidatePath(`/${festivalSlug}/results`);
-    return { success: true };
+    return { success: true, data: undefined };
   } catch (error) {
-    console.error("Error publishing standings:", error);
-    return { success: false, error: "Failed to publish standings" };
+    return handleActionError(error);
   }
 }

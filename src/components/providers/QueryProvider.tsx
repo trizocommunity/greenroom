@@ -16,6 +16,8 @@ export default function QueryProvider({
             // With SSR, we usually want to set some default staleTime
             // above 0 to avoid refetching immediately on the client
             staleTime: 60 * 1000, // 1 minute default
+            // Keep unused data in cache for 5 minutes for fast back navigation
+            gcTime: 5 * 60 * 1000,
             // Disable automatic refetching on window focus for better UX
             // Individual hooks can override this if needed
             refetchOnWindowFocus: false,
