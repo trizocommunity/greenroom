@@ -23,11 +23,12 @@ export type FeaturePath = keyof TierFeatures;
 /**
  * Coerce nullable tier to Tier for feature checks. Use before isFeatureEnabled/getFeatureValue.
  * Delegates to tier.ts for consistent default (BASIC).
+ * Accepts string for loaders/API that return tier as string.
  */
 export function getTierForFeatureCheck(
-  tier: Tier | null | undefined,
+  tier: Tier | string | null | undefined,
 ): Tier {
-  return getResolvedTier(tier);
+  return getResolvedTier(tier as Tier | null | undefined);
 }
 
 /**

@@ -45,8 +45,8 @@ export function RegisterForm() {
         return;
       }
 
-      toast.success("Account created successfully");
-      router.push("/profile");
+      toast.success("Account created. Please log in.");
+      router.push("/login?registered=1");
       router.refresh();
     },
     onError: () => {

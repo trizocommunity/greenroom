@@ -40,11 +40,13 @@ export function SupportNotifications({
   const fetchNotifications = useCallback(async () => {
     try {
       const data = await getUserNotificationsAction();
-      // @ts-ignore
-      setNotifications(data);
-      setUnreadCount(data.filter((n: any) => !n.isRead).length);
-    } catch (error) {
-      console.error("Failed to fetch notifications");
+      setNotifications(Array.isArray(data) ? data : []);
+      setUnreadCount(
+        Array.isArray(data) ? data.filter((n: any) => !n.isRead).length : 0,
+      );
+    } catch {
+      setNotifications([]);
+      setUnreadCount(0);
     }
   }, []);
 

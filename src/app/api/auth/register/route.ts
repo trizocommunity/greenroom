@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { formatApiError } from "@/lib/api-error";
 import { hashPassword } from "@/lib/auth/password";
+import type { GlobalRole } from "@/lib/auth/session";
+import { createSession } from "@/lib/auth/session";
 import { registerSchema } from "@/lib/validations/auth";
 import { createUser, findUserByEmail } from "@/server/models/user.model";
 
@@ -25,6 +27,8 @@ export async function POST(request: Request) {
       email,
       password: hashedPassword,
     });
+
+    await createSession(user.id, (user.globalRole ?? "USER") as GlobalRole);
 
     const { password: _, ...userWithoutPassword } = user;
 

@@ -220,7 +220,7 @@ export async function sendMessageAction(ticketId: string, message: string) {
 
 export async function getUserNotificationsAction() {
   const session = await getSession();
-  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+  if (!session?.userId) return [];
 
   const notifications = await prisma.supportNotification.findMany({
     where: { userId: session.userId },
