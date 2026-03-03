@@ -117,8 +117,6 @@ export async function updateFestivalSettingsAction(
     programmeAssignmentDeadline?: string | null;
     startDate?: string | null;
     endDate?: string | null;
-    scoringSystem?: "POSITION_BASED" | "SCORE_BASED";
-    maxResultScore?: number | null;
   },
 ) {
   try {
@@ -162,12 +160,6 @@ export async function updateFestivalSettingsAction(
         }),
         ...(data.endDate !== undefined && {
           endDate: data.endDate ? new Date(data.endDate) : null,
-        }),
-        ...(data.scoringSystem !== undefined && {
-          scoringSystem: data.scoringSystem,
-        }),
-        ...(data.maxResultScore !== undefined && {
-          maxResultScore: data.maxResultScore,
         }),
       },
     });

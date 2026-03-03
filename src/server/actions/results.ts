@@ -68,34 +68,6 @@ export async function deleteResult(resultId: string, festivalSlug: string) {
 }
 
 /**
- * Toggle publish status for a single result
- */
-export async function toggleResultPublish(
-  resultId: string,
-  isPublished: boolean,
-  festivalSlug: string,
-) {
-  try {
-    const session = await getSession();
-    const result = await prisma.result.findUnique({
-      where: { id: resultId },
-      select: { festivalId: true },
-    });
-    if (!result) return { success: false, error: "Result not found" };
-    await assertFestivalAccess(session, result.festivalId);
-
-    await ResultModel.togglePublish(resultId, isPublished);
-    revalidatePath(`/dashboard/${festivalSlug}/event-works/results`);
-    revalidatePath(`/dashboard/${festivalSlug}/event-works/leaderboard`);
-    revalidatePath(`/${festivalSlug}/results`);
-    return { success: true };
-  } catch (error) {
-    console.error("Error toggling result publish status:", error);
-    return { success: false, error: "Failed to update publish status" };
-  }
-}
-
-/**
  * Bulk publish/unpublish results for a programme
  */
 export async function bulkPublishProgrammeResults(
@@ -120,71 +92,6 @@ export async function bulkPublishProgrammeResults(
   } catch (error) {
     console.error("Error bulk publishing programme results:", error);
     return { success: false, error: "Failed to update results" };
-  }
-}
-
-/**
- * Bulk publish/unpublish all results for a festival
- */
-export async function bulkPublishAllResults(
-  festivalId: string,
-  isPublished: boolean,
-  festivalSlug: string,
-) {
-  try {
-    const session = await getSession();
-    await assertFestivalAccess(session, festivalId);
-
-    await ResultModel.bulkPublishByFestival(festivalId, isPublished);
-    revalidatePath(`/dashboard/${festivalSlug}/event-works/results`);
-    revalidatePath(`/dashboard/${festivalSlug}/event-works/leaderboard`);
-    revalidatePath(`/${festivalSlug}/results`);
-    return { success: true };
-  } catch (error) {
-    console.error("Error bulk publishing all results:", error);
-    return { success: false, error: "Failed to update results" };
-  }
-}
-
-/**
- * Get all results for a festival (for dashboard)
- */
-export async function getFestivalResults(festivalId: string) {
-  try {
-    const session = await getSession();
-    await assertFestivalAccess(session, festivalId);
-
-    const results = await ResultModel.findByFestival(festivalId, false);
-    return { success: true, data: results };
-  } catch (error) {
-    console.error("Error fetching festival results:", error);
-    return { success: false, error: "Failed to fetch results" };
-  }
-}
-
-/**
- * Get published results for a festival (for public site)
- */
-export async function getPublishedResults(festivalId: string) {
-  try {
-    const results = await ResultModel.findByFestival(festivalId, true);
-    return { success: true, data: results };
-  } catch (error) {
-    console.error("Error fetching published results:", error);
-    return { success: false, error: "Failed to fetch results" };
-  }
-}
-
-/**
- * Get results for a specific programme
- */
-export async function getProgrammeResults(programmeId: string) {
-  try {
-    const results = await ResultModel.findByProgramme(programmeId);
-    return { success: true, data: results };
-  } catch (error) {
-    console.error("Error fetching programme results:", error);
-    return { success: false, error: "Failed to fetch results" };
   }
 }
 

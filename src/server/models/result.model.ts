@@ -12,98 +12,16 @@ export interface ResultInput {
   isPublished?: boolean;
 }
 
-export interface ResultUpdate {
-  grade?: string | null;
-  position?: number | null;
-  score?: number;
-  points?: number;
-  remarks?: string | null;
-  isPublished?: boolean;
-}
-
 /**
  * Result Model - Handles competition results CRUD operations
  */
 export class ResultModel {
-  /**
-   * Create a new result
-   */
-  static async create(data: ResultInput) {
-    return prisma.result.create({
-      data,
-      include: {
-        assignment: {
-          include: {
-            student: true,
-            group: true,
-          },
-        },
-        programme: true,
-      },
-    });
-  }
-
-  /**
-   * Update an existing result
-   */
-  static async update(id: string, data: ResultUpdate) {
-    return prisma.result.update({
-      where: { id },
-      data,
-      include: {
-        assignment: {
-          include: {
-            student: true,
-            group: true,
-          },
-        },
-        programme: true,
-      },
-    });
-  }
-
   /**
    * Delete a result
    */
   static async delete(id: string) {
     return prisma.result.delete({
       where: { id },
-    });
-  }
-
-  /**
-   * Get result by ID
-   */
-  static async findById(id: string) {
-    return prisma.result.findUnique({
-      where: { id },
-      include: {
-        assignment: {
-          include: {
-            student: true,
-            group: true,
-          },
-        },
-        programme: true,
-      },
-    });
-  }
-
-  /**
-   * Get result by assignment ID
-   */
-  static async findByAssignmentId(assignmentId: string) {
-    return prisma.result.findUnique({
-      where: { assignmentId },
-      include: {
-        assignment: {
-          include: {
-            student: true,
-            group: true,
-          },
-        },
-        programme: true,
-      },
     });
   }
 

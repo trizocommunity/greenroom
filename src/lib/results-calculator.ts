@@ -1,21 +1,9 @@
 /**
  * Results Calculation Utilities
  *
- * Rule: Grade is derived only from the judge's score (result), on a scale 0 to maxScore.
- * Scoring system (POSITION_BASED vs SCORE_BASED) affects leaderboard points only, not grade.
- * Flow: result (score) → grade; result + position → points (for leaderboard).
+ * Grade = (score / maxScore) × 100; maxScore is per-programme (highest score entered).
+ * Leaderboard points = rounded score. Position = rank by score (1-indexed).
  */
-
-export interface PointsInput {
-  points: number;
-  maxPoints: number;
-}
-
-export interface CalculatedResult {
-  grade: string;
-  percentage: number;
-  remarks: string;
-}
 
 /** Default maximum score (judge gives 0 to this value). */
 const DEFAULT_MAX_SCORE = 10;
@@ -82,41 +70,6 @@ export function calculateGrade(
 }
 
 /**
- * Calculate position points based on rank
- * Higher ranks get more bonus points
- */
-export function calculatePositionPoints(position: number): number {
-  const pointsMap: Record<number, number> = {
-    1: 10,
-    2: 7,
-    3: 5,
-    4: 3,
-    5: 2,
-  };
-
-  return pointsMap[position] || 0;
-}
-
-/**
- * Calculate leaderboard points based on scoring system.
- * This does not affect grade; grade is always from score only.
- *
- * @param scoringSystem - "POSITION_BASED" or "SCORE_BASED"
- * @param score - Judge's score (result)
- * @param position - Calculated rank (1, 2, 3...)
- */
-export function calculatePoints(
-  scoringSystem: "POSITION_BASED" | "SCORE_BASED",
-  score: number,
-  position: number,
-): number {
-  if (scoringSystem === "SCORE_BASED") {
-    return Math.round(score);
-  }
-  return calculatePositionPoints(position);
-}
-
-/**
  * Calculate position (rank) based on score among all scores.
  * Uses the judge's scores (results), not leaderboard points.
  */
@@ -127,53 +80,6 @@ export function calculatePosition(
   const uniqueScores = Array.from(new Set(allScores)).sort((a, b) => b - a);
   const position = uniqueScores.indexOf(score) + 1;
   return position > 0 ? position : 1;
-}
-
-/**
- * Validate score input (judge's result, 0 to maxScore).
- */
-export function validatePoints(
-  score: number,
-  maxScore: number = DEFAULT_MAX_SCORE,
-): {
-  valid: boolean;
-  error?: string;
-} {
-  if (score < 0) {
-    return { valid: false, error: "Score cannot be negative" };
-  }
-  if (score > maxScore) {
-    return {
-      valid: false,
-      error: `Score cannot exceed ${maxScore}`,
-    };
-  }
-  return { valid: true };
-}
-
-/**
- * Format score for display
- */
-export function formatPoints(score: number): string {
-  return score.toFixed(2);
-}
-
-/**
- * Get grade color for UI display
- */
-export function getGradeColor(grade: string): string {
-  const colorMap: Record<string, string> = {
-    "A+": "text-green-600 dark:text-green-400",
-    A: "text-green-600 dark:text-green-400",
-    "B+": "text-blue-600 dark:text-blue-400",
-    B: "text-blue-600 dark:text-blue-400",
-    "C+": "text-yellow-600 dark:text-yellow-400",
-    C: "text-yellow-600 dark:text-yellow-400",
-    D: "text-orange-600 dark:text-orange-400",
-    E: "text-red-600 dark:text-red-400",
-  };
-
-  return colorMap[grade] || "text-gray-600 dark:text-gray-400";
 }
 
 /**

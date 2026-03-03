@@ -16,18 +16,14 @@ import {
   Unlock,
   Medal,
   Trophy,
-  Crown,
   AlertCircle,
   CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   Dialog,
@@ -64,8 +60,6 @@ import {
 import {
   calculateGrade,
   calculatePosition,
-  calculatePoints,
-  calculatePositionPoints,
   getGradeBadgeColor,
 } from "@/lib/results-calculator";
 import { cn } from "@/lib/utils";
@@ -114,9 +108,6 @@ type Festival = {
   id: string;
   name: string;
   slug: string;
-  scoringSystem?: "POSITION_BASED" | "SCORE_BASED";
-  /** For SCORE_BASED: max score judge can give (e.g. 80). Grade = (score/maxResultScore)*100. Default 10. */
-  maxResultScore?: number | null;
 };
 
 interface ResultsManagementClientProps {
@@ -371,20 +362,12 @@ export function ResultsManagementClient({
         };
       }
 
-      // Position-based: grade out of 10. Score-based: grade out of festival.maxResultScore (e.g. 80).
+      // Max score for this programme = highest score entered (user's "top number"). Grade = (score / maxScore) × 100.
       const maxScore =
-        festival.scoringSystem === "SCORE_BASED" &&
-        festival.maxResultScore != null &&
-        festival.maxResultScore > 0
-          ? festival.maxResultScore
-          : 10;
+        validScores.length > 0 ? Math.max(...validScores) : 10;
       const gradeData = calculateGrade(score, maxScore);
       const position = calculatePosition(score, validScores);
-      const leaderboardPoints = calculatePoints(
-        festival.scoringSystem || "POSITION_BASED",
-        score,
-        position,
-      );
+      const leaderboardPoints = Math.round(score);
 
       return {
         assignmentId: assignment.id,
@@ -401,7 +384,7 @@ export function ResultsManagementClient({
         resultId: assignment.result?.id,
       };
     });
-  }, [scores, currentProgramme, festival.scoringSystem]);
+  }, [scores, currentProgramme]);
   const hasAnyScore = results.some((r) => r.score !== null && r.score > 0);
 
   const handleScoreChange = (teamId: string, value: string) => {
@@ -420,7 +403,7 @@ export function ResultsManagementClient({
   const handleSaveResults = async (shouldPublish = false) => {
     if (!currentProgramme) return;
 
-    const resultsToSave = results.filter((r) => r.score !== null);
+    const resultsToSave = results.filter((r) => r.grade !== "-");
     if (resultsToSave.length === 0) return;
 
     startTransition(async () => {
@@ -601,91 +584,26 @@ export function ResultsManagementClient({
         <div className="flex gap-2">
           <HowItWorksButton
             title="How Results work?"
-            description="Simple guide to scoring and points."
+            description="Enter scores; grade and points are calculated automatically."
           >
             <div className="space-y-2">
               <h4 className="font-bold text-sm flex items-center gap-2">
-                <Medal className="w-4 h-4 text-yellow-500" /> Scoring
+                <Medal className="w-4 h-4 text-yellow-500" /> Grade
               </h4>
               <p className="text-sm text-muted-foreground">
-                Judges give a score out of 10. This score decides the Grade
-                (like A, B, C).
+                For each programme, the <strong>highest score entered</strong>{" "}
+                is treated as 100%. Grade = (score ÷ max score) × 100. E.g. if
+                top score is 80, then 80→A+, 60→B+, 29→C.
               </p>
             </div>
             <div className="space-y-2">
               <h4 className="font-bold text-sm flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-orange-500" /> Points for
-                Groups
+                <Trophy className="w-4 h-4 text-orange-500" /> Points
               </h4>
-              <p className="text-sm text-muted-foreground mb-4">
-                Winners earn points for their group depending on the scoring
-                system.
+              <p className="text-sm text-muted-foreground">
+                Leaderboard points = the score you enter (rounded). Publish
+                results to update the public leaderboard.
               </p>
-              <Tabs
-                defaultValue={
-                  festival.scoringSystem === "SCORE_BASED"
-                    ? "score"
-                    : "position"
-                }
-                className="w-full"
-              >
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="position">Position Based</TabsTrigger>
-                  <TabsTrigger value="score">Score Based</TabsTrigger>
-                </TabsList>
-                <TabsContent
-                  value="position"
-                  className="space-y-2 mt-4 border rounded-md p-4"
-                >
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Point System
-                  </span>
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex justify-between items-center border-b pb-2">
-                      <span className="font-medium">1st Place</span>
-                      <span className="font-bold text-primary">10 Pts</span>
-                    </li>
-                    <li className="flex justify-between items-center border-b pb-2">
-                      <span className="font-medium">2nd Place</span>
-                      <span className="font-bold text-primary">7 Pts</span>
-                    </li>
-                    <li className="flex justify-between items-center border-b pb-2">
-                      <span className="font-medium">3rd Place</span>
-                      <span className="font-bold text-primary">5 Pts</span>
-                    </li>
-                    <li className="flex justify-between items-center pt-1 text-muted-foreground">
-                      <span>A Grade (No Position)</span>
-                      <span>5 Pts</span>
-                    </li>
-                    <li className="flex justify-between items-center text-muted-foreground">
-                      <span>B Grade (No Position)</span>
-                      <span>3 Pts</span>
-                    </li>
-                  </ul>
-                  <p className="text-xs text-muted-foreground mt-2 italic">
-                    * Only the highest points apply (e.g., 1st Place gets 10,
-                    not 10 + 5 for A Grade).
-                  </p>
-                </TabsContent>
-                <TabsContent
-                  value="score"
-                  className="space-y-4 mt-4 border rounded-md p-4"
-                >
-                  <div className="text-center py-4 space-y-2">
-                    <span className="text-2xl font-bold block">
-                      Points = Score
-                    </span>
-                    <p className="text-sm text-muted-foreground">
-                      The points awarded to the group are exactly equal to the
-                      score given by the judge.
-                    </p>
-                  </div>
-                  <div className="bg-muted p-3 rounded text-sm flex justify-between items-center">
-                    <span>Judge Score: 9.5</span>
-                    <span className="font-bold">Group Points: 9.5</span>
-                  </div>
-                </TabsContent>
-              </Tabs>
             </div>
           </HowItWorksButton>
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
@@ -1196,28 +1114,20 @@ export function ResultsManagementClient({
         </div>
       </div>
 
-      {/* Overview card — stats only */}
+      {/* Programme Results table */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Award className="w-5 h-5" />
-                Results Overview
-              </CardTitle>
-              <CardDescription className="flex flex-wrap items-center gap-2 mt-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted text-muted-foreground text-xs font-medium">
-                  Total: {summaryStats.total}
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium">
-                  <CheckCircle2 className="w-3 h-3" />
-                  Published: {summaryStats.published}
-                </span>
-                {summaryStats.ready > 0 && (
+        <CardHeader className="p-3 border-b bg-muted/5">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 mr-auto">
+                {summaryStats.ready && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-medium">
                     Ready: {summaryStats.ready}
                   </span>
                 )}
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Published: {summaryStats.published}
+                </span>
                 {summaryStats.pending > 0 && (
                   <Dialog>
                     <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-medium overflow-hidden">
@@ -1295,20 +1205,7 @@ export function ResultsManagementClient({
                     </DialogContent>
                   </Dialog>
                 )}
-              </CardDescription>
             </div>
-          </div>
-        </CardHeader>
-      </Card>
-
-      {/* Programme Results table */}
-      <Card>
-        <CardHeader className="p-3 border-b bg-muted/5">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-muted-foreground mr-auto">
-              {filteredTableProgrammes.length} programme
-              {filteredTableProgrammes.length !== 1 ? "s" : ""}
-            </span>
             <div className="relative w-full sm:w-48">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <Input
@@ -1354,7 +1251,7 @@ export function ResultsManagementClient({
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="all">All Type</SelectItem>
                 <SelectItem value="INDIVIDUAL">Individual</SelectItem>
                 <SelectItem value="GROUP">Team</SelectItem>
               </SelectContent>
