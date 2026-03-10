@@ -15,14 +15,13 @@ export interface SaveResultInput {
   assignmentId: string;
   grade?: string | null;
   position?: number | null;
-  score?: number;
   points?: number;
   remarks?: string | null;
   isPublished?: boolean;
 }
 
 function revalidateResultsPaths(slug: string, options?: { includeTeamStatus?: boolean }) {
-  revalidatePath(`/dashboard/${slug}/event-works/results`);
+  revalidatePath(`/dashboard/${slug}/event-works/marks`);
   revalidatePath(`/dashboard/${slug}/event-works/leaderboard`);
   if (options?.includeTeamStatus) {
     revalidatePath(`/dashboard/${slug}/event-works/team-status`);

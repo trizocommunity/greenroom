@@ -8,6 +8,7 @@ import {
   Edit,
   FileText,
   LayoutDashboard,
+  ListChecks,
   Megaphone,
   QrCode,
   Settings,
@@ -22,7 +23,6 @@ import {
 export type FestivalRole =
   | "SUPER_ADMIN"
   | "ADMIN"
-  | "JUDGE"
   | "STAGE_MANAGER"
   | "ANNOUNCER"
   | "OWNER";
@@ -174,13 +174,22 @@ export const getFestivalDashboardSidebarConfig = (
       title: "Event Works", // Renamed from "On-Event Works"
       items: [
         {
-          title: "Results",
-          href: `${basePath}/event-works/results`,
+          title: "Marks",
+          href: `${basePath}/event-works/marks`,
           icon: ClipboardList,
           allowedRoles: [
             "ADMIN",
             "OWNER",
-            "JUDGE",
+            "ANNOUNCER",
+          ] as FestivalRole[],
+        },
+        {
+          title: "Results",
+          href: `${basePath}/event-works/results`,
+          icon: ListChecks,
+          allowedRoles: [
+            "ADMIN",
+            "OWNER",
             "ANNOUNCER",
           ] as FestivalRole[],
         },
@@ -191,7 +200,6 @@ export const getFestivalDashboardSidebarConfig = (
           allowedRoles: [
             "ADMIN",
             "OWNER",
-            "JUDGE",
             "ANNOUNCER",
           ] as FestivalRole[],
         },

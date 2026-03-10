@@ -27,7 +27,6 @@ export interface Result {
   team: string; // This is the group name
   position: number;
   points: number;
-  score?: number;
   grade?: string | null;
 }
 
@@ -503,11 +502,6 @@ export function ResultsList({
                               >
                                 {result.points} pts
                               </div>
-                              {result.score !== undefined && (
-                                <div className="text-xs text-muted-foreground font-medium mb-1">
-                                  Score: {result.score}
-                                </div>
-                              )}
                               <div className="flex items-center justify-end gap-2 mt-1">
                                 {result.grade && (
                                   <span className="text-[10px] font-bold px-1.5 py-0.5 bg-green-100 text-green-700 rounded border border-green-200">

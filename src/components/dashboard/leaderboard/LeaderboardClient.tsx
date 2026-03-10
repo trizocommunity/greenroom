@@ -3,27 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import {
-  Crown,
-  Medal,
-  Search,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
-  X,
-} from "lucide-react";
+import { Crown, CheckCircle2, Loader2, Medal, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -32,40 +16,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
 import {
-  bulkPublishProgrammeResults,
-  publishTeamStandings,
-} from "@/server/actions/results";
-import Link from "next/link";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { getGradeBadgeColor } from "@/lib/results-calculator";
-import { Eye } from "lucide-react";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { publishTeamStandings } from "@/server/actions/results";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
-
-const getTeamName = (assignment: any, type: string) => {
-  if (type === "GROUP" && assignment.group) {
-    return assignment.group.name;
-  }
-  return assignment.student?.name || "Unknown";
-};
-
-const getTeamIdentifier = (assignment: any, type: string) => {
-  if (type === "GROUP") {
-    // Group by visible identity: Group Name + Team Number
-    // This is more robust when group IDs might be unique per student but they are meant to be in the same team
-    const groupName = assignment.group?.name || "No Group";
-    const teamNum = assignment.teamNumber || 1;
-    return `${groupName}-${teamNum}`;
-  }
-  return assignment.id;
-};
+import { cn } from "@/lib/utils";
 
 // Types matching what's passed from the page
 interface LeaderboardClientProps {
@@ -75,100 +35,23 @@ interface LeaderboardClientProps {
     slug: string;
     accentColor?: string | null;
   };
-  programmes: any[]; // Using any for now to match the complex Prisma include, will refine if needed
   results: any[];
-  publishedStandings?: any[]; // Added prop
+  publishedStandings?: any[];
+  categories?: { id: string; name: string }[];
+  groups?: { id: string; name: string }[];
 }
 
 export function LeaderboardClient({
   festival,
-  programmes,
-  results, // This contains ALL results, including unpublished ones
-  publishedStandings = [], // Default to empty array
+  results,
+  publishedStandings = [],
+  categories = [],
+  groups = [],
 }: LeaderboardClientProps) {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterProgrammeType, setFilterProgrammeType] = useState<string>("all");
   const [isPending, startTransition] = useTransition();
-
-  // View Details Modal State
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [viewProgramme, setViewProgramme] = useState<any | null>(null);
-
-  // View Details Calculation
-  const viewDetailsResults = useMemo(() => {
-    if (!viewProgramme) return [];
-
-    if (viewProgramme.type === "GROUP") {
-      // Group by Team
-      const teamMap = new Map<string, any>();
-
-      viewProgramme.assignments.forEach((assignment: any) => {
-        // Only consider assignments with results for the results view
-        if (assignment.result?.score == null) return;
-
-        const teamId = getTeamIdentifier(assignment, "GROUP");
-
-        if (!teamMap.has(teamId)) {
-          // Try to find a valid group name if available, otherwise construct one
-          const groupName =
-            assignment.group?.name || `Team ${assignment.teamNumber}`;
-
-          teamMap.set(teamId, {
-            assignmentId: assignment.id, // Use the first found assignment ID as key
-            displayName: groupName,
-            subText:
-              assignment.teamNumber > 0 ? `Team ${assignment.teamNumber}` : "",
-            chestNumber: "",
-            grade: assignment.result.grade,
-            score: assignment.result.score,
-            points: assignment.result.points,
-            position: assignment.result.position || 0,
-            remarks: assignment.result.remarks,
-            memberCount: 0,
-          });
-        }
-
-        const entry = teamMap.get(teamId);
-        entry.memberCount++;
-      });
-
-      return Array.from(teamMap.values()).sort((a: any, b: any) => {
-        if (a.position && b.position) return a.position - b.position;
-        return (b.score || 0) - (a.score || 0);
-      });
-    } else {
-      // INDIVIDUAL
-      const details = viewProgramme.assignments
-        .filter((a: any) => a.result?.score != null)
-        .map((assignment: any) => {
-          const result = assignment.result!;
-          return {
-            assignmentId: assignment.id,
-            displayName: assignment.student?.name || "Unknown Student",
-            subText: "",
-            chestNumber: assignment.student?.chestNumber
-              ? `#${assignment.student.chestNumber}`
-              : "",
-            grade: result.grade,
-            score: result.score,
-            points: result.points,
-            position: result.position || 0,
-            remarks: result.remarks,
-          };
-        });
-
-      return details.sort((a: any, b: any) => {
-        if (a.position && b.position) return a.position - b.position;
-        return (b.score || 0) - (a.score || 0);
-      });
-    }
-  }, [viewProgramme]);
-
-  const handleViewDetails = (programme: any) => {
-    setViewProgramme(programme);
-    setIsViewModalOpen(true);
-  };
+  const [studentFilterCategory, setStudentFilterCategory] = useState<string>("all");
+  const [studentFilterGroup, setStudentFilterGroup] = useState<string>("all");
 
   // --- Leaderboard Calculation (Live Preview) ---
   const teamStandings = useMemo(() => {
@@ -211,130 +94,44 @@ export function LeaderboardClient({
       .map((team, index) => ({ ...team, rank: index + 1 }));
   }, [results]);
 
-  // --- Programme Management (Publishing) ---
-  const filteredProgrammes = useMemo(() => {
-    let progs = programmes;
-    if (searchQuery) {
-      const lower = searchQuery.toLowerCase();
-      progs = progs.filter(
-        (p) =>
-          p.name.toLowerCase().includes(lower) ||
-          p.category?.name.toLowerCase().includes(lower),
-      );
-    }
-    if (filterProgrammeType !== "all") {
-      progs = progs.filter((p) => p.type === filterProgrammeType);
-    }
-    return progs
-      .map((p) => {
-        // Effective Counts (Teams for Groups, Students for Individual)
-        let finalTotal = p.assignments.length;
-        let finalCompleted = p.assignments.filter(
-          (a: any) =>
-            a.result?.points !== undefined && a.result?.points !== null,
-        ).length;
-        let finalPublished = p.assignments.filter(
-          (a: any) => a.result?.isPublished,
-        ).length;
+  // Top students by points (published results only), filterable by category and group
+  const studentStandings = useMemo(() => {
+    const byStudent: Record<
+      string,
+      { studentId: string; name: string; chestNumber: string | null; groupName: string | null; groupColor: string | null; points: number }
+    > = {};
 
-        if (p.type === "GROUP") {
-          const uniqueTeams = new Set<string>();
-          const completedTeams = new Set<string>();
-          const publishedTeams = new Set<string>();
+    results.forEach((r) => {
+      if (!r.isPublished || !r.assignment?.student) return;
+      if (studentFilterCategory !== "all" && r.programme?.categoryId !== studentFilterCategory) return;
+      if (studentFilterGroup !== "all" && r.assignment?.groupId !== studentFilterGroup) return;
 
-          p.assignments.forEach((a: any) => {
-            const teamId = getTeamIdentifier(a, "GROUP");
-            uniqueTeams.add(teamId);
-            if (a.result?.points != null) completedTeams.add(teamId);
-            if (a.result?.isPublished) publishedTeams.add(teamId);
-          });
+      const sid = r.assignment.student.id;
+      const name = r.assignment.student.name ?? "Unknown";
+      const chestNumber = r.assignment.student.chestNumber ?? null;
+      const groupName = r.assignment.group?.name ?? null;
+      const groupColor = r.assignment.group?.color ?? null;
 
-          finalTotal = uniqueTeams.size;
-          finalCompleted = completedTeams.size;
-          finalPublished = publishedTeams.size;
-        }
+      if (!byStudent[sid]) {
+        byStudent[sid] = { studentId: sid, name, chestNumber, groupName, groupColor, points: 0 };
+      }
+      byStudent[sid].points += r.points ?? 0;
+    });
 
-        let status:
-          | "published"
-          | "partial"
-          | "ready"
-          | "in-progress"
-          | "pending" = "pending";
+    return Object.values(byStudent)
+      .sort((a, b) => b.points - a.points)
+      .map((row, index) => ({ ...row, rank: index + 1 }));
+  }, [results, studentFilterCategory, studentFilterGroup]);
 
-        if (finalTotal > 0 && finalPublished === finalTotal)
-          status = "published";
-        else if (finalPublished > 0) status = "partial";
-        else if (finalTotal > 0 && finalCompleted === finalTotal)
-          status = "ready";
-        else if (finalCompleted > 0) status = "in-progress";
+  const hasStudentFilters = studentFilterCategory !== "all" || studentFilterGroup !== "all";
+  const clearStudentFilters = () => {
+    setStudentFilterCategory("all");
+    setStudentFilterGroup("all");
+  };
 
-        return {
-          ...p,
-          stats: {
-            total: finalTotal,
-            published: finalPublished,
-            completed: finalCompleted,
-            status,
-          },
-        };
-      })
-      .filter((p) => ["published", "partial", "ready"].includes(p.stats.status))
-      .sort((a, b) => {
-        // Primary sort: Priorities (ready/partial over published)
-        const getPriority = (status: string) => {
-          if (status === "ready" || status === "partial") return 1; // Highest priority
-          if (status === "published") return 2; // Second priority
-          return 3;
-        };
-
-        const priorityA = getPriority(a.stats.status);
-        const priorityB = getPriority(b.stats.status);
-
-        if (priorityA !== priorityB) {
-          return priorityA - priorityB;
-        }
-
-        // Secondary sort: CreatedAt Descending (newest first)
-        return (
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-      });
-  }, [programmes, searchQuery, filterProgrammeType]);
-
-  const [updatingProgrammeId, setUpdatingProgrammeId] = useState<string | null>(
+  const [updatingStandingsId, setUpdatingStandingsId] = useState<string | null>(
     null,
   );
-
-  const handleTogglePublish = (programmeId: string, currentStatus: boolean) => {
-    setUpdatingProgrammeId(programmeId);
-    startTransition(async () => {
-      try {
-        const newStatus = !currentStatus;
-        const res = await bulkPublishProgrammeResults(
-          programmeId,
-          newStatus,
-          festival.slug,
-        );
-        if (res?.success) {
-          toast.success(
-            `Results ${newStatus ? "published" : "unpublished"} successfully`,
-          );
-        } else {
-          toast.error("Failed to update status");
-        }
-      } finally {
-        setUpdatingProgrammeId(null);
-      }
-    });
-  };
-
-  const hasTableFilters =
-    searchQuery !== "" || filterProgrammeType !== "all";
-
-  const clearTableFilters = () => {
-    setSearchQuery("");
-    setFilterProgrammeType("all");
-  };
 
   return (
     <div className="space-y-4">
@@ -348,12 +145,11 @@ export function LeaderboardClient({
             <p className="text-sm text-muted-foreground">
               <strong>Live Standings</strong> show the current totals from all
               published programme results. They update as you publish or
-              unpublish results.
+              unpublish results from the Marks page.
             </p>
             <p className="text-sm text-muted-foreground">
               <strong>Publish Standings</strong> copies the live snapshot to the
-              public festival page so visitors can see the leaderboard. Use the
-              table below to publish or unpublish results per programme first.
+              public festival page so visitors can see the leaderboard.
             </p>
           </HowItWorksButton>
           <Button
@@ -361,36 +157,36 @@ export function LeaderboardClient({
             size="sm"
             className="gap-2 bg-green-600 hover:bg-green-700"
             onClick={() => {
-            setUpdatingProgrammeId("standings");
-            startTransition(async () => {
-              try {
-                const res = await publishTeamStandings(
-                  festival.id,
-                  teamStandings,
-                  festival.slug,
-                );
-                if (res.success) {
-                  toast.success(
-                    "Team Standings published to public page",
+              setUpdatingStandingsId("standings");
+              startTransition(async () => {
+                try {
+                  const res = await publishTeamStandings(
+                    festival.id,
+                    teamStandings,
+                    festival.slug,
                   );
-                  router.refresh();
-                } else {
-                  toast.error("Failed to publish standings");
+                  if (res.success) {
+                    toast.success(
+                      "Team Standings published to public page",
+                    );
+                    router.refresh();
+                  } else {
+                    toast.error("Failed to publish standings");
+                  }
+                } finally {
+                  setUpdatingStandingsId(null);
                 }
-              } finally {
-                setUpdatingProgrammeId(null);
-              }
-            });
-          }}
-          disabled={isPending}
-        >
-          {isPending && updatingProgrammeId === "standings" ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <CheckCircle2 className="w-4 h-4" />
-          )}
-          Publish Standings
-        </Button>
+              });
+            }}
+            disabled={isPending}
+          >
+            {isPending && updatingStandingsId === "standings" ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4" />
+            )}
+            Publish Standings
+          </Button>
         </div>
       </div>
 
@@ -513,298 +309,153 @@ export function LeaderboardClient({
         </div>
       </section>
 
-      {/* Manage Results: one Card with filters in header, table in content */}
-      <Card>
-        <CardHeader className="p-3 border-b bg-muted/5">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-muted-foreground mr-auto">
-              {filteredProgrammes.length} programme
-              {filteredProgrammes.length !== 1 ? "s" : ""}
-            </span>
-            <div className="relative w-full sm:w-48">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Search..."
-                className="pl-7 h-8 text-xs"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                suppressHydrationWarning
-              />
-            </div>
-            <Select
-              value={filterProgrammeType}
-              onValueChange={setFilterProgrammeType}
-            >
-              <SelectTrigger className="h-8 text-xs w-[100px]">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="INDIVIDUAL">Individual</SelectItem>
-                <SelectItem value="GROUP">Team</SelectItem>
-              </SelectContent>
-            </Select>
-            {hasTableFilters && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={clearTableFilters}
-                title="Clear filters"
+      {/* Top students by points */}
+      <section className="space-y-3">
+        <Card className="p-0 overflow-hidden border-primary/20">
+          <div className="flex flex-col gap-3 p-3 border-b bg-muted/30 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="font-bold flex items-center gap-2 text-foreground">
+              <Medal className="w-4 h-4 text-primary" />
+              Top students by points
+            </h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                value={studentFilterCategory}
+                onValueChange={setStudentFilterCategory}
               >
-                <X className="w-3.5 h-3.5" />
-              </Button>
-            )}
+                <SelectTrigger className="h-8 text-xs w-[140px]">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All categories</SelectItem>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={studentFilterGroup}
+                onValueChange={setStudentFilterGroup}
+              >
+                <SelectTrigger className="h-8 text-xs w-[130px]">
+                  <SelectValue placeholder="Group" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All groups</SelectItem>
+                  {groups.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {hasStudentFilters && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={clearStudentFilters}
+                  title="Clear filters"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              )}
+            </div>
           </div>
-        </CardHeader>
-        <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Programme</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead className="text-center">Entries</TableHead>
-                <TableHead className="text-center">Status</TableHead>
-                <TableHead className="text-end">Action</TableHead>
+                <TableHead className="w-14 text-center">#</TableHead>
+                <TableHead>Student</TableHead>
+                <TableHead className="hidden sm:table-cell">Group</TableHead>
+                <TableHead className="text-right w-24">Points</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProgrammes.length > 0 ? (
-                filteredProgrammes.map((prog) => (
-                  <TableRow key={prog.id} className="group">
-                    <TableCell>
-                      <div className="font-medium">{prog.name}</div>
-                      {prog.type === "GROUP" && (
-                        <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
-                          Group
+              {studentStandings.length > 0 ? (
+                studentStandings.map((row, idx) => (
+                  <TableRow
+                    key={row.studentId}
+                    className={cn(
+                      idx < 3 && "bg-primary/5",
+                      idx === 0 && "border-l-4 border-l-yellow-500",
+                      idx === 1 && "border-l-4 border-l-gray-400",
+                      idx === 2 && "border-l-4 border-l-amber-600",
+                    )}
+                  >
+                    <TableCell className="text-center font-bold">
+                      {idx < 3 ? (
+                        <span className="flex items-center justify-center gap-0.5">
+                          {idx === 0 && (
+                            <span className="text-yellow-500" title="1st">
+                              🥇
+                            </span>
+                          )}
+                          {idx === 1 && (
+                            <span className="text-gray-500" title="2nd">
+                              🥈
+                            </span>
+                          )}
+                          {idx === 2 && (
+                            <span className="text-amber-600" title="3rd">
+                              🥉
+                            </span>
+                          )}
+                          <span className="text-muted-foreground ml-0.5">
+                            {row.rank}
+                          </span>
                         </span>
+                      ) : (
+                        <span className="text-muted-foreground">{row.rank}</span>
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{prog.category.name}</Badge>
-                    </TableCell>
-                    <TableCell className="text-center text-muted-foreground text-sm">
-                      <div className="flex flex-col items-center">
-                        <div>
-                          <span
-                            className={
-                              prog.stats.completed === prog.stats.total &&
-                              prog.stats.total > 0
-                                ? "text-green-600 font-bold"
-                                : ""
-                            }
-                          >
-                            {prog.stats.completed}
-                          </span>
-                          <span className="opacity-50">
-                            /{prog.stats.total}
-                          </span>
+                      <div className="font-medium">{row.name}</div>
+                      {row.chestNumber && (
+                        <div className="text-xs text-muted-foreground">
+                          #{row.chestNumber}
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {prog.stats.status === "published" && (
-                        <Badge className="bg-green-600 hover:bg-green-700 gap-1">
-                          <CheckCircle2 className="w-3 h-3" /> Published
-                        </Badge>
-                      )}
-                      {prog.stats.status === "partial" && (
-                        <Badge
-                          variant="secondary"
-                          className="bg-amber-100 text-amber-800 gap-1"
-                        >
-                          <AlertCircle className="w-3 h-3" /> Partial
-                        </Badge>
-                      )}
-                      {prog.stats.status === "ready" && (
-                        <Badge
-                          variant="outline"
-                          className="text-blue-600 border-blue-200 bg-blue-50 gap-1"
-                        >
-                          <CheckCircle2 className="w-3 h-3" /> Ready
-                        </Badge>
-                      )}
-                      {prog.stats.status === "in-progress" && (
-                        <Badge
-                          variant="outline"
-                          className="text-muted-foreground"
-                        >
-                          In Progress
-                        </Badge>
-                      )}
-                      {prog.stats.status === "pending" && (
-                        <Badge
-                          variant="outline"
-                          className="text-muted-foreground/50"
-                        >
-                          Pending
-                        </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-end">
-                      {/* Action Button */}
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleViewDetails(prog)}
-                          title="View Details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        {prog.stats.status === "published" ||
-                        prog.stats.status === "partial" ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                            onClick={() => handleTogglePublish(prog.id, true)}
-                            disabled={isPending}
-                          >
-                            {isPending && updatingProgrammeId === prog.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              "Unpublish"
-                            )}
-                          </Button>
+                    <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
+                      <span className="flex items-center gap-2">
+                        {row.groupName ? (
+                          <>
+                            <span
+                              className="h-2.5 w-2.5 shrink-0 rounded-full border border-white/50 shadow-sm"
+                              style={{ backgroundColor: row.groupColor ?? "#94a3b8" }}
+                              title={row.groupName}
+                              aria-hidden
+                            />
+                            {row.groupName}
+                          </>
                         ) : (
-                          <Button
-                            size="sm"
-                            className={cn(
-                              prog.stats.status === "ready"
-                                ? "bg-green-600 hover:bg-green-700"
-                                : "",
-                            )}
-                            onClick={() => handleTogglePublish(prog.id, false)}
-                            disabled={isPending || prog.stats.completed === 0}
-                          >
-                            {isPending && updatingProgrammeId === prog.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              "Publish"
-                            )}
-                          </Button>
+                          "—"
                         )}
-                      </div>
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums">
+                      {row.points}
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
-                    No programmes found.
+                  <TableCell
+                    colSpan={4}
+                    className="h-24 text-center text-muted-foreground"
+                  >
+                    {hasStudentFilters
+                      ? "No students match the selected filters."
+                      : "No published student results yet."}
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
-
-      {/* View Details Modal */}
-      <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Medal className="w-5 h-5 text-primary" />
-              {viewProgramme?.name} - Results
-            </DialogTitle>
-            <DialogDescription>
-              {viewProgramme?.category.name} • {viewProgramme?.type} Event
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="mt-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Rank</TableHead>
-                  <TableHead>
-                    {viewProgramme?.type === "GROUP"
-                      ? "Team"
-                      : "Chest No & Name"}
-                  </TableHead>
-                  <TableHead className="text-center">Grade</TableHead>
-                  <TableHead className="text-center">Score</TableHead>
-                  <TableHead className="text-center">Points</TableHead>
-                  <TableHead>Remarks</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {viewDetailsResults.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      className="text-center py-6 text-muted-foreground"
-                    >
-                      No published results yet.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  viewDetailsResults.map((result: any) => (
-                    <TableRow key={result.assignmentId}>
-                      <TableCell className="font-bold">
-                        {result.position > 0 ? (
-                          <div className="flex items-center gap-1">
-                            {result.position === 1 && (
-                              <span className="text-yellow-500">🥇</span>
-                            )}
-                            {result.position === 2 && (
-                              <span className="text-gray-400">🥈</span>
-                            )}
-                            {result.position === 3 && (
-                              <span className="text-amber-700">🥉</span>
-                            )}
-                            <span>{result.position}</span>
-                          </div>
-                        ) : (
-                          "-"
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium">{result.displayName}</div>
-                        {viewProgramme?.type === "INDIVIDUAL" ? (
-                          <div className="text-xs text-muted-foreground">
-                            {result.chestNumber} • {result.displayName}
-                          </div>
-                        ) : (
-                          <div className="text-xs text-muted-foreground">
-                            {result.subText}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "font-mono font-bold",
-                            getGradeBadgeColor(result.grade),
-                          )}
-                        >
-                          {result.grade}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center font-mono font-bold">
-                        {result.score}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {result.points > 0 && (
-                          <Badge variant="secondary" className="font-mono">
-                            {result.points} pts
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {result.remarks || "-"}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </DialogContent>
-      </Dialog>
+        </Card>
+      </section>
     </div>
   );
 }

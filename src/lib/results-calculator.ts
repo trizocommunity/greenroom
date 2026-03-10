@@ -1,36 +1,34 @@
 /**
  * Results Calculation Utilities
  *
- * Grade = (score / maxScore) × 100; maxScore is per-programme (highest score entered).
- * Leaderboard points = rounded score. Position = rank by score (1-indexed).
+ * Grade = (points / maxPoints) × 100; maxPoints is per-programme (highest points entered).
+ * Position = rank by points (1-indexed).
  */
 
-/** Default maximum score (judge gives 0 to this value). */
-const DEFAULT_MAX_SCORE = 10;
+const DEFAULT_MAX_POINTS = 10;
 
 /**
- * Calculate grade from the judge's score (result) only.
- * Score is on scale 0 to maxScore (default 10). Grade is never based on position or leaderboard points.
+ * Calculate grade from the points (result) only.
  *
- * @param score - Judge's score (the result / points given), 0 to maxScore
- * @param maxScore - Maximum possible score (default 10)
+ * @param points - Points given, 0 to maxPoints
+ * @param maxPoints - Maximum for this programme (default 10)
  */
 export function calculateGrade(
-  score: number,
-  maxScore: number = DEFAULT_MAX_SCORE,
+  points: number,
+  maxPoints: number = DEFAULT_MAX_POINTS,
 ): {
   grade: string;
   percentage: number;
   remarks: string;
 } {
-  if (maxScore <= 0) {
+  if (maxPoints <= 0) {
     return {
       grade: "E",
       percentage: 0,
       remarks: "Needs Improvement",
     };
   }
-  const rawPercentage = (score / maxScore) * 100;
+  const rawPercentage = (points / maxPoints) * 100;
   const percentage = Math.min(100, Math.max(0, rawPercentage));
 
   let grade: string;
@@ -70,15 +68,14 @@ export function calculateGrade(
 }
 
 /**
- * Calculate position (rank) based on score among all scores.
- * Uses the judge's scores (results), not leaderboard points.
+ * Calculate position (rank) based on points among all points.
  */
 export function calculatePosition(
-  score: number,
-  allScores: number[],
+  points: number,
+  allPoints: number[],
 ): number {
-  const uniqueScores = Array.from(new Set(allScores)).sort((a, b) => b - a);
-  const position = uniqueScores.indexOf(score) + 1;
+  const unique = Array.from(new Set(allPoints)).sort((a, b) => b - a);
+  const position = unique.indexOf(points) + 1;
   return position > 0 ? position : 1;
 }
 

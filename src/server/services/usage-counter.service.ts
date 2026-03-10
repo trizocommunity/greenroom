@@ -15,7 +15,7 @@ export const UsageCounterService = {
    * Atomically increments a usage counter if it doesn't exceed the limit.
    *
    * @param festivalId The festival to update
-   * @param resource The resource type ("students" | "events" | "judges" | "storage")
+   * @param resource The resource type ("students" | "programmes" | "events" | "stages" | "storage")
    * @param amount Amount to increment (default 1)
    * @param transaction Optional existing transaction
    */

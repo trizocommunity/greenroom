@@ -6,7 +6,7 @@ import { FileDigit, ShieldCheck, Trophy, Users } from "lucide-react";
 const benefits = [
   {
     title: "Paperless",
-    description: "Eliminate heaps of paper. Judges score digitally.",
+    description: "Eliminate heaps of paper. Score and rank digitally.",
     icon: FileDigit,
     colSpan: "md:col-span-1",
     hasBorderRight: true,
@@ -37,7 +37,7 @@ export default function Benefits() {
           </h2>
           <p className="text-muted-foreground max-w-xl font-medium">
             A judging and scoring experience that feels premium for organizers,
-            judges, and students alike.
+            organizers and students alike.
           </p>
         </div>
 

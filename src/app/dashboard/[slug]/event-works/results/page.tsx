@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ResultsManagementClient } from "@/components/dashboard/results/ResultsManagementClient";
+import { ResultsExploreClient } from "@/components/dashboard/event-works/ResultsExploreClient";
 import { prisma } from "@/lib/db";
 import { EmptyState } from "@/components/common/EmptyState";
-import { ClipboardList } from "lucide-react";
+import { ListChecks } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Results Management",
+  title: "Results",
+  description: "Explore results of all programmes",
 };
 
 export default async function ResultsPage({
@@ -16,13 +17,10 @@ export default async function ResultsPage({
 }) {
   const { slug } = await params;
 
-  // Fetch festival with programmes, assignments, and categories
   const festival = await prisma.festival.findUnique({
     where: { slug },
     include: {
-      categories: {
-        orderBy: { name: "asc" },
-      },
+      categories: { orderBy: { name: "asc" } },
       programmes: {
         include: {
           category: true,
@@ -34,7 +32,7 @@ export default async function ResultsPage({
             },
           },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: { name: "asc" },
       },
     },
   });
@@ -43,30 +41,26 @@ export default async function ResultsPage({
     return notFound();
   }
 
-  // Check for assignments
-  const assignmentCount = await prisma.programmeAssignment.count({
-    where: {
-      programme: {
-        festivalId: festival.id,
-      },
-    },
-  });
-
-  if (assignmentCount === 0) {
+  const hasProgrammes = festival.programmes.length > 0;
+  if (!hasProgrammes) {
     return (
       <EmptyState
-        title="No Assignments Found"
-        description="Results can only be managed after students are assigned to programmes."
-        actionLabel="Go to Assignments"
-        actionLink={`/dashboard/${slug}/pre-works/assignments`}
-        icon={ClipboardList}
+        title="No Programmes"
+        description="Add programmes and assign students to see results here."
+        actionLabel="Go to Programmes"
+        actionLink={`/dashboard/${slug}/pre-works/programmes`}
+        icon={ListChecks}
       />
     );
   }
 
   return (
-    <ResultsManagementClient
-      festival={festival}
+    <ResultsExploreClient
+      festival={{
+        id: festival.id,
+        name: festival.name,
+        slug: festival.slug,
+      }}
       programmes={festival.programmes}
       categories={festival.categories}
     />

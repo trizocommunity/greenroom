@@ -95,7 +95,7 @@ export default async function OverviewWidgets({
     {
       label: "Program Control",
       icon: Settings2,
-      href: `/dashboard/${slug}/event-works/results`,
+      href: `/dashboard/${slug}/event-works/marks`,
       condition: true,
     },
     {
@@ -107,7 +107,7 @@ export default async function OverviewWidgets({
     {
       label: "Marks",
       icon: ClipboardList,
-      href: `/dashboard/${slug}/event-works/results`,
+      href: `/dashboard/${slug}/event-works/marks`,
       condition: true,
     },
     {
@@ -310,7 +310,7 @@ export default async function OverviewWidgets({
                             ? result.grade
                             : result.position
                               ? `Rank: ${result.position}`
-                              : `${result.score} pts`}
+                              : `${result.points} pts`}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {format(new Date(result.createdAt), "dd/MM/yyyy")}
@@ -327,10 +327,10 @@ export default async function OverviewWidgets({
               </div>
               <div className="pt-4 border-t mt-auto">
                 <Link
-                  href={`/dashboard/${slug}/event-works/results`}
+                  href={`/dashboard/${slug}/event-works/marks`}
                   className="w-full flex items-center justify-center py-2 text-sm border rounded-md hover:bg-muted/50 transition-colors"
                 >
-                  View All Results <ArrowRight className="ml-2 h-4 w-4" />
+                  View All Marks <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </div>
             </CardContent>

@@ -2,7 +2,7 @@ export const MOCK_JOINED_FESTIVALS = [
   {
     id: "mock-1",
     name: "Kerala School Kalolsavam",
-    role: "JUDGE",
+    role: "ADMIN",
     startDate: new Date("2024-01-01"),
     location: "Kozhikode, Kerala",
   },

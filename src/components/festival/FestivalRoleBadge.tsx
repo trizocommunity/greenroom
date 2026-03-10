@@ -1,16 +1,15 @@
 "use client";
 
-import { Crown, Gavel, Mic2, Shield, User, UsersRound } from "lucide-react";
+import { Crown, Mic2, Shield, User, UsersRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export type FestivalRole =
   | "SUPER_ADMIN"
   | "ADMIN"
-  | "JUDGE"
   | "TEAM-LEADER"
   | "STAGE-MANAGER"
   | "ANNOUNCER"
-  | "OWNER"; // Added OWNER for the creator context
+  | "OWNER";
 
 interface FestivalRoleBadgeProps {
   festivalRole: FestivalRole | string;
@@ -38,12 +37,6 @@ const roleConfig: Record<
     className:
       "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100",
     icon: Crown,
-  },
-  JUDGE: {
-    label: "Judge",
-    className:
-      "bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-100",
-    icon: Gavel,
   },
   "TEAM-LEADER": {
     label: "Team Leader",

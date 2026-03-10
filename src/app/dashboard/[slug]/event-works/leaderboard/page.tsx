@@ -11,23 +11,12 @@ export default async function TeamStatusPage({
 }) {
   const { slug } = await params;
 
-  // Fetch festival and related data
+  // Fetch festival with results (for team standings + top students), categories, and groups
   const festival = await prisma.festival.findUnique({
     where: { slug },
     include: {
-      programmes: {
-        include: {
-          category: true,
-          assignments: {
-            include: {
-              result: true,
-              group: true,
-              student: true,
-            },
-          },
-        },
-        orderBy: { name: "asc" },
-      },
+      categories: { orderBy: { name: "asc" } },
+      groups: { orderBy: { name: "asc" } },
       results: {
         include: {
           assignment: {
@@ -35,6 +24,9 @@ export default async function TeamStatusPage({
               student: true,
               group: true,
             },
+          },
+          programme: {
+            include: { category: true },
           },
         },
       },
@@ -67,11 +59,12 @@ export default async function TeamStatusPage({
   }
 
   return (
-      <LeaderboardClient
-        festival={festival}
-        programmes={festival.programmes}
-        results={festival.results}
-        publishedStandings={festival.teamStandings as any[]}
-      />
-    );
+    <LeaderboardClient
+      festival={festival}
+      results={festival.results}
+      publishedStandings={festival.teamStandings as any[]}
+      categories={festival.categories}
+      groups={festival.groups}
+    />
+  );
 }
