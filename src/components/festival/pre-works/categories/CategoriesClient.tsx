@@ -1,16 +1,27 @@
 "use client";
 
-import { ClipboardList, Eye, Loader2, Pencil } from "lucide-react";
+import { useState } from "react";
+import {
+  ClipboardList,
+  Eye,
+  FileText,
+  Loader2,
+  MoreVertical,
+  Pencil,
+  Plus,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useCategories } from "@/hooks/useCategories";
 import { useStudents } from "@/hooks/useStudents";
 import { CategoryDetailsDialog } from "./CategoryDetailsDialog";
@@ -18,125 +29,205 @@ import { CategoryDialog } from "./CategoryDialog";
 
 interface CategoriesClientProps {
   festivalId: string;
+  children?: React.ReactNode;
 }
 
-export function CategoriesClient({ festivalId }: CategoriesClientProps) {
+export function CategoriesClient({ festivalId, children }: CategoriesClientProps) {
   const {
     categories,
     isLoading: isCategoriesLoading,
     deleteCategory,
     isDeleting,
   } = useCategories(festivalId);
-
-  // Fetch all students to compute accurate counts for General categories
   const { students, isLoading: isStudentsLoading } = useStudents(festivalId);
+  const [actionCategory, setActionCategory] = useState<{
+    category: any;
+    action: "view" | "edit" | "delete";
+  } | null>(null);
 
   const isLoading = isCategoriesLoading || isStudentsLoading;
+  const totalStudents = students.length;
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-8">
+      <div className="flex items-center justify-center p-8 pt-6">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  const totalStudents = students.length;
-
   return (
-    <div className="space-y-6">
-      <div className="flex justify-end gap-2">
-        <CategoryDialog festivalId={festivalId} />
+    <div className="space-y-6 pt-2">
+      {/* Header row: title (children) + Create button — icon only on mobile */}
+      <div className="flex flex-row items-center justify-between gap-4">
+        {children}
+        <CategoryDialog
+          festivalId={festivalId}
+          trigger={
+            <Button size="sm" className="shrink-0">
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Create Category</span>
+            </Button>
+          }
+        />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
         {categories.map((category: any) => {
           const isGeneral = category.type === "GENERAL";
-          // If General -> show total festival students
-          // If Individual -> show strictly assigned students
           const count = isGeneral
             ? totalStudents
             : (category._count?.students ?? 0);
+          const programmeCount = category._count?.programmes ?? 0;
 
           return (
-            <Card key={category.id} className="flex flex-col">
-              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                <div className="space-y-1">
-                  <CardTitle className="text-base font-semibold flex items-center gap-2">
-                    {category.name}
-                  </CardTitle>
-                  <CardDescription className="line-clamp-2 min-h-[40px]">
-                    {category.description || "No description provided"}
-                  </CardDescription>
+            <div
+              key={category.id}
+              className="group/card relative flex flex-col overflow-hidden rounded-xl border border-border/80 bg-card text-card-foreground shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/20"
+            >
+              <div className="flex flex-1 flex-col p-4 sm:p-5">
+                {/* Top: name + type badge + actions */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-base leading-tight text-foreground line-clamp-2">
+                      {category.name}
+                    </h3>
+                    <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">
+                      {category.description || "No description"}
+                    </p>
+                    <Badge
+                      variant={isGeneral ? "default" : "secondary"}
+                      className="mt-2.5 text-xs font-medium"
+                    >
+                      {category.type === "GENERAL" ? "General" : "Single"}
+                    </Badge>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                        <span className="sr-only">Actions</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuItem
+                        onSelect={() =>
+                          setActionCategory({ category, action: "view" })
+                        }
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        View
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() =>
+                          setActionCategory({ category, action: "edit" })
+                        }
+                      >
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onSelect={() =>
+                          setActionCategory({ category, action: "delete" })
+                        }
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-                <Badge variant={isGeneral ? "default" : "outline"}>
-                  {category.type}
-                </Badge>
-              </CardHeader>
-              <CardContent className="mt-auto pt-4">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex flex-col">
-                    <span className="text-2xl font-bold">{count}</span>
-                    <span className="text-xs text-muted-foreground">
-                      Students
+
+                {/* Stats strip */}
+                <div className="mt-4 flex items-center gap-4 rounded-lg bg-muted/40 px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="text-sm">
+                      <span className="font-semibold text-foreground">
+                        {count}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {" "}student{count !== 1 ? "s" : ""}
+                      </span>
                     </span>
                   </div>
-                  <div className="flex flex-col items-end">
-                    <span className="text-sm font-medium">
-                      {category._count?.programmes ?? 0}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      Programmes
+                  <div className="flex items-center gap-2 border-l border-border pl-4">
+                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="text-sm">
+                      <span className="font-semibold text-foreground">
+                        {programmeCount}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {" "}programme{programmeCount !== 1 ? "s" : ""}
+                      </span>
                     </span>
                   </div>
                 </div>
-
-                <div className="flex justify-end gap-2 border-t pt-4">
-                  <CategoryDialog
-                    festivalId={festivalId}
-                    category={category}
-                    trigger={
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    }
-                  />
-
-                  <CategoryDetailsDialog
-                    festivalId={festivalId}
-                    category={category}
-                    trigger={
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    }
-                  />
-
-                  <DeleteDialog
-                    title="Delete Category"
-                    description="Are you sure you want to delete this category? This will fail if there are programmes in this category."
-                    onDelete={async () => {
-                      await deleteCategory(category.id);
-                    }}
-                    isDeleting={isDeleting}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           );
         })}
         {categories.length === 0 && (
-          <div className="col-span-full flex min-h-[200px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center animate-in fade-in-50">
-            <ClipboardList className="mx-auto h-8 w-8 text-muted-foreground/50" />
+          <div className="col-span-full flex min-h-[220px] flex-col items-center justify-center rounded-xl border border-dashed border-muted-foreground/25 bg-muted/10 p-8 text-center">
+            <div className="rounded-full bg-muted/50 p-4">
+              <ClipboardList className="h-10 w-10 text-muted-foreground/60" />
+            </div>
             <h3 className="mt-4 text-lg font-semibold">No categories yet</h3>
-            <p className="mb-4 mt-2 text-sm text-muted-foreground max-w-sm">
+            <p className="mt-2 max-w-sm text-sm text-muted-foreground">
               Create categories (e.g. Juniors, Seniors) to organize your
               programmes.
             </p>
-            <CategoryDialog festivalId={festivalId} />
+            <div className="mt-6">
+              <CategoryDialog
+                festivalId={festivalId}
+                trigger={
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Category
+                  </Button>
+                }
+              />
+            </div>
           </div>
         )}
       </div>
+
+      {/* Controlled dialogs opened from dropdown */}
+      {actionCategory?.action === "view" && actionCategory.category && (
+        <CategoryDetailsDialog
+          festivalId={festivalId}
+          category={actionCategory.category}
+          open={true}
+          onOpenChange={(open) => !open && setActionCategory(null)}
+        />
+      )}
+      {actionCategory?.action === "edit" && actionCategory.category && (
+        <CategoryDialog
+          festivalId={festivalId}
+          category={actionCategory.category}
+          open={true}
+          onOpenChange={(open) => !open && setActionCategory(null)}
+        />
+      )}
+      {actionCategory?.action === "delete" && actionCategory.category && (
+        <DeleteDialog
+          title="Delete Category"
+          description="Are you sure you want to delete this category? This will fail if there are programmes in this category."
+          onDelete={async () => {
+            await deleteCategory(actionCategory.category.id);
+            setActionCategory(null);
+          }}
+          isDeleting={isDeleting}
+          open={true}
+          onOpenChange={(open) => !open && setActionCategory(null)}
+        />
+      )}
     </div>
   );
 }

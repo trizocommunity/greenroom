@@ -55,14 +55,23 @@ export default async function ResultsPage({
   }
 
   return (
-    <ResultsExploreClient
-      festival={{
-        id: festival.id,
-        name: festival.name,
-        slug: festival.slug,
-      }}
-      programmes={festival.programmes}
-      categories={festival.categories}
-    />
+    <div className="pt-4 sm:pt-6">
+      <ResultsExploreClient
+        festival={{
+          id: festival.id,
+          name: festival.name,
+          slug: festival.slug,
+        }}
+        programmes={festival.programmes}
+        categories={festival.categories}
+      >
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Results</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
+            Explore published results by programme.
+          </p>
+        </div>
+      </ResultsExploreClient>
+    </div>
   );
 }

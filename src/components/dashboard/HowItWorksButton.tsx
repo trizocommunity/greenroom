@@ -48,14 +48,14 @@ export function HowItWorksButton({
             <p>How it Works</p>
           </TooltipContent>
         </Tooltip>
-        <DialogContent className="max-w-xl">
-          <DialogHeader>
+        <DialogContent className="max-w-xl text-left">
+          <DialogHeader className="text-left">
             <DialogTitle>{title}</DialogTitle>
             {description && (
-              <DialogDescription>{description}</DialogDescription>
+              <DialogDescription className="text-left">{description}</DialogDescription>
             )}
           </DialogHeader>
-          <div className="space-y-4">{children}</div>
+          <div className="space-y-4 text-left">{children}</div>
         </DialogContent>
       </Dialog>
     </TooltipProvider>

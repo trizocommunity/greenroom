@@ -59,12 +59,16 @@ export default async function TeamStatusPage({
   }
 
   return (
-    <LeaderboardClient
-      festival={festival}
-      results={festival.results}
-      publishedStandings={festival.teamStandings as any[]}
-      categories={festival.categories}
-      groups={festival.groups}
-    />
+    <div className="pt-4 sm:pt-6">
+      <LeaderboardClient
+        festival={festival}
+        results={festival.results}
+        publishedStandings={festival.teamStandings as any[]}
+        categories={festival.categories}
+        groups={festival.groups}
+      >
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Leaderboard</h1>
+      </LeaderboardClient>
+    </div>
   );
 }

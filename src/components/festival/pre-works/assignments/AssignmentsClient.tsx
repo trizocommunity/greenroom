@@ -1,13 +1,19 @@
 "use client";
 
 import { format } from "date-fns";
-import { Loader2, Plus, Search, Trash2, Users } from "lucide-react";
+import { Loader2, MoreVertical, Plus, Search, Trash2, Users, X } from "lucide-react";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -33,14 +39,120 @@ import {
   type TeamStudentRow,
 } from "./TeamStudentsDialog";
 
+function AssignmentCard({
+  kind,
+  groupColor,
+  groupName,
+  studentName,
+  programmeName,
+  categoryName,
+  assignedAt,
+  isReadOnly,
+  onRemove,
+  onViewTeam,
+  teamNumber,
+}: {
+  kind: "individual" | "team";
+  groupColor: string;
+  groupName: string;
+  studentName: string;
+  programmeName?: string;
+  categoryName?: string;
+  assignedAt: string | null;
+  isReadOnly: boolean;
+  onRemove: () => void;
+  onViewTeam?: () => void;
+  teamNumber?: number;
+}) {
+  return (
+    <div className="rounded-xl border border-border/80 bg-card overflow-hidden shadow-sm transition-all active:scale-[0.99] hover:shadow-md hover:border-primary/25">
+      {/* Compact programme strip */}
+      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-muted/30 border-b border-border/50">
+        <span className="text-xs font-medium text-muted-foreground truncate flex-1 min-w-0">
+          {programmeName ?? "—"}
+          {kind === "team" && teamNumber != null && (
+            <Badge variant="secondary" className="ml-1.5 text-[10px] h-4 align-middle">
+              T{teamNumber}
+            </Badge>
+          )}
+        </span>
+      </div>
+      <div className="flex items-start justify-between gap-3 p-3">
+        <div className="min-w-0 flex-1 space-y-2.5">
+          <p className="font-semibold text-base text-foreground leading-tight line-clamp-2">
+            {studentName}
+          </p>
+          {/* Meta: group + category + date, compact */}
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <span
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ backgroundColor: groupColor }}
+              />
+              <span className="truncate">{groupName}</span>
+            </span>
+            {categoryName && (
+              <Badge variant="outline" className="font-normal text-[10px] h-5 px-1.5">
+                {categoryName}
+              </Badge>
+            )}
+            {assignedAt && <span>{assignedAt}</span>}
+          </div>
+        </div>
+        <div className="shrink-0 pt-0.5">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {onViewTeam && (
+                <DropdownMenuItem onClick={onViewTeam}>
+                  <Users className="h-3.5 w-3.5 mr-2" />
+                  View team
+                </DropdownMenuItem>
+              )}
+              {!isReadOnly && (
+                <DropdownMenuItem
+                  onClick={onRemove}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-2" />
+                  Remove
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type TableRow =
+  | { kind: "individual"; assignment: any }
+  | {
+      kind: "team";
+      programme: any;
+      category: any;
+      groupId: string;
+      groupName: string;
+      teamNumber: number;
+      assignments: any[];
+      assignedAt: string | null;
+    };
+
 interface AssignmentsClientProps {
   festivalId: string;
   programmeAssignmentDeadline?: Date | null;
+  children?: React.ReactNode;
 }
 
 export function AssignmentsClient({
   festivalId,
   programmeAssignmentDeadline,
+  children,
 }: AssignmentsClientProps) {
   const {
     assignments,
@@ -54,6 +166,11 @@ export function AssignmentsClient({
   const { groups } = useGroups(festivalId);
 
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<
+    | { kind: "individual"; assignment: any }
+    | { kind: "team"; row: TableRow & { kind: "team" } }
+    | null
+  >(null);
   const [teamStudentsDialog, setTeamStudentsDialog] = useState<{
     open: boolean;
     programmeName: string;
@@ -103,20 +220,6 @@ export function AssignmentsClient({
       return true;
     });
   }, [assignments, filterGroup, filterCategory, filterType, searchQuery]);
-
-  // Table rows: one per assignment for INDIVIDUAL, one per team for GROUP
-  type TableRow =
-    | { kind: "individual"; assignment: any }
-    | {
-        kind: "team";
-        programme: any;
-        category: any;
-        groupId: string;
-        groupName: string;
-        teamNumber: number;
-        assignments: any[];
-        assignedAt: string | null;
-      };
 
   const tableRows = useMemo<TableRow[]>(() => {
     const rows: TableRow[] = [];
@@ -168,6 +271,19 @@ export function AssignmentsClient({
     return rows;
   }, [filteredAssignments]);
 
+  const hasFilters =
+    filterGroup !== "ALL" ||
+    filterCategory !== "ALL" ||
+    filterType !== "ALL" ||
+    searchQuery.trim() !== "";
+
+  const clearFilters = () => {
+    setFilterGroup("ALL");
+    setFilterCategory("ALL");
+    setFilterType("ALL");
+    setSearchQuery("");
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -184,17 +300,19 @@ export function AssignmentsClient({
         onOpenChange={setAssignmentModalOpen}
       />
 
-      {/* Header: title left, New assignment right */}
-      <div className="flex items-center justify-between">
-        <div className="flex flex-col">
-          <h1 className="text-2xl font-bold tracking-tight">
-            Programme Assignments
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Manage student assignments to programmes.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
+      {/* Header row: children left, Create right — icon only on mobile */}
+      <div className="flex flex-row items-center justify-between gap-4">
+        {children ?? (
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+              Programme Assignments
+            </h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
+              Manage student assignments to programmes.
+            </p>
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <HowItWorksButton
             title="How Assignments work"
             description="Assign students or teams to programmes."
@@ -209,26 +327,42 @@ export function AssignmentsClient({
               to pick a programme, then add students to the queue to form
               teams.
             </p>
+            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-left">
+              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                <strong>Note:</strong> Creating new assignments is only available
+                on laptop or large screens. On smaller devices you can view and
+                remove assignments.
+              </p>
+            </div>
           </HowItWorksButton>
-          <Button
-            onClick={() => setAssignmentModalOpen(true)}
-            disabled={isReadOnly}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New assignment
-          </Button>
+          <div className="hidden md:block">
+            <Button
+              size="sm"
+              onClick={() => setAssignmentModalOpen(true)}
+              disabled={isReadOnly}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              New assignment
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Table block: filters + assignment table */}
-      <Card>
-        <CardHeader className="p-3 border-b bg-muted/5">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-foreground mr-auto">
-              Total : {tableRows.length} row{tableRows.length !== 1 ? "s" : ""}
-            </span>
+      <Card className="overflow-hidden">
+        <CardHeader className="p-3 sm:p-4 border-b bg-muted/5">
+          {/* Filters: search first, mobile = flex-col w-full */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+            <div className="relative w-full sm:w-auto sm:min-w-[140px] sm:max-w-[200px] order-first">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              <Input
+                placeholder="Search student, programme, group..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-8 w-full pl-8 text-xs sm:w-[200px]"
+              />
+            </div>
             <Select value={filterGroup} onValueChange={setFilterGroup}>
-              <SelectTrigger className="h-8 w-[130px] text-xs">
+              <SelectTrigger className="h-8 w-full sm:w-[130px] text-xs">
                 <SelectValue placeholder="Group" />
               </SelectTrigger>
               <SelectContent>
@@ -241,7 +375,7 @@ export function AssignmentsClient({
               </SelectContent>
             </Select>
             <Select value={filterCategory} onValueChange={setFilterCategory}>
-              <SelectTrigger className="h-8 w-[130px] text-xs">
+              <SelectTrigger className="h-8 w-full sm:w-[130px] text-xs">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
@@ -254,7 +388,7 @@ export function AssignmentsClient({
               </SelectContent>
             </Select>
             <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="h-8 w-[110px] text-xs">
+              <SelectTrigger className="h-8 w-full sm:w-[110px] text-xs">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
@@ -263,19 +397,104 @@ export function AssignmentsClient({
                 <SelectItem value="GROUP">Team</SelectItem>
               </SelectContent>
             </Select>
-            <div className="relative flex-1 min-w-[120px] max-w-[180px]">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Search..."
-                className="pl-7 h-8 text-xs"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+            {hasFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-full sm:w-8 shrink-0"
+                onClick={clearFilters}
+                title="Clear filters"
+              >
+                <X className="h-3.5 w-3.5 sm:mr-0" />
+                <span className="sm:hidden">Clear filters</span>
+              </Button>
+            )}
+            <span className="text-xs text-muted-foreground sm:ml-auto">
+              {tableRows.length} row{tableRows.length !== 1 ? "s" : ""}
+            </span>
           </div>
         </CardHeader>
-        <CardContent className="p-0">
-          <Table>
+        <CardContent className="p-0 overflow-x-auto">
+          {/* Mobile: assignment cards */}
+          <div className="block md:hidden p-3 sm:p-4 space-y-3">
+            {tableRows.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-14 px-6 text-center text-muted-foreground rounded-xl border border-dashed bg-muted/20">
+                <Users className="h-10 w-10 text-muted-foreground/50" />
+                <p className="font-medium">No assignments found</p>
+                <p className="text-sm">Try changing filters or add a new assignment.</p>
+              </div>
+            ) : (
+              tableRows.map((row) =>
+                row.kind === "individual" ? (
+                  <AssignmentCard
+                    key={row.assignment.id}
+                    kind="individual"
+                    groupColor={
+                      row.assignment.group?.color ||
+                      row.assignment.student?.group?.color ||
+                      "#2563eb"
+                    }
+                    groupName={
+                      row.assignment.group?.name ||
+                      row.assignment.student?.group?.name ||
+                      "—"
+                    }
+                    studentName={row.assignment.student?.name ?? "—"}
+                    programmeName={row.assignment.programme?.name}
+                    categoryName={
+                      row.assignment.category?.name ||
+                      row.assignment.programme?.category?.name
+                    }
+                    assignedAt={
+                      row.assignment.assignedAt
+                        ? format(new Date(row.assignment.assignedAt), "PP")
+                        : null
+                    }
+                    isReadOnly={isReadOnly}
+                    onRemove={() => setDeleteTarget({ kind: "individual", assignment: row.assignment })}
+                    onViewTeam={undefined}
+                  />
+                ) : (
+                  <AssignmentCard
+                    key={`team-${row.programme?.id}-${row.groupId}-${row.teamNumber}`}
+                    kind="team"
+                    groupColor={
+                      groups.find((g: any) => g.id === row.groupId)?.color || "#2563eb"
+                    }
+                    groupName={row.groupName}
+                    studentName={
+                      row.assignments.length > 0
+                        ? `${row.assignments[0]?.student?.name ?? "—"}${row.assignments.length > 1 ? " + team" : ""}`
+                        : "—"
+                    }
+                    programmeName={row.programme?.name}
+                    categoryName={row.category?.name || row.programme?.category?.name}
+                    assignedAt={row.assignedAt}
+                    teamNumber={row.teamNumber}
+                    isReadOnly={isReadOnly}
+                    onRemove={() => setDeleteTarget({ kind: "team", row })}
+                    onViewTeam={() =>
+                      setTeamStudentsDialog({
+                        open: true,
+                        programmeName: row.programme?.name ?? "",
+                        teamLabel: `${row.groupName} – Team ${row.teamNumber}`,
+                        groupName: row.groupName,
+                        students: row.assignments.map((a: any) => ({
+                          id: a.student?.id ?? a.id,
+                          name: a.student?.name ?? "—",
+                          chestNumber: a.student?.chestNumber,
+                          categoryName: a.student?.category?.name,
+                        })),
+                      })
+                    }
+                  />
+                )
+              )
+            )}
+          </div>
+
+          {/* Desktop: table */}
+          <Table className="hidden md:table">
             <TableHeader>
               <TableRow>
                 <TableHead>Group</TableHead>
@@ -341,27 +560,26 @@ export function AssignmentsClient({
                           : "—"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          {!isReadOnly && (
-                            <DeleteDialog
-                              title="Remove assignment"
-                              description={`Remove ${row.assignment.student?.name} from ${row.assignment.programme?.name}?`}
-                              onDelete={async () => {
-                                await deleteAssignment(row.assignment.id);
-                              }}
-                              isDeleting={isDeleting}
-                              trigger={
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              }
-                            />
-                          )}
-                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                              <MoreVertical className="h-3.5 w-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {!isReadOnly && (
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() =>
+                                  setDeleteTarget({ kind: "individual", assignment: row.assignment })
+                                }
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                Remove
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -386,32 +604,10 @@ export function AssignmentsClient({
                           {row.assignments.length > 0
                             ? `${row.assignments[0]?.student?.name ?? "—"}`
                             : "—"}
-                            {row.assignments.length > 1 && (
-                              <span className="text-muted-foreground text-xs"> and Team</span>
-                            )}
+                          {row.assignments.length > 1 && (
+                            <span className="text-muted-foreground text-xs"> and Team</span>
+                          )}
                         </span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 ml-1 align-middle text-muted-foreground hover:text-foreground"
-                          title="View team members"
-                          onClick={() =>
-                            setTeamStudentsDialog({
-                              open: true,
-                              programmeName: row.programme?.name ?? "",
-                              teamLabel: `${row.groupName} – Team ${row.teamNumber}`,
-                              groupName: row.groupName,
-                              students: row.assignments.map((a: any) => ({
-                                id: a.student?.id ?? a.id,
-                                name: a.student?.name ?? "—",
-                                chestNumber: a.student?.chestNumber,
-                                categoryName: a.student?.category?.name,
-                              })),
-                            })
-                          }
-                        >
-                          <Users className="h-3.5 w-3.5" />
-                        </Button>
                       </TableCell>
                       <TableCell className="text-sm">
                         {row.programme?.name}
@@ -431,32 +627,43 @@ export function AssignmentsClient({
                         {row.assignedAt ?? "—"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          {!isReadOnly && (
-                            <DeleteDialog
-                              title="Remove team"
-                              description={`Remove this team from ${row.programme?.name}? All members will be unassigned.`}
-                              onDelete={async () => {
-                                await deleteTeamAssignment({
-                                  programmeId: row.programme?.id,
-                                  groupId: row.groupId,
-                                  teamNumber: row.teamNumber,
-                                });
-                              }}
-                              isDeleting={isDeletingTeam}
-                              trigger={
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                  title="Remove team"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                              <MoreVertical className="h-3.5 w-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() =>
+                                setTeamStudentsDialog({
+                                  open: true,
+                                  programmeName: row.programme?.name ?? "",
+                                  teamLabel: `${row.groupName} – Team ${row.teamNumber}`,
+                                  groupName: row.groupName,
+                                  students: row.assignments.map((a: any) => ({
+                                    id: a.student?.id ?? a.id,
+                                    name: a.student?.name ?? "—",
+                                    chestNumber: a.student?.chestNumber,
+                                    categoryName: a.student?.category?.name,
+                                  })),
+                                })
                               }
-                            />
-                          )}
-                        </div>
+                            >
+                              <Users className="h-3.5 w-3.5 mr-2" />
+                              View team
+                            </DropdownMenuItem>
+                            {!isReadOnly && (
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => setDeleteTarget({ kind: "team", row })}
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                Remove team
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ),
@@ -466,6 +673,46 @@ export function AssignmentsClient({
           </Table>
         </CardContent>
       </Card>
+
+      {/* Controlled delete dialogs */}
+      <DeleteDialog
+        open={deleteTarget?.kind === "individual"}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Remove assignment"
+        description={
+          deleteTarget?.kind === "individual"
+            ? `Remove ${deleteTarget.assignment.student?.name} from ${deleteTarget.assignment.programme?.name}?`
+            : ""
+        }
+        onDelete={async () => {
+          if (deleteTarget?.kind === "individual") {
+            await deleteAssignment(deleteTarget.assignment.id);
+            setDeleteTarget(null);
+          }
+        }}
+        isDeleting={isDeleting}
+      />
+      <DeleteDialog
+        open={deleteTarget?.kind === "team"}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Remove team"
+        description={
+          deleteTarget?.kind === "team"
+            ? `Remove this team from ${deleteTarget.row.programme?.name}? All members will be unassigned.`
+            : ""
+        }
+        onDelete={async () => {
+          if (deleteTarget?.kind === "team") {
+            await deleteTeamAssignment({
+              programmeId: deleteTarget.row.programme?.id,
+              groupId: deleteTarget.row.groupId,
+              teamNumber: deleteTarget.row.teamNumber,
+            });
+            setDeleteTarget(null);
+          }
+        }}
+        isDeleting={isDeletingTeam}
+      />
 
       <TeamStudentsDialog
         open={teamStudentsDialog.open}

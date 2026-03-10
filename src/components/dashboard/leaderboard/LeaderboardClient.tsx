@@ -39,6 +39,7 @@ interface LeaderboardClientProps {
   publishedStandings?: any[];
   categories?: { id: string; name: string }[];
   groups?: { id: string; name: string }[];
+  children?: React.ReactNode;
 }
 
 export function LeaderboardClient({
@@ -47,6 +48,7 @@ export function LeaderboardClient({
   publishedStandings = [],
   categories = [],
   groups = [],
+  children,
 }: LeaderboardClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -135,9 +137,17 @@ export function LeaderboardClient({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Leaderboard</h1>
-        <div className="flex items-center gap-2">
+      {/* Header row: children left, Publish right — icon only on mobile */}
+      <div className="flex flex-row items-center justify-between gap-4">
+        {children ?? (
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Leaderboard</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
+              Team and student standings from published results.
+            </p>
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <HowItWorksButton
             title="How Leaderboard works"
             description="Team standings from published programme results."
@@ -179,20 +189,21 @@ export function LeaderboardClient({
               });
             }}
             disabled={isPending}
+            title="Publish Standings"
           >
             {isPending && updatingStandingsId === "standings" ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-4 h-4 sm:mr-0 shrink-0 animate-spin" />
             ) : (
-              <CheckCircle2 className="w-4 h-4" />
+              <CheckCircle2 className="w-4 h-4 sm:mr-0 shrink-0" />
             )}
-            Publish Standings
+            <span className="hidden sm:inline">Publish Standings</span>
           </Button>
         </div>
       </div>
 
       {/* Standings: Live + Published */}
       <section className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Live Standings Column */}
           <Card className="p-0 overflow-hidden border-yellow-500/20">
             <div className="bg-yellow-500/10 p-4 border-b border-yellow-500/10 flex items-center justify-between">
@@ -310,7 +321,7 @@ export function LeaderboardClient({
       </section>
 
       {/* Top students by points */}
-      <section className="space-y-3">
+      <section className="space-y-3 pt-5">
         <Card className="p-0 overflow-hidden border-primary/20">
           <div className="flex flex-col gap-3 p-3 border-b bg-muted/30 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="font-bold flex items-center gap-2 text-foreground">

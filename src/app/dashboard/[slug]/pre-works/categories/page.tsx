@@ -12,14 +12,10 @@ export default async function CategoriesPage({
   if (!festival) return notFound();
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Categories</h1>
-        <p className="text-muted-foreground">
-          Define categories for your festival events (e.g. Juniors, Seniors).
-        </p>
-      </div>
-      <CategoriesClient festivalId={festival.id} />
+    <div className="pt-4 sm:pt-6">
+      <CategoriesClient festivalId={festival.id}>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Categories</h1>
+      </CategoriesClient>
     </div>
   );
 }

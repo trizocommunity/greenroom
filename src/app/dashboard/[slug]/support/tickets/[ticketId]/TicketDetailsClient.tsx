@@ -135,7 +135,7 @@ export default function TicketDetailsClient({
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
-            <h1 className="text-2xl font-bold tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight truncate min-w-0">
               {ticket.subject}
             </h1>
           </div>

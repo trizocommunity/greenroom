@@ -3,14 +3,17 @@
 import { useMemo, useState } from "react";
 import {
   ListChecks,
+  Filter,
   X,
   Medal,
   Users,
   ChevronRight,
+  Search,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -57,15 +60,18 @@ interface ResultsExploreClientProps {
   festival: { id: string; name: string; slug: string };
   programmes: Programme[];
   categories: { id: string; name: string }[];
+  children?: React.ReactNode;
 }
 
 export function ResultsExploreClient({
   festival,
   programmes,
   categories,
+  children,
 }: ResultsExploreClientProps) {
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [viewProgramme, setViewProgramme] = useState<Programme | null>(null);
 
   const programmesWithResults = useMemo(() => {
@@ -82,12 +88,20 @@ export function ResultsExploreClient({
     if (filterType !== "all") {
       list = list.filter((p) => p.type === filterType);
     }
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.category?.name || "").toLowerCase().includes(q),
+      );
+    }
     return list.sort(
       (a, b) =>
         (b.category?.name || "").localeCompare(a.category?.name || "") ||
         a.name.localeCompare(b.name),
     );
-  }, [programmesWithResults, filterCategory, filterType]);
+  }, [programmesWithResults, filterCategory, filterType, searchQuery]);
 
   const viewDetailsRows = useMemo(() => {
     if (!viewProgramme) return [];
@@ -141,30 +155,52 @@ export function ResultsExploreClient({
     });
   }, [viewProgramme]);
 
-  const hasFilters = filterCategory !== "all" || filterType !== "all";
+  const hasFilters =
+    filterCategory !== "all" ||
+    filterType !== "all" ||
+    searchQuery.trim() !== "";
   const clearFilters = () => {
     setFilterCategory("all");
     setFilterType("all");
+    setSearchQuery("");
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Results</h1>
+      {/* Header */}
+      <div className="flex flex-row items-center justify-between gap-4">
+        {children ?? (
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Results</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
+              Explore published results by programme.
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* Filters – separate component */}
-      <Card>
-        <CardContent className="p-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-muted-foreground mr-auto">
-              <span className="font-semibold text-foreground">
-                {filteredProgrammes.length}
-              </span>{" "}
-              published programme{filteredProgrammes.length !== 1 ? "s" : ""}
-            </span>
+      {/* Filter bar – clearly distinct from result cards (toolbar style) */}
+      <div className="rounded-xl border-2 border-primary/20 bg-primary/5 shadow-sm">
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-primary/10 bg-primary/10">
+          <Filter className="h-4 w-4 text-primary shrink-0" />
+          <span className="text-sm font-semibold text-foreground">Filters</span>
+          <span className="text-xs text-muted-foreground ml-1">
+            ({filteredProgrammes.length} programme{filteredProgrammes.length !== 1 ? "s" : ""})
+          </span>
+        </div>
+        <div className="p-3 sm:p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+            <div className="relative w-full sm:w-auto sm:min-w-[180px] sm:max-w-[220px] order-first">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              <Input
+                placeholder="Search programme or category..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-9 w-full pl-8 text-sm"
+              />
+            </div>
             <Select value={filterCategory} onValueChange={setFilterCategory}>
-              <SelectTrigger className="h-9 w-[160px]">
+              <SelectTrigger className="h-9 w-full sm:w-[160px] text-sm">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
@@ -177,7 +213,7 @@ export function ResultsExploreClient({
               </SelectContent>
             </Select>
             <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="h-9 w-[120px]">
+              <SelectTrigger className="h-9 w-full sm:w-[120px] text-sm">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
@@ -189,21 +225,22 @@ export function ResultsExploreClient({
             {hasFilters && (
               <Button
                 variant="ghost"
-                size="icon"
-                className="h-9 w-9"
+                size="sm"
+                className="h-9 w-full sm:w-9 shrink-0"
                 onClick={clearFilters}
                 title="Clear filters"
               >
-                <X className="w-4 h-4" />
+                <X className="h-3.5 w-3.5 sm:mr-0" />
+                <span className="sm:hidden">Clear filters</span>
               </Button>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Results cards – listed outside filter */}
+      {/* Result cards – visually different from filter (content cards) */}
       {filteredProgrammes.length === 0 ? (
-        <Card>
+        <Card className="rounded-xl border border-dashed bg-muted/10">
           <CardContent className="py-16 text-center">
             <ListChecks className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
             <p className="text-sm font-medium text-muted-foreground">
@@ -212,36 +249,39 @@ export function ResultsExploreClient({
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredProgrammes.map((prog) => (
             <Card
               key={prog.id}
               className={cn(
-                "cursor-pointer transition-all hover:border-primary/40 hover:shadow-md",
-                viewProgramme?.id === prog.id && "ring-2 ring-primary",
+                "cursor-pointer overflow-hidden rounded-xl border border-border/80 transition-all hover:border-primary/25 hover:shadow-md active:scale-[0.99]",
+                viewProgramme?.id === prog.id && "ring-2 ring-primary border-primary/50 shadow-md",
               )}
               onClick={() => setViewProgramme(prog)}
             >
-              <CardContent className="p-4 flex flex-col gap-2">
+              {/* Compact category strip */}
+              <div className="px-3 py-2 bg-muted/30 border-b border-border/50">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {prog.category.name}
+                </span>
+              </div>
+              <CardContent className="p-4 flex flex-col gap-3">
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-semibold text-sm line-clamp-2 leading-tight">
+                  <h3 className="font-semibold text-base leading-snug line-clamp-2 text-foreground flex-1 min-w-0">
                     {prog.name}
                   </h3>
-                  <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
+                  <ChevronRight className="w-5 h-5 shrink-0 text-muted-foreground mt-0.5" />
                 </div>
-                <div className="flex items-center gap-2 mt-auto">
-                  <Badge variant="outline" className="text-xs font-normal">
-                    {prog.category.name}
-                  </Badge>
+                <div className="flex items-center gap-2 flex-wrap">
                   {prog.type === "GROUP" && (
-                    <Badge
-                      variant="secondary"
-                      className="text-[10px] gap-0.5"
-                    >
+                    <Badge variant="secondary" className="text-xs gap-1">
                       <Users className="w-3 h-3" />
                       Group
                     </Badge>
                   )}
+                  <Badge variant="outline" className="text-xs font-normal">
+                    View results
+                  </Badge>
                 </div>
               </CardContent>
             </Card>
@@ -253,69 +293,56 @@ export function ResultsExploreClient({
         open={!!viewProgramme}
         onOpenChange={(open) => !open && setViewProgramme(null)}
       >
-        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Medal className="w-5 h-5 text-primary" />
+        <DialogContent className="w-[calc(100%-1rem)] sm:w-[calc(100%-2rem)] max-w-4xl max-h-[90dvh] sm:max-h-[85vh] overflow-y-auto p-3 sm:p-6 rounded-lg sm:rounded-xl text-left">
+          <DialogHeader className="text-left pr-8 sm:pr-0 space-y-1.5">
+            <DialogTitle className="flex items-center gap-2 text-base sm:text-xl truncate">
+              <Medal className="w-5 h-5 shrink-0 text-primary" />
               {viewProgramme?.name}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-sm text-muted-foreground">
               {viewProgramme?.category.name} · {viewProgramme?.type} programme
             </DialogDescription>
           </DialogHeader>
-          <div className="mt-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-16">Rank</TableHead>
-                  <TableHead>
-                    {viewProgramme?.type === "GROUP" ? "Team" : "Chest & Name"}
-                  </TableHead>
-                  <TableHead className="text-center">Grade</TableHead>
-                  <TableHead className="text-center">Points</TableHead>
-                  <TableHead>Remarks</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {viewDetailsRows.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center py-8 text-muted-foreground"
-                    >
-                      No results for this programme.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  viewDetailsRows.map((row: any) => (
-                    <TableRow key={row.assignmentId}>
-                      <TableCell className="font-semibold">
-                        {row.position > 0 ? (
-                          <div className="flex items-center gap-1">
-                            {row.position === 1 && (
-                              <span className="text-yellow-500">🥇</span>
-                            )}
-                            {row.position === 2 && (
-                              <span className="text-gray-400">🥈</span>
-                            )}
-                            {row.position === 3 && (
-                              <span className="text-amber-700">🥉</span>
-                            )}
-                            <span>{row.position}</span>
-                          </div>
-                        ) : (
-                          "-"
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium">{row.displayName}</div>
+          {viewDetailsRows.length === 0 ? (
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              No results for this programme.
+            </div>
+          ) : (
+            <>
+              {/* Mobile: result cards */}
+              <div className="mt-4 space-y-3 md:hidden">
+                {viewDetailsRows.map((row: any, index: number) => (
+                  <div
+                    key={row.assignmentId}
+                    className={cn(
+                      "rounded-xl border p-3 sm:p-4 bg-card",
+                      index < 3 && "border-primary/20 bg-primary/5",
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium text-foreground truncate">
+                          {row.displayName}
+                        </div>
                         {(row.chestNumber || row.subText) && (
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-xs text-muted-foreground truncate">
                             {row.chestNumber} {row.subText}
                           </div>
                         )}
-                      </TableCell>
-                      <TableCell className="text-center">
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {row.position > 0 && (
+                          <span
+                            className={cn(
+                              "text-lg font-bold tabular-nums",
+                              row.position === 1 && "text-yellow-600",
+                              row.position === 2 && "text-gray-500",
+                              row.position === 3 && "text-amber-700",
+                            )}
+                          >
+                            #{row.position}
+                          </span>
+                        )}
                         <Badge
                           variant="outline"
                           className={cn(
@@ -325,21 +352,90 @@ export function ResultsExploreClient({
                         >
                           {row.grade}
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="secondary" className="font-mono font-semibold">
-                          {row.points} pts
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                        {row.remarks || "-"}
-                      </TableCell>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <Badge variant="secondary" className="font-mono font-semibold">
+                        {row.points} pts
+                      </Badge>
+                      {row.remarks && row.remarks !== "-" && (
+                        <span className="text-muted-foreground text-xs line-clamp-2">
+                          {row.remarks}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* Desktop: table */}
+              <div className="mt-4 hidden md:block overflow-x-auto -mx-2 px-2">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-16">Rank</TableHead>
+                      <TableHead>
+                        {viewProgramme?.type === "GROUP" ? "Team" : "Chest & Name"}
+                      </TableHead>
+                      <TableHead className="text-center">Grade</TableHead>
+                      <TableHead className="text-center">Points</TableHead>
+                      <TableHead>Remarks</TableHead>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  </TableHeader>
+                  <TableBody>
+                    {viewDetailsRows.map((row: any) => (
+                      <TableRow key={row.assignmentId}>
+                        <TableCell className="font-semibold">
+                          {row.position > 0 ? (
+                            <div className="flex items-center gap-1">
+                              {row.position === 1 && (
+                                <span className="text-yellow-500">🥇</span>
+                              )}
+                              {row.position === 2 && (
+                                <span className="text-gray-400">🥈</span>
+                              )}
+                              {row.position === 3 && (
+                                <span className="text-amber-700">🥉</span>
+                              )}
+                              <span>{row.position}</span>
+                            </div>
+                          ) : (
+                            "-"
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">{row.displayName}</div>
+                          {(row.chestNumber || row.subText) && (
+                            <div className="text-xs text-muted-foreground">
+                              {row.chestNumber} {row.subText}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "font-mono font-semibold",
+                              getGradeBadgeColor(row.grade),
+                            )}
+                          >
+                            {row.grade}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="secondary" className="font-mono font-semibold">
+                            {row.points} pts
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                          {row.remarks || "-"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>

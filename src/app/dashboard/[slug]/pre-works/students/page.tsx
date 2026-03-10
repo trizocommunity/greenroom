@@ -56,11 +56,15 @@ export default async function StudentsPage({
   }
 
   return (
-    <StudentsClient
-      festivalId={festival.id}
-      festivalSlug={festival.slug}
-      initialChestSettings={initialChestSettings}
-      onChestRevalidate={handleChestRevalidate}
-    />
+    <div className="pt-4 sm:pt-6">
+      <StudentsClient
+        festivalId={festival.id}
+        festivalSlug={festival.slug}
+        initialChestSettings={initialChestSettings}
+        onChestRevalidate={handleChestRevalidate}
+      >
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Students</h1>
+      </StudentsClient>
+    </div>
   );
 }

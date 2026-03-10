@@ -39,6 +39,8 @@ interface ProgrammeDialogProps {
   programme?: any;
   trigger?: React.ReactNode;
   readOnly?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function ProgrammeDialog({
@@ -46,8 +48,13 @@ export function ProgrammeDialog({
   programme,
   trigger,
   readOnly = false,
+  open: controlledOpen,
+  onOpenChange: setControlledOpen,
 }: ProgrammeDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
   const { createProgramme, isCreating, updateProgramme, isUpdating } =
     useProgrammes(festivalId);
   const { categories } = useCategories(festivalId);
@@ -249,15 +256,17 @@ export function ProgrammeDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Programme
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className={readOnly ? "max-w-2xl" : "max-w-md"}>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Programme
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
+      <DialogContent className={readOnly ? "w-[calc(100%-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6" : "w-[calc(100%-2rem)] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6"}>
         <DialogHeader>
           <DialogTitle>
             {readOnly
@@ -314,7 +323,7 @@ export function ProgrammeDialog({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="type">Type</Label>
                 <Select
@@ -356,7 +365,7 @@ export function ProgrammeDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {formData.type === "INDIVIDUAL" ? (
                 <div className="space-y-2">
                   <Label htmlFor="maxParticipantsPerGroup">

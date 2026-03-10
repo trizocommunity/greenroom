@@ -63,23 +63,23 @@ export default function CreateTicketForm({ slug }: { slug: string }) {
   };
 
   return (
-    <div className="space-y-6 ">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Create Ticket</h1>
-        <p className="text-lg text-muted-foreground mt-1">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Create Ticket</h1>
+        <p className="text-base sm:text-lg text-muted-foreground mt-1">
           Submit a new support request.
         </p>
       </div>
 
       <Card>
         <form onSubmit={handleSubmit}>
-          <CardHeader>
+          <CardHeader className="p-4 sm:p-6">
             <CardTitle>Ticket Details</CardTitle>
             <CardDescription>
               Please provide as much detail as possible.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 p-4 sm:p-6 pt-0">
             <div className="space-y-2">
               <Label htmlFor="subject">Subject</Label>
               <Input
@@ -134,7 +134,7 @@ export default function CreateTicketForm({ slug }: { slug: string }) {
               />
             </div>
           </CardContent>
-          <CardFooter>
+          <CardFooter className="p-4 sm:p-6">
             <Button type="submit" disabled={isSubmitting} className="w-full">
               {isSubmitting && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

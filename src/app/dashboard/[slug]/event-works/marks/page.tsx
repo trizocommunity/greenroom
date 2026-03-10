@@ -65,11 +65,15 @@ export default async function MarksPage({
   }
 
   return (
-    <ResultsManagementClient
-      festival={festival}
-      programmes={festival.programmes}
-      categories={festival.categories}
-    />
+    <div className="pt-4 sm:pt-6">
+      <ResultsManagementClient
+        festival={festival}
+        programmes={festival.programmes}
+        categories={festival.categories}
+      >
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Marks</h1>
+      </ResultsManagementClient>
+    </div>
   );
 }
 

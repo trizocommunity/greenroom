@@ -66,11 +66,11 @@ export default function DocumentationPage() {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8 px-1">
       <div className="space-y-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Documentation</h1>
-          <p className="text-lg text-muted-foreground mt-2">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Documentation</h1>
+          <p className="text-base sm:text-lg text-muted-foreground mt-2">
             Welcome to the Greenroom help center. Here you can find guides,
             FAQs, and resources to help you manage your festival efficiently.
           </p>
@@ -90,8 +90,8 @@ export default function DocumentationPage() {
         </div>
       </div>
 
-      <div className="grid gap-8 md:grid-cols-3">
-        <div className="md:col-span-2 space-y-8">
+      <div className="grid gap-6 sm:gap-8 grid-cols-1 md:grid-cols-3">
+        <div className="md:col-span-2 space-y-6 sm:space-y-8">
           <section>
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
               <HelpCircle className="h-5 w-5 text-primary" />

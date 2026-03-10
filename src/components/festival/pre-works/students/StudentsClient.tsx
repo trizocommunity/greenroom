@@ -1,12 +1,20 @@
 "use client";
 
 import { format } from "date-fns";
-import { Eye, FileText, Loader2, Pencil, Plus, X } from "lucide-react";
+import { Eye, FileText, Loader2, MoreVertical, Pencil, Plus, Search, Trash2, User, X } from "lucide-react";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -48,12 +56,14 @@ interface StudentsClientProps {
     numberingStyle?: "ALPHANUMERIC" | "NUMERIC";
   } | null;
   onChestRevalidate: () => void;
+  children?: React.ReactNode;
 }
 
 export function StudentsClient({
   festivalId,
   initialChestSettings,
   onChestRevalidate,
+  children,
 }: StudentsClientProps) {
   const { students, isLoading, deleteStudent, isDeleting } =
     useStudents(festivalId);
@@ -71,6 +81,8 @@ export function StudentsClient({
 
   const [selectedGroup, setSelectedGroup] = useState<string>("ALL");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [actionStudent, setActionStudent] = useState<{ student: any; action: "view" | "edit" | "delete" } | null>(null);
 
   if (isLoading) {
     return (
@@ -80,31 +92,40 @@ export function StudentsClient({
     );
   }
 
-  // Filter Logic
+  // Filter Logic (group, category, search)
   const filteredStudents = students.filter((p: any) => {
-    // Group Filter
     if (selectedGroup !== "ALL") {
       if (p.groupId !== selectedGroup && p.group?.id !== selectedGroup)
         return false;
     }
-
-    // Category Filter
     if (selectedCategory !== "ALL") {
-      if (
-        p.categoryId !== selectedCategory &&
-        p.category?.id !== selectedCategory
-      )
+      if (p.categoryId !== selectedCategory && p.category?.id !== selectedCategory)
         return false;
     }
-
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      const name = (p.name || "").toLowerCase();
+      const chest = (p.chestNumber || "").toLowerCase();
+      if (!name.includes(q) && !chest.includes(q)) return false;
+    }
     return true;
   });
 
+  const hasFilters = selectedGroup !== "ALL" || selectedCategory !== "ALL" || searchQuery.trim() !== "";
+
   return (
-    <div className="space-y-4">
-      <div className="mb-10 flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Students</h1>
-        <div className="flex items-center gap-2">
+    <div className="space-y-4 pt-2">
+      {/* Header row: title (children) + actions — Create icon only on mobile */}
+      <div className="flex flex-row items-center justify-between gap-4">
+        {children ?? (
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Students</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
+              Add students, assign groups and categories, manage chest numbers.
+            </p>
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <HowItWorksButton
             title="How Students work"
             description="Students and chest numbers."
@@ -136,7 +157,10 @@ export function StudentsClient({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div>
-                    <Button disabled>Add Student</Button>
+                    <Button size="sm" disabled>
+                      <Plus className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Add Student</span>
+                    </Button>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -146,18 +170,18 @@ export function StudentsClient({
             </TooltipProvider>
           ) : (
             <>
-            <FeatureGate feature="studentBulkUpload">
-              <BulkUploadStudentsModal festivalId={festivalId} />
-            </FeatureGate>
-            <StudentDialog
-              festivalId={festivalId}
-              trigger={
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Student
-                </Button>
-              }
-            />
+              <FeatureGate feature="studentBulkUpload">
+                <BulkUploadStudentsModal festivalId={festivalId} />
+              </FeatureGate>
+              <StudentDialog
+                festivalId={festivalId}
+                trigger={
+                  <Button size="sm">
+                    <Plus className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Add Student</span>
+                  </Button>
+                }
+              />
             </>
           )}
         </div>
@@ -171,14 +195,21 @@ export function StudentsClient({
         pendingCount={pendingChestCount}
       />
 
-      <Card>
-        <CardHeader className="p-3 border-b bg-muted/5">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-muted-foreground mr-auto">
-              {filteredStudents.length} row{filteredStudents.length !== 1 ? "s" : ""}
-            </span>
+      <Card className="overflow-hidden">
+        <CardHeader className="p-3 sm:p-4 border-b bg-muted/5">
+          {/* Filters: mobile = flex-col w-full, desktop = row with search */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+            <div className="relative w-full sm:w-auto sm:min-w-[140px] sm:max-w-[200px] order-first">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              <Input
+                placeholder="Search name or chest no..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-8 w-full pl-8 text-xs sm:w-[180px]"
+              />
+            </div>
             <Select value={selectedGroup} onValueChange={setSelectedGroup}>
-              <SelectTrigger className="h-8 w-[130px] text-xs">
+              <SelectTrigger className="h-8 w-full sm:w-[130px] text-xs">
                 <SelectValue placeholder="Group" />
               </SelectTrigger>
               <SelectContent>
@@ -191,7 +222,7 @@ export function StudentsClient({
               </SelectContent>
             </Select>
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="h-8 w-[130px] text-xs">
+              <SelectTrigger className="h-8 w-full sm:w-[130px] text-xs">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
@@ -205,120 +236,231 @@ export function StudentsClient({
                   ))}
               </SelectContent>
             </Select>
-            {(selectedGroup !== "ALL" || selectedCategory !== "ALL") && (
+            {hasFilters && (
               <Button
                 variant="ghost"
-                size="icon"
-                className="h-8 w-8"
+                size="sm"
+                className="h-8 w-full sm:w-8 shrink-0"
                 onClick={() => {
                   setSelectedGroup("ALL");
                   setSelectedCategory("ALL");
+                  setSearchQuery("");
                 }}
                 title="Clear filters"
               >
-                <X className="h-3.5 w-3.5" />
+                <X className="h-3.5 w-3.5 sm:mr-0" />
+                <span className="sm:hidden">Clear filters</span>
               </Button>
             )}
+            <span className="text-xs text-muted-foreground sm:ml-auto">
+              {filteredStudents.length} row{filteredStudents.length !== 1 ? "s" : ""}
+            </span>
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Chest No</TableHead>
-              <TableHead>Group</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Created At</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredStudents.map((student: any) => (
-              <TableRow key={student.id}>
-                <TableCell className="font-medium">{student.name}</TableCell>
-                <TableCell>
-                  {student.chestNumber ? (
-                    <span className="font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded text-xs">
-                      {student.chestNumber}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground text-xs">—</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="w-2 h-2 rounded-full"
-                      style={{
-                        backgroundColor: student.group?.color || "#2563eb",
-                      }}
-                    />
-                    {student.group?.name || "-"}
-                  </div>
-                </TableCell>
-                <TableCell>{student.category?.name || "-"}</TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {format(new Date(student.createdAt), "MMM d, yyyy")}
-                </TableCell>
-
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <StudentDetailsDialog
-                      festivalId={festivalId}
-                      student={student}
-                      trigger={
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-primary"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      }
-                    />
-                    <StudentDialog
-                      festivalId={festivalId}
-                      studentToEdit={student}
-                      trigger={
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-primary"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      }
-                    />
-                    <DeleteDialog
-                      title="Delete Student"
-                      description="Are you sure? This will remove the student from all assigned programmes."
-                      onDelete={async () => {
-                        await deleteStudent(student.id);
-                      }}
-                      isDeleting={isDeleting}
-                    />
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-            {filteredStudents.length === 0 && (
-              <TableRow>
-                <TableCell
-                  colSpan={6}
-                  className="h-24 text-center text-muted-foreground"
+          {/* Mobile: beautiful student cards */}
+          <div className="block md:hidden p-3 sm:p-4 space-y-3">
+            {filteredStudents.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-14 px-6 text-center text-muted-foreground rounded-xl border border-dashed bg-muted/10">
+                <User className="h-10 w-10 text-muted-foreground/50" />
+                <p className="font-medium">No students found</p>
+                <p className="text-sm">Try changing filters or search, or add a student.</p>
+              </div>
+            ) : (
+              filteredStudents.map((student: any) => (
+                <div
+                  key={student.id}
+                  className="rounded-xl border border-border/80 bg-card p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/20 active:scale-[0.99]"
                 >
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <FileText className="h-8 w-8 text-muted-foreground/50" />
-                    <p>No students found matching filters.</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-[15px] leading-snug text-foreground line-clamp-1">
+                        {student.name}
+                      </h3>
+                      <div className="mt-2.5 rounded-lg bg-muted/40 px-3 py-2">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          {student.chestNumber ? (
+                            <span className="font-mono font-medium text-primary">
+                              {student.chestNumber}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground/80">—</span>
+                          )}
+                          <span>{student.group?.name || "—"}</span>
+                          <span>{student.category?.name || "—"}</span>
+                          <span className="text-muted-foreground/80">
+                            {format(new Date(student.createdAt), "MMM d")}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                          <span className="sr-only">Actions</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuItem
+                          onSelect={() => setActionStudent({ student, action: "view" })}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onSelect={() => setActionStudent({ student, action: "edit" })}
+                        >
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onSelect={() => setActionStudent({ student, action: "delete" })}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                </TableCell>
-              </TableRow>
+                </div>
+              ))
             )}
-          </TableBody>
-        </Table>
+          </div>
+          {/* Desktop: table */}
+          <div className="hidden md:block overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Chest No</TableHead>
+                  <TableHead>Group</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Created At</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredStudents.map((student: any) => (
+                  <TableRow key={student.id}>
+                    <TableCell className="font-medium">{student.name}</TableCell>
+                    <TableCell>
+                      {student.chestNumber ? (
+                        <span className="font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded text-xs">
+                          {student.chestNumber}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="w-2 h-2 rounded-full"
+                          style={{
+                            backgroundColor: student.group?.color || "#2563eb",
+                          }}
+                        />
+                        {student.group?.name || "-"}
+                      </div>
+                    </TableCell>
+                    <TableCell>{student.category?.name || "-"}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {format(new Date(student.createdAt), "MMM d, yyyy")}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-primary"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                            <span className="sr-only">Actions</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem
+                            onSelect={() => setActionStudent({ student, action: "view" })}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => setActionStudent({ student, action: "edit" })}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onSelect={() => setActionStudent({ student, action: "delete" })}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {filteredStudents.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={6}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <FileText className="h-8 w-8 text-muted-foreground/50" />
+                        <p>No students found matching filters.</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
+
+      {/* Controlled dialogs opened from dropdown */}
+      {actionStudent?.action === "view" && actionStudent.student && (
+        <StudentDetailsDialog
+          festivalId={festivalId}
+          student={actionStudent.student}
+          open={true}
+          onOpenChange={(open) => !open && setActionStudent(null)}
+        />
+      )}
+      {actionStudent?.action === "edit" && actionStudent.student && (
+        <StudentDialog
+          festivalId={festivalId}
+          studentToEdit={actionStudent.student}
+          open={true}
+          onOpenChange={(open) => !open && setActionStudent(null)}
+        />
+      )}
+      {actionStudent?.action === "delete" && actionStudent.student && (
+        <DeleteDialog
+          title="Delete Student"
+          description="Are you sure? This will remove the student from all assigned programmes."
+          onDelete={async () => {
+            await deleteStudent(actionStudent.student.id);
+            setActionStudent(null);
+          }}
+          isDeleting={isDeleting}
+          open={true}
+          onOpenChange={(open) => !open && setActionStudent(null)}
+        />
+      )}
     </div>
   );
 }

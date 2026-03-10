@@ -1,6 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
+import { useState } from "react";
 import { Eye, Loader2, Mail, Phone, Crown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,18 +27,17 @@ interface StudentDetailsDialogProps {
   festivalId: string;
   student: any;
   trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function StudentDetailsDialog({
   festivalId,
   student,
   trigger,
+  open: controlledOpen,
+  onOpenChange: setControlledOpen,
 }: StudentDetailsDialogProps) {
-  // We might want to fetch fresh details or assignments for this student
-  // Currently, student object might have some info, but assignments?
-  // We can filter assignments by studentId if we have them all, or fetch.
-  // Assuming useAssignments loads all assignments for now (which might be heavy but consistent with current app structure).
-
   const { assignments, isLoading } = useAssignments(festivalId);
 
   const studentAssignments = assignments.filter(
@@ -46,15 +46,22 @@ export function StudentDetailsDialog({
       a.team?.members.some((tm: any) => tm.studentId === student.id),
   );
 
+  const isControlled = controlledOpen !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
+
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <Eye className="h-4 w-4" />
-          </Button>
-        )}
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={setOpen}>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Eye className="h-4 w-4" />
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] flex flex-col p-4 sm:p-5">
         <DialogHeader className="shrink-0 pb-2">
           <DialogTitle className="text-base sm:text-lg truncate pr-8">

@@ -61,16 +61,16 @@ export function SettingsForm({ festival }: SettingsFormProps) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Festival Configuration</CardTitle>
+    <Card className="overflow-hidden">
+      <CardHeader className="p-4 sm:p-6">
+        <CardTitle className="text-lg sm:text-xl">Festival Configuration</CardTitle>
         <CardDescription>
           Manage dates, deadlines, and access controls.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4 sm:p-6 pt-0">
         <form onSubmit={handleSave} className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="startDate">Start Date</Label>
               <Input
@@ -121,8 +121,8 @@ export function SettingsForm({ festival }: SettingsFormProps) {
             </div>
           )}
 
-          <div className="flex justify-end">
-            <Button type="submit" disabled={isLoading}>
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Changes
             </Button>

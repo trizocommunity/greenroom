@@ -469,9 +469,9 @@ export function AssignmentModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-none w-[95vw] h-[95vh] flex flex-col p-0 gap-0 border-none rounded-xl mx-auto my-auto ring-0 outline-none overflow-hidden">
+      <DialogContent className="max-w-none w-[calc(100%-1rem)] sm:w-[95vw] h-[95vh] max-h-[100dvh] flex flex-col p-0 gap-0 border rounded-lg sm:rounded-xl mx-auto my-auto ring-0 outline-none overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b flex items-center justify-between bg-card z-10">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-card z-10">
           <div>
             <DialogTitle className="text-xl">New Assignment</DialogTitle>
             <DialogDescription>

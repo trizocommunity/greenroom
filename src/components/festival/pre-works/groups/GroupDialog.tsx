@@ -22,6 +22,8 @@ interface GroupDialogProps {
   group?: any;
   trigger?: React.ReactNode;
   readOnly?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function GroupDialog({
@@ -29,8 +31,13 @@ export function GroupDialog({
   group,
   trigger,
   readOnly,
+  open: controlledOpen,
+  onOpenChange: setControlledOpen,
 }: GroupDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
   const { createGroup, isCreating, updateGroup, isUpdating } =
     useGroups(festivalId);
   const { students } = useStudents(festivalId); // Fetch students
@@ -142,15 +149,17 @@ export function GroupDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Group
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      {!isControlled && (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Group
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
+      <DialogContent className="w-[calc(100%-2rem)] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>
             {readOnly

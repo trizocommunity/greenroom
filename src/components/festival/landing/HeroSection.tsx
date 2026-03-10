@@ -25,7 +25,7 @@ export function HeroSection({ festival, basicMode = false }: HeroSectionProps) {
       {/* Noise Texture Overlay */}
       <div className="absolute inset-0 z-1 opacity-[0.04] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
 
-      <div className="relative z-10 max-w-5xl mx-auto px-4 text-center">
+      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 text-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -42,11 +42,11 @@ export function HeroSection({ festival, basicMode = false }: HeroSectionProps) {
               `Welcome to the ${new Date(festival.startDate || new Date()).getFullYear()} Festival`}
           </span>
 
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter mb-6 bg-clip-text text-transparent bg-linear-to-b from-foreground to-foreground/70">
+          <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter mb-4 sm:mb-6 bg-clip-text text-transparent bg-linear-to-b from-foreground to-foreground/70 break-words">
             {festival.name}
           </h1>
 
-          <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
+          <p className="text-base sm:text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed px-1">
             {festival.description ||
               "Run on Greenroom for paperless scoring, live leaderboards, and transparent results across every stage."}
           </p>

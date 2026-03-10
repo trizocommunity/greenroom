@@ -153,13 +153,13 @@ export function StudentDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-w-xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden sm:rounded-2xl border-none shadow-2xl">
+      <DialogContent className="w-[calc(100%-2rem)] max-w-xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden rounded-lg sm:rounded-2xl border shadow-2xl">
         <form
           onSubmit={handleSubmit}
           className="flex flex-col h-full min-h-0 bg-background/95 backdrop-blur-sm"
         >
           {/* Header */}
-          <DialogHeader className="px-8 py-6 border-b bg-muted/20 flex-shrink-0">
+          <DialogHeader className="px-4 sm:px-8 py-4 sm:py-6 border-b bg-muted/20 flex-shrink-0">
             <DialogTitle className="text-2xl font-semibold tracking-tight">
               {readOnly
                 ? "Student Details"
@@ -175,7 +175,7 @@ export function StudentDialog({
           </DialogHeader>
 
           {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto px-8 py-6 space-y-8 min-h-0">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-4 sm:py-6 space-y-8 min-h-0">
             {!isEditing && groups.length === 0 && (
               <div className="bg-destructive/10 text-destructive p-4 rounded-xl mb-4 text-sm font-medium flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" /> Please create
@@ -205,7 +205,7 @@ export function StudentDialog({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label
                     htmlFor="age"
@@ -361,7 +361,7 @@ export function StudentDialog({
             </div>
           </div>
 
-          <DialogFooter className="px-8 py-6 border-t bg-muted/10 flex-shrink-0">
+          <DialogFooter className="px-4 sm:px-8 py-4 sm:py-6 border-t bg-muted/10 flex-shrink-0 flex-col-reverse sm:flex-row gap-2">
             <Button
               variant="ghost"
               type="button"

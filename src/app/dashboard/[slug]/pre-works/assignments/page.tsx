@@ -49,9 +49,15 @@ export default async function AssignmentsPage({
   }
 
   return (
-    <AssignmentsClient
-      festivalId={festival.id}
-      programmeAssignmentDeadline={festival.programmeAssignmentDeadline}
-    />
+    <div className="pt-4 sm:pt-6">
+      <AssignmentsClient
+        festivalId={festival.id}
+        programmeAssignmentDeadline={festival.programmeAssignmentDeadline}
+      >
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            Programme Assignments
+          </h1>
+      </AssignmentsClient>
+    </div>
   );
 }

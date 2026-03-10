@@ -309,95 +309,83 @@ export function ChestNumberSetup({
     }
   };
 
-  // Remove Card logic, always return header view
   return (
-    <div className="flex flex-col gap-4 p-4 border rounded-lg bg-muted/20">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="p-2 bg-primary/10 rounded-full">
-            <Settings2 className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-sm">
-              Chest Number Configuration
-            </h3>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              {isConfigured ? (
-                <div className="text-xs text-muted-foreground">
-                  Configured for {categories.length} categories.
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <div className="px-2 py-0.5 rounded-full bg-destructive/10 text-destructive text-xs font-medium border border-destructive/20">
-                    Not Configured
-                  </div>
-                </div>
-              )}
-            </div>
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3 sm:px-4 py-3 border rounded-xl bg-muted/20 border-border/80">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg shrink-0">
+          <Settings2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="font-semibold text-xs sm:text-sm truncate">
+            Chest numbers
+          </h3>
+          <div className="text-[11px] sm:text-xs text-muted-foreground">
+            {isConfigured ? (
+              <span>{categories.length} categories · {pendingCount > 0 ? `${pendingCount} pending` : "All set"}</span>
+            ) : (
+              <span className="text-destructive font-medium">Not configured</span>
+            )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {!isConfigured && (
-            <Button size="sm" onClick={handleOpenEdit} className="gap-2">
-              <Settings2 className="h-4 w-4" />
-              Configure Now
-            </Button>
-          )}
-
-          {isConfigured && (
-            <>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+      </div>
+      <div className="flex flex-wrap items-center gap-2 shrink-0">
+        {!isConfigured && (
+          <Button size="sm" onClick={handleOpenEdit} className="h-8 gap-1.5 text-xs">
+            <Settings2 className="h-3.5 w-3.5" />
+            Configure
+          </Button>
+        )}
+        {isConfigured && (
+          <>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  {isResetting ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    "Reset"
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reset all chest numbers?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will remove chest numbers from ALL students and reset
+                    the generation logic. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleReset}
+                    className="bg-destructive hover:bg-destructive/90"
                   >
-                    {isResetting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      "Reset All"
-                    )}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      Reset all chest numbers?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will remove chest numbers from ALL students and reset
-                      the generation logic. This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleReset}
-                      className="bg-destructive hover:bg-destructive/90"
-                    >
-                      Reset All
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-
-              {pendingCount > 0 && (
+                    Reset All
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            {pendingCount > 0 && (
               <Button
                 onClick={handleSaveAndGenerate}
                 disabled={isGenerating || pendingCount === 0}
-                variant={pendingCount === 0 ? "outline" : "default"}
+                variant="default"
                 size="sm"
+                className="h-8 text-xs"
               >
                 {isGenerating ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
                 ) : null}
-                Generate ${pendingCount} New
+                Generate {pendingCount} new
               </Button>
-              )}
-            </>
-          )}
-        </div>
+            )}
+          </>
+        )}
       </div>
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">

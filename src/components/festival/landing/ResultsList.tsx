@@ -147,11 +147,11 @@ export function ResultsList({
   };
 
   return (
-    <section className="min-h-[60vh] space-y-8">
-      <div className="mx-auto max-w-7xl px-4 md:px-6 py-12 lg:py-24">
+    <section className="min-h-[60vh] space-y-6 sm:space-y-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-6 py-8 sm:py-12 lg:py-24">
         {/* Header Section */}
         <div className="space-y-4">
-          <h1 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
             {activeTab === "program" ? `Program Results` : `Team Status`}
           </h1>
           <p className="text-muted-foreground font-medium">

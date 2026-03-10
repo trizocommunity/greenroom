@@ -22,14 +22,14 @@ export default async function TicketsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Support Tickets</h1>
-          <p className="text-lg text-muted-foreground mt-2">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Support Tickets</h1>
+          <p className="text-base sm:text-lg text-muted-foreground mt-2">
             View and manage your support requests.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button asChild>
             <Link href={`/dashboard/${slug}/support/tickets/create`}>
               <Plus className="mr-2 h-4 w-4" />

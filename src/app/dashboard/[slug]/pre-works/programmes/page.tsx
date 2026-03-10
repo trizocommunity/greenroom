@@ -51,5 +51,11 @@ export default async function ProgrammesPage({
     );
   }
 
-  return <ProgrammesClient festivalId={festival.id} />;
+  return (
+    <div className="pt-4 sm:pt-6">
+      <ProgrammesClient festivalId={festival.id}>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Programmes</h1>          
+      </ProgrammesClient>
+    </div>
+  );
 }

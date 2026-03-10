@@ -6,6 +6,7 @@ import {
   Plus,
   Eye,
   Check,
+  Filter,
   Sparkles,
   Award,
   Search,
@@ -129,6 +130,7 @@ interface ResultsManagementClientProps {
   festival: Festival;
   programmes: Programme[];
   categories: Category[];
+  children?: React.ReactNode;
 }
 
 // Marks entry mode: Basic = manual entry (this UI). Standard/Pro = shareable link
@@ -165,6 +167,7 @@ export function ResultsManagementClient({
   festival,
   programmes,
   categories,
+  children,
 }: ResultsManagementClientProps) {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -639,9 +642,17 @@ export function ResultsManagementClient({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Marks</h1>
-        <div className="flex gap-2">
+      {/* Header row: children left, Enter Marks right — icon only on mobile */}
+      <div className="flex flex-row items-center justify-between gap-4">
+        {children ?? (
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Marks</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
+              Enter points per programme; grade and rank update automatically.
+            </p>
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <HowItWorksButton
             title="How marks work"
             description="Enter points per chest; grade and rank are calculated automatically."
@@ -653,24 +664,24 @@ export function ResultsManagementClient({
           </HowItWorksButton>
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2" suppressHydrationWarning>
-                <Plus className="w-4 h-4" />
-                Enter Marks
+              <Button size="sm" className="gap-2" suppressHydrationWarning>
+                <Plus className="w-4 h-4 sm:mr-0" />
+                <span className="hidden sm:inline">Enter Marks</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="text-lg">
+            <DialogContent className="w-[calc(100%-0.5rem)] sm:w-[calc(100%-2rem)] max-w-3xl max-h-[90dvh] sm:max-h-[90vh] overflow-y-auto p-2.5 sm:p-6 rounded-lg sm:rounded-xl">
+              <DialogHeader className="text-left space-y-0.5 sm:space-y-1.5 px-0.5 sm:px-0">
+                <DialogTitle className="text-sm sm:text-lg pr-7 sm:pr-8">
                   Enter marks
                 </DialogTitle>
-                <DialogDescription>
-                  Select programme and enter points by chest number. Grade and rank update automatically.
+                <DialogDescription className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+                  Select programme and enter points. Grade and rank update automatically.
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-4 mt-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
+              <div className="space-y-3 sm:space-y-4 mt-2 sm:mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                  <div className="space-y-1">
                     <Label htmlFor="modal-category" className="text-xs font-medium">
                       Category
                     </Label>
@@ -679,7 +690,7 @@ export function ResultsManagementClient({
                       onValueChange={handleCategoryChange}
                       disabled={selectedProgramme !== "" && hasAnyPoints}
                     >
-                      <SelectTrigger id="modal-category" className="h-10">
+                      <SelectTrigger id="modal-category" className="h-9 sm:h-10 w-full text-sm">
                         <SelectValue placeholder="Select category..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -692,7 +703,7 @@ export function ResultsManagementClient({
                     </Select>
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <Label htmlFor="modal-programme" className="text-xs font-medium">
                       Programme
                     </Label>
@@ -704,7 +715,7 @@ export function ResultsManagementClient({
                         filteredModalProgrammes.length === 0
                       }
                     >
-                      <SelectTrigger id="modal-programme" className="h-10">
+                      <SelectTrigger id="modal-programme" className="h-9 sm:h-10 w-full text-sm">
                         <SelectValue
                           placeholder={
                             !selectedCategory
@@ -731,21 +742,21 @@ export function ResultsManagementClient({
                 </div>
 
                 {currentProgramme && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-primary/10 bg-primary/5">
+                  <div className="space-y-3 sm:space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg border border-primary/10 bg-primary/5">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-base truncate">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                          <h3 className="font-semibold text-xs sm:text-base truncate">
                             {currentProgramme.name}
                           </h3>
                           {currentProgramme.type === "GROUP" && (
-                            <Badge variant="outline" className="text-xs shrink-0">
-                              <Users className="w-3 h-3 mr-1" />
+                            <Badge variant="outline" className="text-[10px] sm:text-xs shrink-0 px-1.5 py-0">
+                              <Users className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
                               Group
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground mt-0.5">
+                        <p className="text-[10px] sm:text-sm text-muted-foreground mt-0.5">
                           <span className="font-medium text-primary">
                             {Object.keys(scores).length}
                           </span>
@@ -761,15 +772,15 @@ export function ResultsManagementClient({
                       {currentProgramme.stats?.status === "published" ||
                       currentProgramme.stats?.status ===
                         "partial-published" ? (
-                        <div className="flex items-center gap-3 ml-auto">
-                          <div className="flex items-center text-amber-700 dark:text-amber-400 text-sm font-medium gap-2 px-3 py-1 bg-amber-100 dark:bg-amber-900/30 rounded-md border border-amber-200 dark:border-amber-700/50">
-                            <Lock className="w-4 h-4" />
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 sm:gap-3 sm:ml-auto shrink-0">
+                          <div className="flex items-center justify-center text-amber-700 dark:text-amber-400 text-[10px] sm:text-sm font-medium gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-1 bg-amber-100 dark:bg-amber-900/30 rounded-md border border-amber-200 dark:border-amber-700/50">
+                            <Lock className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
                             <span>Results Locked</span>
                           </div>
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-8 gap-2 border-amber-200 dark:border-amber-700/50 hover:bg-amber-100 dark:hover:bg-amber-900/20 text-amber-700 dark:text-amber-400"
+                            className="h-8 sm:h-8 gap-1.5 sm:gap-2 text-xs sm:text-sm border-amber-200 dark:border-amber-700/50 hover:bg-amber-100 dark:hover:bg-amber-900/20 text-amber-700 dark:text-amber-400"
                             onClick={() =>
                               handlePublishProgramme(
                                 currentProgramme.id,
@@ -785,16 +796,16 @@ export function ResultsManagementClient({
                       ) : (
                         <Badge
                           variant="secondary"
-                          className="gap-1.5 font-medium ml-auto"
+                          className="gap-1 font-medium sm:ml-auto w-fit shrink-0 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0"
                         >
-                          <Sparkles className="w-3.5 h-3.5" />
+                          <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                           Auto
                         </Badge>
                       )}
                     </div>
 
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    <div className="space-y-3 sm:space-y-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 sm:gap-3">
                         {markEntries.map((assignment) => {
                           const teamId = getTeamIdentifier(
                             assignment,
@@ -823,33 +834,34 @@ export function ResultsManagementClient({
                             <div
                               key={teamId}
                               className={cn(
-                                "relative rounded-xl border-2 transition-all duration-200",
+                                "relative rounded-lg sm:rounded-xl border-2 transition-all duration-200 min-h-[64px] sm:min-h-[72px] flex flex-col justify-center touch-manipulation",
                                 isFilled
                                   ? "border-primary/30 bg-primary/5"
-                                  : "border-border hover:border-primary/20 bg-card",
+                                  : "border-border hover:border-primary/20 bg-card active:bg-muted/30",
                               )}
                             >
-                              <div className="p-3 space-y-2">
+                              <div className="p-2 sm:p-3 space-y-1 sm:space-y-2">
                                 {currentProgramme.type === "GROUP" ? (
-                                  <div className="space-y-1">
+                                  <div className="space-y-0.5 sm:space-y-1">
                                       {groupName && (
-                                        <p className="text-[10px] text-muted-foreground text-start font-medium">
+                                        <p className="text-[9px] sm:text-[10px] text-muted-foreground text-start font-medium truncate">
                                           {groupName}
                                         </p>
                                       )}
                                     <div className="flex justify-start">
                                       <Badge
                                         variant="outline"
-                                        className="font-medium text-xs px-2.5 py-1 bg-primary/10 border-primary/30 text-center"
+                                        className="font-medium text-[10px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 bg-primary/10 border-primary/30 text-center truncate max-w-full"
                                       >
-                                        {displayLabel} &nbsp;
-                                        <span className="text-muted-foreground">and</span> &nbsp; <Users className="w-3 h-3 mr-1" />
+                                        <span className="truncate">{displayLabel}</span>
+                                        <span className="text-muted-foreground shrink-0"> +</span>
+                                        <Users className="w-2.5 h-2.5 sm:w-3 sm:h-3 ml-0.5 shrink-0 inline" />
                                       </Badge>
                                     </div>
                                   </div>
                                 ) : (
                                   <div className="flex justify-center">
-                                    <Badge className="font-semibold text-sm px-3 py-1.5 bg-primary text-primary-foreground">
+                                    <Badge className="font-semibold text-xs sm:text-sm px-2 sm:px-3 py-0.5 sm:py-1.5 bg-primary text-primary-foreground">
                                       {displayLabel}
                                     </Badge>
                                   </div>
@@ -868,7 +880,7 @@ export function ResultsManagementClient({
                                       currentProgramme.stats?.status ===
                                         "partial-published"
                                         ? "Locked"
-                                        : "Points"
+                                        : "Pts"
                                     }
                                           value={currentPoints}
                                     disabled={
@@ -881,7 +893,7 @@ export function ResultsManagementClient({
                                       handleScoreChange(teamId, e.target.value)
                                     }
                                     className={cn(
-                                      "text-center font-mono font-semibold h-10 text-base transition-all",
+                                      "text-center font-mono font-semibold h-9 sm:h-10 text-sm sm:text-base transition-all touch-manipulation min-h-[36px]",
                                       isFilled && "ring-2 ring-primary/20",
                                       (currentProgramme.stats?.status ===
                                         "published" ||
@@ -895,14 +907,14 @@ export function ResultsManagementClient({
                                     "published" ||
                                     currentProgramme.stats?.status ===
                                       "partial-published") && (
-                                    <Lock className="w-3 h-3 text-muted-foreground/50 absolute top-3 right-2" />
+                                    <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-muted-foreground/50 absolute top-1/2 -translate-y-1/2 right-2" />
                                   )}
                                 </div>
                               </div>
 
                               {isFilled && (
-                                <div className="absolute top-2 right-2">
-                                  <Check className="w-4 h-4 text-primary" />
+                                <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2">
+                                  <Check className="w-3 h-3 sm:w-4 sm:h-4 text-primary" />
                                 </div>
                               )}
                             </div>
@@ -912,21 +924,87 @@ export function ResultsManagementClient({
                     </div>
 
                     {hasAnyPoints && (
-                      <div className="space-y-4 pt-2 border-t mt-4">
+                      <div className="space-y-3 sm:space-y-4 pt-2 border-t mt-3 sm:mt-4">
                         <Accordion type="single" collapsible className="w-full border rounded-lg bg-muted/20">
                           <AccordionItem value="preview" className="border-0">
-                            <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 rounded-t-lg data-[state=open]:rounded-b-none">
-                              <span className="flex items-center gap-2 font-medium text-sm">
-                                <Eye className="w-4 h-4 text-primary" />
+                            <AccordionTrigger className="px-2.5 sm:px-4 py-2 sm:py-3 hover:no-underline hover:bg-muted/30 rounded-t-lg data-[state=open]:rounded-b-none text-left">
+                              <span className="flex items-center gap-1.5 sm:gap-2 font-medium text-xs sm:text-sm">
+                                <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary shrink-0" />
                                 Preview marks
                               </span>
-                              <Badge variant="secondary" className="text-xs font-normal">
-                                {groupedPreviewResults.length} entries
+                              <Badge variant="secondary" className="text-[10px] sm:text-xs font-normal shrink-0">
+                                {groupedPreviewResults.length}
                               </Badge>
                             </AccordionTrigger>
                             <AccordionContent className="px-0 pb-0 pt-0">
-                              <div className="border-t overflow-hidden max-h-56 overflow-y-auto">
-                                <Table>
+                              {/* Mobile: compact cards */}
+                              <div className="md:hidden border-t divide-y max-h-40 overflow-y-auto">
+                                {groupedPreviewResults.map((result, index) => (
+                                  <div
+                                    key={result.teamId}
+                                    className={cn(
+                                      "flex items-center justify-between gap-2 p-2 sm:p-3",
+                                      index < 3 && "bg-primary/5",
+                                    )}
+                                  >
+                                    <div className="min-w-0 flex-1 flex items-center gap-2">
+                                      {currentProgramme.type === "GROUP" ? (
+                                        <Badge variant="outline" className="font-semibold text-xs shrink-0">
+                                          <Users className="w-3 h-3 mr-1" />
+                                          <span className="truncate">{result.displayName}</span>
+                                        </Badge>
+                                      ) : (
+                                        <Badge className="font-semibold bg-primary text-xs">
+                                          #{result.chestNumber}
+                                        </Badge>
+                                      )}
+                                      <span className="font-mono font-semibold text-primary text-sm">
+                                        {result.points}
+                                      </span>
+                                      <Badge
+                                        className={cn(
+                                          getGradeBadgeColor(result.grade),
+                                          "font-semibold text-xs",
+                                        )}
+                                      >
+                                        {result.grade}
+                                      </Badge>
+                                      <Badge
+                                        variant={index < 3 ? "default" : "outline"}
+                                        className={cn(
+                                          "font-mono font-semibold text-xs shrink-0",
+                                          index === 0 && "bg-yellow-500 text-yellow-950",
+                                          index === 1 && "bg-gray-400 text-gray-950",
+                                          index === 2 && "bg-orange-600 text-orange-950",
+                                        )}
+                                      >
+                                        #{result.position}
+                                      </Badge>
+                                    </div>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10"
+                                      onClick={() =>
+                                        handleDeleteResult(
+                                          result.allResultIds,
+                                          result.teamId,
+                                        )
+                                      }
+                                      disabled={
+                                        isPending ||
+                                        currentProgramme.stats?.status === "published" ||
+                                        currentProgramme.stats?.status === "partial-published"
+                                      }
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                              {/* Desktop: table */}
+                              <div className="hidden md:block border-t overflow-x-auto overflow-y-auto max-h-56">
+                                <Table className="min-w-[320px]">
                                   <TableHeader>
                                     <TableRow className="bg-muted/50">
                                       <TableHead className="font-semibold">
@@ -1022,7 +1100,7 @@ export function ResultsManagementClient({
                             isPending ||
                             currentProgramme.stats?.status === "published"
                           }
-                          className="w-full h-12 text-base font-semibold gap-2"
+                          className="w-full h-10 sm:h-12 text-xs sm:text-base font-semibold gap-2 touch-manipulation"
                           size="lg"
                         >
                           {currentProgramme.stats?.status === "published" ? (
@@ -1049,112 +1127,121 @@ export function ResultsManagementClient({
         </div>
       </div>
 
-      {/* Filters header (same pattern as other dashboard pages) */}
-      <Card>
-        <CardHeader className="p-3 border-b bg-muted/5">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-2 mr-auto">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-medium">
-                Ready: {summaryStats.ready}
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium">
-                <CheckCircle2 className="w-3 h-3" />
-                Published: {summaryStats.published}
-              </span>
-              {summaryStats.pending > 0 && (
-                <Dialog>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-medium overflow-hidden">
-                    <span className="pl-2.5 pr-1.5 py-1 flex items-center gap-1.5">
-                      <AlertCircle className="w-3 h-3" />
-                      Pending: {pendingProgrammes.length}
-                    </span>
-                    <DialogTrigger asChild>
-                      <button
-                        type="button"
-                        className="flex items-center justify-center pr-2.5 py-1 h-full hover:bg-orange-200 dark:hover:bg-orange-800/50 transition-colors"
-                        aria-label="View pending programmes"
-                      >
-                        <Eye className="w-3 h-3" />
-                      </button>
-                    </DialogTrigger>
+      {/* Filter bar – highlighted, distinct from marks cards (same as Results page) */}
+      <div className="rounded-xl border-2 border-primary/20 bg-primary/5 shadow-sm">
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-primary/10 bg-primary/10">
+          <Filter className="h-4 w-4 text-primary shrink-0" />
+          <span className="text-sm font-semibold text-foreground">Filters</span>
+          <span className="text-xs text-muted-foreground ml-1">
+            ({filteredTableProgrammes.length} programme{filteredTableProgrammes.length !== 1 ? "s" : ""})
+          </span>
+        </div>
+        <div className="p-3 sm:p-4 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+          {/* Summary stats: wrap on mobile */}
+          <div className="flex flex-wrap items-center justify-between md:justify-start gap-2 ">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 text-xs font-medium">
+              Ready: {summaryStats.ready}
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium">
+              <CheckCircle2 className="w-3 h-3" />
+              Published: {summaryStats.published}
+            </span>
+            {summaryStats.pending > 0 && (
+              <Dialog>
+                <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-medium overflow-hidden">
+                  <span className="pl-2.5 pr-1.5 py-1 flex items-center gap-1.5">
+                    <AlertCircle className="w-3 h-3" />
+                    Pending: {pendingProgrammes.length}
                   </span>
-                  <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                      <DialogTitle className="flex items-center gap-2">
-                        <AlertCircle className="w-5 h-5 text-orange-600" />
-                        Pending Programmes
-                      </DialogTitle>
-                      <DialogDescription>
-                        These programmes have assignments but are missing
-                        scores for some or all participants.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="max-h-[60vh] overflow-y-auto space-y-2 mt-4 pr-2">
-                      {pendingProgrammes.map((prog) => (
-                        <div
-                          key={prog.id}
-                          className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors gap-3"
-                        >
-                          <div>
-                            <p className="font-medium text-sm">{prog.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {prog.category.name}
-                            </p>
-                          </div>
-                          <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
-                            <div className="flex flex-col items-end">
-                              <span
-                                className={cn(
-                                  "text-xs font-mono font-medium",
-                                  prog.stats.enteredScores > 0
-                                    ? "text-orange-600"
-                                    : "text-muted-foreground",
-                                )}
-                              >
-                                {prog.stats.enteredScores}/
-                                {prog.stats.totalParticipants}
-                              </span>
-                              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                                Scored
-                              </span>
-                            </div>
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                handleEditResult(prog);
-                                document.dispatchEvent(
-                                  new KeyboardEvent("keydown", {
-                                    key: "Escape",
-                                  }),
-                                );
-                              }}
-                            >
-                              Enter Marks
-                            </Button>
-                          </div>
+                  <DialogTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex items-center justify-center pr-2.5 py-1 h-full hover:bg-orange-200 dark:hover:bg-orange-800/50 transition-colors"
+                      aria-label="View pending programmes"
+                    >
+                      <Eye className="w-3 h-3" />
+                    </button>
+                  </DialogTrigger>
+                </span>
+                <DialogContent className="w-[calc(100%-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <AlertCircle className="w-5 h-5 text-orange-600" />
+                      Pending Programmes
+                    </DialogTitle>
+                    <DialogDescription>
+                      These programmes have assignments but are missing
+                      scores for some or all participants.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="max-h-[60vh] overflow-y-auto space-y-2 mt-4 pr-2">
+                    {pendingProgrammes.map((prog) => (
+                      <div
+                        key={prog.id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors gap-3"
+                      >
+                        <div>
+                          <p className="font-medium text-sm">{prog.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {prog.category.name}
+                          </p>
                         </div>
-                      ))}
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              )}
-            </div>
-            <div className="relative w-full sm:w-48">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                        <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
+                          <div className="flex flex-col items-end">
+                            <span
+                              className={cn(
+                                "text-xs font-mono font-medium",
+                                prog.stats.enteredScores > 0
+                                  ? "text-orange-600"
+                                  : "text-muted-foreground",
+                              )}
+                            >
+                              {prog.stats.enteredScores}/
+                              {prog.stats.totalParticipants}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                              Scored
+                            </span>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              handleEditResult(prog);
+                              document.dispatchEvent(
+                                new KeyboardEvent("keydown", {
+                                  key: "Escape",
+                                }),
+                              );
+                            }}
+                          >
+                            Enter Marks
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
+          {/* Filter row: flex-col on mobile, full width controls */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+            <div className="relative w-full sm:w-48 order-first">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
               <Input
-                placeholder="Search..."
+                placeholder="Search programme or category..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-7 h-8 text-xs"
+                className="pl-8 h-9 text-sm w-full"
                 suppressHydrationWarning
               />
             </div>
             <Select value={filterCategory} onValueChange={setFilterCategory}>
-              <SelectTrigger className="h-8 text-xs w-[130px]">
+              <SelectTrigger className="h-9 w-full sm:w-[140px] text-sm">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="all">All categories</SelectItem>
                 {categories.map((cat) => (
                   <SelectItem key={cat.id} value={cat.id}>
                     {cat.name}
@@ -1163,11 +1250,11 @@ export function ResultsManagementClient({
               </SelectContent>
             </Select>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="h-8 text-xs w-[110px]">
+              <SelectTrigger className="h-9 w-full sm:w-[120px] text-sm">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Any</SelectItem>
+                <SelectItem value="all">Any status</SelectItem>
                 <SelectItem value="published">Published</SelectItem>
                 <SelectItem value="ready">Ready</SelectItem>
                 <SelectItem value="in-progress">Partial</SelectItem>
@@ -1177,11 +1264,11 @@ export function ResultsManagementClient({
               value={filterProgrammeType}
               onValueChange={setFilterProgrammeType}
             >
-              <SelectTrigger className="h-8 text-xs w-[100px]">
+              <SelectTrigger className="h-9 w-full sm:w-[110px] text-sm">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Type</SelectItem>
+                <SelectItem value="all">All types</SelectItem>
                 <SelectItem value="INDIVIDUAL">Individual</SelectItem>
                 <SelectItem value="GROUP">Team</SelectItem>
               </SelectContent>
@@ -1189,29 +1276,23 @@ export function ResultsManagementClient({
             {hasTableFilters && (
               <Button
                 variant="ghost"
-                size="icon"
+                size="sm"
                 onClick={clearFilters}
-                className="h-8 w-8"
+                className="h-9 w-full sm:w-9 shrink-0"
                 title="Clear filters"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-3.5 h-3.5 sm:mr-0" />
+                <span className="sm:hidden">Clear filters</span>
               </Button>
             )}
           </div>
-        </CardHeader>
-      </Card>
+        </div>
+      </div>
 
-      {/* Marks cards list (independent of filter card) */}
+      {/* Marks / programme cards */}
       {filteredTableProgrammes.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredTableProgrammes.map((prog) => {
-            const progressPct =
-              prog.stats.totalParticipants > 0
-                ? Math.round(
-                    (prog.stats.enteredScores / prog.stats.totalParticipants) *
-                      100,
-                  )
-                : 0;
             const isPublished =
               prog.stats.status === "published" ||
               prog.stats.status === "partial-published";
@@ -1220,103 +1301,101 @@ export function ResultsManagementClient({
               <Card
                 key={prog.id}
                 className={cn(
-                  "overflow-hidden border transition-all hover:border-primary/30 hover:shadow-sm",
-                  viewProgramme?.id === prog.id && "ring-2 ring-primary border-primary/50",
+                  "overflow-hidden rounded-xl border border-border/80 transition-all hover:border-primary/25 hover:shadow-md active:scale-[0.99]",
+                  viewProgramme?.id === prog.id && "ring-2 ring-primary border-primary/50 shadow-md",
                 )}
               >
-                {/* Card header: category (left), status badge (right), actions (dropdown) */}
-                <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between gap-2 bg-muted/30 border-b">
-                    <span className="m-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">
-                      {prog.category.name}
-                    </span>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 shrink-0 rounded-full text-muted-foreground hover:bg-background border hover:text-foreground"
-                          aria-label="Actions"
-                        >
-                          <MoreVertical className="h-2 w-2" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
+                {/* Compact category strip */}
+                <div className="flex items-center justify-between gap-2 px-3 py-2 bg-muted/30 border-b border-border/50">
+                  <span className="text-xs font-medium text-muted-foreground truncate">
+                    {prog.category.name}
+                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0 rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
+                        aria-label="Actions"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem
+                        onClick={() => setViewProgramme(prog)}
+                        className="gap-2 cursor-pointer"
+                      >
+                        <Eye className="h-4 w-4" />
+                        View details
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleEditResult(prog)}
+                        className="gap-2 cursor-pointer"
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Enter marks
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      {isPublished ? (
                         <DropdownMenuItem
-                          onClick={() => setViewProgramme(prog)}
-                          className="gap-2 cursor-pointer"
+                          onClick={() => handlePublishProgramme(prog.id, false)}
+                          disabled={isPending}
+                          className="gap-2 cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/30"
                         >
-                          <Eye className="h-4 w-4" />
-                          View details
+                          {publishingProgrammeId === prog.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Lock className="h-4 w-4" />
+                          )}
+                          Unpublish
                         </DropdownMenuItem>
+                      ) : (
                         <DropdownMenuItem
-                          onClick={() => handleEditResult(prog)}
-                          className="gap-2 cursor-pointer"
+                          onClick={() => handlePublishProgramme(prog.id, true)}
+                          disabled={isPending || prog.stats.enteredScores === 0}
+                          className="gap-2 cursor-pointer text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50 dark:focus:bg-emerald-950/30"
                         >
-                          <Pencil className="h-4 w-4" />
-                          Enter marks
+                          {publishingProgrammeId === prog.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="h-4 w-4" />
+                          )}
+                          Publish
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        {isPublished ? (
-                          <DropdownMenuItem
-                            onClick={() => handlePublishProgramme(prog.id, false)}
-                            disabled={isPending}
-                            className="gap-2 cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/30"
-                          >
-                            {publishingProgrammeId === prog.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Lock className="h-4 w-4" />
-                            )}
-                            Unpublish
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem
-                            onClick={() => handlePublishProgramme(prog.id, true)}
-                            disabled={isPending || prog.stats.enteredScores === 0}
-                            className="gap-2 cursor-pointer text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50 dark:focus:bg-emerald-950/30"
-                          >
-                            {publishingProgrammeId === prog.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <CheckCircle2 className="h-4 w-4" />
-                            )}
-                            Publish
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                </CardHeader>
-                <CardContent className="p-4 pt-3">
-                  <div className="flex items-center justify-between gap-1"> 
-                  <h3 className="font-semibold text-sm leading-snug flex items-center gap-1 line-clamp-2 text-foreground">
-                    {prog.name} &nbsp;
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <CardContent className="p-4">
+                  <h3 className="font-semibold text-base leading-snug flex items-center gap-1.5 line-clamp-2 text-foreground mb-2">
+                    {prog.name}
                     {prog.type === "GROUP" && (
-                      <Users className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
                     )}
                   </h3>
-                  <span className="shrink-0">
-                      {prog.stats.status === "published" ? (
-                        <Badge className="bg-emerald-600 dark:bg-emerald-700 text-white text-[10px] px-1.5 py-0 font-medium">
-                          Published
-                        </Badge>
-                      ) : prog.stats.status === "partial-published" ? (
-                        <Badge className="bg-amber-500 dark:bg-amber-600 text-white text-[10px] px-1.5 py-0 font-medium">
-                          Partial
-                        </Badge>
-                      ) : prog.stats.status === "ready" ? (
-                        <Badge className="bg-sky-600 dark:bg-sky-700 text-white text-[10px] px-1.5 py-0 font-medium">
-                          Ready
-                        </Badge>
-                      ) : prog.stats.status === "in-progress" ? (
-                        <Badge className="bg-orange-500 dark:bg-orange-600 text-white text-[10px] px-1.5 py-0 font-medium">
-                          In progress
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-medium text-muted-foreground">
-                          Not started
-                        </Badge>
-                      )}
-                    </span>
+                  <div className="flex items-center justify-between gap-2">
+                    {prog.stats.status === "published" ? (
+                      <Badge className="bg-emerald-600 dark:bg-emerald-700 text-white text-xs font-medium">
+                        Published
+                      </Badge>
+                    ) : prog.stats.status === "partial-published" ? (
+                      <Badge className="bg-amber-500 dark:bg-amber-600 text-white text-xs font-medium">
+                        Partial
+                      </Badge>
+                    ) : prog.stats.status === "ready" ? (
+                      <Badge className="bg-sky-600 dark:bg-sky-700 text-white text-xs font-medium">
+                        Ready
+                      </Badge>
+                    ) : prog.stats.status === "in-progress" ? (
+                      <Badge className="bg-orange-500 dark:bg-orange-600 text-white text-xs font-medium">
+                        In progress
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs font-medium text-muted-foreground">
+                        Not started
+                      </Badge>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -1332,76 +1411,62 @@ export function ResultsManagementClient({
         </Card>
       )}
 
-      {/* View details modal */}
+      {/* View details modal – responsive, mobile cards + desktop table */}
       <Dialog
         open={!!viewProgramme}
         onOpenChange={(open) => !open && setViewProgramme(null)}
       >
-        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Medal className="w-5 h-5 text-primary" />
+        <DialogContent className="w-[calc(100%-1rem)] sm:w-[calc(100%-2rem)] max-w-4xl max-h-[90dvh] sm:max-h-[85vh] overflow-y-auto p-3 sm:p-6 rounded-lg sm:rounded-xl text-left">
+          <DialogHeader className="text-left pr-8 sm:pr-0 space-y-1.5">
+            <DialogTitle className="flex items-center gap-2 text-base sm:text-xl truncate">
+              <Medal className="w-5 h-5 shrink-0 text-primary" />
               {viewProgramme?.name}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-sm text-muted-foreground">
               {viewProgramme?.category.name} · {viewProgramme?.type} programme
             </DialogDescription>
           </DialogHeader>
-          <div className="mt-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-16">Rank</TableHead>
-                  <TableHead>
-                    {viewProgramme?.type === "GROUP" ? "Team" : "Chest & Name"}
-                  </TableHead>
-                  <TableHead className="text-center">Grade</TableHead>
-                  <TableHead className="text-center">Points</TableHead>
-                  <TableHead>Remarks</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {viewDetailsRows.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center py-8 text-muted-foreground"
-                    >
-                      No results for this programme.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  viewDetailsRows.map((row) => (
-                    <TableRow key={row.assignmentId}>
-                      <TableCell className="font-semibold">
-                        {row.position != null && row.position > 0 ? (
-                          <div className="flex items-center gap-1">
-                            {row.position === 1 && (
-                              <span className="text-yellow-500">🥇</span>
-                            )}
-                            {row.position === 2 && (
-                              <span className="text-gray-400">🥈</span>
-                            )}
-                            {row.position === 3 && (
-                              <span className="text-amber-700">🥉</span>
-                            )}
-                            <span>{row.position}</span>
-                          </div>
-                        ) : (
-                          "-"
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium">{row.displayName}</div>
+          {viewDetailsRows.length === 0 ? (
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              No results for this programme.
+            </div>
+          ) : (
+            <>
+              {/* Mobile: result cards */}
+              <div className="mt-4 space-y-3 md:hidden">
+                {viewDetailsRows.map((row, index) => (
+                  <div
+                    key={row.assignmentId}
+                    className={cn(
+                      "rounded-xl border p-3 sm:p-4 bg-card",
+                      index < 3 && "border-primary/20 bg-primary/5",
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium text-foreground truncate">
+                          {row.displayName}
+                        </div>
                         {(row.chestNumber || row.subText) && (
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-xs text-muted-foreground truncate">
                             {row.chestNumber} {row.subText}
                           </div>
                         )}
-                      </TableCell>
-                      <TableCell className="text-center">
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {row.position != null && row.position > 0 && (
+                          <span
+                            className={cn(
+                              "text-lg font-bold tabular-nums",
+                              row.position === 1 && "text-yellow-600",
+                              row.position === 2 && "text-gray-500",
+                              row.position === 3 && "text-amber-700",
+                            )}
+                          >
+                            #{row.position}
+                          </span>
+                        )}
                         <Badge
-                          variant="outline"
                           className={cn(
                             "font-mono font-semibold",
                             getGradeBadgeColor(row.grade ?? ""),
@@ -1409,21 +1474,90 @@ export function ResultsManagementClient({
                         >
                           {row.grade}
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="secondary" className="font-mono font-semibold">
-                          {row.points} pts
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                        {row.remarks || "-"}
-                      </TableCell>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <Badge variant="secondary" className="font-mono font-semibold">
+                        {row.points} pts
+                      </Badge>
+                      {row.remarks && (
+                        <span className="text-muted-foreground text-xs line-clamp-2">
+                          {row.remarks}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* Desktop: table */}
+              <div className="mt-4 hidden md:block overflow-x-auto -mx-2 px-2">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-16">Rank</TableHead>
+                      <TableHead>
+                        {viewProgramme?.type === "GROUP" ? "Team" : "Chest & Name"}
+                      </TableHead>
+                      <TableHead className="text-center">Grade</TableHead>
+                      <TableHead className="text-center">Points</TableHead>
+                      <TableHead>Remarks</TableHead>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  </TableHeader>
+                  <TableBody>
+                    {viewDetailsRows.map((row) => (
+                      <TableRow key={row.assignmentId}>
+                        <TableCell className="font-semibold">
+                          {row.position != null && row.position > 0 ? (
+                            <div className="flex items-center gap-1">
+                              {row.position === 1 && (
+                                <span className="text-yellow-500">🥇</span>
+                              )}
+                              {row.position === 2 && (
+                                <span className="text-gray-400">🥈</span>
+                              )}
+                              {row.position === 3 && (
+                                <span className="text-amber-700">🥉</span>
+                              )}
+                              <span>{row.position}</span>
+                            </div>
+                          ) : (
+                            "-"
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">{row.displayName}</div>
+                          {(row.chestNumber || row.subText) && (
+                            <div className="text-xs text-muted-foreground">
+                              {row.chestNumber} {row.subText}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "font-mono font-semibold",
+                              getGradeBadgeColor(row.grade ?? ""),
+                            )}
+                          >
+                            {row.grade}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="secondary" className="font-mono font-semibold">
+                            {row.points} pts
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                          {row.remarks || "-"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
