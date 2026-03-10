@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { queryKeys } from "@/lib/query-keys";
 import {
   createStudentWithServiceAction,
   deleteStudentWithServiceAction,
@@ -7,12 +8,18 @@ import {
   updateStudentAction,
 } from "@/server/actions/student.actions";
 
+const STALE_TIME_MS = 2 * 60 * 1000; // 2 minutes
+const GC_TIME_MS = 5 * 60 * 1000; // 5 minutes
+
 export function useStudents(festivalId: string) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["students", festivalId],
+    queryKey: queryKeys.students.list(festivalId),
     queryFn: () => getStudentsAction(festivalId),
+    staleTime: STALE_TIME_MS,
+    gcTime: GC_TIME_MS,
+    enabled: !!festivalId,
   });
 
   const createMutation = useMutation({
@@ -20,7 +27,7 @@ export function useStudents(festivalId: string) {
       return createStudentWithServiceAction(festivalId, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["students", festivalId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.list(festivalId) });
       toast.success("Student created successfully");
     },
     onError: (error: any) => {
@@ -33,7 +40,7 @@ export function useStudents(festivalId: string) {
       return updateStudentAction(festivalId, id, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["students", festivalId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.list(festivalId) });
       toast.success("Student updated successfully");
     },
     onError: (error: any) => {
@@ -46,7 +53,7 @@ export function useStudents(festivalId: string) {
       return deleteStudentWithServiceAction(festivalId, id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["students", festivalId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.list(festivalId) });
       toast.success("Student deleted successfully");
     },
     onError: (error: any) => {
