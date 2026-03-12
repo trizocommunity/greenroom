@@ -1,4 +1,4 @@
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -40,16 +40,6 @@ export default async function AdminFestivalDetailPage({
             </Badge>
           </p>
         </div>
-        <Button variant="outline" asChild>
-          <a
-            href={`/${festival.slug}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <ExternalLink className="mr-2 h-4 w-4" />
-            Public Site
-          </a>
-        </Button>
       </div>
 
       <Separator />

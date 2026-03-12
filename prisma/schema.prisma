@@ -160,7 +160,10 @@ model Festival {
 
   status   FestivalStatus @default(DRAFT)
   isLocked Boolean        @default(true)
-  
+
+  // Public website visibility (Festival Live)
+  publicSiteEnabled Boolean @default(false)
+
   // Tier & Usage
   tier        Tier @default(STANDARD)
   tierLabel   String @default("Standard")
@@ -196,6 +199,8 @@ model Festival {
   stages        Stage[]
   supportTickets SupportTicket[]
   results       Result[]
+  galleryImages FestivalGalleryImage[]
+  newsPosts     FestivalNews[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -203,6 +208,32 @@ model Festival {
   members       FestivalMember[]
   
   @@map("festival")
+}
+
+model FestivalGalleryImage {
+  id         String   @id @default(uuid())
+  festivalId String
+  festival   Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  url        String
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("festival_gallery_image")
+}
+
+model FestivalNews {
+  id         String   @id @default(uuid())
+  festivalId String
+  festival   Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  title      String
+  content    String   // Description / body
+  imageUrl   String?
+  publishedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("festival_news")
 }
 
 enum FestivalRole {

@@ -3,7 +3,6 @@
 import { format } from "date-fns";
 import {
   Calendar,
-  Globe,
   LayoutDashboard,
   MoreVertical,
   Pencil,
@@ -105,16 +104,6 @@ export function AdminFestivalCard({ festival }: AdminFestivalCardProps) {
                 >
                   <LayoutDashboard className="mr-2 h-4 w-4" />
                   Open Dashboard
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link
-                  href={`/${festival.slug}`}
-                  target="_blank"
-                  className="rounded-md cursor-pointer"
-                >
-                  <Globe className="mr-2 h-4 w-4" />
-                  View Public Site
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />

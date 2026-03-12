@@ -275,62 +275,55 @@ export default async function OverviewWidgets({
           <Card className="flex flex-col">
             <CardHeader>
               <CardTitle>Recent Results</CardTitle>
-              <CardDescription>Latest published scores</CardDescription>
+              <CardDescription>
+                Programme, category and date
+              </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col flex-1">
-              <div className="space-y-4 pr-2">
-                {overviewData.recentResults.map((result) => {
-                  const assigneeName =
-                    result.assignment.student?.name ||
-                    result.assignment.group?.name ||
-                    "Unknown";
-                  return (
-                    <div
-                      key={result.id}
-                      className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0"
-                    >
-                      <div>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <p className="text-sm font-medium leading-none truncate max-w-[150px]">
-                              {assigneeName}
-                            </p>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{assigneeName}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                        <p className="text-xs text-muted-foreground mt-1 truncate max-w-[150px]">
-                          {result.programme.name}
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0 ml-4">
-                        <p className="text-sm font-medium">
-                          {result.grade
-                            ? result.grade
-                            : result.position
-                              ? `Rank: ${result.position}`
-                              : `${result.points} pts`}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(result.createdAt), "dd/MM/yyyy")}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-                {overviewData.recentResults.length === 0 && (
+              <div className="space-y-3 pr-2">
+                {overviewData.recentResultsByProgramme.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     No results found.
                   </p>
+                ) : (
+                  overviewData.recentResultsByProgramme.map(({ programme }) => (
+                    <div
+                      key={programme.id}
+                      className="flex items-center justify-between gap-2 border-b pb-2 last:border-0 last:pb-0 text-sm"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <p className="font-medium truncate">
+                              {programme.name}
+                            </p>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{programme.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {programme.category.name}
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {programme.category.name}
+                        </p>
+                      </div>
+                      <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
+                        {programme.latestResultAt
+                          ? format(new Date(programme.latestResultAt), "dd/MM/yyyy")
+                          : "—"}
+                      </span>
+                    </div>
+                  ))
                 )}
               </div>
               <div className="pt-4 border-t mt-auto">
                 <Link
-                  href={`/dashboard/${slug}/event-works/marks`}
+                  href={`/dashboard/${slug}/event-works/results`}
                   className="w-full flex items-center justify-center py-2 text-sm border rounded-md hover:bg-muted/50 transition-colors"
                 >
-                  View All Marks <ArrowRight className="ml-2 h-4 w-4" />
+                  View All Results <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </div>
             </CardContent>

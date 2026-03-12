@@ -1,8 +1,6 @@
 "use client";
 
 import {
-  ExternalLink,
-  Eye,
   MoreHorizontal,
   Pencil,
   Settings,
@@ -48,13 +46,6 @@ export function FestivalsTable() {
   );
 
   const router = useRouter();
-
-  const handleView = (festival: Festival) => {
-    if (!festival.slug) return;
-    // Public Site: /festival-slug
-    const url = `${window.location.origin}/${festival.slug}`;
-    window.open(url, "_blank");
-  };
 
   const handleManage = (festival: Festival) => {
     // Navigate directly to festival dashboard
@@ -125,9 +116,6 @@ export function FestivalsTable() {
                         }
                       >
                         <Settings className="mr-2 h-4 w-4" /> Manage in Admin
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleView(festival)}>
-                        <Eye className="mr-2 h-4 w-4" /> View Site
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleManage(festival)}>
                         <Settings className="mr-2 h-4 w-4" /> Dashboard

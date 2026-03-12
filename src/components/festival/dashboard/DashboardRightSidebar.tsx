@@ -1,7 +1,7 @@
 "use client";
 
 import type { FestivalStatus } from "@prisma/client";
-import { ExternalLink, Settings, User } from "lucide-react";
+import { Settings, User } from "lucide-react";
 import Link from "next/link";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { LimitationCard } from "@/components/festival/dashboard/LimitationCard";
@@ -111,14 +111,6 @@ export function DashboardRightSidebar({
               >
                 <Settings className="h-4 w-4" />
                 <span>Settings</span>
-              </Link>
-              <Link
-                href={`/${festivalSlug}`}
-                className="flex items-center gap-2 text-sm p-2 hover:bg-accent rounded-md transition-colors"
-                target="_blank"
-              >
-                <ExternalLink className="h-4 w-4" />
-                <span>Public View</span>
               </Link>
             </div>
 

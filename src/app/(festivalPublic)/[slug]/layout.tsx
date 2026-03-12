@@ -31,6 +31,11 @@ export default async function FestivalLayout({
     notFound(); // As per product definition: "After expiry... permanently deleted"
   }
 
+  // Public site disabled: return 404 so URL is not accessible
+  if (!festival.publicSiteEnabled) {
+    notFound();
+  }
+
   // Check if user is logged in
   const session = await getSession();
   const isLoggedIn = !!session?.userId;

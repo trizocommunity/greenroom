@@ -2,7 +2,6 @@
 
 import {
   ArrowRight,
-  ExternalLink,
   LayoutDashboard,
   Pencil,
   Sparkles,
@@ -97,17 +96,6 @@ export function FestivalsTab() {
                       <Link href={`/dashboard/${festival.slug}`}>
                         Open Dashboard
                         <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-                    </Button>
-                    <Button
-                      asChild
-                      variant="outline"
-                      size="lg"
-                      className="bg-black/20 border-white/10 hover:bg-white/5 h-12"
-                    >
-                      <Link href={`/${festival.slug}`} target="_blank">
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Public Site
                       </Link>
                     </Button>
                     <Button

@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, LayoutDashboard, Lock } from "lucide-react";
+import { LayoutDashboard, Lock } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,18 +43,6 @@ export function JoinedFestivalCard({ festival }: JoinedFestivalCardProps) {
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="flex-1 sm:flex-none border-primary/20 hover:bg-primary/5"
-          >
-            <Link href={`/${festival.slug}`} target="_blank">
-              <ExternalLink className="mr-2 h-4 w-4" />
-              Public Site
-            </Link>
-          </Button>
-
           {isActive ? (
             <Button asChild size="sm" className="flex-1 sm:flex-none shadow-sm">
               <Link href={`/dashboard/${festival.slug}`}>

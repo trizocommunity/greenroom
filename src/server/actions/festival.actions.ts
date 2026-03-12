@@ -5,6 +5,7 @@ import { TIER_CONFIG } from "@/config/pricing";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
+import { validatePublicSiteRequirements } from "@/lib/festival-public-validation";
 
 import {
   type CreateFestivalInput,
@@ -166,6 +167,74 @@ export async function updateFestivalSettingsAction(
 
     revalidatePath(`/dashboard/${festival.slug}/settings`);
     return { success: true, data: updated };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
+
+export async function setPublicSiteEnabledAction(
+  festivalId: string,
+  enabled: boolean,
+) {
+  try {
+    const session = await getSession();
+    if (!session?.userId) {
+      throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+    }
+
+    const festival = await prisma.festival.findUnique({
+      where: { id: festivalId },
+      include: {
+        members: {
+          where: { userId: session.userId, isActive: true },
+        },
+        _count: { select: { galleryImages: true } },
+        newsPosts: {
+          select: { title: true, content: true, imageUrl: true },
+        },
+      },
+    });
+
+    const isOwner = festival?.ownerId === session.userId;
+    const isAdmin = festival?.members.some((m) => m.role === "ADMIN");
+    const isSuperAdmin = session.role === "SUPER_ADMIN";
+
+    if (!festival || (!isOwner && !isAdmin && !isSuperAdmin)) {
+      throw new AppError(ERROR_MESSAGES.FORBIDDEN);
+    }
+
+    if (enabled) {
+      const validation = validatePublicSiteRequirements({
+        name: festival.name,
+        description: festival.description,
+        branding: festival.branding,
+        orgName: festival.orgName,
+        orgDescription: festival.orgDescription,
+        orgWebsite: festival.orgWebsite,
+        orgLocation: festival.orgLocation,
+        tier: festival.tier,
+        galleryImageCount: festival._count?.galleryImages ?? 0,
+        newsPosts: (festival.newsPosts ?? []).map((p) => ({
+          title: p.title,
+          content: p.content,
+          imageUrl: p.imageUrl,
+        })),
+      });
+      if (!validation.canEnable) {
+        throw new AppError(
+          validation.errors.join(" ") || "Complete required content before enabling the public site.",
+        );
+      }
+    }
+
+    await prisma.festival.update({
+      where: { id: festivalId },
+      data: { publicSiteEnabled: enabled },
+    });
+
+    revalidatePath(`/dashboard/${festival.slug}/festival-live`);
+    revalidatePath(`/dashboard/${festival.slug}`);
+    return { success: true };
   } catch (error) {
     return handleActionError(error);
   }
