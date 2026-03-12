@@ -37,7 +37,7 @@ interface LeaderboardClientProps {
   };
   results: any[];
   publishedStandings?: any[];
-  categories?: { id: string; name: string }[];
+  categories?: { id: string; name: string; type?: string }[];
   groups?: { id: string; name: string }[];
   children?: React.ReactNode;
 }
@@ -100,22 +100,47 @@ export function LeaderboardClient({
   const studentStandings = useMemo(() => {
     const byStudent: Record<
       string,
-      { studentId: string; name: string; chestNumber: string | null; groupName: string | null; groupColor: string | null; points: number }
+      {
+        studentId: string;
+        name: string;
+        chestNumber: string | null;
+        groupName: string | null;
+        groupColor: string | null;
+        categoryName: string | null;
+        points: number;
+      }
     > = {};
 
     results.forEach((r) => {
       if (!r.isPublished || !r.assignment?.student) return;
-      if (studentFilterCategory !== "all" && r.programme?.categoryId !== studentFilterCategory) return;
-      if (studentFilterGroup !== "all" && r.assignment?.groupId !== studentFilterGroup) return;
+      // Filter by student's category (the category the student belongs to)
+      if (
+        studentFilterCategory !== "all" &&
+        r.assignment.student?.categoryId !== studentFilterCategory
+      )
+        return;
+      // Filter by student's group
+      if (studentFilterGroup !== "all" && r.assignment?.groupId !== studentFilterGroup)
+        return;
 
       const sid = r.assignment.student.id;
       const name = r.assignment.student.name ?? "Unknown";
       const chestNumber = r.assignment.student.chestNumber ?? null;
       const groupName = r.assignment.group?.name ?? null;
       const groupColor = r.assignment.group?.color ?? null;
+      // Each student has one category (from their profile)
+      const categoryName = r.assignment.student?.category?.name ?? null;
 
       if (!byStudent[sid]) {
-        byStudent[sid] = { studentId: sid, name, chestNumber, groupName, groupColor, points: 0 };
+        byStudent[sid] = {
+          studentId: sid,
+          name,
+          chestNumber,
+          groupName,
+          groupColor,
+          categoryName,
+          points: 0,
+        };
       }
       byStudent[sid].points += r.points ?? 0;
     });
@@ -338,11 +363,13 @@ export function LeaderboardClient({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All categories</SelectItem>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
+                  {categories
+                    .filter((c: { id: string; name: string; type?: string }) => c.type !== "GENERAL")
+                    .map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               <Select
@@ -379,6 +406,7 @@ export function LeaderboardClient({
               <TableRow>
                 <TableHead className="w-14 text-center">#</TableHead>
                 <TableHead>Student</TableHead>
+                <TableHead className="hidden sm:table-cell">Category</TableHead>
                 <TableHead className="hidden sm:table-cell">Group</TableHead>
                 <TableHead className="text-right w-24">Points</TableHead>
               </TableRow>
@@ -430,6 +458,9 @@ export function LeaderboardClient({
                       )}
                     </TableCell>
                     <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
+                      {row.categoryName ?? "—"}
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
                       <span className="flex items-center gap-2">
                         {row.groupName ? (
                           <>
@@ -454,7 +485,7 @@ export function LeaderboardClient({
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={4}
+                    colSpan={5}
                     className="h-24 text-center text-muted-foreground"
                   >
                     {hasStudentFilters

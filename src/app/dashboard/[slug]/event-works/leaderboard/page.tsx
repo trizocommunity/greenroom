@@ -21,7 +21,7 @@ export default async function TeamStatusPage({
         include: {
           assignment: {
             include: {
-              student: true,
+              student: { include: { category: true } },
               group: true,
             },
           },
