@@ -35,6 +35,14 @@ Go to **Settings** > **Environment Variables** in Vercel and add:
     *   Value: `https://yourdomain.com`
     *   *Used for system redirects.*
 
+*   **`DATABASE_URL`**:
+    *   Value: Supabase **connection pooler** URL (e.g. `postgres://user:password@aws-1-...pooler.supabase.com:6543/postgres?pgbouncer=true`).
+    *   *Used by the app at runtime via `src/lib/db.ts`.*
+
+*   **`DIRECT_URL`**:
+    *   Value: Supabase **direct** URL (e.g. `postgres://user:password@aws-1-...supabase.com:5432/postgres`).
+    *   *Used by Prisma migrations and seed via `prisma.config.ts` and `prisma/seed.ts`.*
+
 ## 4. Framework & Proxy
 
 *   The application uses Next.js 16.

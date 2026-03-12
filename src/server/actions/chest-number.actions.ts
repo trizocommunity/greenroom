@@ -400,7 +400,7 @@ export async function updateAllChestNumbers(
       // We parse number from end.
       const matches = student.chestNumber.match(/(\d+)$/);
       if (matches) {
-        const parsed = parseInt(matches[0]);
+        const parsed = parseInt(matches[0], 10);
         if (!Number.isNaN(parsed)) seq = parsed;
       }
     }

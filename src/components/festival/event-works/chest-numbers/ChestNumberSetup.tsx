@@ -139,7 +139,7 @@ export function ChestNumberSetup({
   const getEditPreview = (currentPrefix: string) => {
     if (!categories.length) return "No Categories";
     const demoCat = categories[0];
-    const start = parseInt(editCategoryStarts[demoCat.id] || "1");
+    const start = parseInt(editCategoryStarts[demoCat.id] || "1", 10);
     const formattedStart = String(start).padStart(2, "0");
 
     if (numberingStyle === "NUMERIC") {
@@ -150,7 +150,7 @@ export function ChestNumberSetup({
       editCategoryCodes[demoCat.id] || demoCat.name.charAt(0).toUpperCase();
 
     const safePrefix =
-      currentPrefix && currentPrefix.endsWith("-")
+      currentPrefix?.endsWith("-")
         ? currentPrefix
         : currentPrefix
           ? `${currentPrefix}-`
@@ -226,7 +226,7 @@ export function ChestNumberSetup({
         return toast.error(`Code is required for ${cat.name}`);
       }
 
-      const val = parseInt(editCategoryStarts[cat.id]);
+      const val = parseInt(editCategoryStarts[cat.id], 10);
       if (Number.isNaN(val)) {
         return toast.error(`Invalid start number for ${cat.name}`);
       }

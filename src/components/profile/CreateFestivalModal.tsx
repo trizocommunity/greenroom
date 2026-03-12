@@ -58,7 +58,7 @@ export function CreateFestivalModal({
   open,
   onOpenChange,
   paymentId,
-  tier,
+  tier: _tier,
 }: CreateFestivalModalProps) {
   const router = useRouter();
   const queryClient = useQueryClient();

@@ -20,7 +20,7 @@ export async function createTicketAction(data: {
   if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
 
   try {
-    let festivalId = undefined;
+    let festivalId: string | undefined;
 
     if (data.slug) {
       const festival = await prisma.festival.findUnique({

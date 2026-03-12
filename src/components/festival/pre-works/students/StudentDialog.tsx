@@ -222,7 +222,7 @@ export function StudentDialog({
                       setFormData({
                         ...formData,
                         age: e.target.value
-                          ? parseInt(e.target.value)
+                          ? parseInt(e.target.value, 10)
                           : undefined,
                       })
                     }

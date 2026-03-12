@@ -1,7 +1,7 @@
 "use client";
 
 import { deleteStage } from "@/server/actions/stage.actions";
-import { Stage } from "@prisma/client";
+import type { Stage } from "@prisma/client";
 import { Edit, Megaphone, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";

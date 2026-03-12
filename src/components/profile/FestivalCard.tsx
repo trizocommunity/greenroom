@@ -3,7 +3,6 @@
 import { addDays, differenceInDays, format } from "date-fns";
 import {
   Clock,
-  ExternalLink,
   Globe,
   LayoutDashboard,
   Lock,
@@ -136,27 +135,15 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
         {/* Actions Section */}
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
           {isActive ? (
-            <>
-              <Button
-                asChild
-                variant="outline"
-                className="flex-1 rounded-xl font-bold h-11 border-primary/20 hover:bg-primary/5 hover:border-primary/40 transition-all"
-              >
-                <Link href={`/${festival.slug}`} target="_blank">
-                  <ExternalLink className="mr-2 h-4 w-4" />
-                  Public Site
-                </Link>
-              </Button>
-              <Button
-                asChild
-                className="flex-1 rounded-xl font-bold h-11 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
-              >
-                <Link href={`/dashboard/${festival.slug}`}>
-                  <LayoutDashboard className="mr-2 h-4 w-4" />
-                  Dashboard
-                </Link>
-              </Button>
-            </>
+            <Button
+              asChild
+              className="flex-1 rounded-xl font-bold h-11 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
+            >
+              <Link href={`/dashboard/${festival.slug}`}>
+                <LayoutDashboard className="mr-2 h-4 w-4" />
+                Dashboard
+              </Link>
+            </Button>
           ) : (
             <Button
               disabled

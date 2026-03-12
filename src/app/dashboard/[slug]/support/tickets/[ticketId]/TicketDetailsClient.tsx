@@ -62,7 +62,6 @@ export default function TicketDetailsClient({
   const fetchTicket = useCallback(async () => {
     try {
       const data = await getTicketDetailsAction(ticketId);
-      // @ts-ignore - Date serialization issue from server action
       setTicket(data);
     } catch (error) {
       toast.error("Failed to load ticket details");

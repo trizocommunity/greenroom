@@ -13,7 +13,8 @@ Required for the app to run:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `DATABASE_URL` | Yes | PostgreSQL connection string (e.g. `postgresql://user:password@host:5432/dbname`) |
+| `DATABASE_URL` | Yes | PostgreSQL connection string for **app runtime**, typically the Supabase **connection pooler** URL (e.g. `postgres://user:password@aws-1-...pooler.supabase.com:6543/postgres?pgbouncer=true`). |
+| `DIRECT_URL` | Yes (for migrations/seed) | Direct PostgreSQL connection string, typically the Supabase **direct** URL (e.g. `postgres://user:password@aws-1-...supabase.com:5432/postgres`). Used by Prisma migrations and seed. |
 | `JWT_SECRET` | Yes | Secret used to sign/verify session cookies (e.g. a long random string) |
 
 Required for payment (Razorpay):
@@ -29,10 +30,11 @@ Optional (e.g. email, Resend):
 |----------|----------|-------------|
 | `RESEND_API_KEY` | For forgot-password email | Resend API key for sending password reset emails |
 
-Example `.env.local`:
+Example `.env.local` (Supabase):
 
 ```text
-DATABASE_URL=postgresql://postgres:[password]@localhost:5432/greenroom
+DATABASE_URL="postgres://YOUR_USER:YOUR_PASSWORD@aws-1-YOUR_PROJECT_REF.pooler.supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgres://YOUR_USER:YOUR_PASSWORD@aws-1-YOUR_PROJECT_REF.supabase.com:5432/postgres"
 JWT_SECRET=your-secret-at-least-32-chars
 RAZORPAY_KEY_ID=rzp_...
 RAZORPAY_KEY_SECRET=...

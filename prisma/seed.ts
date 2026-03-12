@@ -5,13 +5,15 @@ import { Client } from "pg";
 async function main() {
   console.log("Starting direct SQL seed...");
 
-  if (!process.env.DATABASE_URL) {
-    console.error("DATABASE_URL is missing");
+  const connectionString = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
+
+  if (!connectionString) {
+    console.error("DIRECT_URL (or fallback DATABASE_URL) is missing");
     process.exit(1);
   }
 
   const client = new Client({
-    connectionString: process.env.DATABASE_URL,
+    connectionString,
   });
 
   try {

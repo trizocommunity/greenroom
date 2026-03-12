@@ -12,19 +12,27 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Check if DATABASE_URL is set
-if [ -z "$DATABASE_URL" ]; then
-    echo -e "${RED}❌ ERROR: DATABASE_URL environment variable is not set${NC}"
+# Check if DIRECT_URL is set (used by prisma.config.ts for migrations)
+if [ -z "$DIRECT_URL" ]; then
+    echo -e "${RED}❌ ERROR: DIRECT_URL environment variable is not set${NC}"
+    echo "This should be the Supabase direct connection URL (port 5432)."
     exit 1
 fi
 
-echo -e "${GREEN}✓${NC} DATABASE_URL is configured"
+echo -e "${GREEN}✓${NC} DIRECT_URL is configured"
 
-# Test database connectivity
+# Optional: DATABASE_URL for runtime (pooler)
+if [ -z "$DATABASE_URL" ]; then
+    echo -e "${YELLOW}⚠️  DATABASE_URL is not set; migrations will still run using DIRECT_URL${NC}"
+else
+    echo -e "${GREEN}✓${NC} DATABASE_URL is configured"
+fi
+
+# Test database connectivity via Prisma (uses DIRECT_URL from config)
 echo "🔍 Testing database connection..."
 if ! npx prisma db execute --stdin <<< "SELECT 1" > /dev/null 2>&1; then
-    echo -e "${RED}❌ ERROR: Cannot connect to database${NC}"
-    echo "Please check your DATABASE_URL and network connectivity"
+    echo -e "${RED}❌ ERROR: Cannot connect to database using DIRECT_URL${NC}"
+    echo "Please check your DIRECT_URL and network connectivity"
     exit 1
 fi
 

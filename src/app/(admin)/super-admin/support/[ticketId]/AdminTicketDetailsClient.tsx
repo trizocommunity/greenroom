@@ -66,7 +66,6 @@ export default function AdminTicketDetailsClient({
   const fetchTicket = useCallback(async () => {
     try {
       const data = await getTicketDetailsAction(ticketId);
-      // @ts-ignore
       setTicket(data);
     } catch (error) {
       toast.error("Failed to load ticket details");

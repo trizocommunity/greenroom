@@ -130,7 +130,7 @@ function AssignmentCard({
   );
 }
 
-type TableRow =
+type AssignmentTableRow =
   | { kind: "individual"; assignment: any }
   | {
       kind: "team";
@@ -168,7 +168,7 @@ export function AssignmentsClient({
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<
     | { kind: "individual"; assignment: any }
-    | { kind: "team"; row: TableRow & { kind: "team" } }
+    | { kind: "team"; row: AssignmentTableRow & { kind: "team" } }
     | null
   >(null);
   const [teamStudentsDialog, setTeamStudentsDialog] = useState<{
@@ -221,8 +221,8 @@ export function AssignmentsClient({
     });
   }, [assignments, filterGroup, filterCategory, filterType, searchQuery]);
 
-  const tableRows = useMemo<TableRow[]>(() => {
-    const rows: TableRow[] = [];
+  const tableRows = useMemo<AssignmentTableRow[]>(() => {
+    const rows: AssignmentTableRow[] = [];
     const teamMap = new Map<
       string,
       { programme: any; category: any; groupId: string; groupName: string; teamNumber: number; assignments: any[] }

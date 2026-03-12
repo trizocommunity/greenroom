@@ -64,7 +64,7 @@ interface ResultsExploreClientProps {
 }
 
 export function ResultsExploreClient({
-  festival,
+  festival: _festival,
   programmes,
   categories,
   children,
