@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { isBasicTier } from "@/lib/tier";
+import { getBrandingFromJson } from "@/types/festival";
 import { findFestivalBySlug } from "@/server/models/festival.model";
 import { validatePublicSiteRequirements } from "@/lib/festival-public-validation";
 import { FestivalLiveClient } from "./FestivalLiveClient";
@@ -44,9 +45,8 @@ export default async function FestivalLivePage({
   if (!isOwner && !isAdmin && !isSuperAdmin) notFound();
 
   const validation = validatePublicSiteRequirements({
-    name: festival.name,
-    description: festival.description,
-    branding: festival.branding,
+      name: festival.name,
+      description: festival.description,
     orgName: festival.orgName,
     orgDescription: festival.orgDescription,
     orgWebsite: festival.orgWebsite,
@@ -80,13 +80,29 @@ export default async function FestivalLivePage({
       <FestivalLiveClient
         festivalId={festival.id}
         festivalSlug={festival.slug}
+        festivalDetails={{
+          name: festival.name || "",
+          description: festival.description || "",
+          startDate: festival.startDate,
+          endDate: festival.endDate,
+          orgName: festival.orgName || "",
+          orgDescription: festival.orgDescription || "",
+          orgWebsite: festival.orgWebsite || "",
+          orgLocation: festival.orgLocation || "",
+          establishedYear: festival.establishedYear,
+          institutionType: festival.institutionType,
+          institutionName: festival.institutionName || "",
+          location: festival.location || "",
+          founderName: festival.founderName || "",
+          founderMessage: festival.founderMessage || "",
+          slug: festival.slug,
+        }}
+        branding={getBrandingFromJson(festival.branding)}
         publicSiteEnabled={festival.publicSiteEnabled ?? false}
         canEnable={validation.canEnable}
         validationErrors={validation.errors}
         publicUrl={baseUrl ? `${baseUrl}/${festival.slug}` : ""}
         isBasicTier={isBasicTier(festival.tier)}
-        galleryImages={galleryImages}
-        newsPosts={newsPosts}
       />
     </div>
   );

@@ -64,7 +64,7 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
                 </Badge>
               )}
               <Badge variant="outline" className="font-medium bg-background/50">
-                {festival.tierLabel || festival.tier || "Standard"}
+                Plan: {festival.tierLabel || festival.tier || "Standard"}
               </Badge>
             </div>
             <h3 className="font-black text-2xl md:text-3xl tracking-tight text-foreground group-hover:text-primary transition-colors duration-300 truncate">
@@ -76,27 +76,31 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
             </p>
           </div>
 
+        {onEdit && (
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => onEdit?.(festival)}
             className="rounded-full bg-background/50 hover:bg-primary hover:text-primary-foreground shadow-sm transition-all duration-300 shrink-0"
             title="Edit Details"
+            onClick={() => onEdit(festival)}
           >
             <Pencil className="w-4 h-4" />
           </Button>
+        )}
         </div>
 
         {/* Subdomain Highlight */}
-        <button
-          type="button"
-          className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-primary/5 border border-primary/10 rounded-full text-xs font-semibold text-primary clickable hover:bg-primary/10 transition-colors cursor-pointer"
-          onClick={() => onEdit?.(festival)}
-        >
-          <Globe className="w-3 h-3" />
-          {festival.slug}.greenroom.com
-          <Pencil className="w-3 h-3 ml-1 opacity-50" />
-        </button>
+        {onEdit && (
+          <button
+            type="button"
+            className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-primary/5 border border-primary/10 rounded-full text-xs font-semibold text-primary clickable hover:bg-primary/10 transition-colors cursor-pointer"
+            onClick={() => onEdit(festival)}
+          >
+            <Globe className="w-3 h-3" />
+            {festival.slug}.greenroom.com
+            <Pencil className="w-3 h-3 ml-1 opacity-50" />
+          </button>
+        )}
 
         {/* Lifecycle Progress Section */}
         {!isExpired && (

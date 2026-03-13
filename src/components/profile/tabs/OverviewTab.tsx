@@ -30,7 +30,6 @@ import { useMyFestival } from "@/hooks/useFestivals";
 import { useJoinedFestivals } from "@/hooks/useJoinedFestivals";
 import { useUnusedCredit } from "@/hooks/useUnusedCredit";
 import { CreateFestivalModal } from "../CreateFestivalModal";
-import { EditFestivalModal } from "../EditFestivalModal";
 import { FestivalCard } from "../FestivalCard";
 import { JoinedFestivalCard } from "../JoinedFestivalCard";
 
@@ -41,7 +40,6 @@ interface OverviewTabProps {
 
 export function OverviewTab({ displayName, userId }: OverviewTabProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [confirmationTier, setConfirmationTier] = useState<Tier | null>(null);
 
   const { data: festival, isLoading: isFestivalLoading } = useMyFestival();
@@ -129,16 +127,7 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
                 My Festival
               </h3>
             </div>
-            <FestivalCard
-              festival={festival}
-              onEdit={() => setIsEditModalOpen(true)}
-            />
-
-            <EditFestivalModal
-              open={isEditModalOpen}
-              festival={festival}
-              onOpenChange={setIsEditModalOpen}
-            />
+            <FestivalCard festival={festival} />
           </div>
         );
       }

@@ -239,3 +239,44 @@ export async function setPublicSiteEnabledAction(
     return handleActionError(error);
   }
 }
+
+export async function updateFestivalBrandingAction(
+  data: { logo?: string | null; heroImage?: string | null },
+) {
+  try {
+    const session = await getSession();
+    if (!session?.userId) {
+      throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+    }
+
+    const festival = await prisma.festival.findUnique({
+      where: { ownerId: session.userId },
+      select: { id: true, slug: true, branding: true },
+    });
+
+    if (!festival) {
+      throw new AppError(ERROR_MESSAGES.FORBIDDEN);
+    }
+
+    const current =
+      festival.branding && typeof festival.branding === "object"
+        ? (festival.branding as Record<string, unknown>)
+        : {};
+
+    const nextBranding = {
+      ...current,
+      logo: data.logo ?? current.logo ?? null,
+      heroImage: data.heroImage ?? current.heroImage ?? null,
+    };
+
+    await prisma.festival.update({
+      where: { id: festival.id },
+      data: { branding: nextBranding },
+    });
+
+    revalidatePath(`/dashboard/${festival.slug}/festival-live`);
+    return { success: true };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}

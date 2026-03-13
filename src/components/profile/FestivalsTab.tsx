@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  ArrowRight,
-  LayoutDashboard,
-  Pencil,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight, LayoutDashboard, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -14,13 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { type Festival, useMyFestival } from "@/hooks/useFestivals";
 
-import { EditFestivalModal } from "./EditFestivalModal";
 import { FestivalCard } from "./FestivalCard";
 import { FestivalEmptyState } from "./FestivalEmptyState";
 
 export function FestivalsTab() {
-  const [editingFestival, setEditingFestival] = useState<Festival | null>(null);
-
   // Use useMyFestival hook
   const { data: festival, isLoading } = useMyFestival();
   // festival is Festival | null | undefined
@@ -34,10 +26,6 @@ export function FestivalsTab() {
     }
     // Redirect to pricing to start creation flow via payment
     router.push("/pricing");
-  };
-
-  const handleEdit = (festival: Festival) => {
-    setEditingFestival(festival);
   };
 
   return (
@@ -99,13 +87,15 @@ export function FestivalsTab() {
                       </Link>
                     </Button>
                     <Button
+                      asChild
                       variant="ghost"
                       size="lg"
-                      onClick={() => handleEdit(festival)}
                       className="h-12 hover:bg-white/5 text-zinc-400 hover:text-white"
                     >
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Edit Details
+                      <Link href={`/dashboard/${festival.slug}/festival-live`}>
+                        Manage Details
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
                     </Button>
                   </div>
                 </div>
@@ -121,12 +111,6 @@ export function FestivalsTab() {
         </div>
       </div>
 
-      {/* Edit Festival Modal */}
-      <EditFestivalModal
-        festival={editingFestival}
-        open={!!editingFestival}
-        onOpenChange={(open) => !open && setEditingFestival(null)}
-      />
     </div>
   );
 }

@@ -1,17 +1,15 @@
 /**
  * Validation for enabling the public festival website (Festival Live).
- * Plan-based: BASIC requires basic details + home content; non-BASIC requires
+ * Plan-based: BASIC requires basic details; non-BASIC requires
  * additional org details, gallery (min 4 images), and news (min 3 posts with title, description, image).
  */
 
 import type { Tier } from "@prisma/client";
-import { getBrandingFromJson } from "@/types/festival";
 import { getResolvedTier } from "@/lib/tier";
 
 export interface ValidationInput {
   name: string | null;
   description: string | null;
-  branding: unknown;
   orgName: string | null;
   orgDescription: string | null;
   orgWebsite: string | null;
@@ -26,14 +24,6 @@ export interface ValidationInput {
 export interface ValidationResult {
   canEnable: boolean;
   errors: string[];
-}
-
-function hasHomeContent(branding: unknown): boolean {
-  const b = getBrandingFromJson(branding);
-  if (!b) return false;
-  const hasLogo = typeof b.logo === "string" && b.logo.trim().length > 0;
-  const hasHero = typeof b.heroImage === "string" && b.heroImage.trim().length > 0;
-  return hasLogo || hasHero;
 }
 
 function basicDetailsComplete(name: string | null, description: string | null): boolean {
@@ -71,11 +61,6 @@ export function validatePublicSiteRequirements(input: ValidationInput): Validati
   // All plans: festival basic details
   if (!basicDetailsComplete(input.name, input.description)) {
     errors.push("Festival name and description are required.");
-  }
-
-  // All plans: home page content (logo or hero image)
-  if (!hasHomeContent(input.branding)) {
-    errors.push("Add a logo or hero image in branding (Settings or festival details).");
   }
 
   if (isBasic) {
