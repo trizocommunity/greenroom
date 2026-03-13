@@ -143,20 +143,22 @@ export default async function FestivalPage({
         />
       )}
 
-      {fullLandingPage ? (
-        <ResultsTeaser
-          accentColor={displayData.accentColor}
-          slug={displayData.slug}
-          results={publishedResults as any}
-        />
-      ) : (
-        <ResultsList
-          festivalName={displayData.name}
-          accentColor={displayData.accentColor}
-          results={publishedResults}
-          teamStandings={festival.teamStandings as any}
-        />
-      )}
+      <section id="results">
+        {fullLandingPage ? (
+          <ResultsTeaser
+            accentColor={displayData.accentColor}
+            slug={displayData.slug}
+            results={publishedResults as any}
+          />
+        ) : (
+          <ResultsList
+            festivalName={displayData.name}
+            accentColor={displayData.accentColor}
+            results={publishedResults}
+            teamStandings={festival.teamStandings as any}
+          />
+        )}
+      </section>
 
       {fullLandingPage && <GalleryPreview slug={displayData.slug} />}
     </div>
