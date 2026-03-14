@@ -82,6 +82,12 @@ export function FestivalDashboardSidebar({
         if (item.title === "Leaderboard" && !features.hasLiveScoreboard)
           return false;
 
+        // Content
+        if (item.title === "Gallery" && !features.canManageGallery)
+          return false;
+        if (item.title === "News" && !features.canManageNews)
+          return false;
+
         return true;
       }),
     }))

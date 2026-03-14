@@ -254,19 +254,6 @@ export function StudentsClient({
                 className="h-8 w-full pl-8 text-xs sm:w-[180px]"
               />
             </div>
-            <Select value={selectedGroup} onValueChange={setSelectedGroup}>
-              <SelectTrigger className="h-8 w-full sm:w-[130px] text-xs">
-                <SelectValue placeholder="Group" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All groups</SelectItem>
-                {groups.map((g: any) => (
-                  <SelectItem key={g.id} value={g.id}>
-                    {g.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
               <SelectTrigger className="h-8 w-full sm:w-[130px] text-xs">
                 <SelectValue placeholder="Category" />
@@ -280,6 +267,19 @@ export function StudentsClient({
                       {c.name}
                     </SelectItem>
                   ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedGroup} onValueChange={setSelectedGroup}>
+              <SelectTrigger className="h-8 w-full sm:w-[130px] text-xs">
+                <SelectValue placeholder="Group" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All groups</SelectItem>
+                {groups.map((g: any) => (
+                  <SelectItem key={g.id} value={g.id}>
+                    {g.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             {hasFilters && (

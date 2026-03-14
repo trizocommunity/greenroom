@@ -13,6 +13,12 @@ import {
   Mic,
   Trophy,
   ClipboardList,
+  ClipboardCheck,
+  QrCode,
+  Calendar,
+  BarChart2,
+  BookOpen,
+  LifeBuoy,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -29,12 +35,20 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { getDashboardOverviewData } from "@/server/models/festival.model";
-import { FeatureService } from "@/lib/features";
+import { getEffectivePlanFeatureMatrix } from "@/server/services/plan-features.service";
 import { getResolvedTier } from "@/lib/tier";
 import type { Festival } from "@prisma/client";
+import type { FeaturePath } from "@/lib/features";
 
 interface OverviewWidgetsProps {
   festival: Festival;
+}
+
+function planFeature(
+  features: Partial<Record<FeaturePath, boolean>>,
+  key: FeaturePath,
+): boolean {
+  return Boolean(features[key]);
 }
 
 export default async function OverviewWidgets({
@@ -44,14 +58,8 @@ export default async function OverviewWidgets({
   const tier = getResolvedTier(festival.tier);
   const slug = festival.slug;
 
-  const canAccessSettings = FeatureService.isFeatureEnabled(
-    tier,
-    "festivalSettings",
-  );
-  const canManageStages = FeatureService.isFeatureEnabled(
-    tier,
-    "stageManagement",
-  );
+  const matrix = await getEffectivePlanFeatureMatrix();
+  const features = matrix[tier] ?? {};
 
   const fmt = (n: number | undefined) => n?.toLocaleString() || "0";
 
@@ -66,54 +74,90 @@ export default async function OverviewWidgets({
       label: "Settings",
       icon: Settings,
       href: `/dashboard/${slug}/settings`,
-      condition: canAccessSettings,
+      condition: planFeature(features, "festivalSettings"),
     },
     {
       label: "Groups",
       icon: Users,
       href: `/dashboard/${slug}/pre-works/groups`,
-      condition: true,
+      condition: planFeature(features, "groups"),
     },
     {
       label: "Students",
       icon: UserPlus,
       href: `/dashboard/${slug}/pre-works/students`,
-      condition: true,
+      condition: planFeature(features, "students"),
     },
     {
       label: "Categories",
       icon: List,
       href: `/dashboard/${slug}/pre-works/categories`,
-      condition: true,
+      condition: planFeature(features, "categories"),
     },
     {
       label: "Programs",
       icon: FileText,
       href: `/dashboard/${slug}/pre-works/programmes`,
-      condition: true,
+      condition: planFeature(features, "programmes"),
+    },
+    {
+      label: "Assignment",
+      icon: ClipboardCheck,
+      href: `/dashboard/${slug}/pre-works/assignments`,
+      condition: planFeature(features, "assignments"),
+    },
+    {
+      label: "QR Codes",
+      icon: QrCode,
+      href: `/dashboard/${slug}/pre-works/qr-codes`,
+      condition: planFeature(features, "qrCodes"),
+    },
+    {
+      label: "Schedule",
+      icon: Calendar,
+      href: `/dashboard/${slug}/pre-works/schedule`,
+      condition: planFeature(features, "schedule"),
     },
     {
       label: "Program Control",
       icon: Settings2,
       href: `/dashboard/${slug}/event-works/marks`,
-      condition: true,
+      condition: planFeature(features, "results"),
     },
     {
       label: "Stages",
       icon: Mic,
       href: `/dashboard/${slug}/pre-works/stage-management`,
-      condition: canManageStages,
+      condition: planFeature(features, "stageManagement"),
     },
     {
       label: "Marks",
       icon: ClipboardList,
       href: `/dashboard/${slug}/event-works/marks`,
-      condition: true,
+      condition: planFeature(features, "results"),
+    },
+    {
+      label: "Results",
+      icon: BarChart2,
+      href: `/dashboard/${slug}/event-works/results`,
+      condition: planFeature(features, "results"),
     },
     {
       label: "Leaderboard",
       icon: Trophy,
       href: `/dashboard/${slug}/event-works/leaderboard`,
+      condition: planFeature(features, "liveScoreboard"),
+    },
+    {
+      label: "Documentation",
+      icon: BookOpen,
+      href: `/dashboard/${slug}/support/docs`,
+      condition: true,
+    },
+    {
+      label: "My Tickets",
+      icon: LifeBuoy,
+      href: `/dashboard/${slug}/support/tickets`,
       condition: true,
     },
   ];

@@ -1,7 +1,8 @@
 /**
  * Validation for enabling the public festival website (Festival Live).
- * Plan-based: BASIC requires basic details; non-BASIC requires
- * additional org details, gallery (min 4 images), and news (min 3 posts with title, description, image).
+ * Plan-based:
+ * - All plans: festival name, description, and organization name + description are required.
+ * - Non-BASIC only: also requires gallery (min 4 images) and news (min 1 post with title, description, image).
  */
 
 import type { Tier } from "@prisma/client";
@@ -17,7 +18,7 @@ export interface ValidationInput {
   tier: Tier | string | null;
   /** For non-BASIC: number of gallery images (min 4 required). */
   galleryImageCount?: number;
-  /** For non-BASIC: list of news posts; each must have title, content, image. Min 3 required. */
+  /** For non-BASIC: list of news posts; each must have title, content, image. Min 1 required. */
   newsPosts?: Array<{ title?: string | null; content?: string | null; imageUrl?: string | null }>;
 }
 
@@ -33,12 +34,8 @@ function basicDetailsComplete(name: string | null, description: string | null): 
 
 function orgDetailsComplete(input: ValidationInput): boolean {
   const hasOrgName = typeof input.orgName === "string" && input.orgName.trim().length > 0;
-  const hasExtra = [
-    input.orgDescription,
-    input.orgWebsite,
-    input.orgLocation,
-  ].some((v) => typeof v === "string" && v.trim().length > 0);
-  return hasOrgName && hasExtra;
+  const hasOrgDescription = typeof input.orgDescription === "string" && input.orgDescription.trim().length > 0;
+  return hasOrgName && hasOrgDescription;
 }
 
 function newsPostComplete(
@@ -63,6 +60,11 @@ export function validatePublicSiteRequirements(input: ValidationInput): Validati
     errors.push("Festival name and description are required.");
   }
 
+  // All plans: organization details required to enable (no enable without org info)
+  if (!orgDetailsComplete(input)) {
+    errors.push("Organization name and organization description are required to enable Festival Live.");
+  }
+
   if (isBasic) {
     return {
       canEnable: errors.length === 0,
@@ -70,22 +72,17 @@ export function validatePublicSiteRequirements(input: ValidationInput): Validati
     };
   }
 
-  // Non-BASIC: organization details
-  if (!orgDetailsComplete(input)) {
-    errors.push("Organization name and at least one of description, website, or location are required.");
-  }
-
-  // Non-BASIC: gallery (min 4 images)
+  // Non-BASIC only: gallery (min 4 images)
   const galleryCount = input.galleryImageCount ?? 0;
   if (galleryCount < 4) {
     errors.push("Gallery must have at least 4 images.");
   }
 
-  // Non-BASIC: news (min 3 posts, each with title, description, image)
+  // Non-BASIC: news (min 1 post, each with title, description, image)
   const posts = input.newsPosts ?? [];
   const completePosts = posts.filter(newsPostComplete);
-  if (completePosts.length < 3) {
-    errors.push("At least 3 news posts are required; each must have title, description, and image.");
+  if (completePosts.length < 1) {
+    errors.push("At least 1 news post is required; it must have title, description, and image.");
   }
 
   return {

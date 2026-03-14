@@ -361,19 +361,6 @@ export function AssignmentsClient({
                 className="h-8 w-full pl-8 text-xs sm:w-[200px]"
               />
             </div>
-            <Select value={filterGroup} onValueChange={setFilterGroup}>
-              <SelectTrigger className="h-8 w-full sm:w-[130px] text-xs">
-                <SelectValue placeholder="Group" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All groups</SelectItem>
-                {groups.map((g: any) => (
-                  <SelectItem key={g.id} value={g.id}>
-                    {g.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <Select value={filterCategory} onValueChange={setFilterCategory}>
               <SelectTrigger className="h-8 w-full sm:w-[130px] text-xs">
                 <SelectValue placeholder="Category" />
@@ -383,6 +370,19 @@ export function AssignmentsClient({
                 {categories.map((c: any) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterGroup} onValueChange={setFilterGroup}>
+              <SelectTrigger className="h-8 w-full sm:w-[130px] text-xs">
+                <SelectValue placeholder="Group" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All groups</SelectItem>
+                {groups.map((g: any) => (
+                  <SelectItem key={g.id} value={g.id}>
+                    {g.name}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -177,6 +177,7 @@ model Festival {
   programmesCount   Int @default(0) // Student competition programmes count
   eventsCount       Int @default(0) // Public events (Talks, Ceremonies) count
   stagesCount       Int @default(0)
+  judgesCount       Int @default(0)
   storageUsedMB     Int @default(0)
 
   // Deadlines
@@ -229,15 +230,16 @@ model FestivalGalleryImage {
 }
 
 model FestivalNews {
-  id         String   @id @default(uuid())
-  festivalId String
-  festival   Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
-  title      String
-  content    String   // Description / body
-  imageUrl   String?
+  id          String    @id @default(uuid())
+  festivalId  String
+  festival    Festival  @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  title       String
+  excerpt     String?   // Short summary for meta / social sharing
+  content     String    // Description / body
+  imageUrl    String?
   publishedAt DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@map("festival_news")
 }

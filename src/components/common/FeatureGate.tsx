@@ -150,6 +150,8 @@ function getFeatureLabel(feature: FeaturePath): string {
     publicLandingPage: "Public Landing Page",
     fullLandingPage: "Full Landing Page",
     landingPageBuilder: "Landing Page Builder",
+    gallery: "Gallery",
+    news: "News",
 
     // Branding
     customUrl: "Custom URL",

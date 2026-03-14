@@ -45,10 +45,12 @@ export interface TierFeatures {
   customCertificateTemplates: boolean;
   bulkCertificateGeneration: boolean;
 
-  // Landing Page
+  // Landing Page & Content
   publicLandingPage: boolean;
   fullLandingPage: boolean;
   landingPageBuilder: boolean;
+  gallery: boolean;
+  news: boolean;
 
   // Branding
   customUrl: boolean;
@@ -150,10 +152,12 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       customCertificateTemplates: false,
       bulkCertificateGeneration: false,
 
-      // Landing Page
+      // Landing Page & Content
       publicLandingPage: true, // Basic version (title + results)
       fullLandingPage: false,
       landingPageBuilder: false,
+      gallery: false,
+      news: false,
 
       // Branding
       customUrl: false,
@@ -238,10 +242,12 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       customCertificateTemplates: false,
       bulkCertificateGeneration: false,
 
-      // Landing Page — full landing page unlocked
+      // Landing Page & Content — full landing + gallery & news
       publicLandingPage: true,
       fullLandingPage: true,
       landingPageBuilder: false,
+      gallery: true,
+      news: true,
 
       // Branding — custom URL and colors
       customUrl: true,
@@ -326,10 +332,12 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       customCertificateTemplates: true,
       bulkCertificateGeneration: true,
 
-      // Landing Page — drag-and-drop builder
+      // Landing Page & Content — builder + gallery & news
       publicLandingPage: true,
       fullLandingPage: true,
       landingPageBuilder: true,
+      gallery: true,
+      news: true,
 
       // Branding — white-label + custom domain
       customUrl: true,

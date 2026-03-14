@@ -92,6 +92,11 @@ export function FestivalFooter({ festival }: FestivalFooterProps) {
             <p className="font-medium text-slate-100">
               {festival.orgName || "Festival committee"}
             </p>
+            {festival.tier && festival.tier !== "BASIC" && festival.orgDescription && (
+              <p className="text-sm text-slate-400 line-clamp-2">
+                {festival.orgDescription}
+              </p>
+            )}
             <p className="text-sm text-slate-400">
               {festival.orgLocation || festival.location || ""}
             </p>

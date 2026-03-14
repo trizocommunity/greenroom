@@ -96,7 +96,8 @@ export function LeaderboardClient({
       .map((team, index) => ({ ...team, rank: index + 1 }));
   }, [results]);
 
-  // Top students by points (published results only), filterable by category and group
+  // Top students by points (published results only), filterable by category and group.
+  // Only count points from INDIVIDUAL programmes; exclude GROUP programme points.
   const studentStandings = useMemo(() => {
     const byStudent: Record<
       string,
@@ -113,6 +114,8 @@ export function LeaderboardClient({
 
     results.forEach((r) => {
       if (!r.isPublished || !r.assignment?.student) return;
+      // Only include points from individual programmes; never count group programme points
+      if (r.programme?.type === "GROUP") return;
       // Filter by student's category (the category the student belongs to)
       if (
         studentFilterCategory !== "all" &&

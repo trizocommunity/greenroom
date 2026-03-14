@@ -160,6 +160,8 @@ export function useFeatures() {
     hasLiveResults: useFeature("liveResults"),
     canUseAdvancedSettings: useFeature("advancedSettings"),
     canUseCustomColors: useFeature("customColors"),
+    canManageGallery: useFeature("gallery"),
+    canManageNews: useFeature("news"),
 
     // Team
     maxTeamMembers: useMaxTeamMembers(),

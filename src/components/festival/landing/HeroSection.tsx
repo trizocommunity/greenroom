@@ -181,6 +181,11 @@ export function HeroSection({ festival, basicMode = false }: HeroSectionProps) {
                     <p className="font-medium truncate">
                       {festival.orgName || "Festival Committee"}
                     </p>
+                    {festival.tier && festival.tier !== "BASIC" && festival.orgDescription && (
+                      <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">
+                        {festival.orgDescription}
+                      </p>
+                    )}
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-black/30 px-3 py-3 space-y-1">
                     <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">

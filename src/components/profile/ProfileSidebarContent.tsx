@@ -4,11 +4,13 @@ import type { User } from "@prisma/client";
 import { CreditCard, LayoutDashboard, Tent } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { EditProfileDialog } from "./EditProfileDialog";
 
 interface ProfileSidebarContentProps {
   user: Pick<User, "fullName" | "displayName" | "age" | "email">;
+  planLabel?: string | null;
   className?: string;
   onLinkClick?: () => void;
 }

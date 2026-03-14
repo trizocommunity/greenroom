@@ -1,48 +1,42 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getPublicFestivalData } from "@/server/loader/festivalPublic";
+import { getPublicGalleryData } from "@/server/loader/festivalPublicGallery";
+import { PublicGalleryView } from "./PublicGalleryView";
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}): Promise<Metadata> {
+type Props = { params: Promise<{ slug: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const data = await getPublicFestivalData(slug);
-
+  const data = await getPublicGalleryData(slug);
   if (!data) return { title: "Gallery Not Found" };
-
-  const { festival } = data;
-  const title = `Gallery - ${festival.name}`;
-
+  const title = `Gallery - ${data.festival.name}`;
+  const description = `Photos and moments from ${data.festival.name}.`;
   return {
-    title: title,
-    description: `Photos and videos from ${festival.name}.`,
-    openGraph: {
-      title: title,
-      description: `Photos and videos from ${festival.name}.`,
-    },
+    title,
+    description,
+    openGraph: { title, description, type: "website" },
+    twitter: { card: "summary_large_image", title, description },
   };
 }
 
-export default async function GalleryPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default async function GalleryPage({ params }: Props) {
   const { slug } = await params;
-
-  const data = await getPublicFestivalData(slug);
-
+  const data = await getPublicGalleryData(slug);
   if (!data) return notFound();
-  const { festival } = data;
 
   return (
-    <div className="py-24 text-center">
-      <h1 className="text-3xl font-bold mb-4">Gallery</h1>
-      <p className="text-muted-foreground">
-        Photos and videos for {festival.name}.
-      </p>
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+      <section className="container py-12 sm:py-16 px-4">
+        <div className="text-center mb-10">
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
+            Gallery
+          </h1>
+          <p className="text-muted-foreground mt-2 max-w-xl mx-auto">
+            Photos and moments from {data.festival.name}.
+          </p>
+        </div>
+        <PublicGalleryView images={data.images} />
+      </section>
     </div>
   );
 }

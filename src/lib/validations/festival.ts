@@ -1,4 +1,4 @@
-import { InstitutionType } from "@prisma/client";
+import { InstitutionType } from "@/lib/prisma-enums";
 import { z } from "zod";
 
 export const createFestivalSchema = z.object({

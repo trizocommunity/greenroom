@@ -259,7 +259,7 @@ export function FestivalLiveClient({
                         </span>
                       </TooltipTrigger>
                       <TooltipContent side="left" className="max-w-xs">
-                        Complete all required content below before enabling.
+                        Complete all required details to enable: festival name & description, organization name & description{!isBasicTier ? ", gallery (4+ images), and at least 1 news post with title, description, and image" : ""}.
                       </TooltipContent>
                     </Tooltip>
                   )}
@@ -268,7 +268,7 @@ export function FestivalLiveClient({
                 {!canEnable && validationErrors.length > 0 && (
                   <div className="rounded-lg border border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/20 p-4">
                     <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
-                      Required before enabling
+                      Required before enabling (plan-based)
                     </p>
                     <ul className="text-sm text-amber-700 dark:text-amber-300 list-disc list-inside space-y-1">
                       {validationErrors.map((err, i) => (
@@ -419,6 +419,22 @@ export function FestivalLiveClient({
                   }
                   placeholder="Org name"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="fest-org-description">Organization description</Label>
+                <textarea
+                  id="fest-org-description"
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={festivalForm.orgDescription || ""}
+                  onChange={(e) =>
+                    setFestivalForm((prev) => ({ ...prev, orgDescription: e.target.value }))
+                  }
+                  placeholder="Short description of your organization (required to go live)"
+                  rows={3}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Required to enable Festival Live. Shown on the public About page.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fest-org-website">Website</Label>

@@ -20,7 +20,7 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@prisma/client": ["./src/lib/prisma-proxy"]
+      "@prisma/client": ["./src/app/generated/prisma/client"]
     }
   },
   "include": [

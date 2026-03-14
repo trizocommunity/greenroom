@@ -49,6 +49,8 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
   const { handlePay, loading: isPaymentProcessing } = useFestivalPayment();
 
   const basicTier = PRICING_TIERS.find((t) => t.id === "BASIC");
+  const standardTier = PRICING_TIERS.find((t) => t.id === "STANDARD");
+  const proTier = PRICING_TIERS.find((t) => t.id === "PRO");
 
   const handlePayClick = (tierId: Tier) => {
     setConfirmationTier(tierId);
@@ -224,58 +226,132 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
                   )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* BASIC PLAN - Centered / Highlighted */}
-                <Card className="md:col-span-2 hover:border-primary/30 transition-all duration-300 border-primary/20 bg-linear-to-br from-primary/5 via-background to-background relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-50">
-                    <Sparkles className="w-24 h-24 text-primary/10" />
-                  </div>
-                  <CardHeader>
-                    <Badge className="w-fit mb-2 bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 font-medium">
-                      Recommended
-                    </Badge>
-                    <CardTitle className="text-2xl md:text-3xl font-black">
-                      {basicTier.name} Plan
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* BASIC PLAN */}
+                <Card className="flex flex-col hover:border-primary/20 transition-all duration-300 border-border/50 overflow-hidden">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xl font-bold">
+                      {basicTier.name}
                     </CardTitle>
-                    <CardDescription className="text-base mt-2 max-w-2xl">
+                    <CardDescription className="text-sm mt-0.5 line-clamp-2">
                       {basicTier.description}
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="text-3xl font-bold">
-                      ₹{basicTier.price}{" "}
-                      <span className="text-sm font-normal text-muted-foreground">
-                        /festival
-                      </span>
+                  <CardContent className="flex flex-col flex-1 space-y-4 pt-0">
+                    <div className="text-2xl font-bold">
+                      ₹{basicTier.price}
+                      <span className="text-xs font-normal text-muted-foreground ml-1">/festival</span>
                     </div>
-
-                    <div className="grid md:grid-cols-2 gap-4">
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5 text-xs text-muted-foreground flex-1 min-h-0">
                       {basicTier.features.map((feature, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center gap-2 text-sm text-muted-foreground"
-                        >
-                          <Check className="w-4 h-4 text-primary shrink-0" />
-                          {feature}
-                        </div>
+                        <li key={i} className="flex items-center gap-1.5">
+                          <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                          <span className="truncate" title={feature}>{feature}</span>
+                        </li>
                       ))}
-                    </div>
-
+                    </ul>
                     <Button
-                      size="lg"
-                      className="w-full md:w-auto font-semibold shadow-lg shadow-primary/20"
+                      size="sm"
+                      className="w-full font-medium mt-auto"
+                      variant="outline"
                       onClick={() => handlePayClick(basicTier.id)}
                       disabled={isPaymentProcessing}
                     >
-                      {isPaymentProcessing &&
-                      confirmationTier === basicTier.id ? (
-                        <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                      {isPaymentProcessing && confirmationTier === basicTier.id ? (
+                        <Loader2 className="animate-spin mr-2 h-3.5 w-3.5" />
                       ) : null}
                       Pay to Proceed
-                      <ArrowRight className="ml-2 w-4 h-4" />
+                      <ArrowRight className="ml-1.5 w-3.5 h-3.5" />
                     </Button>
                   </CardContent>
                 </Card>
+
+                {/* STANDARD PLAN - Highlighted */}
+                {standardTier && (
+                  <Card className="flex flex-col hover:border-primary/30 transition-all duration-300 border-primary/20 bg-linear-to-br from-primary/5 via-background to-background relative overflow-hidden md:ring-2 md:ring-primary/20 md:-mt-1 md:mb-1 md:scale-[1.02]">
+                    <div className="absolute top-0 right-0 p-2 opacity-40">
+                      <Sparkles className="w-14 h-14 text-primary/10" />
+                    </div>
+                    <CardHeader className="pb-2">
+                      <Badge className="w-fit mb-1.5 text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20 font-medium">
+                        Recommended
+                      </Badge>
+                      <CardTitle className="text-xl font-bold">
+                        {standardTier.name}
+                      </CardTitle>
+                      <CardDescription className="text-sm mt-0.5 line-clamp-2">
+                        {standardTier.description}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex flex-col flex-1 space-y-4 pt-0">
+                      <div className="text-2xl font-bold">
+                        ₹{standardTier.price}
+                        <span className="text-xs font-normal text-muted-foreground ml-1">/festival</span>
+                      </div>
+                      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5 text-xs text-muted-foreground flex-1 min-h-0">
+                        {standardTier.features.map((feature, i) => (
+                          <li key={i} className="flex items-center gap-1.5">
+                            <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                            <span className="truncate" title={feature}>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <Button
+                        size="sm"
+                        className="w-full font-medium mt-auto shadow-md shadow-primary/20"
+                        onClick={() => handlePayClick(standardTier.id)}
+                        disabled={isPaymentProcessing}
+                      >
+                        {isPaymentProcessing && confirmationTier === standardTier.id ? (
+                          <Loader2 className="animate-spin mr-2 h-3.5 w-3.5" />
+                        ) : null}
+                        Pay to Proceed
+                        <ArrowRight className="ml-1.5 w-3.5 h-3.5" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* PRO PLAN */}
+                {proTier && (
+                  <Card className="flex flex-col hover:border-primary/20 transition-all duration-300 border-border/50 overflow-hidden">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-xl font-bold">
+                        {proTier.name}
+                      </CardTitle>
+                      <CardDescription className="text-sm mt-0.5 line-clamp-2">
+                        {proTier.description}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex flex-col flex-1 space-y-4 pt-0">
+                      <div className="text-2xl font-bold">
+                        ₹{proTier.price}
+                        <span className="text-xs font-normal text-muted-foreground ml-1">/festival</span>
+                      </div>
+                      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5 text-xs text-muted-foreground flex-1 min-h-0">
+                        {proTier.features.map((feature, i) => (
+                          <li key={i} className="flex items-center gap-1.5">
+                            <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                            <span className="truncate" title={feature}>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <Button
+                        size="sm"
+                        className="w-full font-medium mt-auto"
+                        variant="outline"
+                        onClick={() => handlePayClick(proTier.id)}
+                        disabled={isPaymentProcessing}
+                      >
+                        {isPaymentProcessing && confirmationTier === proTier.id ? (
+                          <Loader2 className="animate-spin mr-2 h-3.5 w-3.5" />
+                        ) : null}
+                        Pay to Proceed
+                        <ArrowRight className="ml-1.5 w-3.5 h-3.5" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
 
               <AlertDialog

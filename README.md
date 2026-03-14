@@ -14,7 +14,7 @@ Required for the app to run:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DATABASE_URL` | Yes | PostgreSQL connection string for **app runtime**, typically the Supabase **connection pooler** URL (e.g. `postgres://user:password@aws-1-...pooler.supabase.com:6543/postgres?pgbouncer=true`). |
-| `DIRECT_URL` | Yes (for migrations/seed) | Direct PostgreSQL connection string, typically the Supabase **direct** URL (e.g. `postgres://user:password@aws-1-...supabase.com:5432/postgres`). Used by Prisma migrations and seed. |
+| `DIRECT_URL` | Yes (for migrations/seed) | Direct PostgreSQL connection string, typically the Supabase **direct** URL (e.g. `postgres://user:password@db.xxx.supabase.co:5432/postgres`). Used by Prisma CLI (migrate, seed). If migrations fail with **P1001**, see [docs/DATABASE.md](docs/DATABASE.md). |
 | `JWT_SECRET` | Yes | Secret used to sign/verify session cookies (e.g. a long random string) |
 
 Required for payment (Razorpay):
