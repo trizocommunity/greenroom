@@ -1,5 +1,6 @@
 "use server";
 
+import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { TIER_CONFIG } from "@/config/pricing";
 import { getSession } from "@/lib/auth/session";
@@ -207,7 +208,6 @@ export async function setPublicSiteEnabledAction(
       const validation = validatePublicSiteRequirements({
         name: festival.name,
         description: festival.description,
-        branding: festival.branding,
         orgName: festival.orgName,
         orgDescription: festival.orgDescription,
         orgWebsite: festival.orgWebsite,
@@ -241,7 +241,11 @@ export async function setPublicSiteEnabledAction(
 }
 
 export async function updateFestivalBrandingAction(
-  data: { logo?: string | null; heroImage?: string | null },
+  data: {
+    logo?: string | null;
+    heroImage?: string | null;
+    accentColor?: string | null;
+  },
 ) {
   try {
     const session = await getSession();
@@ -262,12 +266,20 @@ export async function updateFestivalBrandingAction(
       festival.branding && typeof festival.branding === "object"
         ? (festival.branding as Record<string, unknown>)
         : {};
+    const currentColors =
+      current.colors && typeof current.colors === "object"
+        ? (current.colors as Record<string, unknown>)
+        : {};
 
     const nextBranding = {
       ...current,
       logo: data.logo ?? current.logo ?? null,
       heroImage: data.heroImage ?? current.heroImage ?? null,
-    };
+      colors:
+        data.accentColor !== undefined
+          ? { ...currentColors, primary: data.accentColor || null }
+          : current.colors,
+    } as Prisma.InputJsonValue;
 
     await prisma.festival.update({
       where: { id: festival.id },

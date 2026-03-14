@@ -17,6 +17,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { InstitutionType } from "@prisma/client";
+import { useFeatures } from "@/hooks/useFeature";
 import { setPublicSiteEnabledAction, updateFestivalBrandingAction } from "@/server/actions/festival.actions";
 import { updateFestivalAction } from "@/server/actions/user-festival.actions";
 import type { FestivalBranding } from "@/types/festival";
@@ -65,9 +66,11 @@ export function FestivalLiveClient({
   const [enabled, setEnabled] = useState(publicSiteEnabled);
   const [loading, setLoading] = useState(false);
   const [festivalForm, setFestivalForm] = useState(festivalDetails);
+  const features = useFeatures();
   const [brandingForm, setBrandingForm] = useState({
     logo: branding?.logo || "",
     heroImage: branding?.heroImage || "",
+    accentColor: branding?.colors?.primary || "#000000",
   });
   const [savingBasics, setSavingBasics] = useState(false);
   const [savingOrg, setSavingOrg] = useState(false);
@@ -503,9 +506,34 @@ export function FestivalLiveClient({
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Branding</CardTitle>
-            <CardDescription>Control logo and hero image used on the public site.</CardDescription>
+            <CardDescription>Control logo, hero image, and accent color used on the public site.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
+            {features.canUseCustomColors && (
+              <div className="space-y-2">
+                <Label htmlFor="brand-accent">Accent color</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="brand-accent"
+                    type="color"
+                    className="h-10 w-14 p-1 cursor-pointer"
+                    value={brandingForm.accentColor}
+                    onChange={(e) =>
+                      setBrandingForm((prev) => ({ ...prev, accentColor: e.target.value }))
+                    }
+                  />
+                  <Input
+                    value={brandingForm.accentColor}
+                    onChange={(e) =>
+                      setBrandingForm((prev) => ({ ...prev, accentColor: e.target.value }))
+                    }
+                    placeholder="#000000"
+                    className="font-mono max-w-32"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">Primary/accent color for buttons and highlights on your public site.</p>
+              </div>
+            )}
             <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="brand-logo">Logo URL</Label>
@@ -587,6 +615,7 @@ export function FestivalLiveClient({
                     const res = await updateFestivalBrandingAction({
                       logo: brandingForm.logo || null,
                       heroImage: brandingForm.heroImage || null,
+                      accentColor: features.canUseCustomColors ? (brandingForm.accentColor || null) : undefined,
                     });
                     if (res.success) {
                       toast.success("Branding updated.");

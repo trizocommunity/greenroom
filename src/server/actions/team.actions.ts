@@ -3,9 +3,11 @@
 import type { FestivalRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 import { hashPassword } from "@/lib/auth/password";
 import { prisma } from "@/lib/db";
 import { createAuditLog } from "@/server/services/audit-log.service";
+import { ensureFestivalWritable } from "@/server/services/festival-context.service";
 
 const createMemberSchema = z.object({
   festivalId: z.string(),
@@ -26,6 +28,32 @@ export async function createFestivalMember(input: CreateMemberInput) {
   const { festivalId, fullName, email, role, password } = result.data;
 
   try {
+    await ensureFestivalWritable(festivalId);
+
+    // 0. Enforce maxTeamMembers (owner + FestivalMembers)
+    const festivalForLimit = await prisma.festival.findUnique({
+      where: { id: festivalId },
+      select: { tier: true, slug: true },
+    });
+    if (festivalForLimit) {
+      const maxTeamMembers =
+        FeatureService.getFeatureValue<number>(
+          getTierForFeatureCheck(festivalForLimit.tier),
+          "maxTeamMembers",
+        ) ?? 1;
+      const existingCount = await prisma.festivalMember.count({
+        where: { festivalId },
+      });
+      const totalSlots = 1 + existingCount;
+      if (totalSlots >= maxTeamMembers) {
+        return {
+          success: false,
+          error:
+            "Team member limit reached for your plan. Please upgrade to add more.",
+        };
+      }
+    }
+
     // 1. Check if user already exists
     let user = await prisma.user.findUnique({
       where: { email },
@@ -80,16 +108,15 @@ export async function createFestivalMember(input: CreateMemberInput) {
       metadata: { festivalId, email, fullName, role },
     });
 
-    const festival = await prisma.festival.findUnique({
-      where: { id: festivalId },
-      select: { slug: true },
-    });
-    if (festival) revalidatePath(`/dashboard/${festival.slug}/members`);
+    if (festivalForLimit?.slug)
+      revalidatePath(`/dashboard/${festivalForLimit.slug}/members`);
 
     return { success: true };
   } catch (error) {
     console.error("Error creating member:", error);
-    return { success: false, error: "Failed to create member" };
+    const message =
+      error instanceof Error ? error.message : "Failed to create member";
+    return { success: false, error: message };
   }
 }
 

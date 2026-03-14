@@ -78,6 +78,10 @@ export function FestivalDashboardSidebar({
         if (item.title === "Analytics" && !features.hasAdvancedAnalytics)
           return false;
 
+        // Leaderboard (live scoreboard)
+        if (item.title === "Leaderboard" && !features.hasLiveScoreboard)
+          return false;
+
         return true;
       }),
     }))

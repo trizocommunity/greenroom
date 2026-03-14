@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 import { TIER_CONFIG } from "@/config/pricing";
 import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
+import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 import { getResolvedTier } from "@/lib/tier";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
@@ -226,4 +226,65 @@ export async function updateStudentAction(
     age: data.age,
     standard: data.standard,
   });
+}
+
+/** Export students list as Excel; gated by excelExport feature (STANDARD+). */
+export async function exportStudentsToExcelAction(festivalId: string): Promise<
+  | { success: true; data: string; filename: string }
+  | { success: false; error: string }
+> {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
+
+  const festival = await findFestivalById(festivalId);
+  if (!festival) return { success: false, error: ERROR_MESSAGES.FESTIVAL_NOT_FOUND };
+
+  if (
+    !FeatureService.isFeatureEnabled(
+      getTierForFeatureCheck(festival.tier),
+      "excelExport",
+    )
+  ) {
+    return {
+      success: false,
+      error: "Excel export is not available on your plan. Upgrade to export.",
+    };
+  }
+
+  const students = await prisma.student.findMany({
+    where: { festivalId },
+    include: { group: true, category: true },
+    orderBy: [{ group: { name: "asc" } }, { name: "asc" }],
+  });
+
+  const XLSX = await import("xlsx");
+  const headers = [
+    "Name",
+    "Email",
+    "Phone",
+    "Group",
+    "Category",
+    "Chest Number",
+    "Gender",
+    "Age",
+    "Standard",
+  ];
+  const rows = students.map((s) => [
+    s.name ?? "",
+    s.email ?? "",
+    s.phone ?? "",
+    s.group?.name ?? "",
+    s.category?.name ?? "",
+    s.chestNumber ?? "",
+    s.gender ?? "",
+    s.age ?? "",
+    s.standard ?? "",
+  ]);
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Students");
+  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
+  const base64 = buf.toString("base64");
+  const filename = `students_${festival.slug}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  return { success: true, data: base64, filename };
 }

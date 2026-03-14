@@ -8,6 +8,7 @@ import {
   Edit,
   FileText,
   LayoutDashboard,
+  Layers,
   ListChecks,
   Megaphone,
   QrCode,
@@ -58,6 +59,11 @@ export const SUPER_ADMIN_SIDEBAR_ITEMS = [
     title: "Support",
     url: "/super-admin/support",
     icon: LifeBuoy,
+  },
+  {
+    title: "Plan Features",
+    url: "/super-admin/plan-features",
+    icon: Layers,
   },
   {
     title: "Settings",

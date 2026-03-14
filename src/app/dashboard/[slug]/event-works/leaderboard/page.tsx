@@ -1,8 +1,9 @@
-import { notFound } from "next/navigation";
-import { prisma } from "@/lib/db";
+import { notFound, redirect } from "next/navigation";
 import { LeaderboardClient } from "@/components/dashboard/leaderboard/LeaderboardClient";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Trophy } from "lucide-react";
+import { getFestivalLeaderboardDataBySlug } from "@/server/services/leaderboard.service";
+import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
 
 export default async function TeamStatusPage({
   params,
@@ -11,40 +12,22 @@ export default async function TeamStatusPage({
 }) {
   const { slug } = await params;
 
-  // Fetch festival with results (for team standings + top students), categories, and groups
-  const festival = await prisma.festival.findUnique({
-    where: { slug },
-    include: {
-      categories: { orderBy: { name: "asc" } },
-      groups: { orderBy: { name: "asc" } },
-      results: {
-        include: {
-          assignment: {
-            include: {
-              student: { include: { category: true } },
-              group: true,
-            },
-          },
-          programme: {
-            include: { category: true },
-          },
-        },
-      },
-    },
-  });
+  const { festival, assignmentCount } =
+    await getFestivalLeaderboardDataBySlug(slug);
 
   if (!festival) {
     return notFound();
   }
 
-  // Check for assignments
-  const assignmentCount = await prisma.programmeAssignment.count({
-    where: {
-      programme: {
-        festivalId: festival.id,
-      },
-    },
-  });
+  const canViewLeaderboard = await getEffectiveFeatureEnabled(
+    festival.tier,
+    "liveScoreboard",
+  );
+  if (!canViewLeaderboard) {
+    redirect(
+      `/dashboard/${slug}?error=upgrade_required&feature=liveScoreboard`,
+    );
+  }
 
   if (assignmentCount === 0) {
     return (

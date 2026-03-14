@@ -1,4 +1,5 @@
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
+import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 import {
   createMember,
   deleteMember,
@@ -6,6 +7,8 @@ import {
   findMemberById,
   findMembersByFestival,
 } from "@/server/models/member.model";
+import { findFestivalById } from "@/server/models/festival.model";
+import { ensureFestivalWritable } from "@/server/services/festival-context.service";
 import { createUser, findUserByEmail } from "@/server/models/user.model";
 import { forgotPasswordAction } from "@/server/actions/auth.actions";
 
@@ -22,6 +25,23 @@ export const MemberService = {
       role: "ADMIN" | "ANNOUNCER" | "STAGE_MANAGER";
     },
   ) {
+    await ensureFestivalWritable(festivalId);
+
+    // 0. Enforce maxTeamMembers (owner + FestivalMembers)
+    const festival = await findFestivalById(festivalId);
+    if (festival) {
+      const maxTeamMembers =
+        FeatureService.getFeatureValue<number>(
+          getTierForFeatureCheck(festival.tier),
+          "maxTeamMembers",
+        ) ?? 1;
+      const existingMembers = await findMembersByFestival(festivalId);
+      const totalSlots = 1 + existingMembers.length; // owner counts as 1
+      if (totalSlots >= maxTeamMembers) {
+        throw new AppError(ERROR_MESSAGES.MEMBER_LIMIT_REACHED);
+      }
+    }
+
     // 1. Check if User exists
     let user = await findUserByEmail(data.email);
     let isNewUser = false;

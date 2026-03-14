@@ -35,6 +35,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useMembers } from "@/hooks/useMembers";
+import { useFestival } from "@/components/festival/FestivalContext";
 import {
   createFestivalMember,
   revokeFestivalMember,
@@ -42,9 +43,17 @@ import {
 
 interface MembersClientProps {
   festivalId: string;
+  maxTeamMembers: number;
+  totalMemberCount: number;
+  atMemberCap: boolean;
 }
 
-export function MembersClient({ festivalId }: MembersClientProps) {
+export function MembersClient({
+  festivalId,
+  maxTeamMembers,
+  totalMemberCount,
+  atMemberCap,
+}: MembersClientProps) {
   const { members, isLoading } = useMembers(festivalId);
 
   if (isLoading) {
@@ -58,8 +67,18 @@ export function MembersClient({ festivalId }: MembersClientProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Club Members</h2>
-        <AddMemberDialog festivalId={festivalId} />
+        <div>
+          <h2 className="text-lg font-semibold">Club Members</h2>
+          <p className="text-sm text-muted-foreground">
+            {totalMemberCount} of {maxTeamMembers} members
+          </p>
+        </div>
+        <AddMemberDialog
+          festivalId={festivalId}
+          disabled={atMemberCap}
+          atMemberCap={atMemberCap}
+          maxTeamMembers={maxTeamMembers}
+        />
       </div>
 
       <div className="rounded-md border">
@@ -123,7 +142,19 @@ export function MembersClient({ festivalId }: MembersClientProps) {
   );
 }
 
-function AddMemberDialog({ festivalId }: { festivalId: string }) {
+function AddMemberDialog({
+  festivalId,
+  disabled,
+  atMemberCap,
+  maxTeamMembers,
+}: {
+  festivalId: string;
+  disabled: boolean;
+  atMemberCap: boolean;
+  maxTeamMembers: number;
+}) {
+  const festival = useFestival();
+  const readOnlyExpired = festival?.readOnlyExpired ?? false;
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -166,7 +197,16 @@ function AddMemberDialog({ festivalId }: { festivalId: string }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button
+          disabled={disabled || readOnlyExpired}
+          title={
+            readOnlyExpired
+              ? "Festival has expired; read-only access."
+              : atMemberCap
+                ? `Member limit reached (${maxTeamMembers} for your plan). Upgrade to add more.`
+                : undefined
+          }
+        >
           <User className="mr-2 h-4 w-4" />
           Add Member
         </Button>

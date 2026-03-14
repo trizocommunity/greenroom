@@ -42,6 +42,9 @@ export function useFeature(featurePath: FeaturePath): boolean {
   const festival = useFestival();
   const tier = getResolvedTier(festival?.tier);
 
+  if (festival?.effectiveFeatures && featurePath in festival.effectiveFeatures) {
+    return Boolean(festival.effectiveFeatures[featurePath]);
+  }
   return FeatureService.isFeatureEnabled(tier, featurePath);
 }
 
@@ -153,7 +156,10 @@ export function useFeatures() {
     canGenerateQR: useFeature("qrCodes"),
     canGenerateCertificates: useFeature("autoCertificates"),
     hasAdvancedAnalytics: useFeature("advancedAnalytics"),
+    hasLiveScoreboard: useFeature("liveScoreboard"),
     hasLiveResults: useFeature("liveResults"),
+    canUseAdvancedSettings: useFeature("advancedSettings"),
+    canUseCustomColors: useFeature("customColors"),
 
     // Team
     maxTeamMembers: useMaxTeamMembers(),

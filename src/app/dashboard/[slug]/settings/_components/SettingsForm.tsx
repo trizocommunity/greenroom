@@ -121,6 +121,21 @@ export function SettingsForm({ festival }: SettingsFormProps) {
             </div>
           )}
 
+          {FeatureService.isFeatureEnabled(
+            getResolvedTier(festival.tier),
+            "advancedSettings",
+          ) && (
+            <div className="rounded-lg border border-dashed p-4 space-y-2">
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <Lock className="h-4 w-4 text-muted-foreground" />
+                Advanced settings
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                Additional options for your plan. More advanced controls may be added here.
+              </p>
+            </div>
+          )}
+
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

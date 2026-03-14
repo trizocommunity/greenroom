@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, type ReactNode, useContext } from "react";
+import type { FeaturePath } from "@/lib/features";
 
 export type FestivalPublicData = {
   id: string;
@@ -36,6 +37,10 @@ export type FestivalPublicData = {
   // Deadlines
   studentCreationDeadline: string | Date | null;
   programmeAssignmentDeadline: string | Date | null;
+  /** Admin overrides for plan features (from Super Admin). When set, useFeature uses these instead of config. */
+  effectiveFeatures?: Partial<Record<FeaturePath, boolean>>;
+  /** Festival is past expiry but within readonly retention window (e.g. STANDARD 30 days). Disable write actions. */
+  readOnlyExpired?: boolean;
 };
 
 const FestivalContext = createContext<FestivalPublicData | null>(null);

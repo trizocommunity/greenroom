@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ResultsExploreClient } from "@/components/dashboard/event-works/ResultsExploreClient";
-import { prisma } from "@/lib/db";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ListChecks } from "lucide-react";
+import { getFestivalResultsDataBySlug } from "@/server/services/results.service";
 
 export const metadata: Metadata = {
   title: "Results",
@@ -17,25 +17,7 @@ export default async function ResultsPage({
 }) {
   const { slug } = await params;
 
-  const festival = await prisma.festival.findUnique({
-    where: { slug },
-    include: {
-      categories: { orderBy: { name: "asc" } },
-      programmes: {
-        include: {
-          category: true,
-          assignments: {
-            include: {
-              student: true,
-              group: true,
-              result: true,
-            },
-          },
-        },
-        orderBy: { name: "asc" },
-      },
-    },
-  });
+  const { festival } = await getFestivalResultsDataBySlug(slug);
 
   if (!festival) {
     return notFound();

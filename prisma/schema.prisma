@@ -123,6 +123,10 @@ model Payment {
   updatedAt DateTime @updatedAt
 
   @@map("payment")
+  @@unique([providerId])
+  @@index([userId, purpose, status])
+  @@index([userId, createdAt])
+  @@index([festivalId])
 }
 
 model Festival {
@@ -208,6 +212,8 @@ model Festival {
   members       FestivalMember[]
   
   @@map("festival")
+  @@index([status])
+  @@index([expiresAt])
 }
 
 model FestivalGalleryImage {
@@ -482,6 +488,7 @@ model Event {
   updatedAt   DateTime @updatedAt
 
   @@map("event")
+  @@index([festivalId])
 }
 
 enum EventType {
@@ -506,6 +513,7 @@ model Stage {
   updatedAt   DateTime @updatedAt
 
   @@map("stage")
+  @@index([festivalId])
 }
 
 // -----------------------------------------------------------------------------
@@ -546,6 +554,7 @@ model SupportTicket {
   @@index([userId])
   @@index([status])
   @@map("support_ticket")
+  @@index([festivalId])
 }
 
 model SupportMessage {
@@ -582,4 +591,17 @@ model SupportNotification {
   @@index([userId])
   @@index([isRead])
   @@map("support_notification")
+}
+
+// -----------------------------------------------------------------------------
+// System Config (Super Admin: plan feature overrides, etc.)
+// -----------------------------------------------------------------------------
+
+model SystemConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("system_config")
 }

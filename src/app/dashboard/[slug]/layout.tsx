@@ -2,6 +2,7 @@ import { Menu } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { DashboardRightSidebar } from "@/components/festival/dashboard/DashboardRightSidebar";
 import { FestivalDashboardSidebar } from "@/components/festival/dashboard/FestivalDashboardSidebar";
+import { ReadOnlyExpiredBanner } from "@/components/festival/dashboard/ReadOnlyExpiredBanner";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
 // Removed unused breadcrumb imports
 import { DashboardBreadcrumb } from "@/components/festival/dashboard/DashboardBreadcrumb";
@@ -16,8 +17,8 @@ import { TIER_CONFIG } from "@/config/pricing";
 import { getResolvedTier } from "@/lib/tier";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
-import { findFestivalBySlugOrId } from "@/server/models/festival.model";
+import { getFestivalContext } from "@/server/services/festival-context.service";
+import { getEffectiveTierFeatures } from "@/server/services/plan-features.service";
 
 export default async function FestivalDashboardLayout({
   children,
@@ -28,50 +29,33 @@ export default async function FestivalDashboardLayout({
 }) {
   const { slug } = await params;
 
-  // 1. Fetch Festival
-  const festival = await findFestivalBySlugOrId(slug);
-  if (!festival) notFound();
-
-  // 2. Auth Guard
+  // 1. Auth Guard
   const session = await getSession();
   if (!session?.userId) redirect("/login");
+  const festivalContext = await getFestivalContext({
+    slugOrId: slug,
+    userId: session.userId,
+    globalRole: session.role,
+  });
 
-  const isCreator = festival.ownerId === session.userId;
-  const isSuperAdmin = session.role === "SUPER_ADMIN";
+  if (!festivalContext) notFound();
 
-  let role = isSuperAdmin ? "SUPER_ADMIN" : isCreator ? "OWNER" : "";
+  const { festival, role, isExpired, readOnlyExpired } = festivalContext;
 
-  if (!isCreator && !isSuperAdmin) {
-    // Check if team member
-    const member = await prisma.festivalMember.findUnique({
-      where: {
-        festivalId_userId: {
-          festivalId: festival.id,
-          userId: session.userId,
-        },
-      },
-    });
-
-    if (member?.isActive) {
-      role = member.role;
-    } else {
-      redirect("/");
-    }
+  if (role === "NONE") {
+    redirect("/");
   }
 
-  // 3. Expiry Guard (Strict Blocking)
-  const isExpired =
-    festival.status === "EXPIRED" ||
-    (festival.expiresAt && new Date(festival.expiresAt) < new Date());
-
-  if (isExpired) {
+  // 3. Expiry Guard (redirect unless plan allows readonly within retention window)
+  if (isExpired && !readOnlyExpired) {
     redirect("/profile?error=expired");
   }
 
-  // ... (previous code)
-
   // 4. Prepare Data
   const tierLimits = TIER_CONFIG[getResolvedTier(festival.tier)].limits;
+  const effectiveFeatures = await getEffectiveTierFeatures(
+    getResolvedTier(festival.tier),
+  );
 
   const festivalData = {
     // ... (festival data construction)
@@ -82,6 +66,7 @@ export default async function FestivalDashboardLayout({
     tier: festival.tier,
     accentColor: "#000000",
     expiresAt: festival.expiresAt,
+    readOnlyExpired: readOnlyExpired ?? false,
     description: festival.description || "",
     // Legacy fields or unused
     tagline: "",
@@ -109,6 +94,7 @@ export default async function FestivalDashboardLayout({
     },
     studentCreationDeadline: festival.studentCreationDeadline,
     programmeAssignmentDeadline: festival.programmeAssignmentDeadline,
+    effectiveFeatures,
   };
 
   const userRole = role;
@@ -173,6 +159,7 @@ export default async function FestivalDashboardLayout({
             </header>
 
             <main className="flex flex-1 flex-col gap-4 md:gap-6 p-4 md:p-8 relative overflow-hidden">
+              <ReadOnlyExpiredBanner />
               {children}
             </main>
         </SidebarInset>

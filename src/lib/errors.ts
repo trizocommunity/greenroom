@@ -90,6 +90,8 @@ export const ERROR_MESSAGES = {
   // ─── Members ──────────────────────────────────────────────────────────────
   MEMBER_ALREADY_EXISTS: "This user is already a member of this festival.",
   MEMBER_NOT_FOUND: "Team member not found.",
+  MEMBER_LIMIT_REACHED:
+    "Team member limit reached for your plan. Please upgrade to add more.",
 
   // ─── Chest Numbers ────────────────────────────────────────────────────────
   CHEST_SETTINGS_NOT_CONFIGURED:

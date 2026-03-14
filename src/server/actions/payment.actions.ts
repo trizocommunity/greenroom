@@ -1,17 +1,15 @@
 "use server";
 
 import type { Tier } from "@prisma/client";
-import crypto from "crypto";
 import { revalidatePath } from "next/cache";
 import { TIER_CONFIG } from "@/config/pricing";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import { createAuditLog } from "@/server/services/audit-log.service";
 import {
-  getRazorpayKeyId,
-  RazorpayService,
-} from "@/server/services/razorpay.service";
+  initiatePaymentDomain,
+  verifyPaymentDomain,
+} from "@/server/services/payments-domain.service";
 import type { ActionResponse } from "@/types/actions";
 
 export async function initiateFestivalPayment(
@@ -20,73 +18,18 @@ export async function initiateFestivalPayment(
   try {
     const session = await getSession();
     if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
-    const userId = session.userId;
-
     const config = TIER_CONFIG[tier];
     if (!config) throw new AppError(ERROR_MESSAGES.TIER_NOT_FOUND);
 
-    // Check for existing pending payment
-    const existingPayment = await prisma.payment.findFirst({
-      where: {
-        userId,
-        tier,
-        status: "PENDING",
-        used: false,
-        purpose: "FESTIVAL_CREATION",
-        createdAt: {
-          gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Created within last 24 hours
-        },
-      },
-    });
-
-    if (existingPayment?.providerId) {
-      return {
-        success: true,
-        data: {
-          paymentId: existingPayment.id,
-          orderId: existingPayment.providerId,
-          amount: config.price * 100,
-          currency: "INR",
-          key: getRazorpayKeyId(),
-        },
-      };
-    }
-
-    // Create Razorpay Order (single place for Razorpay init: razorpay.service)
-    const order = await RazorpayService.createOrder(
-      config.price * 100,
-      "INR",
-      `rcpt_${Date.now()}`.substring(0, 40),
-      {
-        userId,
-        tier,
-        type: "FESTIVAL_CREATION",
-      },
-    );
-
-    // Create Pending Payment Record
-    const payment = await prisma.payment.create({
-      data: {
-        amount: config.price,
-        currency: "INR",
-        status: "PENDING",
-        providerId: order.id,
-        userId,
-        tier,
-        purpose: "FESTIVAL_CREATION",
-        used: false,
-      },
+    const data = await initiatePaymentDomain({
+      userId: session.userId,
+      purpose: "FESTIVAL_CREATION",
+      tier,
     });
 
     return {
       success: true,
-      data: {
-        paymentId: payment.id,
-        orderId: order.id,
-        amount: config.price * 100,
-        currency: "INR",
-        key: getRazorpayKeyId(),
-      },
+      data,
     };
   } catch (error) {
     return handleActionError(error);
@@ -102,69 +45,22 @@ export async function verifyFestivalPayment(
     const session = await getSession();
     if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
 
-    const payment = await prisma.payment.findUnique({
-      where: { id: paymentId },
-    });
+    const status = await verifyPaymentDomain(
+      paymentId,
+      razorpayPaymentId,
+      razorpaySignature,
+    );
 
-    if (!payment) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
-    if (payment.userId !== session.userId)
-      throw new AppError(ERROR_MESSAGES.FORBIDDEN);
-    if (payment.status === "PAID")
-      throw new AppError(ERROR_MESSAGES.PAYMENT_ALREADY_PROCESSED);
-
-    // Verify Signature
-    const body = payment.providerId + "|" + razorpayPaymentId;
-    const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "")
-      .update(body.toString())
-      .digest("hex");
-
-    if (expectedSignature !== razorpaySignature) {
-      await prisma.payment.update({
-        where: { id: paymentId },
-        data: { status: "FAILED" },
-      });
-
-      await createAuditLog({
-        action: "PAYMENT_FAILED",
-        targetType: "PAYMENT",
-        targetId: paymentId,
-        metadata: { reason: "Invalid signature" },
-      });
-
+    if (status !== "PAID") {
       throw new AppError(ERROR_MESSAGES.PAYMENT_SIGNATURE_INVALID);
     }
-
-    // Mark as PAID
-    await prisma.payment.update({
-      where: { id: paymentId },
-      data: {
-        status: "PAID",
-        referenceId: razorpayPaymentId,
-      },
-    });
 
     await createAuditLog({
       action: "PAYMENT_SUCCESS",
       targetType: "PAYMENT",
       targetId: paymentId,
       metadata: {
-        amount: payment.amount,
-        tier: payment.tier,
-        providerId: payment.providerId,
-      },
-    });
-
-    // Clean up other abandoned pending payments for festival creation
-    await prisma.payment.updateMany({
-      where: {
-        userId: payment.userId,
-        status: "PENDING",
-        purpose: "FESTIVAL_CREATION",
-        id: { not: paymentId }, // Exclude the current successfully paid one
-      },
-      data: {
-        status: "FAILED",
+        source: "verifyFestivalPayment",
       },
     });
 

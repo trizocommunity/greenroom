@@ -1,9 +1,10 @@
 "use client";
 
 import { format } from "date-fns";
-import { Eye, FileText, Loader2, MoreVertical, Pencil, Plus, Search, Trash2, User, X } from "lucide-react";
+import { Download, Eye, FileText, Loader2, MoreVertical, Pencil, Plus, Search, Trash2, User, X } from "lucide-react";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
@@ -43,6 +44,7 @@ import { BulkUploadStudentsModal } from "./BulkUploadStudentsModal";
 import { StudentDetailsDialog } from "./StudentDetailsDialog";
 import { StudentDialog } from "./StudentDialog";
 import { FeatureGate } from "@/components/common/FeatureGate";
+import { exportStudentsToExcelAction } from "@/server/actions/student.actions";
 import { ChestNumberSetup } from "@/components/festival/event-works/chest-numbers/ChestNumberSetup";
 
 interface StudentsClientProps {
@@ -57,6 +59,47 @@ interface StudentsClientProps {
   } | null;
   onChestRevalidate: () => void;
   children?: React.ReactNode;
+}
+
+function ExportStudentsExcelButton({ festivalId }: { festivalId: string }) {
+  const [loading, setLoading] = useState(false);
+  const handleExport = async () => {
+    setLoading(true);
+    try {
+      const result = await exportStudentsToExcelAction(festivalId);
+      if (result.success && result.data && result.filename) {
+        const bin = atob(result.data);
+        const arr = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        const blob = new Blob([arr], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = result.filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("Export downloaded");
+      } else {
+        toast.error(!result.success ? result.error : "Export failed");
+      }
+    } catch {
+      toast.error("Export failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <Button size="sm" variant="outline" onClick={handleExport} disabled={loading}>
+      {loading ? (
+        <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
+      ) : (
+        <Download className="h-4 w-4 sm:mr-2" />
+      )}
+      <span className="hidden sm:inline">Export Excel</span>
+    </Button>
+  );
 }
 
 export function StudentsClient({
@@ -170,6 +213,9 @@ export function StudentsClient({
             </TooltipProvider>
           ) : (
             <>
+              <FeatureGate feature="excelExport">
+                <ExportStudentsExcelButton festivalId={festivalId} />
+              </FeatureGate>
               <FeatureGate feature="studentBulkUpload">
                 <BulkUploadStudentsModal festivalId={festivalId} />
               </FeatureGate>
