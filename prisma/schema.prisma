@@ -202,6 +202,7 @@ model Festival {
   events        Event[] // Public Events (Talks, Ceremonies)
   programmeAssignments ProgrammeAssignment[]
   stages        Stage[]
+  scheduleEntries ScheduleEntry[]
   supportTickets SupportTicket[]
   results       Result[]
   galleryImages FestivalGalleryImage[]
@@ -313,6 +314,7 @@ model Programme {
 
   assignments ProgrammeAssignment[]
   results     Result[]
+  scheduleEntries ScheduleEntry[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -482,9 +484,11 @@ model Event {
   description String?
   date        DateTime?
   location    String? // Could link to Stage but keeping flexible for public events
-  
-  // Optional: Type
+  speakers    String?  // Comma-separated or free text
+
   type        EventType @default(GENERAL)
+
+  scheduleEntries ScheduleEntry[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -511,11 +515,40 @@ model Stage {
   // Who created it (User Name or ID)
   createdBy   String?
 
+  scheduleEntries ScheduleEntry[]
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@map("stage")
   @@index([festivalId])
+}
+
+model ScheduleEntry {
+  id          String   @id @default(uuid())
+  festivalId  String
+  festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+
+  programmeId String?
+  programme   Programme? @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+  eventId     String?
+  event       Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  stageId     String?
+  stage       Stage?    @relation(fields: [stageId], references: [id], onDelete: SetNull)
+
+  startTime   DateTime
+  endTime     DateTime?
+  order       Int      @default(0)
+
+  createdBy   String?
+  updatedBy   String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([festivalId])
+  @@index([festivalId, startTime])
+  @@map("schedule_entry")
 }
 
 // -----------------------------------------------------------------------------

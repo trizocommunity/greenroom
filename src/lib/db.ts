@@ -10,11 +10,20 @@ const globalForPrisma = globalThis as unknown as {
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) throw new Error("DATABASE_URL is not defined");
 
+// Strip SSL params from URL so pg doesn't override our ssl config (connection-string parser
+// replaces the config ssl object when sslmode/etc. are present, re-enabling cert verification).
+const cleanedConnectionString = connectionString
+  .replace(/([?&])(sslmode|sslcert|sslkey|sslrootcert)=[^&]*/gi, (m, p) => (p === "?" ? "?" : ""))
+  .replace(/\?&+/, "?")
+  .replace(/\?$/, "");
+
 const poolConfig: PoolConfig = {
-  connectionString,
+  connectionString: cleanedConnectionString || connectionString,
   max: process.env.NODE_ENV === "production" ? 5 : 3,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
+  // Supabase pooler often uses a cert that Node's TLS rejects as self-signed; allow it.
+  ssl: { rejectUnauthorized: false },
 };
 
 if (!globalForPrisma.pool) {

@@ -1,14 +1,10 @@
+import { ScheduleClient } from "@/components/festival/pre-works/schedule/ScheduleClient";
 import { findFestivalBySlug } from "@/server/models/festival.model";
 import { notFound, redirect } from "next/navigation";
 import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
-import { Calendar } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { getScheduleEntries } from "@/server/actions/schedule.actions";
+import { getStages } from "@/server/actions/stage.actions";
+import { prisma } from "@/lib/db";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -32,38 +28,32 @@ export default async function SchedulePage({ params }: PageProps) {
     );
   }
 
+  const [entries, stages, programmes, events] = await Promise.all([
+    getScheduleEntries(festival.id),
+    getStages(festival.id),
+    prisma.programme.findMany({
+      where: { festivalId: festival.id },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.event.findMany({
+      where: { festivalId: festival.id },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
+
   return (
     <div className="container pt-4 sm:pt-6">
-      <div className="mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-          Schedule
-        </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Manage programme and event schedule for your festival.
-        </p>
-      </div>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Calendar className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <CardTitle>Schedule</CardTitle>
-              <CardDescription>
-                View and manage sessions, programmes, and events by date. Schedule
-                content is shown on your public Sessions page.
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Schedule builder and session management will appear here. For now,
-            use Programmes and Events to organise your festival content.
-          </p>
-        </CardContent>
-      </Card>
+      <ScheduleClient
+        festivalId={festival.id}
+        initialEntries={entries}
+        programmes={programmes}
+        events={events}
+        stages={stages.map((s) => ({ id: s.id, name: s.name, description: s.description ?? null }))}
+        festivalStartDate={festival.startDate?.toISOString() ?? null}
+        festivalEndDate={festival.endDate?.toISOString() ?? null}
+      />
     </div>
   );
 }

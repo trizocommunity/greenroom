@@ -16,7 +16,7 @@ export function HeroSection({ festival, basicMode = false }: HeroSectionProps) {
   const endDate = festival.endDate ? new Date(festival.endDate) : null;
   const basePath = `/${festival.slug}`;
   const resultsHref = basicMode ? "#results" : `${basePath}/results`;
-  const sessionsHref = `${basePath}/sessions`;
+  const programmesHref = `${basePath}/programmes`;
 
   return (
     <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
@@ -115,7 +115,7 @@ export function HeroSection({ festival, basicMode = false }: HeroSectionProps) {
                 </Button>
               </Link>
               {!basicMode && (
-                <Link href={sessionsHref}>
+                <Link href={programmesHref}>
                   <Button
                     size="lg"
                     variant="outline"

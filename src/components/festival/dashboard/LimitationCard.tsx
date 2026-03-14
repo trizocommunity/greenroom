@@ -52,7 +52,7 @@ export function LimitationCard({
       color: "text-green-500",
     },
     {
-      label: "Events",
+      label: "Sessions",
       icon: Calendar,
       limit: limits.maxEvents || 0,
       used: usage.eventsCount || 0,

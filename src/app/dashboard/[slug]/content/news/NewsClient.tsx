@@ -266,7 +266,7 @@ export function NewsClient({
         description="This cannot be undone."
         open={!!deleteConfirmId}
         onOpenChange={(open) => !open && setDeleteConfirmId(null)}
-        onDelete={() => deleteConfirmId && handleDelete(deleteConfirmId)}
+        onDelete={async () => { if (deleteConfirmId) await handleDelete(deleteConfirmId); }}
         isDeleting={false}
       />
       {posts.length === 0 && (

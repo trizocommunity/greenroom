@@ -23,10 +23,31 @@ You see something like:
 
 ```text
 Error: P1001: Can't reach database server at `db.xxxxx.supabase.co:5432`
-Make sure your database server is running at ...
+```
+or at runtime (dashboard, pages):
+
+```text
+Can't reach database server at aws-1-<region>.pooler.supabase.com
 ```
 
-### 1. Supabase project is paused (very common)
+### 1. App runtime (Next.js) can't reach the pooler
+
+If the error mentions **pooler.supabase.com** (and you're loading the dashboard or any page that uses the DB), the app is using `DATABASE_URL` and cannot connect to the Supabase **connection pooler**.
+
+- **Add SSL to the pooler URL.** In `.env`, ensure `DATABASE_URL` includes `sslmode=require`. For example:
+  ```text
+  DATABASE_URL="postgresql://postgres.[ref]:[PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require"
+  ```
+  If you already have a query string (e.g. `?pgbouncer=true`), append `&sslmode=require`.
+- **Supabase project paused:** In [Supabase Dashboard](https://supabase.com/dashboard) → your project, click **Restore** if you see "Project paused".
+- **Network:** Port **6543** must be reachable from your machine. Try another network or disable VPN if it blocks outbound connections.
+- **Correct pooler string:** In Supabase go to **Project Settings → Database**. Use the **Connection string** for **Transaction** (or **Session**) mode, and ensure the host (e.g. `aws-0-ap-south-1.pooler.supabase.com`) and port **6543** match. Add `?pgbouncer=true` for Transaction mode; include `sslmode=require` in the URL.
+
+Restart the Next.js dev server after changing `.env`.
+
+**If you see "self-signed certificate in certificate chain"** when using the pooler, the app's DB client must allow that certificate. This repo sets `ssl: { rejectUnauthorized: false }` in `src/lib/db.ts` for the pool so the connection still uses TLS but does not verify the server cert. For production you can restrict this via env if your deployment uses a different certificate store.
+
+### 2. Supabase project is paused (very common)
 
 Free-tier Supabase projects **pause** after inactivity.
 
@@ -34,7 +55,7 @@ Free-tier Supabase projects **pause** after inactivity.
 - If you see “Project paused”, click **Restore** and wait a minute.
 - Run the migration again.
 
-### 2. Wrong URL or missing env
+### 3. Wrong URL or missing env
 
 - **Prisma CLI** uses the URL from `prisma.config.ts`, which prefers `DIRECT_URL` then `DATABASE_URL`. Both must point to the same Supabase project.
 - Get the URLs from Supabase: **Project Settings → Database**:
@@ -42,10 +63,11 @@ Free-tier Supabase projects **pause** after inactivity.
   - **Connection pooler**: host like `aws-0-<region>.pooler.supabase.com`, port **6543**.
 - In the project root, ensure `.env` exists and contains at least:
   - `DATABASE_URL="postgresql://postgres.[ref]:[PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true"`
-  - `DIRECT_URL="postgresql://postgres.[ref]:[PASSWORD]@db.[ref].supabase.co:5432/postgres"`
+  - `DIRECT_URL="postgresql://postgres.[ref]:[PASSWORD]@db.[ref].supabase.co:5432/postgres?sslmode=require"`
+  (Supabase requires SSL for the direct connection; without `sslmode=require` you may get P1001 even when the project is healthy.)
 - No quotes issues or spaces; password with special characters should be URL-encoded.
 
-### 3. Run CLI from project root
+### 4. Run CLI from project root
 
 So that `dotenv/config` finds `.env`:
 
@@ -54,20 +76,20 @@ cd /path/to/greenroom
 npx prisma migrate dev
 ```
 
-### 4. Special characters in password
+### 5. Special characters in password
 
 If the DB password contains `#`, `@`, `%`, etc., either:
 
 - Reset the database password in Supabase (Settings → Database → Reset database password) and use the new one in both URLs, or
 - URL-encode the password in `DATABASE_URL` and `DIRECT_URL`.
 
-### 5. Network / firewall / VPN
+### 6. Network / firewall / VPN
 
 - Port **5432** (direct) or **6543** (pooler) must be reachable from your machine.
 - Try turning off VPN or switching network.
 - Some corporate firewalls block non-HTTPS ports; use a different network or VPN that allows PostgreSQL.
 
-### 6. Timeout (optional)
+### 7. Timeout (optional)
 
 You can add a connection timeout to the URL, e.g.:
 
@@ -76,6 +98,27 @@ DIRECT_URL="postgresql://user:pass@host:5432/postgres?connect_timeout=30"
 ```
 
 Then run the migration again.
+
+### 8. SSL (Supabase requires it)
+
+Supabase expects **SSL** for the direct connection. If the project is **Healthy** but you still get P1001, add `sslmode=require` to your direct URL.
+
+- In `.env`, ensure `DIRECT_URL` includes SSL. For example:
+
+```text
+DIRECT_URL="postgresql://postgres.[ref]:[PASSWORD]@db.[ref].supabase.co:5432/postgres?sslmode=require"
+```
+
+- If you already have a query string, append: `&sslmode=require` (e.g. `...postgres?connect_timeout=30&sslmode=require`).
+
+Then run `npx prisma migrate deploy` again from the project root.
+
+### 9. Port 5432 blocked (firewall / ISP / VPN)
+
+If your network blocks outbound **port 5432** (common on corporate or restricted networks), the direct connection will never work from that machine.
+
+- Try from another network (e.g. mobile hotspot or home) with the same `DIRECT_URL` (and `?sslmode=require`).
+- Or use **Supabase Session mode pooler** for migrations as a fallback: in Supabase go to **Project Settings → Database**, copy the **Connection string** for **Session mode** (port **6543**, host like `aws-0-<region>.pooler.supabase.com`). Set that as `DIRECT_URL` (and keep SSL in the URL). Then run `npx prisma migrate deploy`. Session mode allows full PostgreSQL features, so migrations can work.
 
 ## Summary
 

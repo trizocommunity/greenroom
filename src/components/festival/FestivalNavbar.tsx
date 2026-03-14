@@ -17,6 +17,7 @@ const navItems = [
   { name: "News", href: "/news" },
   { name: "Gallery", href: "/gallery" },
   { name: "Sessions", href: "/sessions" },
+  { name: "Programmes", href: "/programmes" },
   { name: "Results", href: "/results" },
 ];
 

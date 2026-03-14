@@ -2,6 +2,7 @@ import {
   BarChart3,
   Building2,
   Calendar,
+  CalendarDays,
   CheckCircle,
   ClipboardList,
   CreditCard,
@@ -146,6 +147,12 @@ export const getFestivalDashboardSidebarConfig = (
           icon: Newspaper,
           allowedRoles: ["ADMIN", "OWNER"],
         },
+        {
+          title: "Sessions",
+          href: `${basePath}/pre-works/sessions`,
+          icon: CalendarDays,
+          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
+        },
       ],
     },
     {
@@ -182,12 +189,6 @@ export const getFestivalDashboardSidebarConfig = (
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {
-          title: "QR Codes",
-          href: `${basePath}/pre-works/qr-codes`,
-          icon: QrCode,
-          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"] as FestivalRole[],
-        },
-        {
           title: "Stage Management",
           href: `${basePath}/pre-works/stage-management`,
           icon: Megaphone,
@@ -198,6 +199,12 @@ export const getFestivalDashboardSidebarConfig = (
           href: `${basePath}/pre-works/schedule`,
           icon: Calendar,
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
+        },
+        {
+          title: "QR Codes",
+          href: `${basePath}/pre-works/qr-codes`,
+          icon: QrCode,
+          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"] as FestivalRole[],
         },
       ],
     },
