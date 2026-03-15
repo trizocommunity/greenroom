@@ -17,6 +17,7 @@ import { TIER_CONFIG } from "@/config/pricing";
 import { getResolvedTier } from "@/lib/tier";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getSession } from "@/lib/auth/session";
+import { getDerivedFestivalStatus } from "@/lib/festival-status";
 import { getFestivalContext } from "@/server/services/festival-context.service";
 import { getEffectiveTierFeatures } from "@/server/services/plan-features.service";
 
@@ -57,12 +58,19 @@ export default async function FestivalDashboardLayout({
     getResolvedTier(festival.tier),
   );
 
+  const derivedStatus = getDerivedFestivalStatus({
+    status: festival.status ?? "READY",
+    startDate: festival.startDate,
+    endDate: festival.endDate,
+    expiresAt: festival.expiresAt,
+  });
+
   const festivalData = {
     // ... (festival data construction)
     id: festival.id,
     name: festival.name,
     slug: festival.slug,
-    status: festival.status,
+    status: derivedStatus,
     tier: festival.tier,
     accentColor: "#000000",
     expiresAt: festival.expiresAt,
@@ -70,8 +78,8 @@ export default async function FestivalDashboardLayout({
     description: festival.description || "",
     // Legacy fields or unused
     tagline: "",
-    startDate: new Date().toISOString(), // Placeholder
-    endDate: festival.expiresAt ? festival.expiresAt.toISOString() : null,
+    startDate: festival.startDate ? festival.startDate.toISOString() : null,
+    endDate: festival.endDate ? festival.endDate.toISOString() : null,
     location: festival.location || "Virtual",
     logo: null,
     heroImage: null,
@@ -131,8 +139,11 @@ export default async function FestivalDashboardLayout({
                   }
                   user={userData}
                   festivalSlug={slug}
+                  showStatusAndUsage={
+                    userRole === "OWNER" || userRole === "SUPER_ADMIN"
+                  }
                   festivalName={festival.name}
-                  festivalStatus={festival.status}
+                  festivalStatus={derivedStatus}
                   daysRemaining={
                     festival.expiresAt
                       ? Math.ceil(

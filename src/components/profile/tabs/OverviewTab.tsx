@@ -1,6 +1,7 @@
 "use client";
 
-import type { Tier } from "@prisma/client";
+import { getDerivedFestivalStatus } from "@/lib/festival-status";
+import type { Tier } from "@/lib/prisma-enums";
 import { ArrowRight, Check, Loader2, Plus, Sparkles } from "lucide-react";
 import { useState } from "react";
 import {
@@ -206,9 +207,12 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
             <>
               <div className="space-y-2">
                 {festival &&
-                  (festival.status === "EXPIRED" ||
-                    (festival.expiresAt &&
-                      new Date(festival.expiresAt) < new Date())) && (
+                  getDerivedFestivalStatus({
+                    status: festival.status,
+                    startDate: festival.startDate,
+                    endDate: festival.endDate,
+                    expiresAt: festival.expiresAt,
+                  }) === "EXPIRED" && (
                     <div className="p-4 bg-destructive/10 text-destructive rounded-md mb-4 border border-destructive/20">
                       <p className="font-semibold">
                         Your previous festival has expired.

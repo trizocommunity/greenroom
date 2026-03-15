@@ -2,7 +2,6 @@
 
 import {
   MoreHorizontal,
-  Pencil,
   Settings,
   Trash2,
 } from "lucide-react";
@@ -10,7 +9,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { EditFestivalModal } from "@/components/profile/EditFestivalModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,11 +34,11 @@ import {
   useDeleteFestival,
   useFestivals,
 } from "@/hooks/useFestivals";
+import { getDerivedFestivalStatus } from "@/lib/festival-status";
 
 export function FestivalsTable() {
   const { data: festivals = [], isLoading } = useFestivals();
   const deleteMutation = useDeleteFestival();
-  const [editingFestival, setEditingFestival] = useState<Festival | null>(null);
   const [festivalToDelete, setFestivalToDelete] = useState<Festival | null>(
     null,
   );
@@ -84,6 +82,12 @@ export function FestivalsTable() {
     <>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {festivals.map((festival) => {
+          const status = getDerivedFestivalStatus({
+            status: festival.status,
+            startDate: festival.startDate,
+            endDate: festival.endDate,
+            expiresAt: festival.expiresAt,
+          });
           return (
             <Card
               key={festival.id}
@@ -121,11 +125,6 @@ export function FestivalsTable() {
                         <Settings className="mr-2 h-4 w-4" /> Dashboard
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => setEditingFestival(festival)}
-                      >
-                        <Pencil className="mr-2 h-4 w-4" /> Edit Details
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
                         className="text-red-600 focus:text-red-600 bg-red-50 focus:bg-red-100"
                         onClick={() => setFestivalToDelete(festival)}
                       >
@@ -138,18 +137,18 @@ export function FestivalsTable() {
                   <Badge
                     variant="outline"
                     className={
-                      festival.status === "EXPIRED"
+                      status === "EXPIRED"
                         ? "bg-red-100 text-red-700 border-red-300"
-                        : festival.status === "ONGOING"
+                        : status === "ONGOING"
                           ? "bg-green-100 text-green-700 border-green-300"
                           : "bg-gray-100 text-gray-600 border-gray-300"
                     }
                   >
-                    {festival.status === "EXPIRED"
+                    {status === "EXPIRED"
                       ? "Expired"
-                      : festival.status === "ONGOING"
+                      : status === "ONGOING"
                         ? "Ongoing"
-                        : festival.status === "PAST"
+                        : status === "PAST"
                           ? "Past"
                           : "Ready"}
                   </Badge>
@@ -162,12 +161,6 @@ export function FestivalsTable() {
           );
         })}
       </div>
-
-      <EditFestivalModal
-        festival={editingFestival}
-        open={!!editingFestival}
-        onOpenChange={(open) => !open && setEditingFestival(null)}
-      />
 
       <AlertDialog
         open={!!festivalToDelete}

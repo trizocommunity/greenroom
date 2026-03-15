@@ -27,6 +27,8 @@ interface DashboardRightSidebarProps {
     image?: string | null;
   };
   festivalSlug?: string;
+  /** When false, Status and Usage & Limits sections are hidden (e.g. for non-owner / non–super-admin). */
+  showStatusAndUsage?: boolean;
   // Panel Props
   festivalName?: string;
   festivalStatus?: FestivalStatus | string;
@@ -51,6 +53,7 @@ export function DashboardRightSidebar({
   festivalSlug,
   trigger,
   user,
+  showStatusAndUsage = true,
   festivalName,
   daysRemaining,
   userRole,
@@ -112,10 +115,10 @@ export function DashboardRightSidebar({
               </Link>
             </div>
 
-            <Separator />
+            {showStatusAndUsage && <Separator />}
 
-            {/* Status Section */}
-            {festivalName && (
+            {/* Status Section — only for owner or super admin */}
+            {showStatusAndUsage && festivalName && (
               <div className="space-y-4">
                 <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Status
@@ -130,10 +133,12 @@ export function DashboardRightSidebar({
               </div>
             )}
 
-            {festivalName && usage && limits && <Separator />}
+            {showStatusAndUsage && festivalName && usage && limits && (
+              <Separator />
+            )}
 
-            {/* Usage Section */}
-            {usage && limits && (
+            {/* Usage & Limits — only for owner or super admin */}
+            {showStatusAndUsage && usage && limits && (
               <div className="space-y-4">
                 <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Usage & Limits

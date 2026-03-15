@@ -16,7 +16,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { InstitutionType } from "@prisma/client";
+import type { InstitutionType } from "@/lib/prisma-enums";
 import { useFeatures } from "@/hooks/useFeature";
 import { setPublicSiteEnabledAction, updateFestivalBrandingAction } from "@/server/actions/festival.actions";
 import { updateFestivalAction } from "@/server/actions/user-festival.actions";

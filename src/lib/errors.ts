@@ -1,4 +1,4 @@
-import { Prisma } from "@/app/generated/prisma/client";
+import { Prisma } from "@prisma/client";
 import { ZodError, type ZodIssue } from "zod";
 import type { ActionResponse } from "@/types/actions";
 

@@ -5,6 +5,10 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  getDerivedFestivalStatus,
+  FESTIVAL_STATUS_LABELS,
+} from "@/lib/festival-status";
 import type { Festival } from "@/hooks/useFestivals";
 
 interface JoinedFestivalCardProps {
@@ -12,8 +16,14 @@ interface JoinedFestivalCardProps {
 }
 
 export function JoinedFestivalCard({ festival }: JoinedFestivalCardProps) {
-  const isActive =
-    festival.status === "ONGOING" || festival.status === "READY";
+  const status = getDerivedFestivalStatus({
+    status: festival.status,
+    startDate: festival.startDate,
+    endDate: festival.endDate,
+    expiresAt: festival.expiresAt,
+  });
+  const isExpired = status === "EXPIRED";
+  const isActive = !isExpired && (status === "ONGOING" || status === "READY");
   const isLocked = festival.isLocked;
 
   return (
@@ -24,10 +34,16 @@ export function JoinedFestivalCard({ festival }: JoinedFestivalCardProps) {
         <div className="space-y-2 min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <Badge
-              variant={isActive ? "default" : "secondary"}
-              className={isActive ? "bg-green-500 hover:bg-green-600" : ""}
+              variant={isExpired ? "destructive" : isActive ? "default" : "secondary"}
+              className={
+                isExpired
+                  ? "bg-red-500/90 text-white"
+                  : isActive
+                    ? "bg-green-500 hover:bg-green-600"
+                    : ""
+              }
             >
-              {festival.status}
+              {FESTIVAL_STATUS_LABELS[status] ?? status}
             </Badge>
             {festival.memberRole && (
               <Badge variant="secondary" className="font-medium">
@@ -50,6 +66,10 @@ export function JoinedFestivalCard({ festival }: JoinedFestivalCardProps) {
                 <LayoutDashboard className="mr-2 h-4 w-4" />
                 Dashboard
               </Link>
+            </Button>
+          ) : isExpired ? (
+            <Button disabled size="sm" variant="secondary">
+              Festival ended
             </Button>
           ) : (
             <Button disabled size="sm" variant="secondary">

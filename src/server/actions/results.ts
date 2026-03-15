@@ -1,6 +1,6 @@
 "use server";
 
-import type { Prisma } from "@/app/generated/prisma/client";
+import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import type { ActionResponse } from "@/types/actions";
 import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";

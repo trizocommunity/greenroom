@@ -2,6 +2,7 @@ import { ArrowLeft, FileDown } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { getDerivedFestivalStatus } from "@/lib/festival-status";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -21,7 +22,13 @@ export default async function AdminFestivalDetailPage({
   }
 
   const festivalId = festival.id;
-  const isExpired = festival.status === "EXPIRED";
+  const derivedStatus = getDerivedFestivalStatus({
+    status: festival.status ?? "READY",
+    startDate: festival.startDate,
+    endDate: festival.endDate,
+    expiresAt: festival.expiresAt,
+  });
+  const isExpired = derivedStatus === "EXPIRED";
   const expiredResults = isExpired
     ? await prisma.expiredFestivalResult.findMany({
         where: { festivalId },
@@ -58,18 +65,18 @@ export default async function AdminFestivalDetailPage({
             /{festival.slug}
             <Badge
               variant={
-                festival.status === "EXPIRED"
+                derivedStatus === "EXPIRED"
                   ? "destructive"
-                  : festival.status === "ONGOING"
+                  : derivedStatus === "ONGOING"
                     ? "default"
                     : "secondary"
               }
             >
-              {festival.status === "EXPIRED"
+              {derivedStatus === "EXPIRED"
                 ? "Expired"
-                : festival.status === "ONGOING"
+                : derivedStatus === "ONGOING"
                   ? "Ongoing"
-                  : festival.status === "PAST"
+                  : derivedStatus === "PAST"
                     ? "Past"
                     : "Ready"}
             </Badge>
@@ -117,7 +124,7 @@ export default async function AdminFestivalDetailPage({
           <CardContent className="space-y-2">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Status</span>
-              <span className="font-medium">{festival.status}</span>
+              <span className="font-medium">{derivedStatus}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Tier</span>

@@ -1,5 +1,6 @@
 "use client";
 
+import type { SessionType } from "@/lib/prisma-enums";
 import {
   createScheduleEntry,
   updateScheduleEntry,
@@ -165,7 +166,10 @@ export function SessionScheduleClient({
     setEditFormError(null);
     setSaving(true);
     try {
-      const res = await updateScheduleEntry(festivalId, id, data);
+      const res = await updateScheduleEntry(festivalId, id, {
+        ...data,
+        sessionType: (data.sessionType ?? null) as SessionType | null,
+      });
       if (res.success) {
         toast.success("Session updated.");
         setEditEntry(null);

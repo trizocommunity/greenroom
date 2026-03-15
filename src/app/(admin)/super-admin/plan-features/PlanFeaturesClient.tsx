@@ -1,6 +1,6 @@
 "use client";
 
-import type { Tier } from "@prisma/client";
+import type { Tier } from "@/lib/prisma-enums";
 import type { FeaturePath } from "@/lib/features";
 import { useRouter } from "next/navigation";
 import { useState } from "react";

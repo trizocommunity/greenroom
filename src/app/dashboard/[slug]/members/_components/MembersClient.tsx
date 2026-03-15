@@ -1,6 +1,6 @@
 "use client";
 
-import type { FestivalRole } from "@prisma/client";
+import type { FestivalRole } from "@/lib/prisma-enums";
 import { format } from "date-fns";
 import { Copy, Eye, Loader2, Trash2, User } from "lucide-react";
 import { useState } from "react";

@@ -3,6 +3,7 @@ import { LayoutGrid } from "lucide-react";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminFestivalCard } from "@/components/admin/AdminFestivalCard";
 import { FestivalStatusTabs } from "@/components/super-admin/FestivalStatusTabs";
+import { getDerivedFestivalStatus } from "@/lib/festival-status";
 import { adminService } from "@/server/services/admin.service";
 
 export default async function AdminFestivalsPage({
@@ -14,7 +15,15 @@ export default async function AdminFestivalsPage({
   const allFestivals = await adminService.getFestivalsForAdmin();
   const festivals =
     statusFilter === "EXPIRED"
-      ? allFestivals.filter((f) => f.status === "EXPIRED")
+      ? allFestivals.filter(
+          (f) =>
+            getDerivedFestivalStatus({
+              status: f.status ?? "READY",
+              startDate: f.startDate,
+              endDate: f.endDate,
+              expiresAt: f.expiresAt,
+            }) === "EXPIRED",
+        )
       : allFestivals;
 
   return (
@@ -44,7 +53,18 @@ export default async function AdminFestivalsPage({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {festivals.map((festival) => (
-            <AdminFestivalCard key={festival.id} festival={festival} />
+            <AdminFestivalCard
+              key={festival.id}
+              festival={{
+                ...festival,
+                status: getDerivedFestivalStatus({
+                  status: festival.status ?? "READY",
+                  startDate: festival.startDate,
+                  endDate: festival.endDate,
+                  expiresAt: festival.expiresAt,
+                }),
+              }}
+            />
           ))}
         </div>
       )}

@@ -19,6 +19,8 @@ export type Festival = {
   status: "READY" | "ONGOING" | "PAST" | "EXPIRED";
   isLocked: boolean;
   createdAt: string;
+  startDate?: string | null;
+  endDate?: string | null;
   expiresAt?: string | null;
   tier?: string;
   tierLabel?: string;

@@ -6,14 +6,11 @@ import {
   Info,
   LayoutDashboard,
   MoreVertical,
-  Pencil,
   MapPin,
   Trophy,
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
-import { AdminEditFestivalModal } from "@/components/admin/AdminEditFestivalModal";
 import { DeleteFestivalButton } from "@/components/admin/DeleteFestivalButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,17 +39,8 @@ interface AdminFestivalCardProps {
 }
 
 export function AdminFestivalCard({ festival }: AdminFestivalCardProps) {
-  const [editFestivalOpen, setEditFestivalOpen] = useState(false);
-
   return (
-    <>
-      <AdminEditFestivalModal
-        open={editFestivalOpen}
-        onOpenChange={setEditFestivalOpen}
-        festivalId={festival.id}
-      />
-
-      <Card className="relative group overflow-hidden border-none shadow-xl bg-background/50 backdrop-blur-sm ring-1 ring-border/50 transition-all duration-500 hover:shadow-2xl hover:ring-primary/20 flex flex-col h-full">
+    <Card className="relative group overflow-hidden border-none shadow-xl bg-background/50 backdrop-blur-sm ring-1 ring-border/50 transition-all duration-500 hover:shadow-2xl hover:ring-primary/20 flex flex-col h-full">
         {/* Decorative Background */}
         <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-transparent opacity-50 transition-opacity group-hover:opacity-80" />
 
@@ -132,14 +120,6 @@ export function AdminFestivalCard({ festival }: AdminFestivalCardProps) {
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => setEditFestivalOpen(true)}
-                className="rounded-md cursor-pointer"
-              >
-                <Pencil className="mr-2 h-4 w-4" />
-                Quick Edit
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DeleteFestivalButton
                 festivalId={festival.id}
                 festivalName={festival.name}
@@ -181,6 +161,5 @@ export function AdminFestivalCard({ festival }: AdminFestivalCardProps) {
           </div>
         </CardContent>
       </Card>
-    </>
   );
 }

@@ -3,7 +3,6 @@
 import { addDays, differenceInDays, format } from "date-fns";
 import {
   Clock,
-  Globe,
   LayoutDashboard,
   Lock,
   Pencil,
@@ -12,7 +11,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { getDerivedFestivalStatus } from "@/lib/festival-status";
 import type { Festival } from "@/hooks/useFestivals";
 
 interface FestivalCardProps {
@@ -21,11 +20,15 @@ interface FestivalCardProps {
 }
 
 export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
+  const status = getDerivedFestivalStatus({
+    status: festival.status,
+    startDate: festival.startDate,
+    endDate: festival.endDate,
+    expiresAt: festival.expiresAt,
+  });
   const isLocked = festival.isLocked;
-  const isExpired =
-    festival.status === "EXPIRED" ||
-    (festival.expiresAt && new Date(festival.expiresAt) < new Date());
-  const isActive = !isExpired && (festival.status === "ONGOING" || festival.status === "READY");
+  const isExpired = status === "EXPIRED";
+  const isActive = !isExpired && (status === "ONGOING" || status === "READY");
 
   const totalDays = 30;
   const createdAt = new Date(festival.createdAt);
@@ -57,11 +60,11 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
                       : "bg-slate-700/80 text-slate-100"
                 }
               >
-                {festival.status === "EXPIRED"
+                {status === "EXPIRED"
                   ? "Expired"
-                  : festival.status === "ONGOING"
+                  : status === "ONGOING"
                     ? "Ongoing"
-                    : festival.status === "PAST"
+                    : status === "PAST"
                       ? "Past"
                       : "Ready"}
               </Badge>
