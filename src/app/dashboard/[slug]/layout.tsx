@@ -40,14 +40,14 @@ export default async function FestivalDashboardLayout({
 
   if (!festivalContext) notFound();
 
-  const { festival, role, isExpired, readOnlyExpired } = festivalContext;
+  const { festival, role, isExpired } = festivalContext;
 
   if (role === "NONE") {
     redirect("/");
   }
 
-  // 3. Expiry Guard (redirect unless plan allows readonly within retention window)
-  if (isExpired && !readOnlyExpired) {
+  // 3. Expiry Guard — no read-only; expired = redirect to profile
+  if (isExpired) {
     redirect("/profile?error=expired");
   }
 
@@ -66,7 +66,7 @@ export default async function FestivalDashboardLayout({
     tier: festival.tier,
     accentColor: "#000000",
     expiresAt: festival.expiresAt,
-    readOnlyExpired: readOnlyExpired ?? false,
+    readOnlyExpired: false,
     description: festival.description || "",
     // Legacy fields or unused
     tagline: "",
@@ -83,12 +83,10 @@ export default async function FestivalDashboardLayout({
     // New Stats from Festival
     studentsCount: festival.studentsCount || 0,
     programmesCount: festival.programmesCount || 0,
-    eventsCount: festival.eventsCount || 0,
     stagesCount: festival.stagesCount || 0,
     limits: {
       maxStudents: tierLimits.students,
       maxProgrammes: tierLimits.programmes,
-      maxEvents: tierLimits.events,
       maxStages: tierLimits.stages,
       maxStorageMB: tierLimits.storageMB,
     },
@@ -148,7 +146,6 @@ export default async function FestivalDashboardLayout({
                   usage={{
                     studentsCount: festival._count?.students || 0,
                     programmesCount: festival._count?.programmes || 0,
-                    eventsCount: festival.eventsCount || 0,
                     stagesCount: festival.stagesCount || 0,
                     storageUsedMB: festival.storageUsedMB ?? 0,
                   }}

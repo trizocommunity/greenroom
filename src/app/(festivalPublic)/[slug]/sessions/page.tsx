@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getPublicFestivalData } from "@/server/loader/festivalPublic";
-import { getSessionsPublic } from "@/server/actions/event.actions";
+import { getScheduleEntriesPublic } from "@/server/actions/schedule.actions";
 import { PublicSessionCards } from "./PublicSessionCards";
 
 export async function generateMetadata({
@@ -39,20 +39,20 @@ export default async function SessionsPage({
   if (!data) return notFound();
   const { festival } = data;
 
-  const sessions = await getSessionsPublic(festival.id);
+  const sessionEntries = await getScheduleEntriesPublic(festival.id, "SESSION");
 
-  const serialized = sessions.map((s) => ({
-    id: s.id,
-    startTime: s.startTime ? new Date(s.startTime).toISOString() : null,
-    endTime: s.endTime ? new Date(s.endTime).toISOString() : null,
-    event: {
-      id: s.id,
-      name: s.name,
-      type: s.type,
-      description: s.description ?? null,
-      speakers: s.speakers ?? null,
+  const serialized = sessionEntries.map((e) => ({
+    id: e.id,
+    startTime: new Date(e.startTime).toISOString(),
+    endTime: e.endTime ? new Date(e.endTime).toISOString() : null,
+    session: {
+      id: e.id,
+      name: e.title || "Session",
+      type: e.sessionType ?? "GENERAL",
+      description: e.description ?? null,
+      speakers: e.speakers ?? null,
     },
-    stage: s.stage ? { id: s.stage.id, name: s.stage.name } : null,
+    stage: e.stage ? { id: e.stage.id, name: e.stage.name } : null,
   }));
 
   return (

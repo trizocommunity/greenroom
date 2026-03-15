@@ -43,6 +43,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -64,14 +65,12 @@ import {
 } from "@/components/ui/tooltip";
 
 type ProgrammeOption = { id: string; name: string };
-type EventOption = { id: string; name: string };
 type StageOption = { id: string; name: string; description?: string | null };
 
 interface ScheduleClientProps {
   festivalId: string;
   initialEntries: ScheduleEntryWithRelations[];
   programmes: ProgrammeOption[];
-  events: EventOption[];
   stages: StageOption[];
   /** ISO date strings; used to restrict date picker to festival range */
   festivalStartDate: string | null;
@@ -96,9 +95,13 @@ function getFestivalDateOptions(
 }
 
 function getEntryLabel(entry: ScheduleEntryWithRelations): string {
-  if (entry.programme) return entry.programme.name;
-  if (entry.event) return entry.event.name;
+  if (entry.type === "PROGRAMME" && entry.programme) return entry.programme.name;
+  if (entry.type === "SESSION") return entry.title || "—";
   return "—";
+}
+
+function isProgrammeEntry(entry: ScheduleEntryWithRelations): boolean {
+  return entry.type === "PROGRAMME";
 }
 
 function getDateKey(d: Date): string {
@@ -109,7 +112,6 @@ export function ScheduleClient({
   festivalId,
   initialEntries,
   programmes,
-  events,
   stages,
   festivalStartDate,
   festivalEndDate,
@@ -117,6 +119,7 @@ export function ScheduleClient({
   const dateOptions = getFestivalDateOptions(festivalStartDate, festivalEndDate);
   const [entries, setEntries] = useState<ScheduleEntryWithRelations[]>(initialEntries);
   const [addOpen, setAddOpen] = useState(false);
+  const [addFormError, setAddFormError] = useState<string | null>(null);
   const [editEntry, setEditEntry] = useState<ScheduleEntryWithRelations | null>(null);
   const [deleteEntryId, setDeleteEntryId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -141,18 +144,17 @@ export function ScheduleClient({
       : sortedDays[0] ?? null;
 
   const handleCreate = async (data: {
-    type: "programme" | "event";
     programmeId?: string;
-    eventId?: string;
     stageId?: string;
     startTime: Date;
     endTime?: Date;
   }) => {
+    setAddFormError(null);
     setSaving(true);
     try {
       const res = await createScheduleEntry(festivalId, {
-        programmeId: data.type === "programme" ? data.programmeId : null,
-        eventId: data.type === "event" ? data.eventId : null,
+        type: "PROGRAMME",
+        programmeId: data.programmeId || null,
         stageId: data.stageId || null,
         startTime: data.startTime,
         endTime: data.endTime ?? null,
@@ -161,7 +163,10 @@ export function ScheduleClient({
         toast.success("Added to schedule.");
         setAddOpen(false);
         refresh();
-      } else toast.error(res.error);
+      } else {
+        setAddFormError(res.error);
+        toast.error(res.error);
+      }
     } finally {
       setSaving(false);
     }
@@ -328,7 +333,14 @@ export function ScheduleClient({
                         </Button>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{getEntryLabel(entry)}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium truncate">{getEntryLabel(entry)}</p>
+                          {entry.type === "SESSION" && (
+                            <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                              Session
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           {format(new Date(entry.startTime), "h:mm a")}
                           {entry.endTime &&
@@ -366,27 +378,31 @@ export function ScheduleClient({
                           </TooltipProvider>
                         )}
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setEditEntry(entry)}>
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => setDeleteEntryId(entry.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {isProgrammeEntry(entry) ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setEditEntry(entry)}>
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => setDeleteEntryId(entry.id)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Read-only</span>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -398,11 +414,14 @@ export function ScheduleClient({
 
       <AddEntryDialog
         open={addOpen}
-        onOpenChange={setAddOpen}
+        onOpenChange={(open) => {
+          setAddOpen(open);
+          if (!open) setAddFormError(null);
+        }}
         onSubmit={handleCreate}
         saving={saving}
+        formError={addFormError}
         programmes={programmes}
-        events={events}
         stages={stages}
         dateOptions={dateOptions}
       />
@@ -441,24 +460,22 @@ function AddEntryDialog({
   onOpenChange,
   onSubmit,
   saving,
+  formError,
   programmes,
-  events,
   stages,
   dateOptions,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: {
-    type: "programme" | "event";
     programmeId?: string;
-    eventId?: string;
     stageId?: string;
     startTime: Date;
     endTime?: Date;
   }) => Promise<void>;
   saving: boolean;
+  formError: string | null;
   programmes: ProgrammeOption[];
-  events: EventOption[];
   stages: StageOption[];
   dateOptions: DateOption[];
 }) {
@@ -469,9 +486,7 @@ function AddEntryDialog({
         ? today
         : dateOptions[0]!.value
       : today;
-  const [type, setType] = useState<"programme" | "event">("programme");
   const [programmeId, setProgrammeId] = useState("");
-  const [eventId, setEventId] = useState("");
   const [stageId, setStageId] = useState("");
   const [dateStr, setDateStr] = useState(defaultDate);
   const [startTimeStr, setStartTimeStr] = useState("09:00");
@@ -479,12 +494,8 @@ function AddEntryDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (type === "programme" && !programmeId) {
+    if (!programmeId) {
       toast.error("Select a programme.");
-      return;
-    }
-    if (type === "event" && !eventId) {
-      toast.error("Select a session.");
       return;
     }
     const effectiveDate =
@@ -494,9 +505,7 @@ function AddEntryDialog({
     const startTime = new Date(`${effectiveDate}T${startTimeStr}`);
     const endTime = endTimeStr ? new Date(`${effectiveDate}T${endTimeStr}`) : undefined;
     await onSubmit({
-      type,
-      programmeId: type === "programme" ? programmeId : undefined,
-      eventId: type === "event" ? eventId : undefined,
+      programmeId,
       stageId: stageId || undefined,
       startTime,
       endTime,
@@ -505,39 +514,23 @@ function AddEntryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add to schedule</DialogTitle>
-          <DialogDescription>
-            Choose a programme or event, stage, and time.
+      <DialogContent className="max-w-md p-4 sm:p-5 gap-0">
+        <DialogHeader className="pb-3">
+          <DialogTitle className="text-base">Add programme to schedule</DialogTitle>
+          <DialogDescription className="text-xs">
+            Programme, stage, and time. Sessions are on the Sessions page.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label>Type</Label>
-            <Select
-              value={type}
-              onValueChange={(v) => {
-                setType(v as "programme" | "event");
-                setProgrammeId("");
-                setEventId("");
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="programme">Programme</SelectItem>
-                <SelectItem value="event">Session</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {type === "programme" && (
-            <div className="space-y-2">
-              <Label>Programme</Label>
+
+        <form onSubmit={handleSubmit} className="space-y-3.5">
+         
+
+          <div className="grid grid-cols-1 gap-1">
+            <div className="space-y-1.5">
+              <Label htmlFor="add-programme" className="text-xs">Programme</Label>
               <Select value={programmeId} onValueChange={setProgrammeId} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select programme" />
+                <SelectTrigger id="add-programme" className="h-9 text-sm">
+                  <SelectValue placeholder="Select" />
                 </SelectTrigger>
                 <SelectContent>
                   {programmes.map((p) => (
@@ -548,58 +541,44 @@ function AddEntryDialog({
                 </SelectContent>
               </Select>
             </div>
-          )}
-          {type === "event" && (
-            <div className="space-y-2">
-              <Label>Session</Label>
-              <Select value={eventId} onValueChange={setEventId} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select session" />
+            <div className="space-y-1.5">
+              <Label htmlFor="add-stage" className="text-xs">Stage <span className="text-muted-foreground font-normal">(opt)</span></Label>
+              <Select
+                value={stageId || STAGE_NONE}
+                onValueChange={(v) => setStageId(v === STAGE_NONE ? "" : v)}
+              >
+                <SelectTrigger id="add-stage" className="h-9 text-sm">
+                  <SelectValue placeholder="No stage" />
                 </SelectTrigger>
                 <SelectContent>
-                  {events.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>
-                      {e.name}
+                  <SelectItem value={STAGE_NONE}>
+                    <span className="text-muted-foreground">No stage</span>
+                  </SelectItem>
+                  {stages.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      <span className="block font-medium">{s.name}</span>
+                      {s.description && (
+                        <span className="block text-xs text-muted-foreground font-normal line-clamp-1">
+                          {s.description}
+                        </span>
+                      )}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-          )}
-          <div className="space-y-2">
-            <Label>Stage (optional)</Label>
-            <Select
-              value={stageId || STAGE_NONE}
-              onValueChange={(v) => setStageId(v === STAGE_NONE ? "" : v)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select stage" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={STAGE_NONE}>None</SelectItem>
-                {stages.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    <span className="block font-medium">{s.name}</span>
-                    {s.description && (
-                      <span className="block text-xs text-muted-foreground font-normal line-clamp-2">
-                        {s.description}
-                      </span>
-                    )}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Date</Label>
+
+          <div className="grid grid-cols-2 gap-2 items-end">
+            <div className="space-y-1.5 col-span-2">
+              <Label htmlFor="add-date" className="text-xs">Date</Label>
               {dateOptions.length > 0 ? (
                 <Select
                   value={dateOptions.some((o) => o.value === dateStr) ? dateStr : dateOptions[0]!.value}
                   onValueChange={setDateStr}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select date" />
+                  <SelectTrigger id="add-date" className="h-9 text-sm">
+                    <SelectValue placeholder="Date" />
                   </SelectTrigger>
                   <SelectContent>
                     {dateOptions.map((o) => (
@@ -610,51 +589,53 @@ function AddEntryDialog({
                   </SelectContent>
                 </Select>
               ) : (
-                <>
-                  <input
-                    type="date"
-                    value={dateStr}
-                    onChange={(e) => setDateStr(e.target.value)}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Set festival start and end date to restrict to festival days.
-                  </p>
-                </>
+                <Input
+                  id="add-date"
+                  type="date"
+                  value={dateStr}
+                  onChange={(e) => setDateStr(e.target.value)}
+                  className="h-9 text-sm"
+                />
               )}
             </div>
-            <div className="space-y-2">
-              <Label>Start time</Label>
-              <input
+            <div className="space-y-1.5 col-span-1">
+              <Label htmlFor="add-start" className="text-xs">Start</Label>
+              <Input
+                id="add-start"
                 type="time"
                 value={startTimeStr}
                 onChange={(e) => setStartTimeStr(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                className="h-9 text-sm w-full"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="add-end" className="text-xs">End <span className="text-muted-foreground font-normal">(opt)</span></Label>
+              <Input
+                id="add-end"
+                type="time"
+                value={endTimeStr}
+                onChange={(e) => setEndTimeStr(e.target.value)}
+                className="h-9 text-sm w-full"
               />
             </div>
           </div>
-          <div className="space-y-2">
-            <Label>End time (optional)</Label>
-            <input
-              type="time"
-              value={endTimeStr}
-              onChange={(e) => setEndTimeStr(e.target.value)}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-            />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+
+          {formError && (
+            <div
+              role="alert"
+              className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
+            >
+              <span className="shrink-0 size-3.5 rounded-full bg-destructive/20 flex items-center justify-center text-[9px] font-bold">!</span>
+              <span>{formError}</span>
+            </div>
+          )}
+
+          <DialogFooter className="pt-3 pb-0 gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={
-                saving ||
-                (type === "programme" && !programmeId) ||
-                (type === "event" && !eventId)
-              }
-            >
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button size="sm" type="submit" disabled={saving || !programmeId}>
+              {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
               Add
             </Button>
           </DialogFooter>

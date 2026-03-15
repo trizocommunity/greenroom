@@ -1,17 +1,14 @@
 import { NextResponse } from "next/server";
-import { FestivalLifecycleService } from "@/server/services/festival-lifecycle.service";
+import { FestivalExpirationService } from "@/server/services/festival-expiration.service";
 
 /**
- * Cron Job: Cleanup Expired Festivals
+ * Cron Job: Expire Festivals (fixed 30-day validity; no read-only)
+ * Runs expiration process: snapshot results, delete non-retained data, set EXPIRED.
  * Frequency: Daily (recommended)
  * Security: Validates CRON_SECRET if present in env
  */
 export async function GET(request: Request) {
   try {
-    // 1. Authorization
-    // Vercel Cron automatically adds this header.
-    // If you are running strictly locally or without Vercel Cron, you can bypass this or use a manual secret.
-    // For safety, we check if CRON_SECRET is defined in ENV.
     const authHeader = request.headers.get("authorization");
     if (
       process.env.CRON_SECRET &&
@@ -20,17 +17,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 2. Execute Cleanup
-    const deletedCount =
-      await FestivalLifecycleService.cleanupExpiredFestivals();
+    const { processed } =
+      await FestivalExpirationService.runExpirationCycle();
 
     return NextResponse.json({
       success: true,
-      message: `Cleanup completed. Deleted ${deletedCount} expired festivals.`,
-      deletedCount,
+      message: `Expiration cycle completed. Processed ${processed} festival(s).`,
+      processed,
     });
   } catch (error: any) {
-    console.error("[Cron] Cleanup failed:", error);
+    console.error("[Cron] Expiration failed:", error);
     return NextResponse.json(
       { success: false, error: error.message },
       { status: 500 },

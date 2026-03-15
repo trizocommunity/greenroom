@@ -2,9 +2,11 @@ import { notFound } from "next/navigation";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { FestivalFooter } from "@/components/festival/FestivalFooter";
 import { FestivalNavbar } from "@/components/festival/FestivalNavbar";
+import { ExpiredFestivalView } from "@/components/festival/public/ExpiredFestivalView";
 import { getBrandingFromJson } from "@/types/festival";
 import { getSession } from "@/lib/auth/session";
 import { findFestivalBySlug } from "@/server/models/festival.model";
+import { prisma } from "@/lib/db";
 
 export default async function FestivalLayout({
   children,
@@ -15,20 +17,34 @@ export default async function FestivalLayout({
 }) {
   const { slug: festivalSlug } = await params;
 
-  // Fetch basic festival info for the layout (Navbar/Footer)
   const festival = await findFestivalBySlug(festivalSlug);
 
   if (!festival) {
     notFound();
   }
 
-  // Expiry Guard
   const isExpired =
     festival.status === "EXPIRED" ||
     (festival.expiresAt && new Date(festival.expiresAt) < new Date());
 
+  // Expired: show locked "festival ended" view (no dashboard, no interactive pages)
   if (isExpired) {
-    notFound(); // As per product definition: "After expiry... permanently deleted"
+    const hasSnapshot =
+      (await prisma.expiredFestivalResult.count({
+        where: { festivalId: festival.id },
+      })) > 0;
+    const hasPdf = !!festival.resultPdfUrl || hasSnapshot;
+    const downloadPdfUrl = festival.resultPdfUrl
+      ? festival.resultPdfUrl
+      : `/api/festivals/${festival.slug}/expired-results-pdf`;
+    return (
+      <ExpiredFestivalView
+        festivalName={festival.name}
+        festivalSlug={festival.slug}
+        hasPdf={hasPdf}
+        downloadPdfUrl={downloadPdfUrl}
+      />
+    );
   }
 
   // Public site disabled: return 404 so URL is not accessible
@@ -62,7 +78,6 @@ export default async function FestivalLayout({
     orgLocation: festival.orgLocation || "",
     establishedYear: festival.establishedYear || null,
     studentsCount: festival.studentsCount || 0,
-    eventsCount: festival.eventsCount || 0,
     limits: null,
     studentCreationDeadline: festival.studentCreationDeadline,
     programmeAssignmentDeadline: festival.programmeAssignmentDeadline,

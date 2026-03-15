@@ -1,6 +1,6 @@
-import { EventsClient } from "@/components/festival/pre-works/events/EventsClient";
+import { SessionScheduleClient } from "@/components/festival/pre-works/schedule/SessionScheduleClient";
 import { findFestivalBySlug } from "@/server/models/festival.model";
-import { getEvents } from "@/server/actions/event.actions";
+import { getScheduleEntries } from "@/server/actions/schedule.actions";
 import { getStages } from "@/server/actions/stage.actions";
 import { notFound, redirect } from "next/navigation";
 import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
@@ -38,8 +38,8 @@ export default async function SessionsPage({ params }: PageProps) {
     );
   }
 
-  const [events, stages] = await Promise.all([
-    getEvents(festival.id),
+  const [sessionEntries, stages] = await Promise.all([
+    getScheduleEntries(festival.id, "SESSION"),
     getStages(festival.id),
   ]);
 
@@ -50,11 +50,16 @@ export default async function SessionsPage({ params }: PageProps) {
 
   return (
     <div className="container pt-4 sm:pt-6">
-      <EventsClient
+      <SessionScheduleClient
         festivalId={festival.id}
-        initialEvents={events}
-        stages={stages.map((s) => ({ id: s.id, name: s.name, description: s.description }))}
-        dateOptions={dateOptions}
+        initialEntries={sessionEntries}
+        stages={stages.map((s) => ({
+          id: s.id,
+          name: s.name,
+          description: s.description ?? null,
+        }))}
+        festivalStartDate={festival.startDate?.toISOString() ?? null}
+        festivalEndDate={festival.endDate?.toISOString() ?? null}
       />
     </div>
   );

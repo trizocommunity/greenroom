@@ -3,6 +3,7 @@
 import { format } from "date-fns";
 import {
   Calendar,
+  FileText,
   LayoutDashboard,
   MoreVertical,
   Pencil,
@@ -36,7 +37,6 @@ interface AdminFestivalCardProps {
     owner: { email: string };
     studentsCount?: number;
     programmesCount?: number;
-    eventsCount?: number;
     stagesCount?: number;
   };
 }
@@ -60,14 +60,28 @@ export function AdminFestivalCard({ festival }: AdminFestivalCardProps) {
           <div className="flex flex-col gap-1.5 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <Badge
-                variant={festival.status === "ACTIVE" ? "default" : "secondary"}
+                variant={
+                  festival.status === "EXPIRED"
+                    ? "destructive"
+                    : festival.status === "ONGOING"
+                      ? "default"
+                      : "secondary"
+                }
                 className={
-                  festival.status === "ACTIVE"
-                    ? "bg-green-500 hover:bg-green-600 shadow-lg shadow-green-500/20 px-2 h-5 text-[10px] font-black uppercase tracking-wider"
-                    : "px-2 h-5 text-[10px] font-black uppercase tracking-wider"
+                  festival.status === "EXPIRED"
+                    ? "bg-red-500/90 text-white px-2 h-5 text-[10px] font-black uppercase tracking-wider"
+                    : festival.status === "ONGOING"
+                      ? "bg-green-500 hover:bg-green-600 shadow-lg shadow-green-500/20 px-2 h-5 text-[10px] font-black uppercase tracking-wider"
+                      : "px-2 h-5 text-[10px] font-black uppercase tracking-wider"
                 }
               >
-                {festival.status}
+                {festival.status === "EXPIRED"
+                  ? "Expired"
+                  : festival.status === "ONGOING"
+                    ? "Ongoing"
+                    : festival.status === "PAST"
+                      ? "Past"
+                      : "Ready"}
               </Badge>
               <div className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest flex items-center gap-1">
                 <Calendar className="w-3 h-3" />
@@ -97,15 +111,27 @@ export function AdminFestivalCard({ festival }: AdminFestivalCardProps) {
               <DropdownMenuLabel className="text-xs uppercase tracking-widest font-black text-muted-foreground/60 px-2 py-1.5">
                 Festival Controls
               </DropdownMenuLabel>
-              <DropdownMenuItem asChild>
-                <Link
-                  href={`/dashboard/${festival.slug}`}
-                  className="rounded-md cursor-pointer"
-                >
-                  <LayoutDashboard className="mr-2 h-4 w-4" />
-                  Open Dashboard
-                </Link>
-              </DropdownMenuItem>
+              {festival.status === "EXPIRED" ? (
+                <DropdownMenuItem asChild>
+                  <Link
+                    href={`/super-admin/festivals/${festival.slug}`}
+                    className="rounded-md cursor-pointer"
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    View details & PDF
+                  </Link>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem asChild>
+                  <Link
+                    href={`/dashboard/${festival.slug}`}
+                    className="rounded-md cursor-pointer"
+                  >
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    Open Dashboard
+                  </Link>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => setEditFestivalOpen(true)}

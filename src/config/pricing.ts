@@ -195,7 +195,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
   STANDARD: {
     price: 3000,
     label: "Standard",
-    durationDays: 90,
+    durationDays: 30, // Fixed 30 days for all plans; no read-only after expiry
     limits: {
       students: 500,
       programmes: 250,
@@ -278,16 +278,16 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       supportLevel: "email",
       supportResponseTime: 12,
 
-      // Post-Expiry Behavior — read-only access retained for 30 days
-      postExpiryAccess: "readonly",
-      dataRetentionDays: 30,
+      // Post-Expiry Behavior — no read-only; expired = full lock
+      postExpiryAccess: "delete",
+      dataRetentionDays: 0,
     },
   },
 
   PRO: {
     price: 6000,
     label: "Pro",
-    durationDays: 180,
+    durationDays: 30, // Fixed 30 days for all plans
     limits: {
       students: 2000,
       programmes: 1000,
@@ -370,9 +370,9 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       supportLevel: "priority",
       supportResponseTime: 4,
 
-      // Post-Expiry Behavior — full access retained for 90 days
-      postExpiryAccess: "full",
-      dataRetentionDays: 90,
+      // Post-Expiry Behavior — no read-only; expired = full lock
+      postExpiryAccess: "delete",
+      dataRetentionDays: 0,
     },
   },
 };
@@ -420,7 +420,6 @@ export const PRICING_TIERS: PricingTier[] = [
       "Bulk Upload (Students & Programmes)",
       "QR Codes & Auto Certificates",
       "Full Landing Page",
-      "30-day read-only access after expiry",
     ],
     isPopular: true,
   },
@@ -442,7 +441,6 @@ export const PRICING_TIERS: PricingTier[] = [
       "White-label + Custom Domain",
       "API Access & Webhooks",
       "Up to 10 Team Members with RBAC",
-      "90-day full access after expiry",
     ],
     isPopular: false,
   },

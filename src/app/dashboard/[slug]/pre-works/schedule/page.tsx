@@ -28,7 +28,7 @@ export default async function SchedulePage({ params }: PageProps) {
     );
   }
 
-  const [entries, stages, programmes, events] = await Promise.all([
+  const [entries, stages, allProgrammes] = await Promise.all([
     getScheduleEntries(festival.id),
     getStages(festival.id),
     prisma.programme.findMany({
@@ -36,12 +36,14 @@ export default async function SchedulePage({ params }: PageProps) {
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
-    prisma.event.findMany({
-      where: { festivalId: festival.id },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    }),
   ]);
+
+  const scheduledProgrammeIds = new Set(
+    entries
+      .filter((e) => e.type === "PROGRAMME" && e.programmeId)
+      .map((e) => e.programmeId!),
+  );
+  const programmes = allProgrammes.filter((p) => !scheduledProgrammeIds.has(p.id));
 
   return (
     <div className="container pt-4 sm:pt-6">
@@ -49,7 +51,6 @@ export default async function SchedulePage({ params }: PageProps) {
         festivalId={festival.id}
         initialEntries={entries}
         programmes={programmes}
-        events={events}
         stages={stages.map((s) => ({ id: s.id, name: s.name, description: s.description ?? null }))}
         festivalStartDate={festival.startDate?.toISOString() ?? null}
         festivalEndDate={festival.endDate?.toISOString() ?? null}

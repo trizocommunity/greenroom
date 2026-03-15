@@ -39,6 +39,10 @@ import { queryKeys } from "@/lib/query-keys";
 import type { UpdateFestivalInput } from "@/lib/validations/festival";
 import { updateFestivalSchema } from "@/lib/validations/festival";
 import { updateFestivalAction } from "@/server/actions/user-festival.actions";
+import {
+  getDerivedFestivalStatus,
+  FESTIVAL_STATUS_LABELS,
+} from "@/lib/festival-status";
 
 interface EditFestivalModalProps {
   festival: any;
@@ -147,6 +151,27 @@ export function EditFestivalModal({
                   {/* General Tab */}
                   <TabsContent value="general" className="space-y-6 mt-0">
                     <div className="grid gap-6">
+                      {festival && (
+                        <div className="bg-muted/30 p-4 rounded-xl border">
+                          <h3 className="font-semibold text-sm text-muted-foreground mb-1">
+                            Lifecycle Status
+                          </h3>
+                          <p className="text-lg font-semibold">
+                            {FESTIVAL_STATUS_LABELS[
+                              getDerivedFestivalStatus({
+                                status: festival.status,
+                                startDate: festival.startDate,
+                                endDate: festival.endDate,
+                                expiresAt: festival.expiresAt,
+                              })
+                            ]}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Derived from start, end, and expiry dates. Cannot be
+                            edited.
+                          </p>
+                        </div>
+                      )}
                       <div className="bg-muted/30 p-4 rounded-xl border space-y-4">
                         <h3 className="font-semibold flex items-center gap-2">
                           <Building2 className="w-4 h-4 text-primary" />

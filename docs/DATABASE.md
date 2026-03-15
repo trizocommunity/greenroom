@@ -1,5 +1,7 @@
 # Database and Prisma configuration
 
+**Festival Validity System migrations:** For the READY/ONGOING/PAST/EXPIRED status and expiration retention tables, see **[MIGRATION_FESTIVAL_VALIDITY_SUPABASE.md](MIGRATION_FESTIVAL_VALIDITY_SUPABASE.md)** (Prisma deploy + Supabase SQL Editor fallback).
+
 ## Connection URLs
 
 - **`DATABASE_URL`** – Used by the Next.js app at runtime (via `src/lib/db.ts`). Use the **Supabase connection pooler** URL for production (e.g. port **6543**, `pgbouncer=true`) to avoid exhausting connections.
@@ -24,6 +26,7 @@ You see something like:
 ```text
 Error: P1001: Can't reach database server at `db.xxxxx.supabase.co:5432`
 ```
+
 or at runtime (dashboard, pages):
 
 ```text
@@ -64,7 +67,7 @@ Free-tier Supabase projects **pause** after inactivity.
 - In the project root, ensure `.env` exists and contains at least:
   - `DATABASE_URL="postgresql://postgres.[ref]:[PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true"`
   - `DIRECT_URL="postgresql://postgres.[ref]:[PASSWORD]@db.[ref].supabase.co:5432/postgres?sslmode=require"`
-  (Supabase requires SSL for the direct connection; without `sslmode=require` you may get P1001 even when the project is healthy.)
+    (Supabase requires SSL for the direct connection; without `sslmode=require` you may get P1001 even when the project is healthy.)
 - No quotes issues or spaces; password with special characters should be URL-encoded.
 
 ### 4. Run CLI from project root
@@ -122,11 +125,11 @@ If your network blocks outbound **port 5432** (common on corporate or restricted
 
 ## Summary
 
-| What                    | Uses          | Recommended URL   |
-|-------------------------|---------------|-------------------|
-| Next.js app (runtime)   | `DATABASE_URL`| Pooler (6543)    |
-| Prisma migrate / deploy | `DIRECT_URL` then `DATABASE_URL` | Direct (5432) |
-| Prisma seed             | `DIRECT_URL` or `DATABASE_URL` (see seed script) | Direct (5432) |
+| What                    | Uses                                             | Recommended URL |
+| ----------------------- | ------------------------------------------------ | --------------- |
+| Next.js app (runtime)   | `DATABASE_URL`                                   | Pooler (6543)   |
+| Prisma migrate / deploy | `DIRECT_URL` then `DATABASE_URL`                 | Direct (5432)   |
+| Prisma seed             | `DIRECT_URL` or `DATABASE_URL` (see seed script) | Direct (5432)   |
 
 Ensure the Supabase project is **not paused**, `.env` is in the project root with correct `DATABASE_URL` and `DIRECT_URL`, and run Prisma commands from the project root.
 

@@ -1,6 +1,4 @@
 import type { FestivalRole, GlobalRole } from "@prisma/client";
-import { TIER_CONFIG } from "@/config/pricing";
-import { getResolvedTier } from "@/lib/tier";
 import { prisma } from "@/lib/db";
 import { findFestivalBySlugOrId } from "@/server/models/festival.model";
 
@@ -16,7 +14,7 @@ export interface FestivalContext {
   >;
   role: FestivalAccessRole;
   isExpired: boolean;
-  /** True when plan allows readonly access within dataRetentionDays after expiry (e.g. STANDARD). */
+  /** Kept for backward compat; always false (no read-only after expiry). */
   readOnlyExpired?: boolean;
 }
 
@@ -64,20 +62,8 @@ export async function getFestivalContext(
       (festival.expiresAt && new Date(festival.expiresAt) < now),
   );
 
-  let readOnlyExpired = false;
-  if (isExpired && festival.expiresAt) {
-    const tier = getResolvedTier(festival.tier);
-    const config = TIER_CONFIG[tier];
-    const postExpiryAccess = config?.features?.postExpiryAccess;
-    const dataRetentionDays = config?.features?.dataRetentionDays ?? 0;
-    if (postExpiryAccess === "readonly" && dataRetentionDays > 0) {
-      const retentionEnd = new Date(festival.expiresAt);
-      retentionEnd.setDate(retentionEnd.getDate() + dataRetentionDays);
-      if (now <= retentionEnd) {
-        readOnlyExpired = true;
-      }
-    }
-  }
+  // No read-only mode: all plans use fixed 30-day duration; once expired, full lock.
+  const readOnlyExpired = false;
 
   return {
     festival,
@@ -87,7 +73,7 @@ export async function getFestivalContext(
   };
 }
 
-/** Throws if the festival is in post-expiry readonly window (e.g. STANDARD 30 days). Call from mutation actions. */
+/** Throws if the festival is expired. No read-only window; expired = full lock. Call from mutation actions. */
 export async function ensureFestivalWritable(festivalId: string): Promise<void> {
   const festival = await findFestivalBySlugOrId(festivalId);
   if (!festival) return;
@@ -96,18 +82,10 @@ export async function ensureFestivalWritable(festivalId: string): Promise<void> 
     festival.status === "EXPIRED" ||
       (festival.expiresAt && new Date(festival.expiresAt) < now),
   );
-  if (!isExpired) return;
-  if (!festival.expiresAt) return;
-  const tier = getResolvedTier(festival.tier);
-  const config = TIER_CONFIG[tier];
-  const postExpiryAccess = config?.features?.postExpiryAccess;
-  const dataRetentionDays = config?.features?.dataRetentionDays ?? 0;
-  if (postExpiryAccess !== "readonly" || dataRetentionDays <= 0) return;
-  const retentionEnd = new Date(festival.expiresAt);
-  retentionEnd.setDate(retentionEnd.getDate() + dataRetentionDays);
-  if (now > retentionEnd) return;
-  throw new Error(
-    "This festival has expired and is in read-only mode. Create, edit, and delete are disabled.",
-  );
+  if (isExpired) {
+    throw new Error(
+      "This festival has expired. Create, edit, and delete are disabled.",
+    );
+  }
 }
 

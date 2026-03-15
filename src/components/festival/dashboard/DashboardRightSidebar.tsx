@@ -35,14 +35,12 @@ interface DashboardRightSidebarProps {
   usage?: {
     studentsCount: number;
     programmesCount: number;
-    eventsCount?: number;
     stagesCount?: number;
     storageUsedMB: number;
   };
   limits?: {
     maxStudents: number;
     maxProgrammes: number;
-    maxEvents?: number;
     maxStages?: number;
     maxStorageMB: number;
   };
@@ -145,14 +143,12 @@ export function DashboardRightSidebar({
                   limits={{
                     maxStudents: limits.maxStudents,
                     maxProgrammes: limits.maxProgrammes,
-                    maxEvents: limits.maxEvents,
                     maxStages: limits.maxStages,
                     maxStorageMB: limits.maxStorageMB,
                   }}
                   usage={{
                     studentsCount: usage.studentsCount,
                     programmesCount: usage.programmesCount,
-                    eventsCount: usage.eventsCount,
                     stagesCount: usage.stagesCount,
                     storageUsedMB: usage.storageUsedMB,
                   }}

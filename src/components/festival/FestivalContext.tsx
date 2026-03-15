@@ -25,12 +25,10 @@ export type FestivalPublicData = {
   // Festival stats
   studentsCount?: number;
   programmesCount?: number;
-  eventsCount?: number;
   stagesCount?: number;
   limits?: {
     maxStudents: number;
     maxProgrammes?: number;
-    maxEvents?: number;
     maxStages?: number;
     maxStorageMB?: number;
   } | null;

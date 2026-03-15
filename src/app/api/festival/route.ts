@@ -78,7 +78,7 @@ export async function POST(request: Request) {
       name,
       slug,
       owner: { connect: { id: userId } },
-      status: "DRAFT",
+      status: "READY",
       isLocked: true,
     });
 

@@ -16,7 +16,7 @@ export type Festival = {
   establishedYear?: number;
   founderName?: string;
   founderMessage?: string;
-  status: "DRAFT" | "ACTIVE" | "EXPIRED";
+  status: "READY" | "ONGOING" | "PAST" | "EXPIRED";
   isLocked: boolean;
   createdAt: string;
   expiresAt?: string | null;
@@ -24,7 +24,6 @@ export type Festival = {
   tierLabel?: string;
   studentsCount?: number;
   programmesCount?: number;
-  eventsCount?: number;
   stagesCount?: number;
   storageUsedMB?: number;
 };

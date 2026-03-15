@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Calendar, Megaphone } from "lucide-react";
+import { Calendar, Megaphone, Mic2 } from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getFestivalContext } from "@/server/services/festival-context.service";
 import { getSession } from "@/lib/auth/session";
@@ -31,7 +31,7 @@ export default async function StageManagerOverviewPage({
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <Link href={`${basePath}/pre-works/stage-management`}>
           <Card className="h-full transition-colors hover:bg-muted/50">
             <CardHeader>
@@ -60,7 +60,25 @@ export default async function StageManagerOverviewPage({
                 <div>
                   <CardTitle>Schedule</CardTitle>
                   <CardDescription>
-                    View and manage the festival schedule and sessions.
+                    View programme slots and session times.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href={`${basePath}/pre-works/sessions`}>
+          <Card className="h-full transition-colors hover:bg-muted/50">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Mic2 className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <CardTitle>Sessions</CardTitle>
+                  <CardDescription>
+                    Create and manage talks, ceremonies, and sessions.
                   </CardDescription>
                 </div>
               </div>

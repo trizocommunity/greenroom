@@ -40,9 +40,9 @@ export default async function ProgrammesPage({
   if (!data) return notFound();
   const { festival } = data;
 
-  const allEntries = await getScheduleEntriesPublic(festival.id);
-  const programmeEntries = allEntries.filter(
-    (e) => e.programmeId != null && e.programme != null,
+  const programmeEntries = await getScheduleEntriesPublic(
+    festival.id,
+    "PROGRAMME",
   );
 
   const groupedByDay = programmeEntries.reduce<
@@ -56,7 +56,7 @@ export default async function ProgrammesPage({
 
   const sortedDays = Object.keys(groupedByDay).sort();
 
-  const days = sortedDays.map((dateKey) => {
+  const days = sortedDays.map((dateKey, index) => {
     const dayDate = parseISO(dateKey);
     const entries = groupedByDay[dateKey].map((entry) => ({
       id: entry.id,
@@ -75,6 +75,7 @@ export default async function ProgrammesPage({
     }));
     return {
       dateKey,
+      tabLabel: `Day ${index + 1}`,
       label: format(dayDate, "EEEE, MMM d, yyyy"),
       entries,
     };

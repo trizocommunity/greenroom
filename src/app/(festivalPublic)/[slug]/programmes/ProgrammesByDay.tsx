@@ -17,7 +17,12 @@ export type ProgrammeEntry = {
 };
 
 type ProgrammesByDayProps = {
-  days: { dateKey: string; label: string; entries: ProgrammeEntry[] }[];
+  days: {
+    dateKey: string;
+    tabLabel: string;
+    label: string;
+    entries: ProgrammeEntry[];
+  }[];
 };
 
 export function ProgrammesByDay({ days }: ProgrammesByDayProps) {
@@ -36,7 +41,7 @@ export function ProgrammesByDay({ days }: ProgrammesByDayProps) {
         className="flex flex-wrap gap-2 border-b border-border pb-2"
         role="tablist"
       >
-        {days.map(({ dateKey, label, entries: dayEntries }) => (
+        {days.map(({ dateKey, tabLabel, entries: dayEntries }) => (
           <button
             key={dateKey}
             type="button"
@@ -50,7 +55,7 @@ export function ProgrammesByDay({ days }: ProgrammesByDayProps) {
                 : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
             )}
           >
-            {label}
+            {tabLabel}
             <span className="ml-2 opacity-80">({dayEntries.length})</span>
           </button>
         ))}

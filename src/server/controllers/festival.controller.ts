@@ -41,7 +41,7 @@ export async function store(
     name,
     slug,
     owner: { connect: { id: userId } },
-    status: "DRAFT", // Default to DRAFT
+    status: "READY",
     isLocked: true,
   });
 

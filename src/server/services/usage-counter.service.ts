@@ -15,13 +15,13 @@ export const UsageCounterService = {
    * Atomically increments a usage counter if it doesn't exceed the limit.
    *
    * @param festivalId The festival to update
-   * @param resource The resource type ("students" | "programmes" | "events" | "stages" | "storage")
+   * @param resource The resource type ("students" | "programmes" | "stages" | "storage")
    * @param amount Amount to increment (default 1)
    * @param transaction Optional existing transaction
    */
   async incrementUsage(
     festivalId: string,
-    resource: "students" | "programmes" | "events" | "stages" | "storage",
+    resource: "students" | "programmes" | "stages" | "storage",
     amount = 1,
     tx?: Prisma.TransactionClient,
   ) {
@@ -53,11 +53,6 @@ export const UsageCounterService = {
         currentUsage = festival.programmesCount;
         maxLimit = limits.programmes;
         fieldToUpdate = "programmesCount";
-        break;
-      case "events":
-        currentUsage = festival.eventsCount;
-        maxLimit = limits.events || 999; // No limit enforced for public events by default
-        fieldToUpdate = "eventsCount";
         break;
       case "stages":
         currentUsage = festival.stagesCount;

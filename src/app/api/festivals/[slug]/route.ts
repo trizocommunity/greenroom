@@ -1,23 +1,28 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import * as FestivalController from "@/server/controllers/festival.controller";
+import { findFestivalBySlugOrId } from "@/server/models/festival.model";
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
     const session = await getSession();
     if (!session?.userId) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
-    const { id } = await params;
-    const festival = await FestivalController.show(
-      id,
+    const { slug: slugOrId } = await params;
+    const festival = await findFestivalBySlugOrId(slugOrId);
+    if (!festival) {
+      return new NextResponse("Festival not found", { status: 404 });
+    }
+    const result = await FestivalController.show(
+      festival.id,
       session.userId,
       session.role,
     );
-    return NextResponse.json(festival);
+    return NextResponse.json(result);
   } catch (error) {
     console.error("[FESTIVAL_GET]", error);
     const message = error instanceof Error ? error.message : "Internal Error";
@@ -31,22 +36,26 @@ export async function GET(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
     const session = await getSession();
     if (!session?.userId) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
-    const { id } = await params;
+    const { slug: slugOrId } = await params;
+    const festival = await findFestivalBySlugOrId(slugOrId);
+    if (!festival) {
+      return new NextResponse("Festival not found", { status: 404 });
+    }
     const body = await request.json();
-    const festival = await FestivalController.update(
-      id,
+    const result = await FestivalController.update(
+      festival.id,
       session.userId,
       session.role,
       body,
     );
-    return NextResponse.json(festival);
+    return NextResponse.json(result);
   } catch (error) {
     console.error("[FESTIVAL_PATCH]", error);
     const message = error instanceof Error ? error.message : "Internal Error";
@@ -60,15 +69,19 @@ export async function PATCH(
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
     const session = await getSession();
     if (!session?.userId) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
-    const { id } = await params;
-    await FestivalController.destroy(id, session.userId, session.role);
+    const { slug: slugOrId } = await params;
+    const festival = await findFestivalBySlugOrId(slugOrId);
+    if (!festival) {
+      return new NextResponse("Festival not found", { status: 404 });
+    }
+    await FestivalController.destroy(festival.id, session.userId, session.role);
     return new NextResponse(null, { status: 200 });
   } catch (error) {
     console.error("[FESTIVAL_DELETE]", error);

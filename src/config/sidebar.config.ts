@@ -147,12 +147,6 @@ export const getFestivalDashboardSidebarConfig = (
           icon: Newspaper,
           allowedRoles: ["ADMIN", "OWNER"],
         },
-        {
-          title: "Sessions",
-          href: `${basePath}/pre-works/sessions`,
-          icon: CalendarDays,
-          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
-        },
       ],
     },
     {
@@ -198,6 +192,12 @@ export const getFestivalDashboardSidebarConfig = (
           title: "Schedule",
           href: `${basePath}/pre-works/schedule`,
           icon: Calendar,
+          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
+        },
+        {
+          title: "Sessions",
+          href: `${basePath}/pre-works/sessions`,
+          icon: CalendarDays,
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
         },
         {

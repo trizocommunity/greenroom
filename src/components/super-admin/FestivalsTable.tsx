@@ -93,7 +93,7 @@ export function FestivalsTable() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <Link
-                      href={`/super-admin/festivals/${festival.id}`}
+                      href={`/super-admin/festivals/${festival.slug}`}
                       className="hover:underline"
                     >
                       <CardTitle className="text-lg">{festival.name}</CardTitle>
@@ -112,7 +112,7 @@ export function FestivalsTable() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
                         onClick={() =>
-                          router.push(`/super-admin/festivals/${festival.id}`)
+                          router.push(`/super-admin/festivals/${festival.slug}`)
                         }
                       >
                         <Settings className="mr-2 h-4 w-4" /> Manage in Admin
@@ -138,12 +138,20 @@ export function FestivalsTable() {
                   <Badge
                     variant="outline"
                     className={
-                      festival.status === "ACTIVE"
-                        ? "bg-green-100 text-green-700 border-green-300"
-                        : "bg-gray-100 text-gray-600 border-gray-300"
+                      festival.status === "EXPIRED"
+                        ? "bg-red-100 text-red-700 border-red-300"
+                        : festival.status === "ONGOING"
+                          ? "bg-green-100 text-green-700 border-green-300"
+                          : "bg-gray-100 text-gray-600 border-gray-300"
                     }
                   >
-                    {festival.status}
+                    {festival.status === "EXPIRED"
+                      ? "Expired"
+                      : festival.status === "ONGOING"
+                        ? "Ongoing"
+                        : festival.status === "PAST"
+                          ? "Past"
+                          : "Ready"}
                   </Badge>
                   <Badge variant="secondary" className="bg-muted">
                     {festival.tierLabel || "Standard"}

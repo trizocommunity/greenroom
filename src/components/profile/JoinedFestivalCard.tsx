@@ -12,7 +12,8 @@ interface JoinedFestivalCardProps {
 }
 
 export function JoinedFestivalCard({ festival }: JoinedFestivalCardProps) {
-  const isActive = festival.status === "ACTIVE";
+  const isActive =
+    festival.status === "ONGOING" || festival.status === "READY";
   const isLocked = festival.isLocked;
 
   return (

@@ -67,7 +67,7 @@ export async function createFestival(input: CreateFestivalInput) {
           startDate: data.startDate,
           endDate: data.endDate,
           ownerId: session.userId,
-          status: "ACTIVE",
+          status: "ONGOING",
           expiresAt: expiresAt,
           isLocked: false,
 

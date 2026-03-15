@@ -22,10 +22,12 @@ interface FestivalCardProps {
 
 export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
   const isLocked = festival.isLocked;
-  const isActive = festival.status === "ACTIVE";
-  const isExpired = festival.status === "EXPIRED";
+  const isExpired =
+    festival.status === "EXPIRED" ||
+    (festival.expiresAt && new Date(festival.expiresAt) < new Date());
+  const isActive = !isExpired && (festival.status === "ONGOING" || festival.status === "READY");
 
-  const totalDays = 40;
+  const totalDays = 30;
   const createdAt = new Date(festival.createdAt);
   const expiresAt = festival.expiresAt
     ? new Date(festival.expiresAt)
@@ -46,14 +48,22 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
           <div className="space-y-2 min-w-0">
             <div className="flex items-center gap-2 flex-wrap text-xs">
               <Badge
-                variant={isActive ? "default" : "secondary"}
+                variant={isExpired ? "destructive" : isActive ? "default" : "secondary"}
                 className={
-                  isActive
-                    ? "bg-emerald-500 text-emerald-50 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30"
-                    : "bg-slate-700/80 text-slate-100"
+                  isExpired
+                    ? "bg-red-500/90 text-white"
+                    : isActive
+                      ? "bg-emerald-500 text-emerald-50 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30"
+                      : "bg-slate-700/80 text-slate-100"
                 }
               >
-                {festival.status}
+                {festival.status === "EXPIRED"
+                  ? "Expired"
+                  : festival.status === "ONGOING"
+                    ? "Ongoing"
+                    : festival.status === "PAST"
+                      ? "Past"
+                      : "Ready"}
               </Badge>
               {isLocked && (
                 <Badge
@@ -136,14 +146,24 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
         {isExpired && (
           <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/40 text-center">
             <p className="text-sm font-semibold text-destructive">
-              This festival has expired and is scheduled for deletion.
+              This festival has ended. View details or download results.
             </p>
           </div>
         )}
 
         {/* Actions Section */}
         <div className="pt-2">
-          {isActive ? (
+          {isExpired ? (
+            <Button
+              asChild
+              variant="outline"
+              className="w-full justify-center rounded-2xl h-11 text-sm font-semibold border-primary/40 text-primary hover:bg-primary/10"
+            >
+              <Link href={`/profile/festivals/${festival.slug}/expired`}>
+                View Details
+              </Link>
+            </Button>
+          ) : isActive ? (
             <Button
               asChild
               className="w-full justify-center rounded-2xl h-11 text-sm font-semibold tracking-wide bg-linear-to-r from-primary via-fuchsia-500 to-orange-400 text-white shadow-[0_18px_45px_rgba(0,0,0,0.6)] hover:shadow-[0_24px_60px_rgba(0,0,0,0.9)] hover:-translate-y-0.5 transition-all"
@@ -158,7 +178,7 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
               disabled
               className="w-full rounded-2xl h-11 text-sm italic opacity-70 bg-slate-700/70 text-slate-300 border border-slate-500/40"
             >
-              {isLocked ? "Activation required" : "Archived / Pending"}
+              {isLocked ? "Activation required" : "Past / Pending"}
             </Button>
           )}
         </div>

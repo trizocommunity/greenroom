@@ -33,9 +33,10 @@ enum InstitutionType {
 }
 
 enum FestivalStatus {
-  DRAFT // created but locked
-  ACTIVE // unlocked (paid)
-  EXPIRED // past 40 days
+  READY   // before startDate
+  ONGOING // startDate <= now <= endDate
+  PAST    // endDate < now < expiresAt (ended, not yet expired)
+  EXPIRED // expiresAt passed and expiration process ran
 }
 
 enum ScoringSystem {
@@ -162,7 +163,7 @@ model Festival {
   rules     Json?
   structure Json?
 
-  status   FestivalStatus @default(DRAFT)
+  status   FestivalStatus @default(READY)
   isLocked Boolean        @default(true)
 
   // Public website visibility (Festival Live)
@@ -175,7 +176,6 @@ model Festival {
   // Usage Counters
   studentsCount     Int @default(0)
   programmesCount   Int @default(0) // Student competition programmes count
-  eventsCount       Int @default(0) // Public events (Talks, Ceremonies) count
   stagesCount       Int @default(0)
   judgesCount       Int @default(0)
   storageUsedMB     Int @default(0)
@@ -192,6 +192,9 @@ model Festival {
   // Decoupled Leaderboard Snapshot
   teamStandings Json? // Stores the "Published" state of the leaderboard
 
+  // Post-expiration retention (set by expiration cron)
+  resultPdfUrl  String?   // URL to final results PDF
+  expiredAt     DateTime? // When expiration process ran
 
   // Child Entities
   payments      Payment[]
@@ -199,7 +202,6 @@ model Festival {
   categories    Category[]
   groups        Group[]
   programmes    Programme[]
-  events        Event[] // Public Events (Talks, Ceremonies)
   programmeAssignments ProgrammeAssignment[]
   stages        Stage[]
   scheduleEntries ScheduleEntry[]
@@ -212,10 +214,47 @@ model Festival {
   updatedAt DateTime @updatedAt
 
   members       FestivalMember[]
-  
+  expiredResults ExpiredFestivalResult[]
+  lifecycleEvents FestivalLifecycleEvent[]
+
   @@map("festival")
   @@index([status])
   @@index([expiresAt])
+}
+
+model ExpiredFestivalResult {
+  id             String   @id @default(uuid())
+  festivalId     String
+  festival       Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  programmeName  String
+  categoryName   String?
+  participantName String  // Student or team display name at snapshot time
+  position       Int?
+  grade          String?
+  score          Float?
+  points         Int?
+  createdAt      DateTime @default(now())
+
+  @@map("expired_festival_result")
+  @@index([festivalId])
+}
+
+enum FestivalLifecycleEventType {
+  CREATED
+  ACTIVATED
+  EXPIRED
+}
+
+model FestivalLifecycleEvent {
+  id         String                 @id @default(uuid())
+  festivalId String
+  festival   Festival               @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  event      FestivalLifecycleEventType
+  occurredAt DateTime               @default(now())
+  metadata   Json?
+
+  @@map("festival_lifecycle_event")
+  @@index([festivalId])
 }
 
 model FestivalGalleryImage {
@@ -479,29 +518,7 @@ enum Gender {
   OTHER
 }
 
-model Event {
-  id          String   @id @default(uuid())
-  festivalId  String
-  festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
-
-  name        String
-  description String?
-  date        DateTime?
-  location    String? // Could link to Stage but keeping flexible for public events
-  speakers    String?  // Comma-separated or free text
-
-  type        EventType @default(GENERAL)
-
-  scheduleEntries ScheduleEntry[]
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("event")
-  @@index([festivalId])
-}
-
-enum EventType {
+enum SessionType {
   GENERAL
   CEREMONY
   TALK
@@ -528,17 +545,29 @@ model Stage {
   @@index([festivalId])
 }
 
+enum ScheduleEntryType {
+  PROGRAMME
+  SESSION
+}
+
 model ScheduleEntry {
   id          String   @id @default(uuid())
   festivalId  String
   festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
 
+  type        ScheduleEntryType @default(PROGRAMME)
+
   programmeId String?
   programme   Programme? @relation(fields: [programmeId], references: [id], onDelete: Cascade)
-  eventId     String?
-  event       Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   stageId     String?
   stage       Stage?    @relation(fields: [stageId], references: [id], onDelete: SetNull)
+
+  /// For SESSION type: display name
+  title       String?
+  /// For SESSION type
+  description String?
+  speakers    String?
+  sessionType SessionType?
 
   startTime   DateTime
   endTime     DateTime?
@@ -552,6 +581,7 @@ model ScheduleEntry {
 
   @@index([festivalId])
   @@index([festivalId, startTime])
+  @@index([festivalId, type])
   @@map("schedule_entry")
 }
 

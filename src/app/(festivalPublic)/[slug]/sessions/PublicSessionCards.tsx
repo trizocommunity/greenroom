@@ -5,7 +5,7 @@ import { Calendar, ChevronDown, ChevronUp, MapPin, Mic2, Users } from "lucide-re
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-const EVENT_TYPE_LABELS: Record<string, string> = {
+const SESSION_TYPE_LABELS: Record<string, string> = {
   GENERAL: "General",
   CEREMONY: "Ceremony",
   TALK: "Talk",
@@ -17,7 +17,7 @@ export type SessionEntry = {
   /** When null, session is not yet scheduled (show "Date & time TBA") */
   startTime: string | null;
   endTime: string | null;
-  event: {
+  session: {
     id: string;
     name: string;
     type: string;
@@ -44,7 +44,7 @@ function SessionCard({ entry }: { entry: SessionEntry }) {
   const end = entry.endTime ? new Date(entry.endTime) : null;
   const isPastEvent = hasSchedule && start ? isPast(end || start) : false;
   const typeLabel =
-    EVENT_TYPE_LABELS[entry.event.type] ?? entry.event.type ?? "Session";
+    SESSION_TYPE_LABELS[entry.session.type] ?? entry.session.type ?? "Session";
 
   return (
     <article
@@ -98,27 +98,27 @@ function SessionCard({ entry }: { entry: SessionEntry }) {
 
         {/* Title */}
         <h3 className="text-xl font-bold tracking-tight text-foreground line-clamp-2">
-          {entry.event.name}
+          {entry.session.name}
         </h3>
 
         {/* Speakers */}
         <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
           <Users className="h-4 w-4 shrink-0 text-muted-foreground/70" />
           <span className="line-clamp-1">
-            {entry.event.speakers?.trim() || "—"}
+            {entry.session.speakers?.trim() || "—"}
           </span>
         </p>
 
         {/* Description (expandable) */}
-        {entry.event.description && (
+        {entry.session.description && (
           <div className="mt-4 flex flex-1 flex-col border-t border-border/60 pt-4">
             {showMore ? (
               <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
-                {entry.event.description}
+                {entry.session.description}
               </p>
             ) : (
               <p className="text-sm leading-relaxed text-muted-foreground line-clamp-3">
-                {entry.event.description}
+                {entry.session.description}
               </p>
             )}
             <button
@@ -139,7 +139,7 @@ function SessionCard({ entry }: { entry: SessionEntry }) {
           </div>
         )}
 
-        {!entry.event.description && (
+        {!entry.session.description && (
           <div className="mt-auto pt-4">
             <span className="text-sm text-muted-foreground">—</span>
           </div>

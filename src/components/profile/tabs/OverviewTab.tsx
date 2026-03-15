@@ -117,22 +117,16 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
     }
 
     if (festival) {
-      const isExpired =
-        festival.status === "EXPIRED" ||
-        (festival.expiresAt && new Date(festival.expiresAt) < new Date());
-
-      if (!isExpired) {
-        return (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xl font-semibold tracking-tight">
-                My Festival
-              </h3>
-            </div>
-            <FestivalCard festival={festival} />
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-semibold tracking-tight">
+              My Festival
+            </h3>
           </div>
-        );
-      }
+          <FestivalCard festival={festival} />
+        </div>
+      );
     }
     return null; // Fall through to Credit/Plans if no active festival
   };
