@@ -23,7 +23,9 @@ export async function GET(
   if (!festival) {
     return NextResponse.json({ error: "Festival not found" }, { status: 404 });
   }
-  if (festival.ownerId !== session.userId) {
+  const isOwner = festival.ownerId === session.userId;
+  const isSuperAdmin = session.role === "SUPER_ADMIN";
+  if (!isOwner && !isSuperAdmin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const isExpired =

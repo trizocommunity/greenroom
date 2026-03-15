@@ -29,10 +29,11 @@ export default async function ExpiredFestivalPage({ params }: Props) {
   if (!festival) notFound();
 
   const isOwner = festival.ownerId === session.userId;
+  const isSuperAdmin = session.role === "SUPER_ADMIN";
   const isExpired =
     festival.status === "EXPIRED" ||
     (festival.expiresAt && new Date(festival.expiresAt) < new Date());
-  if (!isExpired || !isOwner) notFound();
+  if (!isExpired || (!isOwner && !isSuperAdmin)) notFound();
 
   const hasPdf = !!festival.resultPdfUrl;
   const hasSnapshot =
@@ -99,7 +100,7 @@ export default async function ExpiredFestivalPage({ params }: Props) {
             {(hasPdf || hasSnapshot) ? (
               <Button variant="outline" className="gap-2" asChild>
                 <Link
-                  href={`/api/profile/festivals/${festival.id}/expired-results-pdf`}
+                  href={`/api/profile/festivals/${festival.slug}/expired-results-pdf`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >

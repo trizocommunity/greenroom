@@ -3,7 +3,7 @@
 import { format } from "date-fns";
 import {
   Calendar,
-  FileText,
+  Info,
   LayoutDashboard,
   MoreVertical,
   Pencil,
@@ -111,17 +111,16 @@ export function AdminFestivalCard({ festival }: AdminFestivalCardProps) {
               <DropdownMenuLabel className="text-xs uppercase tracking-widest font-black text-muted-foreground/60 px-2 py-1.5">
                 Festival Controls
               </DropdownMenuLabel>
-              {festival.status === "EXPIRED" ? (
-                <DropdownMenuItem asChild>
-                  <Link
-                    href={`/super-admin/festivals/${festival.slug}`}
-                    className="rounded-md cursor-pointer"
-                  >
-                    <FileText className="mr-2 h-4 w-4" />
-                    View details & PDF
-                  </Link>
-                </DropdownMenuItem>
-              ) : (
+              <DropdownMenuItem asChild>
+                <Link
+                  href={`/super-admin/festivals/${festival.slug}`}
+                  className="rounded-md cursor-pointer"
+                >
+                  <Info className="mr-2 h-4 w-4" />
+                  Detail page
+                </Link>
+              </DropdownMenuItem>
+              {festival.status !== "EXPIRED" && (
                 <DropdownMenuItem asChild>
                   <Link
                     href={`/dashboard/${festival.slug}`}

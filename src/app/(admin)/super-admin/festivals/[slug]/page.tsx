@@ -54,7 +54,7 @@ export default async function AdminFestivalDetailPage({
           <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             {festival.name}
           </h2>
-          <p className="text-muted-foreground flex items-center gap-2">
+          <div className="text-muted-foreground flex items-center gap-2">
             /{festival.slug}
             <Badge
               variant={
@@ -73,7 +73,7 @@ export default async function AdminFestivalDetailPage({
                     ? "Past"
                     : "Ready"}
             </Badge>
-          </p>
+          </div>
         </div>
       </div>
 
