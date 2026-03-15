@@ -87,6 +87,8 @@ export function FestivalDashboardSidebar({
           return false;
         if (item.title === "News" && !features.canManageNews)
           return false;
+        if (item.title === "Sessions" && !features.canManageSchedule)
+          return false;
 
         return true;
       }),

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import {
   getTicketDetailsAction,
   sendMessageAction,
@@ -43,6 +44,7 @@ interface Ticket {
     fullName: string | null;
     email: string;
   };
+  senderRole?: string | null;
 }
 
 export default function TicketDetailsClient({
@@ -138,8 +140,11 @@ export default function TicketDetailsClient({
               {ticket.subject}
             </h1>
           </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mt-1">
               <Badge variant="outline">#{ticket.id.slice(0, 8)}</Badge>
+              {ticket.senderRole && (
+                <FestivalRoleBadge festivalRole={ticket.senderRole} className="text-xs" />
+              )}
               <span>•</span>
               <span>{ticket.category}</span>
               <span>•</span>

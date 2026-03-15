@@ -90,7 +90,31 @@ export async function getUserTicketsAction() {
     orderBy: { updatedAt: "desc" },
   });
 
-  return tickets;
+  const senderRoles = new Map<string, string>();
+  const pairs = tickets
+    .filter((t) => t.festivalId)
+    .map((t) => ({ festivalId: t.festivalId!, userId: t.userId }));
+  if (pairs.length > 0) {
+    const members = await prisma.festivalMember.findMany({
+      where: {
+        OR: pairs.map(({ festivalId, userId }) => ({
+          festivalId,
+          userId,
+        })),
+      },
+      select: { festivalId: true, userId: true, role: true },
+    });
+    for (const m of members) {
+      senderRoles.set(`${m.festivalId}:${m.userId}`, m.role);
+    }
+  }
+
+  return tickets.map((t) => ({
+    ...t,
+    senderRole: t.festivalId
+      ? senderRoles.get(`${t.festivalId}:${t.userId}`) ?? null
+      : null,
+  }));
 }
 
 export async function getTicketDetailsAction(ticketId: string) {
@@ -128,7 +152,24 @@ export async function getTicketDetailsAction(ticketId: string) {
     throw new AppError(ERROR_MESSAGES.FORBIDDEN);
   }
 
-  return ticket;
+  let senderRole: string | null = null;
+  if (ticket.festivalId) {
+    const member = await prisma.festivalMember.findUnique({
+      where: {
+        festivalId_userId: {
+          festivalId: ticket.festivalId,
+          userId: ticket.userId,
+        },
+      },
+      select: { role: true },
+    });
+    senderRole = member?.role ?? null;
+  }
+
+  return {
+    ...ticket,
+    senderRole,
+  };
 }
 
 export async function sendMessageAction(ticketId: string, message: string) {
@@ -320,7 +361,31 @@ export async function getAllTicketsAction() {
     orderBy: { updatedAt: "desc" },
   });
 
-  return tickets;
+  const senderRoles = new Map<string, string>();
+  const pairs = tickets
+    .filter((t) => t.festivalId)
+    .map((t) => ({ festivalId: t.festivalId!, userId: t.userId }));
+  if (pairs.length > 0) {
+    const members = await prisma.festivalMember.findMany({
+      where: {
+        OR: pairs.map(({ festivalId, userId }) => ({
+          festivalId,
+          userId,
+        })),
+      },
+      select: { festivalId: true, userId: true, role: true },
+    });
+    for (const m of members) {
+      senderRoles.set(`${m.festivalId}:${m.userId}`, m.role);
+    }
+  }
+
+  return tickets.map((t) => ({
+    ...t,
+    senderRole: t.festivalId
+      ? senderRoles.get(`${t.festivalId}:${t.userId}`) ?? null
+      : null,
+  }));
 }
 
 export async function updateTicketStatusAction(

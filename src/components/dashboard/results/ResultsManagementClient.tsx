@@ -658,7 +658,7 @@ export function ResultsManagementClient({
             description="Enter points per chest; grade and rank are calculated automatically."
           >
             <p className="text-sm text-muted-foreground">
-              Enter <strong>points</strong> per participant. Grade and rank
+              Enter <strong>points</strong> per student. Grade and rank
               update automatically from the highest entered value.
             </p>
           </HowItWorksButton>
@@ -1171,7 +1171,7 @@ export function ResultsManagementClient({
                     </DialogTitle>
                     <DialogDescription>
                       These programmes have assignments but are missing
-                      scores for some or all participants.
+                      scores for some or all students.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="max-h-[60vh] overflow-y-auto space-y-2 mt-4 pr-2">

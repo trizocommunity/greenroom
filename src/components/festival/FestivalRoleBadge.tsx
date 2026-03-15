@@ -50,6 +50,12 @@ const roleConfig: Record<
       "bg-indigo-100 text-indigo-700 border-indigo-200 hover:bg-indigo-100",
     icon: Mic2,
   },
+  STAGE_MANAGER: {
+    label: "Stage Manager",
+    className:
+      "bg-indigo-100 text-indigo-700 border-indigo-200 hover:bg-indigo-100",
+    icon: Mic2,
+  },
   ANNOUNCER: {
     label: "Announcer",
     className: "bg-pink-100 text-pink-700 border-pink-200 hover:bg-pink-100",

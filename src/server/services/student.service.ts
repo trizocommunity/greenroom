@@ -12,6 +12,7 @@ import {
   findStudentsByFestival,
 } from "@/server/models/student.model";
 import { UsageCounterService } from "./usage-counter.service";
+import { generateProfileSlug } from "@/lib/slug";
 
 export const StudentService = {
   async getAll(festivalId: string, groupId?: string) {
@@ -57,8 +58,8 @@ export const StudentService = {
 
     await UsageCounterService.incrementUsage(festivalId, "students", 1);
 
-    // 5. Create — usage counter is rolled back by UsageCounterService on limit exceed
-    return await createStudent({
+    // 4. Create (no profileSlug yet — set after we have id)
+    const created = await createStudent({
       festival: { connect: { id: festivalId } },
       group: { connect: { id: data.groupId } },
       category: { connect: { id: data.categoryId } },
@@ -69,6 +70,28 @@ export const StudentService = {
       age: data.age,
       standard: data.standard,
     });
+
+    // 5. Set unique profileSlug for public URL /{festivalSlug}/{profileSlug}
+    let profileSlug = generateProfileSlug(created.name, created.id);
+    let exists = await prisma.student.findFirst({
+      where: { festivalId, profileSlug },
+    });
+    let suffix = 2;
+    while (exists) {
+      profileSlug = `${generateProfileSlug(created.name, created.id)}-${suffix}`;
+      exists = await prisma.student.findFirst({
+        where: { festivalId, profileSlug },
+      });
+      suffix++;
+    }
+    await prisma.student.update({
+      where: { id: created.id },
+      data: { profileSlug },
+    });
+    return prisma.student.findUnique({
+      where: { id: created.id },
+      include: { category: true, group: true },
+    }) as Promise<typeof created>;
   },
 
   async update(

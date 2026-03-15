@@ -98,7 +98,7 @@ export function HeroSection({ festival, basicMode = false }: HeroSectionProps) {
               {festival.studentsCount != null && festival.studentsCount > 0 && (
                 <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 backdrop-blur">
                   <Users className="h-4 w-4" />
-                  <span>{festival.studentsCount.toLocaleString()} participants</span>
+                  <span>{festival.studentsCount.toLocaleString()} students</span>
                 </div>
               )}
             </div>

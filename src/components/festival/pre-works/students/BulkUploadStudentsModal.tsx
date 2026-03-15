@@ -36,7 +36,7 @@ import {
 
 // --- Types & Schema ---
 
-interface ParticipantData {
+interface StudentData {
   name: string;
   email: string;
   phone: string;
@@ -49,7 +49,7 @@ interface ParticipantData {
   standard?: string;
 }
 
-const ParticipantSchema = z.object({
+const StudentSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email().optional().or(z.literal("")),
   phone: z.string().optional(),
@@ -60,25 +60,25 @@ const ParticipantSchema = z.object({
   standard: z.string().optional(),
 });
 
-type ParticipantFormValues = z.infer<typeof ParticipantSchema>;
+type StudentFormValues = z.infer<typeof StudentSchema>;
 
 // --- Edit Component ---
 
-function ParticipantEditForm({
+function StudentEditForm({
   data,
   groups,
   categories,
   onSave,
   onCancel,
 }: {
-  data: ParticipantData;
+  data: StudentData;
   groups: any[];
   categories: any[];
-  onSave: (updated: ParticipantData) => void;
+  onSave: (updated: StudentData) => void;
   onCancel: () => void;
 }) {
-  const form = useForm<ParticipantFormValues>({
-    resolver: zodResolver(ParticipantSchema),
+  const form = useForm<StudentFormValues>({
+    resolver: zodResolver(StudentSchema),
     defaultValues: {
       name: data.name,
       email: data.email,
@@ -91,7 +91,7 @@ function ParticipantEditForm({
     },
   });
 
-  const onSubmit = (values: ParticipantFormValues) => {
+  const onSubmit = (values: StudentFormValues) => {
     const group = groups.find((g) => g.id === values.groupId);
     const category = categories.find((c) => c.id === values.categoryId);
 
@@ -303,10 +303,10 @@ export function BulkUploadStudentsModal({
     useCategories(festivalId);
 
   // Parsing Logic defined inside to access hooks
-  const parseParticipantRow = (
+  const parseStudentRow = (
     row: any[],
     index: number,
-  ): ParsedItem<ParticipantData> => {
+  ): ParsedItem<StudentData> => {
     const name = row[0]?.toString().trim() || "";
     const groupName = row[1]?.toString().trim() || "";
     const categoryName = row[2]?.toString().trim() || "";
@@ -379,8 +379,8 @@ export function BulkUploadStudentsModal({
   };
 
   const validateRows = async (
-    items: ParsedItem<ParticipantData>[],
-  ): Promise<ParsedItem<ParticipantData>[]> => {
+    items: ParsedItem<StudentData>[],
+  ): Promise<ParsedItem<StudentData>[]> => {
     // Server-Side Duplicate Check
     // Prepare candidates list (only those valid so far or at least having a name)
     const candidatesToCheck = items
@@ -418,7 +418,7 @@ export function BulkUploadStudentsModal({
     return items;
   };
 
-  const handleCommit = async (validItems: ParticipantData[]) => {
+  const handleCommit = async (validItems: StudentData[]) => {
     const studentsToCreate = validItems.map((s) => ({
       name: s.name,
       groupId: s.groupId!,
@@ -450,7 +450,7 @@ export function BulkUploadStudentsModal({
   }
 
   return (
-    <BulkUploadFlow<ParticipantData>
+    <BulkUploadFlow<StudentData>
       trigger={trigger}
       title="Bulk Upload Students"
       templateName="students_template.xlsx"
@@ -476,11 +476,11 @@ export function BulkUploadStudentsModal({
           "(Class/Standard - Optional)",
         ],
       ]}
-      parseRow={parseParticipantRow}
+      parseRow={parseStudentRow}
       validateRows={validateRows}
       onCommit={handleCommit}
       EditComponent={(props) => (
-        <ParticipantEditForm
+        <StudentEditForm
           {...props}
           groups={groups}
           categories={categories}

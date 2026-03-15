@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -6,11 +7,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import { getUserTicketsAction } from "@/server/actions/support.actions";
 import { format } from "date-fns";
 import { Plus, Ticket } from "lucide-react";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 
 export default async function TicketsPage({
   params,
@@ -83,7 +84,13 @@ export default async function TicketsPage({
                 </CardDescription>
               </CardHeader>
               <CardContent className="pb-3 flex-1">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  {"senderRole" in ticket && ticket.senderRole && (
+                    <FestivalRoleBadge
+                      festivalRole={ticket.senderRole as string}
+                      className="text-xs"
+                    />
+                  )}
                   <Badge variant="outline" className="text-xs font-normal">
                     {ticket.category}
                   </Badge>

@@ -106,7 +106,7 @@ export function ProgrammesClient({ festivalId, children }: ProgrammesClientProps
             description="Programmes are the events or competitions in your festival."
           >
             <p className="text-sm text-muted-foreground">
-              <strong>Type:</strong> Individual = one participant per entry;
+              <strong>Type:</strong> Individual = one student per entry;
               Team = one team per entry (multiple members). <strong>Stage
               type:</strong> Stage or Off-Stage is for organisation only.
             </p>

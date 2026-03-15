@@ -37,6 +37,28 @@ export const AssignmentService = {
     return findAssignmentsByProgramme(programmeId);
   },
 
+  async getTeamMembers(
+    festivalId: string,
+    programmeId: string,
+    groupId: string,
+    teamNumber: number,
+  ): Promise<{ id: string; name: string; chestNumber?: string | null; categoryName?: string }[]> {
+    const assignments = await prisma.programmeAssignment.findMany({
+      where: { festivalId, programmeId, groupId, teamNumber },
+      include: {
+        student: { include: { category: true } },
+      },
+    });
+    return assignments
+      .filter((a) => a.student != null)
+      .map((a) => ({
+        id: a.student!.id,
+        name: a.student!.name,
+        chestNumber: a.student!.chestNumber,
+        categoryName: a.student!.category?.name,
+      }));
+  },
+
   async create(
     festivalId: string,
     data: { programmeId: string; studentId?: string; groupId?: string },

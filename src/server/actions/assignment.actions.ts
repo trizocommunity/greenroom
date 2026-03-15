@@ -173,3 +173,21 @@ export async function updateAssignmentAction(
 
   return AssignmentService.update(id, festivalId, data);
 }
+
+export type ProgrammeTeamMember = {
+  id: string;
+  name: string;
+  chestNumber?: string | null;
+  categoryName?: string;
+};
+
+export async function getProgrammeTeamMembersAction(
+  festivalId: string,
+  programmeId: string,
+  groupId: string,
+  teamNumber: number,
+): Promise<ProgrammeTeamMember[]> {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
+  return AssignmentService.getTeamMembers(festivalId, programmeId, groupId, teamNumber);
+}

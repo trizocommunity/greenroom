@@ -426,6 +426,9 @@ model Student {
   age                Int?
   standard           String? // Class/Standard
 
+  /** URL-safe slug for public profile: /{festivalSlug}/{profileSlug} */
+  profileSlug        String?
+
   assignments ProgrammeAssignment[]
   
   createdAt DateTime @default(now())
@@ -436,6 +439,7 @@ model Student {
   @@index([groupId])
   @@index([festivalId, createdAt(sort: Desc)])
   @@unique([festivalId, chestNumber])
+  @@unique([festivalId, profileSlug])
   @@map("student")
 }
 

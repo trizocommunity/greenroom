@@ -1,5 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getSession } from "@/lib/auth/session";
 import { findFestivalBySlugOrId } from "@/server/models/festival.model";
+import { getFestivalContext } from "@/server/services/festival-context.service";
 import { Suspense } from "react";
 import OverviewWidgets from "@/components/dashboard/overview/OverviewWidgets";
 import { OverviewSkeleton } from "@/components/dashboard/overview/OverviewSkeleton";
@@ -11,10 +13,18 @@ export default async function FestivalDashboardPage({
 }) {
   const { slug } = await params;
 
-  // Fetch Festival
   const festival = await findFestivalBySlugOrId(slug);
-
   if (!festival) notFound();
+
+  const session = await getSession();
+  const context = await getFestivalContext({
+    slugOrId: slug,
+    userId: session?.userId ?? null,
+    globalRole: session?.role ?? null,
+  });
+  if (context?.role === "STAGE_MANAGER") {
+    redirect(`/dashboard/${slug}/stage-manager`);
+  }
 
   return (
     <Suspense fallback={<OverviewSkeleton />}>

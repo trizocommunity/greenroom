@@ -319,7 +319,7 @@ export function AssignmentsClient({
           >
             <p className="text-sm text-muted-foreground">
               <strong>Individual programmes:</strong> Assign one student per
-              entry. Each row is one participant.
+              entry. Each row is one student.
             </p>
             <p className="text-sm text-muted-foreground">
               <strong>Team programmes:</strong> Assign teams. Each team can have

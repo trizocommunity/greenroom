@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import {
   getTicketDetailsAction,
   sendMessageAction,
@@ -49,6 +50,7 @@ interface Ticket {
     name: string;
     slug: string;
   } | null;
+  senderRole?: string | null;
 }
 
 export default function AdminTicketDetailsClient({
@@ -156,8 +158,11 @@ export default function AdminTicketDetailsClient({
             <h1 className="text-2xl font-bold tracking-tight">
               {ticket.subject}
             </h1>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-              <span>{ticket.user.fullName || ticket.user.email}</span>
+            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mt-1">
+              <span>Sent by: <span className="font-medium text-foreground">{ticket.user.fullName || ticket.user.email}</span></span>
+              {ticket.senderRole && (
+                <FestivalRoleBadge festivalRole={ticket.senderRole} className="text-xs" />
+              )}
               {ticket.festival && (
                 <>
                   <span>•</span>

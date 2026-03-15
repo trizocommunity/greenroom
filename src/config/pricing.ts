@@ -8,6 +8,8 @@ export interface TierFeatures {
   categories: boolean;
   groups: boolean;
   students: boolean;
+  viewStudentProfile: boolean; // View student profile page (STANDARD+)
+  publicStudentProfile: boolean; // Public URL /{festival}/{studentSlug} (STANDARD+)
   programmes: boolean;
   assignments: boolean;
 
@@ -115,6 +117,8 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       categories: true,
       groups: true,
       students: true,
+      viewStudentProfile: false, // BASIC: no view student profile
+      publicStudentProfile: false, // BASIC: no public student profile page
       programmes: true,
       assignments: true,
 
@@ -205,6 +209,8 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       categories: true,
       groups: true,
       students: true,
+      viewStudentProfile: true, // STANDARD: view student profile
+      publicStudentProfile: true, // STANDARD: public student profile at /{slug}/{studentSlug}
       programmes: true,
       assignments: true,
 
@@ -295,6 +301,8 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       categories: true,
       groups: true,
       students: true,
+      viewStudentProfile: true, // PRO: view student profile
+      publicStudentProfile: true, // PRO: public student profile
       programmes: true,
       assignments: true,
 

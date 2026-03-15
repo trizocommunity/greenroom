@@ -447,7 +447,7 @@ export function ResultsList({
                     <DialogDescription>
                       {program.type === "GROUP"
                         ? "Team results (rank & grades)"
-                        : "Participant results (rank & grades)"}
+                        : "Student results (rank & grades)"}
                     </DialogDescription>
                   </DialogHeader>
 
@@ -482,7 +482,7 @@ export function ResultsList({
                               </div>
                               <div>
                                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                                  {program.type === "GROUP" ? "Team" : "Participant"}
+                                  {program.type === "GROUP" ? "Team" : "Student"}
                                 </p>
                                 <p className="font-bold text-sm">
                                   {result.winner}

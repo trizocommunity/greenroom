@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-
+import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import { getAllTicketsAction } from "@/server/actions/support.actions";
 import { format } from "date-fns";
 import Link from "next/link";
@@ -73,10 +73,17 @@ export default async function AdminSupportPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground">Sent by:</span>
                     <span className="text-xs font-semibold text-foreground">
-                      {ticket.user.fullName || "User"}
+                      {ticket.user.fullName || ticket.user.email || "User"}
                     </span>
+                    {"senderRole" in ticket && ticket.senderRole && (
+                      <FestivalRoleBadge
+                        festivalRole={ticket.senderRole as string}
+                        className="text-[10px] px-1.5 py-0 h-5"
+                      />
+                    )}
                     <span className="text-[10px] text-muted-foreground">•</span>
                     <span className="text-[10px] text-muted-foreground capitalize">
                       {ticket.category.toLowerCase()}

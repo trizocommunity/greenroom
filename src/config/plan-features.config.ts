@@ -54,6 +54,8 @@ export const PLAN_FEATURE_LABELS: Record<FeaturePath, string> = {
   categories: "Categories",
   groups: "Groups",
   students: "Students",
+  viewStudentProfile: "Student Profile",
+  publicStudentProfile: "Public Student Profile",
   programmes: "Programmes",
   assignments: "Assignments",
   chestNumbers: "Chest Numbers",

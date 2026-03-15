@@ -1,6 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
+import Link from "next/link";
 import { Download, Eye, FileText, Loader2, MoreVertical, Pencil, Plus, Search, Trash2, User, X } from "lucide-react";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { useState } from "react";
@@ -38,6 +39,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useCategories } from "@/hooks/useCategories";
+import { useFeature } from "@/hooks/useFeature";
 import { useGroups } from "@/hooks/useGroups";
 import { useStudents } from "@/hooks/useStudents";
 import { BulkUploadStudentsModal } from "./BulkUploadStudentsModal";
@@ -104,6 +106,7 @@ function ExportStudentsExcelButton({ festivalId }: { festivalId: string }) {
 
 export function StudentsClient({
   festivalId,
+  festivalSlug,
   initialChestSettings,
   onChestRevalidate,
   children,
@@ -112,6 +115,7 @@ export function StudentsClient({
     useStudents(festivalId);
   const { groups } = useGroups(festivalId);
   const { categories } = useCategories(festivalId);
+  const canViewStudentProfile = useFeature("viewStudentProfile");
 
   const singleCategories = (categories ?? []).filter(
     (c: any) => c.type === "SINGLE",
@@ -352,14 +356,29 @@ export function StudentsClient({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-44">
+                        {canViewStudentProfile ? (
+                          <DropdownMenuItem asChild>
+                            <Link
+                              href={`/dashboard/${festivalSlug}/pre-works/students/${student.profileSlug ?? student.id}`}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Student profile
+                            </Link>
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              setActionStudent({ student, action: "view" })
+                            }
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View details
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem
-                          onSelect={() => setActionStudent({ student, action: "view" })}
-                        >
-                          <Eye className="h-4 w-4 mr-2" />
-                          View
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onSelect={() => setActionStudent({ student, action: "edit" })}
+                          onSelect={() =>
+                            setActionStudent({ student, action: "edit" })
+                          }
                         >
                           <Pencil className="h-4 w-4 mr-2" />
                           Edit
@@ -367,7 +386,9 @@ export function StudentsClient({
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
-                          onSelect={() => setActionStudent({ student, action: "delete" })}
+                          onSelect={() =>
+                            setActionStudent({ student, action: "delete" })
+                          }
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
                           Delete
@@ -422,39 +443,56 @@ export function StudentsClient({
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-primary"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                            <span className="sr-only">Actions</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44">
-                          <DropdownMenuItem
-                            onSelect={() => setActionStudent({ student, action: "view" })}
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            View
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() => setActionStudent({ student, action: "edit" })}
-                          >
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onSelect={() => setActionStudent({ student, action: "delete" })}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-primary"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                              <span className="sr-only">Actions</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            {canViewStudentProfile ? (
+                              <DropdownMenuItem asChild>
+                                <Link
+                                  href={`/dashboard/${festivalSlug}/pre-works/students/${student.profileSlug ?? student.id}`}
+                                >
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  Student profile
+                                </Link>
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem
+                                onSelect={() =>
+                                  setActionStudent({ student, action: "view" })
+                                }
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                View student details
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                setActionStudent({ student, action: "edit" })
+                              }
+                            >
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onSelect={() =>
+                                setActionStudent({ student, action: "delete" })
+                              }
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}

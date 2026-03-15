@@ -22,6 +22,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAssignments } from "@/hooks/useAssignments";
+import { TeamStudentsDialog } from "@/components/festival/pre-works/assignments/TeamStudentsDialog";
+import { getProgrammeTeamMembersAction } from "@/server/actions/assignment.actions";
 
 interface StudentDetailsDialogProps {
   festivalId: string;
@@ -41,15 +43,49 @@ export function StudentDetailsDialog({
   const { assignments, isLoading } = useAssignments(festivalId);
 
   const studentAssignments = assignments.filter(
-    (a: any) =>
-      a.studentId === student.id ||
-      a.team?.members.some((tm: any) => tm.studentId === student.id),
+    (a: any) => a.studentId === student.id,
   );
 
   const isControlled = controlledOpen !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
   const open = isControlled ? controlledOpen : internalOpen;
   const setOpen = isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
+
+  const [teamDialog, setTeamDialog] = useState<{
+    open: boolean;
+    programmeName: string;
+    teamLabel: string;
+    groupName: string;
+    students: { id: string; name: string; chestNumber?: string | null; categoryName?: string }[];
+  }>({ open: false, programmeName: "", teamLabel: "", groupName: "", students: [] });
+  const [loadingTeamFor, setLoadingTeamFor] = useState<string | null>(null);
+
+  async function openTeamModal(assignment: any) {
+    if (assignment.programme?.type !== "GROUP") return;
+    const programmeId = assignment.programmeId ?? assignment.programme?.id;
+    const groupId = assignment.groupId ?? assignment.group?.id ?? student.groupId ?? student.group?.id;
+    const teamNumber = assignment.teamNumber ?? 1;
+    const groupName = assignment.group?.name ?? student.group?.name ?? "—";
+    if (!programmeId || !groupId) return;
+    setLoadingTeamFor(assignment.id);
+    try {
+      const students = await getProgrammeTeamMembersAction(
+        festivalId,
+        programmeId,
+        groupId,
+        teamNumber,
+      );
+      setTeamDialog({
+        open: true,
+        programmeName: assignment.programme?.name ?? "—",
+        teamLabel: `${groupName} – Team ${teamNumber}`,
+        groupName,
+        students,
+      });
+    } finally {
+      setLoadingTeamFor(null);
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -163,13 +199,33 @@ export function StudentDetailsDialog({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {studentAssignments.map((assignment: any) => (
-                        <TableRow key={assignment.id} className="border-b last:border-0">
-                          <TableCell className="py-1.5 text-xs font-medium">{assignment.programme?.name}</TableCell>
-                          <TableCell className="py-1.5 text-[11px] text-muted-foreground">{assignment.programme?.type}</TableCell>
-                          <TableCell className="py-1.5 text-[11px] font-mono text-muted-foreground">{assignment.programme?.stageType}</TableCell>
-                        </TableRow>
-                      ))}
+                      {studentAssignments.map((assignment: any) => {
+                        const isGroup = assignment.programme?.type === "GROUP";
+                        const isLoading = loadingTeamFor === assignment.id;
+                        return (
+                          <TableRow
+                            key={assignment.id}
+                            className={`border-b last:border-0 ${isGroup ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}`}
+                            onClick={isGroup ? () => openTeamModal(assignment) : undefined}
+                          >
+                            <TableCell className="py-1.5 text-xs font-medium">
+                              <span className="flex items-center gap-1.5">
+                                {assignment.programme?.name}
+                                {isGroup && (
+                                  <Badge variant="secondary" className="text-[10px] h-4">
+                                    Team
+                                  </Badge>
+                                )}
+                                {isLoading && (
+                                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                                )}
+                              </span>
+                            </TableCell>
+                            <TableCell className="py-1.5 text-[11px] text-muted-foreground">{assignment.programme?.type}</TableCell>
+                            <TableCell className="py-1.5 text-[11px] font-mono text-muted-foreground">{assignment.programme?.stageType}</TableCell>
+                          </TableRow>
+                        );
+                      })}
                       {studentAssignments.length === 0 && (
                         <TableRow>
                           <TableCell colSpan={3} className="text-center text-muted-foreground text-xs py-6">
@@ -186,6 +242,15 @@ export function StudentDetailsDialog({
         </div>
         </ScrollArea>
       </DialogContent>
+
+      <TeamStudentsDialog
+        open={teamDialog.open}
+        onOpenChange={(open) => setTeamDialog((p) => ({ ...p, open }))}
+        programmeName={teamDialog.programmeName}
+        teamLabel={teamDialog.teamLabel}
+        groupName={teamDialog.groupName}
+        students={teamDialog.students}
+      />
     </Dialog>
   );
 }

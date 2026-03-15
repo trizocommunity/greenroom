@@ -6,7 +6,7 @@ export function ChestNumberHowItWorks() {
   return (
     <HowItWorksButton
       title="How Chest Numbers work"
-      description="Unique numbers for participants in single categories."
+      description="Unique numbers for students in single categories."
     >
       <p className="text-sm text-muted-foreground">
         Chest numbers identify students in <strong>single</strong> categories
