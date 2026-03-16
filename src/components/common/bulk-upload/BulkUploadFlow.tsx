@@ -321,8 +321,9 @@ export function BulkUploadFlow<T>({
                   <h3 className="text-xl font-bold text-foreground mb-4">
                     2. Upload your file
                   </h3>
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
                     className="w-full aspect-4/3 max-h-[300px] border-2 border-dashed border-primary/20 rounded-3xl bg-primary/5 hover:bg-primary/10 transition-all cursor-pointer group flex flex-col items-center justify-center shadow-inner"
                     onClick={() => fileInputRef.current?.click()}
                   >
@@ -335,7 +336,7 @@ export function BulkUploadFlow<T>({
                     <p className="text-sm text-muted-foreground mt-2">
                       .xlsx or .csv files supported
                     </p>
-                  </button>
+                  </Button>
                   <input
                     type="file"
                     ref={fileInputRef}

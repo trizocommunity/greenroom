@@ -384,6 +384,11 @@ export function ScheduleClient({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-medium truncate">{getEntryLabel(entry)}</p>
+                          {entry.programme?.category?.name && (
+                            <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                              {entry.programme.category.name}
+                            </span>
+                          )}
                           {entry.type === "SESSION" && (
                             <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
                               Session

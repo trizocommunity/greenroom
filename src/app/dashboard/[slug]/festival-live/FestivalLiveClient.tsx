@@ -2,7 +2,7 @@
 
 import { Copy, ExternalLink, Radio } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -73,11 +73,22 @@ export function FestivalLiveClient({
     heroImage: branding?.heroImage || "",
     accentColor: branding?.colors?.primary || "#000000",
   });
-  const [savingBasics, setSavingBasics] = useState(false);
-  const [savingOrg, setSavingOrg] = useState(false);
-  const [savingBranding, setSavingBranding] = useState(false);
+  const [savingAll, setSavingAll] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingHero, setUploadingHero] = useState(false);
+
+  const initialFestivalRef = useRef(festivalDetails);
+  const initialBrandingRef = useRef({
+    logo: branding?.logo || "",
+    heroImage: branding?.heroImage || "",
+    accentColor: branding?.colors?.primary || "#000000",
+  });
+
+  const hasFestivalChanges =
+    JSON.stringify(festivalForm) !== JSON.stringify(initialFestivalRef.current);
+  const hasBrandingChanges =
+    JSON.stringify(brandingForm) !== JSON.stringify(initialBrandingRef.current);
+  const hasChanges = hasFestivalChanges || hasBrandingChanges;
 
   const handleToggle = async (checked: boolean) => {
     setLoading(true);
@@ -176,11 +187,55 @@ export function FestivalLiveClient({
     return data.secure_url;
   };
 
+  const handleSaveAll = async () => {
+    if (!hasChanges) return;
+    setSavingAll(true);
+    try {
+      let festivalUpdated = false;
+      let brandingUpdated = false;
+
+      if (hasFestivalChanges) {
+        const res = await updateFestivalAction({
+          ...festivalForm,
+        } as any);
+        if (res.success) {
+          festivalUpdated = true;
+          initialFestivalRef.current = festivalForm;
+        } else {
+          toast.error(res.error || "Failed to update festival details.");
+        }
+      }
+
+      if (hasBrandingChanges) {
+        const res = await updateFestivalBrandingAction({
+          logo: brandingForm.logo || null,
+          heroImage: brandingForm.heroImage || null,
+          accentColor: features.canUseCustomColors
+            ? brandingForm.accentColor || null
+            : undefined,
+        });
+        if (res.success) {
+          brandingUpdated = true;
+          initialBrandingRef.current = brandingForm;
+        } else {
+          toast.error("Failed to update branding.");
+        }
+      }
+
+      if (festivalUpdated || brandingUpdated) {
+        toast.success("Changes saved.");
+        router.refresh();
+      }
+    } catch {
+      toast.error("Failed to save changes.");
+    } finally {
+      setSavingAll(false);
+    }
+  };
+
   return (
     <TooltipProvider>
       <div className="space-y-6">
-
-
         <div className="grid gap-4 md:grid-cols-2">
           {/* When Live: copiable link section at top — unique shareable UI */}
           {enabled && fullPublicUrl && (
@@ -281,7 +336,7 @@ export function FestivalLiveClient({
               </CardContent>
           </Card>
         </div>
-
+          
         {/* Festival Details */}
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
@@ -372,33 +427,6 @@ export function FestivalLiveClient({
                   placeholder="City, Country"
                 />
               </div>
-              <div className="flex justify-end pt-2">
-                <Button
-                  size="sm"
-                  disabled={savingBasics}
-                  onClick={async () => {
-                    setSavingBasics(true);
-                    try {
-                      const res = await updateFestivalAction({
-                        ...festivalForm,
-                      } as any);
-                      if (res.success) {
-                        toast.success("Festival basics updated.");
-                        router.refresh();
-                      } else {
-                        toast.error(res.error || "Failed to update festival.");
-                      }
-                    } catch {
-                      toast.error("Failed to update festival.");
-                    } finally {
-                      setSavingBasics(false);
-                    }
-                  }}
-                >
-                  {savingBasics && <span className="mr-2 h-3 w-3 animate-spin border border-current border-t-transparent rounded-full" />}
-                  Save basics
-                </Button>
-              </div>
             </CardContent>
           </Card>
 
@@ -407,8 +435,8 @@ export function FestivalLiveClient({
               <CardTitle className="text-base">Organization & online</CardTitle>
               <CardDescription>Organization info and public subdomain.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-2">
+            <CardContent className="space-y-3 grid gap-3 grid-cols-2">
+              <div className="space-y-2 col-span-2">
                 <Label htmlFor="fest-org-name">Organization name</Label>
                 <Input
                   id="fest-org-name"
@@ -419,11 +447,10 @@ export function FestivalLiveClient({
                   placeholder="Org name"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 col-span-2">
                 <Label htmlFor="fest-org-description">Organization description</Label>
-                <textarea
+                <Textarea
                   id="fest-org-description"
-                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   value={festivalForm.orgDescription || ""}
                   onChange={(e) =>
                     setFestivalForm((prev) => ({ ...prev, orgDescription: e.target.value }))
@@ -431,9 +458,6 @@ export function FestivalLiveClient({
                   placeholder="Short description of your organization (required to go live)"
                   rows={3}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Required to enable Festival Live. Shown on the public About page.
-                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fest-org-website">Website</Label>
@@ -463,7 +487,7 @@ export function FestivalLiveClient({
                   placeholder="City"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 col-span-2">
                 <Label htmlFor="fest-slug">Subdomain</Label>
                 <div className="flex items-center gap-2">
                   <Input
@@ -485,33 +509,6 @@ export function FestivalLiveClient({
                     https://{festivalForm.slug || "your-festival"}.greenroom.com
                   </span>
                 </p>
-              </div>
-              <div className="flex justify-end pt-2">
-                <Button
-                  size="sm"
-                  disabled={savingOrg}
-                  onClick={async () => {
-                    setSavingOrg(true);
-                    try {
-                      const res = await updateFestivalAction({
-                        ...festivalForm,
-                      } as any);
-                      if (res.success) {
-                        toast.success("Organization & online details updated.");
-                        router.refresh();
-                      } else {
-                        toast.error(res.error || "Failed to update festival.");
-                      }
-                    } catch {
-                      toast.error("Failed to update festival.");
-                    } finally {
-                      setSavingOrg(false);
-                    }
-                  }}
-                >
-                  {savingOrg && <span className="mr-2 h-3 w-3 animate-spin border border-current border-t-transparent rounded-full" />}
-                  Save organization
-                </Button>
               </div>
             </CardContent>
           </Card>
@@ -620,39 +617,22 @@ export function FestivalLiveClient({
                 )}
               </div>
             </div>
-            <div className="flex justify-end pt-2">
-              <Button
-                size="sm"
-                disabled={savingBranding}
-                onClick={async () => {
-                  setSavingBranding(true);
-                  try {
-                    const res = await updateFestivalBrandingAction({
-                      logo: brandingForm.logo || null,
-                      heroImage: brandingForm.heroImage || null,
-                      accentColor: features.canUseCustomColors ? (brandingForm.accentColor || null) : undefined,
-                    });
-                    if (res.success) {
-                      toast.success("Branding updated.");
-                      router.refresh();
-                    } else {
-                      toast.error("Failed to update branding.");
-                    }
-                  } catch {
-                    toast.error("Failed to update branding.");
-                  } finally {
-                    setSavingBranding(false);
-                  }
-                }}
-              >
-                {savingBranding && (
-                  <span className="mr-2 h-3 w-3 animate-spin border border-current border-t-transparent rounded-full" />
-                )}
-                Save branding
-              </Button>
-            </div>
           </CardContent>
         </Card>
+
+         {/* Save changes bar */}
+         <div className="w-full pt-3 pb-10 flex items-center justify-end bg-background/80 backdrop-blur">
+            <Button
+              size="lg"
+              disabled={!hasChanges || savingAll}
+              onClick={handleSaveAll}
+            >
+              {savingAll && (
+                <span className="mr-2 h-3 w-3 animate-spin border border-current border-t-transparent rounded-full" />
+              )}
+              Save changes
+            </Button>
+          </div>
 
       </div>
     </TooltipProvider>

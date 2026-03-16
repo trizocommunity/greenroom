@@ -289,11 +289,11 @@ export function SessionScheduleClient({
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {groupedByDay[effectiveActiveDay].map((entry) => (
-                  <Card
-                    key={entry.id}
-                    className="group relative overflow-hidden border border-border/80 bg-card shadow-sm transition-all hover:shadow-md hover:border-primary/20"
-                  >
-                    <div className="absolute top-3 right-3 z-10 opacity-0 transition-opacity group-hover:opacity-100">
+                    <Card
+                      key={entry.id}
+                      className="group relative overflow-hidden border border-border/80 bg-card shadow-sm transition-all hover:shadow-md hover:border-primary/20"
+                    >
+                    <div className="absolute top-3 right-3 z-10">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="secondary" size="icon" className="h-8 w-8 rounded-lg shadow-sm">

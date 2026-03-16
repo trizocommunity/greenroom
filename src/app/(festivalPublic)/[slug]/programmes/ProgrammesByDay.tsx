@@ -91,14 +91,16 @@ function ProgrammeCard({ entry }: { entry: ProgrammeEntry }) {
         {format(start, "h:mm a")}
         {end && ` – ${format(end, "h:mm a")}`}
       </time>
-      <h3 className="font-bold text-lg tracking-tight mb-1">
-        {entry.programme.name}
-      </h3>
-      {entry.programme.category?.name && (
-        <p className="text-sm text-muted-foreground mb-2">
-          {entry.programme.category.name}
-        </p>
-      )}
+      <div className="mb-2 flex items-center gap-2 flex-wrap">
+        <h3 className="font-bold text-lg tracking-tight">
+          {entry.programme.name}
+        </h3>
+        {entry.programme.category?.name && (
+          <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">
+            {entry.programme.category.name}
+          </span>
+        )}
+      </div>
       {entry.stage?.name && (
         <p className="text-sm font-medium text-primary">Stage {entry.stage.name}</p>
       )}

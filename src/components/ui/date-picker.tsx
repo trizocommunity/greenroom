@@ -43,11 +43,11 @@ export function DatePicker({
         <Button
           type="button"
           id={id}
-          variant="outline"
           disabled={disabled}
           data-empty={isEmpty || undefined}
           className={cn(
-            "w-[212px] justify-between text-left font-normal data-[empty=true]:text-muted-foreground",
+            // Match Input visual style / sizing
+            "flex h-12 w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm shadow-sm transition-colors justify-between text-left font-normal data-[empty=true]:text-muted-foreground",
             className,
           )}
         >
@@ -126,11 +126,11 @@ export function DateTimePicker({
         <Button
           type="button"
           id={id}
-          variant="outline"
           disabled={disabled}
           data-empty={isEmpty || undefined}
           className={cn(
-            "w-[260px] justify-between text-left font-normal data-[empty=true]:text-muted-foreground",
+            // Match Input visual style / sizing
+            "flex h-12 w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm shadow-sm transition-colors justify-between text-left font-normal data-[empty=true]:text-muted-foreground",
           )}
         >
           {value ? (

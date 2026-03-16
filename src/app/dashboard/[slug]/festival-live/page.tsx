@@ -66,17 +66,7 @@ export default async function FestivalLivePage({
   const baseUrl = host ? `${protocol}://${host}` : process.env.NEXT_PUBLIC_APP_URL || "";
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-          Festival Live
-        </h1>
-        <p className="text-sm sm:text-base text-muted-foreground mt-1">
-          Control your public festival website visibility. When disabled, the
-          public URL returns a 404 page.
-        </p>
-      </div>
-
+    <div className="space-y-8 pt-5">
       <FestivalLiveClient
         festivalId={festival.id}
         festivalSlug={festival.slug}

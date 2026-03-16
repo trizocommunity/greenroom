@@ -12,7 +12,7 @@ isProject: false
 - **Schema:** [prisma/schema.prisma](prisma/schema.prisma): `FestivalStatus` = DRAFT | ACTIVE | EXPIRED; `Festival` has `startDate`, `endDate`, `expiresAt`; no result PDF storage; Result model exists and references ProgrammeAssignment/Programme/Student.
 - **Pricing:** [src/config/pricing.ts](src/config/pricing.ts): `durationDays` differs per tier (30/90/180); `postExpiryAccess` and `dataRetentionDays` exist (read-only behaviour).
 - **Cleanup:** [src/server/services/festival-lifecycle.service.ts](src/server/services/festival-lifecycle.service.ts): hard-deletes every festival where `expiresAt < now` (no retention, no tier logic).
-- **Public site:** [src/app/(festivalPublic)/[slug]/layout.tsx](src/app/(festivalPublic)/[slug]/layout.tsx): when expired, returns `notFound()` (no “festival ended” page).
+- **Public site:** [src/app/(festivalPublic)/[slug]/layout.tsx](<src/app/(festivalPublic)/[slug]/layout.tsx>): when expired, returns `notFound()` (no “festival ended” page).
 - **User festivals:** [src/components/profile/FestivalCard.tsx](src/components/profile/FestivalCard.tsx): shows EXPIRED and “scheduled for deletion”; no “View Details” or PDF download for expired.
 - **Super Admin:** [src/components/admin/AdminFestivalCard.tsx](src/components/admin/AdminFestivalCard.tsx): status badge only; no expired-specific actions (retained info, PDF, lifecycle).
 - **Analytics / Notifications:** No login-count, purchase-history, or notification tables; no cron/jobs for engagement emails.
@@ -43,8 +43,6 @@ flowchart LR
   G --> H
   H --> I
 ```
-
-
 
 - **Same duration:** All plans use one fixed duration (30 days). No post-expiry read-only; after 30 days the festival moves to **Expired State** only.
 - **Expired state:** Run expiration process: keep festival row + retained data (metadata, results summary, result PDF); delete participants, media, sessions, etc.
@@ -92,8 +90,8 @@ flowchart LR
 ### 2.2 What to delete on expiration
 
 - **Delete (and cascade where applicable):**  
-Students, ProgrammeAssignments, Categories, Groups, Programmes (after snapshot), Results (after snapshot), FestivalGalleryImage, FestivalNews, ScheduleEntry, Stage, Event (or retain event names in metadata if needed), FestivalMember, SupportTicket/SupportNotification for that festival.  
-Keep: Festival (with basic fields + `resultPdfUrl` + `expiredAt`), Payment (already SetNull festivalId), ExpiredFestivalResult rows.
+  Students, ProgrammeAssignments, Categories, Groups, Programmes (after snapshot), Results (after snapshot), FestivalGalleryImage, FestivalNews, ScheduleEntry, Stage, Event (or retain event names in metadata if needed), FestivalMember, SupportTicket/SupportNotification for that festival.  
+  Keep: Festival (with basic fields + `resultPdfUrl` + `expiredAt`), Payment (already SetNull festivalId), ExpiredFestivalResult rows.
 - **Media files:** Delete DB rows for gallery/news; actual file deletion depends on storage (Vercel Blob/S3): add a small step in expiration job to delete objects for that festival if you store URLs in DB.
 
 ### 2.3 Expiration service and cron
@@ -119,7 +117,7 @@ Keep: Festival (with basic fields + `resultPdfUrl` + `expiredAt`), Payment (alre
 
 ### 3.2 Public festival website when expired
 
-- **Stop returning 404:** In [src/app/(festivalPublic)/[slug]/layout.tsx](src/app/(festivalPublic)/[slug]/layout.tsx), when `isExpired` (and optionally `status === 'EXPIRED'`): instead of `notFound()`, render a **single “expired” layout** that shows:
+- **Stop returning 404:** In [src/app/(festivalPublic)/[slug]/layout.tsx](<src/app/(festivalPublic)/[slug]/layout.tsx>), when `isExpired` (and optionally `status === 'EXPIRED'`): instead of `notFound()`, render a **single “expired” layout** that shows:
   - Message: “This festival has ended.” / “Thank you for participating.” / “See you next year.”
   - Optional: short festival summary (name, dates), **Result PDF download** (if `resultPdfUrl` exists), and optional “Notify me about next edition” (email capture; requires a small table + API or existing notification signup if any).
 - **Child routes:** For expired festivals, do not render normal public children (results, gallery, sessions, etc.). Either:
@@ -162,7 +160,6 @@ Keep: Festival (with basic fields + `resultPdfUrl` + `expiredAt`), Payment (alre
 
 ## Implementation order and file-level summary
 
-
 | Phase   | Key files / changes                                                                                                                                                                                                                                                                                                      |
 | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 1.1     | [src/config/pricing.ts](src/config/pricing.ts) (30 days, remove read-only semantics); [src/server/services/festival-context.service.ts](src/server/services/festival-context.service.ts) (remove readOnlyExpired); [src/app/dashboard/[slug]/layout.tsx](src/app/dashboard/[slug]/layout.tsx) (expired = redirect only). |
@@ -170,11 +167,10 @@ Keep: Festival (with basic fields + `resultPdfUrl` + `expiredAt`), Payment (alre
 | 2.1     | [prisma/schema.prisma](prisma/schema.prisma) (resultPdfUrl, expiredAt, ExpiredFestivalResult table).                                                                                                                                                                                                                     |
 | 2.2–2.3 | New expiration service (snapshot results, generate PDF, upload, delete non-retained, set EXPIRED); [src/app/api/cron/cleanup/route.ts](src/app/api/cron/cleanup/route.ts) calls it.                                                                                                                                      |
 | 3.1     | [FestivalCard](src/components/profile/FestivalCard.tsx) (Expired → “View Details”); new profile route for expired festival view (basic info + PDF).                                                                                                                                                                      |
-| 3.2     | [src/app/(festivalPublic)/[slug]/layout.tsx](src/app/(festivalPublic)/[slug]/layout.tsx) (expired → “ended” page); optional `/[slug]/expired` or same layout for all children when expired; ensure no registration/submission when expired.                                                                              |
+| 3.2     | [src/app/(festivalPublic)/[slug]/layout.tsx](<src/app/(festivalPublic)/[slug]/layout.tsx>) (expired → “ended” page); optional `/[slug]/expired` or same layout for all children when expired; ensure no registration/submission when expired.                                                                            |
 | 4       | [AdminFestivalCard](src/components/admin/AdminFestivalCard.tsx) / FestivalsTable (Expired badge + actions); new SA page: view retained info + PDF + lifecycle; [prisma/schema.prisma](prisma/schema.prisma) (FestivalLifecycleEvent if new).                                                                             |
 | 5       | New analytics tables; SA analytics section (reports/dashboards).                                                                                                                                                                                                                                                         |
 | 6       | Notification templates + scheduling table or job queue; cron/worker; optional AI later.                                                                                                                                                                                                                                  |
-
 
 ---
 
@@ -191,4 +187,3 @@ Keep: Festival (with basic fields + `resultPdfUrl` + `expiredAt`), Payment (alre
 
 - **“Add status entity for festival modal”:** Interpreted as: add the **status** field (READY / ONGOING / PAST / EXPIRED) to the Festival model and display it in the Edit Festival modal (and cards). If you instead meant a separate “Status” entity (e.g. a table of status definitions), that can be a small addition (e.g. status display name and description).
 - **Result PDF:** Spec says “results must be delivered only through a downloadable PDF/document” for expired view: plan assumes one stored PDF per festival at expiration time and optional on-demand regeneration for Super Admin if needed later.
-
