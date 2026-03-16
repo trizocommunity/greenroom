@@ -101,6 +101,8 @@ export function SessionScheduleClient({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [activeDayKey, setActiveDayKey] = useState<string | null>(null);
 
+  const hasStages = stages.length > 0;
+
   const refresh = useCallback(() => {
     window.location.reload();
   }, []);
@@ -208,7 +210,17 @@ export function SessionScheduleClient({
             entries are managed on the Schedule page.
           </p>
         </div>
-        <Button onClick={() => setAddOpen(true)} className="gap-2 shrink-0">
+        <Button
+          onClick={() => {
+            if (!hasStages) {
+              toast.error("Please create at least one stage before adding sessions.");
+              return;
+            }
+            setAddOpen(true);
+          }}
+          className="gap-2 shrink-0"
+          disabled={!hasStages}
+        >
           <Plus className="h-4 w-4" />
           Add session
         </Button>
@@ -218,11 +230,26 @@ export function SessionScheduleClient({
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Calendar className="h-12 w-12 text-muted-foreground mb-3" />
-            <p className="font-medium">No sessions yet</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Add sessions with title, time, and optional stage.
+            <p className="font-medium">
+              {!hasStages ? "No stages yet" : "No sessions yet"}
             </p>
-            <Button variant="outline" className="mt-4" onClick={() => setAddOpen(true)}>
+            <p className="text-sm text-muted-foreground mt-1">
+              {!hasStages
+                ? "Please create a stage first in Pre-Works → Stage Management before adding sessions."
+                : "Add sessions with title, time, and optional stage."}
+            </p>
+            <Button
+              variant="outline"
+              className="mt-4"
+              onClick={() => {
+                if (!hasStages) {
+                  toast.error("Please create at least one stage before adding sessions.");
+                  return;
+                }
+                setAddOpen(true);
+              }}
+              disabled={!hasStages}
+            >
               Add session
             </Button>
           </CardContent>

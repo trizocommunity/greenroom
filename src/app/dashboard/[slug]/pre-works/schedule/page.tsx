@@ -33,7 +33,13 @@ export default async function SchedulePage({ params }: PageProps) {
     getStages(festival.id),
     prisma.programme.findMany({
       where: { festivalId: festival.id },
-      select: { id: true, name: true },
+      select: {
+        id: true,
+        name: true,
+        category: {
+          select: { id: true, name: true },
+        },
+      },
       orderBy: { name: "asc" },
     }),
   ]);
@@ -43,7 +49,14 @@ export default async function SchedulePage({ params }: PageProps) {
       .filter((e) => e.type === "PROGRAMME" && e.programmeId)
       .map((e) => e.programmeId!),
   );
-  const programmes = allProgrammes.filter((p) => !scheduledProgrammeIds.has(p.id));
+  const programmes = allProgrammes
+    .filter((p) => !scheduledProgrammeIds.has(p.id))
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      categoryId: p.category?.id ?? null,
+      categoryName: p.category?.name ?? null,
+    }));
 
   return (
     <div className="container pt-4 sm:pt-6">

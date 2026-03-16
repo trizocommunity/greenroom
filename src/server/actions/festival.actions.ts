@@ -43,8 +43,15 @@ export async function createFestival(input: CreateFestivalInput) {
     const tierConfig = TIER_CONFIG[tier];
 
     // 3. Atomic Transaction
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + (tierConfig.durationDays || 40));
+    const expiresAt =
+      payment.validUntil ??
+      (() => {
+        const base = payment.createdAt ?? new Date();
+        const days = tierConfig.durationDays || 40;
+        const d = new Date(base);
+        d.setDate(d.getDate() + days);
+        return d;
+      })();
 
     const result = await prisma.$transaction(async (tx) => {
       // Create Festival
@@ -63,7 +70,6 @@ export async function createFestival(input: CreateFestivalInput) {
           institutionType: data.institutionType || "OTHER",
           institutionName: data.institutionName,
           location: data.location,
-          description: data.description,
           startDate: data.startDate,
           endDate: data.endDate,
           ownerId: session.userId,

@@ -1,23 +1,39 @@
 import { InstitutionType } from "@/lib/prisma-enums";
 import { z } from "zod";
 
-export const createFestivalSchema = z.object({
-  paymentId: z.string().uuid(),
-  festivalName: z.string().min(3, "Name must be at least 3 characters").max(50),
-  festivalSlug: z
-    .string()
-    .min(3)
-    .max(50)
-    .regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with dashes")
-    .optional()
-    .or(z.literal("")),
-  institutionType: z.nativeEnum(InstitutionType).optional(),
-  institutionName: z.string().optional(),
-  location: z.string().optional(),
-  description: z.string().optional(),
-  startDate: z.coerce.date().optional(),
-  endDate: z.coerce.date().optional(),
-});
+export const createFestivalSchema = z
+  .object({
+    paymentId: z.string().uuid(),
+    festivalName: z
+      .string()
+      .min(3, "Name must be at least 3 characters")
+      .max(50),
+    festivalSlug: z
+      .string()
+      .min(3)
+      .max(50)
+      .regex(
+        /^[a-z0-9-]+$/,
+        "Slug must be lowercase alphanumeric with dashes",
+      )
+      .optional()
+      .or(z.literal("")),
+    institutionType: z.nativeEnum(InstitutionType),
+    institutionName: z.string().min(2, "Institution name is required"),
+    location: z.string().min(2, "Location is required"),
+    startDate: z.coerce.date(),
+    endDate: z.coerce.date(),
+  })
+  .refine(
+    (data) => {
+      // end must be after or same as start
+      return data.endDate >= data.startDate;
+    },
+    {
+      message: "End date must be on or after start date",
+      path: ["endDate"],
+    },
+  );
 
 export const updateFestivalSchema = z.object({
   name: z.string().min(1, "Name is required"),

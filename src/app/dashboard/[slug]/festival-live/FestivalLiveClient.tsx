@@ -22,6 +22,7 @@ import { setPublicSiteEnabledAction, updateFestivalBrandingAction } from "@/serv
 import { updateFestivalAction } from "@/server/actions/user-festival.actions";
 import type { FestivalBranding } from "@/types/festival";
 import { cn } from "@/lib/utils";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface FestivalLiveClientProps {
   festivalId: string;
@@ -318,44 +319,42 @@ export function FestivalLiveClient({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="fest-start">Start date</Label>
-                  <Input
+                  <DatePicker
                     id="fest-start"
-                    type="date"
-                    value={
+                    date={
                       festivalForm.startDate instanceof Date
-                        ? festivalForm.startDate.toISOString().split("T")[0]
-                        : typeof festivalForm.startDate === "string" &&
-                            festivalForm.startDate
-                          ? festivalForm.startDate.split("T")[0]
-                          : ""
+                        ? festivalForm.startDate
+                        : typeof festivalForm.startDate === "string" && festivalForm.startDate
+                          ? new Date(festivalForm.startDate)
+                          : undefined
                     }
-                    onChange={(e) =>
+                    onChange={(date) =>
                       setFestivalForm((prev) => ({
                         ...prev,
-                        startDate: e.target.value || null,
+                        startDate: date ?? null,
                       }))
                     }
+                    placeholder="Pick start date"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="fest-end">End date</Label>
-                  <Input
+                  <DatePicker
                     id="fest-end"
-                    type="date"
-                    value={
+                    date={
                       festivalForm.endDate instanceof Date
-                        ? festivalForm.endDate.toISOString().split("T")[0]
-                        : typeof festivalForm.endDate === "string" &&
-                            festivalForm.endDate
-                          ? festivalForm.endDate.split("T")[0]
-                          : ""
+                        ? festivalForm.endDate
+                        : typeof festivalForm.endDate === "string" && festivalForm.endDate
+                          ? new Date(festivalForm.endDate)
+                          : undefined
                     }
-                    onChange={(e) =>
+                    onChange={(date) =>
                       setFestivalForm((prev) => ({
                         ...prev,
-                        endDate: e.target.value || null,
+                        endDate: date ?? null,
                       }))
                     }
+                    placeholder="Pick end date"
                   />
                 </div>
               </div>

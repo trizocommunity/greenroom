@@ -201,6 +201,8 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
                 paymentId={credit.id}
                 onOpenChange={setIsCreateModalOpen}
                 tier={credit.tier || undefined}
+                planValidFrom={credit.validFrom as any}
+                planValidUntil={credit.validUntil as any}
               />
             </>
           ) : (

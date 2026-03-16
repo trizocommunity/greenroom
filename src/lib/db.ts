@@ -17,13 +17,30 @@ const cleanedConnectionString = connectionString
   .replace(/\?&+/, "?")
   .replace(/\?$/, "");
 
+const effectiveConnectionString = cleanedConnectionString || connectionString;
+
+const isLocalConnection = (() => {
+  try {
+    const url = new URL(effectiveConnectionString);
+    return ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
+  } catch {
+    return /localhost|127\.0\.0\.1|::1/i.test(effectiveConnectionString);
+  }
+})();
+
+const hasExplicitSslDisable = /sslmode=disable/i.test(connectionString);
+const sslConfig: PoolConfig["ssl"] =
+  isLocalConnection || hasExplicitSslDisable
+    ? false
+    : { rejectUnauthorized: false };
+
 const poolConfig: PoolConfig = {
-  connectionString: cleanedConnectionString || connectionString,
+  connectionString: effectiveConnectionString,
   max: process.env.NODE_ENV === "production" ? 5 : 3,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
-  // Supabase pooler often uses a cert that Node's TLS rejects as self-signed; allow it.
-  ssl: { rejectUnauthorized: false },
+  // Local Docker/Postgres should use plaintext; hosted DBs (e.g. Supabase) use TLS.
+  ssl: sslConfig,
 };
 
 if (!globalForPrisma.pool) {

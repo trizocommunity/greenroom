@@ -26,6 +26,9 @@ enum Tier {
 }
 
 enum InstitutionType {
+  UNIVERSITY
+  INSTITUTION
+  CAMPUS
   COLLEGE
   MADRASA
   SCHOOL

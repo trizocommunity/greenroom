@@ -64,7 +64,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-type ProgrammeOption = { id: string; name: string };
+type ProgrammeOption = {
+  id: string;
+  name: string;
+  categoryId?: string | null;
+  categoryName?: string | null;
+};
 type StageOption = { id: string; name: string; description?: string | null };
 
 interface ScheduleClientProps {
@@ -125,6 +130,10 @@ export function ScheduleClient({
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [activeDayKey, setActiveDayKey] = useState<string | null>(null);
+
+  const hasStages = stages.length > 0;
+  const hasProgrammes = programmes.length > 0;
+  const canAdd = hasStages && hasProgrammes;
 
   const refresh = useCallback(() => {
     window.location.reload();
@@ -235,7 +244,21 @@ export function ScheduleClient({
             Schedule programmes and events by day, time, and stage.
           </p>
         </div>
-        <Button onClick={() => setAddOpen(true)} className="gap-2 shrink-0">
+        <Button
+          onClick={() => {
+            if (!hasStages) {
+              toast.error("Please create at least one stage before adding to the schedule.");
+              return;
+            }
+            if (!hasProgrammes) {
+              toast.error("Please create programmes first before scheduling.");
+              return;
+            }
+            setAddOpen(true);
+          }}
+          className="gap-2 shrink-0"
+          disabled={!canAdd}
+        >
           <Plus className="h-4 w-4" />
           Add to schedule
         </Button>
@@ -245,11 +268,37 @@ export function ScheduleClient({
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Calendar className="h-12 w-12 text-muted-foreground mb-3" />
-            <p className="font-medium">No schedule entries yet</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Add programmes or events to build your schedule.
+            <p className="font-medium">
+              {!hasStages
+                ? "No stages yet"
+                : !hasProgrammes
+                  ? "No programmes yet"
+                  : "No schedule entries yet"}
             </p>
-            <Button variant="outline" className="mt-4" onClick={() => setAddOpen(true)}>
+            <p className="text-sm text-muted-foreground mt-1">
+              {!hasStages &&
+                "Please create a stage first in Pre-Works → Stage Management."}
+              {hasStages && !hasProgrammes &&
+                "Please create programmes first in Pre-Works → Programmes."}
+              {hasStages && hasProgrammes &&
+                "Add programmes to build your schedule."}
+            </p>
+            <Button
+              variant="outline"
+              className="mt-4"
+              onClick={() => {
+                if (!hasStages) {
+                  toast.error("Please create at least one stage before adding to the schedule.");
+                  return;
+                }
+                if (!hasProgrammes) {
+                  toast.error("Please create programmes first before scheduling.");
+                  return;
+                }
+                setAddOpen(true);
+              }}
+              disabled={!canAdd}
+            >
               Add to schedule
             </Button>
           </CardContent>
@@ -486,11 +535,25 @@ function AddEntryDialog({
         ? today
         : dateOptions[0]!.value
       : today;
+  const [categoryId, setCategoryId] = useState<string>("all");
   const [programmeId, setProgrammeId] = useState("");
   const [stageId, setStageId] = useState("");
   const [dateStr, setDateStr] = useState(defaultDate);
   const [startTimeStr, setStartTimeStr] = useState("09:00");
   const [endTimeStr, setEndTimeStr] = useState("");
+
+  const categoryOptions = Array.from(
+    new Map(
+      programmes
+        .filter((p) => p.categoryId && p.categoryName)
+        .map((p) => [p.categoryId as string, { id: p.categoryId as string, name: p.categoryName as string }]),
+    ).values(),
+  );
+
+  const visibleProgrammes =
+    categoryId !== "all" && categoryOptions.length > 0
+      ? programmes.filter((p) => p.categoryId === categoryId)
+      : programmes;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -527,17 +590,44 @@ function AddEntryDialog({
 
           <div className="grid grid-cols-1 gap-1">
             <div className="space-y-1.5">
+              <Label htmlFor="add-category" className="text-xs">
+                Category <span className="text-muted-foreground font-normal">(filters programmes)</span>
+              </Label>
+              <Select
+                value={categoryId}
+                onValueChange={setCategoryId}
+              >
+                <SelectTrigger id="add-category" className="h-9 text-sm">
+                  <SelectValue placeholder="All categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All categories</SelectItem>
+                  {categoryOptions.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
               <Label htmlFor="add-programme" className="text-xs">Programme</Label>
               <Select value={programmeId} onValueChange={setProgrammeId} required>
                 <SelectTrigger id="add-programme" className="h-9 text-sm">
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
                 <SelectContent>
-                  {programmes.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
+                  {visibleProgrammes.length === 0 ? (
+                    <SelectItem value="__none__" disabled>
+                      No programmes in this category
                     </SelectItem>
-                  ))}
+                  ) : (
+                    visibleProgrammes.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>

@@ -48,6 +48,9 @@ export const GroupType = {
 export type GroupType = (typeof GroupType)[keyof typeof GroupType];
 
 export const InstitutionType = {
+  UNIVERSITY: "UNIVERSITY",
+  INSTITUTION: "INSTITUTION",
+  CAMPUS: "CAMPUS",
   COLLEGE: "COLLEGE",
   MADRASA: "MADRASA",
   SCHOOL: "SCHOOL",

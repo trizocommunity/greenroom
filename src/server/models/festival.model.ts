@@ -280,3 +280,47 @@ export async function getDashboardOverviewData(festivalId: string) {
     recentResultsByProgramme,
   };
 }
+
+/** Analytics aggregates for Phase 5 Analytics page (PRO / advancedAnalytics). */
+export async function getFestivalAnalyticsData(festivalId: string) {
+  const [
+    studentsCount,
+    programmesCount,
+    groupsCount,
+    stagesCount,
+    resultsCount,
+    publishedResultsCount,
+    categoriesCount,
+    judgesCount,
+  ] = await Promise.all([
+    prisma.student.count({ where: { festivalId } }),
+    prisma.programme.count({ where: { festivalId } }),
+    prisma.group.count({ where: { festivalId } }),
+    prisma.stage.count({ where: { festivalId } }),
+    prisma.result.count({
+      where: { programme: { festivalId } },
+    }),
+    prisma.result.count({
+      where: {
+        programme: { festivalId },
+        isPublished: true,
+      },
+    }),
+    prisma.category.count({ where: { festivalId } }),
+    prisma.festival.findUnique({
+      where: { id: festivalId },
+      select: { judgesCount: true },
+    }).then((f) => f?.judgesCount ?? 0),
+  ]);
+
+  return {
+    studentsCount,
+    programmesCount,
+    groupsCount,
+    stagesCount,
+    resultsCount,
+    publishedResultsCount,
+    categoriesCount,
+    judgesCount,
+  };
+}

@@ -11,11 +11,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FeatureService } from "@/lib/features";
 import { getResolvedTier } from "@/lib/tier";
 import { updateFestivalSettingsAction } from "@/server/actions/festival.actions";
+import { DatePicker, DateTimePicker } from "@/components/ui/date-picker";
 
 interface SettingsFormProps {
   festival: any;
@@ -73,24 +73,30 @@ export function SettingsForm({ festival }: SettingsFormProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="startDate">Start Date</Label>
-              <Input
+              <DatePicker
                 id="startDate"
-                type="date"
-                value={formData.startDate}
-                onChange={(e) =>
-                  setFormData({ ...formData, startDate: e.target.value })
+                date={formData.startDate ? new Date(formData.startDate) : undefined}
+                onChange={(date) =>
+                  setFormData({
+                    ...formData,
+                    startDate: date ? date.toISOString().slice(0, 10) : "",
+                  })
                 }
+                placeholder="Pick start date"
               />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="endDate">End Date</Label>
-              <Input
+              <DatePicker
                 id="endDate"
-                type="date"
-                value={formData.endDate}
-                onChange={(e) =>
-                  setFormData({ ...formData, endDate: e.target.value })
+                date={formData.endDate ? new Date(formData.endDate) : undefined}
+                onChange={(date) =>
+                  setFormData({
+                    ...formData,
+                    endDate: date ? date.toISOString().slice(0, 10) : "",
+                  })
                 }
+                placeholder="Pick end date"
               />
             </div>
           </div>
@@ -103,16 +109,22 @@ export function SettingsForm({ festival }: SettingsFormProps) {
               <Label htmlFor="programmeAssignment">
                 Programme Assignment Deadline
               </Label>
-              <Input
+              <DateTimePicker
                 id="programmeAssignment"
-                type="datetime-local"
-                value={formData.programmeAssignmentDeadline}
-                onChange={(e) =>
+                value={
+                  formData.programmeAssignmentDeadline
+                    ? new Date(formData.programmeAssignmentDeadline)
+                    : null
+                }
+                onChange={(value) =>
                   setFormData({
                     ...formData,
-                    programmeAssignmentDeadline: e.target.value,
+                    programmeAssignmentDeadline: value
+                      ? value.toISOString().slice(0, 16)
+                      : "",
                   })
                 }
+                placeholder="Pick deadline"
               />
               <p className="text-sm text-muted-foreground">
                 Team Leaders cannot assign students to programmes after this

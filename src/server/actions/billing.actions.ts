@@ -67,7 +67,12 @@ export async function initiatePayment(
       },
     );
 
-    // Create Payment Record (Pending)
+    // Create Payment Record (Pending) with plan validity window
+    const now = new Date();
+    const validUntil = new Date(
+      now.getTime() + config.durationDays * 24 * 60 * 60 * 1000,
+    );
+
     const payment = await prisma.payment.create({
       data: {
         amount: config.price,
@@ -78,6 +83,7 @@ export async function initiatePayment(
         purpose,
         tier,
         used: false,
+        validUntil,
       },
     });
 
@@ -168,6 +174,8 @@ export async function checkUnusedCredit() {
         amount: payment.amount,
         purpose: payment.purpose,
         tier: payment.tier,
+        validFrom: payment.createdAt,
+        validUntil: payment.validUntil,
       }
     : null;
 }
