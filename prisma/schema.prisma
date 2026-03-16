@@ -589,6 +589,7 @@ model ScheduleEntry {
   @@index([festivalId])
   @@index([festivalId, startTime])
   @@index([festivalId, type])
+  @@index([festivalId, stageId, startTime])
   @@map("schedule_entry")
 }
 

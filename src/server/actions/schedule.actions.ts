@@ -18,25 +18,41 @@ export type ScheduleEntryWithRelations = Awaited<
   ReturnType<typeof getScheduleEntries>
 >[number];
 
-/** Check if another entry already has this startTime on the same stage (same festival). Different stages can have the same time. Returns error message or null. */
+/** Returns true if [startA, endA] overlaps [startB, endB]. Null end means instant (end = start). */
+function rangesOverlap(
+  startA: Date,
+  endA: Date | null,
+  startB: Date,
+  endB: Date | null,
+): boolean {
+  const aEnd = endA ?? startA;
+  const bEnd = endB ?? startB;
+  return startA.getTime() < bEnd.getTime() && aEnd.getTime() > startB.getTime();
+}
+
+/** Check for same-stage conflict: same start time OR overlapping start/end ranges. Returns error message or null. */
 async function getTimeConflictError(
   festivalId: string,
   startTime: Date,
+  endTime: Date | null,
   stageId: string | null,
   excludeEntryId?: string,
 ): Promise<string | null> {
-  const existing = await prisma.scheduleEntry.findFirst({
+  const others = await prisma.scheduleEntry.findMany({
     where: {
       festivalId,
-      startTime,
       stageId,
       ...(excludeEntryId ? { id: { not: excludeEntryId } } : {}),
     },
-    select: { id: true },
+    select: { id: true, startTime: true, endTime: true },
   });
-  if (!existing) return null;
-  const timeStr = format(new Date(startTime), "h:mm a");
-  return `${timeStr} is already taken on this stage. Pick another time or another stage.`;
+  for (const o of others) {
+    if (rangesOverlap(startTime, endTime, o.startTime, o.endTime)) {
+      const timeStr = format(new Date(startTime), "h:mm a");
+      return `${timeStr} overlaps with another entry on this stage. Pick another time or another stage.`;
+    }
+  }
+  return null;
 }
 
 export async function getScheduleEntries(
@@ -63,6 +79,32 @@ export async function getScheduleEntriesPublic(
     include: scheduleInclude,
     orderBy: [{ startTime: "asc" }, { order: "asc" }],
   });
+}
+
+/** For UI: check if a proposed time/stage would conflict. Returns error message or null. */
+export async function checkScheduleConflict(
+  festivalId: string,
+  params: {
+    startTime: Date;
+    endTime?: Date | null;
+    stageId?: string | null;
+    excludeEntryId?: string;
+  },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
+  const { startTime, endTime = null, stageId = null, excludeEntryId } = params;
+  if (endTime != null && endTime <= startTime)
+    return { ok: false, error: "End time must be after start time." };
+  const conflict = await getTimeConflictError(
+    festivalId,
+    startTime,
+    endTime,
+    stageId,
+    excludeEntryId,
+  );
+  if (conflict) return { ok: false, error: conflict };
+  return { ok: true };
 }
 
 async function getDisplayName(userId: string): Promise<string> {
@@ -108,9 +150,13 @@ export async function createScheduleEntry(
       return { success: false, error: "Session entries cannot be linked to a programme." };
   }
 
+  if (data.endTime != null && data.endTime <= data.startTime)
+    return { success: false, error: "End time must be after start time." };
+
   const conflict = await getTimeConflictError(
     festivalId,
     data.startTime,
+    data.endTime ?? null,
     data.stageId ?? null,
   );
   if (conflict) return { success: false, error: conflict };
@@ -176,11 +222,17 @@ export async function updateScheduleEntry(
     return { success: false, error: "Session must have a title." };
 
   const newStartTime = data.startTime !== undefined ? data.startTime : existing.startTime;
+  const newEndTime = data.endTime !== undefined ? data.endTime : existing.endTime;
   const newStageId =
     data.stageId !== undefined ? data.stageId : existing.stageId;
+
+  if (newEndTime != null && newEndTime <= newStartTime)
+    return { success: false, error: "End time must be after start time." };
+
   const conflict = await getTimeConflictError(
     festivalId,
     newStartTime,
+    newEndTime ?? null,
     newStageId ?? null,
     id,
   );

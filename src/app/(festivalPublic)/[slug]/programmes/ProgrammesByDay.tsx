@@ -1,8 +1,15 @@
 "use client";
 
 import { format } from "date-fns";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export type ProgrammeEntry = {
   id: string;
@@ -25,10 +32,29 @@ type ProgrammesByDayProps = {
   }[];
 };
 
+const ALL_STAGES_VALUE = "__all__";
+
 export function ProgrammesByDay({ days }: ProgrammesByDayProps) {
   const [activeDay, setActiveDay] = useState(days[0]?.dateKey ?? "");
+  const [activeStageId, setActiveStageId] = useState("");
 
   const activeData = days.find((d) => d.dateKey === activeDay);
+
+  const stagesForDay = useMemo(() => {
+    if (!activeData) return [];
+    const seen = new Map<string, { id: string; name: string }>();
+    for (const e of activeData.entries) {
+      if (e.stage && !seen.has(e.stage.id)) seen.set(e.stage.id, e.stage);
+    }
+    return Array.from(seen.values());
+  }, [activeData]);
+
+  const filteredEntries =
+    activeData && activeStageId === ""
+      ? activeData.entries
+      : activeData && activeStageId !== ""
+        ? activeData.entries.filter((e) => e.stage?.id === activeStageId)
+        : [];
 
   if (days.length === 0) {
     return null;
@@ -47,7 +73,10 @@ export function ProgrammesByDay({ days }: ProgrammesByDayProps) {
             type="button"
             role="tab"
             aria-selected={activeDay === dateKey}
-            onClick={() => setActiveDay(dateKey)}
+            onClick={() => {
+              setActiveDay(dateKey);
+              setActiveStageId("");
+            }}
             className={cn(
               "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
               activeDay === dateKey
@@ -64,11 +93,40 @@ export function ProgrammesByDay({ days }: ProgrammesByDayProps) {
       {/* Content for selected day */}
       {activeData && (
         <div role="tabpanel" className="space-y-4">
-          <h2 className="text-xl font-semibold text-foreground">
-            {activeData.label}
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold text-foreground">
+              {activeData.label}
+            </h2>
+            {stagesForDay.length > 0 && (
+              <Select
+                value={activeStageId === "" ? ALL_STAGES_VALUE : activeStageId}
+                onValueChange={(v) =>
+                  setActiveStageId(v === ALL_STAGES_VALUE ? "" : v)
+                }
+              >
+                <SelectTrigger className="w-[180px] h-9 text-sm">
+                  <SelectValue placeholder="Stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_STAGES_VALUE}>All stages</SelectItem>
+                  {stagesForDay.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {filteredEntries.length} programme
+            {filteredEntries.length !== 1 ? "s" : ""}
+            {activeStageId !== "" &&
+              activeData.entries.length !== filteredEntries.length &&
+              " on this stage"}
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {activeData.entries.map((entry) => (
+            {filteredEntries.map((entry) => (
               <ProgrammeCard key={entry.id} entry={entry} />
             ))}
           </div>

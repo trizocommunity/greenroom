@@ -5,11 +5,12 @@ import {
   createScheduleEntry,
   updateScheduleEntry,
   deleteScheduleEntry,
+  checkScheduleConflict,
   type ScheduleEntryWithRelations,
 } from "@/server/actions/schedule.actions";
 import { format, parseISO, isSameDay, eachDayOfInterval, startOfDay } from "date-fns";
 import { Calendar, Clock, Loader2, MapPin, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -101,6 +102,8 @@ export function SessionScheduleClient({
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [activeDayKey, setActiveDayKey] = useState<string | null>(null);
+  /** Stage filter for the active day: "" = All stages (default), or stage id */
+  const [activeStageId, setActiveStageId] = useState<string>("");
 
   const hasStages = stages.length > 0;
 
@@ -118,6 +121,12 @@ export function SessionScheduleClient({
   const sortedDays = Object.keys(groupedByDay).sort();
   const effectiveActiveDay =
     activeDayKey && groupedByDay[activeDayKey] ? activeDayKey : sortedDays[0] ?? null;
+
+  const dayEntries = effectiveActiveDay ? groupedByDay[effectiveActiveDay] ?? [] : [];
+  const filteredDayEntries =
+    activeStageId === ""
+      ? dayEntries
+      : dayEntries.filter((e) => e.stageId === activeStageId);
 
   const handleCreate = async (data: {
     title: string;
@@ -269,9 +278,8 @@ export function SessionScheduleClient({
       ) : (
         <div className="space-y-5">
           <div className="flex flex-wrap gap-2 border-b border-border pb-3" role="tablist">
-            {sortedDays.map((dayKey) => {
+            {sortedDays.map((dayKey, index) => {
               const dayEntries = groupedByDay[dayKey];
-              const dayDate = parseISO(dayKey);
               const isActive = effectiveActiveDay === dayKey;
               return (
                 <button
@@ -287,7 +295,7 @@ export function SessionScheduleClient({
                       : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
                 >
-                  {format(dayDate, "EEE, MMM d")}
+                  Day {index + 1}
                   <span className="ml-2 opacity-80">({dayEntries.length})</span>
                 </button>
               );
@@ -296,11 +304,38 @@ export function SessionScheduleClient({
 
           {effectiveActiveDay && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-foreground">
-                {format(parseISO(effectiveActiveDay), "EEEE, MMM d, yyyy")}
-              </h3>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h3 className="text-lg font-semibold text-foreground">
+                  {format(parseISO(effectiveActiveDay), "EEEE, MMM d, yyyy")}
+                </h3>
+                {hasStages && (
+                  <Select
+                    value={activeStageId === "" ? "__all__" : activeStageId}
+                    onValueChange={(v) => setActiveStageId(v === "__all__" ? "" : v)}
+                  >
+                    <SelectTrigger className="w-[180px] h-8 text-sm">
+                      <SelectValue placeholder="Stage" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">All stages</SelectItem>
+                      {stages.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {filteredDayEntries.length} session
+                {filteredDayEntries.length !== 1 ? "s" : ""}
+                {activeStageId !== "" && dayEntries.length !== filteredDayEntries.length && (
+                  " on this stage"
+                )}
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {groupedByDay[effectiveActiveDay].map((entry) => (
+                {filteredDayEntries.map((entry) => (
                     <Card
                       key={entry.id}
                       className="group relative overflow-hidden border border-border/80 bg-card shadow-sm transition-all hover:shadow-md hover:border-primary/20"
@@ -363,6 +398,7 @@ export function SessionScheduleClient({
       )}
 
       <AddSessionDialog
+        festivalId={festivalId}
         open={addOpen}
         onOpenChange={(open) => {
           setAddOpen(open);
@@ -390,6 +426,7 @@ export function SessionScheduleClient({
 
       {editEntry && (
         <EditSessionDialog
+          festivalId={festivalId}
           entry={editEntry}
           open={!!editEntry}
           onOpenChange={(open) => {
@@ -410,6 +447,7 @@ export function SessionScheduleClient({
 }
 
 function AddSessionDialog({
+  festivalId,
   open,
   onOpenChange,
   onSubmit,
@@ -418,6 +456,7 @@ function AddSessionDialog({
   stages,
   dateOptions,
 }: {
+  festivalId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: {
@@ -449,6 +488,30 @@ function AddSessionDialog({
   const [dateStr, setDateStr] = useState(defaultDate);
   const [startTimeStr, setStartTimeStr] = useState("09:00");
   const [endTimeStr, setEndTimeStr] = useState("");
+  const [conflictError, setConflictError] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const effectiveDate =
+    dateOptions.length > 0 && !dateOptions.some((o) => o.value === dateStr)
+      ? dateOptions[0]!.value
+      : dateStr;
+
+  useEffect(() => {
+    if (!open) return;
+    debounceRef.current = setTimeout(async () => {
+      const startTime = new Date(`${effectiveDate}T${startTimeStr}`);
+      const endTime = endTimeStr ? new Date(`${effectiveDate}T${endTimeStr}`) : null;
+      const res = await checkScheduleConflict(festivalId, {
+        startTime,
+        endTime,
+        stageId: stageId || null,
+      });
+      setConflictError(res.ok ? null : res.error);
+    }, 400);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [festivalId, open, effectiveDate, startTimeStr, endTimeStr, stageId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -623,7 +686,7 @@ function AddSessionDialog({
             <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button size="sm" type="submit" disabled={saving || !title.trim()}>
+            <Button size="sm" type="submit" disabled={saving || !title.trim() || !!conflictError}>
               {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
               Add
             </Button>
@@ -635,6 +698,7 @@ function AddSessionDialog({
 }
 
 function EditSessionDialog({
+  festivalId,
   entry,
   open,
   onOpenChange,
@@ -644,6 +708,7 @@ function EditSessionDialog({
   stages,
   dateOptions,
 }: {
+  festivalId: string;
   entry: ScheduleEntryWithRelations;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -675,6 +740,8 @@ function EditSessionDialog({
   const [description, setDescription] = useState(entry.description ?? "");
   const [speakers, setSpeakers] = useState(entry.speakers ?? "");
   const [sessionType, setSessionType] = useState<string>(entry.sessionType ?? "GENERAL");
+  const [conflictError, setConflictError] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [stageId, setStageId] = useState(entry.stageId ?? "");
   const [dateStr, setDateStr] = useState(entryDateStr);
   const [startTimeStr, setStartTimeStr] = useState(
@@ -683,6 +750,24 @@ function EditSessionDialog({
   const [endTimeStr, setEndTimeStr] = useState(
     entry.endTime ? format(new Date(entry.endTime), "HH:mm") : "",
   );
+
+  useEffect(() => {
+    if (!open) return;
+    debounceRef.current = setTimeout(async () => {
+      const startTime = new Date(`${dateStr}T${startTimeStr}`);
+      const endTime = endTimeStr ? new Date(`${dateStr}T${endTimeStr}`) : null;
+      const res = await checkScheduleConflict(festivalId, {
+        startTime,
+        endTime,
+        stageId: stageId || null,
+        excludeEntryId: entry.id,
+      });
+      setConflictError(res.ok ? null : res.error);
+    }, 400);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [festivalId, entry.id, open, dateStr, startTimeStr, endTimeStr, stageId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -708,13 +793,13 @@ function EditSessionDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
-          {formError && (
+          {(formError || conflictError) && (
             <div
               role="alert"
               className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
             >
               <span className="shrink-0 size-3.5 rounded-full bg-destructive/20 flex items-center justify-center text-[9px] font-bold">!</span>
-              <span>{formError}</span>
+              <span>{formError ?? conflictError}</span>
             </div>
           )}
 
@@ -835,7 +920,7 @@ function EditSessionDialog({
             <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button size="sm" type="submit" disabled={saving}>
+            <Button size="sm" type="submit" disabled={saving || !!conflictError}>
               {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
               Update
             </Button>

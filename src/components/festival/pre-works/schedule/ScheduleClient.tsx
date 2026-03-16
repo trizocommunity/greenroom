@@ -5,6 +5,7 @@ import {
   updateScheduleEntry,
   deleteScheduleEntry,
   reorderScheduleEntries,
+  checkScheduleConflict,
   type ScheduleEntryWithRelations,
 } from "@/server/actions/schedule.actions";
 import { format, parseISO, isSameDay, eachDayOfInterval, startOfDay } from "date-fns";
@@ -18,7 +19,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -131,6 +132,8 @@ export function ScheduleClient({
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [activeDayKey, setActiveDayKey] = useState<string | null>(null);
+  /** Stage filter for the active day: "" = All stages (default), or stage id */
+  const [activeStageId, setActiveStageId] = useState<string>("");
 
   const hasStages = stages.length > 0;
   const hasProgrammes = programmes.length > 0;
@@ -152,6 +155,12 @@ export function ScheduleClient({
     activeDayKey && groupedByDay[activeDayKey]
       ? activeDayKey
       : sortedDays[0] ?? null;
+
+  const dayEntries = effectiveActiveDay ? groupedByDay[effectiveActiveDay] ?? [] : [];
+  const filteredDayEntries =
+    activeStageId === ""
+      ? dayEntries
+      : dayEntries.filter((e) => e.stageId === activeStageId);
 
   const handleCreate = async (data: {
     programmeId?: string;
@@ -219,12 +228,15 @@ export function ScheduleClient({
 
   const moveEntry = async (entry: ScheduleEntryWithRelations, direction: "up" | "down") => {
     const dayKey = getDateKey(new Date(entry.startTime));
-    const dayEntries = groupedByDay[dayKey] ?? [];
-    const idx = dayEntries.findIndex((e) => e.id === entry.id);
+    const list =
+      activeStageId === ""
+        ? groupedByDay[dayKey] ?? []
+        : (groupedByDay[dayKey] ?? []).filter((e) => e.stageId === activeStageId);
+    const idx = list.findIndex((e) => e.id === entry.id);
     if (idx < 0) return;
     const newIdx = direction === "up" ? idx - 1 : idx + 1;
-    if (newIdx < 0 || newIdx >= dayEntries.length) return;
-    const reordered = [...dayEntries];
+    if (newIdx < 0 || newIdx >= list.length) return;
+    const reordered = [...list];
     [reordered[idx], reordered[newIdx]] = [reordered[newIdx], reordered[idx]];
     const res = await reorderScheduleEntries(
       festivalId,
@@ -333,9 +345,8 @@ export function ScheduleClient({
             className="flex flex-wrap gap-2 border-b border-border pb-3"
             role="tablist"
           >
-            {sortedDays.map((dayKey) => {
+            {sortedDays.map((dayKey, index) => {
               const dayEntries = groupedByDay[dayKey];
-              const dayDate = parseISO(dayKey);
               const isActive = effectiveActiveDay === dayKey;
               return (
                 <button
@@ -351,7 +362,7 @@ export function ScheduleClient({
                       : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
                 >
-                  {format(dayDate, "EEE, MMM d")}
+                  Day {index + 1}
                   <span className="ml-2 opacity-80">({dayEntries.length})</span>
                 </button>
               );
@@ -362,17 +373,40 @@ export function ScheduleClient({
           {effectiveActiveDay && (
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg">
+                <CardTitle className="flex text-lg gap-2 items-center justify-between">
                   {format(parseISO(effectiveActiveDay), "EEEE, MMM d, yyyy")}
+                    {hasStages && (
+                      <Select
+                        value={activeStageId === "" ? "__all__" : activeStageId}
+                        onValueChange={(v) => setActiveStageId(v === "__all__" ? "" : v)}
+                      >
+                        <SelectTrigger className="w-[180px] h-8 text-sm">
+                          <SelectValue placeholder="Stage" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem className="font-normal" value="__all__">
+                            All stages
+                          </SelectItem>
+                          {stages.map((s) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                 </CardTitle>
-                <CardDescription>
-                  {groupedByDay[effectiveActiveDay].length} item
-                  {groupedByDay[effectiveActiveDay].length !== 1 ? "s" : ""}
-                </CardDescription>
+                  <CardDescription className="mt-0!">
+                    {filteredDayEntries.length} item
+                    {filteredDayEntries.length !== 1 ? "s" : ""}
+                    {activeStageId !== "" && dayEntries.length !== filteredDayEntries.length && (
+                      <span className="text-muted-foreground"> on this stage</span>
+                    )}
+                  </CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
                 <ul className="space-y-2">
-                  {groupedByDay[effectiveActiveDay].map((entry) => (
+                  {filteredDayEntries.map((entry) => (
                     <li
                       key={entry.id}
                       className="flex items-center gap-3 rounded-lg border bg-card p-3"
@@ -384,7 +418,7 @@ export function ScheduleClient({
                           className="h-7 w-7"
                           onClick={() => moveEntry(entry, "up")}
                           disabled={
-                            groupedByDay[effectiveActiveDay].indexOf(entry) === 0
+                            filteredDayEntries.indexOf(entry) === 0
                           }
                           aria-label="Move up"
                         >
@@ -396,8 +430,8 @@ export function ScheduleClient({
                           className="h-7 w-7"
                           onClick={() => moveEntry(entry, "down")}
                           disabled={
-                            groupedByDay[effectiveActiveDay].indexOf(entry) ===
-                            groupedByDay[effectiveActiveDay].length - 1
+                            filteredDayEntries.indexOf(entry) ===
+                            filteredDayEntries.length - 1
                           }
                           aria-label="Move down"
                         >
@@ -490,6 +524,7 @@ export function ScheduleClient({
       )}
 
       <AddEntryDialog
+        festivalId={festivalId}
         open={addOpen}
         onOpenChange={(open) => {
           setAddOpen(open);
@@ -519,6 +554,7 @@ export function ScheduleClient({
 
       {editEntry && (
         <EditEntryDialog
+          festivalId={festivalId}
           entry={editEntry}
           open={!!editEntry}
           onOpenChange={(open) => !open && setEditEntry(null)}
@@ -533,6 +569,7 @@ export function ScheduleClient({
 }
 
 function AddEntryDialog({
+  festivalId,
   open,
   onOpenChange,
   onSubmit,
@@ -542,6 +579,7 @@ function AddEntryDialog({
   stages,
   dateOptions,
 }: {
+  festivalId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: {
@@ -569,6 +607,30 @@ function AddEntryDialog({
   const [dateStr, setDateStr] = useState(defaultDate);
   const [startTimeStr, setStartTimeStr] = useState("09:00");
   const [endTimeStr, setEndTimeStr] = useState("");
+  const [conflictError, setConflictError] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const effectiveDate =
+    dateOptions.length > 0 && !dateOptions.some((o) => o.value === dateStr)
+      ? dateOptions[0]!.value
+      : dateStr;
+
+  useEffect(() => {
+    if (!open) return;
+    debounceRef.current = setTimeout(async () => {
+      const startTime = new Date(`${effectiveDate}T${startTimeStr}`);
+      const endTime = endTimeStr ? new Date(`${effectiveDate}T${endTimeStr}`) : null;
+      const res = await checkScheduleConflict(festivalId, {
+        startTime,
+        endTime,
+        stageId: stageId || null,
+      });
+      setConflictError(res.ok ? null : res.error);
+    }, 400);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [festivalId, open, effectiveDate, startTimeStr, endTimeStr, stageId]);
 
   const categoryOptions = Array.from(
     new Map(
@@ -738,13 +800,13 @@ function AddEntryDialog({
             </div>
           </div>
 
-          {formError && (
+          {(formError || conflictError) && (
             <div
               role="alert"
               className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
             >
               <span className="shrink-0 size-3.5 rounded-full bg-destructive/20 flex items-center justify-center text-[9px] font-bold">!</span>
-              <span>{formError}</span>
+              <span>{formError ?? conflictError}</span>
             </div>
           )}
 
@@ -752,7 +814,7 @@ function AddEntryDialog({
             <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button size="sm" type="submit" disabled={saving || !programmeId}>
+            <Button size="sm" type="submit" disabled={saving || !programmeId || !!conflictError}>
               {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
               Add
             </Button>
@@ -764,6 +826,7 @@ function AddEntryDialog({
 }
 
 function EditEntryDialog({
+  festivalId,
   entry,
   open,
   onOpenChange,
@@ -772,6 +835,7 @@ function EditEntryDialog({
   stages,
   dateOptions,
 }: {
+  festivalId: string;
   entry: ScheduleEntryWithRelations;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -805,6 +869,31 @@ function EditEntryDialog({
   const [endTimeStr, setEndTimeStr] = useState(
     entry.endTime ? format(new Date(entry.endTime), "HH:mm") : "",
   );
+  const [conflictError, setConflictError] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const effectiveDate =
+    dateOptions.length > 0 && !optionsForEdit.some((o) => o.value === dateStr)
+      ? optionsForEdit[0]!.value
+      : dateStr;
+
+  useEffect(() => {
+    if (!open) return;
+    debounceRef.current = setTimeout(async () => {
+      const startTime = new Date(`${dateStr}T${startTimeStr}`);
+      const endTime = endTimeStr ? new Date(`${dateStr}T${endTimeStr}`) : null;
+      const res = await checkScheduleConflict(festivalId, {
+        startTime,
+        endTime,
+        stageId: stageId || null,
+        excludeEntryId: entry.id,
+      });
+      setConflictError(res.ok ? null : res.error);
+    }, 400);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [festivalId, entry.id, open, dateStr, startTimeStr, endTimeStr, stageId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -887,11 +976,20 @@ function EditEntryDialog({
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
             />
           </div>
+          {conflictError && (
+            <div
+              role="alert"
+              className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
+            >
+              <span className="shrink-0 size-3.5 rounded-full bg-destructive/20 flex items-center justify-center text-[9px] font-bold">!</span>
+              <span>{conflictError}</span>
+            </div>
+          )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" disabled={saving || !!conflictError}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Update
             </Button>

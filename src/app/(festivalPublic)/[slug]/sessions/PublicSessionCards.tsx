@@ -1,9 +1,16 @@
 "use client";
 
-import { format, isPast } from "date-fns";
+import { format, isPast, parseISO } from "date-fns";
 import { Calendar, ChevronDown, ChevronUp, MapPin, Mic2, Users } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const SESSION_TYPE_LABELS: Record<string, string> = {
   GENERAL: "General",
@@ -27,12 +34,125 @@ export type SessionEntry = {
   stage: { id: string; name: string } | null;
 };
 
+const ALL_STAGES_VALUE = "__all__";
+const TBA_DAY_KEY = "__tba__";
+
 export function PublicSessionCards({ entries }: { entries: SessionEntry[] }) {
+  const { groupedByDay, sortedDayKeys, dayLabels } = useMemo(() => {
+    const byDay: Record<string, SessionEntry[]> = {};
+    for (const e of entries) {
+      const key = e.startTime
+        ? format(new Date(e.startTime), "yyyy-MM-dd")
+        : TBA_DAY_KEY;
+      if (!byDay[key]) byDay[key] = [];
+      byDay[key].push(e);
+    }
+    const keys = Object.keys(byDay).sort((a, b) => {
+      if (a === TBA_DAY_KEY) return 1;
+      if (b === TBA_DAY_KEY) return -1;
+      return a.localeCompare(b);
+    });
+    const labels: Record<string, string> = {};
+    keys.forEach((k, i) => {
+      labels[k] =
+        k === TBA_DAY_KEY ? "Date & time TBA" : `Day ${i + 1}`;
+    });
+    return { groupedByDay: byDay, sortedDayKeys: keys, dayLabels: labels };
+  }, [entries]);
+
+  const [activeDayKey, setActiveDayKey] = useState(
+    sortedDayKeys[0] ?? "",
+  );
+  const [activeStageId, setActiveStageId] = useState("");
+
+  const dayEntries = activeDayKey ? groupedByDay[activeDayKey] ?? [] : [];
+  const stagesForDay = useMemo(() => {
+    const seen = new Map<string, { id: string; name: string }>();
+    for (const e of dayEntries) {
+      if (e.stage && !seen.has(e.stage.id)) seen.set(e.stage.id, e.stage);
+    }
+    return Array.from(seen.values());
+  }, [dayEntries]);
+
+  const filteredEntries =
+    activeStageId === ""
+      ? dayEntries
+      : dayEntries.filter((e) => e.stage?.id === activeStageId);
+
+  if (entries.length === 0) return null;
+
   return (
-    <div className="grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-2 xl:grid-cols-3">
-      {entries.map((entry) => (
-        <SessionCard key={entry.id} entry={entry} />
-      ))}
+    <div className="space-y-6">
+      {/* Day tabs */}
+      {sortedDayKeys.length > 1 && (
+        <div
+          className="flex flex-wrap gap-2 border-b border-border pb-3"
+          role="tablist"
+        >
+          {sortedDayKeys.map((key) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={activeDayKey === key}
+              onClick={() => {
+                setActiveDayKey(key);
+                setActiveStageId("");
+              }}
+              className={cn(
+                "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                activeDayKey === key
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+            >
+              {dayLabels[key]}
+              <span className="ml-2 opacity-80">({(groupedByDay[key] ?? []).length})</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Stage filter + list for selected day */}
+      <div className="space-y-4">
+        {sortedDayKeys.length > 1 && (
+          <h2 className="text-xl font-semibold text-foreground">
+            {dayLabels[activeDayKey]}
+          </h2>
+        )}
+        {stagesForDay.length > 0 && (
+          <div className="flex flex-wrap items-center gap-3">
+            <Select
+              value={activeStageId === "" ? ALL_STAGES_VALUE : activeStageId}
+              onValueChange={(v) =>
+                setActiveStageId(v === ALL_STAGES_VALUE ? "" : v)
+              }
+            >
+              <SelectTrigger className="w-[180px] h-9 text-sm">
+                <SelectValue placeholder="Stage" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_STAGES_VALUE}>All stages</SelectItem>
+                {stagesForDay.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">
+              {filteredEntries.length} session
+              {filteredEntries.length !== 1 ? "s" : ""}
+              {activeStageId !== "" && dayEntries.length !== filteredEntries.length && " on this stage"}
+            </p>
+          </div>
+        )}
+        <div className="grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-2 xl:grid-cols-3">
+          {filteredEntries.map((entry) => (
+            <SessionCard key={entry.id} entry={entry} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
