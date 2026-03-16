@@ -71,6 +71,10 @@ model User {
   supportTickets SupportTicket[]
   supportNotifications SupportNotification[]
 
+  loginEvents   UserLoginEvent[]
+  purchaseSummary UserPurchaseSummary?
+  categoryPreferences FestivalCategoryPreference[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -676,4 +680,50 @@ model SystemConfig {
   updatedAt DateTime @updatedAt
 
   @@map("system_config")
+}
+
+// -----------------------------------------------------------------------------
+// Analytics & Behaviour (Phase 5)
+// -----------------------------------------------------------------------------
+
+model UserLoginEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loggedAt  DateTime @default(now())
+  ip        String?      // optional: last known IP
+  userAgent String?      // optional: UA snapshot
+
+  @@index([userId, loggedAt])
+  @@map("user_login_event")
+}
+
+/// Aggregated purchase summary per user for Super Admin analytics.
+model UserPurchaseSummary {
+  userId          String   @id
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalSpend      Int      @default(0)        // in smallest currency unit (e.g. paise)
+  festivalsCount  Int      @default(0)
+  lastPurchaseAt  DateTime?
+  // JSON blobs to keep schema simple while still useful for analytics dashboards.
+  festivalIds     Json?    // e.g. ["festival-id-1", "festival-id-2", ...]
+  planCountsByTier Json?   // e.g. { "BASIC": 3, "STANDARD": 1 }
+
+  updatedAt       DateTime @updatedAt
+
+  @@map("user_purchase_summary")
+}
+
+/// Optional: preference score for categories derived from purchases.
+model FestivalCategoryPreference {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   String   // e.g. "School", "College", custom category name
+  weight     Int      @default(0) // higher = stronger preference
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, category])
+  @@index([userId])
+  @@map("festival_category_preference")
 }

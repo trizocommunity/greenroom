@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
+import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { cn } from "@/lib/utils";
 
 const STAGE_NONE = "__none__";
@@ -203,27 +204,38 @@ export function SessionScheduleClient({
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Sessions</h2>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            Create and manage session-type schedule entries (talks, ceremonies, etc.). Programme
-            entries are managed on the Schedule page.
-          </p>
+        <h2 className="text-2xl font-bold tracking-tight">Sessions</h2>
+        <div className="flex items-center gap-2 shrink-0">
+          <HowItWorksButton
+            title="How Sessions work"
+            description="Sessions are non-programme items on the schedule (e.g. ceremonies, breaks)."
+          >
+            <p className="text-sm text-muted-foreground">
+              <strong>Sessions</strong> are time slots that are not competition
+              programmes—e.g. opening ceremony, break, talk, or concert. Add a
+              title, date, time, and optionally assign a stage.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Create at least one stage in Pre-Works → Stage Management before
+              adding sessions. Session types (General, Ceremony, Talk, Concert)
+              help you label the kind of activity.
+            </p>
+          </HowItWorksButton>
+          <Button
+            onClick={() => {
+              if (!hasStages) {
+                toast.error("Please create at least one stage before adding sessions.");
+                return;
+              }
+              setAddOpen(true);
+            }}
+            className="gap-2"
+            disabled={!hasStages}
+          >
+            <Plus className="h-4 w-4" />
+            Add session
+          </Button>
         </div>
-        <Button
-          onClick={() => {
-            if (!hasStages) {
-              toast.error("Please create at least one stage before adding sessions.");
-              return;
-            }
-            setAddOpen(true);
-          }}
-          className="gap-2 shrink-0"
-          disabled={!hasStages}
-        >
-          <Plus className="h-4 w-4" />
-          Add session
-        </Button>
       </div>
 
       {sortedDays.length === 0 ? (
@@ -468,7 +480,7 @@ function AddSessionDialog({
         <DialogHeader className="pb-3">
           <DialogTitle className="text-base">Add session</DialogTitle>
           <DialogDescription className="text-xs">
-            Title, stage, and time. Same time as another slot will show an error.
+            Title, stage, and time. Same time on the same stage will show an error; different stages can use the same time.
           </DialogDescription>
         </DialogHeader>
 
@@ -778,8 +790,8 @@ function EditSessionDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-[1fr_auto_auto] gap-2 items-end">
-            <div className="space-y-1.5">
+          <div className="grid grid-cols-2 gap-2 items-end">
+            <div className="space-y-1.5 col-span-2">
               <Label htmlFor="edit-session-date" className="text-xs">Date</Label>
               <Select
                 value={optionsForEdit.some((o) => o.value === dateStr) ? dateStr : optionsForEdit[0]!.value}
@@ -804,7 +816,7 @@ function EditSessionDialog({
                 type="time"
                 value={startTimeStr}
                 onChange={(e) => setStartTimeStr(e.target.value)}
-                className="h-9 text-sm w-30"
+                className="h-9 text-sm w-full"
               />
             </div>
             <div className="space-y-1.5">
@@ -814,7 +826,7 @@ function EditSessionDialog({
                 type="time"
                 value={endTimeStr}
                 onChange={(e) => setEndTimeStr(e.target.value)}
-                className="h-9 text-sm w-30"
+                className="h-9 text-sm w-full"
               />
             </div>
           </div>

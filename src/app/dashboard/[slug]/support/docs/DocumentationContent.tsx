@@ -17,7 +17,15 @@ import {
   Search,
 } from "lucide-react";
 
-const STAGE_MANAGER_FAQ_IDS = ["stage-diff", "stage-manage", "schedule-view"];
+const STAGE_MANAGER_FAQ_IDS = [
+  "stage-diff",
+  "stage-manage",
+  "schedule-view",
+  "sessions-view",
+  "qr-codes",
+  "news",
+  "gallery",
+];
 
 const allFaqs = [
   {
@@ -30,13 +38,37 @@ const allFaqs = [
     id: "stage-manage",
     question: "How do I manage stages and programme flow?",
     answer:
-      "Go to 'Pre-Works' -> 'Stage Management'. You can assign programmes to stages, set order, and manage the flow of events for the day.",
+      "Go to 'Pre-Works' -> 'Stage Management'. Create stages (e.g. Main Stage, Room A), set type (Stage or Non-Stage), and optionally reorder them. Programmes are then assigned to stages when you build the schedule.",
   },
   {
     id: "schedule-view",
     question: "How do I view or edit the festival schedule?",
     answer:
-      "The schedule is under 'Pre-Works' -> 'Schedule'. You can view sessions, times, and stages. Edit events and assign them to stages and time slots.",
+      "The schedule is under 'Pre-Works' -> 'Schedule'. Add programme entries by day, time, and stage. You can reorder entries, edit times, and assign programmes to stages. Create stages first in Stage Management.",
+  },
+  {
+    id: "sessions-view",
+    question: "What are Sessions and how do I add them?",
+    answer:
+      "Sessions are non-programme items on the schedule (e.g. opening ceremony, break, talk). Go to 'Pre-Works' -> 'Sessions'. Add a session with title, date, time, and optional stage. Create at least one stage first.",
+  },
+  {
+    id: "qr-codes",
+    question: "How do QR codes work?",
+    answer:
+      "Under 'Pre-Works' -> 'QR Codes' each student gets a unique QR code that links to their public profile. You can download a single code as JPEG, share it, or download all filtered codes as a PDF for printing.",
+  },
+  {
+    id: "news",
+    question: "How do I manage News posts?",
+    answer:
+      "Go to 'Content' -> 'News'. Create posts with title, content, and optional image. Posts appear on your festival's public news page. You can publish or save as draft and edit or delete anytime.",
+  },
+  {
+    id: "gallery",
+    question: "How do I manage the Gallery?",
+    answer:
+      "Go to 'Content' -> 'Gallery'. Upload photos to show on your festival's public gallery. You can reorder images, remove single or multiple photos, and preview the gallery.",
   },
   {
     id: "programme-create",

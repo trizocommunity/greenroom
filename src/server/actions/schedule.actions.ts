@@ -18,23 +18,25 @@ export type ScheduleEntryWithRelations = Awaited<
   ReturnType<typeof getScheduleEntries>
 >[number];
 
-/** Check if another entry already has this startTime (same festival). Returns error message or null. */
+/** Check if another entry already has this startTime on the same stage (same festival). Different stages can have the same time. Returns error message or null. */
 async function getTimeConflictError(
   festivalId: string,
   startTime: Date,
+  stageId: string | null,
   excludeEntryId?: string,
 ): Promise<string | null> {
   const existing = await prisma.scheduleEntry.findFirst({
     where: {
       festivalId,
       startTime,
+      stageId,
       ...(excludeEntryId ? { id: { not: excludeEntryId } } : {}),
     },
     select: { id: true },
   });
   if (!existing) return null;
   const timeStr = format(new Date(startTime), "h:mm a");
-  return `${timeStr} is already taken. Pick another time.`;
+  return `${timeStr} is already taken on this stage. Pick another time or another stage.`;
 }
 
 export async function getScheduleEntries(
@@ -106,7 +108,11 @@ export async function createScheduleEntry(
       return { success: false, error: "Session entries cannot be linked to a programme." };
   }
 
-  const conflict = await getTimeConflictError(festivalId, data.startTime);
+  const conflict = await getTimeConflictError(
+    festivalId,
+    data.startTime,
+    data.stageId ?? null,
+  );
   if (conflict) return { success: false, error: conflict };
 
   const createdBy = session?.userId ? await getDisplayName(session.userId) : null;
@@ -170,7 +176,14 @@ export async function updateScheduleEntry(
     return { success: false, error: "Session must have a title." };
 
   const newStartTime = data.startTime !== undefined ? data.startTime : existing.startTime;
-  const conflict = await getTimeConflictError(festivalId, newStartTime, id);
+  const newStageId =
+    data.stageId !== undefined ? data.stageId : existing.stageId;
+  const conflict = await getTimeConflictError(
+    festivalId,
+    newStartTime,
+    newStageId ?? null,
+    id,
+  );
   if (conflict) return { success: false, error: conflict };
 
   const updatedBy = session?.userId ? await getDisplayName(session.userId) : null;

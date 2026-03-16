@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
+import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { uploadImageToCloudinary, isCloudinaryConfigured } from "@/lib/cloudinary";
 import { cn } from "@/lib/utils";
 import {
@@ -180,10 +181,27 @@ export function NewsClient({
             Posts appear on your public news page.
           </p>
         </div>
-        <Button onClick={openCreate} className="shrink-0">
-          <Plus className="h-4 w-4 sm:mr-2" />
-          Create news
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <HowItWorksButton
+            title="How News works"
+            description="News posts show on your festival's public news page."
+          >
+            <p className="text-sm text-muted-foreground">
+              Create posts with a title, content, and optional image. They appear
+              on your festival&apos;s public news page for visitors and
+              participants.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              You can publish immediately or save as draft, and edit or delete
+              posts anytime. Use the excerpt for a short summary on listing
+              views.
+            </p>
+          </HowItWorksButton>
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4 sm:mr-2" />
+            Create news
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">

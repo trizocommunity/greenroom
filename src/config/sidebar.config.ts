@@ -39,6 +39,11 @@ export const SUPER_ADMIN_SIDEBAR_ITEMS = [
     icon: LayoutDashboard,
   },
   {
+    title: "Analytics",
+    url: "/super-admin/analytics",
+    icon: BarChart3,
+  },
+  {
     title: "Users",
     url: "/super-admin/users",
     icon: Users,

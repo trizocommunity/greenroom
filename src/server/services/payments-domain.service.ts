@@ -140,6 +140,24 @@ export async function verifyPaymentDomain(
     },
   });
 
+  // Update analytics summary for this user (Phase 5)
+  await prisma.userPurchaseSummary.upsert({
+    where: { userId: updated.userId },
+    update: {
+      totalSpend: { increment: updated.amount },
+      festivalsCount: { increment: 1 },
+      lastPurchaseAt: updated.createdAt,
+    },
+    create: {
+      userId: updated.userId,
+      totalSpend: updated.amount,
+      festivalsCount: 1,
+      lastPurchaseAt: updated.createdAt,
+      festivalIds: [],
+      planCountsByTier: {},
+    },
+  });
+
   return updated.status;
 }
 

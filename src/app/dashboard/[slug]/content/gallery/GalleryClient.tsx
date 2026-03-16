@@ -30,6 +30,7 @@ import {
   deleteGalleryImagesAction,
 } from "@/server/actions/gallery.actions";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
+import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { cn } from "@/lib/utils";
 
 type ImageRecord = { id: string; url: string; order: number };
@@ -229,10 +230,25 @@ export function GalleryClient({
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-            Gallery
-          </h1>
-        <>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+          Gallery
+        </h1>
+        <div className="flex items-center gap-2 shrink-0">
+          <HowItWorksButton
+            title="How the Gallery works"
+            description="Photos appear on your festival's public gallery page."
+          >
+            <p className="text-sm text-muted-foreground">
+              Upload images to show on your festival&apos;s public gallery. You
+              can upload multiple photos at once, reorder them, and remove single
+              or multiple images.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Use the lightbox to preview the gallery. Photos are displayed in
+              the order you set; drag to reorder or use bulk delete for selected
+              items.
+            </p>
+          </HowItWorksButton>
           <input
             ref={fileInputRef}
             type="file"
@@ -248,7 +264,7 @@ export function GalleryClient({
             <ImagePlus className="h-4 w-4 sm:mr-2" />
             Upload photos
           </Button>
-        </>
+        </div>
       </div>
 
       {hasSelection && (

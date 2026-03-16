@@ -22,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { StageDialog } from "./StageDialog";
 
 interface StagesClientProps {
@@ -63,7 +64,7 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">
             Stage Management
@@ -72,10 +73,27 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
             Create and manage stages for your festival events.
           </p>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Create Stage
-        </Button>
+        <div className="flex items-center gap-2">
+          <HowItWorksButton
+            title="How Stage Management works"
+            description="Stages are venues or slots where programmes and sessions run."
+          >
+            <p className="text-sm text-muted-foreground">
+              Create stages (e.g. Main Stage, Room A) and set the type to
+              <strong> Stage</strong> or <strong>Non-Stage</strong>. Programmes
+              and sessions are then assigned to a stage when you build the
+              Schedule and Sessions.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              You can reorder stages and edit or delete them. Create at least
+              one stage before adding entries to the schedule.
+            </p>
+          </HowItWorksButton>
+          <Button onClick={handleCreate} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Create Stage
+          </Button>
+        </div>
       </div>
 
       {stages.length === 0 ? (

@@ -24,6 +24,7 @@ import {
   updateUser,
 } from "@/server/models/user.model";
 import type { ActionResponse } from "@/types/actions";
+import { prisma } from "@/lib/db";
 
 export async function loginAction(
   data: z.infer<typeof loginSchema>,
@@ -44,6 +45,13 @@ export async function loginAction(
     }
 
     await createSession(user.id, user.globalRole);
+
+    // Analytics: record login event (Phase 5)
+    await prisma.userLoginEvent.create({
+      data: {
+        userId: user.id,
+      },
+    });
 
     return { success: true, data: { role: user.globalRole } };
   } catch (error) {

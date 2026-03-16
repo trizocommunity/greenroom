@@ -63,6 +63,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 
 type ProgrammeOption = {
   id: string;
@@ -244,24 +245,46 @@ export function ScheduleClient({
             Schedule programmes and events by day, time, and stage.
           </p>
         </div>
-        <Button
-          onClick={() => {
-            if (!hasStages) {
-              toast.error("Please create at least one stage before adding to the schedule.");
-              return;
-            }
-            if (!hasProgrammes) {
-              toast.error("Please create programmes first before scheduling.");
-              return;
-            }
-            setAddOpen(true);
-          }}
-          className="gap-2 shrink-0"
-          disabled={!canAdd}
-        >
-          <Plus className="h-4 w-4" />
-          Add to schedule
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <HowItWorksButton
+            title="How the Schedule works"
+            description="Build your festival programme by day, time, and stage."
+          >
+            <p className="text-sm text-muted-foreground">
+              Add <strong>programme</strong> entries: pick a programme, date,
+              time, and stage. Create stages first in Stage Management and
+              programmes in Programmes.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Use the day tabs to switch dates. You can reorder entries, edit
+              times, or remove them. The same time can be used on different
+              stages (e.g. Stage A and Stage B both at 11:00); a conflict only
+              occurs when the same stage has two entries at the same time.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Sessions (e.g. opening ceremony) are managed separately under
+              Pre-Works → Sessions.
+            </p>
+          </HowItWorksButton>
+          <Button
+            onClick={() => {
+              if (!hasStages) {
+                toast.error("Please create at least one stage before adding to the schedule.");
+                return;
+              }
+              if (!hasProgrammes) {
+                toast.error("Please create programmes first before scheduling.");
+                return;
+              }
+              setAddOpen(true);
+            }}
+            className="gap-2"
+            disabled={!canAdd}
+          >
+            <Plus className="h-4 w-4" />
+            Add to schedule
+          </Button>
+        </div>
       </div>
 
       {sortedDays.length === 0 ? (

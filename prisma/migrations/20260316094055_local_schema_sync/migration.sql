@@ -11,4 +11,4 @@ ALTER TYPE "InstitutionType" ADD VALUE 'INSTITUTION';
 ALTER TYPE "InstitutionType" ADD VALUE 'CAMPUS';
 
 -- CreateIndex
-CREATE INDEX "festival_status_idx" ON "festival"("status");
+CREATE INDEX IF NOT EXISTS "festival_status_idx" ON "festival"("status");
