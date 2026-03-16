@@ -30,29 +30,62 @@ function rangesOverlap(
   return startA.getTime() < bEnd.getTime() && aEnd.getTime() > startB.getTime();
 }
 
-/** Check for same-stage conflict: same start time OR overlapping start/end ranges. Returns error message or null. */
+function getEntryDisplayName(entry: {
+  type: string;
+  title: string | null;
+  programme: { name: string } | null;
+}): string {
+  if (entry.type === "PROGRAMME" && entry.programme?.name)
+    return entry.programme.name;
+  if (entry.type === "SESSION" && entry.title?.trim()) return entry.title.trim();
+  return "an existing entry";
+}
+
+export type ConflictParts = {
+  prefix: string;
+  highlight: string;
+  suffix: string;
+};
+
+/** Check for same-stage conflict: same start time OR overlapping start/end ranges. Returns structured message for UI highlight or null. */
 async function getTimeConflictError(
   festivalId: string,
   startTime: Date,
   endTime: Date | null,
   stageId: string | null,
   excludeEntryId?: string,
-): Promise<string | null> {
+): Promise<ConflictParts | null> {
   const others = await prisma.scheduleEntry.findMany({
     where: {
       festivalId,
       stageId,
       ...(excludeEntryId ? { id: { not: excludeEntryId } } : {}),
     },
-    select: { id: true, startTime: true, endTime: true },
+    select: {
+      id: true,
+      startTime: true,
+      endTime: true,
+      type: true,
+      title: true,
+      programme: { select: { name: true } },
+    },
   });
   for (const o of others) {
     if (rangesOverlap(startTime, endTime, o.startTime, o.endTime)) {
       const timeStr = format(new Date(startTime), "h:mm a");
-      return `${timeStr} overlaps with another entry on this stage. Pick another time or another stage.`;
+      const name = getEntryDisplayName(o);
+      return {
+        prefix: `${timeStr} overlaps with `,
+        highlight: name,
+        suffix: " on this stage.  Pick another time or another stage.",
+      };
     }
   }
   return null;
+}
+
+function conflictPartsToMessage(parts: ConflictParts): string {
+  return parts.prefix + parts.highlight + parts.suffix;
 }
 
 export async function getScheduleEntries(
@@ -81,7 +114,7 @@ export async function getScheduleEntriesPublic(
   });
 }
 
-/** For UI: check if a proposed time/stage would conflict. Returns error message or null. */
+/** For UI: check if a proposed time/stage would conflict. Returns error message and optional parts for highlighting. */
 export async function checkScheduleConflict(
   festivalId: string,
   params: {
@@ -90,7 +123,10 @@ export async function checkScheduleConflict(
     stageId?: string | null;
     excludeEntryId?: string;
   },
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<
+  | { ok: true }
+  | { ok: false; error: string; conflictParts?: ConflictParts }
+> {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
   const { startTime, endTime = null, stageId = null, excludeEntryId } = params;
@@ -103,7 +139,12 @@ export async function checkScheduleConflict(
     stageId,
     excludeEntryId,
   );
-  if (conflict) return { ok: false, error: conflict };
+  if (conflict)
+    return {
+      ok: false,
+      error: conflictPartsToMessage(conflict),
+      conflictParts: conflict,
+    };
   return { ok: true };
 }
 
@@ -129,7 +170,10 @@ export async function createScheduleEntry(
     endTime?: Date | null;
     order?: number;
   },
-): Promise<{ success: true } | { success: false; error: string }> {
+): Promise<
+  | { success: true }
+  | { success: false; error: string; conflictParts?: ConflictParts }
+> {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
 
@@ -159,7 +203,12 @@ export async function createScheduleEntry(
     data.endTime ?? null,
     data.stageId ?? null,
   );
-  if (conflict) return { success: false, error: conflict };
+  if (conflict)
+    return {
+      success: false,
+      error: conflictPartsToMessage(conflict),
+      conflictParts: conflict,
+    };
 
   const createdBy = session?.userId ? await getDisplayName(session.userId) : null;
 
@@ -202,7 +251,10 @@ export async function updateScheduleEntry(
     endTime?: Date | null;
     order?: number;
   },
-): Promise<{ success: true } | { success: false; error: string }> {
+): Promise<
+  | { success: true }
+  | { success: false; error: string; conflictParts?: ConflictParts }
+> {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
 
@@ -236,7 +288,12 @@ export async function updateScheduleEntry(
     newStageId ?? null,
     id,
   );
-  if (conflict) return { success: false, error: conflict };
+  if (conflict)
+    return {
+      success: false,
+      error: conflictPartsToMessage(conflict),
+      conflictParts: conflict,
+    };
 
   const updatedBy = session?.userId ? await getDisplayName(session.userId) : null;
 
@@ -288,6 +345,14 @@ export async function deleteScheduleEntry(
   return { success: true };
 }
 
+/**
+ * Reorder schedule entries by reassigning times so the list order matches times.
+ * Display order is by startTime then order; so when the user moves an entry up/down,
+ * we give the entry that moved to the top the previous top's start/end time, and
+ * the previous top gets the moved entry's time (and so on for every position).
+ * So: entry at new position i gets startTime/endTime from the entry that was at
+ * old position i.
+ */
 export async function reorderScheduleEntries(
   festivalId: string,
   entryIds: string[],
@@ -302,13 +367,29 @@ export async function reorderScheduleEntries(
   if (!canManage)
     return { success: false, error: "Schedule is not available on your plan." };
 
+  if (entryIds.length === 0) return { success: true };
+
+  const uniqueIds = [...new Set(entryIds)];
+  if (uniqueIds.length !== entryIds.length)
+    return { success: false, error: "Duplicate entries in order." };
+
+  const oldOrder = await prisma.scheduleEntry.findMany({
+    where: { id: { in: entryIds }, festivalId },
+    select: { id: true, startTime: true, endTime: true },
+    orderBy: [{ startTime: "asc" }, { order: "asc" }],
+  });
+
+  if (oldOrder.length !== entryIds.length)
+    return { success: false, error: "Some entries not found or not in this festival." };
+
   await prisma.$transaction(
-    entryIds.map((entryId, index) =>
-      prisma.scheduleEntry.updateMany({
+    entryIds.map((entryId, i) => {
+      const { startTime, endTime } = oldOrder[i]!;
+      return prisma.scheduleEntry.updateMany({
         where: { id: entryId, festivalId },
-        data: { order: index },
-      }),
-    ),
+        data: { startTime, endTime, order: i },
+      });
+    }),
   );
 
   revalidatePath(`/dashboard/${festival.slug}/pre-works/schedule`);

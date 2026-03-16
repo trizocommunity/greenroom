@@ -7,6 +7,7 @@ import {
   deleteScheduleEntry,
   checkScheduleConflict,
   type ScheduleEntryWithRelations,
+  type ConflictParts,
 } from "@/server/actions/schedule.actions";
 import { format, parseISO, isSameDay, eachDayOfInterval, startOfDay } from "date-fns";
 import { Calendar, Clock, Loader2, MapPin, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
@@ -96,7 +97,9 @@ export function SessionScheduleClient({
   const [entries, setEntries] = useState<ScheduleEntryWithRelations[]>(initialEntries);
   const [addOpen, setAddOpen] = useState(false);
   const [addFormError, setAddFormError] = useState<string | null>(null);
+  const [addFormConflictParts, setAddFormConflictParts] = useState<ConflictParts | null>(null);
   const [editFormError, setEditFormError] = useState<string | null>(null);
+  const [editFormConflictParts, setEditFormConflictParts] = useState<ConflictParts | null>(null);
   const [editEntry, setEditEntry] = useState<ScheduleEntryWithRelations | null>(null);
   const [deleteEntryId, setDeleteEntryId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -156,6 +159,7 @@ export function SessionScheduleClient({
         refresh();
       } else {
         setAddFormError(res.error);
+        setAddFormConflictParts(res.conflictParts ?? null);
         toast.error(res.error);
       }
     } finally {
@@ -188,6 +192,7 @@ export function SessionScheduleClient({
         refresh();
       } else {
         setEditFormError(res.error);
+        setEditFormConflictParts(res.conflictParts ?? null);
         toast.error(res.error);
       }
     } finally {
@@ -402,11 +407,15 @@ export function SessionScheduleClient({
         open={addOpen}
         onOpenChange={(open) => {
           setAddOpen(open);
-          if (!open) setAddFormError(null);
+          if (!open) {
+            setAddFormError(null);
+            setAddFormConflictParts(null);
+          }
         }}
         onSubmit={handleCreate}
         saving={saving}
         formError={addFormError}
+        formConflictParts={addFormConflictParts}
         stages={stages}
         dateOptions={dateOptions}
       />
@@ -433,11 +442,13 @@ export function SessionScheduleClient({
             if (!open) {
               setEditEntry(null);
               setEditFormError(null);
+              setEditFormConflictParts(null);
             }
           }}
           onSubmit={(data) => handleUpdate(editEntry.id, data)}
           saving={saving}
           formError={editFormError}
+          formConflictParts={editFormConflictParts}
           stages={stages}
           dateOptions={dateOptions}
         />
@@ -453,6 +464,7 @@ function AddSessionDialog({
   onSubmit,
   saving,
   formError,
+  formConflictParts,
   stages,
   dateOptions,
 }: {
@@ -470,6 +482,7 @@ function AddSessionDialog({
   }) => Promise<void>;
   saving: boolean;
   formError: string | null;
+  formConflictParts?: ConflictParts | null;
   stages: StageOption[];
   dateOptions: DateOption[];
 }) {
@@ -489,6 +502,7 @@ function AddSessionDialog({
   const [startTimeStr, setStartTimeStr] = useState("09:00");
   const [endTimeStr, setEndTimeStr] = useState("");
   const [conflictError, setConflictError] = useState<string | null>(null);
+  const [conflictParts, setConflictParts] = useState<ConflictParts | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const effectiveDate =
@@ -506,7 +520,13 @@ function AddSessionDialog({
         endTime,
         stageId: stageId || null,
       });
-      setConflictError(res.ok ? null : res.error);
+      if (res.ok) {
+        setConflictError(null);
+        setConflictParts(null);
+      } else {
+        setConflictError(res.error);
+        setConflictParts(res.conflictParts ?? null);
+      }
     }, 400);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -548,13 +568,20 @@ function AddSessionDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
-          {formError && (
+          {(formError || conflictError) && (
             <div
               role="alert"
               className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
             >
               <span className="shrink-0 size-3.5 rounded-full bg-destructive/20 flex items-center justify-center text-[9px] font-bold">!</span>
-              <span>{formError}</span>
+              <span>
+                {(formConflictParts ?? conflictParts)
+                  ? (() => {
+                      const p = formConflictParts ?? conflictParts!;
+                      return <>{p.prefix}<strong className="font-semibold">{p.highlight}</strong>{p.suffix}</>;
+                    })()
+                  : (formError ?? conflictError)}
+              </span>
             </div>
           )}
 
@@ -705,6 +732,7 @@ function EditSessionDialog({
   onSubmit,
   saving,
   formError,
+  formConflictParts,
   stages,
   dateOptions,
 }: {
@@ -723,6 +751,7 @@ function EditSessionDialog({
   }) => Promise<void>;
   saving: boolean;
   formError: string | null;
+  formConflictParts?: ConflictParts | null;
   stages: StageOption[];
   dateOptions: DateOption[];
 }) {
@@ -741,6 +770,7 @@ function EditSessionDialog({
   const [speakers, setSpeakers] = useState(entry.speakers ?? "");
   const [sessionType, setSessionType] = useState<string>(entry.sessionType ?? "GENERAL");
   const [conflictError, setConflictError] = useState<string | null>(null);
+  const [conflictParts, setConflictParts] = useState<ConflictParts | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [stageId, setStageId] = useState(entry.stageId ?? "");
   const [dateStr, setDateStr] = useState(entryDateStr);
@@ -762,7 +792,13 @@ function EditSessionDialog({
         stageId: stageId || null,
         excludeEntryId: entry.id,
       });
-      setConflictError(res.ok ? null : res.error);
+      if (res.ok) {
+        setConflictError(null);
+        setConflictParts(null);
+      } else {
+        setConflictError(res.error);
+        setConflictParts(res.conflictParts ?? null);
+      }
     }, 400);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -793,15 +829,7 @@ function EditSessionDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
-          {(formError || conflictError) && (
-            <div
-              role="alert"
-              className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
-            >
-              <span className="shrink-0 size-3.5 rounded-full bg-destructive/20 flex items-center justify-center text-[9px] font-bold">!</span>
-              <span>{formError ?? conflictError}</span>
-            </div>
-          )}
+        
 
           <div className="space-y-3">
             <div className="space-y-1.5">
@@ -916,6 +944,23 @@ function EditSessionDialog({
             </div>
           </div>
 
+          {(formError || conflictError) && (
+            <div
+              role="alert"
+              className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
+            >
+              <span className="shrink-0 size-3.5 rounded-full bg-destructive/20 flex items-center justify-center text-[9px] font-bold">!</span>
+              <span>
+                {(formConflictParts ?? conflictParts)
+                  ? (() => {
+                      const p = formConflictParts ?? conflictParts!;
+                      return <>{p.prefix}<strong className="font-semibold">{p.highlight}</strong>{p.suffix}</>;
+                    })()
+                  : (formError ?? conflictError)}
+              </span>
+            </div>
+          )}
+          
           <DialogFooter className="pt-3 pb-0 gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
               Cancel

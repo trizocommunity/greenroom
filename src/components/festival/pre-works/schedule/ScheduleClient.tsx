@@ -6,7 +6,9 @@ import {
   deleteScheduleEntry,
   reorderScheduleEntries,
   checkScheduleConflict,
+  getScheduleEntries,
   type ScheduleEntryWithRelations,
+  type ConflictParts,
 } from "@/server/actions/schedule.actions";
 import { format, parseISO, isSameDay, eachDayOfInterval, startOfDay } from "date-fns";
 import {
@@ -19,6 +21,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -127,6 +130,7 @@ export function ScheduleClient({
   const [entries, setEntries] = useState<ScheduleEntryWithRelations[]>(initialEntries);
   const [addOpen, setAddOpen] = useState(false);
   const [addFormError, setAddFormError] = useState<string | null>(null);
+  const [addFormConflictParts, setAddFormConflictParts] = useState<ConflictParts | null>(null);
   const [editEntry, setEditEntry] = useState<ScheduleEntryWithRelations | null>(null);
   const [deleteEntryId, setDeleteEntryId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -139,9 +143,10 @@ export function ScheduleClient({
   const hasProgrammes = programmes.length > 0;
   const canAdd = hasStages && hasProgrammes;
 
-  const refresh = useCallback(() => {
-    window.location.reload();
-  }, []);
+  const refresh = useCallback(async () => {
+    const data = await getScheduleEntries(festivalId);
+    setEntries(data);
+  }, [festivalId]);
 
   const groupedByDay = entries.reduce<Record<string, ScheduleEntryWithRelations[]>>((acc, entry) => {
     const key = getDateKey(new Date(entry.startTime));
@@ -184,6 +189,7 @@ export function ScheduleClient({
         refresh();
       } else {
         setAddFormError(res.error);
+        setAddFormConflictParts(res.conflictParts ?? null);
         toast.error(res.error);
       }
     } finally {
@@ -405,10 +411,19 @@ export function ScheduleClient({
                   </CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
-                <ul className="space-y-2">
+                <motion.ul
+                  className="space-y-2"
+                  layout
+                  transition={{ layout: { duration: 0.25 } }}
+                >
                   {filteredDayEntries.map((entry) => (
-                    <li
+                    <motion.li
                       key={entry.id}
+                      layout
+                      initial={false}
+                      transition={{
+                        layout: { type: "spring", stiffness: 350, damping: 30 },
+                      }}
                       className="flex items-center gap-3 rounded-lg border bg-card p-3"
                     >
                       <div className="flex flex-col gap-1 shrink-0">
@@ -514,9 +529,9 @@ export function ScheduleClient({
                       ) : (
                         <span className="text-xs text-muted-foreground">Read-only</span>
                       )}
-                    </li>
+                    </motion.li>
                   ))}
-                </ul>
+                </motion.ul>
               </CardContent>
             </Card>
           )}
@@ -528,11 +543,15 @@ export function ScheduleClient({
         open={addOpen}
         onOpenChange={(open) => {
           setAddOpen(open);
-          if (!open) setAddFormError(null);
+          if (!open) {
+            setAddFormError(null);
+            setAddFormConflictParts(null);
+          }
         }}
         onSubmit={handleCreate}
         saving={saving}
         formError={addFormError}
+        formConflictParts={addFormConflictParts}
         programmes={programmes}
         stages={stages}
         dateOptions={dateOptions}
@@ -575,6 +594,7 @@ function AddEntryDialog({
   onSubmit,
   saving,
   formError,
+  formConflictParts,
   programmes,
   stages,
   dateOptions,
@@ -590,6 +610,7 @@ function AddEntryDialog({
   }) => Promise<void>;
   saving: boolean;
   formError: string | null;
+  formConflictParts?: ConflictParts | null;
   programmes: ProgrammeOption[];
   stages: StageOption[];
   dateOptions: DateOption[];
@@ -608,6 +629,7 @@ function AddEntryDialog({
   const [startTimeStr, setStartTimeStr] = useState("09:00");
   const [endTimeStr, setEndTimeStr] = useState("");
   const [conflictError, setConflictError] = useState<string | null>(null);
+  const [conflictParts, setConflictParts] = useState<ConflictParts | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const effectiveDate =
@@ -625,7 +647,13 @@ function AddEntryDialog({
         endTime,
         stageId: stageId || null,
       });
-      setConflictError(res.ok ? null : res.error);
+      if (res.ok) {
+        setConflictError(null);
+        setConflictParts(null);
+      } else {
+        setConflictError(res.error);
+        setConflictParts(res.conflictParts ?? null);
+      }
     }, 400);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -806,7 +834,14 @@ function AddEntryDialog({
               className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
             >
               <span className="shrink-0 size-3.5 rounded-full bg-destructive/20 flex items-center justify-center text-[9px] font-bold">!</span>
-              <span>{formError ?? conflictError}</span>
+              <span>
+                {(formConflictParts ?? conflictParts)
+                  ? (() => {
+                      const p = formConflictParts ?? conflictParts!;
+                      return <>{p.prefix}<strong className="font-semibold">{p.highlight}</strong>{p.suffix}</>;
+                    })()
+                  : (formError ?? conflictError)}
+              </span>
             </div>
           )}
 
@@ -870,6 +905,7 @@ function EditEntryDialog({
     entry.endTime ? format(new Date(entry.endTime), "HH:mm") : "",
   );
   const [conflictError, setConflictError] = useState<string | null>(null);
+  const [conflictParts, setConflictParts] = useState<ConflictParts | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const effectiveDate =
@@ -888,7 +924,13 @@ function EditEntryDialog({
         stageId: stageId || null,
         excludeEntryId: entry.id,
       });
-      setConflictError(res.ok ? null : res.error);
+      if (res.ok) {
+        setConflictError(null);
+        setConflictParts(null);
+      } else {
+        setConflictError(res.error);
+        setConflictParts(res.conflictParts ?? null);
+      }
     }, 400);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -982,7 +1024,11 @@ function EditEntryDialog({
               className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
             >
               <span className="shrink-0 size-3.5 rounded-full bg-destructive/20 flex items-center justify-center text-[9px] font-bold">!</span>
-              <span>{conflictError}</span>
+              <span>
+                {conflictParts
+                  ? <>{conflictParts.prefix}<strong className="font-semibold">{conflictParts.highlight}</strong>{conflictParts.suffix}</>
+                  : conflictError}
+              </span>
             </div>
           )}
           <DialogFooter>

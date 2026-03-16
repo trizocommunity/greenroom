@@ -497,9 +497,10 @@ export function AssignmentsClient({
           <Table className="hidden md:table">
             <TableHeader>
               <TableRow>
-                <TableHead>Group</TableHead>
-                <TableHead>Student</TableHead>
                 <TableHead>Programme</TableHead>
+                <TableHead>Student</TableHead>
+                <TableHead>Participants</TableHead>
+                <TableHead>Group</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Assigned at</TableHead>
                 <TableHead className="text-right w-24">Actions</TableHead>
@@ -509,7 +510,7 @@ export function AssignmentsClient({
               {tableRows.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={7}
                     className="h-32 text-center text-muted-foreground"
                   >
                     No assignments found matching your filters.
@@ -519,6 +520,19 @@ export function AssignmentsClient({
                 tableRows.map((row) =>
                   row.kind === "individual" ? (
                     <TableRow key={row.assignment.id}>
+                      <TableCell className="text-sm">
+                        {row.assignment.programme?.name ?? "—"}
+                      </TableCell>
+                      <TableCell className="font-medium text-sm">
+                        {row.assignment.student?.name ?? (
+                          <span className="text-muted-foreground italic">
+                            —
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        1
+                      </TableCell>
                       <TableCell className="text-sm">
                          <div className="flex items-center gap-2">
                           <span
@@ -534,16 +548,6 @@ export function AssignmentsClient({
                             row.assignment.student?.group?.name ||
                             "—"}
                         </div>
-                      </TableCell>
-                      <TableCell className="font-medium text-sm">
-                        {row.assignment.student?.name ?? (
-                          <span className="text-muted-foreground italic">
-                            —
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {row.assignment.programme?.name}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="font-normal text-xs">
@@ -587,6 +591,30 @@ export function AssignmentsClient({
                       key={`team-${row.programme?.id}-${row.groupId}-${row.teamNumber}`}
                     >
                       <TableCell className="text-sm">
+                        <span>
+                          {row.programme?.name ?? "—"}
+                          <Badge
+                            variant="secondary"
+                            className="ml-1.5 text-[10px] h-4"
+                          >
+                            T{row.teamNumber}
+                          </Badge>
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        <span className="font-medium">
+                          {row.assignments.length > 0
+                            ? `${row.assignments[0]?.student?.name ?? "—"}`
+                            : "—"}
+                          {row.assignments.length > 1 && (
+                            <span className="text-muted-foreground text-xs"> + team</span>
+                          )}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {row.assignments.length}
+                      </TableCell>
+                      <TableCell className="text-sm">
                         <div className="flex items-center gap-2">
                           <span
                             className="w-2 h-2 rounded-full shrink-0"
@@ -598,25 +626,6 @@ export function AssignmentsClient({
                           />
                           {row.groupName}
                         </div>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        <span className="font-medium">
-                          {row.assignments.length > 0
-                            ? `${row.assignments[0]?.student?.name ?? "—"}`
-                            : "—"}
-                          {row.assignments.length > 1 && (
-                            <span className="text-muted-foreground text-xs"> and Team</span>
-                          )}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {row.programme?.name}
-                        <Badge
-                          variant="secondary"
-                          className="ml-1.5 text-[10px] h-4"
-                        >
-                          T{row.teamNumber}
-                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="font-normal text-xs">
