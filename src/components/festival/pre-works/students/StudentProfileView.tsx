@@ -19,6 +19,7 @@ import {
 import { getStudentProfileUrl } from "@/lib/student-profile-url";
 import { TeamStudentsDialog } from "@/components/festival/pre-works/assignments/TeamStudentsDialog";
 import { getProgrammeTeamMembersAction } from "@/server/actions/assignment.actions";
+import { useFeature } from "@/hooks/useFeature";
 
 interface StudentProfileViewProps {
   student: {
@@ -57,6 +58,7 @@ interface StudentProfileViewProps {
 export function StudentProfileView({ student, festivalId, festivalSlug, baseUrl }: StudentProfileViewProps) {
   const assignments = student.assignments ?? [];
   const studentProfileUrl = getStudentProfileUrl(baseUrl, festivalSlug, student);
+  const canViewTeamLeaders = useFeature("members");
   const [teamDialog, setTeamDialog] = useState<{
     open: boolean;
     programmeName: string;
@@ -203,7 +205,7 @@ export function StudentProfileView({ student, festivalId, festivalSlug, baseUrl 
               )}
             </div>
 
-            {student.isTeamLeader && (
+            {canViewTeamLeaders && student.isTeamLeader && (
               <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-500 text-xs pt-1">
                 <Crown className="h-3.5 w-3.5 shrink-0" />
                 <span>Team leader</span>

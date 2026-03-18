@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { FeatureService } from "@/lib/features";
 import { getResolvedTier } from "@/lib/tier";
 import { updateFestivalSettingsAction } from "@/server/actions/festival.actions";
-import { DatePicker, DateTimePicker } from "@/components/ui/date-picker";
+import { DateTimePicker } from "@/components/ui/date-picker";
 
 interface SettingsFormProps {
   festival: any;
@@ -29,12 +29,6 @@ export function SettingsForm({ festival }: SettingsFormProps) {
           .toISOString()
           .slice(0, 16)
       : "",
-    startDate: festival.startDate
-      ? new Date(festival.startDate).toISOString().slice(0, 10)
-      : "",
-    endDate: festival.endDate
-      ? new Date(festival.endDate).toISOString().slice(0, 10)
-      : "",
   });
 
   const handleSave = async (e: React.FormEvent) => {
@@ -44,8 +38,6 @@ export function SettingsForm({ festival }: SettingsFormProps) {
       const res = await updateFestivalSettingsAction(festival.id, {
         programmeAssignmentDeadline:
           formData.programmeAssignmentDeadline || null,
-        startDate: formData.startDate || null,
-        endDate: formData.endDate || null,
       });
 
       if (res.success) {
@@ -65,42 +57,11 @@ export function SettingsForm({ festival }: SettingsFormProps) {
       <CardHeader className="p-4 sm:p-6">
         <CardTitle className="text-lg sm:text-xl">Festival Configuration</CardTitle>
         <CardDescription>
-          Manage dates, deadlines, and access controls.
+          Manage deadlines and access controls.
         </CardDescription>
       </CardHeader>
       <CardContent className="p-4 sm:p-6 pt-0">
         <form onSubmit={handleSave} className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="startDate">Start Date</Label>
-              <DatePicker
-                id="startDate"
-                date={formData.startDate ? new Date(formData.startDate) : undefined}
-                onChange={(date) =>
-                  setFormData({
-                    ...formData,
-                    startDate: date ? date.toISOString().slice(0, 10) : "",
-                  })
-                }
-                placeholder="Pick start date"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="endDate">End Date</Label>
-              <DatePicker
-                id="endDate"
-                date={formData.endDate ? new Date(formData.endDate) : undefined}
-                onChange={(date) =>
-                  setFormData({
-                    ...formData,
-                    endDate: date ? date.toISOString().slice(0, 10) : "",
-                  })
-                }
-                placeholder="Pick end date"
-              />
-            </div>
-          </div>
-
           {FeatureService.isFeatureEnabled(
             getResolvedTier(festival.tier),
             "programmeAssignmentDeadline",

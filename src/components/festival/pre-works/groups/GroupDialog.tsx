@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useFeature } from "@/hooks/useFeature";
 import { useGroups } from "@/hooks/useGroups";
 import { useStudents } from "@/hooks/useStudents";
 
@@ -44,6 +45,7 @@ export function GroupDialog({
 
   const isEditing = !!group;
   const isLoading = isCreating || isUpdating;
+  const canAssignTeamLeaders = useFeature("members");
 
   const [formData, setFormData] = useState<{
     name: string;
@@ -112,13 +114,16 @@ export function GroupDialog({
           data: {
             ...formData,
             seriesStart: Number(formData.seriesStart),
-            teamLeaderIds: formData.teamLeaderIds,
+            teamLeaderIds: canAssignTeamLeaders
+              ? formData.teamLeaderIds
+              : undefined,
           },
         });
       } else {
         await createGroup({
-          ...formData, // teamLeaderIds ignored for create usually
+          name: formData.name,
           seriesStart: Number(formData.seriesStart),
+          color: formData.color,
         });
       }
       setOpen(false);
@@ -128,6 +133,7 @@ export function GroupDialog({
   };
 
   const toggleTeamLeader = (studentId: string) => {
+    if (!canAssignTeamLeaders) return;
     setFormData((prev) => {
       const isSelected = prev.teamLeaderIds.includes(studentId);
       if (isSelected) {
@@ -212,7 +218,7 @@ export function GroupDialog({
             </div>
           </div>
 
-          {!readOnly && isEditing && (
+          {!readOnly && isEditing && canAssignTeamLeaders && (
             <div className="space-y-2 border-t pt-4">
               <Label>Assign Team Leaders</Label>
               <p className="text-xs text-muted-foreground mb-2">

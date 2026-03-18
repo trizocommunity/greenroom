@@ -24,6 +24,7 @@ import {
 import { useAssignments } from "@/hooks/useAssignments";
 import { TeamStudentsDialog } from "@/components/festival/pre-works/assignments/TeamStudentsDialog";
 import { getProgrammeTeamMembersAction } from "@/server/actions/assignment.actions";
+import { useFeature } from "@/hooks/useFeature";
 
 interface StudentDetailsDialogProps {
   festivalId: string;
@@ -41,6 +42,7 @@ export function StudentDetailsDialog({
   onOpenChange: setControlledOpen,
 }: StudentDetailsDialogProps) {
   const { assignments, isLoading } = useAssignments(festivalId);
+  const canViewTeamLeaders = useFeature("members");
 
   const studentAssignments = assignments.filter(
     (a: any) => a.studentId === student.id,
@@ -155,7 +157,7 @@ export function StudentDetailsDialog({
                 )}
               </div>
             )}
-            {student.isTeamLeader && (
+            {canViewTeamLeaders && student.isTeamLeader && (
               <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-500 text-xs">
                 <Crown className="h-3.5 w-3.5" />
                 <span>Team leader</span>

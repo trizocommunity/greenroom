@@ -97,6 +97,8 @@ export async function bulkPublishProgrammeResults(
 
     await ResultModel.bulkPublishByProgramme(programmeId, isPublished);
     await setProgrammePublished(programmeId, isPublished);
+    // Recompute derived status from current data for consistent lifecycle.
+    await updateProgrammeStatus(programmeId);
     revalidateResultsPaths(festivalSlug);
     return { success: true, data: undefined };
   } catch (error) {

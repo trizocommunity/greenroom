@@ -2,40 +2,38 @@ import type { ProgrammeStatus } from "@prisma/client";
 import type { Tier } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
-/** Status order for comparison (higher index = later in lifecycle). */
-const STATUS_ORDER: ProgrammeStatus[] = [
-  "READY",
-  "ASSIGNED",
-  "SCHEDULED",
-  "REPORTING",
-  "STARTED",
-  "ENDED",
-  "JUDGED",
-  "PUBLISHED",
-];
-
-function statusOrder(s: ProgrammeStatus): number {
-  const i = STATUS_ORDER.indexOf(s);
-  return i === -1 ? 0 : i;
-}
-
 /**
  * Minimum programme status for a programme to appear in Event-works (Marks, Results, Leaderboard).
- * BASIC: ASSIGNED (no schedule feature). STANDARD/PRO: SCHEDULED.
+ *
+ * Kept for backwards compatibility with any older code that might display a "minimum" step.
+ * Actual gating uses explicit allowed status sets (so BASIC does NOT allow SCHEDULED).
  */
 export function getEventWorksMinimumStatus(tier: Tier): ProgrammeStatus {
   return tier === "BASIC" ? "ASSIGNED" : "SCHEDULED";
 }
 
+function getAllowedEventWorksStatuses(tier: Tier): Set<ProgrammeStatus> {
+  // Explicit sets prevent BASIC from accidentally including SCHEDULED because of ordering.
+  return tier === "BASIC"
+    ? new Set<ProgrammeStatus>(["ASSIGNED", "JUDGED", "PUBLISHED"])
+    : new Set<ProgrammeStatus>([
+        "SCHEDULED",
+        "REPORTING",
+        "STARTED",
+        "ENDED",
+        "JUDGED",
+        "PUBLISHED",
+      ]);
+}
+
 /**
- * Returns true if the given programme status is at or past the minimum required for Event-works for the tier.
+ * Returns true if the given programme status is allowed in Event-works for the tier.
  */
 export function isProgrammeInEventWorks(
   status: ProgrammeStatus,
   tier: Tier,
 ): boolean {
-  const min = getEventWorksMinimumStatus(tier);
-  return statusOrder(status) >= statusOrder(min);
+  return getAllowedEventWorksStatuses(tier).has(status);
 }
 
 /**
@@ -124,18 +122,4 @@ export async function setProgrammePublished(
   });
 }
 
-/**
- * Backfill status for all programmes in a festival (e.g. after adding the status column).
- */
-export async function backfillProgrammeStatusesForFestival(
-  festivalId: string,
-): Promise<number> {
-  const programmeIds = await prisma.programme.findMany({
-    where: { festivalId },
-    select: { id: true },
-  });
-  for (const { id } of programmeIds) {
-    await updateProgrammeStatus(id);
-  }
-  return programmeIds.length;
-}
+// Backfill intentionally removed: statuses are expected to be correct via update flows.

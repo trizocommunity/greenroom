@@ -15,6 +15,7 @@ import {
 import { useGroups } from "@/hooks/useGroups";
 import { GroupDetailsDialog } from "./GroupDetailsDialog";
 import { GroupDialog } from "./GroupDialog";
+import { useFeature } from "@/hooks/useFeature";
 
 interface GroupsClientProps {
   festivalId: string;
@@ -23,6 +24,7 @@ interface GroupsClientProps {
 
 export function GroupsClient({ festivalId, children }: GroupsClientProps) {
   const { groups, isLoading, deleteGroup, isDeleting } = useGroups(festivalId);
+  const canAssignTeamLeaders = useFeature("members");
   const [actionGroup, setActionGroup] = useState<{
     group: any;
     action: "view" | "edit" | "delete";
@@ -124,7 +126,7 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
                 </div>
 
                 {/* Team leaders */}
-                {teamLeaders.length > 0 && (
+                {canAssignTeamLeaders && teamLeaders.length > 0 && (
                   <div className="rounded-lg bg-muted/40 px-3 py-2.5">
                     <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                       <Crown className="h-3 w-3 shrink-0 text-amber-500" />

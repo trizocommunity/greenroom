@@ -2,7 +2,13 @@
 
 import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { getSession } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
 import { GroupService } from "@/server/services/group.service";
+import {
+  FeatureService,
+  getTierForFeatureCheck,
+} from "@/lib/features";
+import { ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 
 export async function getGroupsAction(festivalId: string) {
   const session = await getSession();
@@ -39,12 +45,30 @@ export async function updateGroupAction(
     teamLeaderIds?: string[];
   },
 ) {
-  const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
-  return GroupService.update(id, festivalId, {
-    name: data.name,
-    seriesStart: data.seriesStart,
-    color: data.color,
-    teamLeaderIds: data.teamLeaderIds,
-  });
+  try {
+    const session = await getSession();
+    await assertFestivalAccess(session, festivalId);
+
+    // BASIC plan must not be able to modify team leader assignments.
+    if (data.teamLeaderIds !== undefined) {
+      const festival = await prisma.festival.findUnique({
+        where: { id: festivalId },
+        select: { tier: true },
+      });
+
+      const tier = getTierForFeatureCheck(festival?.tier);
+      if (!FeatureService.isFeatureEnabled(tier, "members")) {
+        return { success: false, error: ERROR_MESSAGES.FORBIDDEN };
+      }
+    }
+
+    return GroupService.update(id, festivalId, {
+      name: data.name,
+      seriesStart: data.seriesStart,
+      color: data.color,
+      teamLeaderIds: data.teamLeaderIds,
+    });
+  } catch (error) {
+    return handleActionError(error);
+  }
 }

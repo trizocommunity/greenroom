@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useStudents } from "@/hooks/useStudents";
+import { useFeature } from "@/hooks/useFeature";
 
 interface User {
   id: string;
@@ -68,6 +69,7 @@ export function GroupDetailsDialog({
   onOpenChange: setControlledOpen,
 }: GroupDetailsDialogProps) {
   const { students, isLoading } = useStudents(festivalId);
+  const canAssignTeamLeaders = useFeature("members");
 
   const groupStudents = students.filter(
     (p: Student) => p.group?.id === group.id || p.groupId === group.id,
@@ -128,7 +130,7 @@ export function GroupDetailsDialog({
                               {p.chestNumber || "—"} · {p.category?.name || "—"}
                             </p>
                           </div>
-                          {(p as any).isTeamLeader && (
+                          {canAssignTeamLeaders && (p as any).isTeamLeader && (
                             <Badge variant="secondary" className="text-[10px] shrink-0 bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-200">
                               Leader
                             </Badge>
@@ -156,7 +158,7 @@ export function GroupDetailsDialog({
                             <TableCell className="font-medium">
                               <div className="flex items-center gap-2">
                                 {p.name}
-                                {(p as any).isTeamLeader && (
+                                {canAssignTeamLeaders && (p as any).isTeamLeader && (
                                   <Badge
                                     variant="secondary"
                                     className="text-[10px] h-5 px-1.5 font-normal bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200"
