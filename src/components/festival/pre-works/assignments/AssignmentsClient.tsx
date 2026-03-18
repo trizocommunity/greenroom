@@ -3,7 +3,7 @@
 import { format } from "date-fns";
 import { Loader2, MoreVertical, Plus, Search, Trash2, Users, X } from "lucide-react";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -38,6 +38,7 @@ import {
   TeamStudentsDialog,
   type TeamStudentRow,
 } from "./TeamStudentsDialog";
+import { DeadlinesCard } from "@/components/festival/pre-works/DeadlinesCard";
 
 function AssignmentCard({
   kind,
@@ -189,6 +190,11 @@ export function AssignmentsClient({
     !!programmeAssignmentDeadline &&
     new Date() > new Date(programmeAssignmentDeadline);
 
+  // If deadline expires while the modal is open, close it to prevent confusing UX.
+  useEffect(() => {
+    if (isReadOnly) setAssignmentModalOpen(false);
+  }, [isReadOnly]);
+
   // Filter raw assignments (same as before)
   const filteredAssignments = useMemo(() => {
     return assignments.filter((a: any) => {
@@ -298,6 +304,7 @@ export function AssignmentsClient({
         festivalId={festivalId}
         open={assignmentModalOpen}
         onOpenChange={setAssignmentModalOpen}
+        isReadOnly={isReadOnly}
       />
 
       {/* Header row: children left, Create right — icon only on mobile */}
@@ -335,6 +342,9 @@ export function AssignmentsClient({
               </p>
             </div>
           </HowItWorksButton>
+          <div className="flex items-center">
+            <DeadlinesCard />
+          </div>
           <div className="hidden md:block">
             <Button
               size="sm"

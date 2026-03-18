@@ -1,7 +1,8 @@
 "use client";
 
+import { format } from "date-fns";
 import { Loader2, Lock } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,13 @@ interface SettingsFormProps {
 
 export function SettingsForm({ festival }: SettingsFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  // "Duration starts" for presets: the plan window starts when the festival is created.
+  // (Used to keep presets within [durationStart, festival.startDate).)
+  const [durationStart] = useState(() => {
+    const createdAt = festival?.createdAt ? new Date(festival.createdAt) : null;
+    return createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : new Date();
+  });
+  const [nowAtPageOpen] = useState(() => new Date());
   const [formData, setFormData] = useState({
     programmeAssignmentDeadline: festival.programmeAssignmentDeadline
       ? new Date(festival.programmeAssignmentDeadline)
@@ -30,6 +38,36 @@ export function SettingsForm({ festival }: SettingsFormProps) {
           .slice(0, 16)
       : "",
   });
+
+  const festivalStartDate = useMemo(() => {
+    if (!festival?.startDate) return null;
+    const d = new Date(festival.startDate);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }, [festival?.startDate]);
+
+  const festivalHasStarted = useMemo(() => {
+    if (!festivalStartDate) return false;
+    // Disallow setting/changing deadlines once the festival start time has passed.
+    return nowAtPageOpen >= festivalStartDate;
+  }, [festivalStartDate, nowAtPageOpen]);
+
+  const ensureDeadlineInRange = (next: Date): Date | null => {
+    if (next < durationStart) {
+      toast.error(
+        `Deadline must be after the active start time (${format(durationStart, "MMM d, HH:mm")}).`,
+      );
+      return null;
+    }
+
+    if (festivalStartDate && next >= festivalStartDate) {
+      toast.error(
+        `Deadline must be before festival start (${format(festivalStartDate, "MMM d, HH:mm")}).`,
+      );
+      return null;
+    }
+
+    return next;
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,20 +115,47 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                     ? new Date(formData.programmeAssignmentDeadline)
                     : null
                 }
-                onChange={(value) =>
+                onChange={(value) => {
+                  if (!value) {
+                    setFormData({
+                      ...formData,
+                      programmeAssignmentDeadline: "",
+                    });
+                    return;
+                  }
+
+                  if (festivalHasStarted) return;
+
+                  const validated = ensureDeadlineInRange(value);
+                  if (!validated) return;
+
                   setFormData({
                     ...formData,
-                    programmeAssignmentDeadline: value
-                      ? value.toISOString().slice(0, 16)
-                      : "",
-                  })
-                }
+                    programmeAssignmentDeadline: validated.toISOString().slice(0, 16),
+                  });
+                }}
                 placeholder="Pick deadline"
+                from={durationStart}
+                to={festivalStartDate ?? undefined}
+                disabled={festivalHasStarted}
               />
               <p className="text-sm text-muted-foreground">
                 Team Leaders cannot assign students to programmes after this
                 time.
               </p>
+              {festivalStartDate && (
+                <p className="text-xs text-muted-foreground">
+                  Deadline must be between{" "}
+                  <span className="font-medium text-foreground">
+                    {format(durationStart, "MMM d, HH:mm")}
+                  </span>{" "}
+                  and{" "}
+                  <span className="font-medium text-foreground">
+                    {format(festivalStartDate, "MMM d, HH:mm")}
+                  </span>{" "}
+                  (before festival start).
+                </p>
+              )}
             </div>
           )}
 
