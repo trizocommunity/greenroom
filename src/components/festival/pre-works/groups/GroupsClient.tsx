@@ -27,7 +27,7 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
   const canAssignTeamLeaders = useFeature("members");
   const [actionGroup, setActionGroup] = useState<{
     group: any;
-    action: "view" | "edit" | "delete";
+    action: "view" | "edit" | "leaders" | "delete";
   } | null>(null);
 
   if (isLoading) {
@@ -101,6 +101,18 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-44">
+                      {canAssignTeamLeaders && (
+                        <>
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              setActionGroup({ group, action: "leaders" })
+                            }
+                          >
+                            <Crown className="h-4 w-4 mr-2 text-amber-600" />
+                            Assign Leaders
+                          </DropdownMenuItem>
+                        </>
+                      )}
                       <DropdownMenuItem
                         onSelect={() => setActionGroup({ group, action: "view" })}
                       >
@@ -189,6 +201,15 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
         <GroupDialog
           festivalId={festivalId}
           group={actionGroup.group}
+          open={true}
+          onOpenChange={(open) => !open && setActionGroup(null)}
+        />
+      )}
+      {actionGroup?.action === "leaders" && actionGroup.group && (
+        <GroupDialog
+          festivalId={festivalId}
+          group={actionGroup.group}
+          leadersOnly
           open={true}
           onOpenChange={(open) => !open && setActionGroup(null)}
         />

@@ -2,7 +2,20 @@
 
 import { format } from "date-fns";
 import Link from "next/link";
-import { Download, Eye, FileText, Loader2, MoreVertical, Pencil, Plus, Search, Trash2, User, X } from "lucide-react";
+import {
+  Crown,
+  Download,
+  Eye,
+  FileText,
+  Loader2,
+  MoreVertical,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  User,
+  X,
+} from "lucide-react";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -48,6 +61,7 @@ import { StudentDialog } from "./StudentDialog";
 import { FeatureGate } from "@/components/common/FeatureGate";
 import { exportStudentsToExcelAction } from "@/server/actions/student.actions";
 import { ChestNumberSetup } from "@/components/festival/event-works/chest-numbers/ChestNumberSetup";
+import { Badge } from "@/components/ui/badge";
 
 interface StudentsClientProps {
   festivalId: string;
@@ -115,6 +129,7 @@ export function StudentsClient({
     useStudents(festivalId);
   const { groups } = useGroups(festivalId);
   const { categories } = useCategories(festivalId);
+  const canViewPublicStudentProfile = useFeature("publicStudentProfile");
   const canViewStudentProfile = useFeature("viewStudentProfile");
 
   const singleCategories = (categories ?? []).filter(
@@ -320,13 +335,28 @@ export function StudentsClient({
               filteredStudents.map((student: any) => (
                 <div
                   key={student.id}
-                  className="rounded-xl border border-border/80 bg-card p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/20 active:scale-[0.99]"
+                  className={`rounded-xl border border-border/80 bg-card p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/20 active:scale-[0.99] ${
+                    student.isTeamLeader
+                      ? "bg-amber-500/5 border-amber-500/30 hover:border-amber-500/40"
+                      : ""
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold text-[15px] leading-snug text-foreground line-clamp-1">
                         {student.name}
                       </h3>
+                      {student.isTeamLeader && (
+                        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-amber-700">
+                          <Crown className="h-3.5 w-3.5" />
+                          <Badge
+                            variant="secondary"
+                            className="bg-amber-500/10 text-amber-700 border-amber-200/50 dark:bg-amber-500/20 dark:text-amber-300"
+                          >
+                            Team Leader
+                          </Badge>
+                        </div>
+                      )}
                       <div className="mt-2.5 rounded-lg bg-muted/40 px-3 py-2">
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                           {student.chestNumber ? (
@@ -356,13 +386,23 @@ export function StudentsClient({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-44">
+                        {canViewPublicStudentProfile && student.profileSlug ? (
+                          <DropdownMenuItem asChild>
+                            <Link href={`/${festivalSlug}/${student.profileSlug}`}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Profile
+                            </Link>
+                          </DropdownMenuItem>
+                        ) : null}
                         {canViewStudentProfile ? (
                           <DropdownMenuItem asChild>
                             <Link
-                              href={`/dashboard/${festivalSlug}/pre-works/students/${student.profileSlug ?? student.id}`}
+                              href={`/dashboard/${festivalSlug}/pre-works/students/${
+                                student.profileSlug ?? student.id
+                              }`}
                             >
                               <Eye className="h-4 w-4 mr-2" />
-                              Student profile
+                              View Details
                             </Link>
                           </DropdownMenuItem>
                         ) : (
@@ -372,7 +412,7 @@ export function StudentsClient({
                             }
                           >
                             <Eye className="h-4 w-4 mr-2" />
-                            View details
+                            View Details
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem
@@ -415,8 +455,30 @@ export function StudentsClient({
               </TableHeader>
               <TableBody>
                 {filteredStudents.map((student: any) => (
-                  <TableRow key={student.id}>
-                    <TableCell className="font-medium">{student.name}</TableCell>
+                  <TableRow
+                    key={student.id}
+                    className={
+                      student.isTeamLeader
+                        ? "bg-amber-500/10 hover:bg-amber-500/10"
+                        : undefined
+                    }
+                  >
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <span>{student.name}</span>
+                        {student.isTeamLeader && (
+                          <Badge
+                            variant="secondary"
+                            className="bg-amber-500/10 text-amber-700 border-amber-200/50 dark:bg-amber-500/20 dark:text-amber-300"
+                          >
+                            <span className="inline-flex items-center gap-1">
+                              <Crown className="h-3.5 w-3.5" />
+                              Team Leader
+                            </span>
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       {student.chestNumber ? (
                         <span className="font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded text-xs">
@@ -454,13 +516,23 @@ export function StudentsClient({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-44">
+                            {canViewPublicStudentProfile && student.profileSlug ? (
+                              <DropdownMenuItem asChild>
+                                <Link href={`/${festivalSlug}/${student.profileSlug}`}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View Profile
+                                </Link>
+                              </DropdownMenuItem>
+                            ) : null}
                             {canViewStudentProfile ? (
                               <DropdownMenuItem asChild>
                                 <Link
-                                  href={`/dashboard/${festivalSlug}/pre-works/students/${student.profileSlug ?? student.id}`}
+                                  href={`/dashboard/${festivalSlug}/pre-works/students/${
+                                    student.profileSlug ?? student.id
+                                  }`}
                                 >
                                   <Eye className="h-4 w-4 mr-2" />
-                                  Student profile
+                                  View Details
                                 </Link>
                               </DropdownMenuItem>
                             ) : (
@@ -470,7 +542,7 @@ export function StudentsClient({
                                 }
                               >
                                 <Eye className="h-4 w-4 mr-2" />
-                                View student details
+                                View Details
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem

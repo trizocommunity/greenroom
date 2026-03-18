@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { APP_URL } from "@/config/routes";
 import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 import { findFestivalBySlug } from "@/server/models/festival.model";
+import { prisma } from "@/lib/db";
 import { findStudentByFestivalAndProfileSlug } from "@/server/models/student.model";
-import { Mail, Phone, User, Hash, Users, FolderOpen, ListTodo } from "lucide-react";
+import { ChevronDown, FolderOpen, Hash, ListTodo, Mail, Phone, User, Users } from "lucide-react";
 
 /** Reserved path segments under /[slug] — do not treat as student slug */
 const RESERVED_SLUGS = new Set([
@@ -72,6 +74,163 @@ export default async function PublicStudentProfilePage({ params }: PageProps) {
       ? (festival.branding as { colors: { primary: string } }).colors.primary
       : "#000000";
 
+  // Team-leader dashboard experience (STANDARD+ feature).
+  const isTeamLeader = Boolean(student.isTeamLeader);
+  const assignments = student.assignments ?? [];
+
+  type StudentForDisplay = {
+    id: string;
+    name: string;
+    chestNumber: string | null;
+    categoryName: string | null;
+  };
+
+  type GroupTeamContextKey = {
+    programmeId: string;
+    groupId: string;
+    teamNumber: number;
+  };
+
+  type ProgrammeContext = {
+    key: string;
+    programmeId: string;
+    programmeName: string;
+    programmeCategoryName: string | null;
+    programmeType: string;
+    stageType: string | null;
+    groupId: string | null;
+    teamNumber: number | null;
+    members: StudentForDisplay[];
+  };
+
+  const myTeamStudents: StudentForDisplay[] = [];
+  const programmeContexts: ProgrammeContext[] = [];
+
+  if (isTeamLeader) {
+    const myStudentId = student.id;
+
+    const groupContextsByKey = new Map<string, GroupTeamContextKey>();
+    for (const a of assignments) {
+      if (a.programme?.type !== "GROUP") continue;
+      if (!a.groupId) continue;
+      const teamNumber = a.teamNumber ?? 1;
+      const programmeId = a.programmeId;
+      if (!programmeId) continue;
+      const key = `${programmeId}:${a.groupId}:${teamNumber}`;
+      if (!groupContextsByKey.has(key)) {
+        groupContextsByKey.set(key, {
+          programmeId,
+          groupId: a.groupId,
+          teamNumber,
+        });
+      }
+    }
+
+    const membersByContextKey = new Map<string, StudentForDisplay[]>();
+
+    // Fetch all participants for each team context led by this leader.
+    for (const [key, ctx] of groupContextsByKey) {
+      const rows = await prisma.programmeAssignment.findMany({
+        where: {
+          festivalId: festival.id,
+          programmeId: ctx.programmeId,
+          groupId: ctx.groupId,
+          teamNumber: ctx.teamNumber,
+          studentId: { not: null },
+        },
+        include: {
+          student: {
+            select: {
+              id: true,
+              name: true,
+              chestNumber: true,
+              category: { select: { name: true } },
+            },
+          },
+        },
+      });
+
+      const members: StudentForDisplay[] = rows
+        .map((r) => {
+          if (!r.student) return null;
+          return {
+            id: r.student.id,
+            name: r.student.name,
+            chestNumber: r.student.chestNumber,
+            categoryName: r.student.category?.name ?? null,
+          };
+        })
+        .filter(Boolean) as StudentForDisplay[];
+
+      membersByContextKey.set(key, members);
+    }
+
+    // Build the "all programmes" view for this team leader.
+    const seenProgrammeContextKeys = new Set<string>();
+    for (const a of assignments) {
+      const programme = a.programme;
+      if (!programme?.id) continue;
+
+      const programmeId = programme.id;
+      const programmeType = programme.type;
+      const programmeName = programme.name;
+      const stageType = programme.stageType ?? null;
+      const programmeCategoryName = programme.category?.name ?? null;
+
+      if (programmeType === "GROUP") {
+        if (!a.groupId || !a.teamNumber) continue;
+        const key = `${programmeId}:${a.groupId}:${a.teamNumber}`;
+        if (seenProgrammeContextKeys.has(key)) continue;
+        seenProgrammeContextKeys.add(key);
+
+        const members = membersByContextKey.get(key) ?? [];
+        programmeContexts.push({
+          key,
+          programmeId,
+          programmeName,
+          programmeCategoryName,
+          programmeType,
+          stageType,
+          groupId: a.groupId ?? null,
+          teamNumber: a.teamNumber ?? null,
+          members,
+        });
+      } else {
+        const key = `${programmeId}:INDIVIDUAL`;
+        if (seenProgrammeContextKeys.has(key)) continue;
+        seenProgrammeContextKeys.add(key);
+
+        programmeContexts.push({
+          key,
+          programmeId,
+          programmeName,
+          programmeCategoryName,
+          programmeType,
+          stageType,
+          groupId: student.groupId ?? null,
+          teamNumber: null,
+          members: [
+            {
+              id: myStudentId,
+              name: student.name,
+              chestNumber: student.chestNumber,
+              categoryName: student.category?.name ?? null,
+            },
+          ],
+        });
+      }
+    }
+
+    // Compute "my students" as the union across all led group-team contexts.
+    const uniqueMembers = new Map<string, StudentForDisplay>();
+    for (const ctx of programmeContexts) {
+      for (const m of ctx.members) {
+        if (!uniqueMembers.has(m.id)) uniqueMembers.set(m.id, m);
+      }
+    }
+    myTeamStudents.push(...Array.from(uniqueMembers.values()));
+  }
+
   return (
     <div className="container max-w-2xl py-8 px-4">
       <div className="mb-6">
@@ -133,18 +292,137 @@ export default async function PublicStudentProfilePage({ params }: PageProps) {
         </CardContent>
       </Card>
 
+      {isTeamLeader && (
+        <Card className="mb-6 mt-6 overflow-hidden">
+          <CardHeader>
+            <div className="flex flex-col gap-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Users className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                You are a Team Leader
+              </CardTitle>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">
+                  Group:{" "}
+                  <span style={{ color: accentColor, fontWeight: 700 }}>{student.group?.name ?? "—"}</span>
+                </p>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="bg-amber-500/5 border-amber-500/40 text-amber-700 dark:text-amber-300">
+                    <span className="font-semibold">{myTeamStudents.length}</span> My students
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {myTeamStudents.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {myTeamStudents.map((s) => (
+                  <div
+                    key={s.id}
+                    className="rounded-lg border bg-muted/20 px-3 py-2 flex items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{s.name}</p>
+                      {s.categoryName ? (
+                        <p className="text-xs text-muted-foreground truncate">{s.categoryName}</p>
+                      ) : null}
+                    </div>
+                    <span className="text-xs text-muted-foreground font-mono shrink-0">
+                      {s.chestNumber ? `#${s.chestNumber}` : "—"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No team members found yet. Make sure the group has team leaders assigned.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <ListTodo className="h-5 w-5" style={{ color: accentColor }} />
-            Programmes (Reporting)
+            {isTeamLeader ? "All Programmes (My Team)" : "Programmes (Reporting)"}
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Programmes this student is added to. Use this when they report for an event.
+            {isTeamLeader
+              ? "View programme details to see who participated from your team."
+              : "Programmes this student is added to. Use this when they report for an event."}
           </p>
         </CardHeader>
         <CardContent>
-          {student.assignments && student.assignments.length > 0 ? (
+          {isTeamLeader ? (
+            programmeContexts.length > 0 ? (
+              <ul className="space-y-3">
+                {programmeContexts.map((ctx) => (
+                  <li
+                    key={ctx.key}
+                    className="rounded-lg border bg-muted/10 px-3 py-3"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{ctx.programmeName}</p>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {ctx.programmeCategoryName ? ctx.programmeCategoryName : "—"}
+                          {ctx.programmeType === "GROUP" && ctx.teamNumber != null ? ` · Team ${ctx.teamNumber}` : ""}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge
+                          variant="outline"
+                          className="bg-muted/20 border-muted-foreground/20 text-foreground/80"
+                        >
+                          {ctx.members.length} Participants
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          {ctx.programmeType}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <details className="mt-3">
+                      <summary className="cursor-pointer list-none text-sm font-medium text-primary inline-flex items-center gap-2">
+                        <span className="inline-flex items-center justify-center rounded-md bg-primary/10 px-2 py-0.5">
+                          View details
+                        </span>
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      </summary>
+                      <div className="mt-3 space-y-2">
+                        <p className="text-xs text-muted-foreground">From your team</p>
+                        {ctx.members.length > 0 ? (
+                          <ul className="space-y-2">
+                            {ctx.members.map((m) => (
+                              <li
+                                key={m.id}
+                                className="flex items-center justify-between rounded-lg border bg-background px-3 py-2"
+                              >
+                                <span className="font-medium truncate pr-2">{m.name}</span>
+                                <span className="text-xs text-muted-foreground font-mono shrink-0">
+                                  {m.chestNumber ? `#${m.chestNumber}` : "—"}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No participants found.</p>
+                        )}
+                      </div>
+                    </details>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No programmes found for your team yet.
+              </p>
+            )
+          ) : (
+            student.assignments && student.assignments.length > 0 ? (
             <ul className="space-y-2">
               {student.assignments.map((a) => (
                 <li
@@ -160,10 +438,11 @@ export default async function PublicStudentProfilePage({ params }: PageProps) {
                 </li>
               ))}
             </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Not assigned to any programme yet.
-            </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Not assigned to any programme yet.
+              </p>
+            )
           )}
         </CardContent>
       </Card>

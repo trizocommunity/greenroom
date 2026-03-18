@@ -23,6 +23,11 @@ interface GroupDialogProps {
   group?: any;
   trigger?: React.ReactNode;
   readOnly?: boolean;
+  /**
+   * When true, the dialog becomes a "team leaders only" editor:
+   * hide group name/color fields but keep the team leader assignment UI.
+   */
+  leadersOnly?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
@@ -32,6 +37,7 @@ export function GroupDialog({
   group,
   trigger,
   readOnly,
+  leadersOnly,
   open: controlledOpen,
   onOpenChange: setControlledOpen,
 }: GroupDialogProps) {
@@ -168,59 +174,67 @@ export function GroupDialog({
       <DialogContent className="w-[calc(100%-2rem)] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>
-            {readOnly
-              ? "Group Details"
-              : isEditing
-                ? "Edit Group"
-                : "Create Group"}
+            {leadersOnly
+              ? "Assign Team Leaders"
+              : readOnly
+                ? "Group Details"
+                : isEditing
+                  ? "Edit Group"
+                  : "Create Group"}
           </DialogTitle>
           <DialogDescription>
-            {readOnly
-              ? "View group details."
-              : isEditing
-                ? "Update group details."
-                : "Add a new group (School/College)."}
+            {leadersOnly
+              ? "Select team leaders for this group."
+              : readOnly
+                ? "View group details."
+                : isEditing
+                  ? "Update group details."
+                  : "Add a new group (School/College)."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Group Name</Label>
-            <Input
-              id="name"
-              required
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-              placeholder="e.g. Model School"
-              disabled={readOnly}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Group Color</Label>
-            <div className="flex flex-wrap gap-2">
-              {COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  disabled={readOnly}
-                  onClick={() => setFormData({ ...formData, color: c })}
-                  className={`h-8 w-8 rounded-full border-2 transition-all ${
-                    formData.color === c
-                      ? "border-primary scale-110 shadow-sm"
-                      : "border-transparent hover:scale-105"
-                  }`}
-                  style={{ backgroundColor: c }}
-                  aria-label={`Select color ${c}`}
-                />
-              ))}
+          {!leadersOnly && (
+            <div className="space-y-2">
+              <Label htmlFor="name">Group Name</Label>
+              <Input
+                id="name"
+                required
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                placeholder="e.g. Model School"
+                disabled={readOnly}
+              />
             </div>
-          </div>
+          )}
+
+          {!leadersOnly && (
+            <div className="space-y-2">
+              <Label>Group Color</Label>
+              <div className="flex flex-wrap gap-2">
+                {COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    disabled={readOnly}
+                    onClick={() => setFormData({ ...formData, color: c })}
+                    className={`h-8 w-8 rounded-full border-2 transition-all ${
+                      formData.color === c
+                        ? "border-primary scale-110 shadow-sm"
+                        : "border-transparent hover:scale-105"
+                    }`}
+                    style={{ backgroundColor: c }}
+                    aria-label={`Select color ${c}`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           {!readOnly && isEditing && canAssignTeamLeaders && (
             <div className="space-y-2 border-t pt-4">
-              <Label>Assign Team Leaders</Label>
+              <Label>Team Leaders</Label>
               <p className="text-xs text-muted-foreground mb-2">
                 Select up to 2 students to be Team Leaders.
               </p>
