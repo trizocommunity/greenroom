@@ -21,6 +21,7 @@ export function useProgrammes(festivalId: string) {
     staleTime: STALE_TIME_MS,
     gcTime: GC_TIME_MS,
     enabled: !!festivalId,
+    refetchOnMount: "always",
   });
 
   const createMutation = useMutation({

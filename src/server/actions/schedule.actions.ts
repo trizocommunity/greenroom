@@ -7,6 +7,7 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { findFestivalById } from "@/server/models/festival.model";
 import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
+import { updateProgrammeStatus } from "@/server/services/programme-status.service";
 import type { ScheduleEntryType, SessionType } from "@prisma/client";
 
 const scheduleInclude = {
@@ -230,6 +231,10 @@ export async function createScheduleEntry(
     },
   });
 
+  if (data.type === "PROGRAMME" && data.programmeId) {
+    await updateProgrammeStatus(data.programmeId);
+  }
+
   revalidatePath(`/dashboard/${festival.slug}/pre-works/schedule`);
   revalidatePath(`/dashboard/${festival.slug}/pre-works/sessions`);
   revalidatePath(`/${festival.slug}/sessions`);
@@ -313,6 +318,17 @@ export async function updateScheduleEntry(
     },
   });
 
+  if (existing.type === "PROGRAMME") {
+    if (existing.programmeId) await updateProgrammeStatus(existing.programmeId);
+    if (
+      data.programmeId !== undefined &&
+      data.programmeId !== null &&
+      data.programmeId !== existing.programmeId
+    ) {
+      await updateProgrammeStatus(data.programmeId);
+    }
+  }
+
   revalidatePath(`/dashboard/${festival.slug}/pre-works/schedule`);
   revalidatePath(`/dashboard/${festival.slug}/pre-works/sessions`);
   revalidatePath(`/${festival.slug}/sessions`);
@@ -329,7 +345,7 @@ export async function deleteScheduleEntry(
 
   const entry = await prisma.scheduleEntry.findFirst({
     where: { id, festivalId },
-    select: { id: true },
+    select: { id: true, type: true, programmeId: true },
   });
   if (!entry) return { success: false, error: "Schedule entry not found" };
 
@@ -337,6 +353,10 @@ export async function deleteScheduleEntry(
   if (!festival) return { success: false, error: "Festival not found" };
 
   await prisma.scheduleEntry.delete({ where: { id } });
+
+  if (entry.type === "PROGRAMME" && entry.programmeId) {
+    await updateProgrammeStatus(entry.programmeId);
+  }
 
   revalidatePath(`/dashboard/${festival.slug}/pre-works/schedule`);
   revalidatePath(`/dashboard/${festival.slug}/pre-works/sessions`);

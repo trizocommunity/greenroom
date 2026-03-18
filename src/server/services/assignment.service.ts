@@ -8,6 +8,7 @@ import {
 } from "@/server/models/assignment.model";
 import { findFestivalById } from "@/server/models/festival.model";
 import { findProgrammeById } from "@/server/models/programme.model";
+import { updateProgrammeStatus } from "@/server/services/programme-status.service";
 import { findStudentById } from "@/server/models/student.model";
 
 export const AssignmentService = {
@@ -109,7 +110,7 @@ export const AssignmentService = {
       );
       if (exists) throw new AppError(ERROR_MESSAGES.ASSIGNMENT_ALREADY_EXISTS);
 
-      return createAssignment({
+      const created = await createAssignment({
         festival: { connect: { id: festivalId } },
         programme: { connect: { id: data.programmeId } },
         student: { connect: { id: data.studentId } },
@@ -118,14 +119,18 @@ export const AssignmentService = {
           : {}),
         assignedAt: new Date(),
       });
+      await updateProgrammeStatus(data.programmeId);
+      return created;
     }
 
-    return createAssignment({
+    const created = await createAssignment({
       festival: { connect: { id: festivalId } },
       programme: { connect: { id: data.programmeId } },
       group: { connect: { id: data.groupId } },
       assignedAt: new Date(),
     });
+    await updateProgrammeStatus(data.programmeId);
+    return created;
   },
 
   async update(
@@ -187,7 +192,7 @@ export const AssignmentService = {
         }
       }
 
-      return prisma.programmeAssignment.update({
+      const updated = await prisma.programmeAssignment.update({
         where: { id },
         data: {
           programmeId: newProgrammeId,
@@ -195,9 +200,12 @@ export const AssignmentService = {
           groupId: null,
         },
       });
+      await updateProgrammeStatus(existing.programmeId);
+      await updateProgrammeStatus(newProgrammeId);
+      return updated;
     }
 
-    return prisma.programmeAssignment.update({
+    const updated = await prisma.programmeAssignment.update({
       where: { id },
       data: {
         programmeId: newProgrammeId,
@@ -205,10 +213,15 @@ export const AssignmentService = {
         groupId: newGroupId,
       },
     });
+    await updateProgrammeStatus(existing.programmeId);
+    await updateProgrammeStatus(newProgrammeId);
+    return updated;
   },
 
   async delete(id: string, _festivalId?: string) {
-    return deleteAssignment(id);
+    const deleted = await deleteAssignment(id);
+    await updateProgrammeStatus(deleted.programmeId);
+    return deleted;
   },
 
   /**
@@ -233,6 +246,9 @@ export const AssignmentService = {
         teamNumber,
       },
     });
+    if (result.count > 0) {
+      await updateProgrammeStatus(programmeId);
+    }
     return result;
   },
 
@@ -256,7 +272,7 @@ export const AssignmentService = {
     const festival = await findFestivalById(festivalId);
     if (festival?.status === "EXPIRED") throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
 
-    return prisma.$transaction(
+    const created = await prisma.$transaction(
       async (tx) => {
         const results = [];
 
@@ -410,12 +426,17 @@ export const AssignmentService = {
           }
         }
 
-        return results;
+        return { results, programmeIds: [...assignmentsByProgramme.keys()] };
       },
       {
         maxWait: 5000,
         timeout: 20000,
       },
     );
+    const { results: createdResults, programmeIds } = created;
+    for (const programmeId of programmeIds) {
+      await updateProgrammeStatus(programmeId);
+    }
+    return createdResults;
   },
 };

@@ -38,6 +38,7 @@ import { getDashboardOverviewData } from "@/server/models/festival.model";
 import { getEffectivePlanFeatureMatrix } from "@/server/services/plan-features.service";
 import { getResolvedTier } from "@/lib/tier";
 import type { Festival } from "@prisma/client";
+import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import type { FeaturePath } from "@/lib/features";
 
 interface OverviewWidgetsProps {
@@ -146,7 +147,7 @@ export default async function OverviewWidgets({
       label: "Leaderboard",
       icon: Trophy,
       href: `/dashboard/${slug}/event-works/leaderboard`,
-      condition: planFeature(features, "liveScoreboard"),
+      condition: tier === "BASIC" || planFeature(features, "liveScoreboard"),
     },
     {
       label: "Documentation",
@@ -222,11 +223,11 @@ export default async function OverviewWidgets({
               <CardDescription>Latest added programmes</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col flex-1">
-              <div className="space-y-4 pr-2">
+              <div className="space-y-4">
                 {overviewData.recentProgrammes.map((prog) => (
                   <div
                     key={prog.id}
-                    className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0"
+                    className="flex items-center justify-between border-b pb-2 last:border-0 "
                   >
                     <div>
                       <Tooltip>
@@ -239,13 +240,21 @@ export default async function OverviewWidgets({
                           <p>{prog.name}</p>
                         </TooltipContent>
                       </Tooltip>
-                      <p className="text-xs text-muted-foreground mt-1 truncate max-w-[200px]">
-                        {prog.category.name}
-                      </p>
+                        <p className="text-xs text-muted-foreground truncate max-w-[160px]">
+                          {prog.category.name}
+                        </p>
                     </div>
-                    <p className="text-xs text-muted-foreground shrink-0 ml-4">
-                      {format(new Date(prog.createdAt), "dd/MM/yyyy")}
-                    </p>
+                      <div className="flex items-center flex-col">
+                        {prog.status && (
+                          <ProgrammeStatusBadge
+                          status={prog.status}
+                          className="text-[10px]"
+                          />
+                        )}
+                        <p className="text-[12px] text-muted-foreground shrink-0">
+                          {format(new Date(prog.createdAt), "dd/MM/yyyy")}
+                        </p>
+                        </div>
                   </div>
                 ))}
                 {overviewData.recentProgrammes.length === 0 && (

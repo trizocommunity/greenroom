@@ -8,6 +8,10 @@ import { getSession } from "@/lib/auth/session";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import { prisma } from "@/lib/db";
 import { ResultModel } from "@/server/models/result.model";
+import {
+  updateProgrammeStatus,
+  setProgrammePublished,
+} from "@/server/services/programme-status.service";
 
 export interface SaveResultInput {
   festivalId: string;
@@ -38,6 +42,7 @@ export async function saveResult(data: SaveResultInput): Promise<ActionResponse<
     await assertFestivalAccess(session, data.festivalId);
 
     const result = await ResultModel.upsert(data.assignmentId, data);
+    await updateProgrammeStatus(data.programmeId);
     const festival = await prisma.festival.findUnique({
       where: { id: data.festivalId },
       select: { slug: true },
@@ -59,12 +64,13 @@ export async function deleteResult(resultId: string, festivalSlug: string): Prom
     const session = await getSession();
     const result = await prisma.result.findUnique({
       where: { id: resultId },
-      select: { festivalId: true },
+      select: { festivalId: true, programmeId: true },
     });
     if (!result) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
     await assertFestivalAccess(session, result.festivalId);
 
     await ResultModel.delete(resultId);
+    await updateProgrammeStatus(result.programmeId);
     revalidateResultsPaths(festivalSlug);
     return { success: true, data: undefined };
   } catch (error) {
@@ -90,6 +96,7 @@ export async function bulkPublishProgrammeResults(
     await assertFestivalAccess(session, programme.festivalId);
 
     await ResultModel.bulkPublishByProgramme(programmeId, isPublished);
+    await setProgrammePublished(programmeId, isPublished);
     revalidateResultsPaths(festivalSlug);
     return { success: true, data: undefined };
   } catch (error) {

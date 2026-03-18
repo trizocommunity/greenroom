@@ -89,6 +89,12 @@ const allFaqs = [
       "The leaderboard is available under 'Event Works' -> 'Leaderboard'. It updates in real-time as results are published.",
   },
   {
+    id: "programme-status-event-works",
+    question: "Why don't my programmes appear in Event Works (Marks, Results, Leaderboard)?",
+    answer:
+      "Programmes have a status (Ready, Assigned, Scheduled, Judged, Published). On Standard and Pro plans, a programme appears in Event Works only after it is added to the schedule (Scheduled or later). Add your programmes in Pre-Works -> Schedule to see them in Marks, Results, and Leaderboard. On the Basic plan, programmes appear once they have at least one assignment.",
+  },
+  {
     id: "chest-numbers",
     question: "How do I manage chest numbers?",
     answer:

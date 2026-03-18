@@ -37,17 +37,20 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { useCategories } from "@/hooks/useCategories";
 import { useProgrammes } from "@/hooks/useProgrammes";
+import type { ProgrammeStatus } from "@prisma/client";
 import { BulkUploadProgrammesModal } from "./BulkUploadProgrammesModal";
 import { ProgrammeDialog } from "./ProgrammeDialog";
 
 interface ProgrammesClientProps {
   festivalId: string;
+  festivalTier?: string | null;
   children?: React.ReactNode;
 }
 
-export function ProgrammesClient({ festivalId, children }: ProgrammesClientProps) {
+export function ProgrammesClient({ festivalId, festivalTier, children }: ProgrammesClientProps) {
   const { programmes, isLoading, deleteProgramme, isDeleting } =
     useProgrammes(festivalId);
   const { categories } = useCategories(festivalId);
@@ -239,9 +242,17 @@ export function ProgrammesClient({ festivalId, children }: ProgrammesClientProps
                       <h3 className="font-semibold text-base text-foreground leading-snug line-clamp-2">
                         {programme.name}
                       </h3>
-                      <p className="text-sm text-muted-foreground mt-0.5">
-                        {programme.category?.name || "No category"}
-                      </p>
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <p className="text-sm text-muted-foreground">
+                          {programme.category?.name || "No category"}
+                        </p>
+                        {programme.status && (
+                          <ProgrammeStatusBadge
+                            status={programme.status as ProgrammeStatus}
+                            className="text-xs"
+                          />
+                        )}
+                      </div>
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -332,6 +343,7 @@ export function ProgrammesClient({ festivalId, children }: ProgrammesClientProps
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Category</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Programme type</TableHead>
                   <TableHead className="text-muted-foreground font-normal">
                     Stage
@@ -346,6 +358,16 @@ export function ProgrammesClient({ festivalId, children }: ProgrammesClientProps
                     <TableCell className="font-medium">{programme.name}</TableCell>
                     <TableCell>
                       {programme.category?.name || "No Category"}
+                    </TableCell>
+                    <TableCell>
+                      {programme.status ? (
+                        <ProgrammeStatusBadge
+                          status={programme.status as ProgrammeStatus}
+                          className="text-[10px]"
+                        />
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge

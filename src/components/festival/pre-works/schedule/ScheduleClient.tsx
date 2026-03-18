@@ -249,7 +249,6 @@ export function ScheduleClient({
       reordered.map((e) => e.id),
     );
     if (res.success) {
-      toast.success("Order updated.");
       refresh();
     } else toast.error(res.error);
   };

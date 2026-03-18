@@ -6,6 +6,7 @@ export async function getFestivalLeaderboardDataBySlug(slug: string) {
     include: {
       categories: { orderBy: { name: "asc" } },
       groups: { orderBy: { name: "asc" } },
+      programmes: { select: { id: true, status: true } },
       results: {
         include: {
           assignment: {
