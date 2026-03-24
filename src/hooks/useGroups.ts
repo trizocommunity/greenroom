@@ -8,7 +8,7 @@ import {
   updateGroupAction,
 } from "@/server/actions/group.actions";
 
-const STALE_TIME_MS = 2 * 60 * 1000;
+const STALE_TIME_MS = 30 * 1000;
 const GC_TIME_MS = 5 * 60 * 1000;
 
 export function useGroups(festivalId: string) {
@@ -20,6 +20,9 @@ export function useGroups(festivalId: string) {
     staleTime: STALE_TIME_MS,
     gcTime: GC_TIME_MS,
     enabled: !!festivalId,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
   const createMutation = useMutation({
@@ -69,6 +72,8 @@ export function useGroups(festivalId: string) {
     }) => updateGroupAction(festivalId, id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(festivalId) });
+      // Team leader assignment toggles Student.isTeamLeader, so refresh students cache too.
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.list(festivalId) });
       toast.success("Group updated successfully");
     },
     onError: (error: any) => {
@@ -79,6 +84,8 @@ export function useGroups(festivalId: string) {
   return {
     groups: query.data || [],
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    refetch: query.refetch,
     createGroup: createMutation.mutateAsync,
     isCreating: createMutation.isPending,
     updateGroup: updateMutation.mutateAsync,

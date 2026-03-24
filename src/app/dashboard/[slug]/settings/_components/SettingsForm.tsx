@@ -24,6 +24,7 @@ interface SettingsFormProps {
 }
 
 export function SettingsForm({ festival }: SettingsFormProps) {
+  const resolvedTier = getResolvedTier(festival.tier);
   const [isLoading, setIsLoading] = useState(false);
   // "Duration starts" for presets: the plan window starts when the festival is created.
   // (Used to keep presets within [durationStart, festival.startDate).)
@@ -162,10 +163,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
             </div>
           )}
 
-          {FeatureService.isFeatureEnabled(
-            getResolvedTier(festival.tier),
-            "members",
-          ) && (
+          {resolvedTier !== "BASIC" && (
             <div className="grid gap-2">
               <Label htmlFor="teamLeaderLimit">Team Leader Limit Per Group</Label>
               <Input

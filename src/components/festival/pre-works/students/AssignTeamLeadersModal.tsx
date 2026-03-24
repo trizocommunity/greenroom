@@ -35,6 +35,9 @@ export function AssignTeamLeadersModal({
   teamLeaderLimit,
   trigger,
 }: AssignTeamLeadersModalProps) {
+  const effectiveLimit = Number.isFinite(teamLeaderLimit) && teamLeaderLimit > 0
+    ? Math.floor(teamLeaderLimit)
+    : 2;
   const [open, setOpen] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string>("");
   const [selectedLeaderIds, setSelectedLeaderIds] = useState<string[]>([]);
@@ -63,7 +66,7 @@ export function AssignTeamLeadersModal({
     setSelectedLeaderIds((prev) => {
       const exists = prev.includes(studentId);
       if (exists) return prev.filter((id) => id !== studentId);
-      if (prev.length >= teamLeaderLimit) return prev;
+      if (prev.length >= effectiveLimit) return prev;
       return [...prev, studentId];
     });
   };
@@ -73,7 +76,7 @@ export function AssignTeamLeadersModal({
     const groupStudentIds = students
       .filter((s: any) => s.groupId === groupId && s.isTeamLeader)
       .map((s: any) => s.id)
-      .slice(0, teamLeaderLimit);
+      .slice(0, effectiveLimit);
     setSelectedLeaderIds(groupStudentIds);
   };
 
@@ -116,7 +119,7 @@ export function AssignTeamLeadersModal({
         <DialogHeader>
           <DialogTitle>Assign Team Leaders</DialogTitle>
           <DialogDescription>
-            Select a group, then choose up to {teamLeaderLimit} team leaders.
+            Select a group, then choose up to {effectiveLimit} team leaders.
           </DialogDescription>
         </DialogHeader>
 
@@ -149,7 +152,7 @@ export function AssignTeamLeadersModal({
             <div className="space-y-2">
               <div className="text-xs text-muted-foreground">
                 Students in <span className="font-medium">{selectedGroup?.name}</span> (
-                {selectedLeaderIds.length}/{teamLeaderLimit} selected)
+                {selectedLeaderIds.length}/{effectiveLimit} selected)
               </div>
               <div className="space-y-2 max-h-[420px] overflow-y-auto rounded-lg border bg-muted/10 p-2">
                 {groupStudents.map((student: any) => {
@@ -158,7 +161,7 @@ export function AssignTeamLeadersModal({
                     !!student.phone && String(student.phone).trim().length >= 6;
                   const disableUnchecked =
                     !isSelected &&
-                    (selectedLeaderIds.length >= teamLeaderLimit || !hasValidPhone);
+                    (selectedLeaderIds.length >= effectiveLimit || !hasValidPhone);
                   const isExistingLeader = existingLeaderIds.includes(student.id);
                   return (
                     <label
