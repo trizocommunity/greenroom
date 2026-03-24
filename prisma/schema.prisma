@@ -70,6 +70,7 @@ model User {
   
   supportTickets SupportTicket[]
   supportNotifications SupportNotification[]
+  programmeNotifications ProgrammeNotification[]
 
   loginEvents   UserLoginEvent[]
   purchaseSummary UserPurchaseSummary?
@@ -225,6 +226,9 @@ model Festival {
   members       FestivalMember[]
   expiredResults ExpiredFestivalResult[]
   lifecycleEvents FestivalLifecycleEvent[]
+  reportingSessions ProgrammeReportingSession[]
+  programmeNotifications ProgrammeNotification[]
+  programmeCodeLetters ProgrammeCodeLetter[]
 
   @@map("festival")
   @@index([status])
@@ -377,6 +381,8 @@ model Programme {
   assignments ProgrammeAssignment[]
   results     Result[]
   scheduleEntries ScheduleEntry[]
+  reportingSessions ProgrammeReportingSession[]
+  codeLetters ProgrammeCodeLetter[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -397,6 +403,7 @@ model Group {
 
   students    Student[]
   assignments  ProgrammeAssignment[]
+  reportedParticipants ProgrammeReportedParticipant[]
 
 
   createdAt   DateTime @default(now())
@@ -426,6 +433,7 @@ model ProgrammeAssignment {
   teamNumber    Int      @default(1)
 
   result        Result?
+  reportedParticipants ProgrammeReportedParticipant[]
 
   assignedAt    DateTime @default(now())
   createdByEmail String?
@@ -497,6 +505,9 @@ model Student {
   assignments ProgrammeAssignment[]
   teamLeaderOtps TeamLeaderOtp[]
   teamLeaderSessions TeamLeaderSession[]
+  programmeNotifications ProgrammeNotification[]
+  codeLetterRecipients ProgrammeCodeLetterRecipient[]
+  reportedParticipants ProgrammeReportedParticipant[]
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -601,6 +612,7 @@ model Stage {
   createdBy   String?
 
   scheduleEntries ScheduleEntry[]
+  reportingSessions ProgrammeReportingSession[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -639,6 +651,7 @@ model ScheduleEntry {
 
   createdBy   String?
   updatedBy   String?
+  reportingSessions ProgrammeReportingSession[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -727,7 +740,129 @@ model SupportNotification {
   @@map("support_notification")
 }
 
-// -----------------------------------------------------------------------------
+enum ProgrammeReportingStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  RESET
+  CLOSED
+}
+
+enum ProgrammeNotificationEventType {
+  REPORTING_STARTED
+  REPORTING_RESET
+  REPORTING_PARTICIPANT_MARKED
+  REPORTING_CLOSED
+  CODE_LETTER_ISSUED
+  PROGRAMME_STATUS_CHANGED
+}
+
+model ProgrammeReportingSession {
+  id            String                  @id @default(uuid())
+  festivalId    String
+  festival      Festival                @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  scheduleEntryId String
+  scheduleEntry ScheduleEntry           @relation(fields: [scheduleEntryId], references: [id], onDelete: Cascade)
+  programmeId   String
+  programme     Programme               @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+  stageId       String?
+  stage         Stage?                  @relation(fields: [stageId], references: [id], onDelete: SetNull)
+
+  status        ProgrammeReportingStatus @default(NOT_STARTED)
+  startedAt     DateTime?
+  startedBy     String?
+  endedAt       DateTime?
+  endedBy       String?
+  windowEndsAt  DateTime?
+  isLocked      Boolean                 @default(false)
+  closedAtScheduleStart Boolean         @default(true)
+
+  reportedParticipants ProgrammeReportedParticipant[]
+  codeLetters   ProgrammeCodeLetter[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([scheduleEntryId])
+  @@index([festivalId, status])
+  @@index([programmeId])
+  @@map("programme_reporting_session")
+}
+
+model ProgrammeReportedParticipant {
+  id                 String                    @id @default(uuid())
+  reportingSessionId String
+  reportingSession   ProgrammeReportingSession @relation(fields: [reportingSessionId], references: [id], onDelete: Cascade)
+  assignmentId       String
+  assignment         ProgrammeAssignment       @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  studentId          String?
+  student            Student?                  @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  groupId            String?
+  group              Group?                    @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  teamNumber         Int?
+  reportedAt         DateTime                  @default(now())
+  reportedBy         String?
+
+  @@unique([reportingSessionId, assignmentId])
+  @@index([studentId])
+  @@index([groupId])
+  @@map("programme_reported_participant")
+}
+
+model ProgrammeCodeLetter {
+  id                 String                    @id @default(uuid())
+  festivalId         String
+  festival           Festival                  @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  reportingSessionId String
+  reportingSession   ProgrammeReportingSession @relation(fields: [reportingSessionId], references: [id], onDelete: Cascade)
+  programmeId        String
+  programme          Programme                 @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+  code               String
+  issuedAt           DateTime                  @default(now())
+  issuedBy           String?
+  recipients         ProgrammeCodeLetterRecipient[]
+
+  @@unique([reportingSessionId, code])
+  @@index([festivalId, issuedAt])
+  @@index([programmeId])
+  @@map("programme_code_letter")
+}
+
+model ProgrammeCodeLetterRecipient {
+  id           String              @id @default(uuid())
+  codeLetterId String
+  codeLetter   ProgrammeCodeLetter @relation(fields: [codeLetterId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt    DateTime            @default(now())
+
+  @@unique([codeLetterId, studentId])
+  @@index([studentId])
+  @@map("programme_code_letter_recipient")
+}
+
+model ProgrammeNotification {
+  id                 String                       @id @default(uuid())
+  festivalId         String
+  festival           Festival                     @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  eventType          ProgrammeNotificationEventType
+  recipientUserId    String?
+  recipientUser      User?                        @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
+  recipientStudentId String?
+  recipientStudent   Student?                     @relation(fields: [recipientStudentId], references: [id], onDelete: Cascade)
+  title              String
+  body               String
+  payload            Json?
+  channels           Json?
+  isRead             Boolean                      @default(false)
+  createdAt          DateTime                     @default(now())
+
+  @@index([festivalId, createdAt])
+  @@index([recipientUserId, isRead])
+  @@index([recipientStudentId, isRead])
+  @@map("programme_notification")
+}
+
+ // -----------------------------------------------------------------------------
 // System Config (Super Admin: plan feature overrides, etc.)
 // -----------------------------------------------------------------------------
 

@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  BookOpen,
   Building2,
   Calendar,
   CalendarDays,
@@ -8,9 +9,11 @@ import {
   CreditCard,
   Edit,
   FileText,
+  Gavel,
   Image,
-  LayoutDashboard,
   Layers,
+  LayoutDashboard,
+  LifeBuoy,
   ListChecks,
   Megaphone,
   Newspaper,
@@ -21,8 +24,6 @@ import {
   Trophy,
   Users,
   UsersRound,
-  BookOpen,
-  LifeBuoy,
 } from "lucide-react";
 
 export type FestivalRole =
@@ -114,7 +115,10 @@ export const getFestivalDashboardSidebarConfig = (
       items: [
         {
           title: "Overview",
-          href: normalizedRole === "STAGE_MANAGER" ? `${basePath}/stage-manager` : basePath,
+          href:
+            normalizedRole === "STAGE_MANAGER"
+              ? `${basePath}/stage-manager`
+              : basePath,
           icon: LayoutDashboard,
         },
         {
@@ -133,23 +137,6 @@ export const getFestivalDashboardSidebarConfig = (
           title: "Festival Live",
           href: `${basePath}/festival-live`,
           icon: Radio,
-          allowedRoles: ["ADMIN", "OWNER"],
-        },
-      ],
-    },
-    {
-      title: "Content",
-      items: [
-        {
-          title: "Gallery",
-          href: `${basePath}/content/gallery`,
-          icon: Image,
-          allowedRoles: ["ADMIN", "OWNER"],
-        },
-        {
-          title: "News",
-          href: `${basePath}/content/news`,
-          icon: Newspaper,
           allowedRoles: ["ADMIN", "OWNER"],
         },
       ],
@@ -187,7 +174,7 @@ export const getFestivalDashboardSidebarConfig = (
           icon: Edit,
           allowedRoles: ["ADMIN", "OWNER"],
         },
-         {
+        {
           title: "QR Codes",
           href: `${basePath}/pre-works/qr-codes`,
           icon: QrCode,
@@ -211,7 +198,18 @@ export const getFestivalDashboardSidebarConfig = (
           icon: CalendarDays,
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
         },
-       
+        {
+          title: "Gallery",
+          href: `${basePath}/content/gallery`,
+          icon: Image,
+          allowedRoles: ["ADMIN", "OWNER"],
+        },
+        {
+          title: "News",
+          href: `${basePath}/content/news`,
+          icon: Newspaper,
+          allowedRoles: ["ADMIN", "OWNER"],
+        },
       ],
     },
 
@@ -219,34 +217,28 @@ export const getFestivalDashboardSidebarConfig = (
       title: "Event Works", // Renamed from "On-Event Works"
       items: [
         {
-          title: "Marks",
+          title: "Reporting",
+          href: `${basePath}/event-works/reporting`,
+          icon: CheckCircle,
+          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"] as FestivalRole[],
+        },
+        {
+          title: "Judgment",
           href: `${basePath}/event-works/marks`,
-          icon: ClipboardList,
-          allowedRoles: [
-            "ADMIN",
-            "OWNER",
-            "ANNOUNCER",
-          ] as FestivalRole[],
+          icon: Gavel,
+          allowedRoles: ["ADMIN", "OWNER", "ANNOUNCER"] as FestivalRole[],
         },
         {
           title: "Results",
           href: `${basePath}/event-works/results`,
           icon: ListChecks,
-          allowedRoles: [
-            "ADMIN",
-            "OWNER",
-            "ANNOUNCER",
-          ] as FestivalRole[],
+          allowedRoles: ["ADMIN", "OWNER", "ANNOUNCER"] as FestivalRole[],
         },
         {
           title: "Leaderboard",
           href: `${basePath}/event-works/leaderboard`,
           icon: Trophy,
-          allowedRoles: [
-            "ADMIN",
-            "OWNER",
-            "ANNOUNCER",
-          ] as FestivalRole[],
+          allowedRoles: ["ADMIN", "OWNER", "ANNOUNCER"] as FestivalRole[],
         },
         {
           title: "Analytics",

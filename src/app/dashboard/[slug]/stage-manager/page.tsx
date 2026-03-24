@@ -1,9 +1,16 @@
-import { notFound } from "next/navigation";
+import { Calendar, CheckCircle2, Megaphone, Mic2 } from "lucide-react";
 import Link from "next/link";
-import { Calendar, Megaphone, Mic2 } from "lucide-react";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getFestivalContext } from "@/server/services/festival-context.service";
+import { notFound } from "next/navigation";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { getSession } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
+import { getFestivalContext } from "@/server/services/festival-context.service";
+import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
 
 export default async function StageManagerOverviewPage({
   params,
@@ -20,71 +27,125 @@ export default async function StageManagerOverviewPage({
 
   if (!context || context.role !== "STAGE_MANAGER") notFound();
 
+  const festival = await prisma.festival.findUnique({
+    where: { slug },
+    select: { tier: true },
+  });
+  const canStages = festival
+    ? await getEffectiveFeatureEnabled(festival.tier, "stageManagement")
+    : false;
+  const canSchedule = festival
+    ? await getEffectiveFeatureEnabled(festival.tier, "schedule")
+    : false;
+
   const basePath = `/dashboard/${slug}`;
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Stage Manager Overview</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+          Stage Manager Overview
+        </h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Manage stages and view the schedule for your festival.
+          Manage stages and view the schedule for your festival (Standard plan
+          and above).
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Link href={`${basePath}/pre-works/stage-management`}>
-          <Card className="h-full transition-colors hover:bg-muted/50">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {!canStages && !canSchedule ? (
+          <Card className="md:col-span-2 lg:col-span-4 border-muted">
             <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <Megaphone className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <CardTitle>Stage Management</CardTitle>
-                  <CardDescription>
-                    Manage stages and programme flow for the event.
-                  </CardDescription>
-                </div>
-              </div>
+              <CardTitle className="text-base">
+                Standard plan required
+              </CardTitle>
+              <CardDescription>
+                Stage management, schedule, sessions, and programme reporting
+                are included on Standard and Pro. Upgrade this festival to
+                access these tools.
+              </CardDescription>
             </CardHeader>
           </Card>
-        </Link>
+        ) : null}
+        {canStages ? (
+          <Link href={`${basePath}/pre-works/stage-management`}>
+            <Card className="h-full transition-colors hover:bg-muted/50">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Megaphone className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle>Stage Management</CardTitle>
+                    <CardDescription>
+                      Manage stages and programme flow for the event.
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+          </Link>
+        ) : null}
 
-        <Link href={`${basePath}/pre-works/schedule`}>
-          <Card className="h-full transition-colors hover:bg-muted/50">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <Calendar className="h-6 w-6 text-primary" />
+        {canSchedule ? (
+          <Link href={`${basePath}/pre-works/schedule`}>
+            <Card className="h-full transition-colors hover:bg-muted/50">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Calendar className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle>Schedule</CardTitle>
+                    <CardDescription>
+                      View programme slots and session times.
+                    </CardDescription>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle>Schedule</CardTitle>
-                  <CardDescription>
-                    View programme slots and session times.
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
-        </Link>
+              </CardHeader>
+            </Card>
+          </Link>
+        ) : null}
 
-        <Link href={`${basePath}/pre-works/sessions`}>
-          <Card className="h-full transition-colors hover:bg-muted/50">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <Mic2 className="h-6 w-6 text-primary" />
+        {canSchedule ? (
+          <Link href={`${basePath}/pre-works/sessions`}>
+            <Card className="h-full transition-colors hover:bg-muted/50">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Mic2 className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle>Sessions</CardTitle>
+                    <CardDescription>
+                      Create and manage talks, ceremonies, and sessions.
+                    </CardDescription>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle>Sessions</CardTitle>
-                  <CardDescription>
-                    Create and manage talks, ceremonies, and sessions.
-                  </CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
+        ) : null}
+
+        {canSchedule ? (
+          <Link href={`${basePath}/event-works/reporting`}>
+            <Card className="h-full transition-colors hover:bg-muted/50">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <CheckCircle2 className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle>Programme Reporting</CardTitle>
+                    <CardDescription>
+                      Start reporting, mark participants, and close sessions.
+                    </CardDescription>
+                  </div>
                 </div>
-              </div>
-            </CardHeader>
-          </Card>
-        </Link>
+              </CardHeader>
+            </Card>
+          </Link>
+        ) : null}
       </div>
     </div>
   );

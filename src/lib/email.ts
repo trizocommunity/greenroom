@@ -125,3 +125,47 @@ export async function sendTeamLeaderOtpEmail(
     );
   }
 }
+
+export async function sendPlainFestivalEmail(
+  to: string,
+  subject: string,
+  message: string,
+): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn("[EMAIL] RESEND_API_KEY not set. Plain email (dev only):", {
+      to,
+      subject,
+      message,
+    });
+    return;
+  }
+
+  const { error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <body style="font-family: 'Outfit', sans-serif; background: #0a0a0a; color: #e5e7eb; padding: 40px;">
+          <div style="max-width: 560px; margin: 0 auto; background: #111827; border-radius: 12px; padding: 32px; border: 1px solid #1f2937;">
+            <h1 style="font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 12px;">
+              ${subject}
+            </h1>
+            <p style="color: #d1d5db; font-size: 14px; line-height: 1.6;">
+              ${message}
+            </p>
+          </div>
+        </body>
+      </html>
+    `,
+  });
+
+  if (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[EMAIL] Failed to send plain festival email (dev fallback):", error);
+      return;
+    }
+    throw new Error("Email delivery failed.");
+  }
+}

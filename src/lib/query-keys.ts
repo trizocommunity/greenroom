@@ -98,6 +98,11 @@ export const queryKeys = {
     notifications: (userId?: string) =>
       ["support", "notifications", { userId }] as const,
   },
+  programmeNotifications: {
+    all: () => ["programmeNotifications"] as const,
+    student: (studentId: string) =>
+      ["programmeNotifications", "student", studentId] as const,
+  },
 
   /**
    * Audit Logs

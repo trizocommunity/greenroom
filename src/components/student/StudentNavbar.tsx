@@ -123,14 +123,16 @@ export function StudentNavbar({
           </div>
 
           {/* Notification icon only (no implementation required). */}
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-9 w-9 rounded-full"
-            aria-label="Notifications"
-          >
-            <Bell className="h-4 w-4" />
-          </Button>
+          <Link href={isTeamLeader ? `${linkBase}/leader/notifications` : `${linkBase}/notifications`}>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9 rounded-full"
+              aria-label="Notifications"
+            >
+              <Bell className="h-4 w-4" />
+            </Button>
+          </Link>
           <Link className="lg:hidden" href={studentMainHref}>
             <Button
               variant="outline"

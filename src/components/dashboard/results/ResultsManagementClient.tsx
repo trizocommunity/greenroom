@@ -1,34 +1,39 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition, useMemo } from "react";
 import {
-  Plus,
-  Eye,
-  Check,
-  Filter,
-  Sparkles,
-  Award,
-  Search,
-  X,
-  Pencil,
-  Trash2,
-  Users,
-  Lock,
-  Unlock,
-  Medal,
-  Trophy,
   AlertCircle,
+  Award,
+  Check,
   CheckCircle2,
+  Eye,
+  Filter,
   Loader2,
+  Lock,
+  Medal,
   MoreVertical,
+  Pencil,
+  Plus,
+  Search,
+  Sparkles,
+  Trash2,
+  Trophy,
+  Unlock,
+  Users,
+  X,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
+import { toast } from "sonner";
+import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-} from "@/components/ui/card";
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +42,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -54,34 +66,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
-import {
-  saveResult,
-  deleteResult,
-  bulkPublishProgrammeResults,
-} from "@/server/actions/results";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 import {
   calculateGrade,
   calculatePosition,
   getGradeBadgeColor,
 } from "@/lib/results-calculator";
 import { cn } from "@/lib/utils";
-import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
+import {
+  bulkPublishProgrammeResults,
+  deleteResult,
+  saveResult,
+} from "@/server/actions/results";
 
 type Programme = {
   id: string;
@@ -134,7 +130,7 @@ interface ResultsManagementClientProps {
   children?: React.ReactNode;
 }
 
-// Marks entry mode: Basic = manual entry (this UI). Standard/Pro = shareable link
+// Judgment entry mode: Basic = manual entry (this UI). Standard/Pro = shareable link
 // for external marking; code-letter system used there for real-time programme reporting.
 
 // Helper to identify teams
@@ -178,14 +174,28 @@ export function ResultsManagementClient({
   const [scores, setScores] = useState<Record<string, number>>({});
   const [isPending, startTransition] = useTransition();
   const [viewProgramme, setViewProgramme] = useState<Programme | null>(null);
-  const [publishingProgrammeId, setPublishingProgrammeId] = useState<string | null>(null);
+  const [publishingProgrammeId, setPublishingProgrammeId] = useState<
+    string | null
+  >(null);
 
   // View details rows for modal (same shape as Results/Leaderboard view details)
   const viewDetailsRows = useMemo(() => {
     if (!viewProgramme) return [];
 
     if (viewProgramme.type === "GROUP") {
-      const teamMap = new Map<string, { assignmentId: string; displayName: string; subText: string; chestNumber: string; grade: string | null; points: number; position: number | null; remarks: string | null }>();
+      const teamMap = new Map<
+        string,
+        {
+          assignmentId: string;
+          displayName: string;
+          subText: string;
+          chestNumber: string;
+          grade: string | null;
+          points: number;
+          position: number | null;
+          remarks: string | null;
+        }
+      >();
       viewProgramme.assignments.forEach((assignment) => {
         if (!assignment.result) return;
         const teamId = getTeamIdentifier(assignment, "GROUP");
@@ -205,7 +215,8 @@ export function ResultsManagementClient({
         }
       });
       return Array.from(teamMap.values()).sort((a, b) => {
-        if (a.position != null && b.position != null) return a.position - b.position;
+        if (a.position != null && b.position != null)
+          return a.position - b.position;
         return (b.points || 0) - (a.points || 0);
       });
     }
@@ -218,7 +229,9 @@ export function ResultsManagementClient({
           assignmentId: assignment.id,
           displayName: assignment.student?.name || "Unknown",
           subText: "",
-          chestNumber: assignment.student?.chestNumber ? `#${assignment.student.chestNumber}` : "",
+          chestNumber: assignment.student?.chestNumber
+            ? `#${assignment.student.chestNumber}`
+            : "",
           grade: result.grade,
           points: result.points,
           position: result.position ?? null,
@@ -226,7 +239,8 @@ export function ResultsManagementClient({
         };
       });
     return details.sort((a, b) => {
-      if (a.position != null && b.position != null) return a.position - b.position;
+      if (a.position != null && b.position != null)
+        return a.position - b.position;
       return (b.points || 0) - (a.points || 0);
     });
   }, [viewProgramme]);
@@ -391,7 +405,13 @@ export function ResultsManagementClient({
     }
 
     return result;
-  }, [programmeStats, searchQuery, filterCategory, filterStatus, filterProgrammeType]);
+  }, [
+    programmeStats,
+    searchQuery,
+    filterCategory,
+    filterStatus,
+    filterProgrammeType,
+  ]);
 
   // PERF: memoized so recalculation only happens when scores or the selected
   // programme changes, not on every keystroke / state update.
@@ -411,7 +431,11 @@ export function ResultsManagementClient({
             ? dbPoints
             : undefined;
 
-      if (finalPoints !== undefined && finalPoints !== null && finalPoints >= 0) {
+      if (
+        finalPoints !== undefined &&
+        finalPoints !== null &&
+        finalPoints >= 0
+      ) {
         teamPointsMap.set(teamId, finalPoints);
       }
     });
@@ -648,11 +672,13 @@ export function ResultsManagementClient({
 
   return (
     <div className="space-y-4">
-      {/* Header row: children left, Enter Marks right — icon only on mobile */}
+      {/* Header row: children left, Enter Judgment right — icon only on mobile */}
       <div className="flex flex-row items-center justify-between gap-4">
         {children ?? (
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Marks</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+              Judgment
+            </h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
               Enter points per programme; grade and rank update automatically.
             </p>
@@ -660,35 +686,44 @@ export function ResultsManagementClient({
         )}
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <HowItWorksButton
-            title="How marks work"
+            title="How judgment works"
             description="Enter points per chest; grade and rank are calculated automatically."
           >
             <p className="text-sm text-muted-foreground">
-              Enter <strong>points</strong> per student. Grade and rank
-              update automatically from the highest entered value.
+              Enter <strong>points</strong> per student. Grade and rank update
+              automatically from the highest entered value.
             </p>
           </HowItWorksButton>
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="gap-2" suppressHydrationWarning disabled={isReadOnly}>
+              <Button
+                size="sm"
+                className="gap-2"
+                suppressHydrationWarning
+                disabled={isReadOnly}
+              >
                 <Plus className="w-4 h-4 sm:mr-0" />
-                <span className="hidden sm:inline">Enter Marks</span>
+                <span className="hidden sm:inline">Enter judgment</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="w-[calc(100%-0.5rem)] sm:w-[calc(100%-2rem)] max-w-3xl max-h-[90dvh] sm:max-h-[90vh] overflow-y-auto p-2.5 sm:p-6 rounded-lg sm:rounded-xl">
               <DialogHeader className="text-left space-y-0.5 sm:space-y-1.5 px-0.5 sm:px-0">
                 <DialogTitle className="text-sm sm:text-lg pr-7 sm:pr-8">
-                  Enter marks
+                  Enter judgment
                 </DialogTitle>
                 <DialogDescription className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-                  Select programme and enter points. Grade and rank update automatically.
+                  Select programme and enter points. Grade and rank update
+                  automatically.
                 </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-3 sm:space-y-4 mt-2 sm:mt-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                   <div className="space-y-1">
-                    <Label htmlFor="modal-category" className="text-xs font-medium">
+                    <Label
+                      htmlFor="modal-category"
+                      className="text-xs font-medium"
+                    >
                       Category
                     </Label>
                     <Select
@@ -696,7 +731,10 @@ export function ResultsManagementClient({
                       onValueChange={handleCategoryChange}
                       disabled={selectedProgramme !== "" && hasAnyPoints}
                     >
-                      <SelectTrigger id="modal-category" className="h-9 sm:h-10 w-full text-sm">
+                      <SelectTrigger
+                        id="modal-category"
+                        className="h-9 sm:h-10 w-full text-sm"
+                      >
                         <SelectValue placeholder="Select category..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -710,7 +748,10 @@ export function ResultsManagementClient({
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor="modal-programme" className="text-xs font-medium">
+                    <Label
+                      htmlFor="modal-programme"
+                      className="text-xs font-medium"
+                    >
                       Programme
                     </Label>
                     <Select
@@ -721,7 +762,10 @@ export function ResultsManagementClient({
                         filteredModalProgrammes.length === 0
                       }
                     >
-                      <SelectTrigger id="modal-programme" className="h-9 sm:h-10 w-full text-sm">
+                      <SelectTrigger
+                        id="modal-programme"
+                        className="h-9 sm:h-10 w-full text-sm"
+                      >
                         <SelectValue
                           placeholder={
                             !selectedCategory
@@ -756,7 +800,10 @@ export function ResultsManagementClient({
                             {currentProgramme.name}
                           </h3>
                           {currentProgramme.type === "GROUP" && (
-                            <Badge variant="outline" className="text-[10px] sm:text-xs shrink-0 px-1.5 py-0">
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] sm:text-xs shrink-0 px-1.5 py-0"
+                            >
                               <Users className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
                               Group
                             </Badge>
@@ -771,13 +818,14 @@ export function ResultsManagementClient({
                             ? `${markEntries.length} groups`
                             : `${currentProgramme.assignments.length} chests`}
                           {" · "}
-                          <span className="text-primary/80">Grade & rank auto</span>
+                          <span className="text-primary/80">
+                            Grade & rank auto
+                          </span>
                         </p>
                       </div>
                       {/* Unpublish Control if Published */}
                       {currentProgramme.stats?.status === "published" ||
-                      currentProgramme.stats?.status ===
-                        "partial-published" ? (
+                      currentProgramme.stats?.status === "partial-published" ? (
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 sm:gap-3 sm:ml-auto shrink-0">
                           <div className="flex items-center justify-center text-amber-700 dark:text-amber-400 text-[10px] sm:text-sm font-medium gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-1 bg-amber-100 dark:bg-amber-900/30 rounded-md border border-amber-200 dark:border-amber-700/50">
                             <Lock className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
@@ -788,10 +836,7 @@ export function ResultsManagementClient({
                             variant="outline"
                             className="h-8 sm:h-8 gap-1.5 sm:gap-2 text-xs sm:text-sm border-amber-200 dark:border-amber-700/50 hover:bg-amber-100 dark:hover:bg-amber-900/20 text-amber-700 dark:text-amber-400"
                             onClick={() =>
-                              handlePublishProgramme(
-                                currentProgramme.id,
-                                false,
-                              )
+                              handlePublishProgramme(currentProgramme.id, false)
                             }
                             disabled={isReadOnly || isPending}
                           >
@@ -826,15 +871,17 @@ export function ResultsManagementClient({
                               ? `${assignment.student?.name || "Unknown"}`
                               : null;
                           const groupName =
-                            currentProgramme.type === "GROUP" && assignment.group
+                            currentProgramme.type === "GROUP" &&
+                            assignment.group
                               ? assignment.group.name
                               : null;
                           const displayLabel =
                             currentProgramme.type === "GROUP"
                               ? studentAndTeamLabel || "Group"
                               : `#${chestNumber}`;
-                                const isFilled =
-                                  typeof currentPoints === "number" || currentPoints !== "";
+                          const isFilled =
+                            typeof currentPoints === "number" ||
+                            currentPoints !== "";
 
                           return (
                             <div
@@ -849,18 +896,23 @@ export function ResultsManagementClient({
                               <div className="p-2 sm:p-3 space-y-1 sm:space-y-2">
                                 {currentProgramme.type === "GROUP" ? (
                                   <div className="space-y-0.5 sm:space-y-1">
-                                      {groupName && (
-                                        <p className="text-[9px] sm:text-[10px] text-muted-foreground text-start font-medium truncate">
-                                          {groupName}
-                                        </p>
-                                      )}
+                                    {groupName && (
+                                      <p className="text-[9px] sm:text-[10px] text-muted-foreground text-start font-medium truncate">
+                                        {groupName}
+                                      </p>
+                                    )}
                                     <div className="flex justify-start">
                                       <Badge
                                         variant="outline"
                                         className="font-medium text-[10px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 bg-primary/10 border-primary/30 text-center truncate max-w-full"
                                       >
-                                        <span className="truncate">{displayLabel}</span>
-                                        <span className="text-muted-foreground shrink-0"> +</span>
+                                        <span className="truncate">
+                                          {displayLabel}
+                                        </span>
+                                        <span className="text-muted-foreground shrink-0">
+                                          {" "}
+                                          +
+                                        </span>
                                         <Users className="w-2.5 h-2.5 sm:w-3 sm:h-3 ml-0.5 shrink-0 inline" />
                                       </Badge>
                                     </div>
@@ -889,7 +941,7 @@ export function ResultsManagementClient({
                                         ? "Locked"
                                         : "Pts"
                                     }
-                                          value={currentPoints}
+                                    value={currentPoints}
                                     disabled={
                                       currentProgramme.stats?.status ===
                                         "published" ||
@@ -932,14 +984,21 @@ export function ResultsManagementClient({
 
                     {hasAnyPoints && (
                       <div className="space-y-3 sm:space-y-4 pt-2 border-t mt-3 sm:mt-4">
-                        <Accordion type="single" collapsible className="w-full border rounded-lg bg-muted/20">
+                        <Accordion
+                          type="single"
+                          collapsible
+                          className="w-full border rounded-lg bg-muted/20"
+                        >
                           <AccordionItem value="preview" className="border-0">
                             <AccordionTrigger className="px-2.5 sm:px-4 py-2 sm:py-3 hover:no-underline hover:bg-muted/30 rounded-t-lg data-[state=open]:rounded-b-none text-left">
                               <span className="flex items-center gap-1.5 sm:gap-2 font-medium text-xs sm:text-sm">
                                 <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary shrink-0" />
-                                Preview marks
+                                Preview judgment
                               </span>
-                              <Badge variant="secondary" className="text-[10px] sm:text-xs font-normal shrink-0">
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] sm:text-xs font-normal shrink-0"
+                              >
                                 {groupedPreviewResults.length}
                               </Badge>
                             </AccordionTrigger>
@@ -956,9 +1015,14 @@ export function ResultsManagementClient({
                                   >
                                     <div className="min-w-0 flex-1 flex items-center gap-2">
                                       {currentProgramme.type === "GROUP" ? (
-                                        <Badge variant="outline" className="font-semibold text-xs shrink-0">
+                                        <Badge
+                                          variant="outline"
+                                          className="font-semibold text-xs shrink-0"
+                                        >
                                           <Users className="w-3 h-3 mr-1" />
-                                          <span className="truncate">{result.displayName}</span>
+                                          <span className="truncate">
+                                            {result.displayName}
+                                          </span>
                                         </Badge>
                                       ) : (
                                         <Badge className="font-semibold bg-primary text-xs">
@@ -977,12 +1041,17 @@ export function ResultsManagementClient({
                                         {result.grade}
                                       </Badge>
                                       <Badge
-                                        variant={index < 3 ? "default" : "outline"}
+                                        variant={
+                                          index < 3 ? "default" : "outline"
+                                        }
                                         className={cn(
                                           "font-mono font-semibold text-xs shrink-0",
-                                          index === 0 && "bg-yellow-500 text-yellow-950",
-                                          index === 1 && "bg-gray-400 text-gray-950",
-                                          index === 2 && "bg-orange-600 text-orange-950",
+                                          index === 0 &&
+                                            "bg-yellow-500 text-yellow-950",
+                                          index === 1 &&
+                                            "bg-gray-400 text-gray-950",
+                                          index === 2 &&
+                                            "bg-orange-600 text-orange-950",
                                         )}
                                       >
                                         #{result.position}
@@ -1001,8 +1070,10 @@ export function ResultsManagementClient({
                                       disabled={
                                         isReadOnly ||
                                         isPending ||
-                                        currentProgramme.stats?.status === "published" ||
-                                        currentProgramme.stats?.status === "partial-published"
+                                        currentProgramme.stats?.status ===
+                                          "published" ||
+                                        currentProgramme.stats?.status ===
+                                          "partial-published"
                                       }
                                     >
                                       <Trash2 className="w-4 h-4" />
@@ -1016,86 +1087,112 @@ export function ResultsManagementClient({
                                   <TableHeader>
                                     <TableRow className="bg-muted/50">
                                       <TableHead className="font-semibold">
-                                        {currentProgramme.type === "GROUP" ? "Team" : "Chest"}
+                                        {currentProgramme.type === "GROUP"
+                                          ? "Team"
+                                          : "Chest"}
                                       </TableHead>
-                                      <TableHead className="text-center font-semibold">Points</TableHead>
-                                      <TableHead className="text-center font-semibold">Grade</TableHead>
-                                      <TableHead className="text-center font-semibold">Rank</TableHead>
+                                      <TableHead className="text-center font-semibold">
+                                        Points
+                                      </TableHead>
+                                      <TableHead className="text-center font-semibold">
+                                        Grade
+                                      </TableHead>
+                                      <TableHead className="text-center font-semibold">
+                                        Rank
+                                      </TableHead>
                                       <TableHead className="w-12"></TableHead>
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
-                                    {groupedPreviewResults.map((result, index) => (
-                                      <TableRow
-                                        key={result.teamId}
-                                        className={cn(
-                                          "transition-colors",
-                                          index < 3 && "bg-primary/5",
-                                        )}
-                                      >
-                                        <TableCell>
-                                          {currentProgramme.type === "GROUP" ? (
-                                            <Badge variant="outline" className="font-semibold">
-                                              <Users className="w-3 h-3 mr-1" />
-                                              {result.displayName}
-                                            </Badge>
-                                          ) : (
-                                            <Badge className="font-semibold bg-primary">
-                                              #{result.chestNumber}
-                                            </Badge>
+                                    {groupedPreviewResults.map(
+                                      (result, index) => (
+                                        <TableRow
+                                          key={result.teamId}
+                                          className={cn(
+                                            "transition-colors",
+                                            index < 3 && "bg-primary/5",
                                           )}
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                          <span className="font-mono font-semibold text-primary">
-                                            {result.points}
-                                          </span>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                          <Badge
-                                            className={cn(
-                                              getGradeBadgeColor(result.grade),
-                                              "font-semibold",
+                                        >
+                                          <TableCell>
+                                            {currentProgramme.type ===
+                                            "GROUP" ? (
+                                              <Badge
+                                                variant="outline"
+                                                className="font-semibold"
+                                              >
+                                                <Users className="w-3 h-3 mr-1" />
+                                                {result.displayName}
+                                              </Badge>
+                                            ) : (
+                                              <Badge className="font-semibold bg-primary">
+                                                #{result.chestNumber}
+                                              </Badge>
                                             )}
-                                          >
-                                            {result.grade}
-                                          </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                          <Badge
-                                            variant={index < 3 ? "default" : "outline"}
-                                            className={cn(
-                                              "font-mono font-semibold",
-                                              index === 0 && "bg-yellow-500 text-yellow-950",
-                                              index === 1 && "bg-gray-400 text-gray-950",
-                                              index === 2 && "bg-orange-600 text-orange-950",
-                                            )}
-                                          >
-                                            #{result.position}
-                                          </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                          <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            className="h-8 w-8 text-destructive hover:text-destructive/90 hover:bg-destructive/10"
-                                            onClick={() =>
-                                              handleDeleteResult(
-                                                result.allResultIds,
-                                                result.teamId,
-                                              )
-                                            }
-                                            disabled={
-                                              isReadOnly ||
-                                              isPending ||
-                                              currentProgramme.stats?.status === "published" ||
-                                              currentProgramme.stats?.status === "partial-published"
-                                            }
-                                          >
-                                            <Trash2 className="w-4 h-4" />
-                                          </Button>
-                                        </TableCell>
-                                      </TableRow>
-                                    ))}
+                                          </TableCell>
+                                          <TableCell className="text-center">
+                                            <span className="font-mono font-semibold text-primary">
+                                              {result.points}
+                                            </span>
+                                          </TableCell>
+                                          <TableCell className="text-center">
+                                            <Badge
+                                              className={cn(
+                                                getGradeBadgeColor(
+                                                  result.grade,
+                                                ),
+                                                "font-semibold",
+                                              )}
+                                            >
+                                              {result.grade}
+                                            </Badge>
+                                          </TableCell>
+                                          <TableCell className="text-center">
+                                            <Badge
+                                              variant={
+                                                index < 3
+                                                  ? "default"
+                                                  : "outline"
+                                              }
+                                              className={cn(
+                                                "font-mono font-semibold",
+                                                index === 0 &&
+                                                  "bg-yellow-500 text-yellow-950",
+                                                index === 1 &&
+                                                  "bg-gray-400 text-gray-950",
+                                                index === 2 &&
+                                                  "bg-orange-600 text-orange-950",
+                                              )}
+                                            >
+                                              #{result.position}
+                                            </Badge>
+                                          </TableCell>
+                                          <TableCell>
+                                            <Button
+                                              size="icon"
+                                              variant="ghost"
+                                              className="h-8 w-8 text-destructive hover:text-destructive/90 hover:bg-destructive/10"
+                                              onClick={() =>
+                                                handleDeleteResult(
+                                                  result.allResultIds,
+                                                  result.teamId,
+                                                )
+                                              }
+                                              disabled={
+                                                isReadOnly ||
+                                                isPending ||
+                                                currentProgramme.stats
+                                                  ?.status === "published" ||
+                                                currentProgramme.stats
+                                                  ?.status ===
+                                                  "partial-published"
+                                              }
+                                            >
+                                              <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                          </TableCell>
+                                        </TableRow>
+                                      ),
+                                    )}
                                   </TableBody>
                                 </Table>
                               </div>
@@ -1137,13 +1234,14 @@ export function ResultsManagementClient({
         </div>
       </div>
 
-      {/* Filter bar – highlighted, distinct from marks cards (same as Results page) */}
+      {/* Filter bar – highlighted, distinct from judgment cards (same as Results page) */}
       <div className="rounded-xl border-2 border-primary/20 bg-primary/5 shadow-sm">
         <div className="flex items-center gap-2 px-3 py-2 border-b border-primary/10 bg-primary/10">
           <Filter className="h-4 w-4 text-primary shrink-0" />
           <span className="text-sm font-semibold text-foreground">Filters</span>
           <span className="text-xs text-muted-foreground ml-1">
-            ({filteredTableProgrammes.length} programme{filteredTableProgrammes.length !== 1 ? "s" : ""})
+            ({filteredTableProgrammes.length} programme
+            {filteredTableProgrammes.length !== 1 ? "s" : ""})
           </span>
         </div>
         <div className="p-3 sm:p-4 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
@@ -1180,8 +1278,8 @@ export function ResultsManagementClient({
                       Pending Programmes
                     </DialogTitle>
                     <DialogDescription>
-                      These programmes have assignments but are missing
-                      scores for some or all students.
+                      These programmes have assignments but are missing scores
+                      for some or all students.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="max-h-[60vh] overflow-y-auto space-y-2 mt-4 pr-2">
@@ -1224,7 +1322,7 @@ export function ResultsManagementClient({
                               );
                             }}
                           >
-                            Enter Marks
+                            Enter judgment
                           </Button>
                         </div>
                       </div>
@@ -1299,7 +1397,7 @@ export function ResultsManagementClient({
         </div>
       </div>
 
-      {/* Marks / programme cards */}
+      {/* Judgment / programme cards */}
       {filteredTableProgrammes.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredTableProgrammes.map((prog) => {
@@ -1312,7 +1410,8 @@ export function ResultsManagementClient({
                 key={prog.id}
                 className={cn(
                   "overflow-hidden rounded-xl border border-border/80 transition-all hover:border-primary/25 hover:shadow-md active:scale-[0.99]",
-                  viewProgramme?.id === prog.id && "ring-2 ring-primary border-primary/50 shadow-md",
+                  viewProgramme?.id === prog.id &&
+                    "ring-2 ring-primary border-primary/50 shadow-md",
                 )}
               >
                 {/* Compact category strip */}
@@ -1345,7 +1444,7 @@ export function ResultsManagementClient({
                         className="gap-2 cursor-pointer"
                       >
                         <Pencil className="h-4 w-4" />
-                        Enter marks
+                        Enter judgment
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       {isPublished ? (
@@ -1364,7 +1463,11 @@ export function ResultsManagementClient({
                       ) : (
                         <DropdownMenuItem
                           onClick={() => handlePublishProgramme(prog.id, true)}
-                          disabled={isReadOnly || isPending || prog.stats.enteredScores === 0}
+                          disabled={
+                            isReadOnly ||
+                            isPending ||
+                            prog.stats.enteredScores === 0
+                          }
                           className="gap-2 cursor-pointer text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50 dark:focus:bg-emerald-950/30"
                         >
                           {publishingProgrammeId === prog.id ? (
@@ -1403,7 +1506,10 @@ export function ResultsManagementClient({
                         In progress
                       </Badge>
                     ) : (
-                      <Badge variant="secondary" className="text-xs font-medium text-muted-foreground">
+                      <Badge
+                        variant="secondary"
+                        className="text-xs font-medium text-muted-foreground"
+                      >
                         Not started
                       </Badge>
                     )}
@@ -1488,7 +1594,10 @@ export function ResultsManagementClient({
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-sm">
-                      <Badge variant="secondary" className="font-mono font-semibold">
+                      <Badge
+                        variant="secondary"
+                        className="font-mono font-semibold"
+                      >
                         {row.points} pts
                       </Badge>
                       {row.remarks && (
@@ -1507,7 +1616,9 @@ export function ResultsManagementClient({
                     <TableRow>
                       <TableHead className="w-16">Rank</TableHead>
                       <TableHead>
-                        {viewProgramme?.type === "GROUP" ? "Team" : "Chest & Name"}
+                        {viewProgramme?.type === "GROUP"
+                          ? "Team"
+                          : "Chest & Name"}
                       </TableHead>
                       <TableHead className="text-center">Grade</TableHead>
                       <TableHead className="text-center">Points</TableHead>
@@ -1555,7 +1666,10 @@ export function ResultsManagementClient({
                           </Badge>
                         </TableCell>
                         <TableCell className="text-center">
-                          <Badge variant="secondary" className="font-mono font-semibold">
+                          <Badge
+                            variant="secondary"
+                            className="font-mono font-semibold"
+                          >
                             {row.points} pts
                           </Badge>
                         </TableCell>

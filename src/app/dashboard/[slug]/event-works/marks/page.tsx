@@ -1,14 +1,14 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { ResultsManagementClient } from "@/components/dashboard/results/ResultsManagementClient";
-import { EmptyState } from "@/components/common/EmptyState";
-import { prisma } from "@/lib/db";
-import { filterProgrammesForEventWorks } from "@/server/services/programme-status.service";
 import type { Tier } from "@prisma/client";
 import { Calendar, ClipboardList } from "lucide-react";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { EmptyState } from "@/components/common/EmptyState";
+import { ResultsManagementClient } from "@/components/dashboard/results/ResultsManagementClient";
+import { prisma } from "@/lib/db";
+import { filterProgrammesForEventWorks } from "@/server/services/programme-status.service";
 
 export const metadata: Metadata = {
-  title: "Marks",
+  title: "Judgment",
 };
 
 export default async function MarksPage({
@@ -53,7 +53,7 @@ export default async function MarksPage({
       return (
         <EmptyState
           title="No Assignments Found"
-          description="Marks can only be managed after students are assigned to programmes."
+          description="Judgment can only be recorded after students are assigned to programmes."
           actionLabel="Go to Assignments"
           actionLink={`/dashboard/${slug}/pre-works/assignments`}
           icon={ClipboardList}
@@ -63,7 +63,7 @@ export default async function MarksPage({
     return (
       <EmptyState
         title="No programmes in Event Works yet"
-        description="On Standard and Pro plans, programmes appear here only after they are added to the schedule. Add your programmes to the schedule in Pre-Works to see them in Marks, Results, and Leaderboard."
+        description="On Standard and Pro plans, programmes appear here only after they are added to the schedule. Add your programmes to the schedule in Pre-Works to see them in Judgment, Results, and Leaderboard."
         actionLabel="Go to Schedule"
         actionLink={`/dashboard/${slug}/pre-works/schedule`}
         icon={Calendar}
@@ -81,7 +81,7 @@ export default async function MarksPage({
     return (
       <EmptyState
         title="No Assignments Found"
-        description="Marks can only be managed after students are assigned to programmes."
+        description="Judgment can only be recorded after students are assigned to programmes."
         actionLabel="Go to Assignments"
         actionLink={`/dashboard/${slug}/pre-works/assignments`}
         icon={ClipboardList}
@@ -96,9 +96,10 @@ export default async function MarksPage({
         programmes={eventWorksProgrammes}
         categories={festival.categories}
       >
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Marks</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+          Judgment
+        </h1>
       </ResultsManagementClient>
     </div>
   );
 }
-

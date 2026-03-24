@@ -74,7 +74,11 @@ export async function getAssignmentsAction(festivalId: string) {
   const all = await AssignmentService.getAll(festivalId);
   if (actor.type === "user") return all;
   return all.filter((a: any) => {
-    const groupId = a?.groupId ?? a?.group?.id ?? a?.student?.groupId ?? a?.student?.group?.id;
+    const groupId =
+      a?.groupId ??
+      a?.group?.id ??
+      a?.student?.groupId ??
+      a?.student?.group?.id;
     return groupId === actor.groupId;
   });
 }
@@ -85,6 +89,7 @@ export async function createAssignmentAction(
     programmeId: string;
     studentId?: string;
     groupId?: string;
+    teamNumber?: number;
   },
 ) {
   const actorContext = await resolveAssignmentActorContext(festivalId, {
@@ -208,8 +213,14 @@ export async function deleteAssignmentAction(festivalId: string, id: string) {
       include: { student: true, group: true },
     });
     const assignmentGroupId =
-      assignment?.groupId ?? assignment?.student?.groupId ?? assignment?.group?.id;
-    if (!assignment || assignment.festivalId !== festivalId || assignmentGroupId !== actorContext.groupId) {
+      assignment?.groupId ??
+      assignment?.student?.groupId ??
+      assignment?.group?.id;
+    if (
+      !assignment ||
+      assignment.festivalId !== festivalId ||
+      assignmentGroupId !== actorContext.groupId
+    ) {
       throw new AppError(ERROR_MESSAGES.FORBIDDEN);
     }
   }
@@ -312,7 +323,12 @@ export async function getProgrammeTeamMembersAction(
   const session = await getSession();
   if (session?.userId) {
     await assertFestivalAccess(session, festivalId);
-    return AssignmentService.getTeamMembers(festivalId, programmeId, groupId, teamNumber);
+    return AssignmentService.getTeamMembers(
+      festivalId,
+      programmeId,
+      groupId,
+      teamNumber,
+    );
   }
 
   const tlSession = await getTeamLeaderSessionFromCookie();
@@ -327,5 +343,10 @@ export async function getProgrammeTeamMembersAction(
     throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
   }
 
-  return AssignmentService.getTeamMembers(festivalId, programmeId, groupId, teamNumber);
+  return AssignmentService.getTeamMembers(
+    festivalId,
+    programmeId,
+    groupId,
+    teamNumber,
+  );
 }

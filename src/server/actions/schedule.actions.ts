@@ -7,6 +7,7 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { findFestivalById } from "@/server/models/festival.model";
 import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
+import { ProgrammeReportingService } from "@/server/services/programme-reporting.service";
 import { updateProgrammeStatus } from "@/server/services/programme-status.service";
 import type { ScheduleEntryType, SessionType } from "@prisma/client";
 
@@ -323,6 +324,7 @@ export async function updateScheduleEntry(
   });
 
   if (existing.type === "PROGRAMME") {
+    await ProgrammeReportingService.unlockByScheduleEntryChange(existing.id);
     if (existing.programmeId) await updateProgrammeStatus(existing.programmeId);
     if (
       data.programmeId !== undefined &&
@@ -357,6 +359,9 @@ export async function deleteScheduleEntry(
   if (!festival) return { success: false, error: "Festival not found" };
 
   await prisma.scheduleEntry.delete({ where: { id } });
+  if (entry.type === "PROGRAMME") {
+    await ProgrammeReportingService.unlockByScheduleEntryChange(entry.id);
+  }
 
   if (entry.type === "PROGRAMME" && entry.programmeId) {
     await updateProgrammeStatus(entry.programmeId);

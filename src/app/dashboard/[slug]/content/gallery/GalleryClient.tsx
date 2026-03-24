@@ -262,6 +262,7 @@ export function GalleryClient({
             onChange={openUploadModal}
           />
           <Button
+            size="sm"
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isReadOnly}

@@ -94,7 +94,7 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
               one stage before adding entries to the schedule.
             </p>
           </HowItWorksButton>
-          <Button onClick={handleCreate} className="gap-2" disabled={isReadOnly}>
+          <Button onClick={handleCreate} size="sm" className="gap-2" disabled={isReadOnly}>
             <Plus className="h-4 w-4" />
             Create Stage
           </Button>

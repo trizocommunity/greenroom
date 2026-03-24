@@ -8,8 +8,8 @@ import {
 } from "@/server/models/assignment.model";
 import { findFestivalById } from "@/server/models/festival.model";
 import { findProgrammeById } from "@/server/models/programme.model";
-import { updateProgrammeStatus } from "@/server/services/programme-status.service";
 import { findStudentById } from "@/server/models/student.model";
+import { updateProgrammeStatus } from "@/server/services/programme-status.service";
 
 export const AssignmentService = {
   async getAll(festivalId: string) {
@@ -43,7 +43,14 @@ export const AssignmentService = {
     programmeId: string,
     groupId: string,
     teamNumber: number,
-  ): Promise<{ id: string; name: string; chestNumber?: string | null; categoryName?: string }[]> {
+  ): Promise<
+    {
+      id: string;
+      name: string;
+      chestNumber?: string | null;
+      categoryName?: string;
+    }[]
+  > {
     const assignments = await prisma.programmeAssignment.findMany({
       where: { festivalId, programmeId, groupId, teamNumber },
       include: {
@@ -62,11 +69,18 @@ export const AssignmentService = {
 
   async create(
     festivalId: string,
-    data: { programmeId: string; studentId?: string; groupId?: string },
+    data: {
+      programmeId: string;
+      studentId?: string;
+      groupId?: string;
+      /** Required for GROUP programmes when assigning a student (integer ≥ 1). */
+      teamNumber?: number;
+    },
     actor?: { createdByEmail?: string; createdByName?: string },
   ) {
     const festival = await findFestivalById(festivalId);
-    if (festival?.status === "EXPIRED") throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
+    if (festival?.status === "EXPIRED")
+      throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
 
     const programme = await findProgrammeById(data.programmeId);
     if (!programme || programme.festivalId !== festivalId)
@@ -111,15 +125,40 @@ export const AssignmentService = {
       );
       if (exists) throw new AppError(ERROR_MESSAGES.ASSIGNMENT_ALREADY_EXISTS);
 
+      let teamNumber = 1;
+      if (programme.type === "GROUP") {
+        const tn = data.teamNumber;
+        if (
+          tn === undefined ||
+          tn === null ||
+          !Number.isInteger(tn) ||
+          tn < 1
+        ) {
+          throw new AppError(
+            "Group programmes require a team number (integer ≥ 1) when assigning a student.",
+          );
+        }
+        teamNumber = tn;
+      } else if (
+        data.teamNumber != null &&
+        Number.isInteger(data.teamNumber) &&
+        data.teamNumber >= 1
+      ) {
+        teamNumber = data.teamNumber;
+      }
+
       const created = await createAssignment({
         festival: { connect: { id: festivalId } },
         programme: { connect: { id: data.programmeId } },
         student: { connect: { id: data.studentId } },
+        teamNumber,
         ...(student.groupId
           ? { group: { connect: { id: student.groupId } } }
           : {}),
         assignedAt: new Date(),
-        ...(actor?.createdByEmail ? { createdByEmail: actor.createdByEmail } : {}),
+        ...(actor?.createdByEmail
+          ? { createdByEmail: actor.createdByEmail }
+          : {}),
         ...(actor?.createdByName ? { createdByName: actor.createdByName } : {}),
       });
       await updateProgrammeStatus(data.programmeId);
@@ -131,7 +170,9 @@ export const AssignmentService = {
       programme: { connect: { id: data.programmeId } },
       group: { connect: { id: data.groupId } },
       assignedAt: new Date(),
-      ...(actor?.createdByEmail ? { createdByEmail: actor.createdByEmail } : {}),
+      ...(actor?.createdByEmail
+        ? { createdByEmail: actor.createdByEmail }
+        : {}),
       ...(actor?.createdByName ? { createdByName: actor.createdByName } : {}),
     });
     await updateProgrammeStatus(data.programmeId);
@@ -144,7 +185,8 @@ export const AssignmentService = {
     data: { programmeId?: string; studentId?: string; groupId?: string },
   ) {
     const festival = await findFestivalById(festivalId);
-    if (festival?.status === "EXPIRED") throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
+    if (festival?.status === "EXPIRED")
+      throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
 
     const existing = await prisma.programmeAssignment.findUnique({
       where: { id },
@@ -182,7 +224,10 @@ export const AssignmentService = {
         newProgrammeId !== existing.programmeId ||
         newStudentId !== existing.studentId
       ) {
-        const exists = await checkAssignmentExists(newProgrammeId, newStudentId);
+        const exists = await checkAssignmentExists(
+          newProgrammeId,
+          newStudentId,
+        );
         if (exists) {
           const conflict = await prisma.programmeAssignment.findUnique({
             where: {
@@ -276,7 +321,8 @@ export const AssignmentService = {
     actor?: { createdByEmail?: string; createdByName?: string },
   ) {
     const festival = await findFestivalById(festivalId);
-    if (festival?.status === "EXPIRED") throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
+    if (festival?.status === "EXPIRED")
+      throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
 
     const created = await prisma.$transaction(
       async (tx) => {
@@ -356,7 +402,25 @@ export const AssignmentService = {
           const processedStudentIds = new Set<string>();
 
           for (const assignment of progAssignments) {
-            const { studentId, teamNumber = 1 } = assignment;
+            const { studentId } = assignment;
+            let teamNumber: number;
+            if (programme.type === "GROUP") {
+              const tn = assignment.teamNumber;
+              if (
+                tn === undefined ||
+                tn === null ||
+                !Number.isInteger(tn) ||
+                tn < 1
+              ) {
+                throw new AppError(
+                  "Group programme assignments require an explicit integer team number (1 or higher) for each student.",
+                );
+              }
+              teamNumber = tn;
+            } else {
+              const tn = assignment.teamNumber ?? 1;
+              teamNumber = Number.isInteger(tn) && tn >= 1 ? tn : 1;
+            }
             const student = studentMap.get(studentId);
 
             if (!student || student.festivalId !== festivalId) {
@@ -425,8 +489,12 @@ export const AssignmentService = {
                 studentId,
                 teamNumber,
                 assignedAt: new Date(),
-                  ...(actor?.createdByEmail ? { createdByEmail: actor.createdByEmail } : {}),
-                  ...(actor?.createdByName ? { createdByName: actor.createdByName } : {}),
+                ...(actor?.createdByEmail
+                  ? { createdByEmail: actor.createdByEmail }
+                  : {}),
+                ...(actor?.createdByName
+                  ? { createdByName: actor.createdByName }
+                  : {}),
                 ...(student.groupId ? { groupId: student.groupId } : {}),
               },
             });

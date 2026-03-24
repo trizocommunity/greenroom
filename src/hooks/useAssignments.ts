@@ -2,12 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { queryKeys } from "@/lib/query-keys";
 import {
+  bulkCreateAssignmentAction,
   createAssignmentAction,
   deleteAssignmentAction,
   deleteTeamAssignmentAction,
   getAssignmentsAction,
   updateAssignmentAction,
-  bulkCreateAssignmentAction,
 } from "@/server/actions/assignment.actions";
 
 const STALE_TIME_MS = 2 * 60 * 1000;
@@ -29,12 +29,15 @@ export function useAssignments(festivalId: string) {
       programmeId: string;
       studentId?: string;
       groupId?: string;
+      teamNumber?: number;
     }) => {
       const result = await createAssignmentAction(festivalId, data);
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.assignments.list(festivalId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.assignments.list(festivalId),
+      });
       toast.success("Assignment created successfully");
     },
     onError: (error: any) => {
@@ -48,7 +51,9 @@ export function useAssignments(festivalId: string) {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.assignments.list(festivalId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.assignments.list(festivalId),
+      });
       toast.success("Assignment deleted successfully");
     },
     onError: (error: any) => {
@@ -74,7 +79,9 @@ export function useAssignments(festivalId: string) {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.assignments.list(festivalId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.assignments.list(festivalId),
+      });
       toast.success("Team removed from programme");
     },
     onError: (error: any) => {
@@ -87,7 +94,9 @@ export function useAssignments(festivalId: string) {
       return updateAssignmentAction(festivalId, id, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.assignments.list(festivalId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.assignments.list(festivalId),
+      });
       toast.success("Assignment updated successfully");
     },
     onError: (error: any) => {

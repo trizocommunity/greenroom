@@ -204,7 +204,7 @@ export function NewsClient({
               views.
             </p>
           </HowItWorksButton>
-          <Button onClick={openCreate} disabled={isReadOnly}>
+          <Button size="sm" onClick={openCreate} disabled={isReadOnly}>
             <Plus className="h-4 w-4 sm:mr-2" />
             Create news
           </Button>
@@ -308,7 +308,7 @@ export function NewsClient({
             <p className="text-sm text-muted-foreground mt-1 max-w-sm">
               Create a post to show on your public news page. Add a title, content, and optional image.
             </p>
-            <Button variant="outline" className="mt-6" onClick={openCreate} disabled={isReadOnly}>
+            <Button size="sm" variant="outline" className="mt-6" onClick={openCreate} disabled={isReadOnly}>
               <Plus className="h-4 w-4 mr-2" />
               Create news
             </Button>
@@ -349,11 +349,12 @@ export function NewsClient({
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setViewDetailsPost(null)}>
+            <Button size="sm" variant="outline" onClick={() => setViewDetailsPost(null)}>
               Close
             </Button>
             {viewDetailsPost && !isReadOnly && (
               <Button
+                size="sm"
                 onClick={() => {
                   setViewDetailsPost(null);
                   openEdit(viewDetailsPost);
@@ -465,10 +466,10 @@ export function NewsClient({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+            <Button size="sm" variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={saving || isReadOnly}>
+            <Button size="sm" onClick={handleSave} disabled={saving || isReadOnly}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {editingId ? "Update" : "Create"}
             </Button>

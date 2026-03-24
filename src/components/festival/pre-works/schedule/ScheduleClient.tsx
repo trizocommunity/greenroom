@@ -288,6 +288,7 @@ export function ScheduleClient({
             </p>
           </HowItWorksButton>
           <Button
+            size="sm"
             onClick={() => {
               if (isReadOnly) {
                 toast.error("Festival is read-only.");

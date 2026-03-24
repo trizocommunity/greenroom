@@ -85,9 +85,12 @@ export function FestivalDashboardSidebar({
         // Content
         if (item.title === "Gallery" && !features.canManageGallery)
           return false;
-        if (item.title === "News" && !features.canManageNews)
-          return false;
+        if (item.title === "News" && !features.canManageNews) return false;
         if (item.title === "Sessions" && !features.canManageSchedule)
+          return false;
+
+        // Programme reporting (Standard+): same gate as schedule / stage activities
+        if (item.title === "Reporting" && !features.canManageSchedule)
           return false;
 
         return true;

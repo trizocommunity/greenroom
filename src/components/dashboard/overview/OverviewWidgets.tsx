@@ -1,32 +1,33 @@
+import type { Festival } from "@prisma/client";
 import { format } from "date-fns";
 import {
-  Building2,
-  LayoutList,
-  Users,
   ArrowRight,
-  LayoutDashboard,
-  UserPlus,
-  List,
-  FileText,
-  Settings,
-  Settings2,
-  Mic,
-  Trophy,
-  ClipboardList,
-  ClipboardCheck,
-  QrCode,
-  Calendar,
   BarChart2,
   BookOpen,
+  Building2,
+  Calendar,
+  ClipboardCheck,
+  FileText,
+  Gavel,
+  LayoutDashboard,
+  LayoutList,
   LifeBuoy,
+  List,
+  Mic,
+  QrCode,
+  Settings,
+  Trophy,
+  UserPlus,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
+import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import {
   Tooltip,
@@ -34,12 +35,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { FeaturePath } from "@/lib/features";
+import { getResolvedTier } from "@/lib/tier";
 import { getDashboardOverviewData } from "@/server/models/festival.model";
 import { getEffectivePlanFeatureMatrix } from "@/server/services/plan-features.service";
-import { getResolvedTier } from "@/lib/tier";
-import type { Festival } from "@prisma/client";
-import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
-import type { FeaturePath } from "@/lib/features";
 
 interface OverviewWidgetsProps {
   festival: Festival;
@@ -120,20 +119,14 @@ export default async function OverviewWidgets({
       condition: planFeature(features, "schedule"),
     },
     {
-      label: "Program Control",
-      icon: Settings2,
-      href: `/dashboard/${slug}/event-works/marks`,
-      condition: planFeature(features, "results"),
-    },
-    {
       label: "Stages",
       icon: Mic,
       href: `/dashboard/${slug}/pre-works/stage-management`,
       condition: planFeature(features, "stageManagement"),
     },
     {
-      label: "Marks",
-      icon: ClipboardList,
+      label: "Judgment",
+      icon: Gavel,
       href: `/dashboard/${slug}/event-works/marks`,
       condition: planFeature(features, "results"),
     },
@@ -240,21 +233,21 @@ export default async function OverviewWidgets({
                           <p>{prog.name}</p>
                         </TooltipContent>
                       </Tooltip>
-                        <p className="text-xs text-muted-foreground truncate max-w-[160px]">
-                          {prog.category.name}
-                        </p>
+                      <p className="text-xs text-muted-foreground truncate max-w-[160px]">
+                        {prog.category.name}
+                      </p>
                     </div>
-                      <div className="flex items-center flex-col">
-                        {prog.status && (
-                          <ProgrammeStatusBadge
+                    <div className="flex items-center flex-col">
+                      {prog.status && (
+                        <ProgrammeStatusBadge
                           status={prog.status}
                           className="text-[10px]"
-                          />
-                        )}
-                        <p className="text-[12px] text-muted-foreground shrink-0">
-                          {format(new Date(prog.createdAt), "dd/MM/yyyy")}
-                        </p>
-                        </div>
+                        />
+                      )}
+                      <p className="text-[12px] text-muted-foreground shrink-0">
+                        {format(new Date(prog.createdAt), "dd/MM/yyyy")}
+                      </p>
+                    </div>
                   </div>
                 ))}
                 {overviewData.recentProgrammes.length === 0 && (
@@ -328,9 +321,7 @@ export default async function OverviewWidgets({
           <Card className="flex flex-col">
             <CardHeader>
               <CardTitle>Recent Results</CardTitle>
-              <CardDescription>
-                Programme, category and date
-              </CardDescription>
+              <CardDescription>Programme, category and date</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col flex-1">
               <div className="space-y-3 pr-2">
@@ -364,7 +355,10 @@ export default async function OverviewWidgets({
                       </div>
                       <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
                         {programme.latestResultAt
-                          ? format(new Date(programme.latestResultAt), "dd/MM/yyyy")
+                          ? format(
+                              new Date(programme.latestResultAt),
+                              "dd/MM/yyyy",
+                            )
                           : "—"}
                       </span>
                     </div>
