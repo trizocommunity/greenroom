@@ -42,6 +42,8 @@ export const ERROR_MESSAGES = {
     "The selected category does not belong to this festival.",
   STUDENT_EMAIL_DUPLICATE:
     "A student with this email is already registered for this festival.",
+  STUDENT_NAME_DUPLICATE:
+    "A student with this name already exists in this festival.",
   STUDENT_GROUP_MISSING:
     "Please select or create a group before adding students.",
   STUDENT_CATEGORY_MISSING:
@@ -78,10 +80,10 @@ export const ERROR_MESSAGES = {
     "The student's category does not match the programme's category.",
   ASSIGNMENT_ALREADY_EXISTS:
     "This student is already assigned to this programme.",
-  ASSIGNMENT_DEADLINE_PASSED: "The programme assignment deadline has passed.",
+  ASSIGNMENT_DEADLINE_PASSED: "Deadline passed. Assignments are closed.",
   ASSIGNMENT_DEPENDENCIES_MISSING:
     "Please create categories, groups, programmes, and students before making assignments.",
-  ASSIGNMENT_DEADLINE_PASSED_ADMIN: "The deadline has passed.",
+  ASSIGNMENT_DEADLINE_PASSED_ADMIN: "Deadline passed. Assignments are closed.",
 
   // ─── Usage / Limits ───────────────────────────────────────────────────────
   USAGE_LIMIT_EXCEEDED:

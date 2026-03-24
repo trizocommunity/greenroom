@@ -63,6 +63,7 @@ export const AssignmentService = {
   async create(
     festivalId: string,
     data: { programmeId: string; studentId?: string; groupId?: string },
+    actor?: { createdByEmail?: string; createdByName?: string },
   ) {
     const festival = await findFestivalById(festivalId);
     if (festival?.status === "EXPIRED") throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
@@ -118,6 +119,8 @@ export const AssignmentService = {
           ? { group: { connect: { id: student.groupId } } }
           : {}),
         assignedAt: new Date(),
+        ...(actor?.createdByEmail ? { createdByEmail: actor.createdByEmail } : {}),
+        ...(actor?.createdByName ? { createdByName: actor.createdByName } : {}),
       });
       await updateProgrammeStatus(data.programmeId);
       return created;
@@ -128,6 +131,8 @@ export const AssignmentService = {
       programme: { connect: { id: data.programmeId } },
       group: { connect: { id: data.groupId } },
       assignedAt: new Date(),
+      ...(actor?.createdByEmail ? { createdByEmail: actor.createdByEmail } : {}),
+      ...(actor?.createdByName ? { createdByName: actor.createdByName } : {}),
     });
     await updateProgrammeStatus(data.programmeId);
     return created;
@@ -268,6 +273,7 @@ export const AssignmentService = {
       studentId: string;
       teamNumber?: number;
     }[],
+    actor?: { createdByEmail?: string; createdByName?: string },
   ) {
     const festival = await findFestivalById(festivalId);
     if (festival?.status === "EXPIRED") throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
@@ -419,6 +425,8 @@ export const AssignmentService = {
                 studentId,
                 teamNumber,
                 assignedAt: new Date(),
+                  ...(actor?.createdByEmail ? { createdByEmail: actor.createdByEmail } : {}),
+                  ...(actor?.createdByName ? { createdByName: actor.createdByName } : {}),
                 ...(student.groupId ? { groupId: student.groupId } : {}),
               },
             });

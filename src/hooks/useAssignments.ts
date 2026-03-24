@@ -117,6 +117,8 @@ export function useAssignments(festivalId: string) {
   return {
     assignments: query.data || [],
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    refetch: query.refetch,
     createAssignment: createMutation.mutateAsync,
     isCreating: createMutation.isPending,
     updateAssignment: updateMutation.mutateAsync,

@@ -38,6 +38,9 @@ export default async function ProgrammesPage({
   const studentCount = await prisma.student.count({
     where: { festivalId: festival.id },
   });
+  const groupCount = await prisma.group.count({
+    where: { festivalId: festival.id },
+  });
 
   if (studentCount === 0) {
     return (
@@ -53,7 +56,11 @@ export default async function ProgrammesPage({
 
   return (
     <div className="pt-4 sm:pt-6">
-      <ProgrammesClient festivalId={festival.id} festivalTier={festival.tier}>
+      <ProgrammesClient
+        festivalId={festival.id}
+        festivalTier={festival.tier}
+        groupCount={groupCount}
+      >
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Programmes</h1>
       </ProgrammesClient>
     </div>

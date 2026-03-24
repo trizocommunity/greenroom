@@ -39,6 +39,11 @@ interface LeaderboardClientProps {
   publishedStandings?: any[];
   categories?: { id: string; name: string; type?: string }[];
   groups?: { id: string; name: string }[];
+  defaultStudentFilterCategory?: string;
+  defaultStudentFilterGroup?: string;
+  hideStudentFilters?: boolean;
+  readOnly?: boolean;
+  hideLiveStandings?: boolean;
   children?: React.ReactNode;
 }
 
@@ -48,21 +53,35 @@ export function LeaderboardClient({
   publishedStandings = [],
   categories = [],
   groups = [],
+  defaultStudentFilterCategory,
+  defaultStudentFilterGroup,
+  hideStudentFilters = false,
+  readOnly = false,
+  hideLiveStandings = false,
   children,
 }: LeaderboardClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [studentFilterCategory, setStudentFilterCategory] = useState<string>("all");
-  const [studentFilterGroup, setStudentFilterGroup] = useState<string>("all");
+  const [studentFilterCategory, setStudentFilterCategory] = useState<string>(
+    defaultStudentFilterCategory ?? "all",
+  );
+  const [studentFilterGroup, setStudentFilterGroup] = useState<string>(
+    defaultStudentFilterGroup ?? "all",
+  );
 
   // --- Leaderboard Calculation (Live Preview) ---
   const teamStandings = useMemo(() => {
+    const scopedResults =
+      studentFilterGroup === "all"
+        ? results
+        : results.filter((r: any) => r?.assignment?.group?.id === studentFilterGroup);
+
     const standings: Record<
       string,
       { name: string; points: number; isGroup: boolean }
     > = {};
 
-    results.forEach((r) => {
+    scopedResults.forEach((r) => {
       let teamName = "Unknown";
       let isGroup = false;
 
@@ -94,7 +113,7 @@ export function LeaderboardClient({
     return Object.values(standings)
       .sort((a, b) => b.points - a.points)
       .map((team, index) => ({ ...team, rank: index + 1 }));
-  }, [results]);
+  }, [results, studentFilterGroup]);
 
   // Top students by points (published results only), filterable by category and group.
   // Only count points from INDIVIDUAL programmes; exclude GROUP programme points.
@@ -159,6 +178,14 @@ export function LeaderboardClient({
     setStudentFilterGroup("all");
   };
 
+  const publishedStandingsFiltered = useMemo(() => {
+    if (!groups?.length) return publishedStandings;
+    if (studentFilterGroup === "all") return publishedStandings;
+    const groupName = groups.find((g) => g.id === studentFilterGroup)?.name;
+    if (!groupName) return [];
+    return (publishedStandings ?? []).filter((t: any) => t?.name === groupName);
+  }, [groups, publishedStandings, studentFilterGroup]);
+
   const [updatingStandingsId, setUpdatingStandingsId] = useState<string | null>(
     null,
   );
@@ -175,119 +202,126 @@ export function LeaderboardClient({
             </p>
           </div>
         )}
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <HowItWorksButton
-            title="How Leaderboard works"
-            description="Team standings from published programme results."
-          >
-            <p className="text-sm text-muted-foreground">
-              <strong>Live Standings</strong> show the current totals from all
-              published programme results. They update as you publish or
-              unpublish results from the Marks page.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              <strong>Publish Standings</strong> copies the live snapshot to the
-              public festival page so visitors can see the leaderboard.
-            </p>
-          </HowItWorksButton>
-          <Button
-            variant="default"
-            size="sm"
-            className="gap-2 bg-green-600 hover:bg-green-700"
-            onClick={() => {
-              setUpdatingStandingsId("standings");
-              startTransition(async () => {
-                try {
-                  const res = await publishTeamStandings(
-                    festival.id,
-                    teamStandings,
-                    festival.slug,
-                  );
-                  if (res.success) {
-                    toast.success(
-                      "Team Standings published to public page",
+        {!readOnly ? (
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <HowItWorksButton
+              title="How Leaderboard works"
+              description="Team standings from published programme results."
+            >
+              <p className="text-sm text-muted-foreground">
+                <strong>Live Standings</strong> show the current totals from all
+                published programme results. They update as you publish or
+                unpublish results from the Marks page.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                <strong>Publish Standings</strong> copies the live snapshot to the
+                public festival page so visitors can see the leaderboard.
+              </p>
+            </HowItWorksButton>
+            <Button
+              variant="default"
+              size="sm"
+              className="gap-2 bg-green-600 hover:bg-green-700"
+              onClick={() => {
+                setUpdatingStandingsId("standings");
+                startTransition(async () => {
+                  try {
+                    const res = await publishTeamStandings(
+                      festival.id,
+                      teamStandings,
+                      festival.slug,
                     );
-                    router.refresh();
-                  } else {
-                    toast.error("Failed to publish standings");
+                    if (res.success) {
+                      toast.success("Team Standings published to public page");
+                      router.refresh();
+                    } else {
+                      toast.error("Failed to publish standings");
+                    }
+                  } finally {
+                    setUpdatingStandingsId(null);
                   }
-                } finally {
-                  setUpdatingStandingsId(null);
-                }
-              });
-            }}
-            disabled={isPending}
-            title="Publish Standings"
-          >
-            {isPending && updatingStandingsId === "standings" ? (
-              <Loader2 className="w-4 h-4 sm:mr-0 shrink-0 animate-spin" />
-            ) : (
-              <CheckCircle2 className="w-4 h-4 sm:mr-0 shrink-0" />
-            )}
-            <span className="hidden sm:inline">Publish Standings</span>
-          </Button>
-        </div>
+                });
+              }}
+              disabled={isPending}
+              title="Publish Standings"
+            >
+              {isPending && updatingStandingsId === "standings" ? (
+                <Loader2 className="w-4 h-4 sm:mr-0 shrink-0 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 sm:mr-0 shrink-0" />
+              )}
+              <span className="hidden sm:inline">Publish Standings</span>
+            </Button>
+          </div>
+        ) : null}
       </div>
 
       {/* Standings: Live + Published */}
       <section className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-4",
+            hideLiveStandings ? "md:grid-cols-1" : "md:grid-cols-2",
+          )}
+        >
           {/* Live Standings Column */}
-          <Card className="p-0 overflow-hidden border-yellow-500/20">
-            <div className="bg-yellow-500/10 p-4 border-b border-yellow-500/10 flex items-center justify-between">
-              <h3 className="font-bold flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Live Standings
-              </h3>
-              <Badge
-                variant="outline"
-                className="bg-yellow-50 text-yellow-700 border-yellow-200"
-              >
-                Dynamic
-              </Badge>
-            </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12 text-center">#</TableHead>
-                  <TableHead>Team</TableHead>
-                  <TableHead className="text-right">Points</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {teamStandings.length > 0 ? (
-                  teamStandings.map((team, idx) => (
-                    <TableRow
-                      key={team.name}
-                      className={idx < 3 ? "bg-yellow-50/5" : ""}
-                    >
-                      <TableCell className="text-center font-bold text-muted-foreground">
-                        {idx + 1}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {team.name}
-                        {idx === 0 && (
-                          <Crown className="inline w-3 h-3 ml-1 text-yellow-500" />
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right font-bold text-lg">
-                        {team.points}
+          {!hideLiveStandings ? (
+            <Card className="p-0 overflow-hidden border-yellow-500/20">
+              <div className="bg-yellow-500/10 p-4 border-b border-yellow-500/10 flex items-center justify-between">
+                <h3 className="font-bold flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Live Standings
+                </h3>
+                <Badge
+                  variant="outline"
+                  className="bg-yellow-50 text-yellow-700 border-yellow-200"
+                >
+                  Dynamic
+                </Badge>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12 text-center">#</TableHead>
+                    <TableHead>Team</TableHead>
+                    <TableHead className="text-right">Points</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {teamStandings.length > 0 ? (
+                    teamStandings.map((team, idx) => (
+                      <TableRow
+                        key={team.name}
+                        className={idx < 3 ? "bg-yellow-50/5" : ""}
+                      >
+                        <TableCell className="text-center font-bold text-muted-foreground">
+                          {idx + 1}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {team.name}
+                          {idx === 0 && (
+                            <Crown className="inline w-3 h-3 ml-1 text-yellow-500" />
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-bold text-lg">
+                          {team.points}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={3}
+                        className="h-24 text-center text-muted-foreground"
+                      >
+                        No live data yet.
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={3}
-                      className="h-24 text-center text-muted-foreground"
-                    >
-                      No live data yet.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </Card>
+                  )}
+                </TableBody>
+              </Table>
+            </Card>
+          ) : null}
 
           {/* Published Standings Column */}
           <Card className="p-0 overflow-hidden border-green-500/20">
@@ -312,8 +346,8 @@ export function LeaderboardClient({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {publishedStandings && publishedStandings.length > 0 ? (
-                  publishedStandings.map((team: any, idx: number) => (
+                {publishedStandingsFiltered && publishedStandingsFiltered.length > 0 ? (
+                  publishedStandingsFiltered.map((team: any, idx: number) => (
                     <TableRow
                       key={team.name}
                       className={idx < 3 ? "bg-green-50/5" : ""}
@@ -356,53 +390,55 @@ export function LeaderboardClient({
               <Medal className="w-4 h-4 text-primary" />
               Top students by points
             </h3>
-            <div className="flex flex-wrap items-center gap-2">
-              <Select
-                value={studentFilterCategory}
-                onValueChange={setStudentFilterCategory}
-              >
-                <SelectTrigger className="h-8 text-xs w-[140px]">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All categories</SelectItem>
-                  {categories
-                    .filter((c: { id: string; name: string; type?: string }) => c.type !== "GENERAL")
-                    .map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
+            {!hideStudentFilters ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <Select
+                  value={studentFilterCategory}
+                  onValueChange={setStudentFilterCategory}
+                >
+                  <SelectTrigger className="h-8 text-xs w-[140px]">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All categories</SelectItem>
+                    {categories
+                      .filter((c: { id: string; name: string; type?: string }) => c.type !== "GENERAL")
+                      .map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={studentFilterGroup}
+                  onValueChange={setStudentFilterGroup}
+                >
+                  <SelectTrigger className="h-8 text-xs w-[130px]">
+                    <SelectValue placeholder="Group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All groups</SelectItem>
+                    {groups.map((g) => (
+                      <SelectItem key={g.id} value={g.id}>
+                        {g.name}
                       </SelectItem>
                     ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={studentFilterGroup}
-                onValueChange={setStudentFilterGroup}
-              >
-                <SelectTrigger className="h-8 text-xs w-[130px]">
-                  <SelectValue placeholder="Group" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All groups</SelectItem>
-                  {groups.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>
-                      {g.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {hasStudentFilters && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={clearStudentFilters}
-                  title="Clear filters"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </Button>
-              )}
-            </div>
+                  </SelectContent>
+                </Select>
+                {hasStudentFilters && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={clearStudentFilters}
+                    title="Clear filters"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </div>
+            ) : null}
           </div>
           <Table>
             <TableHeader>

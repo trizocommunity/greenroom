@@ -193,6 +193,7 @@ model Festival {
 
   // Settings
   chestNumberSettings Json? // { prefix: string, nextSequence: number }
+  teamLeaderLimit Int @default(2)
   scoringSystem ScoringSystem @default(SCORE_BASED)
   maxResultScore Int? // For SCORE_BASED: max score judge can give (e.g. 80). Grade = (score/maxResultScore)*100. Default 10.
   
@@ -426,6 +427,8 @@ model ProgrammeAssignment {
   result        Result?
 
   assignedAt    DateTime @default(now())
+  createdByEmail String?
+  createdByName  String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt @default(now())
 

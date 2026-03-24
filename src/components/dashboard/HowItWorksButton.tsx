@@ -36,7 +36,7 @@ export function HowItWorksButton({
             <DialogTrigger asChild>
               <Button
                 variant="outline"
-                size="icon"
+                size="sm"
                 className="shrink-0 text-muted-foreground hover:text-foreground"
                 aria-label="How it works"
               >

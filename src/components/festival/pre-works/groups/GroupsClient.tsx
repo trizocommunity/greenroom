@@ -15,7 +15,6 @@ import {
 import { useGroups } from "@/hooks/useGroups";
 import { GroupDetailsDialog } from "./GroupDetailsDialog";
 import { GroupDialog } from "./GroupDialog";
-import { useFeature } from "@/hooks/useFeature";
 
 interface GroupsClientProps {
   festivalId: string;
@@ -24,10 +23,9 @@ interface GroupsClientProps {
 
 export function GroupsClient({ festivalId, children }: GroupsClientProps) {
   const { groups, isLoading, deleteGroup, isDeleting } = useGroups(festivalId);
-  const canAssignTeamLeaders = useFeature("members");
   const [actionGroup, setActionGroup] = useState<{
     group: any;
-    action: "view" | "edit" | "leaders" | "delete";
+    action: "view" | "edit" | "delete";
   } | null>(null);
 
   if (isLoading) {
@@ -101,18 +99,6 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-44">
-                      {canAssignTeamLeaders && (
-                        <>
-                          <DropdownMenuItem
-                            onSelect={() =>
-                              setActionGroup({ group, action: "leaders" })
-                            }
-                          >
-                            <Crown className="h-4 w-4 mr-2 text-amber-600" />
-                            Assign Leaders
-                          </DropdownMenuItem>
-                        </>
-                      )}
                       <DropdownMenuItem
                         onSelect={() => setActionGroup({ group, action: "view" })}
                       >
@@ -138,7 +124,7 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
                 </div>
 
                 {/* Team leaders */}
-                {canAssignTeamLeaders && teamLeaders.length > 0 && (
+                {teamLeaders.length > 0 && (
                   <div className="rounded-lg bg-muted/40 px-3 py-2.5">
                     <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                       <Crown className="h-3 w-3 shrink-0 text-amber-500" />
@@ -201,15 +187,6 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
         <GroupDialog
           festivalId={festivalId}
           group={actionGroup.group}
-          open={true}
-          onOpenChange={(open) => !open && setActionGroup(null)}
-        />
-      )}
-      {actionGroup?.action === "leaders" && actionGroup.group && (
-        <GroupDialog
-          festivalId={festivalId}
-          group={actionGroup.group}
-          leadersOnly
           open={true}
           onOpenChange={(open) => !open && setActionGroup(null)}
         />

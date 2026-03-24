@@ -7,6 +7,31 @@ import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { findFestivalById } from "@/server/models/festival.model";
 import { AssignmentService } from "@/server/services/assignment.service";
 
+async function getActorForCreatedBy(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true, fullName: true, displayName: true },
+  });
+
+  if (!user) return {};
+
+  return {
+    createdByEmail: user.email,
+    createdByName: user.displayName || user.fullName || user.email,
+  };
+}
+
+function assertAssignmentWindowOpen(
+  festival: { programmeAssignmentDeadline?: Date | null } | null,
+) {
+  if (
+    festival?.programmeAssignmentDeadline &&
+    new Date() > festival.programmeAssignmentDeadline
+  ) {
+    throw new AppError(ERROR_MESSAGES.ASSIGNMENT_DEADLINE_PASSED);
+  }
+}
+
 export async function getAssignmentsAction(festivalId: string) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
@@ -24,19 +49,12 @@ export async function createAssignmentAction(
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
   const userId = session!.userId;
+  const actor = await getActorForCreatedBy(userId);
 
   const festival = await findFestivalById(festivalId);
 
   // Deadline Check
-  if (
-    festival?.programmeAssignmentDeadline &&
-    new Date() > festival.programmeAssignmentDeadline
-  ) {
-    const isAdmin = festival.ownerId === userId;
-    if (!isAdmin) {
-      throw new AppError(ERROR_MESSAGES.ASSIGNMENT_DEADLINE_PASSED);
-    }
-  }
+  assertAssignmentWindowOpen(festival);
 
   // Validate Dependencies
   const [categoryCount, groupCount, programmeCount, studentCount] =
@@ -56,7 +74,7 @@ export async function createAssignmentAction(
     throw new AppError(ERROR_MESSAGES.ASSIGNMENT_DEPENDENCIES_MISSING);
   }
 
-  return AssignmentService.create(festivalId, data);
+  return AssignmentService.create(festivalId, data, actor);
 }
 
 export async function bulkCreateAssignmentAction(
@@ -70,19 +88,12 @@ export async function bulkCreateAssignmentAction(
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
   const userId = session!.userId;
+  const actor = await getActorForCreatedBy(userId);
 
   const festival = await findFestivalById(festivalId);
 
   // Deadline Check
-  if (
-    festival?.programmeAssignmentDeadline &&
-    new Date() > festival.programmeAssignmentDeadline
-  ) {
-    const isAdmin = festival.ownerId === userId;
-    if (!isAdmin) {
-      throw new AppError(ERROR_MESSAGES.ASSIGNMENT_DEADLINE_PASSED);
-    }
-  }
+  assertAssignmentWindowOpen(festival);
 
   if (assignments.length === 0) return [];
 
@@ -91,26 +102,17 @@ export async function bulkCreateAssignmentAction(
   // We can do a quick count check here if we want to fail fast for empty festival,
   // but let's rely on service validation for simplicity and robustness.
 
-  return AssignmentService.bulkCreate(festivalId, assignments);
+  return AssignmentService.bulkCreate(festivalId, assignments, actor);
 }
 
 export async function deleteAssignmentAction(festivalId: string, id: string) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
-  const userId = session!.userId;
 
   const festival = await findFestivalById(festivalId);
 
   // Deadline Check
-  if (
-    festival?.programmeAssignmentDeadline &&
-    new Date() > festival.programmeAssignmentDeadline
-  ) {
-    const isAdmin = festival.ownerId === userId;
-    if (!isAdmin) {
-      throw new AppError(ERROR_MESSAGES.ASSIGNMENT_DEADLINE_PASSED_ADMIN);
-    }
-  }
+  assertAssignmentWindowOpen(festival);
 
   return AssignmentService.delete(id, festivalId);
 }
@@ -123,19 +125,10 @@ export async function deleteTeamAssignmentAction(
 ) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
-  const userId = session!.userId;
 
   const festival = await findFestivalById(festivalId);
 
-  if (
-    festival?.programmeAssignmentDeadline &&
-    new Date() > festival.programmeAssignmentDeadline
-  ) {
-    const isAdmin = festival.ownerId === userId;
-    if (!isAdmin) {
-      throw new AppError(ERROR_MESSAGES.ASSIGNMENT_DEADLINE_PASSED_ADMIN);
-    }
-  }
+  assertAssignmentWindowOpen(festival);
 
   return AssignmentService.deleteByTeam(
     festivalId,
@@ -156,20 +149,11 @@ export async function updateAssignmentAction(
 ) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
-  const userId = session!.userId;
 
   const festival = await findFestivalById(festivalId);
 
   // Deadline Check
-  if (
-    festival?.programmeAssignmentDeadline &&
-    new Date() > festival.programmeAssignmentDeadline
-  ) {
-    const isAdmin = festival.ownerId === userId;
-    if (!isAdmin) {
-      throw new AppError(ERROR_MESSAGES.ASSIGNMENT_DEADLINE_PASSED_ADMIN);
-    }
-  }
+  assertAssignmentWindowOpen(festival);
 
   return AssignmentService.update(id, festivalId, data);
 }

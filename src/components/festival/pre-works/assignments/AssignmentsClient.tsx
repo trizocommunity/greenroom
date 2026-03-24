@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { Loader2, MoreVertical, Plus, Search, Trash2, Users, X } from "lucide-react";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -39,6 +40,7 @@ import {
   type TeamStudentRow,
 } from "./TeamStudentsDialog";
 import { DeadlinesCard } from "@/components/festival/pre-works/DeadlinesCard";
+import { useDeadlineLock } from "@/hooks/useDeadlineLock";
 
 function AssignmentCard({
   kind,
@@ -186,14 +188,19 @@ export function AssignmentsClient({
   const [filterType, setFilterType] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const isReadOnly =
-    !!programmeAssignmentDeadline &&
-    new Date() > new Date(programmeAssignmentDeadline);
+  const { isLocked: isReadOnly, justLocked } = useDeadlineLock(
+    programmeAssignmentDeadline ?? null,
+  );
 
   // If deadline expires while the modal is open, close it to prevent confusing UX.
   useEffect(() => {
     if (isReadOnly) setAssignmentModalOpen(false);
   }, [isReadOnly]);
+
+  useEffect(() => {
+    if (!justLocked) return;
+    toast.error("Deadline passed. Assignments are closed.");
+  }, [justLocked]);
 
   // Filter raw assignments (same as before)
   const filteredAssignments = useMemo(() => {
@@ -343,7 +350,7 @@ export function AssignmentsClient({
             </div>
           </HowItWorksButton>
           <div className="flex items-center">
-            <DeadlinesCard />
+            <DeadlinesCard isLockedOverride={isReadOnly} />
           </div>
           <div className="hidden md:block">
             <Button

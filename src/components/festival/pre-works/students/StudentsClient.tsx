@@ -4,7 +4,6 @@ import { format } from "date-fns";
 import Link from "next/link";
 import {
   Crown,
-  Download,
   Eye,
   FileText,
   Loader2,
@@ -18,7 +17,6 @@ import {
 } from "lucide-react";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { useState } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
@@ -56,16 +54,17 @@ import { useFeature } from "@/hooks/useFeature";
 import { useGroups } from "@/hooks/useGroups";
 import { useStudents } from "@/hooks/useStudents";
 import { BulkUploadStudentsModal } from "./BulkUploadStudentsModal";
+import { AssignTeamLeadersModal } from "./AssignTeamLeadersModal";
 import { StudentDetailsDialog } from "./StudentDetailsDialog";
 import { StudentDialog } from "./StudentDialog";
 import { FeatureGate } from "@/components/common/FeatureGate";
-import { exportStudentsToExcelAction } from "@/server/actions/student.actions";
 import { ChestNumberSetup } from "@/components/festival/event-works/chest-numbers/ChestNumberSetup";
 import { Badge } from "@/components/ui/badge";
 
 interface StudentsClientProps {
   festivalId: string;
   festivalSlug: string;
+  teamLeaderLimit: number;
   initialChestSettings: {
     prefix: string;
     nextSequence?: number;
@@ -77,50 +76,10 @@ interface StudentsClientProps {
   children?: React.ReactNode;
 }
 
-function ExportStudentsExcelButton({ festivalId }: { festivalId: string }) {
-  const [loading, setLoading] = useState(false);
-  const handleExport = async () => {
-    setLoading(true);
-    try {
-      const result = await exportStudentsToExcelAction(festivalId);
-      if (result.success && result.data && result.filename) {
-        const bin = atob(result.data);
-        const arr = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-        const blob = new Blob([arr], {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = result.filename;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast.success("Export downloaded");
-      } else {
-        toast.error(!result.success ? result.error : "Export failed");
-      }
-    } catch {
-      toast.error("Export failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-  return (
-    <Button size="sm" variant="outline" onClick={handleExport} disabled={loading}>
-      {loading ? (
-        <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
-      ) : (
-        <Download className="h-4 w-4 sm:mr-2" />
-      )}
-      <span className="hidden sm:inline">Export Excel</span>
-    </Button>
-  );
-}
-
 export function StudentsClient({
   festivalId,
   festivalSlug,
+  teamLeaderLimit,
   initialChestSettings,
   onChestRevalidate,
   children,
@@ -178,15 +137,8 @@ export function StudentsClient({
   return (
     <div className="space-y-4 pt-2">
       {/* Header row: title (children) + actions — Create icon only on mobile */}
-      <div className="flex flex-row items-center justify-between gap-4">
-        {children ?? (
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Students</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
-              Add students, assign groups and categories, manage chest numbers.
-            </p>
-          </div>
-        )}
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+        {children}
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <HowItWorksButton
             title="How Students work"
@@ -232,8 +184,11 @@ export function StudentsClient({
             </TooltipProvider>
           ) : (
             <>
-              <FeatureGate feature="excelExport">
-                <ExportStudentsExcelButton festivalId={festivalId} />
+              <FeatureGate feature="members">
+                <AssignTeamLeadersModal
+                  festivalId={festivalId}
+                  teamLeaderLimit={teamLeaderLimit}
+                />
               </FeatureGate>
               <FeatureGate feature="studentBulkUpload">
                 <BulkUploadStudentsModal festivalId={festivalId} />
@@ -324,7 +279,7 @@ export function StudentsClient({
         </CardHeader>
         <CardContent className="p-0">
           {/* Mobile: beautiful student cards */}
-          <div className="block md:hidden p-3 sm:p-4 space-y-3">
+          <div className="block lg:hidden p-3 sm:p-4 space-y-3">
             {filteredStudents.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-3 py-14 px-6 text-center text-muted-foreground rounded-xl border border-dashed bg-muted/10">
                 <User className="h-10 w-10 text-muted-foreground/50" />
@@ -343,20 +298,22 @@ export function StudentsClient({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold text-[15px] leading-snug text-foreground line-clamp-1">
-                        {student.name}
-                      </h3>
-                      {student.isTeamLeader && (
-                        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-amber-700">
-                          <Crown className="h-3.5 w-3.5" />
-                          <Badge
-                            variant="secondary"
-                            className="bg-amber-500/10 text-amber-700 border-amber-200/50 dark:bg-amber-500/20 dark:text-amber-300"
-                          >
-                            Team Leader
-                          </Badge>
-                        </div>
-                      )}
+                      <div className="flex items-start md:items-center flex-col md:flex-row md:gap-2">
+                        <h3 className="font-semibold text-[15px] leading-snug text-foreground line-clamp-1">
+                          {student.name}
+                        </h3>
+                        {student.isTeamLeader && (
+                          <div className=" flex items-center gap-1.5 text-[11px] text-amber-700">
+                            <Badge
+                              variant="secondary"
+                              className="bg-amber-500/10 text-[10px] text-amber-700 gap-1 items-center border-amber-200/50 dark:bg-amber-500/20 dark:text-amber-300"
+                            >
+                            <Crown className="h-3 w-3" />
+                              Team Leader
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
                       <div className="mt-2.5 rounded-lg bg-muted/40 px-3 py-2">
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                           {student.chestNumber ? (
@@ -441,7 +398,7 @@ export function StudentsClient({
             )}
           </div>
           {/* Desktop: table */}
-          <div className="hidden md:block overflow-x-auto">
+          <div className="hidden lg:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -464,15 +421,15 @@ export function StudentsClient({
                     }
                   >
                     <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-start flex-col gap-1">
                         <span>{student.name}</span>
                         {student.isTeamLeader && (
                           <Badge
                             variant="secondary"
                             className="bg-amber-500/10 text-amber-700 border-amber-200/50 dark:bg-amber-500/20 dark:text-amber-300"
                           >
-                            <span className="inline-flex items-center gap-1">
-                              <Crown className="h-3.5 w-3.5" />
+                            <span className="inline-flex items-center text-[10px] gap-1">
+                              <Crown className="h-3 w-3" />
                               Team Leader
                             </span>
                           </Badge>

@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { FeatureService } from "@/lib/features";
 import { getResolvedTier } from "@/lib/tier";
 import { updateFestivalSettingsAction } from "@/server/actions/festival.actions";
@@ -37,6 +38,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
           .toISOString()
           .slice(0, 16)
       : "",
+    teamLeaderLimit: Number(festival.teamLeaderLimit ?? 2),
   });
 
   const festivalStartDate = useMemo(() => {
@@ -76,6 +78,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
       const res = await updateFestivalSettingsAction(festival.id, {
         programmeAssignmentDeadline:
           formData.programmeAssignmentDeadline || null,
+        teamLeaderLimit: formData.teamLeaderLimit,
       });
 
       if (res.success) {
@@ -156,6 +159,35 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                   (before festival start).
                 </p>
               )}
+            </div>
+          )}
+
+          {FeatureService.isFeatureEnabled(
+            getResolvedTier(festival.tier),
+            "members",
+          ) && (
+            <div className="grid gap-2">
+              <Label htmlFor="teamLeaderLimit">Team Leader Limit Per Group</Label>
+              <Input
+                id="teamLeaderLimit"
+                type="number"
+                min={1}
+                max={10}
+                step={1}
+                value={formData.teamLeaderLimit}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  setFormData({
+                    ...formData,
+                    teamLeaderLimit: Number.isFinite(next)
+                      ? Math.max(1, Math.min(10, next))
+                      : 2,
+                  });
+                }}
+              />
+              <p className="text-sm text-muted-foreground">
+                Maximum number of team leaders allowed per group.
+              </p>
             </div>
           )}
 

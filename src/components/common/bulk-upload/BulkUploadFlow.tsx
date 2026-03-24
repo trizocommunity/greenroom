@@ -245,7 +245,7 @@ export function BulkUploadFlow<T>({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button variant="outline">
+          <Button size="sm" variant="outline">
             <Upload className="mr-2 h-4 w-4" />
             Bulk Upload
           </Button>

@@ -32,9 +32,23 @@ export const StudentService = {
       standard?: string;
     },
   ) {
+    const normalizedName = data.name.trim();
     const festival = await findFestivalById(festivalId);
     if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
     if (festival.status === "EXPIRED") throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
+
+    // Enforce "no duplicate student names in the same festival"
+    const existingByName = await prisma.student.findFirst({
+      where: {
+        festivalId,
+        name: { equals: normalizedName, mode: "insensitive" },
+      },
+      select: { id: true },
+    });
+
+    if (existingByName) {
+      throw new AppError(ERROR_MESSAGES.STUDENT_NAME_DUPLICATE);
+    }
 
     // 1. Group Validation
     const group = await findGroupById(data.groupId);
@@ -63,7 +77,7 @@ export const StudentService = {
       festival: { connect: { id: festivalId } },
       group: { connect: { id: data.groupId } },
       category: { connect: { id: data.categoryId } },
-      name: data.name,
+      name: normalizedName,
       gender: data.gender,
       email: data.email || undefined,
       phone: data.phone,
@@ -111,6 +125,22 @@ export const StudentService = {
     const existing = await findStudentById(id);
     if (!existing || existing.festivalId !== festivalId)
       throw new AppError(ERROR_MESSAGES.STUDENT_NOT_FOUND);
+
+    if (data.name) {
+      const normalizedName = data.name.trim();
+      const existingByName = await prisma.student.findFirst({
+        where: {
+          festivalId,
+          name: { equals: normalizedName, mode: "insensitive" },
+          NOT: { id },
+        },
+        select: { id: true },
+      });
+
+      if (existingByName) {
+        throw new AppError(ERROR_MESSAGES.STUDENT_NAME_DUPLICATE);
+      }
+    }
 
     if (data.groupId) {
       const group = await findGroupById(data.groupId);

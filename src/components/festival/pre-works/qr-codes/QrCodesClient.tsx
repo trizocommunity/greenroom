@@ -85,7 +85,10 @@ async function drawPosterJpeg(
   const centerY = barY + BOTTOM_BAR_HEIGHT / 2;
   const labels = [festivalName.slice(0, 28), `Chest Number: ${chestNumber ?? "—"}`];
   const gap = 10;
-  const totalWidth = labels.reduce((acc, l) => acc + ctx.measureText(l).width + badgePadding * 2 + gap, -gap);
+  const totalWidth = labels.reduce(
+    (acc, l) => acc + ctx.measureText(l).width + badgePadding * 2 + gap,
+    -gap,
+  );
   let x = centerX - totalWidth / 2 + badgePadding;
 
   for (const label of labels) {
@@ -128,6 +131,7 @@ function roundRect(
   ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
 }
+
 
 type StudentRow = {
   id: string;
@@ -202,7 +206,7 @@ export function QrCodesClient({
         a.click();
         URL.revokeObjectURL(a.href);
         toast.success("Downloaded");
-      } catch (e) {
+      } catch {
         toast.error("Failed to generate download");
       }
     },
@@ -328,20 +332,20 @@ export function QrCodesClient({
               </Button>
             )}
           </div>
-            <Button
-              variant="default"
-              size="sm"
-              className="h-8 shrink-0"
-              onClick={handleDownloadAllPdf}
-              disabled={pdfLoading || filteredStudents.length === 0}
-            >
-              {pdfLoading ? (
-                <Loader2 className="h-4 w-4 sm:mr-1.5 animate-spin" />
-              ) : (
-                <FileDown className="h-4 w-4 sm:mr-1.5" />
-              )}
-              Download PDF
-            </Button>
+          <Button
+            variant="default"
+            size="sm"
+            className="h-8 shrink-0"
+            onClick={handleDownloadAllPdf}
+            disabled={pdfLoading || filteredStudents.length === 0}
+          >
+            {pdfLoading ? (
+              <Loader2 className="h-4 w-4 sm:mr-1.5 animate-spin" />
+            ) : (
+              <FileDown className="h-4 w-4 sm:mr-1.5" />
+            )}
+            Download PDF
+          </Button>
         </CardHeader>
         <CardContent className="p-0">
           {filteredStudents.length === 0 ? (

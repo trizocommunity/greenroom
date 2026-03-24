@@ -20,6 +20,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { useGroups } from "@/hooks/useGroups";
 import { useStudents } from "@/hooks/useStudents";
 import { cn } from "@/lib/utils";
+import { validateStudentsAction } from "@/server/actions/student.actions";
 
 interface StudentDialogProps {
   festivalId: string;
@@ -59,11 +60,13 @@ export function StudentDialog({
   const { createStudent, updateStudent } = useStudents(festivalId);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Form State
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    phone: "",
     groupId: "",
     categoryId: "" as string,
     gender: "MALE" as "MALE" | "FEMALE" | "OTHER",
@@ -78,10 +81,12 @@ export function StudentDialog({
   // Initialize form when editing or opening
   useEffect(() => {
     if (open) {
+      setSubmitError(null);
       if (studentToEdit) {
         setFormData({
           name: studentToEdit.name,
           email: studentToEdit.email || "",
+          phone: studentToEdit.phone || "",
           groupId: studentToEdit.group.id,
           categoryId: studentToEdit.category.id,
           gender: studentToEdit.gender || "MALE",
@@ -93,6 +98,7 @@ export function StudentDialog({
         setFormData({
           name: "",
           email: "",
+          phone: "",
           groupId: "",
           categoryId: "" as string,
           gender: "MALE",
@@ -108,6 +114,7 @@ export function StudentDialog({
     if (!isValid) return;
 
     setIsLoading(true);
+    setSubmitError(null);
     try {
       if (isEditing && studentToEdit) {
         await updateStudent({
@@ -115,6 +122,7 @@ export function StudentDialog({
           data: {
             name: formData.name,
             email: formData.email || undefined,
+            phone: formData.phone || undefined,
             groupId: formData.groupId,
             categoryId: formData.categoryId,
             gender: formData.gender,
@@ -124,9 +132,22 @@ export function StudentDialog({
         });
         toast.success("Student updated successfully");
       } else {
+        // Client-side duplicate check to show the error inside the modal.
+        const nameToCheck = formData.name.trim();
+        const emailToCheck = formData.email.trim() || undefined;
+        const conflicts = await validateStudentsAction(festivalId, [
+          { name: nameToCheck, email: emailToCheck },
+        ]);
+        const nameKey = `name:${nameToCheck.toLowerCase()}`;
+        if (conflicts[nameKey]) {
+          setSubmitError(conflicts[nameKey]);
+          return;
+        }
+
         await createStudent({
           name: formData.name,
           email: formData.email || undefined,
+          phone: formData.phone || undefined,
           groupId: formData.groupId,
           categoryId: formData.categoryId,
           gender: formData.gender,
@@ -139,9 +160,10 @@ export function StudentDialog({
       setOpen(false);
     } catch (error) {
       console.error(error);
-      toast.error(
-        isEditing ? "Failed to update student" : "Failed to create student",
-      );
+      const message =
+        error instanceof Error ? error.message : "Failed to save student";
+      setSubmitError(message);
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -159,7 +181,7 @@ export function StudentDialog({
           className="flex flex-col h-full min-h-0 bg-background/95 backdrop-blur-sm"
         >
           {/* Header */}
-          <DialogHeader className="px-4 sm:px-8 py-4 sm:py-6 border-b bg-muted/20 flex-shrink-0">
+          <DialogHeader className="px-4 sm:px-8 py-4 sm:py-6 border-b bg-muted/20 shrink-0">
             <DialogTitle className="text-2xl font-semibold tracking-tight">
               {readOnly
                 ? "Student Details"
@@ -273,23 +295,43 @@ export function StudentDialog({
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label
-                  htmlFor="email"
-                  className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                >
-                  Email (Optional)
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="jane@example.com"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  className="h-10"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="email"
+                    className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                  >
+                    Email (Optional)
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="jane@example.com"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                    className="h-10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="phone"
+                    className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                  >
+                    Mobile Number
+                  </Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="e.g. 017XXXXXXXX"
+                    value={formData.phone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
+                    className="h-10"
+                  />
+                </div>
               </div>
             </div>
 
@@ -361,23 +403,32 @@ export function StudentDialog({
             </div>
           </div>
 
-          <DialogFooter className="px-4 sm:px-8 py-4 sm:py-6 border-t bg-muted/10 flex-shrink-0 flex-col-reverse sm:flex-row gap-2">
-            <Button
-              variant="ghost"
-              type="button"
-              onClick={() => setOpen(false)}
-              className="hover:bg-muted/50"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={!isValid || isLoading}
-              className="min-w-[120px] rounded-full shadow-lg hover:shadow-xl transition-all"
-            >
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isEditing ? "Save Changes" : "Add Student"}
-            </Button>
+          
+
+          <DialogFooter className="px-4 sm:px-8 py-4 sm:py-6 border-t bg-muted/10 shrink-0 flex-col items-end justify-end gap-3">
+            {submitError ? (
+              <div className="text-sm w-full text-destructive font-medium bg-destructive/10 border border-destructive/20 px-3 py-2 rounded-md">
+                {submitError}
+              </div>
+            ) : null}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={() => setOpen(false)}
+                className="hover:bg-muted/50"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={!isValid || isLoading}
+                className="min-w-[120px] rounded-full shadow-lg hover:shadow-xl transition-all"
+              >
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isEditing ? "Save Changes" : "Add Student"}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

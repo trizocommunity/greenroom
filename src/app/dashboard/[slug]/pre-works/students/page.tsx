@@ -60,6 +60,7 @@ export default async function StudentsPage({
       <StudentsClient
         festivalId={festival.id}
         festivalSlug={festival.slug}
+        teamLeaderLimit={festival.teamLeaderLimit ?? 2}
         initialChestSettings={initialChestSettings}
         onChestRevalidate={handleChestRevalidate}
       >

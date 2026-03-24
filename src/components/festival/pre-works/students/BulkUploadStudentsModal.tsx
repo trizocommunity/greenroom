@@ -381,6 +381,36 @@ export function BulkUploadStudentsModal({
   const validateRows = async (
     items: ParsedItem<StudentData>[],
   ): Promise<ParsedItem<StudentData>[]> => {
+    // Internal (within this upload) duplicate check by student name.
+    // Requirement: never allow duplicate student names in the same festival.
+    const nameCounts = new Map<string, number>();
+    for (const p of items) {
+      const key = p.data.name?.trim().toLowerCase();
+      if (!key) continue;
+      nameCounts.set(key, (nameCounts.get(key) || 0) + 1);
+    }
+    const internalDuplicateKeys = new Set(
+      Array.from(nameCounts.entries())
+        .filter(([, count]) => count > 1)
+        .map(([key]) => key),
+    );
+
+    const applyInternalDuplicates = (
+      current: ParsedItem<StudentData>[],
+    ): ParsedItem<StudentData>[] => {
+      if (internalDuplicateKeys.size === 0) return current;
+
+      const duplicateError = "Student name already exists";
+      return current.map((p) => {
+        const key = p.data.name?.trim().toLowerCase();
+        if (!key || !internalDuplicateKeys.has(key)) return p;
+
+        const newErrors = [...p.errors];
+        if (!newErrors.includes(duplicateError)) newErrors.push(duplicateError);
+        return { ...p, errors: newErrors, isValid: false };
+      });
+    };
+
     // Server-Side Duplicate Check
     // Prepare candidates list (only those valid so far or at least having a name)
     const candidatesToCheck = items
@@ -394,7 +424,7 @@ export function BulkUploadStudentsModal({
       );
 
       // Apply conflicts to parsed data
-      return items.map((p) => {
+      const withServerConflicts = items.map((p) => {
         const nameKey = `name:${p.data.name.toLowerCase()}`;
         const emailKey = p.data.email
           ? `email:${p.data.email.toLowerCase()}`
@@ -413,9 +443,11 @@ export function BulkUploadStudentsModal({
 
         return { ...p, errors: newErrors, isValid };
       });
+
+      return applyInternalDuplicates(withServerConflicts);
     }
 
-    return items;
+    return applyInternalDuplicates(items);
   };
 
   const handleCommit = async (validItems: StudentData[]) => {

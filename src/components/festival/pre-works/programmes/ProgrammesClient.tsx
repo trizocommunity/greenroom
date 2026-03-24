@@ -41,16 +41,26 @@ import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge
 import { useCategories } from "@/hooks/useCategories";
 import { useProgrammes } from "@/hooks/useProgrammes";
 import type { ProgrammeStatus } from "@prisma/client";
+import {
+  getAssignmentProgressLabel,
+  getExpectedAssignmentsTotal,
+} from "@/lib/programme-assignment-progress";
 import { BulkUploadProgrammesModal } from "./BulkUploadProgrammesModal";
 import { ProgrammeDialog } from "./ProgrammeDialog";
 
 interface ProgrammesClientProps {
   festivalId: string;
   festivalTier?: string | null;
+  groupCount: number;
   children?: React.ReactNode;
 }
 
-export function ProgrammesClient({ festivalId, festivalTier, children }: ProgrammesClientProps) {
+export function ProgrammesClient({
+  festivalId,
+  festivalTier,
+  groupCount,
+  children,
+}: ProgrammesClientProps) {
   const { programmes, isLoading, deleteProgramme, isDeleting } =
     useProgrammes(festivalId);
   const { categories } = useCategories(festivalId);
@@ -90,6 +100,21 @@ export function ProgrammesClient({ festivalId, festivalTier, children }: Program
     stageTypeFilter !== "ALL" ||
     typeFilter !== "ALL" ||
     searchQuery.trim() !== "";
+
+  function getProgressMeta(programme: any) {
+    const assignedCount = programme?._count?.assignments ?? 0;
+    const expectedCount = getExpectedAssignmentsTotal({
+      programmeType: programme.type,
+      groupCount,
+      maxParticipantsPerGroup: programme.maxParticipantsPerGroup,
+      maxTeamsPerGroup: programme.maxTeamsPerGroup,
+      maxStudentsPerTeam: programme.maxStudentsPerTeam,
+    });
+    return {
+      label: getAssignmentProgressLabel({ assignedCount, expectedCount }),
+      isFullyAssigned: expectedCount > 0 && assignedCount >= expectedCount,
+    };
+  }
 
   return (
     <div className="space-y-4">
@@ -252,6 +277,12 @@ export function ProgrammesClient({ festivalId, festivalTier, children }: Program
                             className="text-xs"
                           />
                         )}
+                        <Badge
+                          variant={getProgressMeta(programme).isFullyAssigned ? "secondary" : "outline"}
+                          className="text-[10px]"
+                        >
+                          {getProgressMeta(programme).label}
+                        </Badge>
                       </div>
                     </div>
                     <DropdownMenu>
@@ -360,14 +391,22 @@ export function ProgrammesClient({ festivalId, festivalTier, children }: Program
                       {programme.category?.name || "No Category"}
                     </TableCell>
                     <TableCell>
-                      {programme.status ? (
-                        <ProgrammeStatusBadge
-                          status={programme.status as ProgrammeStatus}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {programme.status ? (
+                          <ProgrammeStatusBadge
+                            status={programme.status as ProgrammeStatus}
+                            className="text-[10px]"
+                          />
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                        <Badge
+                          variant={getProgressMeta(programme).isFullyAssigned ? "secondary" : "outline"}
                           className="text-[10px]"
-                        />
-                      ) : (
-                        <span className="text-muted-foreground text-xs">—</span>
-                      )}
+                        >
+                          {getProgressMeta(programme).label}
+                        </Badge>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge

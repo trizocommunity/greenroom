@@ -123,6 +123,7 @@ export async function updateFestivalSettingsAction(
   festivalId: string,
   data: {
     programmeAssignmentDeadline?: string | null;
+    teamLeaderLimit?: number;
     startDate?: string | null;
     endDate?: string | null;
   },
@@ -162,6 +163,9 @@ export async function updateFestivalSettingsAction(
           programmeAssignmentDeadline: data.programmeAssignmentDeadline
             ? new Date(data.programmeAssignmentDeadline)
             : null,
+        }),
+        ...(data.teamLeaderLimit !== undefined && {
+          teamLeaderLimit: Math.max(1, Math.min(10, Number(data.teamLeaderLimit) || 2)),
         }),
         ...(data.startDate !== undefined && {
           startDate: data.startDate ? new Date(data.startDate) : null,

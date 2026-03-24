@@ -58,7 +58,41 @@ export const GroupService = {
     if (!exists || exists.festivalId !== festivalId)
       throw new AppError(ERROR_MESSAGES.GROUP_NOT_FOUND);
 
-    if (data.teamLeaderIds) {
+    if (data.teamLeaderIds !== undefined) {
+      const festival = await findFestivalById(festivalId);
+      if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
+
+      const leaderLimit = Math.max(1, Number(festival.teamLeaderLimit ?? 2));
+      if (data.teamLeaderIds.length > leaderLimit) {
+        throw new AppError(
+          `Team leader limit exceeded. Maximum allowed is ${leaderLimit}.`,
+        );
+      }
+
+      if (data.teamLeaderIds.length > 0) {
+        const selectedStudents = await db.student.findMany({
+          where: {
+            id: { in: data.teamLeaderIds },
+            groupId: id,
+            festivalId,
+          },
+          select: { id: true, phone: true },
+        });
+
+        if (selectedStudents.length !== data.teamLeaderIds.length) {
+          throw new AppError(ERROR_MESSAGES.STUDENT_INVALID_GROUP);
+        }
+
+        const invalidPhoneLeader = selectedStudents.find(
+          (s) => !s.phone || s.phone.trim().length < 6,
+        );
+        if (invalidPhoneLeader) {
+          throw new AppError(
+            "Selected leaders must have a valid phone number.",
+          );
+        }
+      }
+
       await db.$transaction(async (tx) => {
         await tx.student.updateMany({
           where: { groupId: id },

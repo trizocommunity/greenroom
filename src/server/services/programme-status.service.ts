@@ -54,27 +54,54 @@ export function filterProgrammesForEventWorks<T extends { status: ProgrammeStatu
 export async function updateProgrammeStatus(
   programmeId: string,
 ): Promise<ProgrammeStatus> {
-  const [programme, assignmentCount, scheduleEntryCount, resultCount, publishedResultCount] =
-    await Promise.all([
-      prisma.programme.findUnique({
-        where: { id: programmeId },
-        select: { id: true, status: true },
-      }),
-      prisma.programmeAssignment.count({ where: { programmeId } }),
-      prisma.scheduleEntry.count({
-        where: { programmeId, type: "PROGRAMME" },
-      }),
-      prisma.result.count({ where: { programmeId } }),
-      prisma.result.count({
-        where: { programmeId, isPublished: true },
-      }),
-    ]);
+  const programme = await prisma.programme.findUnique({
+    where: { id: programmeId },
+    select: {
+      id: true,
+      status: true,
+      festivalId: true,
+      type: true,
+      maxParticipantsPerGroup: true,
+      maxTeamsPerGroup: true,
+      maxStudentsPerTeam: true,
+    },
+  });
 
   if (!programme) return "READY";
+
+  const [
+    assignmentCount,
+    scheduleEntryCount,
+    resultCount,
+    publishedResultCount,
+    groupCount,
+  ] = await Promise.all([
+    prisma.programmeAssignment.count({ where: { programmeId } }),
+    prisma.scheduleEntry.count({
+      where: { programmeId, type: "PROGRAMME" },
+    }),
+    prisma.result.count({ where: { programmeId } }),
+    prisma.result.count({
+      where: { programmeId, isPublished: true },
+    }),
+    prisma.group.count({
+      where: { festivalId: programme.festivalId },
+    }),
+  ]);
 
   const hasAssignments = assignmentCount > 0;
   const hasScheduleEntry = scheduleEntryCount > 0;
   const assignmentCountForProgramme = assignmentCount;
+
+  const expectedAssignmentsTotal =
+    programme.type === "INDIVIDUAL"
+      ? groupCount * (programme.maxParticipantsPerGroup ?? 1)
+      : groupCount *
+        (programme.maxTeamsPerGroup ?? 1) *
+        (programme.maxStudentsPerTeam ?? 1);
+
+  const isFullyAssignedAcrossAllGroups =
+    expectedAssignmentsTotal > 0 && assignmentCount >= expectedAssignmentsTotal;
   const allAssignmentsHaveResult =
     assignmentCountForProgramme > 0 && resultCount >= assignmentCountForProgramme;
   const allResultsPublished =
@@ -87,7 +114,7 @@ export async function updateProgrammeStatus(
     status = "JUDGED";
   } else if (hasScheduleEntry) {
     status = "SCHEDULED";
-  } else if (hasAssignments) {
+  } else if (hasAssignments && isFullyAssignedAcrossAllGroups) {
     status = "ASSIGNED";
   }
 
