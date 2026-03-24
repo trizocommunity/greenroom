@@ -41,6 +41,7 @@ import {
 } from "./TeamStudentsDialog";
 import { DeadlinesCard } from "@/components/festival/pre-works/DeadlinesCard";
 import { useDeadlineLock } from "@/hooks/useDeadlineLock";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 
 function AssignmentCard({
   kind,
@@ -191,11 +192,13 @@ export function AssignmentsClient({
   const { isLocked: isReadOnly, justLocked } = useDeadlineLock(
     programmeAssignmentDeadline ?? null,
   );
+  const { isReadOnly: isFestivalReadOnly } = useFestivalReadOnly();
+  const isReadOnlyMode = isReadOnly || isFestivalReadOnly;
 
   // If deadline expires while the modal is open, close it to prevent confusing UX.
   useEffect(() => {
-    if (isReadOnly) setAssignmentModalOpen(false);
-  }, [isReadOnly]);
+    if (isReadOnlyMode) setAssignmentModalOpen(false);
+  }, [isReadOnlyMode]);
 
   useEffect(() => {
     if (!justLocked) return;
@@ -311,7 +314,7 @@ export function AssignmentsClient({
         festivalId={festivalId}
         open={assignmentModalOpen}
         onOpenChange={setAssignmentModalOpen}
-        isReadOnly={isReadOnly}
+        isReadOnly={isReadOnlyMode}
       />
 
       {/* Header row: children left, Create right — icon only on mobile */}
@@ -350,13 +353,13 @@ export function AssignmentsClient({
             </div>
           </HowItWorksButton>
           <div className="flex items-center">
-            <DeadlinesCard isLockedOverride={isReadOnly} />
+            <DeadlinesCard isLockedOverride={isReadOnlyMode} />
           </div>
           <div className="hidden md:block">
             <Button
               size="sm"
               onClick={() => setAssignmentModalOpen(true)}
-              disabled={isReadOnly}
+              disabled={isReadOnlyMode}
             >
               <Plus className="h-4 w-4 mr-2" />
               New assignment
@@ -467,7 +470,7 @@ export function AssignmentsClient({
                         ? format(new Date(row.assignment.assignedAt), "PP")
                         : null
                     }
-                    isReadOnly={isReadOnly}
+                    isReadOnly={isReadOnlyMode}
                     onRemove={() => setDeleteTarget({ kind: "individual", assignment: row.assignment })}
                     onViewTeam={undefined}
                   />
@@ -488,7 +491,7 @@ export function AssignmentsClient({
                     categoryName={row.category?.name || row.programme?.category?.name}
                     assignedAt={row.assignedAt}
                     teamNumber={row.teamNumber}
-                    isReadOnly={isReadOnly}
+                    isReadOnly={isReadOnlyMode}
                     onRemove={() => setDeleteTarget({ kind: "team", row })}
                     onViewTeam={() =>
                       setTeamStudentsDialog({
@@ -588,7 +591,7 @@ export function AssignmentsClient({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            {!isReadOnly && (
+                            {!isReadOnlyMode && (
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
                                 onClick={() =>
@@ -679,7 +682,7 @@ export function AssignmentsClient({
                               <Users className="h-3.5 w-3.5 mr-2" />
                               View team
                             </DropdownMenuItem>
-                            {!isReadOnly && (
+                            {!isReadOnlyMode && (
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
                                 onClick={() => setDeleteTarget({ kind: "team", row })}

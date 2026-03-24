@@ -66,9 +66,12 @@ export const UsageCounterService = {
         break;
     }
 
-    // 3. Strict Check
+    // 3. Strict Checks
     if (currentUsage + amount > maxLimit) {
       throw new AppError(ERROR_MESSAGES.USAGE_LIMIT_EXCEEDED);
+    }
+    if (currentUsage + amount < 0) {
+      amount = -currentUsage;
     }
 
     // 4. Atomic Increment

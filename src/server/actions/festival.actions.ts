@@ -7,6 +7,9 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import { validatePublicSiteRequirements } from "@/lib/festival-public-validation";
+import { assertFestivalMutationAllowed } from "@/server/services/festival-lifecycle-policy.service";
+import { StorageUsageService } from "@/server/services/storage-usage.service";
+import { UsageCounterService } from "@/server/services/usage-counter.service";
 
 import {
   type CreateFestivalInput,
@@ -155,6 +158,37 @@ export async function updateFestivalSettingsAction(
       throw new AppError(ERROR_MESSAGES.FORBIDDEN);
     }
 
+    const hasDateField =
+      data.startDate !== undefined || data.endDate !== undefined;
+    const hasNonDateField =
+      data.programmeAssignmentDeadline !== undefined ||
+      data.teamLeaderLimit !== undefined;
+    const isDateOnlyUpdate = hasDateField && !hasNonDateField;
+    await assertFestivalMutationAllowed(festivalId, {
+      allowPast: isDateOnlyUpdate,
+    });
+
+    const incomingStart = data.startDate ? new Date(data.startDate) : null;
+    const incomingEnd = data.endDate ? new Date(data.endDate) : null;
+    const planStart = new Date(festival.createdAt);
+    const planEnd = festival.expiresAt ? new Date(festival.expiresAt) : null;
+
+    if (incomingStart && Number.isNaN(incomingStart.getTime())) {
+      throw new AppError("Invalid start date");
+    }
+    if (incomingEnd && Number.isNaN(incomingEnd.getTime())) {
+      throw new AppError("Invalid end date");
+    }
+    if (incomingStart && incomingEnd && incomingStart > incomingEnd) {
+      throw new AppError("Start date must be before end date");
+    }
+    if (incomingStart && incomingStart < planStart) {
+      throw new AppError("Start date must be on/after plan created date");
+    }
+    if (incomingEnd && planEnd && incomingEnd > planEnd) {
+      throw new AppError("End date must be on/before plan expiry date");
+    }
+
     const updated = await prisma.festival.update({
       where: { id: festivalId },
       data: {
@@ -214,6 +248,8 @@ export async function setPublicSiteEnabledAction(
       throw new AppError(ERROR_MESSAGES.FORBIDDEN);
     }
 
+    await assertFestivalMutationAllowed(festivalId);
+
     if (enabled) {
       const validation = validatePublicSiteRequirements({
         name: festival.name,
@@ -272,6 +308,8 @@ export async function updateFestivalBrandingAction(
       throw new AppError(ERROR_MESSAGES.FORBIDDEN);
     }
 
+    await assertFestivalMutationAllowed(festival.id);
+
     const current =
       festival.branding && typeof festival.branding === "object"
         ? (festival.branding as Record<string, unknown>)
@@ -291,9 +329,37 @@ export async function updateFestivalBrandingAction(
           : current.colors,
     } as Prisma.InputJsonValue;
 
-    await prisma.festival.update({
-      where: { id: festival.id },
-      data: { branding: nextBranding },
+    const previousLogo = typeof current.logo === "string" ? current.logo : null;
+    const previousHero = typeof current.heroImage === "string" ? current.heroImage : null;
+    const nextLogo = typeof (data.logo ?? current.logo) === "string"
+      ? String(data.logo ?? current.logo)
+      : null;
+    const nextHero = typeof (data.heroImage ?? current.heroImage) === "string"
+      ? String(data.heroImage ?? current.heroImage)
+      : null;
+
+    const urlsToAdd: string[] = [];
+    const urlsToRemove: string[] = [];
+
+    if (previousLogo && previousLogo !== nextLogo) urlsToRemove.push(previousLogo);
+    if (previousHero && previousHero !== nextHero) urlsToRemove.push(previousHero);
+    if (nextLogo && nextLogo !== previousLogo) urlsToAdd.push(nextLogo);
+    if (nextHero && nextHero !== previousHero) urlsToAdd.push(nextHero);
+
+    const [addMb, removeMb] = await Promise.all([
+      StorageUsageService.getUrlsSizeMB(urlsToAdd),
+      StorageUsageService.getUrlsSizeMB(urlsToRemove),
+    ]);
+    const deltaMb = addMb - removeMb;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.festival.update({
+        where: { id: festival.id },
+        data: { branding: nextBranding },
+      });
+      if (deltaMb !== 0) {
+        await UsageCounterService.incrementUsage(festival.id, "storage", deltaMb, tx);
+      }
     });
 
     revalidatePath(`/dashboard/${festival.slug}/festival-live`);

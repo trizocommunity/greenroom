@@ -7,6 +7,7 @@ import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { getTeamLeaderSessionFromCookie } from "@/lib/team-leader-auth/session";
 import { findFestivalById } from "@/server/models/festival.model";
 import { AssignmentService } from "@/server/services/assignment.service";
+import { assertFestivalMutationAllowed } from "@/server/services/festival-lifecycle-policy.service";
 
 async function getActorForCreatedBy(userId: string) {
   const user = await prisma.user.findUnique({
@@ -39,10 +40,13 @@ type AssignmentActorContext =
 
 async function resolveAssignmentActorContext(
   festivalId: string,
+  options?: { requireWritable?: boolean },
 ): Promise<AssignmentActorContext> {
   const session = await getSession();
   if (session?.userId) {
-    await assertFestivalAccess(session, festivalId);
+    await assertFestivalAccess(session, festivalId, {
+      requireWritable: options?.requireWritable,
+    });
     return { type: "user", userId: session.userId };
   }
 
@@ -83,7 +87,9 @@ export async function createAssignmentAction(
     groupId?: string;
   },
 ) {
-  const actorContext = await resolveAssignmentActorContext(festivalId);
+  const actorContext = await resolveAssignmentActorContext(festivalId, {
+    requireWritable: true,
+  });
   const actor =
     actorContext.type === "user"
       ? await getActorForCreatedBy(actorContext.userId)
@@ -93,6 +99,7 @@ export async function createAssignmentAction(
         };
 
   const festival = await findFestivalById(festivalId);
+  await assertFestivalMutationAllowed(festivalId);
 
   // Deadline Check
   assertAssignmentWindowOpen(festival);
@@ -140,7 +147,9 @@ export async function bulkCreateAssignmentAction(
     teamNumber?: number;
   }[],
 ) {
-  const actorContext = await resolveAssignmentActorContext(festivalId);
+  const actorContext = await resolveAssignmentActorContext(festivalId, {
+    requireWritable: true,
+  });
   const actor =
     actorContext.type === "user"
       ? await getActorForCreatedBy(actorContext.userId)
@@ -150,6 +159,7 @@ export async function bulkCreateAssignmentAction(
         };
 
   const festival = await findFestivalById(festivalId);
+  await assertFestivalMutationAllowed(festivalId);
 
   // Deadline Check
   assertAssignmentWindowOpen(festival);
@@ -182,9 +192,12 @@ export async function bulkCreateAssignmentAction(
 }
 
 export async function deleteAssignmentAction(festivalId: string, id: string) {
-  const actorContext = await resolveAssignmentActorContext(festivalId);
+  const actorContext = await resolveAssignmentActorContext(festivalId, {
+    requireWritable: true,
+  });
 
   const festival = await findFestivalById(festivalId);
+  await assertFestivalMutationAllowed(festivalId);
 
   // Deadline Check
   assertAssignmentWindowOpen(festival);
@@ -210,9 +223,12 @@ export async function deleteTeamAssignmentAction(
   groupId: string,
   teamNumber: number,
 ) {
-  const actorContext = await resolveAssignmentActorContext(festivalId);
+  const actorContext = await resolveAssignmentActorContext(festivalId, {
+    requireWritable: true,
+  });
 
   const festival = await findFestivalById(festivalId);
+  await assertFestivalMutationAllowed(festivalId);
 
   assertAssignmentWindowOpen(festival);
 
@@ -237,9 +253,12 @@ export async function updateAssignmentAction(
     groupId?: string;
   },
 ) {
-  const actorContext = await resolveAssignmentActorContext(festivalId);
+  const actorContext = await resolveAssignmentActorContext(festivalId, {
+    requireWritable: true,
+  });
 
   const festival = await findFestivalById(festivalId);
+  await assertFestivalMutationAllowed(festivalId);
 
   // Deadline Check
   assertAssignmentWindowOpen(festival);

@@ -81,6 +81,7 @@ import {
 } from "@/lib/results-calculator";
 import { cn } from "@/lib/utils";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 
 type Programme = {
   id: string;
@@ -169,6 +170,7 @@ export function ResultsManagementClient({
   categories,
   children,
 }: ResultsManagementClientProps) {
+  const { isReadOnly } = useFestivalReadOnly();
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
@@ -472,6 +474,7 @@ export function ResultsManagementClient({
   };
 
   const handleSaveResults = async (shouldPublish = false) => {
+    if (isReadOnly) return;
     if (!currentProgramme) return;
 
     const resultsToSave = results.filter((r) => r.grade !== "-");
@@ -517,6 +520,7 @@ export function ResultsManagementClient({
     programmeId: string,
     isPublished: boolean,
   ) => {
+    if (isReadOnly) return;
     setPublishingProgrammeId(programmeId);
     startTransition(async () => {
       try {
@@ -545,6 +549,7 @@ export function ResultsManagementClient({
     resultIds: string[],
     identifier: string,
   ) => {
+    if (isReadOnly) return;
     startTransition(async () => {
       setScores((prev) => {
         const newScores = { ...prev };
@@ -564,6 +569,7 @@ export function ResultsManagementClient({
   };
 
   const handleEditResult = (programme: (typeof programmeStats)[0]) => {
+    if (isReadOnly) return;
     setSelectedCategory(programme.category.id);
     setSelectedProgramme(programme.id);
     setScores({});
@@ -664,7 +670,7 @@ export function ResultsManagementClient({
           </HowItWorksButton>
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="gap-2" suppressHydrationWarning>
+              <Button size="sm" className="gap-2" suppressHydrationWarning disabled={isReadOnly}>
                 <Plus className="w-4 h-4 sm:mr-0" />
                 <span className="hidden sm:inline">Enter Marks</span>
               </Button>
@@ -787,7 +793,7 @@ export function ResultsManagementClient({
                                 false,
                               )
                             }
-                            disabled={isPending}
+                            disabled={isReadOnly || isPending}
                           >
                             <Unlock className="w-3.5 h-3.5" />
                             Unpublish to Edit
@@ -875,6 +881,7 @@ export function ResultsManagementClient({
                                     min="0"
                                     max="10"
                                     placeholder={
+                                      isReadOnly ||
                                       currentProgramme.stats?.status ===
                                         "published" ||
                                       currentProgramme.stats?.status ===
@@ -992,6 +999,7 @@ export function ResultsManagementClient({
                                         )
                                       }
                                       disabled={
+                                        isReadOnly ||
                                         isPending ||
                                         currentProgramme.stats?.status === "published" ||
                                         currentProgramme.stats?.status === "partial-published"
@@ -1077,6 +1085,7 @@ export function ResultsManagementClient({
                                               )
                                             }
                                             disabled={
+                                              isReadOnly ||
                                               isPending ||
                                               currentProgramme.stats?.status === "published" ||
                                               currentProgramme.stats?.status === "partial-published"
@@ -1097,6 +1106,7 @@ export function ResultsManagementClient({
                         <Button
                           onClick={() => handleSaveResults(false)}
                           disabled={
+                            isReadOnly ||
                             isPending ||
                             currentProgramme.stats?.status === "published"
                           }
@@ -1331,6 +1341,7 @@ export function ResultsManagementClient({
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => handleEditResult(prog)}
+                        disabled={isReadOnly}
                         className="gap-2 cursor-pointer"
                       >
                         <Pencil className="h-4 w-4" />
@@ -1340,7 +1351,7 @@ export function ResultsManagementClient({
                       {isPublished ? (
                         <DropdownMenuItem
                           onClick={() => handlePublishProgramme(prog.id, false)}
-                          disabled={isPending}
+                          disabled={isReadOnly || isPending}
                           className="gap-2 cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/30"
                         >
                           {publishingProgrammeId === prog.id ? (
@@ -1353,7 +1364,7 @@ export function ResultsManagementClient({
                       ) : (
                         <DropdownMenuItem
                           onClick={() => handlePublishProgramme(prog.id, true)}
-                          disabled={isPending || prog.stats.enteredScores === 0}
+                          disabled={isReadOnly || isPending || prog.stats.enteredScores === 0}
                           className="gap-2 cursor-pointer text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50 dark:focus:bg-emerald-950/30"
                         >
                           {publishingProgrammeId === prog.id ? (

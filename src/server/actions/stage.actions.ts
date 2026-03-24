@@ -14,7 +14,7 @@ export type StageData = {
 
 export async function createStage(festivalId: string, data: StageData) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
   // Determine user name or ID to store as createdBy
   const user = await prisma.user.findUnique({
@@ -57,7 +57,7 @@ export async function updateStage(stageId: string, data: StageData) {
     select: { festivalId: true },
   });
   if (!stage) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
-  await assertFestivalAccess(session, stage.festivalId);
+  await assertFestivalAccess(session, stage.festivalId, { requireWritable: true });
 
   const updated = await prisma.stage.update({
     where: { id: stageId },
@@ -84,7 +84,7 @@ export async function deleteStage(stageId: string) {
 
   if (!stage) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
 
-  await assertFestivalAccess(session, stage.festivalId);
+  await assertFestivalAccess(session, stage.festivalId, { requireWritable: true });
 
   await prisma.$transaction(async (tx) => {
     await tx.stage.delete({

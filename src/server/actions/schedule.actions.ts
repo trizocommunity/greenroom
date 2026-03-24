@@ -26,6 +26,8 @@ function rangesOverlap(
   startB: Date,
   endB: Date | null,
 ): boolean {
+  // Always block exact same start time on the same stage.
+  if (startA.getTime() === startB.getTime()) return true;
   const aEnd = endA ?? startA;
   const bEnd = endB ?? startB;
   return startA.getTime() < bEnd.getTime() && aEnd.getTime() > startB.getTime();
@@ -176,7 +178,7 @@ export async function createScheduleEntry(
   | { success: false; error: string; conflictParts?: ConflictParts }
 > {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
@@ -194,6 +196,8 @@ export async function createScheduleEntry(
     if (data.programmeId)
       return { success: false, error: "Session entries cannot be linked to a programme." };
   }
+  if (!data.stageId)
+    return { success: false, error: "Please select a stage." };
 
   if (data.endTime != null && data.endTime <= data.startTime)
     return { success: false, error: "End time must be after start time." };
@@ -261,7 +265,7 @@ export async function updateScheduleEntry(
   | { success: false; error: string; conflictParts?: ConflictParts }
 > {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
   const existing = await prisma.scheduleEntry.findFirst({
     where: { id, festivalId },
@@ -341,7 +345,7 @@ export async function deleteScheduleEntry(
   id: string,
 ): Promise<{ success: true } | { success: false; error: string }> {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
   const entry = await prisma.scheduleEntry.findFirst({
     where: { id, festivalId },
@@ -378,7 +382,7 @@ export async function reorderScheduleEntries(
   entryIds: string[],
 ): Promise<{ success: true } | { success: false; error: string }> {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };

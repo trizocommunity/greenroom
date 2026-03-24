@@ -42,8 +42,7 @@ import {
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { cn } from "@/lib/utils";
-
-const STAGE_NONE = "__none__";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 
 const SESSION_TYPE_LABELS: Record<string, string> = {
   GENERAL: "General",
@@ -93,6 +92,7 @@ export function SessionScheduleClient({
   festivalStartDate,
   festivalEndDate,
 }: SessionScheduleClientProps) {
+  const { isReadOnly } = useFestivalReadOnly();
   const dateOptions = getFestivalDateOptions(festivalStartDate, festivalEndDate);
   const [entries, setEntries] = useState<ScheduleEntryWithRelations[]>(initialEntries);
   const [addOpen, setAddOpen] = useState(false);
@@ -143,6 +143,7 @@ export function SessionScheduleClient({
     setAddFormError(null);
     setSaving(true);
     try {
+      if (isReadOnly) return;
       const res = await createScheduleEntry(festivalId, {
         type: "SESSION",
         title: data.title.trim() || null,
@@ -182,6 +183,7 @@ export function SessionScheduleClient({
     setEditFormError(null);
     setSaving(true);
     try {
+      if (isReadOnly) return;
       const res = await updateScheduleEntry(festivalId, id, {
         ...data,
         sessionType: (data.sessionType ?? null) as SessionType | null,
@@ -203,6 +205,7 @@ export function SessionScheduleClient({
   const handleDelete = async (id: string) => {
     setDeletingId(id);
     try {
+      if (isReadOnly) return;
       const res = await deleteScheduleEntry(festivalId, id);
       if (res.success) {
         toast.success("Session removed from schedule.");
@@ -237,6 +240,10 @@ export function SessionScheduleClient({
           </HowItWorksButton>
           <Button
             onClick={() => {
+              if (isReadOnly) {
+                toast.error("Festival is read-only.");
+                return;
+              }
               if (!hasStages) {
                 toast.error("Please create at least one stage before adding sessions.");
                 return;
@@ -244,7 +251,7 @@ export function SessionScheduleClient({
               setAddOpen(true);
             }}
             className="gap-2"
-            disabled={!hasStages}
+            disabled={!hasStages || isReadOnly}
           >
             <Plus className="h-4 w-4" />
             Add session
@@ -257,24 +264,30 @@ export function SessionScheduleClient({
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Calendar className="h-12 w-12 text-muted-foreground mb-3" />
             <p className="font-medium">
-              {!hasStages ? "No stages yet" : "No sessions yet"}
+              {isReadOnly ? "Read-only mode" : !hasStages ? "No stages yet" : "No sessions yet"}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-              {!hasStages
+              {isReadOnly
+                ? "Create, edit, and delete session actions are disabled."
+                : !hasStages
                 ? "Please create a stage first in Pre-Works → Stage Management before adding sessions."
-                : "Add sessions with title, time, and optional stage."}
+                : "Add sessions with title, stage, and time."}
             </p>
             <Button
               variant="outline"
               className="mt-4"
               onClick={() => {
+                if (isReadOnly) {
+                  toast.error("Festival is read-only.");
+                  return;
+                }
                 if (!hasStages) {
                   toast.error("Please create at least one stage before adding sessions.");
                   return;
                 }
                 setAddOpen(true);
               }}
-              disabled={!hasStages}
+              disabled={!hasStages || isReadOnly}
             >
               Add session
             </Button>
@@ -353,18 +366,22 @@ export function SessionScheduleClient({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setEditEntry(entry)}>
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => setDeleteEntryId(entry.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
+                          {!isReadOnly && (
+                            <>
+                              <DropdownMenuItem onClick={() => setEditEntry(entry)}>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => setDeleteEntryId(entry.id)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -420,6 +437,7 @@ export function SessionScheduleClient({
         dateOptions={dateOptions}
       />
 
+      {!isReadOnly && (
       <DeleteDialog
         title="Remove session"
         description="This session will be removed from the schedule."
@@ -432,8 +450,9 @@ export function SessionScheduleClient({
         }}
         isDeleting={!!deletingId}
       />
+      )}
 
-      {editEntry && (
+      {!isReadOnly && editEntry && (
         <EditSessionDialog
           festivalId={festivalId}
           entry={editEntry}
@@ -540,6 +559,10 @@ function AddSessionDialog({
       toast.error("Enter a session title.");
       return;
     }
+    if (!stageId) {
+      toast.error("Select a stage.");
+      return;
+    }
     const effectiveDate =
       dateOptions.length > 0 && !dateOptions.some((o) => o.value === dateStr)
         ? dateOptions[0]!.value
@@ -614,18 +637,12 @@ function AddSessionDialog({
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="add-session-stage" className="text-xs">Stage <span className="text-muted-foreground font-normal">(opt)</span></Label>
-                <Select
-                  value={stageId || STAGE_NONE}
-                  onValueChange={(v) => setStageId(v === STAGE_NONE ? "" : v)}
-                >
+                <Label htmlFor="add-session-stage" className="text-xs">Stage</Label>
+                <Select value={stageId} onValueChange={setStageId}>
                   <SelectTrigger id="add-session-stage" className="h-9 text-sm">
-                    <SelectValue placeholder="No stage" />
+                    <SelectValue placeholder="Select stage" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={STAGE_NONE}>
-                      <span className="text-muted-foreground">No stage</span>
-                    </SelectItem>
                     {stages.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.name}
@@ -713,7 +730,11 @@ function AddSessionDialog({
             <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button size="sm" type="submit" disabled={saving || !title.trim() || !!conflictError}>
+            <Button
+              size="sm"
+              type="submit"
+              disabled={saving || !title.trim() || !stageId || !!conflictError}
+            >
               {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
               Add
             </Button>
@@ -807,6 +828,10 @@ function EditSessionDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!stageId) {
+      toast.error("Select a stage.");
+      return;
+    }
     const startTime = new Date(`${dateStr}T${startTimeStr}`);
     const endTime = endTimeStr ? new Date(`${dateStr}T${endTimeStr}`) : null;
     await onSubmit({
@@ -859,18 +884,12 @@ function EditSessionDialog({
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="edit-session-stage" className="text-xs">Stage <span className="text-muted-foreground font-normal">(opt)</span></Label>
-                <Select
-                  value={stageId || STAGE_NONE}
-                  onValueChange={(v) => setStageId(v === STAGE_NONE ? "" : v)}
-                >
+                <Label htmlFor="edit-session-stage" className="text-xs">Stage</Label>
+                <Select value={stageId} onValueChange={setStageId}>
                   <SelectTrigger id="edit-session-stage" className="h-9 text-sm">
-                    <SelectValue placeholder="No stage" />
+                    <SelectValue placeholder="Select stage" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={STAGE_NONE}>
-                      <span className="text-muted-foreground">No stage</span>
-                    </SelectItem>
                     {stages.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.name}
@@ -965,7 +984,7 @@ function EditSessionDialog({
             <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button size="sm" type="submit" disabled={saving || !!conflictError}>
+            <Button size="sm" type="submit" disabled={saving || !stageId || !!conflictError}>
               {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
               Update
             </Button>

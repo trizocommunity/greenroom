@@ -40,6 +40,7 @@ import {
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { useCategories } from "@/hooks/useCategories";
 import { useProgrammes } from "@/hooks/useProgrammes";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 import type { ProgrammeStatus } from "@prisma/client";
 import {
   getAssignmentProgressLabel,
@@ -63,6 +64,7 @@ export function ProgrammesClient({
 }: ProgrammesClientProps) {
   const { programmes, isLoading, deleteProgramme, isDeleting } =
     useProgrammes(festivalId);
+  const { isReadOnly } = useFestivalReadOnly();
   const { categories } = useCategories(festivalId);
 
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
@@ -161,13 +163,15 @@ export function ProgrammesClient({
             </TooltipProvider>
           ) : (
             <>
-              <FeatureGate feature="programmeBulkUpload">
-                <BulkUploadProgrammesModal festivalId={festivalId} />
-              </FeatureGate>
+              {!isReadOnly && (
+                <FeatureGate feature="programmeBulkUpload">
+                  <BulkUploadProgrammesModal festivalId={festivalId} />
+                </FeatureGate>
+              )}
               <ProgrammeDialog
                 festivalId={festivalId}
                 trigger={
-                  <Button size="sm">
+                  <Button size="sm" disabled={isReadOnly}>
                     <Plus className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Add Programme</span>
                   </Button>
@@ -303,20 +307,24 @@ export function ProgrammesClient({
                           <Eye className="h-4 w-4 mr-2" />
                           View
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onSelect={() => setActionProgramme({ programme, action: "edit" })}
-                        >
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onSelect={() => setActionProgramme({ programme, action: "delete" })}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
+                        {!isReadOnly && (
+                          <>
+                            <DropdownMenuItem
+                              onSelect={() => setActionProgramme({ programme, action: "edit" })}
+                            >
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onSelect={() => setActionProgramme({ programme, action: "delete" })}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -454,20 +462,24 @@ export function ProgrammesClient({
                             <Eye className="h-4 w-4 mr-2" />
                             View
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() => setActionProgramme({ programme, action: "edit" })}
-                          >
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onSelect={() => setActionProgramme({ programme, action: "delete" })}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
+                          {!isReadOnly && (
+                            <>
+                              <DropdownMenuItem
+                                onSelect={() => setActionProgramme({ programme, action: "edit" })}
+                              >
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onSelect={() => setActionProgramme({ programme, action: "delete" })}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -502,7 +514,7 @@ export function ProgrammesClient({
           onOpenChange={(open) => !open && setActionProgramme(null)}
         />
       )}
-      {actionProgramme?.action === "edit" && actionProgramme.programme && (
+      {!isReadOnly && actionProgramme?.action === "edit" && actionProgramme.programme && (
         <ProgrammeDialog
           festivalId={festivalId}
           programme={actionProgramme.programme}
@@ -510,7 +522,7 @@ export function ProgrammesClient({
           onOpenChange={(open) => !open && setActionProgramme(null)}
         />
       )}
-      {actionProgramme?.action === "delete" && actionProgramme.programme && (
+      {!isReadOnly && actionProgramme?.action === "delete" && actionProgramme.programme && (
         <DeleteDialog
           title="Delete Programme"
           description="Are you sure? This will delete all assignments associated with this programme."

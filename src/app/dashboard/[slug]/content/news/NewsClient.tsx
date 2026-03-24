@@ -42,6 +42,7 @@ import {
   deleteNewsPostAction,
 } from "@/server/actions/news.actions";
 import { format } from "date-fns";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 
 type NewsPost = {
   id: string;
@@ -73,6 +74,7 @@ export function NewsClient({
   festivalSlug,
   initialPosts,
 }: NewsClientProps) {
+  const { isReadOnly } = useFestivalReadOnly();
   const [posts, setPosts] = useState<NewsPost[]>(initialPosts);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -84,12 +86,14 @@ export function NewsClient({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const openCreate = () => {
+    if (isReadOnly) return;
     setEditingId(null);
     setForm(emptyForm);
     setDialogOpen(true);
   };
 
   const openEdit = (post: NewsPost) => {
+    if (isReadOnly) return;
     setEditingId(post.id);
     setForm({
       title: post.title,
@@ -102,6 +106,7 @@ export function NewsClient({
   };
 
   const handleSave = async () => {
+    if (isReadOnly) return;
     if (!form.title.trim()) {
       toast.error("Title is required.");
       return;
@@ -143,6 +148,7 @@ export function NewsClient({
   };
 
   const handleDelete = async (id: string) => {
+    if (isReadOnly) return;
     const res = await deleteNewsPostAction(festivalId, id);
     if (res.success) {
       setDeleteConfirmId(null);
@@ -153,6 +159,7 @@ export function NewsClient({
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isReadOnly) return;
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !file.type.startsWith("image/")) return;
@@ -197,7 +204,7 @@ export function NewsClient({
               views.
             </p>
           </HowItWorksButton>
-          <Button onClick={openCreate}>
+          <Button onClick={openCreate} disabled={isReadOnly}>
             <Plus className="h-4 w-4 sm:mr-2" />
             Create news
           </Button>
@@ -244,18 +251,22 @@ export function NewsClient({
                       <Eye className="h-4 w-4 mr-2" />
                       View details
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => openEdit(post)}>
-                      <Pencil className="h-4 w-4 mr-2" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="text-destructive focus:text-destructive"
-                      onClick={() => setDeleteConfirmId(post.id)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </DropdownMenuItem>
+                    {!isReadOnly && (
+                      <>
+                        <DropdownMenuItem onClick={() => openEdit(post)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => setDeleteConfirmId(post.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -297,7 +308,7 @@ export function NewsClient({
             <p className="text-sm text-muted-foreground mt-1 max-w-sm">
               Create a post to show on your public news page. Add a title, content, and optional image.
             </p>
-            <Button variant="outline" className="mt-6" onClick={openCreate}>
+            <Button variant="outline" className="mt-6" onClick={openCreate} disabled={isReadOnly}>
               <Plus className="h-4 w-4 mr-2" />
               Create news
             </Button>
@@ -341,7 +352,7 @@ export function NewsClient({
             <Button variant="outline" onClick={() => setViewDetailsPost(null)}>
               Close
             </Button>
-            {viewDetailsPost && (
+            {viewDetailsPost && !isReadOnly && (
               <Button
                 onClick={() => {
                   setViewDetailsPost(null);
@@ -377,6 +388,7 @@ export function NewsClient({
                   setForm((f) => ({ ...f, title: e.target.value }))
                 }
                 placeholder="Headline"
+                disabled={isReadOnly}
               />
             </div>
             <div className="grid gap-2">
@@ -388,6 +400,7 @@ export function NewsClient({
                   setForm((f) => ({ ...f, excerpt: e.target.value }))
                 }
                 placeholder="Short summary"
+                disabled={isReadOnly}
               />
             </div>
             <div className="grid gap-2">
@@ -399,6 +412,7 @@ export function NewsClient({
                     setForm((f) => ({ ...f, imageUrl: e.target.value }))
                   }
                   placeholder="Image URL"
+                  disabled={isReadOnly}
                 />
                 <input
                   ref={fileInputRef}
@@ -411,7 +425,7 @@ export function NewsClient({
                   type="button"
                   variant="outline"
                   size="icon"
-                  disabled={uploadingImage || !isCloudinaryConfigured()}
+                  disabled={isReadOnly || uploadingImage || !isCloudinaryConfigured()}
                   onClick={() => fileInputRef.current?.click()}
                 >
                   {uploadingImage ? (
@@ -433,6 +447,7 @@ export function NewsClient({
                 placeholder="Full story..."
                 rows={6}
                 className="resize-none"
+                disabled={isReadOnly}
               />
             </div>
             <div className="flex items-center gap-2">
@@ -444,6 +459,7 @@ export function NewsClient({
                   setForm((f) => ({ ...f, published: e.target.checked }))
                 }
                 className="rounded border"
+                disabled={isReadOnly}
               />
               <Label htmlFor="news-published">Publish now</Label>
             </div>
@@ -452,7 +468,7 @@ export function NewsClient({
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={saving}>
+            <Button onClick={handleSave} disabled={saving || isReadOnly}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {editingId ? "Update" : "Create"}
             </Button>

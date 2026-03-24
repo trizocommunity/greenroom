@@ -21,7 +21,7 @@ export async function createGroupAction(
   data: { name: string; seriesStart?: number; color?: string },
 ) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
   return GroupService.create(festivalId, {
     name: data.name,
     seriesStart: data.seriesStart,
@@ -31,7 +31,7 @@ export async function createGroupAction(
 
 export async function deleteGroupAction(festivalId: string, id: string) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
   return GroupService.delete(id, festivalId);
 }
 
@@ -47,7 +47,7 @@ export async function updateGroupAction(
 ) {
   try {
     const session = await getSession();
-    await assertFestivalAccess(session, festivalId);
+    await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
     // BASIC plan must not be able to modify team leader assignments.
     if (data.teamLeaderIds !== undefined) {

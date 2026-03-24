@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useGroups } from "@/hooks/useGroups";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 import { GroupDetailsDialog } from "./GroupDetailsDialog";
 import { GroupDialog } from "./GroupDialog";
 
@@ -23,6 +24,7 @@ interface GroupsClientProps {
 
 export function GroupsClient({ festivalId, children }: GroupsClientProps) {
   const { groups, isLoading, deleteGroup, isDeleting } = useGroups(festivalId);
+  const { isReadOnly } = useFestivalReadOnly();
   const [actionGroup, setActionGroup] = useState<{
     group: any;
     action: "view" | "edit" | "delete";
@@ -44,7 +46,7 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
         <GroupDialog
           festivalId={festivalId}
           trigger={
-            <Button size="sm" className="shrink-0">
+            <Button size="sm" className="shrink-0" disabled={isReadOnly}>
               <Plus className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Create Group</span>
             </Button>
@@ -105,20 +107,24 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
                         <Eye className="h-4 w-4 mr-2" />
                         View
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onSelect={() => setActionGroup({ group, action: "edit" })}
-                      >
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onSelect={() => setActionGroup({ group, action: "delete" })}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
+                      {!isReadOnly && (
+                        <>
+                          <DropdownMenuItem
+                            onSelect={() => setActionGroup({ group, action: "edit" })}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onSelect={() => setActionGroup({ group, action: "delete" })}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -163,7 +169,7 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
               <GroupDialog
                 festivalId={festivalId}
                 trigger={
-                  <Button>
+                  <Button disabled={isReadOnly}>
                     <Plus className="mr-2 h-4 w-4" />
                     Create Group
                   </Button>
@@ -183,7 +189,7 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
           onOpenChange={(open) => !open && setActionGroup(null)}
         />
       )}
-      {actionGroup?.action === "edit" && actionGroup.group && (
+      {!isReadOnly && actionGroup?.action === "edit" && actionGroup.group && (
         <GroupDialog
           festivalId={festivalId}
           group={actionGroup.group}
@@ -191,7 +197,7 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
           onOpenChange={(open) => !open && setActionGroup(null)}
         />
       )}
-      {actionGroup?.action === "delete" && actionGroup.group && (
+      {!isReadOnly && actionGroup?.action === "delete" && actionGroup.group && (
         <DeleteDialog
           title="Delete Group"
           description="Are you sure you want to delete this group? This will also delete all students in this group."

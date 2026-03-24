@@ -26,6 +26,7 @@ import {
 import { publishTeamStandings } from "@/server/actions/results";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { cn } from "@/lib/utils";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 
 // Types matching what's passed from the page
 interface LeaderboardClientProps {
@@ -60,6 +61,8 @@ export function LeaderboardClient({
   hideLiveStandings = false,
   children,
 }: LeaderboardClientProps) {
+  const { isReadOnly: lifecycleReadOnly } = useFestivalReadOnly();
+  const effectiveReadOnly = readOnly || lifecycleReadOnly;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [studentFilterCategory, setStudentFilterCategory] = useState<string>(
@@ -202,7 +205,7 @@ export function LeaderboardClient({
             </p>
           </div>
         )}
-        {!readOnly ? (
+        {!effectiveReadOnly ? (
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <HowItWorksButton
               title="How Leaderboard works"
@@ -223,6 +226,7 @@ export function LeaderboardClient({
               size="sm"
               className="gap-2 bg-green-600 hover:bg-green-700"
               onClick={() => {
+                if (effectiveReadOnly) return;
                 setUpdatingStandingsId("standings");
                 startTransition(async () => {
                   try {

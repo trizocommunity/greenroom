@@ -17,7 +17,7 @@ export async function getProgrammeDetailsAction(
   id: string,
 ) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
   return ProgrammeService.getDetails(id, festivalId);
 }
 
@@ -35,7 +35,7 @@ export async function createProgrammeAction(
   },
 ) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
   // Validate Dependencies
   const categoryCount = await prisma.category.count({
@@ -100,7 +100,7 @@ export async function bulkCreateProgrammesAction(
 
 export async function deleteProgrammeAction(festivalId: string, id: string) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
   return ProgrammeService.delete(id, festivalId);
 }
 
@@ -119,7 +119,7 @@ export async function updateProgrammeAction(
   },
 ) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
   return ProgrammeService.update(id, festivalId, {
     name: data.name,

@@ -23,6 +23,7 @@ export function JoinedFestivalCard({ festival }: JoinedFestivalCardProps) {
     expiresAt: festival.expiresAt,
   });
   const isExpired = status === "EXPIRED";
+  const isPast = status === "PAST";
   const isActive = !isExpired && (status === "ONGOING" || status === "READY");
   const isLocked = festival.isLocked;
 
@@ -60,11 +61,11 @@ export function JoinedFestivalCard({ festival }: JoinedFestivalCardProps) {
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          {isActive ? (
+          {isActive || isPast ? (
             <Button asChild size="sm" className="flex-1 sm:flex-none shadow-sm">
               <Link href={`/dashboard/${festival.slug}`}>
                 <LayoutDashboard className="mr-2 h-4 w-4" />
-                Dashboard
+                {isPast ? "Dashboard (Read-only)" : "Dashboard"}
               </Link>
             </Button>
           ) : isExpired ? (
@@ -74,7 +75,7 @@ export function JoinedFestivalCard({ festival }: JoinedFestivalCardProps) {
           ) : (
             <Button disabled size="sm" variant="secondary">
               {isLocked ? <Lock className="mr-2 w-4 h-4" /> : null}
-              {isLocked ? "Locked" : "Inactive"}
+              {isLocked ? "Locked" : "Past (Read-only)"}
             </Button>
           )}
         </div>

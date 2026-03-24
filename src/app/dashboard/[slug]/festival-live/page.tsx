@@ -86,6 +86,8 @@ export default async function FestivalLivePage({
           founderName: festival.founderName || "",
           founderMessage: festival.founderMessage || "",
           slug: festival.slug,
+          createdAt: festival.createdAt,
+          expiresAt: festival.expiresAt,
         }}
         branding={getBrandingFromJson(festival.branding)}
         publicSiteEnabled={festival.publicSiteEnabled ?? false}

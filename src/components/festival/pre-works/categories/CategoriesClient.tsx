@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useCategories } from "@/hooks/useCategories";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 import { useStudents } from "@/hooks/useStudents";
 import { CategoryDetailsDialog } from "./CategoryDetailsDialog";
 import { CategoryDialog } from "./CategoryDialog";
@@ -40,6 +41,7 @@ export function CategoriesClient({ festivalId, children }: CategoriesClientProps
     isDeleting,
   } = useCategories(festivalId);
   const { students, isLoading: isStudentsLoading } = useStudents(festivalId);
+  const { isReadOnly } = useFestivalReadOnly();
   const [actionCategory, setActionCategory] = useState<{
     category: any;
     action: "view" | "edit" | "delete";
@@ -64,7 +66,7 @@ export function CategoriesClient({ festivalId, children }: CategoriesClientProps
         <CategoryDialog
           festivalId={festivalId}
           trigger={
-            <Button size="sm" className="shrink-0">
+            <Button size="sm" className="shrink-0" disabled={isReadOnly}>
               <Plus className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Create Category</span>
             </Button>
@@ -122,24 +124,28 @@ export function CategoriesClient({ festivalId, children }: CategoriesClientProps
                         <Eye className="h-4 w-4 mr-2" />
                         View
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onSelect={() =>
-                          setActionCategory({ category, action: "edit" })
-                        }
-                      >
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onSelect={() =>
-                          setActionCategory({ category, action: "delete" })
-                        }
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
+                      {!isReadOnly && (
+                        <>
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              setActionCategory({ category, action: "edit" })
+                            }
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onSelect={() =>
+                              setActionCategory({ category, action: "delete" })
+                            }
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -187,7 +193,7 @@ export function CategoriesClient({ festivalId, children }: CategoriesClientProps
               <CategoryDialog
                 festivalId={festivalId}
                 trigger={
-                  <Button>
+                  <Button disabled={isReadOnly}>
                     <Plus className="mr-2 h-4 w-4" />
                     Create Category
                   </Button>
@@ -207,7 +213,7 @@ export function CategoriesClient({ festivalId, children }: CategoriesClientProps
           onOpenChange={(open) => !open && setActionCategory(null)}
         />
       )}
-      {actionCategory?.action === "edit" && actionCategory.category && (
+      {!isReadOnly && actionCategory?.action === "edit" && actionCategory.category && (
         <CategoryDialog
           festivalId={festivalId}
           category={actionCategory.category}
@@ -215,7 +221,7 @@ export function CategoriesClient({ festivalId, children }: CategoriesClientProps
           onOpenChange={(open) => !open && setActionCategory(null)}
         />
       )}
-      {actionCategory?.action === "delete" && actionCategory.category && (
+      {!isReadOnly && actionCategory?.action === "delete" && actionCategory.category && (
         <DeleteDialog
           title="Delete Category"
           description="Are you sure you want to delete this category? This will fail if there are programmes in this category."

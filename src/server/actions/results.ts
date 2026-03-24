@@ -39,7 +39,7 @@ function revalidateResultsPaths(slug: string, options?: { includeTeamStatus?: bo
 export async function saveResult(data: SaveResultInput): Promise<ActionResponse<Awaited<ReturnType<typeof ResultModel.upsert>>>> {
   try {
     const session = await getSession();
-    await assertFestivalAccess(session, data.festivalId);
+    await assertFestivalAccess(session, data.festivalId, { requireWritable: true });
 
     const result = await ResultModel.upsert(data.assignmentId, data);
     await updateProgrammeStatus(data.programmeId);
@@ -67,7 +67,7 @@ export async function deleteResult(resultId: string, festivalSlug: string): Prom
       select: { festivalId: true, programmeId: true },
     });
     if (!result) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
-    await assertFestivalAccess(session, result.festivalId);
+    await assertFestivalAccess(session, result.festivalId, { requireWritable: true });
 
     await ResultModel.delete(resultId);
     await updateProgrammeStatus(result.programmeId);
@@ -93,7 +93,7 @@ export async function bulkPublishProgrammeResults(
       select: { festivalId: true },
     });
     if (!programme) throw new AppError(ERROR_MESSAGES.PROGRAMME_NOT_FOUND);
-    await assertFestivalAccess(session, programme.festivalId);
+    await assertFestivalAccess(session, programme.festivalId, { requireWritable: true });
 
     await ResultModel.bulkPublishByProgramme(programmeId, isPublished);
     await setProgrammePublished(programmeId, isPublished);
@@ -116,7 +116,7 @@ export async function publishTeamStandings(
 ): Promise<ActionResponse<void>> {
   try {
     const session = await getSession();
-    await assertFestivalAccess(session, festivalId);
+    await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
     const { updateTeamStandings } = await import(
       "@/server/models/festival.model"

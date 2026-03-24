@@ -15,13 +15,13 @@ export async function createCategoryAction(
   data: { name: string; description?: string; type?: "SINGLE" | "GENERAL" },
 ) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
   return CategoryService.create(festivalId, data);
 }
 
 export async function deleteCategoryAction(festivalId: string, id: string) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
   return CategoryService.delete(id, festivalId);
 }
 
@@ -31,6 +31,6 @@ export async function updateCategoryAction(
   data: { name: string; description?: string; type?: "SINGLE" | "GENERAL" },
 ) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
   return CategoryService.update(id, festivalId, data);
 }

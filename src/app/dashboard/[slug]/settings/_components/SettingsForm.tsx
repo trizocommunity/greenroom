@@ -18,12 +18,14 @@ import { FeatureService } from "@/lib/features";
 import { getResolvedTier } from "@/lib/tier";
 import { updateFestivalSettingsAction } from "@/server/actions/festival.actions";
 import { DateTimePicker } from "@/components/ui/date-picker";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 
 interface SettingsFormProps {
   festival: any;
 }
 
 export function SettingsForm({ festival }: SettingsFormProps) {
+  const { isReadOnly } = useFestivalReadOnly();
   const resolvedTier = getResolvedTier(festival.tier);
   const [isLoading, setIsLoading] = useState(false);
   // "Duration starts" for presets: the plan window starts when the festival is created.
@@ -141,7 +143,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                 placeholder="Pick deadline"
                 from={durationStart}
                 to={festivalStartDate ?? undefined}
-                disabled={festivalHasStarted}
+                disabled={festivalHasStarted || isReadOnly}
               />
               <p className="text-sm text-muted-foreground">
                 Team Leaders cannot assign students to programmes after this
@@ -182,6 +184,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                       : 2,
                   });
                 }}
+                disabled={isReadOnly}
               />
               <p className="text-sm text-muted-foreground">
                 Maximum number of team leaders allowed per group.
@@ -205,7 +208,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
           )}
 
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-            <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
+            <Button type="submit" disabled={isLoading || isReadOnly} className="w-full sm:w-auto">
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Changes
             </Button>

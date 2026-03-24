@@ -33,7 +33,7 @@ export async function createStudentWithServiceAction(
   },
 ) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
   const festival = await findFestivalById(festivalId);
   if (!festival) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
@@ -71,7 +71,7 @@ export async function validateStudentsAction(
   candidates: { name: string; email?: string }[],
 ) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
   // 1. Extract non-empty emails and names
   const emails = candidates
@@ -130,7 +130,7 @@ export async function bulkCreateStudentsAction(
   }[],
 ) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
   const festival = await findFestivalById(festivalId);
   if (!festival) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
@@ -192,7 +192,7 @@ export async function deleteStudentWithServiceAction(
   id: string,
 ) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
   return StudentService.delete(id, festivalId);
 }
@@ -213,7 +213,7 @@ export async function updateStudentAction(
   },
 ) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
   return StudentService.update(id, festivalId, {
     name: data.name,

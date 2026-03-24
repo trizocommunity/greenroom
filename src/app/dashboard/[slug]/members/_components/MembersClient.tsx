@@ -40,6 +40,7 @@ import {
   createFestivalMember,
   revokeFestivalMember,
 } from "@/server/actions/team.actions";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 
 interface MembersClientProps {
   festivalId: string;
@@ -54,6 +55,7 @@ export function MembersClient({
   totalMemberCount,
   atMemberCap,
 }: MembersClientProps) {
+  const { isReadOnly } = useFestivalReadOnly();
   const { members, isLoading } = useMembers(festivalId);
 
   if (isLoading) {
@@ -75,7 +77,7 @@ export function MembersClient({
         </div>
         <AddMemberDialog
           festivalId={festivalId}
-          disabled={atMemberCap}
+          disabled={atMemberCap || isReadOnly}
           atMemberCap={atMemberCap}
           maxTeamMembers={maxTeamMembers}
         />
@@ -124,7 +126,7 @@ export function MembersClient({
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  <MemberActions member={member} />
+                  <MemberActions member={member} isReadOnly={isReadOnly} />
                 </TableCell>
               </TableRow>
             ))}
@@ -294,10 +296,11 @@ function AddMemberDialog({
   );
 }
 
-function MemberActions({ member }: { member: any }) {
+function MemberActions({ member, isReadOnly }: { member: any; isReadOnly: boolean }) {
   const [isRevoking, setIsRevoking] = useState(false);
 
   const handleRevoke = async () => {
+    if (isReadOnly) return;
     setIsRevoking(true);
     try {
       const result = await revokeFestivalMember(member.id);
@@ -372,6 +375,7 @@ function MemberActions({ member }: { member: any }) {
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-destructive"
+            disabled={isReadOnly}
           >
             <Trash2 className="h-4 w-4" />
           </Button>

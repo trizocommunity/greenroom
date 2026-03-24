@@ -18,11 +18,16 @@ import {
 } from "@/components/ui/tooltip";
 import type { InstitutionType } from "@/lib/prisma-enums";
 import { useFeatures } from "@/hooks/useFeature";
-import { setPublicSiteEnabledAction, updateFestivalBrandingAction } from "@/server/actions/festival.actions";
+import {
+  setPublicSiteEnabledAction,
+  updateFestivalBrandingAction,
+  updateFestivalSettingsAction,
+} from "@/server/actions/festival.actions";
 import { updateFestivalAction } from "@/server/actions/user-festival.actions";
 import type { FestivalBranding } from "@/types/festival";
 import { cn } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/date-picker";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 
 interface FestivalLiveClientProps {
   festivalId: string;
@@ -43,6 +48,8 @@ interface FestivalLiveClientProps {
     founderName: string | null;
     founderMessage: string | null;
     slug: string;
+    createdAt: Date | string | null;
+    expiresAt: Date | string | null;
   };
   branding: FestivalBranding | null;
   publicSiteEnabled: boolean;
@@ -63,6 +70,7 @@ export function FestivalLiveClient({
   publicUrl,
   isBasicTier,
 }: FestivalLiveClientProps) {
+  const { isReadOnly } = useFestivalReadOnly();
   const router = useRouter();
   const [enabled, setEnabled] = useState(publicSiteEnabled);
   const [loading, setLoading] = useState(false);
@@ -89,8 +97,72 @@ export function FestivalLiveClient({
   const hasBrandingChanges =
     JSON.stringify(brandingForm) !== JSON.stringify(initialBrandingRef.current);
   const hasChanges = hasFestivalChanges || hasBrandingChanges;
+  const normalizeDateValue = (value: Date | string | null | undefined) => {
+    if (!value) return null;
+    const date = value instanceof Date ? value : new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  };
+  const hasDateOnlyFestivalChange =
+    normalizeDateValue(festivalForm.startDate) !==
+      normalizeDateValue(initialFestivalRef.current.startDate) ||
+    normalizeDateValue(festivalForm.endDate) !==
+      normalizeDateValue(initialFestivalRef.current.endDate);
+  const hasNonDateFestivalChange =
+    (festivalForm.name ?? "") !== (initialFestivalRef.current.name ?? "") ||
+    (festivalForm.description ?? null) !== (initialFestivalRef.current.description ?? null) ||
+    (festivalForm.location ?? null) !== (initialFestivalRef.current.location ?? null) ||
+    (festivalForm.orgName ?? null) !== (initialFestivalRef.current.orgName ?? null) ||
+    (festivalForm.orgDescription ?? null) !==
+      (initialFestivalRef.current.orgDescription ?? null) ||
+    (festivalForm.orgWebsite ?? null) !== (initialFestivalRef.current.orgWebsite ?? null) ||
+    (festivalForm.orgLocation ?? null) !== (initialFestivalRef.current.orgLocation ?? null) ||
+    (festivalForm.slug ?? "") !== (initialFestivalRef.current.slug ?? "");
+  const canSaveInReadOnly = hasDateOnlyFestivalChange && !hasNonDateFestivalChange;
+  const canSave = isReadOnly ? canSaveInReadOnly : hasChanges;
+  const hasFestivalDateChange = hasDateOnlyFestivalChange;
+  const parseSafeDate = (value: Date | string | null | undefined) => {
+    if (!value) return null;
+    const parsed = value instanceof Date ? value : new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+  const planStartDate = parseSafeDate(festivalDetails.createdAt);
+  const planExpiryDate = parseSafeDate(festivalDetails.expiresAt);
+
+  const validateDateWindow = () => {
+    const start =
+      festivalForm.startDate instanceof Date
+        ? festivalForm.startDate
+        : festivalForm.startDate
+          ? new Date(festivalForm.startDate)
+          : null;
+    const end =
+      festivalForm.endDate instanceof Date
+        ? festivalForm.endDate
+        : festivalForm.endDate
+          ? new Date(festivalForm.endDate)
+          : null;
+
+    if (!start || !end || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      toast.error("Please select valid start and end dates.");
+      return null;
+    }
+    if (start > end) {
+      toast.error("Start date must be before end date.");
+      return null;
+    }
+    if (planStartDate && start < planStartDate) {
+      toast.error("Start date must be on/after plan created date.");
+      return null;
+    }
+    if (planExpiryDate && end > planExpiryDate) {
+      toast.error("End date must be on/before plan expiry date.");
+      return null;
+    }
+    return { start, end };
+  };
 
   const handleToggle = async (checked: boolean) => {
+    if (isReadOnly) return;
     setLoading(true);
     try {
       const result = await setPublicSiteEnabledAction(festivalId, checked);
@@ -188,15 +260,46 @@ export function FestivalLiveClient({
   };
 
   const handleSaveAll = async () => {
-    if (!hasChanges) return;
+    if (!canSave) return;
     setSavingAll(true);
     try {
+      if (isReadOnly) {
+        const validDates = validateDateWindow();
+        if (!validDates) return;
+        const res = await updateFestivalSettingsAction(festivalId, {
+          startDate: validDates.start.toISOString(),
+          endDate: validDates.end.toISOString(),
+        });
+        if (res.success) {
+          toast.success("Festival dates updated.");
+          initialFestivalRef.current = {
+            ...initialFestivalRef.current,
+            startDate: festivalForm.startDate,
+            endDate: festivalForm.endDate,
+          };
+          router.refresh();
+        } else {
+          toast.error(res.error || "Failed to update festival dates.");
+        }
+        return;
+      }
+
       let festivalUpdated = false;
       let brandingUpdated = false;
 
       if (hasFestivalChanges) {
+        let payload: Record<string, unknown> = { ...festivalForm };
+        if (hasFestivalDateChange) {
+          const validDates = validateDateWindow();
+          if (!validDates) return;
+          payload = {
+            ...payload,
+            startDate: validDates.start,
+            endDate: validDates.end,
+          };
+        }
         const res = await updateFestivalAction({
-          ...festivalForm,
+          ...payload,
         } as any);
         if (res.success) {
           festivalUpdated = true;
@@ -297,7 +400,7 @@ export function FestivalLiveClient({
                       id="public-site-toggle"
                       checked={enabled}
                       onCheckedChange={handleToggle}
-                      disabled={loading}
+                      disabled={loading || isReadOnly}
                     />
                   ) : (
                     <Tooltip>
@@ -310,7 +413,8 @@ export function FestivalLiveClient({
                               if (checked) return;
                               handleToggle(false);
                             }}
-                            disabled={loading || (!enabled && !canEnable)}
+                            disabled={loading || isReadOnly || (!enabled && !canEnable)}
+                            
                           />
                         </span>
                       </TooltipTrigger>
@@ -354,6 +458,7 @@ export function FestivalLiveClient({
                     setFestivalForm((prev) => ({ ...prev, name: e.target.value }))
                   }
                   placeholder="E.g. Summer Arts 2025"
+                  disabled={isReadOnly}
                 />
               </div>
               <div className="space-y-2">
@@ -369,6 +474,7 @@ export function FestivalLiveClient({
                   }
                   rows={3}
                   placeholder="Briefly describe your festival..."
+                  disabled={isReadOnly}
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -390,6 +496,8 @@ export function FestivalLiveClient({
                       }))
                     }
                     placeholder="Pick start date"
+                    from={planStartDate ?? undefined}
+                    to={planExpiryDate ?? undefined}
                   />
                 </div>
                 <div className="space-y-2">
@@ -410,6 +518,8 @@ export function FestivalLiveClient({
                       }))
                     }
                     placeholder="Pick end date"
+                    from={planStartDate ?? undefined}
+                    to={planExpiryDate ?? undefined}
                   />
                 </div>
               </div>
@@ -425,6 +535,7 @@ export function FestivalLiveClient({
                     }))
                   }
                   placeholder="City, Country"
+                  disabled={isReadOnly}
                 />
               </div>
             </CardContent>
@@ -445,6 +556,7 @@ export function FestivalLiveClient({
                     setFestivalForm((prev) => ({ ...prev, orgName: e.target.value }))
                   }
                   placeholder="Org name"
+                  disabled={isReadOnly}
                 />
               </div>
               <div className="space-y-2 col-span-2">
@@ -457,6 +569,7 @@ export function FestivalLiveClient({
                   }
                   placeholder="Short description of your organization (required to go live)"
                   rows={3}
+                  disabled={isReadOnly}
                 />
               </div>
               <div className="space-y-2">
@@ -471,6 +584,7 @@ export function FestivalLiveClient({
                     }))
                   }
                   placeholder="https://..."
+                  disabled={isReadOnly}
                 />
               </div>
               <div className="space-y-2">
@@ -485,6 +599,7 @@ export function FestivalLiveClient({
                     }))
                   }
                   placeholder="City"
+                  disabled={isReadOnly}
                 />
               </div>
               <div className="space-y-2 col-span-2">
@@ -498,6 +613,7 @@ export function FestivalLiveClient({
                     }
                     className="font-mono"
                     placeholder="my-festival"
+                    disabled={isReadOnly}
                   />
                   <span className="text-xs text-muted-foreground whitespace-nowrap">
                     .greenroom.com
@@ -533,6 +649,7 @@ export function FestivalLiveClient({
                     onChange={(e) =>
                       setBrandingForm((prev) => ({ ...prev, accentColor: e.target.value }))
                     }
+                    disabled={isReadOnly}
                   />
                   <Input
                     value={brandingForm.accentColor}
@@ -541,6 +658,7 @@ export function FestivalLiveClient({
                     }
                     placeholder="#000000"
                     className="font-mono max-w-32"
+                    disabled={isReadOnly}
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">Primary/accent color for buttons and highlights on your public site.</p>
@@ -556,10 +674,12 @@ export function FestivalLiveClient({
                     setBrandingForm((prev) => ({ ...prev, logo: e.target.value }))
                   }
                   placeholder="https://..."
+                  disabled={isReadOnly}
                 />
                 <Input
                   type="file"
                   accept="image/*"
+                  disabled={isReadOnly}
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
@@ -592,10 +712,12 @@ export function FestivalLiveClient({
                     }))
                   }
                   placeholder="https://..."
+                  disabled={isReadOnly}
                 />
                 <Input
                   type="file"
                   accept="image/*"
+                  disabled={isReadOnly}
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
@@ -624,7 +746,8 @@ export function FestivalLiveClient({
          <div className="w-full pt-3 pb-10 flex items-center justify-end bg-background/80 backdrop-blur">
             <Button
               size="lg"
-              disabled={!hasChanges || savingAll}
+              disabled={!canSave || savingAll}
+              
               onClick={handleSaveAll}
             >
               {savingAll && (

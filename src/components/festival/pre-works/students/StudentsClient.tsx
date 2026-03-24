@@ -53,6 +53,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { useFeature } from "@/hooks/useFeature";
 import { useGroups } from "@/hooks/useGroups";
 import { useStudents } from "@/hooks/useStudents";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 import { BulkUploadStudentsModal } from "./BulkUploadStudentsModal";
 import { AssignTeamLeadersModal } from "./AssignTeamLeadersModal";
 import { StudentDetailsDialog } from "./StudentDetailsDialog";
@@ -91,6 +92,7 @@ export function StudentsClient({
   const { categories } = useCategories(festivalId);
   const canViewPublicStudentProfile = useFeature("publicStudentProfile");
   const canViewStudentProfile = useFeature("viewStudentProfile");
+  const { isReadOnly } = useFestivalReadOnly();
 
   const singleCategories = (categories ?? []).filter(
     (c: any) => c.type === "SINGLE",
@@ -185,19 +187,23 @@ export function StudentsClient({
             </TooltipProvider>
           ) : (
             <>
-              <FeatureGate feature="members">
-                <AssignTeamLeadersModal
-                  festivalId={festivalId}
-                  teamLeaderLimit={teamLeaderLimit}
-                />
-              </FeatureGate>
-              <FeatureGate feature="studentBulkUpload">
-                <BulkUploadStudentsModal festivalId={festivalId} />
-              </FeatureGate>
+              {!isReadOnly && (
+                <FeatureGate feature="members">
+                  <AssignTeamLeadersModal
+                    festivalId={festivalId}
+                    teamLeaderLimit={teamLeaderLimit}
+                  />
+                </FeatureGate>
+              )}
+              {!isReadOnly && (
+                <FeatureGate feature="studentBulkUpload">
+                  <BulkUploadStudentsModal festivalId={festivalId} />
+                </FeatureGate>
+              )}
               <StudentDialog
                 festivalId={festivalId}
                 trigger={
-                  <Button size="sm">
+                  <Button size="sm" disabled={isReadOnly}>
                     <Plus className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Add Student</span>
                   </Button>
@@ -373,24 +379,28 @@ export function StudentsClient({
                             View Details
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem
-                          onSelect={() =>
-                            setActionStudent({ student, action: "edit" })
-                          }
-                        >
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onSelect={() =>
-                            setActionStudent({ student, action: "delete" })
-                          }
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
+                        {!isReadOnly && (
+                          <>
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                setActionStudent({ student, action: "edit" })
+                              }
+                            >
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onSelect={() =>
+                                setActionStudent({ student, action: "delete" })
+                              }
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -503,24 +513,28 @@ export function StudentsClient({
                                 View Details
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem
-                              onSelect={() =>
-                                setActionStudent({ student, action: "edit" })
-                              }
-                            >
-                              <Pencil className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onSelect={() =>
-                                setActionStudent({ student, action: "delete" })
-                              }
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
+                            {!isReadOnly && (
+                              <>
+                                <DropdownMenuItem
+                                  onSelect={() =>
+                                    setActionStudent({ student, action: "edit" })
+                                  }
+                                >
+                                  <Pencil className="h-4 w-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onSelect={() =>
+                                    setActionStudent({ student, action: "delete" })
+                                  }
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                     </TableCell>
@@ -554,7 +568,7 @@ export function StudentsClient({
           onOpenChange={(open) => !open && setActionStudent(null)}
         />
       )}
-      {actionStudent?.action === "edit" && actionStudent.student && (
+      {!isReadOnly && actionStudent?.action === "edit" && actionStudent.student && (
         <StudentDialog
           festivalId={festivalId}
           studentToEdit={actionStudent.student}
@@ -562,7 +576,7 @@ export function StudentsClient({
           onOpenChange={(open) => !open && setActionStudent(null)}
         />
       )}
-      {actionStudent?.action === "delete" && actionStudent.student && (
+      {!isReadOnly && actionStudent?.action === "delete" && actionStudent.student && (
         <DeleteDialog
           title="Delete Student"
           description="Are you sure? This will remove the student from all assigned programmes."

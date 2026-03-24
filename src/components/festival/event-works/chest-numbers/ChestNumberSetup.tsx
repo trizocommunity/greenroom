@@ -34,6 +34,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 
 type CategoryItem = { id: string; name: string };
 
@@ -58,6 +59,7 @@ export function ChestNumberSetup({
   onGenerated,
   pendingCount = 0,
 }: ChestNumberSetupProps) {
+  const { isReadOnly } = useFestivalReadOnly();
   const queryClient = useQueryClient();
 
   const invalidateStudentsAndNotify = () => {
@@ -119,6 +121,7 @@ export function ChestNumberSetup({
 
   // Initialize edit state
   const handleOpenEdit = () => {
+    if (isReadOnly) return;
     setEditPrefix(prefix);
     // Detect style from current settings
     if (!prefix && Object.keys(categoryCodes).every((k) => !categoryCodes[k])) {
@@ -160,6 +163,7 @@ export function ChestNumberSetup({
   };
 
   const handleSaveAndGenerate = async () => {
+    if (isReadOnly) return;
     const isNumeric = numberingStyle === "NUMERIC";
 
     if (!isNumeric) {
@@ -215,6 +219,7 @@ export function ChestNumberSetup({
   };
 
   const handleUpdateConfiguration = async () => {
+    if (isReadOnly) return;
     if (numberingStyle === "ALPHANUMERIC" && !editPrefix) {
       return toast.error("Prefix is required for Alphanumeric style");
     }
@@ -282,6 +287,7 @@ export function ChestNumberSetup({
   };
 
   const handleReset = async () => {
+    if (isReadOnly) return;
     try {
       setIsResetting(true);
       await resetChestNumbers(festivalId);
@@ -330,7 +336,7 @@ export function ChestNumberSetup({
       </div>
       <div className="flex flex-wrap items-center gap-2 shrink-0">
         {!isConfigured && (
-          <Button size="sm" onClick={handleOpenEdit} className="h-8 gap-1.5 text-xs">
+          <Button size="sm" onClick={handleOpenEdit} className="h-8 gap-1.5 text-xs" disabled={isReadOnly}>
             <Settings2 className="h-3.5 w-3.5" />
             Configure
           </Button>
@@ -343,6 +349,7 @@ export function ChestNumberSetup({
                   variant="ghost"
                   size="sm"
                   className="h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                  disabled={isReadOnly}
                 >
                   {isResetting ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -373,7 +380,7 @@ export function ChestNumberSetup({
             {pendingCount > 0 && (
               <Button
                 onClick={handleSaveAndGenerate}
-                disabled={isGenerating || pendingCount === 0}
+                disabled={isReadOnly || isGenerating || pendingCount === 0}
                 variant="default"
                 size="sm"
                 className="h-8 text-xs"
@@ -405,10 +412,10 @@ export function ChestNumberSetup({
               className="w-full"
             >
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="ALPHANUMERIC">
+                <TabsTrigger value="ALPHANUMERIC" disabled={isReadOnly}>
                   Alphanumeric (e.g. FEST-A-01)
                 </TabsTrigger>
-                <TabsTrigger value="NUMERIC">
+                <TabsTrigger value="NUMERIC" disabled={isReadOnly}>
                   Numeric Only (e.g. 101)
                 </TabsTrigger>
               </TabsList>
@@ -427,6 +434,7 @@ export function ChestNumberSetup({
                   value={editPrefix}
                   onChange={(e) => setEditPrefix(e.target.value.toUpperCase())}
                   placeholder="Enter prefix"
+                  disabled={isReadOnly}
                 />
               </div>
             )}
@@ -461,6 +469,7 @@ export function ChestNumberSetup({
                             }
                             placeholder={cat.name.charAt(0)}
                             maxLength={3}
+                            disabled={isReadOnly}
                           />
                         </div>
                       )}
@@ -478,6 +487,7 @@ export function ChestNumberSetup({
                               [cat.id]: e.target.value,
                             }))
                           }
+                          disabled={isReadOnly}
                         />
                       </div>
                     </div>
@@ -492,7 +502,7 @@ export function ChestNumberSetup({
             </Button>
             <Button
               onClick={handleUpdateConfiguration}
-              disabled={isUpdatingPrefix}
+              disabled={isReadOnly || isUpdatingPrefix}
             >
               {isUpdatingPrefix && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -33,7 +33,7 @@ export async function saveChestNumberSettings(
   },
 ) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
   await prisma.festival.update({
     where: { id: festivalId },
@@ -59,7 +59,7 @@ export async function saveChestNumberSettings(
 
 export async function generateChestNumbers(festivalId: string) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
   // 1. Get Settings
   const festival = await prisma.festival.findUnique({
@@ -199,7 +199,7 @@ export async function generateChestNumbers(festivalId: string) {
 
 export async function resetChestNumbers(festivalId: string) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
   const festival = await prisma.festival.findUnique({
     where: { id: festivalId },
@@ -230,7 +230,7 @@ export async function assignChestNumberForNewStudent(
   studentId: string,
 ) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
   const student = await prisma.student.findUnique({
     where: { id: studentId, festivalId },
@@ -324,7 +324,7 @@ export async function updateAllChestNumbers(
   numberingStyle?: "ALPHANUMERIC" | "NUMERIC",
 ) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
   // 1. Get current settings
   const festival = await prisma.festival.findUnique({

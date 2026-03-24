@@ -24,7 +24,7 @@ export async function addMemberAction(
 ): Promise<ActionResponse<Awaited<ReturnType<typeof MemberService.addMember>>>> {
   try {
     const session = await getSession();
-    await assertFestivalAccess(session, festivalId);
+    await assertFestivalAccess(session, festivalId, { requireWritable: true });
     const result = await MemberService.addMember(festivalId, data);
     const festival = await prisma.festival.findUnique({
       where: { id: festivalId },
@@ -43,7 +43,7 @@ export async function removeMemberAction(
 ): Promise<ActionResponse<null>> {
   try {
     const session = await getSession();
-    await assertFestivalAccess(session, festivalId);
+    await assertFestivalAccess(session, festivalId, { requireWritable: true });
     await MemberService.removeMember(festivalId, memberId);
     const festival = await prisma.festival.findUnique({
       where: { id: festivalId },

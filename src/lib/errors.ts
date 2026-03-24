@@ -21,6 +21,8 @@ export const ERROR_MESSAGES = {
   // ─── Festival ─────────────────────────────────────────────────────────────
   FESTIVAL_NOT_FOUND: "Festival not found.",
   FESTIVAL_EXPIRED: "This festival has expired and can no longer be modified.",
+  FESTIVAL_PAST_READONLY:
+    "This festival is in Past read-only mode. Editing is disabled except updating start and end dates.",
   FESTIVAL_NOT_OWNER: "Only the festival owner can perform this action.",
   FESTIVAL_FROZEN: "This festival is currently frozen and cannot be modified.",
   FESTIVAL_SLUG_TAKEN:

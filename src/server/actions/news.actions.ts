@@ -6,6 +6,8 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
 import { findFestivalById } from "@/server/models/festival.model";
+import { StorageUsageService } from "@/server/services/storage-usage.service";
+import { UsageCounterService } from "@/server/services/usage-counter.service";
 
 export async function getNewsPostsAction(festivalId: string) {
   const session = await getSession();
@@ -29,7 +31,7 @@ export async function createNewsPostAction(
   },
 ) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
@@ -39,15 +41,21 @@ export async function createNewsPostAction(
     return { success: false, error: "News is not available on your plan." };
   }
 
-  await prisma.festivalNews.create({
-    data: {
-      festivalId,
-      title: data.title,
-      excerpt: data.excerpt ?? null,
-      content: data.content,
-      imageUrl: data.imageUrl ?? null,
-      publishedAt: data.publishedAt ?? null,
-    },
+  const addedMb = await StorageUsageService.getUrlSizeMB(data.imageUrl);
+  await prisma.$transaction(async (tx) => {
+    await tx.festivalNews.create({
+      data: {
+        festivalId,
+        title: data.title,
+        excerpt: data.excerpt ?? null,
+        content: data.content,
+        imageUrl: data.imageUrl ?? null,
+        publishedAt: data.publishedAt ?? null,
+      },
+    });
+    if (addedMb > 0) {
+      await UsageCounterService.incrementUsage(festivalId, "storage", addedMb, tx);
+    }
   });
 
   revalidatePath(`/dashboard/${festival.slug}/content/news`);
@@ -67,20 +75,42 @@ export async function updateNewsPostAction(
   },
 ) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
 
-  await prisma.festivalNews.updateMany({
+  const existing = await prisma.festivalNews.findFirst({
     where: { id: postId, festivalId },
-    data: {
-      ...(data.title !== undefined && { title: data.title }),
-      ...(data.excerpt !== undefined && { excerpt: data.excerpt }),
-      ...(data.content !== undefined && { content: data.content }),
-      ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
-      ...(data.publishedAt !== undefined && { publishedAt: data.publishedAt }),
-    },
+    select: { id: true, imageUrl: true },
+  });
+  if (!existing) return { success: false, error: "News post not found" };
+
+  const nextImageUrl = data.imageUrl !== undefined ? data.imageUrl : existing.imageUrl;
+  const [addedMb, removedMb] = await Promise.all([
+    data.imageUrl !== undefined && data.imageUrl !== existing.imageUrl
+      ? StorageUsageService.getUrlSizeMB(nextImageUrl)
+      : Promise.resolve(0),
+    data.imageUrl !== undefined && data.imageUrl !== existing.imageUrl
+      ? StorageUsageService.getUrlSizeMB(existing.imageUrl)
+      : Promise.resolve(0),
+  ]);
+  const deltaMb = addedMb - removedMb;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.festivalNews.update({
+      where: { id: existing.id },
+      data: {
+        ...(data.title !== undefined && { title: data.title }),
+        ...(data.excerpt !== undefined && { excerpt: data.excerpt }),
+        ...(data.content !== undefined && { content: data.content }),
+        ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
+        ...(data.publishedAt !== undefined && { publishedAt: data.publishedAt }),
+      },
+    });
+    if (deltaMb !== 0) {
+      await UsageCounterService.incrementUsage(festivalId, "storage", deltaMb, tx);
+    }
   });
 
   revalidatePath(`/dashboard/${festival.slug}/content/news`);
@@ -93,13 +123,22 @@ export async function deleteNewsPostAction(
   postId: string,
 ) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
 
-  await prisma.festivalNews.deleteMany({
+  const existing = await prisma.festivalNews.findFirst({
     where: { id: postId, festivalId },
+    select: { id: true, imageUrl: true },
+  });
+  if (!existing) return { success: false, error: "News post not found" };
+  const removedMb = await StorageUsageService.getUrlSizeMB(existing.imageUrl);
+  await prisma.$transaction(async (tx) => {
+    await tx.festivalNews.delete({ where: { id: existing.id } });
+    if (removedMb > 0) {
+      await UsageCounterService.incrementUsage(festivalId, "storage", -removedMb, tx);
+    }
   });
 
   revalidatePath(`/dashboard/${festival.slug}/content/news`);

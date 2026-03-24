@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/card";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { StageDialog } from "./StageDialog";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 
 interface StagesClientProps {
   festivalId: string;
@@ -31,6 +32,7 @@ interface StagesClientProps {
 }
 
 export function StagesClient({ festivalId, stages }: StagesClientProps) {
+  const { isReadOnly } = useFestivalReadOnly();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedStage, setSelectedStage] = useState<Stage | undefined>(
     undefined,
@@ -39,17 +41,20 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleCreate = () => {
+    if (isReadOnly) return;
     setSelectedStage(undefined);
     setIsDialogOpen(true);
   };
 
   const handleEdit = (stage: Stage) => {
+    if (isReadOnly) return;
     setSelectedStage(stage);
     setIsDialogOpen(true);
   };
 
   const handleDelete = async () => {
     if (!stageToDelete) return;
+    if (isReadOnly) return;
     try {
       setIsDeleting(true);
       await deleteStage(stageToDelete);
@@ -89,7 +94,7 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
               one stage before adding entries to the schedule.
             </p>
           </HowItWorksButton>
-          <Button onClick={handleCreate} className="gap-2">
+          <Button onClick={handleCreate} className="gap-2" disabled={isReadOnly}>
             <Plus className="h-4 w-4" />
             Create Stage
           </Button>
@@ -106,7 +111,7 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
             Get started by creating your first stage. Stages are where your
             programmes will be conducted.
           </p>
-          <Button onClick={handleCreate}>Create Stage</Button>
+          <Button onClick={handleCreate} disabled={isReadOnly}>Create Stage</Button>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -118,6 +123,7 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
                   variant="ghost"
                   className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
                   onClick={() => handleEdit(stage)}
+                  disabled={isReadOnly}
                 >
                   <Edit className="h-4 w-4" />
                 </Button>
@@ -126,6 +132,7 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
                   variant="ghost"
                   className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
                   onClick={() => setStageToDelete(stage.id)}
+                  disabled={isReadOnly}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -154,6 +161,7 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
         </div>
       )}
 
+      {!isReadOnly && (
       <StageDialog
         festivalId={festivalId}
         open={isDialogOpen}
@@ -163,7 +171,9 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
           // Revalidation handled by server action
         }}
       />
+      )}
 
+      {!isReadOnly && (
       <AlertDialog
         open={!!stageToDelete}
         onOpenChange={(open) => !open && setStageToDelete(null)}
@@ -188,6 +198,7 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      )}
     </div>
   );
 }

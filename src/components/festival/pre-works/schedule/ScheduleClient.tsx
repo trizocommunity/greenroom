@@ -58,9 +58,8 @@ import {
 } from "@/components/ui/select";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { cn } from "@/lib/utils";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 
-/** Sentinel for "no stage" — Radix Select forbids value="" */
-const STAGE_NONE = "__none__";
 import {
   Tooltip,
   TooltipContent,
@@ -126,6 +125,7 @@ export function ScheduleClient({
   festivalStartDate,
   festivalEndDate,
 }: ScheduleClientProps) {
+  const { isReadOnly } = useFestivalReadOnly();
   const dateOptions = getFestivalDateOptions(festivalStartDate, festivalEndDate);
   const [entries, setEntries] = useState<ScheduleEntryWithRelations[]>(initialEntries);
   const [addOpen, setAddOpen] = useState(false);
@@ -141,7 +141,7 @@ export function ScheduleClient({
 
   const hasStages = stages.length > 0;
   const hasProgrammes = programmes.length > 0;
-  const canAdd = hasStages && hasProgrammes;
+  const canAdd = hasStages && hasProgrammes && !isReadOnly;
 
   const refresh = useCallback(async () => {
     const data = await getScheduleEntries(festivalId);
@@ -176,6 +176,7 @@ export function ScheduleClient({
     setAddFormError(null);
     setSaving(true);
     try {
+      if (isReadOnly) return;
       const res = await createScheduleEntry(festivalId, {
         type: "PROGRAMME",
         programmeId: data.programmeId || null,
@@ -207,6 +208,7 @@ export function ScheduleClient({
   ) => {
     setSaving(true);
     try {
+      if (isReadOnly) return;
       const res = await updateScheduleEntry(festivalId, id, data);
       if (res.success) {
         toast.success("Schedule updated.");
@@ -221,6 +223,7 @@ export function ScheduleClient({
   const handleDelete = async (id: string) => {
     setDeletingId(id);
     try {
+      if (isReadOnly) return;
       const res = await deleteScheduleEntry(festivalId, id);
       if (res.success) {
         toast.success("Removed from schedule.");
@@ -233,6 +236,7 @@ export function ScheduleClient({
   };
 
   const moveEntry = async (entry: ScheduleEntryWithRelations, direction: "up" | "down") => {
+    if (isReadOnly) return;
     const dayKey = getDateKey(new Date(entry.startTime));
     const list =
       activeStageId === ""
@@ -285,6 +289,10 @@ export function ScheduleClient({
           </HowItWorksButton>
           <Button
             onClick={() => {
+              if (isReadOnly) {
+                toast.error("Festival is read-only.");
+                return;
+              }
               if (!hasStages) {
                 toast.error("Please create at least one stage before adding to the schedule.");
                 return;
@@ -309,24 +317,32 @@ export function ScheduleClient({
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Calendar className="h-12 w-12 text-muted-foreground mb-3" />
             <p className="font-medium">
-              {!hasStages
+              {isReadOnly
+                ? "Festival is read-only in past/expired mode."
+                : !hasStages
                 ? "No stages yet"
                 : !hasProgrammes
                   ? "No programmes yet"
                   : "No schedule entries yet"}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-              {!hasStages &&
+              {isReadOnly &&
+                "Create, edit, delete, and reorder are disabled in read-only mode."}
+              {!isReadOnly && !hasStages &&
                 "Please create a stage first in Pre-Works → Stage Management."}
-              {hasStages && !hasProgrammes &&
+              {!isReadOnly && hasStages && !hasProgrammes &&
                 "Please create programmes first in Pre-Works → Programmes."}
-              {hasStages && hasProgrammes &&
+              {!isReadOnly && hasStages && hasProgrammes &&
                 "Add programmes to build your schedule."}
             </p>
             <Button
               variant="outline"
               className="mt-4"
               onClick={() => {
+                if (isReadOnly) {
+                  toast.error("Festival is read-only.");
+                  return;
+                }
                 if (!hasStages) {
                   toast.error("Please create at least one stage before adding to the schedule.");
                   return;
@@ -432,6 +448,7 @@ export function ScheduleClient({
                           className="h-7 w-7"
                           onClick={() => moveEntry(entry, "up")}
                           disabled={
+                            isReadOnly ||
                             filteredDayEntries.indexOf(entry) === 0
                           }
                           aria-label="Move up"
@@ -444,6 +461,7 @@ export function ScheduleClient({
                           className="h-7 w-7"
                           onClick={() => moveEntry(entry, "down")}
                           disabled={
+                            isReadOnly ||
                             filteredDayEntries.indexOf(entry) ===
                             filteredDayEntries.length - 1
                           }
@@ -511,18 +529,22 @@ export function ScheduleClient({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setEditEntry(entry)}>
-                              <Pencil className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => setDeleteEntryId(entry.id)}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
+                            {!isReadOnly && (
+                              <>
+                                <DropdownMenuItem onClick={() => setEditEntry(entry)}>
+                                  <Pencil className="h-4 w-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => setDeleteEntryId(entry.id)}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       ) : (
@@ -556,6 +578,7 @@ export function ScheduleClient({
         dateOptions={dateOptions}
       />
 
+      {!isReadOnly && (
       <DeleteDialog
         title="Remove from schedule"
         description="This entry will be removed. You can add it again later."
@@ -569,8 +592,9 @@ export function ScheduleClient({
         }}
         isDeleting={!!deletingId}
       />
+      )}
 
-      {editEntry && (
+      {!isReadOnly && editEntry && (
         <EditEntryDialog
           festivalId={festivalId}
           entry={editEntry}
@@ -621,7 +645,7 @@ function AddEntryDialog({
         ? today
         : dateOptions[0]!.value
       : today;
-  const [categoryId, setCategoryId] = useState<string>("all");
+  const [categoryId, setCategoryId] = useState<string>("");
   const [programmeId, setProgrammeId] = useState("");
   const [stageId, setStageId] = useState("");
   const [dateStr, setDateStr] = useState(defaultDate);
@@ -667,15 +691,22 @@ function AddEntryDialog({
     ).values(),
   );
 
-  const visibleProgrammes =
-    categoryId !== "all" && categoryOptions.length > 0
-      ? programmes.filter((p) => p.categoryId === categoryId)
-      : programmes;
+  const visibleProgrammes = categoryId
+    ? programmes.filter((p) => p.categoryId === categoryId)
+    : [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!categoryId) {
+      toast.error("Select a category first.");
+      return;
+    }
     if (!programmeId) {
       toast.error("Select a programme.");
+      return;
+    }
+    if (!stageId) {
+      toast.error("Select a stage.");
       return;
     }
     const effectiveDate =
@@ -712,13 +743,15 @@ function AddEntryDialog({
               </Label>
               <Select
                 value={categoryId}
-                onValueChange={setCategoryId}
+                onValueChange={(value) => {
+                  setCategoryId(value);
+                  setProgrammeId("");
+                }}
               >
                 <SelectTrigger id="add-category" className="h-9 text-sm">
-                  <SelectValue placeholder="All categories" />
+                  <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All categories</SelectItem>
                   {categoryOptions.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}
@@ -729,14 +762,19 @@ function AddEntryDialog({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="add-programme" className="text-xs">Programme</Label>
-              <Select value={programmeId} onValueChange={setProgrammeId} required>
+              <Select
+                value={programmeId}
+                onValueChange={setProgrammeId}
+                required
+                disabled={!categoryId}
+              >
                 <SelectTrigger id="add-programme" className="h-9 text-sm">
-                  <SelectValue placeholder="Select" />
+                  <SelectValue placeholder={categoryId ? "Select programme" : "Select category first"} />
                 </SelectTrigger>
                 <SelectContent>
                   {visibleProgrammes.length === 0 ? (
                     <SelectItem value="__none__" disabled>
-                      No programmes in this category
+                      {categoryId ? "No programmes in this category" : "Select category first"}
                     </SelectItem>
                   ) : (
                     visibleProgrammes.map((p) => (
@@ -749,18 +787,12 @@ function AddEntryDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="add-stage" className="text-xs">Stage <span className="text-muted-foreground font-normal">(opt)</span></Label>
-              <Select
-                value={stageId || STAGE_NONE}
-                onValueChange={(v) => setStageId(v === STAGE_NONE ? "" : v)}
-              >
+              <Label htmlFor="add-stage" className="text-xs">Stage</Label>
+              <Select value={stageId} onValueChange={setStageId}>
                 <SelectTrigger id="add-stage" className="h-9 text-sm">
-                  <SelectValue placeholder="No stage" />
+                  <SelectValue placeholder="Select stage" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={STAGE_NONE}>
-                    <span className="text-muted-foreground">No stage</span>
-                  </SelectItem>
                   {stages.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
                       <span className="block font-medium">{s.name}</span>
@@ -848,7 +880,11 @@ function AddEntryDialog({
             <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button size="sm" type="submit" disabled={saving || !programmeId || !!conflictError}>
+            <Button
+              size="sm"
+              type="submit"
+              disabled={saving || !categoryId || !programmeId || !stageId || !!conflictError}
+            >
               {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
               Add
             </Button>
@@ -938,6 +974,10 @@ function EditEntryDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!stageId) {
+      toast.error("Select a stage.");
+      return;
+    }
     const startTime = new Date(`${dateStr}T${startTimeStr}`);
     const endTime = endTimeStr ? new Date(`${dateStr}T${endTimeStr}`) : null;
     await onSubmit({
@@ -956,16 +996,12 @@ function EditEntryDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label>Stage (optional)</Label>
-            <Select
-              value={stageId || STAGE_NONE}
-              onValueChange={(v) => setStageId(v === STAGE_NONE ? "" : v)}
-            >
+            <Label>Stage</Label>
+            <Select value={stageId} onValueChange={setStageId}>
               <SelectTrigger>
                 <SelectValue placeholder="Select stage" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={STAGE_NONE}>None</SelectItem>
                 {stages.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     <span className="block font-medium">{s.name}</span>
@@ -1034,7 +1070,7 @@ function EditEntryDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={saving || !!conflictError}>
+            <Button type="submit" disabled={saving || !stageId || !!conflictError}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Update
             </Button>

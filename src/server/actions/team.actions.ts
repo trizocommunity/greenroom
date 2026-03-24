@@ -196,6 +196,7 @@ export async function revokeFestivalMember(memberId: string) {
       select: { festivalId: true, userId: true },
     });
     if (!member) return { success: false, error: "Member not found" };
+    await ensureFestivalWritable(member.festivalId);
 
     await prisma.festivalMember.delete({
       where: { id: memberId },

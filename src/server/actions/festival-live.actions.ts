@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
+import { assertFestivalMutationAllowed } from "@/server/services/festival-lifecycle-policy.service";
 
 async function assertFestivalAdmin(festivalId: string) {
   const session = await getSession();
@@ -29,6 +30,7 @@ async function assertFestivalAdmin(festivalId: string) {
 export async function addGalleryImageAction(festivalId: string, url: string) {
   try {
     const { slug } = await assertFestivalAdmin(festivalId);
+    await assertFestivalMutationAllowed(festivalId);
     const maxOrder = await prisma.festivalGalleryImage.aggregate({
       where: { festivalId },
       _max: { order: true },
@@ -55,6 +57,7 @@ export async function removeGalleryImageAction(imageId: string) {
     });
     if (!image) return { success: false, error: "Not found" };
     await assertFestivalAdmin(image.festivalId);
+    await assertFestivalMutationAllowed(image.festivalId);
     await prisma.festivalGalleryImage.delete({ where: { id: imageId } });
     revalidatePath(`/dashboard/${image.festival.slug}/festival-live`);
     return { success: true };
@@ -69,6 +72,7 @@ export async function addNewsPostAction(
 ) {
   try {
     const { slug } = await assertFestivalAdmin(festivalId);
+    await assertFestivalMutationAllowed(festivalId);
     await prisma.festivalNews.create({
       data: {
         festivalId,
@@ -92,6 +96,7 @@ export async function removeNewsPostAction(postId: string) {
     });
     if (!post) return { success: false, error: "Not found" };
     await assertFestivalAdmin(post.festivalId);
+    await assertFestivalMutationAllowed(post.festivalId);
     await prisma.festivalNews.delete({ where: { id: postId } });
     revalidatePath(`/dashboard/${post.festival.slug}/festival-live`);
     return { success: true };

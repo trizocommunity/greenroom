@@ -6,6 +6,8 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
 import { findFestivalById } from "@/server/models/festival.model";
+import { StorageUsageService } from "@/server/services/storage-usage.service";
+import { UsageCounterService } from "@/server/services/usage-counter.service";
 
 export async function getGalleryImagesAction(festivalId: string) {
   const session = await getSession();
@@ -19,7 +21,7 @@ export async function getGalleryImagesAction(festivalId: string) {
 
 export async function addGalleryImageAction(festivalId: string, url: string) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
   const canManage = await getEffectiveFeatureEnabled(festival.tier, "gallery");
@@ -30,8 +32,14 @@ export async function addGalleryImageAction(festivalId: string, url: string) {
     _max: { order: true },
   });
   const order = (maxOrder._max.order ?? -1) + 1;
-  await prisma.festivalGalleryImage.create({
-    data: { festivalId, url, order },
+  const addedMb = await StorageUsageService.getUrlSizeMB(url);
+  await prisma.$transaction(async (tx) => {
+    await tx.festivalGalleryImage.create({
+      data: { festivalId, url, order },
+    });
+    if (addedMb > 0) {
+      await UsageCounterService.incrementUsage(festivalId, "storage", addedMb, tx);
+    }
   });
   revalidatePath(`/dashboard/${festival.slug}/content/gallery`);
   revalidatePath(`/${festival.slug}/gallery`);
@@ -43,7 +51,7 @@ export async function addGalleryImagesAction(
   urls: string[],
 ) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
   const canManage = await getEffectiveFeatureEnabled(festival.tier, "gallery");
@@ -55,8 +63,14 @@ export async function addGalleryImagesAction(
     _max: { order: true },
   });
   let order = (maxOrder._max.order ?? -1) + 1;
-  await prisma.festivalGalleryImage.createMany({
-    data: urls.map((url) => ({ festivalId, url, order: order++ })),
+  const addedMb = await StorageUsageService.getUrlsSizeMB(urls);
+  await prisma.$transaction(async (tx) => {
+    await tx.festivalGalleryImage.createMany({
+      data: urls.map((url) => ({ festivalId, url, order: order++ })),
+    });
+    if (addedMb > 0) {
+      await UsageCounterService.incrementUsage(festivalId, "storage", addedMb, tx);
+    }
   });
   revalidatePath(`/dashboard/${festival.slug}/content/gallery`);
   revalidatePath(`/${festival.slug}/gallery`);
@@ -68,11 +82,22 @@ export async function deleteGalleryImageAction(
   imageId: string,
 ) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
-  await prisma.festivalGalleryImage.deleteMany({
+  const image = await prisma.festivalGalleryImage.findFirst({
     where: { id: imageId, festivalId },
+    select: { id: true, url: true },
+  });
+  if (!image) return { success: false, error: "Image not found" };
+  const removedMb = await StorageUsageService.getUrlSizeMB(image.url);
+  await prisma.$transaction(async (tx) => {
+    await tx.festivalGalleryImage.delete({
+      where: { id: image.id },
+    });
+    if (removedMb > 0) {
+      await UsageCounterService.incrementUsage(festivalId, "storage", -removedMb, tx);
+    }
   });
   revalidatePath(`/dashboard/${festival.slug}/content/gallery`);
   revalidatePath(`/${festival.slug}/gallery`);
@@ -84,12 +109,22 @@ export async function deleteGalleryImagesAction(
   imageIds: string[],
 ) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
   if (imageIds.length === 0) return { success: true };
-  await prisma.festivalGalleryImage.deleteMany({
+  const rows = await prisma.festivalGalleryImage.findMany({
     where: { id: { in: imageIds }, festivalId },
+    select: { id: true, url: true },
+  });
+  const removedMb = await StorageUsageService.getUrlsSizeMB(rows.map((r) => r.url));
+  await prisma.$transaction(async (tx) => {
+    await tx.festivalGalleryImage.deleteMany({
+      where: { id: { in: imageIds }, festivalId },
+    });
+    if (removedMb > 0) {
+      await UsageCounterService.incrementUsage(festivalId, "storage", -removedMb, tx);
+    }
   });
   revalidatePath(`/dashboard/${festival.slug}/content/gallery`);
   revalidatePath(`/${festival.slug}/gallery`);
@@ -101,7 +136,7 @@ export async function reorderGalleryImagesAction(
   imageIds: string[],
 ) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId);
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
   await prisma.$transaction(

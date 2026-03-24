@@ -32,6 +32,7 @@ import {
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { cn } from "@/lib/utils";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 
 type ImageRecord = { id: string; url: string; order: number };
 
@@ -46,6 +47,7 @@ export function GalleryClient({
   festivalSlug,
   initialImages,
 }: GalleryClientProps) {
+  const { isReadOnly } = useFestivalReadOnly();
   const [images, setImages] = useState<ImageRecord[]>(initialImages);
   const [pendingUpload, setPendingUpload] = useState<{
     files: File[];
@@ -112,7 +114,7 @@ export function GalleryClient({
   }, []);
 
   const confirmUploadAll = useCallback(async () => {
-    if (!pendingUpload?.files.length) return;
+    if (!pendingUpload?.files.length || isReadOnly) return;
     if (!isCloudinaryConfigured()) {
       toast.error("Cloudinary is not configured. Set NEXT_PUBLIC_CLOUDINARY_* env.");
       return;
@@ -156,6 +158,7 @@ export function GalleryClient({
 
   const handleDelete = useCallback(
     async (id: string) => {
+      if (isReadOnly) return;
       const res = await deleteGalleryImageAction(festivalId, id);
       if (res.success) {
         setImages((prev) => prev.filter((i) => i.id !== id));
@@ -178,6 +181,7 @@ export function GalleryClient({
   );
 
   const handleBulkDelete = useCallback(async () => {
+    if (isReadOnly) return;
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
     setDeletingIds(new Set(ids));
@@ -260,6 +264,7 @@ export function GalleryClient({
           <Button
             type="button"
             onClick={() => fileInputRef.current?.click()}
+            disabled={isReadOnly}
           >
             <ImagePlus className="h-4 w-4 sm:mr-2" />
             Upload photos
@@ -270,10 +275,10 @@ export function GalleryClient({
       {hasSelection && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-sm">
           <span className="font-medium">{selectedCount} selected</span>
-          <Button variant="ghost" size="sm" onClick={selectAll}>
+              <Button variant="ghost" size="sm" onClick={selectAll} disabled={isReadOnly}>
             Select all
           </Button>
-          <Button variant="ghost" size="sm" onClick={clearSelection}>
+              <Button variant="ghost" size="sm" onClick={clearSelection} disabled={isReadOnly}>
             Clear
           </Button>
           <DeleteDialog
@@ -282,7 +287,7 @@ export function GalleryClient({
             onDelete={handleBulkDelete}
             isDeleting={deletingIds.size > 0}
             trigger={
-              <Button variant="destructive" size="sm">
+              <Button variant="destructive" size="sm" disabled={isReadOnly}>
                 <Trash2 className="h-4 w-4 mr-1" />
                 Delete selected
               </Button>
@@ -302,6 +307,7 @@ export function GalleryClient({
             variant="outline"
             type="button"
             onClick={() => fileInputRef.current?.click()}
+            disabled={isReadOnly}
           >
             Upload photos
           </Button>
@@ -337,6 +343,7 @@ export function GalleryClient({
                       e.stopPropagation();
                       toggleSelect(img.id);
                     }}
+                    disabled={isReadOnly}
                     className={cn(
                       "absolute top-2 left-2 z-10 p-1.5 rounded-md bg-black/50 text-white hover:bg-black/70 transition",
                       isSelected && "bg-primary text-primary-foreground",
@@ -361,6 +368,7 @@ export function GalleryClient({
                         variant="secondary"
                         size="icon"
                         className="h-8 w-8 rounded-full shadow"
+                        disabled={isReadOnly}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>

@@ -28,6 +28,7 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
   });
   const isLocked = festival.isLocked;
   const isExpired = status === "EXPIRED";
+  const isPast = status === "PAST";
   const isActive = !isExpired && (status === "ONGOING" || status === "READY");
 
   const totalDays = 30;
@@ -103,7 +104,7 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
         </div>
 
         {/* Lifecycle Progress Section */}
-        {!isExpired && (
+        {!isExpired && !isPast && (
           <div className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3.5 space-y-3">
             <div className="flex items-center justify-between text-xs sm:text-sm">
               <div className="flex items-center gap-2 text-slate-200/80">
@@ -146,6 +147,17 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
           </div>
         )}
 
+        {isPast && (
+          <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3.5">
+            <p className="text-sm font-semibold text-amber-200">
+              Event is past. Festival is in read-only mode.
+            </p>
+            <p className="text-xs text-amber-100/80 mt-1">
+              Expires in {daysRemaining} day{daysRemaining === 1 ? "" : "s"}.
+            </p>
+          </div>
+        )}
+
         {isExpired && (
           <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/40 text-center">
             <p className="text-sm font-semibold text-destructive">
@@ -166,14 +178,14 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
                 View Details
               </Link>
             </Button>
-          ) : isActive ? (
+          ) : isActive || isPast ? (
             <Button
               asChild
               className="w-full justify-center rounded-2xl h-11 text-sm font-semibold tracking-wide bg-linear-to-r from-primary via-fuchsia-500 to-orange-400 text-white shadow-[0_18px_45px_rgba(0,0,0,0.6)] hover:shadow-[0_24px_60px_rgba(0,0,0,0.9)] hover:-translate-y-0.5 transition-all"
             >
               <Link href={`/dashboard/${festival.slug}`}>
                 <LayoutDashboard className="mr-2 h-4 w-4" />
-                Open Dashboard
+                {isPast ? "Open Dashboard (Read-only)" : "Open Dashboard"}
               </Link>
             </Button>
           ) : (
@@ -181,7 +193,7 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
               disabled
               className="w-full rounded-2xl h-11 text-sm italic opacity-70 bg-slate-700/70 text-slate-300 border border-slate-500/40"
             >
-              {isLocked ? "Activation required" : "Past / Pending"}
+              {isLocked ? "Activation required" : "Past (Read-only)"}
             </Button>
           )}
         </div>
