@@ -1,7 +1,5 @@
 import { notFound } from "next/navigation";
-import { type ReactNode } from "react";
-import { getSession } from "@/lib/auth/session";
-import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
+import type { ReactNode } from "react";
 import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 import { findFestivalBySlug } from "@/server/models/festival.model";
 import {
@@ -37,13 +35,8 @@ export default async function StudentLayout({
 
   if (RESERVED_SLUGS.has(studentSlug)) notFound();
 
-  const session = await getSession();
-  if (!session?.userId) notFound();
-
   const festival = await findFestivalBySlug(slug);
   if (!festival) notFound();
-
-  await assertFestivalAccess(session, festival.id);
 
   const canViewProfile = FeatureService.isFeatureEnabled(
     getTierForFeatureCheck(festival.tier),
@@ -128,7 +121,11 @@ export default async function StudentLayout({
             name: student.name,
           }}
           studentSlugParam={studentSlug}
-          studentMainHref={`/${festival.slug ?? slug}/${studentSlug}`}
+          studentMainHref={
+            student.isTeamLeader
+              ? `/${festival.slug ?? slug}/${studentSlug}/leader`
+              : `/${festival.slug ?? slug}/${studentSlug}`
+          }
           assignedProgrammesTopStatus={assignedProgrammesTopStatus}
         />
         {children}

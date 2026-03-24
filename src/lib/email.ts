@@ -69,3 +69,59 @@ export async function sendPasswordResetEmail(
     throw new Error("Email delivery failed. Please try again later.");
   }
 }
+
+export async function sendTeamLeaderOtpEmail(
+  to: string,
+  otpCode: string,
+  festivalName: string,
+): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn(
+      "[EMAIL] RESEND_API_KEY not set. Team leader OTP (dev only):",
+      otpCode,
+    );
+    return;
+  }
+
+  const { error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `${festivalName}: Team Leader login OTP`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <body style="font-family: 'Outfit', sans-serif; background: #0a0a0a; color: #e5e7eb; padding: 40px;">
+          <div style="max-width: 480px; margin: 0 auto; background: #111827; border-radius: 12px; padding: 40px; border: 1px solid #1f2937;">
+            <h1 style="font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 8px;">
+              Team Leader Login
+            </h1>
+            <p style="color: #9ca3af; margin-bottom: 24px; font-size: 15px;">
+              Use this OTP code to sign in to your Team Leader panel for <strong style="color:#fff">${festivalName}</strong>.
+              This code expires in <strong style="color:#fff">10 minutes</strong>.
+            </p>
+            <div style="display:inline-block;background:#7c3aed;color:#fff;padding:10px 16px;border-radius:8px;font-weight:700;font-size:22px;letter-spacing:4px;">
+              ${otpCode}
+            </div>
+            <p style="margin-top: 32px; color: #6b7280; font-size: 13px;">
+              If you did not request this, you can ignore this email.
+            </p>
+          </div>
+        </body>
+      </html>
+    `,
+  });
+
+  if (error) {
+    // In local/dev environments, don't block login if provider/domain is not configured.
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[EMAIL] Failed to send team leader OTP (dev fallback):", error);
+      console.warn("[EMAIL] Team leader OTP code (dev only):", otpCode);
+      return;
+    }
+
+    console.error("[EMAIL] Failed to send team leader OTP:", error);
+    throw new Error(
+      "OTP delivery failed. Verify RESEND domain/sender configuration.",
+    );
+  }
+}

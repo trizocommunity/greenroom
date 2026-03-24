@@ -76,19 +76,19 @@ export const GroupService = {
             groupId: id,
             festivalId,
           },
-          select: { id: true, phone: true },
+          select: { id: true, email: true },
         });
 
         if (selectedStudents.length !== data.teamLeaderIds.length) {
           throw new AppError(ERROR_MESSAGES.STUDENT_INVALID_GROUP);
         }
 
-        const invalidPhoneLeader = selectedStudents.find(
-          (s) => !s.phone || s.phone.trim().length < 6,
+        const invalidEmailLeader = selectedStudents.find(
+          (s) => !s.email || !String(s.email).includes("@"),
         );
-        if (invalidPhoneLeader) {
+        if (invalidEmailLeader) {
           throw new AppError(
-            "Selected leaders must have a valid phone number.",
+            "Selected leaders must have a valid email address.",
           );
         }
       }

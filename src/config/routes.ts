@@ -1,5 +1,8 @@
 export const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL || "https://trizo-greenroom.vercel.app";
+  process.env.NEXT_PUBLIC_APP_URL ||
+  (process.env.NODE_ENV === "production"
+    ? "https://trizo-greenroom.vercel.app"
+    : "http://localhost:3000");
 
 export const PROTECTED_PATHS = {
   USER: "/profile",

@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { APP_URL } from "@/config/routes";
-import { getStudentProfileUrl } from "@/lib/student-profile-url";
+import { getStudentProfilePath, getStudentProfileUrl } from "@/lib/student-profile-url";
 
 type StudentForMyStudents = {
   id: string;
@@ -133,7 +133,7 @@ export function MyStudentsClient({
                         View Details
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link href={`/${festivalSlug}/${s.profileSlug ?? s.id}`}>
+                        <Link href={getStudentProfilePath(festivalSlug, s)}>
                           <ExternalLink className="h-4 w-4 mr-2" />
                           Open Profile
                         </Link>
@@ -176,7 +176,7 @@ export function MyStudentsClient({
                 />
               </div>
               <Button asChild className="w-full">
-                <Link href={`/${festivalSlug}/${qrStudent.profileSlug ?? qrStudent.id}`}>
+                <Link href={getStudentProfilePath(festivalSlug, qrStudent)}>
                   Open Profile
                 </Link>
               </Button>

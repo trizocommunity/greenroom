@@ -11,6 +11,10 @@ import {
 const STALE_TIME_MS = 30 * 1000; // 30 seconds
 const GC_TIME_MS = 5 * 60 * 1000; // 5 minutes
 
+export type StudentsListItem = Awaited<ReturnType<typeof getStudentsAction>>[number] & {
+  isTeamLeader: boolean;
+};
+
 export function useStudents(festivalId: string) {
   const queryClient = useQueryClient();
 
@@ -65,7 +69,10 @@ export function useStudents(festivalId: string) {
   });
 
   return {
-    students: query.data || [],
+    students: ((query.data ?? []) as Array<{ isTeamLeader?: boolean }>).map((student) => ({
+      ...student,
+      isTeamLeader: Boolean(student.isTeamLeader),
+    })) as StudentsListItem[],
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     refetch: query.refetch,

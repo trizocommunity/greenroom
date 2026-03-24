@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowUpRight, Bell, Crown, Menu } from "lucide-react";
+import { ArrowUpRight, Bell, Crown, Menu, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
@@ -51,10 +51,10 @@ export function StudentNavbar({
 
   if (isTeamLeader) {
     menuItems.push(
-      { label: "Assign Programmes", href: `${linkBase}/assign-programmes` },
-      { label: "My Students", href: `${linkBase}/my-students` },
-      { label: "Programmes", href: `${linkBase}/all-programmes` },
-      { label: "Leaderboard", href: `${linkBase}/leaderboard` },
+      { label: "Assign Programmes", href: `${linkBase}/leader/assign-programmes` },
+      { label: "My Students", href: `${linkBase}/leader/my-students` },
+      { label: "Programmes", href: `${linkBase}/leader/all-programmes` },
+      { label: "Leaderboard", href: `${linkBase}/leader/leaderboard` },
     );
   } else {
     menuItems.push(
@@ -86,7 +86,7 @@ export function StudentNavbar({
             >
               {student.name?.charAt(0) ?? "S"}
             </div>
-            <div className="min-w-0 leading-tight">
+            <div className="min-w-0 leading-tight hidden lg:block">
               {isTeamLeader ? (
                 <Badge
                   variant="secondary"
@@ -122,11 +122,42 @@ export function StudentNavbar({
             })}
           </div>
 
+          {/* Notification icon only (no implementation required). */}
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 rounded-full"
+            aria-label="Notifications"
+          >
+            <Bell className="h-4 w-4" />
+          </Button>
+          <Link className="lg:hidden" href={studentMainHref}>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9 rounded-full"
+              aria-label="Profile"
+            >
+              <User className="h-4 w-4" />
+            </Button>
+          </Link>
+          <Link href={`/${festival.slug}`}>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9 rounded-full"
+              aria-label="Festival Live"
+            >
+              <ArrowUpRight className="h-4 w-4" />
+            </Button>
+          </Link>
+
+          
           <div className="lg:hidden">
             <Sheet>
               <SheetTrigger asChild>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="icon"
                   className="h-9 w-9 rounded-full"
                   aria-label="Open student menu"
@@ -163,26 +194,6 @@ export function StudentNavbar({
               </SheetContent>
             </Sheet>
           </div>
-
-          {/* Notification icon only (no implementation required). */}
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-9 w-9 rounded-full"
-            aria-label="Notifications"
-          >
-            <Bell className="h-4 w-4" />
-          </Button>
-          <Link href={`/${festival.slug}`}>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-9 w-9 rounded-full"
-              aria-label="Festival Live"
-            >
-              <ArrowUpRight className="h-4 w-4" />
-            </Button>
-          </Link>
         </nav>
       </div>
     </header>

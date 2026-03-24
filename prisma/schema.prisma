@@ -217,6 +217,7 @@ model Festival {
   results       Result[]
   galleryImages FestivalGalleryImage[]
   newsPosts     FestivalNews[]
+  teamLeaderSessions TeamLeaderSession[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -494,6 +495,8 @@ model Student {
   profileSlug        String?
 
   assignments ProgrammeAssignment[]
+  teamLeaderOtps TeamLeaderOtp[]
+  teamLeaderSessions TeamLeaderSession[]
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -505,6 +508,42 @@ model Student {
   @@unique([festivalId, chestNumber])
   @@unique([festivalId, profileSlug])
   @@map("student")
+}
+
+model TeamLeaderOtp {
+  id         String   @id @default(uuid())
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int      @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([studentId, expiresAt])
+  @@index([expiresAt])
+  @@map("team_leader_otp")
+}
+
+model TeamLeaderSession {
+  id          String   @id @default(uuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  festivalId  String
+  festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  tokenHash   String   @unique
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([studentId, expiresAt])
+  @@index([festivalId, expiresAt])
+  @@index([expiresAt])
+  @@map("team_leader_session")
 }
 
 model AuditLog {

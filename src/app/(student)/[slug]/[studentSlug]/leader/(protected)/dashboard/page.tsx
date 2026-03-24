@@ -1,59 +1,25 @@
-import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import { format } from "date-fns";
-import { MapPin, Users } from "lucide-react";
+import { MapPin, Trophy, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TeamLeaderLogoutButton } from "@/components/student/team-leader/TeamLeaderLogoutButton";
+import { requireTeamLeaderSession } from "@/lib/team-leader-auth/guard";
 import { APP_URL } from "@/config/routes";
 import { StudentQrButtonModal } from "@/components/student/StudentQrButtonModal";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import {
-  findStudentByFestivalAndId,
-  findStudentByFestivalAndProfileSlug,
-} from "@/server/models/student.model";
-import { prisma } from "@/lib/db";
 import { getStudentProfileUrl } from "@/lib/student-profile-url";
+import { getTeamLeaderMyStudents } from "@/lib/team-leader/my-team";
+import { prisma } from "@/lib/db";
 
-const RESERVED_SLUGS = new Set([
-  "results",
-  "gallery",
-  "news",
-  "programmes",
-  "sessions",
-  "about",
-]);
-
-function looksLikeUuid(s: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
-}
-
-export default async function StudentMainPage({
+export default async function TeamLeaderDashboardPage({
   params,
 }: {
   params: Promise<{ slug: string; studentSlug: string }>;
 }) {
   const { slug, studentSlug } = await params;
-  if (RESERVED_SLUGS.has(studentSlug)) notFound();
-
-  const festival = await findFestivalBySlug(slug);
-  if (!festival) notFound();
-
-  const canViewProfile = FeatureService.isFeatureEnabled(
-    getTierForFeatureCheck(festival.tier),
-    "publicStudentProfile",
-  );
-  if (!canViewProfile) notFound();
-
-  const student = looksLikeUuid(studentSlug)
-    ? await findStudentByFestivalAndId(festival.id, studentSlug)
-    : await findStudentByFestivalAndProfileSlug(festival.id, studentSlug);
-  if (!student) notFound();
-  if (student.isTeamLeader) redirect(`/${festival.slug}/${studentSlug}/leader`);
+  const { festival, student } = await requireTeamLeaderSession({ slug, studentSlug });
+  const base = `/${slug}/${studentSlug}/leader`;
 
   const startDate = festival.startDate ?? festival.createdAt;
   const endDate =
@@ -62,16 +28,29 @@ export default async function StudentMainPage({
     new Date(festival.createdAt.getTime() + 40 * 24 * 60 * 60 * 1000);
   const venue = festival.location ?? festival.orgLocation ?? "—";
 
-  const group = student.group;
-  const category = student.category;
+  const { myStudents } = await getTeamLeaderMyStudents(festival.id, student.id);
+  const myStudentIds = myStudents.map((s) => s.id);
 
-  // Team leaders within the student's group.
-  const teamLeaders = group
-    ? await prisma.student.findMany({
-        where: { festivalId: festival.id, groupId: group.id, isTeamLeader: true },
-        select: { id: true, name: true, profileSlug: true, chestNumber: true },
+  const publishedResultsCount = myStudentIds.length
+    ? await prisma.result.count({
+        where: {
+          festivalId: festival.id,
+          isPublished: true,
+          assignment: {
+            studentId: { in: myStudentIds },
+          },
+        },
       })
-    : [];
+    : 0;
+
+  const teamLeadersInGroup = await prisma.student.findMany({
+    where: {
+      festivalId: festival.id,
+      groupId: student.groupId,
+      isTeamLeader: true,
+    },
+    select: { id: true, name: true },
+  });
 
   const profileUrl = getStudentProfileUrl(
     APP_URL.replace(/\/$/, ""),
@@ -81,14 +60,14 @@ export default async function StudentMainPage({
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
-      <div className="flex items-center justify-between gap-4">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">
-            {student.name}
-          </h1>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-2xl uppercase font-bold tracking-tight">{student.name}</p>
+        <div className="flex items-center gap-2">
           <StudentQrButtonModal profileUrl={profileUrl} />
+          <TeamLeaderLogoutButton redirectTo={`/${slug}/${studentSlug}/leader`} />
+        </div>
       </div>
 
-      {/* Festival summary */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
@@ -113,20 +92,19 @@ export default async function StudentMainPage({
         </CardContent>
       </Card>
 
-      {/* Student details */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="md:col-span-1">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Student</CardTitle>
+            <CardTitle className="text-lg">Leader Profile</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <div className="flex items-center justify-between gap-3">
               <span className="text-muted-foreground">Group</span>
-              <span className="font-medium">{group?.name ?? "—"}</span>
+              <span className="font-medium">{student.group?.name ?? "—"}</span>
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className="text-muted-foreground">Category</span>
-              <span className="font-medium">{category?.name ?? "—"}</span>
+              <span className="font-medium">{student.category?.name ?? "—"}</span>
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className="text-muted-foreground">Chest No</span>
@@ -137,14 +115,14 @@ export default async function StudentMainPage({
 
         <Card className="md:col-span-2">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Your Team</CardTitle>
+            <CardTitle className="text-lg">Team Snapshot</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             <div>
-              <p className="text-sm text-muted-foreground">Who’s our Team Leader?</p>
-              {teamLeaders.length > 0 ? (
+              <p className="text-sm text-muted-foreground">Team Leaders in your group</p>
+              {teamLeadersInGroup.length > 0 ? (
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {teamLeaders.map((tl) => (
+                  {teamLeadersInGroup.map((tl) => (
                     <Badge
                       key={tl.id}
                       variant={tl.id === student.id ? "default" : "outline"}
@@ -163,18 +141,34 @@ export default async function StudentMainPage({
               )}
             </div>
 
-            <div>
-              <p className="text-sm text-muted-foreground">Quick actions</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <p className="text-sm text-muted-foreground">
-                  Team leader login is only available for assigned team leaders.
-                </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="rounded-lg border bg-muted/20 p-3">
+                <div className="text-xs text-muted-foreground">My Students</div>
+                <div className="text-2xl font-semibold mt-1">{myStudents.length}</div>
+              </div>
+              <div className="rounded-lg border bg-muted/20 p-3">
+                <div className="text-xs text-muted-foreground inline-flex items-center gap-1">
+                  <Trophy className="h-3.5 w-3.5" />
+                  Published Results
+                </div>
+                <div className="text-2xl font-semibold mt-1">{publishedResultsCount}</div>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Links</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <Button asChild><Link href={`${base}/assign-programmes`}>Assign Programmes</Link></Button>
+          <Button asChild variant="outline"><Link href={`${base}/my-students`}>My Students</Link></Button>
+          <Button asChild variant="outline"><Link href={`${base}/all-programmes`}>Programmes</Link></Button>
+          <Button asChild variant="outline"><Link href={`${base}/leaderboard`}>Leaderboard</Link></Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
-

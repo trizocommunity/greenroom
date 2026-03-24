@@ -85,11 +85,11 @@ export function AssignTeamLeadersModal({
     const selectedStudents = groupStudents.filter((s: any) =>
       selectedLeaderIds.includes(s.id),
     );
-    const hasInvalidPhone = selectedStudents.some(
-      (s: any) => !s.phone || String(s.phone).trim().length < 6,
+    const hasInvalidEmail = selectedStudents.some(
+      (s: any) => !s.email || !String(s.email).includes("@"),
     );
-    if (hasInvalidPhone) {
-      toast.error("Selected leaders must have a valid phone number.");
+    if (hasInvalidEmail) {
+      toast.error("Selected leaders must have a valid email address.");
       return;
     }
 
@@ -157,11 +157,12 @@ export function AssignTeamLeadersModal({
               <div className="space-y-2 max-h-[420px] overflow-y-auto rounded-lg border bg-muted/10 p-2">
                 {groupStudents.map((student: any) => {
                   const isSelected = selectedLeaderIds.includes(student.id);
-                  const hasValidPhone =
-                    !!student.phone && String(student.phone).trim().length >= 6;
+                  const hasValidEmail =
+                    !!student.email && String(student.email).includes("@");
                   const disableUnchecked =
                     !isSelected &&
-                    (selectedLeaderIds.length >= effectiveLimit || !hasValidPhone);
+                    (selectedLeaderIds.length >= effectiveLimit ||
+                      !hasValidEmail);
                   const isExistingLeader = existingLeaderIds.includes(student.id);
                   return (
                     <label
@@ -182,9 +183,9 @@ export function AssignTeamLeadersModal({
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-medium">{student.name}</span>
-                          {!hasValidPhone && (
+                          {!hasValidEmail && (
                             <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-medium text-red-700">
-                              Valid phone required
+                              Valid email required
                             </span>
                           )}
                           {isExistingLeader && (
@@ -196,8 +197,8 @@ export function AssignTeamLeadersModal({
                         <div className="mt-1 text-xs text-muted-foreground">
                           Group: {student.group?.name ?? "—"} | Category:{" "}
                           {student.category?.name ?? "—"} | Chest:{" "}
-                          {student.chestNumber ?? "—"} | Phone:{" "}
-                          {student.phone ?? "—"}
+                          {student.chestNumber ?? "—"} | Email:{" "}
+                          {student.email ?? "—"}
                         </div>
                       </div>
                     </label>

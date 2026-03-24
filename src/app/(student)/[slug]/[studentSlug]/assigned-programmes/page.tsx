@@ -4,8 +4,6 @@ import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge
 import {
   getProgrammeStatusPriorityRank,
 } from "@/lib/programme-status-priority";
-import { getSession } from "@/lib/auth/session";
-import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 import { findFestivalBySlug } from "@/server/models/festival.model";
 import {
@@ -35,13 +33,8 @@ export default async function AssignedProgrammesPage({
   const { slug, studentSlug } = await params;
   if (RESERVED_SLUGS.has(studentSlug)) notFound();
 
-  const session = await getSession();
-  if (!session?.userId) notFound();
-
   const festival = await findFestivalBySlug(slug);
   if (!festival) notFound();
-
-  await assertFestivalAccess(session, festival.id);
 
   const canViewProfile = FeatureService.isFeatureEnabled(
     getTierForFeatureCheck(festival.tier),

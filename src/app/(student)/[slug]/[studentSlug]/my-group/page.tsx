@@ -3,8 +3,6 @@ import { Crown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getSession } from "@/lib/auth/session";
-import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 import { prisma } from "@/lib/db";
 import { findFestivalBySlug } from "@/server/models/festival.model";
@@ -35,13 +33,8 @@ export default async function MyGroupPage({
   const { slug, studentSlug } = await params;
   if (RESERVED_SLUGS.has(studentSlug)) notFound();
 
-  const session = await getSession();
-  if (!session?.userId) notFound();
-
   const festival = await findFestivalBySlug(slug);
   if (!festival) notFound();
-
-  await assertFestivalAccess(session, festival.id);
 
   const canViewProfile = FeatureService.isFeatureEnabled(
     getTierForFeatureCheck(festival.tier),
@@ -54,7 +47,8 @@ export default async function MyGroupPage({
     : await findStudentByFestivalAndProfileSlug(festival.id, studentSlug);
   if (!student) notFound();
 
-  // Allow both leaders and non-leaders to view group.
+  // Non-leader pages are public; leaders use /leader routes.
+  if (student.isTeamLeader) notFound();
 
   if (!student.groupId && !student.group?.id) notFound();
 

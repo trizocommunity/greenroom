@@ -1,21 +1,10 @@
 import { notFound } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
-import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
-import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 import { prisma } from "@/lib/db";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import {
-  findStudentByFestivalAndId,
-  findStudentByFestivalAndProfileSlug,
-} from "@/server/models/student.model";
 import { getProgrammeStatusPriorityRank } from "@/lib/programme-status-priority";
 import { getTeamLeaderMyStudents } from "@/lib/team-leader/my-team";
 import { AllProgrammesClient } from "@/components/student/team-leader/AllProgrammesClient";
 import { getExpectedAssignmentsTotal } from "@/lib/programme-assignment-progress";
-
-function looksLikeUuid(s: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
-}
+import { requireTeamLeaderSession } from "@/lib/team-leader-auth/guard";
 
 export default async function AllProgrammesPage({
   params,
@@ -24,24 +13,7 @@ export default async function AllProgrammesPage({
 }) {
   const { slug, studentSlug } = await params;
 
-  const session = await getSession();
-  if (!session?.userId) notFound();
-
-  const festival = await findFestivalBySlug(slug);
-  if (!festival) notFound();
-  await assertFestivalAccess(session, festival.id);
-
-  const canViewProfile = FeatureService.isFeatureEnabled(
-    getTierForFeatureCheck(festival.tier),
-    "publicStudentProfile",
-  );
-  if (!canViewProfile) notFound();
-
-  const student = looksLikeUuid(studentSlug)
-    ? await findStudentByFestivalAndId(festival.id, studentSlug)
-    : await findStudentByFestivalAndProfileSlug(festival.id, studentSlug);
-  if (!student) notFound();
-  if (!student.isTeamLeader) notFound();
+  const { festival, student } = await requireTeamLeaderSession({ slug, studentSlug });
 
   const { myStudents } = await getTeamLeaderMyStudents(festival.id, student.id);
   const myStudentIds = myStudents.map((s) => s.id);

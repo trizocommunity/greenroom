@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import QRCode from "qrcode";
 import { Download, FileDown, Loader2, Search, Share2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Dialog,
@@ -30,6 +31,7 @@ import {
 import { QrCodeDisplay } from "@/components/common/QrCodeDisplay";
 import { useCategories } from "@/hooks/useCategories";
 import { useGroups } from "@/hooks/useGroups";
+import type { StudentsListItem } from "@/hooks/useStudents";
 import { useStudents } from "@/hooks/useStudents";
 import { getStudentProfileUrl } from "@/lib/student-profile-url";
 import { toast } from "sonner";
@@ -133,16 +135,7 @@ function roundRect(
 }
 
 
-type StudentRow = {
-  id: string;
-  name?: string | null;
-  chestNumber?: string | null;
-  profileSlug?: string | null;
-  groupId?: string;
-  categoryId?: string;
-  group?: { id: string; name: string } | null;
-  category?: { id: string; name: string } | null;
-};
+type StudentRow = StudentsListItem;
 
 export function QrCodesClient({
   festivalId,
@@ -379,7 +372,19 @@ export function QrCodesClient({
                           }
                         />
                       </TableCell>
-                      <TableCell className="font-medium">{student.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <span>{student.name}</span>
+                          {student.isTeamLeader ? (
+                            <Badge
+                              variant="secondary"
+                              className="h-5 rounded-full px-2 text-[11px] font-semibold"
+                            >
+                              Team Leader
+                            </Badge>
+                          ) : null}
+                        </div>
+                      </TableCell>
                       <TableCell className="font-mono text-sm">
                         {student.chestNumber ?? "—"}
                       </TableCell>

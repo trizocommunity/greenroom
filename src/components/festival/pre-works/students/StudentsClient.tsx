@@ -60,6 +60,7 @@ import { StudentDialog } from "./StudentDialog";
 import { FeatureGate } from "@/components/common/FeatureGate";
 import { ChestNumberSetup } from "@/components/festival/event-works/chest-numbers/ChestNumberSetup";
 import { Badge } from "@/components/ui/badge";
+import { getStudentProfilePath } from "@/lib/student-profile-url";
 
 interface StudentsClientProps {
   festivalId: string;
@@ -345,7 +346,7 @@ export function StudentsClient({
                       <DropdownMenuContent align="end" className="w-44">
                         {canViewPublicStudentProfile && student.profileSlug ? (
                           <DropdownMenuItem asChild>
-                            <Link href={`/${festivalSlug}/${student.profileSlug}`}>
+                            <Link href={getStudentProfilePath(festivalSlug, student)}>
                               <Eye className="h-4 w-4 mr-2" />
                               View Profile
                             </Link>
@@ -475,7 +476,7 @@ export function StudentsClient({
                           <DropdownMenuContent align="end" className="w-44">
                             {canViewPublicStudentProfile && student.profileSlug ? (
                               <DropdownMenuItem asChild>
-                                <Link href={`/${festivalSlug}/${student.profileSlug}`}>
+                                <Link href={getStudentProfilePath(festivalSlug, student)}>
                                   <Eye className="h-4 w-4 mr-2" />
                                   View Profile
                                 </Link>
