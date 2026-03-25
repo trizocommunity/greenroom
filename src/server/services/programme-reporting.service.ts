@@ -574,7 +574,8 @@ export const ProgrammeReportingService = {
 
       await tx.programme.update({
         where: { id: session.programmeId },
-        data: { status: "ENDED" },
+        // After reporting submit, judges can start working. Programme becomes STARTED.
+        data: { status: "STARTED" },
       });
 
       return { updatedSession, studentCodes };
@@ -609,11 +610,11 @@ export const ProgrammeReportingService = {
       },
       context: {
         title: "Programme status updated",
-        body: "Programme has moved to Ended status.",
+        body: "Programme is ready for judgment (Started).",
         payload: {
           reportingSessionId,
           programmeId: session.programmeId,
-          status: "ENDED",
+          status: "STARTED",
         },
       },
       channels: ["IN_APP", "REALTIME"],

@@ -69,6 +69,57 @@ export async function updateProgrammeStatus(
 
   if (!programme) return "READY";
 
+  // If reporting has been submitted and the session is CLOSED, programme
+  // status should be driven by judging progress (results on reported participants),
+  // not by schedule/assignment presence. This prevents downgrades back to SCHEDULED.
+  const latestClosedReportingSession = await prisma.programmeReportingSession.findFirst({
+    where: { programmeId, status: "CLOSED" },
+    select: { id: true, endedAt: true },
+    orderBy: { endedAt: "desc" },
+  });
+
+  if (latestClosedReportingSession) {
+    const reportedParticipants = await prisma.programmeReportedParticipant.findMany({
+      where: { reportingSessionId: latestClosedReportingSession.id },
+      select: { assignmentId: true },
+    });
+
+    const reportedAssignmentIds = reportedParticipants.map((r) => r.assignmentId);
+    const reportedTotal = reportedAssignmentIds.length;
+
+    const reportedScored = await prisma.result.count({
+      where: {
+        programmeId,
+        assignmentId: { in: reportedAssignmentIds },
+      },
+    });
+
+    const reportedPublished = await prisma.result.count({
+      where: {
+        programmeId,
+        assignmentId: { in: reportedAssignmentIds },
+        isPublished: true,
+      },
+    });
+
+    let status: ProgrammeStatus = "STARTED";
+    if (reportedTotal > 0 && reportedPublished === reportedTotal) {
+      status = "PUBLISHED";
+    } else if (reportedTotal > 0 && reportedScored === reportedTotal) {
+      status = "ENDED";
+    }
+
+    await prisma.programme.update({
+      where: { id: programmeId },
+      data: {
+        status,
+        publishedAt: status === "PUBLISHED" ? new Date() : null,
+      },
+    });
+
+    return status;
+  }
+
   const [
     assignmentCount,
     scheduleEntryCount,
@@ -137,9 +188,17 @@ export async function setProgrammePublished(
   published: boolean,
 ): Promise<void> {
   if (!published) {
+    const hasClosedReporting = await prisma.programmeReportingSession.findFirst({
+      where: { programmeId, status: "CLOSED" },
+      select: { id: true },
+      orderBy: { endedAt: "desc" },
+    });
     await prisma.programme.update({
       where: { id: programmeId },
-      data: { status: "JUDGED", publishedAt: null },
+      data: {
+        status: hasClosedReporting ? "ENDED" : "JUDGED",
+        publishedAt: null,
+      },
     });
     return;
   }
