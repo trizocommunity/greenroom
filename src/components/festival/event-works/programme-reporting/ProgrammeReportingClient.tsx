@@ -162,9 +162,9 @@ export function ProgrammeReportingClient({
     // Not started (4) -> In progress (1) -> Reporting closed (2) -> Reporting ended (3).
     const statusRank = (s: string): number => {
       switch (s) {
-        case "NOT_STARTED":
-          return 0;
         case "IN_PROGRESS":
+          return 0;
+        case "NOT_STARTED":
           return 1;
         case "RESET":
           return 2;

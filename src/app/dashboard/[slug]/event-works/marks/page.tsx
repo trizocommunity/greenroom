@@ -1,4 +1,4 @@
-import type { Tier } from "@prisma/client";
+import type { ProgrammeStatus, Tier } from "@prisma/client";
 import { Calendar, ClipboardList } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -43,10 +43,22 @@ export default async function MarksPage({
   }
 
   const tier = (festival.tier ?? "STANDARD") as Tier;
-  const eventWorksProgrammes = filterProgrammesForEventWorks(
-    festival.programmes,
-    tier,
-  );
+
+  // Judgment should show only programmes that have finished reporting
+  // (or are in the end-of-reporting judging window), not scheduled/reporting ones.
+  // We still allow JUDGED/PUBLISHED so editing/unpublishing can work.
+  const judgmentAllowedStatuses: ProgrammeStatus[] =
+    tier === "BASIC"
+      ? // BASIC has no programme reporting; keep old gating behavior.
+        []
+      : ["STARTED", "ENDED", "JUDGED", "PUBLISHED"];
+
+  const eventWorksProgrammes =
+    tier === "BASIC"
+      ? filterProgrammesForEventWorks(festival.programmes, tier)
+      : festival.programmes.filter((p) =>
+          judgmentAllowedStatuses.includes(p.status),
+        );
 
   if (eventWorksProgrammes.length === 0) {
     if (tier === "BASIC") {

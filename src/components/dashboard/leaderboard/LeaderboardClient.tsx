@@ -283,47 +283,84 @@ export function LeaderboardClient({
                   Dynamic
                 </Badge>
               </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12 text-center">#</TableHead>
-                    <TableHead>Team</TableHead>
-                    <TableHead className="text-right">Points</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {teamStandings.length > 0 ? (
-                    teamStandings.map((team, idx) => (
-                      <TableRow
-                        key={team.name}
-                        className={idx < 3 ? "bg-yellow-50/5" : ""}
-                      >
-                        <TableCell className="text-center font-bold text-muted-foreground">
-                          {idx + 1}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {team.name}
-                          {idx === 0 && (
-                            <Crown className="inline w-3 h-3 ml-1 text-yellow-500" />
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right font-bold text-lg">
-                          {team.points}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12 text-center">#</TableHead>
+                      <TableHead>Team</TableHead>
+                      <TableHead className="text-right">Points</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {teamStandings.length > 0 ? (
+                      teamStandings.map((team, idx) => (
+                        <TableRow
+                          key={team.name}
+                          className={idx < 3 ? "bg-yellow-50/5" : ""}
+                        >
+                          <TableCell className="text-center font-bold text-muted-foreground">
+                            {idx + 1}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {team.name}
+                            {idx === 0 && (
+                              <Crown className="inline w-3 h-3 ml-1 text-yellow-500" />
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-bold text-lg">
+                            {team.points}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell
+                          colSpan={3}
+                          className="h-24 text-center text-muted-foreground"
+                        >
+                          No live data yet.
                         </TableCell>
                       </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={3}
-                        className="h-24 text-center text-muted-foreground"
-                      >
-                        No live data yet.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="md:hidden p-3 space-y-2">
+                {teamStandings.length > 0 ? (
+                  teamStandings.map((team, idx) => (
+                    <div
+                      key={team.name}
+                      className={cn(
+                        "flex items-center justify-between gap-3 rounded-lg border px-3 py-2",
+                        idx < 3 ? "border-yellow-500/25 bg-yellow-500/5" : "border-border/70 bg-background",
+                      )}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-muted-foreground w-5 text-center">
+                            {idx + 1}
+                          </span>
+                          <span className="text-sm font-medium truncate">
+                            {team.name}
+                          </span>
+                          {idx === 0 && (
+                            <Crown className="w-4 h-4 text-yellow-500" />
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-sm font-bold tabular-nums">
+                        {team.points}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-6">
+                    No live data yet.
+                  </p>
+                )}
+              </div>
             </Card>
           ) : null}
 
@@ -341,47 +378,89 @@ export function LeaderboardClient({
                 Public Visible
               </Badge>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12 text-center">#</TableHead>
-                  <TableHead>Team</TableHead>
-                  <TableHead className="text-right">Points</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {publishedStandingsFiltered && publishedStandingsFiltered.length > 0 ? (
-                  publishedStandingsFiltered.map((team: any, idx: number) => (
-                    <TableRow
-                      key={team.name}
-                      className={idx < 3 ? "bg-green-50/5" : ""}
-                    >
-                      <TableCell className="text-center font-bold text-muted-foreground">
-                        {idx + 1}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {team.name}
-                        {idx === 0 && (
-                          <Crown className="inline w-3 h-3 ml-1 text-yellow-600" />
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right font-bold text-lg">
-                        {team.points}
+
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12 text-center">#</TableHead>
+                    <TableHead>Team</TableHead>
+                    <TableHead className="text-right">Points</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {publishedStandingsFiltered &&
+                  publishedStandingsFiltered.length > 0 ? (
+                    publishedStandingsFiltered.map((team: any, idx: number) => (
+                      <TableRow
+                        key={team.name}
+                        className={idx < 3 ? "bg-green-50/5" : ""}
+                      >
+                        <TableCell className="text-center font-bold text-muted-foreground">
+                          {idx + 1}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {team.name}
+                          {idx === 0 && (
+                            <Crown className="inline w-3 h-3 ml-1 text-yellow-600" />
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-bold text-lg">
+                          {team.points}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={3}
+                        className="h-24 text-center text-muted-foreground"
+                      >
+                        No published results yet.
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={3}
-                      className="h-24 text-center text-muted-foreground"
-                    >
-                      No published results yet.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="md:hidden p-3 space-y-2">
+              {publishedStandingsFiltered &&
+              publishedStandingsFiltered.length > 0 ? (
+                publishedStandingsFiltered.map((team: any, idx: number) => (
+                  <div
+                    key={team.name}
+                    className={cn(
+                      "flex items-center justify-between gap-3 rounded-lg border px-3 py-2",
+                      idx < 3
+                        ? "border-green-500/25 bg-green-500/5"
+                        : "border-border/70 bg-background",
+                    )}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-muted-foreground w-5 text-center">
+                          {idx + 1}
+                        </span>
+                        <span className="text-sm font-medium truncate">
+                          {team.name}
+                        </span>
+                        {idx === 0 && (
+                          <Crown className="w-4 h-4 text-yellow-600" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-sm font-bold tabular-nums">
+                      {team.points}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-6">
+                  No published results yet.
+                </p>
+              )}
+            </div>
           </Card>
         </div>
       </section>
@@ -444,6 +523,7 @@ export function LeaderboardClient({
               </div>
             ) : null}
           </div>
+          <div className="hidden md:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -539,6 +619,65 @@ export function LeaderboardClient({
               )}
             </TableBody>
           </Table>
+          </div>
+
+          <div className="md:hidden p-3 space-y-2">
+            {studentStandings.length > 0 ? (
+              studentStandings.map((row, idx) => (
+                <div
+                  key={row.studentId}
+                  className={cn(
+                    "flex items-start justify-between gap-3 rounded-lg border px-3 py-2",
+                    idx < 3
+                      ? "border-primary/25 bg-primary/5"
+                      : "border-border/70 bg-background",
+                  )}
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-3">
+                      <div className="w-6 text-center text-xs font-bold text-muted-foreground">
+                        {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : row.rank}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{row.name}</div>
+                        {row.chestNumber && (
+                          <div className="text-xs text-muted-foreground">
+                            #{row.chestNumber}
+                          </div>
+                        )}
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+                          <span>{row.categoryName ?? "—"}</span>
+                          <span className="inline-flex items-center gap-2">
+                            {row.groupName ? (
+                              <>
+                                <span
+                                  className="h-1.5 w-1.5 rounded-full border border-white/60 shadow-sm"
+                                  style={{ backgroundColor: row.groupColor ?? "#94a3b8" }}
+                                  aria-hidden
+                                />
+                                <span>{row.groupName}</span>
+                              </>
+                            ) : (
+                              "—"
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-sm font-bold tabular-nums pt-0.5">
+                    {row.points}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                {hasStudentFilters
+                  ? "No students match the selected filters."
+                  : "No published student results yet."}
+              </p>
+            )}
+          </div>
         </Card>
       </section>
     </div>
