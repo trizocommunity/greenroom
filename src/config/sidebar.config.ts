@@ -98,9 +98,15 @@ interface SidebarGroup {
 export const getFestivalDashboardSidebarConfig = (
   basePath: string,
   role: string = "OWNER",
+  plan: { useExternalJudging?: boolean } = {},
 ): SidebarGroup[] => {
   const isSuperAdmin = role === "SUPER_ADMIN";
   const normalizedRole = role as FestivalRole;
+  const useExternalJudging = plan.useExternalJudging ?? false;
+  const judgmentTitle = useExternalJudging ? "Judgment" : "Marks";
+  const judgmentHref = useExternalJudging
+    ? `${basePath}/event-works/judgment`
+    : `${basePath}/event-works/marks`;
 
   const hasAccess = (allowedRoles?: FestivalRole[]) => {
     if (isSuperAdmin) return true;
@@ -223,10 +229,10 @@ export const getFestivalDashboardSidebarConfig = (
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"] as FestivalRole[],
         },
         {
-          title: "Judgment",
-          href: `${basePath}/event-works/marks`,
+          title: judgmentTitle,
+          href: judgmentHref,
           icon: Gavel,
-          allowedRoles: ["ADMIN", "OWNER", "ANNOUNCER"] as FestivalRole[],
+          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"] as FestivalRole[],
         },
         {
           title: "Results",

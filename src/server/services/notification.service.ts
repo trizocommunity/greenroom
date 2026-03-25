@@ -91,7 +91,7 @@ export const NotificationService = {
         recipientStudentId: recipient.studentId,
         title: input.context.title,
         body: input.context.body,
-        payload: input.context.payload ?? {},
+        payload: (input.context.payload ?? {}) as Prisma.InputJsonValue,
         channels: input.channels as unknown as Prisma.InputJsonValue,
         isRead: false,
       }),

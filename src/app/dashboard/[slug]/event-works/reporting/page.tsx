@@ -102,7 +102,7 @@ export default async function ProgrammeReportingPage({
               letters and moves the programme back to scheduled.
             </li>
             <li>
-              <strong>Submit &amp; Close</strong> locks reporting and issues
+              <strong>Submit &amp; Start</strong> locks reporting and issues
               code letters: one shared code per reported team (GROUP) or one
               code per reported student (INDIVIDUAL).
             </li>

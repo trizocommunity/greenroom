@@ -125,9 +125,12 @@ export default async function OverviewWidgets({
       condition: planFeature(features, "stageManagement"),
     },
     {
-      label: "Judgment",
+      label: tier === "BASIC" ? "Marks" : "Judgment",
       icon: Gavel,
-      href: `/dashboard/${slug}/event-works/marks`,
+      href:
+        tier === "BASIC"
+          ? `/dashboard/${slug}/event-works/marks`
+          : `/dashboard/${slug}/event-works/judgment`,
       condition: planFeature(features, "results"),
     },
     {

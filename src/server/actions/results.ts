@@ -25,7 +25,11 @@ export interface SaveResultInput {
 }
 
 function revalidateResultsPaths(slug: string, options?: { includeTeamStatus?: boolean }) {
+  // Keep both routes in sync:
+  // - BASIC uses legacy `/event-works/marks`
+  // - STANDARD/PRO redirect to `/event-works/judgment`
   revalidatePath(`/dashboard/${slug}/event-works/marks`);
+  revalidatePath(`/dashboard/${slug}/event-works/judgment`);
   revalidatePath(`/dashboard/${slug}/event-works/leaderboard`);
   if (options?.includeTeamStatus) {
     revalidatePath(`/dashboard/${slug}/event-works/team-status`);

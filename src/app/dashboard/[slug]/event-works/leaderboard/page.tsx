@@ -38,9 +38,13 @@ export default async function TeamStatusPage({
     festival.programmes,
     tier,
   );
-  const resultsInEventWorks = festival.results.filter(
-    (r) => r.programme && isProgrammeInEventWorks(r.programme.status, tier),
-  );
+  const resultsInEventWorks = festival.results.filter((r) => {
+    if (!r.programme) return false;
+    // BASIC can have valid judged/published marks before programme status
+    // transitions are fully aligned with Event Works gating.
+    if (tier === "BASIC") return true;
+    return isProgrammeInEventWorks(r.programme.status, tier);
+  });
 
   if (tier !== "BASIC" && eventWorksProgrammes.length === 0) {
     return (

@@ -136,8 +136,11 @@ export function LeaderboardClient({
 
     results.forEach((r) => {
       if (!r.isPublished || !r.assignment?.student) return;
-      // Only include points from individual programmes; never count group programme points
-      if (r.programme?.type === "GROUP") return;
+      // Student standings should be based on student-linked results.
+      // On some plans (incl. BASIC), programmes can be stored as GROUP,
+      // but the result row is still tied to a student (assignment.student).
+      // In that case, we should include the student's points.
+
       // Filter by student's category (the category the student belongs to)
       if (
         studentFilterCategory !== "all" &&

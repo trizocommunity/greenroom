@@ -227,6 +227,7 @@ model Festival {
   expiredResults ExpiredFestivalResult[]
   lifecycleEvents FestivalLifecycleEvent[]
   reportingSessions ProgrammeReportingSession[]
+  judgeSessions ProgrammeJudgeSession[]
   programmeNotifications ProgrammeNotification[]
   programmeCodeLetters ProgrammeCodeLetter[]
 
@@ -382,6 +383,7 @@ model Programme {
   results     Result[]
   scheduleEntries ScheduleEntry[]
   reportingSessions ProgrammeReportingSession[]
+  judgeSessions ProgrammeJudgeSession[]
   codeLetters ProgrammeCodeLetter[]
 
   createdAt   DateTime @default(now())
@@ -778,6 +780,7 @@ model ProgrammeReportingSession {
 
   reportedParticipants ProgrammeReportedParticipant[]
   codeLetters   ProgrammeCodeLetter[]
+  judgeSessions ProgrammeJudgeSession[]
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -838,6 +841,37 @@ model ProgrammeCodeLetterRecipient {
   @@unique([codeLetterId, studentId])
   @@index([studentId])
   @@map("programme_code_letter_recipient")
+}
+
+// -----------------------------------------------------------------------------
+// External Judges (Standard/Pro only)
+// -----------------------------------------------------------------------------
+// Secure, single-use token sessions that let judges submit points by code letters.
+model ProgrammeJudgeSession {
+  id                 String                  @id @default(uuid())
+  festivalId         String
+  festival           Festival                @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  programmeId        String
+  programme          Programme               @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+  reportingSessionId String
+  reportingSession   ProgrammeReportingSession @relation(fields: [reportingSessionId], references: [id], onDelete: Cascade)
+
+  // Store only a cryptographic hash of the token (never plaintext).
+  tokenHash          String                  @unique
+
+  // When judges open the link, they see a count-up timer from startedAt.
+  startedAt          DateTime
+  usedAt             DateTime?
+  endedAt            DateTime?
+
+  createdAt          DateTime                @default(now())
+  createdBy          String?
+  updatedAt          DateTime                @updatedAt
+
+  @@index([festivalId, programmeId, createdAt(sort: Desc)])
+  @@index([programmeId, usedAt])
+  @@index([reportingSessionId])
+  @@map("programme_judge_session")
 }
 
 model ProgrammeNotification {

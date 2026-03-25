@@ -8,6 +8,8 @@ import { LimitationCard } from "@/components/festival/dashboard/LimitationCard";
 import { StatusStrip } from "@/components/festival/dashboard/StatusStrip";
 import type { FestivalRole } from "@/components/festival/FestivalRoleBadge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { FestivalStatusBadge } from "@/components/festival/FestivalStatusBadge";
+import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -55,6 +57,7 @@ export function DashboardRightSidebar({
   user,
   showStatusAndUsage = true,
   festivalName,
+  festivalStatus,
   daysRemaining,
   userRole,
   usage,
@@ -123,6 +126,17 @@ export function DashboardRightSidebar({
                 <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Status
                 </h4>
+                <div className="flex items-center justify-between gap-3">
+                  <FestivalStatusBadge
+                    status={festivalStatus || "READY"}
+                    size="sm"
+                  />
+                  {tierLabel ? (
+                    <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                      Plan: {tierLabel}
+                    </Badge>
+                  ) : null}
+                </div>
                 <StatusStrip
                   festivalName={festivalName}
                   daysRemaining={daysRemaining}

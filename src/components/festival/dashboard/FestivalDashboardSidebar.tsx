@@ -43,7 +43,9 @@ export function FestivalDashboardSidebar({
   const basePath = `/dashboard/${festival.slug}`;
   const dashboardPath = basePath;
 
-  const rawMenuGroups = getFestivalDashboardSidebarConfig(dashboardPath, role);
+  const rawMenuGroups = getFestivalDashboardSidebarConfig(dashboardPath, role, {
+    useExternalJudging: features.canManageSchedule,
+  });
 
   // Filter menu items based on features
   const menuGroups = rawMenuGroups
@@ -89,8 +91,10 @@ export function FestivalDashboardSidebar({
         if (item.title === "Sessions" && !features.canManageSchedule)
           return false;
 
-        // Programme reporting (Standard+): same gate as schedule / stage activities
-        if (item.title === "Reporting" && !features.canManageSchedule)
+        // Reporting is stage-driven (mark / reporting sessions). Schedule is
+        // required for external judge links, but reporting itself should follow
+        // the stage-management capability.
+        if (item.title === "Reporting" && !features.canManageStages)
           return false;
 
         return true;

@@ -20,6 +20,7 @@ import { getSession } from "@/lib/auth/session";
 import { getDerivedFestivalStatus } from "@/lib/festival-status";
 import { getFestivalContext } from "@/server/services/festival-context.service";
 import { getEffectiveTierFeatures } from "@/server/services/plan-features.service";
+import { FestivalStatusBadge } from "@/components/festival/FestivalStatusBadge";
 
 export default async function FestivalDashboardLayout({
   children,
@@ -124,11 +125,12 @@ export default async function FestivalDashboardLayout({
               <div className="flex items-center gap-2">
                 <SidebarTrigger className="h-8 w-8" />
                 <div className="mr-2 h-4 w-px bg-border" />
-                <DashboardBreadcrumb slug={slug} />{" "}
+                <DashboardBreadcrumb slug={slug} />
               </div>
 
               {/* Header Actions */}
               <div className="flex items-center gap-2">
+                <FestivalStatusBadge status={derivedStatus} size="default" />
                 <SupportNotifications slug={slug} />
                 <DashboardRightSidebar
                   trigger={

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ProgrammeStatus } from "@prisma/client";
 import {
   AlertCircle,
   Award,
@@ -22,7 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import {
@@ -66,13 +67,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useFeature } from "@/hooks/useFeature";
 import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
+import { formatCountdownHms } from "@/lib/format-countdown-hms";
 import {
   calculateGrade,
   calculatePosition,
   getGradeBadgeColor,
 } from "@/lib/results-calculator";
 import { cn } from "@/lib/utils";
+import { createProgrammeJudgeLinkAction } from "@/server/actions/programme-judging.actions";
 import {
   bulkPublishProgrammeResults,
   deleteResult,
@@ -82,8 +86,15 @@ import {
 type Programme = {
   id: string;
   name: string;
+  status?: ProgrammeStatus;
   type: "INDIVIDUAL" | "GROUP";
   category: { id: string; name: string };
+  judgeSessions?: Array<{
+    id: string;
+    startedAt: Date;
+    usedAt: Date | null;
+    endedAt: Date | null;
+  }>;
   assignments: Array<{
     id: string;
     teamNumber: number;
@@ -167,6 +178,7 @@ export function ResultsManagementClient({
   children,
 }: ResultsManagementClientProps) {
   const { isReadOnly } = useFestivalReadOnly();
+  const canUseExternalJudging = useFeature("schedule");
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
@@ -177,6 +189,20 @@ export function ResultsManagementClient({
   const [publishingProgrammeId, setPublishingProgrammeId] = useState<
     string | null
   >(null);
+  // Avoid hydration mismatch: timers should not be based on Date.now() during SSR.
+  // We start ticking after mount.
+  const [nowMs, setNowMs] = useState<number | null>(null);
+  const [judgeLinksByProgrammeId, setJudgeLinksByProgrammeId] = useState<
+    Record<string, { judgeUrl: string; startedAt: Date }>
+  >({});
+  const [creatingJudgeLinkProgrammeId, setCreatingJudgeLinkProgrammeId] =
+    useState<string | null>(null);
+
+  useEffect(() => {
+    setNowMs(Date.now());
+    const id = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
   // View details rows for modal (same shape as Results/Leaderboard view details)
   const viewDetailsRows = useMemo(() => {
@@ -569,6 +595,53 @@ export function ResultsManagementClient({
     });
   };
 
+  const handleCreateJudgeLink = (programmeId: string) => {
+    if (isReadOnly) return;
+    setCreatingJudgeLinkProgrammeId(programmeId);
+    startTransition(async () => {
+      try {
+        const response = await createProgrammeJudgeLinkAction(
+          festival.id,
+          programmeId,
+        );
+        if (!response.success) {
+          toast.error(response.error);
+          return;
+        }
+
+        const startedAt = new Date(response.data.startedAt);
+        setJudgeLinksByProgrammeId((prev) => ({
+          ...prev,
+          [programmeId]: {
+            judgeUrl: response.data.judgeUrl,
+            startedAt,
+          },
+        }));
+        toast.success("Judge link created");
+      } finally {
+        setCreatingJudgeLinkProgrammeId(null);
+      }
+    });
+  };
+
+  const handleCopyJudgeLink = async (programmeId: string) => {
+    const url = judgeLinksByProgrammeId[programmeId]?.judgeUrl;
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Judge link copied");
+    } catch {
+      toast.error("Failed to copy link");
+    }
+  };
+
+  const handleShareJudgeLinkWhatsApp = (programmeId: string) => {
+    const url = judgeLinksByProgrammeId[programmeId]?.judgeUrl;
+    if (!url) return;
+    const waUrl = `https://wa.me/?text=${encodeURIComponent(url)}`;
+    window.open(waUrl, "_blank", "noopener");
+  };
+
   const handleDeleteResult = async (
     resultIds: string[],
     identifier: string,
@@ -593,7 +666,7 @@ export function ResultsManagementClient({
   };
 
   const handleEditResult = (programme: (typeof programmeStats)[0]) => {
-    if (isReadOnly) return;
+    if (isReadOnly || canUseExternalJudging) return;
     setSelectedCategory(programme.category.id);
     setSelectedProgramme(programme.id);
     setScores({});
@@ -686,7 +759,7 @@ export function ResultsManagementClient({
         )}
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <HowItWorksButton
-            title="How judgment works"
+            title="How marks work"
             description="Enter points per chest; grade and rank are calculated automatically."
           >
             <p className="text-sm text-muted-foreground">
@@ -700,16 +773,16 @@ export function ResultsManagementClient({
                 size="sm"
                 className="gap-2"
                 suppressHydrationWarning
-                disabled={isReadOnly}
+                disabled={isReadOnly || canUseExternalJudging}
               >
                 <Plus className="w-4 h-4 sm:mr-0" />
-                <span className="hidden sm:inline">Enter judgment</span>
+                <span className="hidden sm:inline">Enter marks</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="w-[calc(100%-0.5rem)] sm:w-[calc(100%-2rem)] max-w-3xl max-h-[90dvh] sm:max-h-[90vh] overflow-y-auto p-2.5 sm:p-6 rounded-lg sm:rounded-xl">
               <DialogHeader className="text-left space-y-0.5 sm:space-y-1.5 px-0.5 sm:px-0">
                 <DialogTitle className="text-sm sm:text-lg pr-7 sm:pr-8">
-                  Enter judgment
+                  Enter marks
                 </DialogTitle>
                 <DialogDescription className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
                   Select programme and enter points. Grade and rank update
@@ -1313,7 +1386,9 @@ export function ResultsManagementClient({
                           </div>
                           <Button
                             size="sm"
+                            disabled={canUseExternalJudging || isReadOnly}
                             onClick={() => {
+                              if (canUseExternalJudging) return;
                               handleEditResult(prog);
                               document.dispatchEvent(
                                 new KeyboardEvent("keydown", {
@@ -1322,7 +1397,7 @@ export function ResultsManagementClient({
                               );
                             }}
                           >
-                            Enter judgment
+                            Enter marks
                           </Button>
                         </div>
                       </div>
@@ -1404,6 +1479,19 @@ export function ResultsManagementClient({
             const isPublished =
               prog.stats.status === "published" ||
               prog.stats.status === "partial-published";
+            const openJudgeSession = prog.judgeSessions?.[0] ?? null;
+            const startedAtForTimer =
+              judgeLinksByProgrammeId[prog.id]?.startedAt ??
+              openJudgeSession?.startedAt;
+            const elapsedSeconds =
+              startedAtForTimer != null && nowMs != null
+                ? Math.max(
+                    0,
+                    Math.floor(
+                      (nowMs - new Date(startedAtForTimer).getTime()) / 1000,
+                    ),
+                  )
+                : null;
 
             return (
               <Card
@@ -1440,12 +1528,49 @@ export function ResultsManagementClient({
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => handleEditResult(prog)}
-                        disabled={isReadOnly}
+                        disabled={isReadOnly || canUseExternalJudging}
                         className="gap-2 cursor-pointer"
                       >
                         <Pencil className="h-4 w-4" />
-                        Enter judgment
+                        Enter marks
                       </DropdownMenuItem>
+                      {canUseExternalJudging &&
+                      !isReadOnly &&
+                      prog.status === "STARTED" ? (
+                        <DropdownMenuItem
+                          onClick={() => handleCreateJudgeLink(prog.id)}
+                          disabled={creatingJudgeLinkProgrammeId === prog.id}
+                          className="gap-2 cursor-pointer"
+                        >
+                          {creatingJudgeLinkProgrammeId === prog.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-4 w-4" />
+                          )}
+                          {openJudgeSession
+                            ? "Recreate judge link"
+                            : "Create judge link"}
+                        </DropdownMenuItem>
+                      ) : null}
+
+                      {judgeLinksByProgrammeId[prog.id]?.judgeUrl ? (
+                        <>
+                          <DropdownMenuItem
+                            onClick={() => handleCopyJudgeLink(prog.id)}
+                            className="gap-2 cursor-pointer"
+                          >
+                            Copy judge link
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              handleShareJudgeLinkWhatsApp(prog.id)
+                            }
+                            className="gap-2 cursor-pointer"
+                          >
+                            Share on WhatsApp
+                          </DropdownMenuItem>
+                        </>
+                      ) : null}
                       <DropdownMenuSeparator />
                       {isPublished ? (
                         <DropdownMenuItem
@@ -1514,6 +1639,33 @@ export function ResultsManagementClient({
                       </Badge>
                     )}
                   </div>
+                  {canUseExternalJudging &&
+                  prog.status === "STARTED" &&
+                  openJudgeSession ? (
+                    <div className="mt-2">
+                      <Badge
+                        variant="outline"
+                        className="w-full justify-start gap-2 border-primary/30 bg-primary/5 text-primary"
+                      >
+                        <span className="font-mono text-xs">
+                          External judging:{" "}
+                          {elapsedSeconds != null
+                            ? formatCountdownHms(elapsedSeconds)
+                            : "00:00:00"}
+                        </span>
+                      </Badge>
+                    </div>
+                  ) : null}
+                  {prog.status === "ENDED" ? (
+                    <div className="mt-2">
+                      <Badge
+                        variant="secondary"
+                        className="w-full justify-start gap-2"
+                      >
+                        Judging completed (awaiting admin publish)
+                      </Badge>
+                    </div>
+                  ) : null}
                 </CardContent>
               </Card>
             );

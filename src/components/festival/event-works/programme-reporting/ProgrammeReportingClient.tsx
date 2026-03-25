@@ -373,6 +373,29 @@ export function ProgrammeReportingClient({
   const isClosed = sessionStatus === "CLOSED";
   const canEdit = Boolean(session && !session.isLocked && isInProgress);
 
+  const getIssuedCodeForRow = (row: RosterTableRow): string | null => {
+    if (row.mode === "individual") {
+      return row.studentId
+        ? getCodeForStudentFromLetters(
+            session?.codeLetters ?? [],
+            row.studentId,
+          )
+        : null;
+    }
+    return (
+      row.studentIds
+        .map((sid) =>
+          sid
+            ? getCodeForStudentFromLetters(
+                session?.codeLetters ?? [],
+                sid,
+              )
+            : null,
+        )
+        .find((c) => c != null) ?? null
+    );
+  };
+
   const onStart = () => {
     if (!selected) return;
     startTransition(async () => {
@@ -725,7 +748,7 @@ export function ProgrammeReportingClient({
                         !isInProgress
                       }
                     >
-                      Submit & Close
+                      Submit & Start
                     </Button>
                   </>
                 ) : null}
@@ -740,84 +763,144 @@ export function ProgrammeReportingClient({
 
               {!isPreStart ? (
                 <div className="rounded-md border">
-                  <div className="grid grid-cols-12 border-b bg-muted/40 px-3 py-2 text-xs font-medium">
-                    <div className="col-span-4">
-                      {selected.programme?.type === "GROUP"
-                        ? "Team / members"
-                        : "Student"}
-                    </div>
-                    <div className="col-span-2">Group</div>
-                    <div className="col-span-2">Team</div>
-                    <div className="col-span-2">Reported</div>
-                    <div className="col-span-2">Code letter</div>
-                  </div>
-                  {rosterTableRows.map((row) => {
-                    const issuedCode =
-                      row.mode === "individual"
-                        ? row.studentId
-                          ? getCodeForStudentFromLetters(
-                              session?.codeLetters ?? [],
-                              row.studentId,
-                            )
-                          : null
-                        : (row.studentIds
-                            .map((sid) =>
-                              sid
-                                ? getCodeForStudentFromLetters(
-                                    session?.codeLetters ?? [],
-                                    sid,
-                                  )
-                                : null,
-                            )
-                            .find((c) => c != null) ?? null);
-                    const showCode = isClosed && issuedCode && row.isReported;
-                    return (
-                      <div
-                        key={row.key}
-                        className="grid grid-cols-12 items-center px-3 py-2 text-sm"
-                      >
-                        <div className="col-span-4 wrap-break-word pr-2">
-                          {row.nameColumn}
-                        </div>
-                        <div className="col-span-2 truncate">
-                          {row.groupName ?? "—"}
-                        </div>
-                        <div className="col-span-2">{row.teamCell}</div>
-                        <div className="col-span-2">
-                          <input
-                            type="checkbox"
-                            checked={row.isReported}
-                            title={
-                              row.mode === "groupTeam"
-                                ? "Marks every member of this team together"
-                                : undefined
-                            }
-                            onChange={() =>
-                              row.mode === "individual"
-                                ? onToggleParticipant(
-                                    row.assignmentId,
-                                    row.isReported,
-                                  )
-                                : onToggleTeam(
-                                    row.assignmentIds,
-                                    row.isReported,
-                                  )
-                            }
-                            disabled={isPending || !canEdit}
-                          />
-                        </div>
-                        <div className="col-span-2 font-mono text-xs">
-                          {showCode ? (
-                            <span className="rounded border border-blue-500/40 bg-blue-500/10 px-1.5 py-0.5 text-blue-800 dark:text-blue-200">
-                              {issuedCode}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </div>
+                  {/* Desktop roster (column layout) */}
+                  <div className="hidden md:block">
+                    <div className="grid grid-cols-12 border-b bg-muted/40 px-3 py-2 text-xs font-medium">
+                      <div className="col-span-4">
+                        {selected.programme?.type === "GROUP"
+                          ? "Team / members"
+                          : "Student"}
                       </div>
-                    );
-                  })}
+                      <div className="col-span-2">Group</div>
+                      <div className="col-span-2">Team</div>
+                      <div className="col-span-2">Reported</div>
+                      <div className="col-span-2">Code letter</div>
+                    </div>
+                    {rosterTableRows.map((row) => {
+                      const issuedCode = getIssuedCodeForRow(row);
+                      const showCode = isClosed && issuedCode && row.isReported;
+                      return (
+                        <div
+                          key={row.key}
+                          className="grid grid-cols-12 items-center px-3 py-2 text-sm"
+                        >
+                          <div className="col-span-4 wrap-break-word pr-2">
+                            {row.nameColumn}
+                          </div>
+                          <div className="col-span-2 truncate">
+                            {row.groupName ?? "—"}
+                          </div>
+                          <div className="col-span-2">{row.teamCell}</div>
+                          <div className="col-span-2">
+                            <input
+                              type="checkbox"
+                              checked={row.isReported}
+                              title={
+                                row.mode === "groupTeam"
+                                  ? "Marks every member of this team together"
+                                  : undefined
+                              }
+                              onChange={() =>
+                                row.mode === "individual"
+                                  ? onToggleParticipant(
+                                      row.assignmentId,
+                                      row.isReported,
+                                    )
+                                  : onToggleTeam(
+                                      row.assignmentIds,
+                                      row.isReported,
+                                    )
+                              }
+                              disabled={isPending || !canEdit}
+                            />
+                          </div>
+                          <div className="col-span-2 font-mono text-xs">
+                            {showCode ? (
+                              <span className="rounded border border-blue-500/40 bg-blue-500/10 px-1.5 py-0.5 text-blue-800 dark:text-blue-200">
+                                {issuedCode}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Mobile roster (simple card/list) */}
+                  <div className="md:hidden space-y-2 p-2">
+                    {rosterTableRows.map((row) => {
+                      const issuedCode = getIssuedCodeForRow(row);
+                      const showCode = isClosed && issuedCode && row.isReported;
+                      const title =
+                        row.mode === "groupTeam"
+                          ? `Team ${row.teamCell}`
+                          : row.nameColumn;
+                      const subtitle =
+                        row.mode === "groupTeam"
+                          ? `${row.groupName ?? "—"} · Team ${row.teamCell}`
+                          : row.groupName ?? "—";
+                      return (
+                        <div
+                          key={row.key}
+                          className="rounded-lg border bg-background px-3 py-2"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium truncate">
+                                {title}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                                {subtitle}
+                              </div>
+                            </div>
+
+                            <div className="shrink-0 flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={row.isReported}
+                                title={
+                                  row.mode === "groupTeam"
+                                    ? "Marks every member of this team together"
+                                    : undefined
+                                }
+                                onChange={() =>
+                                  row.mode === "individual"
+                                    ? onToggleParticipant(
+                                        row.assignmentId,
+                                        row.isReported,
+                                      )
+                                    : onToggleTeam(
+                                        row.assignmentIds,
+                                        row.isReported,
+                                      )
+                                }
+                                disabled={isPending || !canEdit}
+                              />
+                            </div>
+                          </div>
+
+                          {isClosed ? (
+                            <div className="mt-2 flex items-center justify-between">
+                              <div className="text-xs text-muted-foreground">
+                                {row.isReported ? "Reported" : "Not reported"}
+                              </div>
+                              <div className="font-mono text-xs">
+                                {showCode ? (
+                                  <span className="rounded border border-blue-500/40 bg-blue-500/10 px-1.5 py-0.5 text-blue-800 dark:text-blue-200">
+                                    {issuedCode}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               ) : null}
             </>

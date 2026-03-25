@@ -53,6 +53,7 @@ export function filterProgrammesForEventWorks<T extends { status: ProgrammeStatu
  */
 export async function updateProgrammeStatus(
   programmeId: string,
+  reportingSessionId?: string,
 ): Promise<ProgrammeStatus> {
   const programme = await prisma.programme.findUnique({
     where: { id: programmeId },
@@ -72,11 +73,16 @@ export async function updateProgrammeStatus(
   // If reporting has been submitted and the session is CLOSED, programme
   // status should be driven by judging progress (results on reported participants),
   // not by schedule/assignment presence. This prevents downgrades back to SCHEDULED.
-  const latestClosedReportingSession = await prisma.programmeReportingSession.findFirst({
-    where: { programmeId, status: "CLOSED" },
-    select: { id: true, endedAt: true },
-    orderBy: { endedAt: "desc" },
-  });
+  const latestClosedReportingSession = reportingSessionId
+    ? await prisma.programmeReportingSession.findFirst({
+        where: { id: reportingSessionId, programmeId, status: "CLOSED" },
+        select: { id: true, endedAt: true },
+      })
+    : await prisma.programmeReportingSession.findFirst({
+        where: { programmeId, status: "CLOSED" },
+        select: { id: true, endedAt: true },
+        orderBy: { endedAt: "desc" },
+      });
 
   if (latestClosedReportingSession) {
     const reportedParticipants = await prisma.programmeReportedParticipant.findMany({

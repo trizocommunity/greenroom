@@ -279,7 +279,7 @@ export function FestivalLiveClient({
           };
           router.refresh();
         } else {
-          toast.error(res.error || "Failed to update festival dates.");
+          toast.error("error" in res ? res.error : "Failed to update festival dates.");
         }
         return;
       }
@@ -305,7 +305,7 @@ export function FestivalLiveClient({
           festivalUpdated = true;
           initialFestivalRef.current = festivalForm;
         } else {
-          toast.error(res.error || "Failed to update festival details.");
+          toast.error("error" in res ? res.error : "Failed to update festival details.");
         }
       }
 

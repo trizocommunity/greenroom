@@ -1,17 +1,17 @@
 import type { ProgrammeStatus, Tier } from "@prisma/client";
 import { Calendar, ClipboardList } from "lucide-react";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
-import { ResultsManagementClient } from "@/components/dashboard/results/ResultsManagementClient";
+import { BasicMarksClient } from "@/components/dashboard/marks/BasicMarksClient";
 import { prisma } from "@/lib/db";
 import { filterProgrammesForEventWorks } from "@/server/services/programme-status.service";
 
 export const metadata: Metadata = {
-  title: "Judgment",
+  title: "Marks",
 };
 
-export default async function MarksPage({
+export default async function MarksRedirectPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
@@ -32,6 +32,12 @@ export default async function MarksPage({
               result: true,
             },
           },
+          judgeSessions: {
+            where: { usedAt: null },
+            orderBy: { startedAt: "desc" },
+            take: 1,
+            select: { id: true, startedAt: true, usedAt: true, endedAt: true },
+          },
         },
         orderBy: { createdAt: "desc" },
       },
@@ -43,6 +49,11 @@ export default async function MarksPage({
   }
 
   const tier = (festival.tier ?? "STANDARD") as Tier;
+
+  // For Standard/Pro, redirect to the dedicated judgment route.
+  if (tier !== "BASIC") {
+    redirect(`/dashboard/${slug}/event-works/judgment`);
+  }
 
   // Judgment should show only programmes that have finished reporting
   // (or are in the end-of-reporting judging window), not scheduled/reporting ones.
@@ -103,15 +114,13 @@ export default async function MarksPage({
 
   return (
     <div className="pt-4 sm:pt-6">
-      <ResultsManagementClient
+      <BasicMarksClient
         festival={festival}
         programmes={eventWorksProgrammes}
         categories={festival.categories}
       >
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-          Judgment
-        </h1>
-      </ResultsManagementClient>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Marks</h1>
+      </BasicMarksClient>
     </div>
   );
 }
