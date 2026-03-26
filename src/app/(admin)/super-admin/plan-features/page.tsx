@@ -1,5 +1,3 @@
-import type { Tier } from "@prisma/client";
-import type { FeaturePath } from "@/lib/features";
 import { Layers } from "lucide-react";
 import {
   Card,
@@ -8,11 +6,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getEffectivePlanFeatureMatrix } from "@/server/services/plan-features.service";
+import { getEffectiveFeatureTagMatrix } from "@/server/services/plan-features-tags.service";
 import { PlanFeaturesClient } from "./PlanFeaturesClient";
 
 export default async function PlanFeaturesPage() {
-  const matrix = await getEffectivePlanFeatureMatrix();
+  const tagMatrix = await getEffectiveFeatureTagMatrix();
 
   return (
     <div className="space-y-6">
@@ -31,16 +29,16 @@ export default async function PlanFeaturesPage() {
               <Layers className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-lg">Feature matrix</CardTitle>
+              <CardTitle className="text-lg">Feature Tags</CardTitle>
               <CardDescription>
-                Row = feature, column = plan. Toggle to override default from
-                config.
+                Toggle business-intent feature tags per plan. Alias tags map
+                1:1 to underlying feature flags.
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <PlanFeaturesClient matrix={matrix as Record<Tier, Partial<Record<FeaturePath, boolean>>>} />
+          <PlanFeaturesClient tagMatrix={tagMatrix} />
         </CardContent>
       </Card>
     </div>

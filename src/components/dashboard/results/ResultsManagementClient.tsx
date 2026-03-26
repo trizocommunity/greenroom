@@ -67,7 +67,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useFeature } from "@/hooks/useFeature";
+import { useFeature, useFeatureTag } from "@/hooks/useFeature";
 import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 import { formatCountdownHms } from "@/lib/format-countdown-hms";
 import {
@@ -178,7 +178,7 @@ export function ResultsManagementClient({
   children,
 }: ResultsManagementClientProps) {
   const { isReadOnly } = useFestivalReadOnly();
-  const canUseExternalJudging = useFeature("schedule");
+  const canUseExternalJudging = useFeatureTag("eventWorks.externalJudging");
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("");

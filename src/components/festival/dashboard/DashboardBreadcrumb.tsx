@@ -11,7 +11,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { getFestivalDashboardSidebarConfig } from "@/config/sidebar.config";
-import { useFeatures } from "@/hooks/useFeature";
+import { useFeatureTag } from "@/hooks/useFeature";
 
 interface DashboardBreadcrumbProps {
   festivalName: string;
@@ -23,7 +23,7 @@ export function DashboardBreadcrumb({
 }: Omit<DashboardBreadcrumbProps, "festivalName">) {
   const pathname = usePathname();
   const basePath = `/dashboard/${slug}`;
-  const features = useFeatures();
+  const canUseExternalJudging = useFeatureTag("eventWorks.externalJudging");
 
   // 1. Get path relative to dashboard root
   // e.g. /dashboard/my-fest/pre-works/categories -> pre-works/categories
@@ -33,7 +33,7 @@ export function DashboardBreadcrumb({
   // 2. Helper to find title from sidebar config
   // We'll flatten the config to look up titles by href or partial match logic
   const sidebarConfig = getFestivalDashboardSidebarConfig(basePath, "OWNER", {
-    useExternalJudging: features.canManageSchedule,
+    useExternalJudging: canUseExternalJudging,
   }); // Role doesn't matter for titles
 
   const allItems = sidebarConfig.flatMap((g) => g.items);

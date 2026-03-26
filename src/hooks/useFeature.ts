@@ -26,6 +26,8 @@
 import { useFestival } from "@/components/festival/FestivalContext";
 import { FeatureService, type FeaturePath } from "@/lib/features";
 import { getResolvedTier } from "@/lib/tier";
+import type { FeatureTag } from "@/lib/features-tags";
+import { getFeatureTagRequirements } from "@/lib/features-tags";
 
 /**
  * Hook to check if a feature is enabled for the current festival's tier
@@ -46,6 +48,42 @@ export function useFeature(featurePath: FeaturePath): boolean {
     return Boolean(festival.effectiveFeatures[featurePath]);
   }
   return FeatureService.isFeatureEnabled(tier, featurePath);
+}
+
+/**
+ * Feature Tag hook (business-intent layer).
+ *
+ * Tags map to one or more underlying `FeaturePath` requirements.
+ * This hook evaluates tag enablement using:
+ * - `festival.effectiveFeatures` overrides (same behavior as `useFeature`)
+ * - Tag rules (allowed tiers / hard-blocks / AND semantics over required features)
+ */
+export function useFeatureTag(tag: FeatureTag): boolean {
+  const festival = useFestival();
+  const tier = getResolvedTier(festival?.tier);
+
+  const effectiveFeatures = festival?.effectiveFeatures;
+  const req = getFeatureTagRequirements(tag);
+
+  if (req.allowedTiers && !req.allowedTiers.includes(tier as any)) return false;
+  if (req.hardBlockBasics && tier === "BASIC") return false;
+
+  const requires = req.requires ?? [];
+  if (requires.length === 0) return true; // Tier-only tag
+
+  for (const f of requires) {
+    const overridden =
+      effectiveFeatures && f in effectiveFeatures
+        ? Boolean(effectiveFeatures[f])
+        : undefined;
+
+    const enabled =
+      overridden ?? FeatureService.isFeatureEnabled(tier, f as FeaturePath);
+
+    if (!enabled) return false;
+  }
+
+  return true;
 }
 
 /**

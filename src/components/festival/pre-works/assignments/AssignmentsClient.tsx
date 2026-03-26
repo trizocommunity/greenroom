@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { Loader2, MoreVertical, Plus, Search, Trash2, Users, X } from "lucide-react";
+import { Eye, Loader2, Plus, Search, Trash2, Users, X } from "lucide-react";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -10,11 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -23,129 +23,109 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useAssignments } from "@/hooks/useAssignments";
 import { useCategories } from "@/hooks/useCategories";
 import { useGroups } from "@/hooks/useGroups";
 import { AssignmentModal } from "./AssignmentModal";
-import {
-  TeamStudentsDialog,
-  type TeamStudentRow,
-} from "./TeamStudentsDialog";
 import { DeadlinesCard } from "@/components/festival/pre-works/DeadlinesCard";
 import { useDeadlineLock } from "@/hooks/useDeadlineLock";
 import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 
-function AssignmentCard({
-  kind,
-  groupColor,
-  groupName,
-  studentName,
-  programmeName,
-  categoryName,
-  assignedAt,
-  isReadOnly,
-  onRemove,
-  onViewTeam,
-  teamNumber,
-}: {
-  kind: "individual" | "team";
-  groupColor: string;
+type IndividualAssignmentRow = {
+  kind: "individual";
+  assignment: any;
+};
+
+type GroupTeamRow = {
+  kind: "team";
+  programme: any;
+  category: any;
+  groupId: string;
   groupName: string;
-  studentName: string;
-  programmeName?: string;
-  categoryName?: string;
+  teamNumber: number;
+  assignments: any[];
   assignedAt: string | null;
-  isReadOnly: boolean;
-  onRemove: () => void;
-  onViewTeam?: () => void;
-  teamNumber?: number;
+  latestAssignedAtDate: Date | null;
+};
+
+type AssignmentTableRow = IndividualAssignmentRow | GroupTeamRow;
+
+type ProgrammeCardRow = {
+  programmeId: string;
+  programmeName: string;
+  programmeType: "INDIVIDUAL" | "GROUP";
+  categoryName: string | null;
+  attendeesCount: number;
+  teamCount: number;
+  assignedAt: string | null;
+  latestAssignedAtDate: Date | null;
+  rows: AssignmentTableRow[];
+};
+
+function ProgrammeCard({
+  programmeName,
+  programmeType,
+  categoryName,
+  attendeesCount,
+  teamCount,
+  assignedAt,
+  onViewDetails,
+}: {
+  programmeName: string;
+  programmeType: "INDIVIDUAL" | "GROUP";
+  categoryName: string | null;
+  attendeesCount: number;
+  teamCount: number;
+  assignedAt: string | null;
+  onViewDetails: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-border/80 bg-card overflow-hidden shadow-sm transition-all active:scale-[0.99] hover:shadow-md hover:border-primary/25">
-      {/* Compact programme strip */}
-      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-muted/30 border-b border-border/50">
-        <span className="text-xs font-medium text-muted-foreground truncate flex-1 min-w-0">
-          {programmeName ?? "—"}
-          {kind === "team" && teamNumber != null && (
-            <Badge variant="secondary" className="ml-1.5 text-[10px] h-4 align-middle">
-              T{teamNumber}
-            </Badge>
-          )}
-        </span>
-      </div>
-      <div className="flex items-start justify-between gap-3 p-3">
-        <div className="min-w-0 flex-1 space-y-2.5">
-          <p className="font-semibold text-base text-foreground leading-tight line-clamp-2">
-            {studentName}
-          </p>
-          {/* Meta: group + category + date, compact */}
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <span
-                className="w-2 h-2 rounded-full shrink-0"
-                style={{ backgroundColor: groupColor }}
-              />
-              <span className="truncate">{groupName}</span>
+    <button
+      type="button"
+      onClick={onViewDetails}
+      className="group rounded-xl border border-border/80 bg-card overflow-hidden shadow-sm transition-all text-left hover:shadow-md hover:border-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+    >
+      <div className="flex items-start gap-2 px-3 py-2.5 bg-muted/25 border-b border-border/50">
+        <div className="min-w-0 flex-1">
+          <span className="block font-semibold truncate text-sm">{programmeName}</span>
+          {categoryName ? (
+            <span className="block text-[11px] text-muted-foreground truncate mt-0.5">
+              {categoryName}
             </span>
-            {categoryName && (
-              <Badge variant="outline" className="font-normal text-[10px] h-5 px-1.5">
-                {categoryName}
-              </Badge>
-            )}
-            {assignedAt && <span>{assignedAt}</span>}
+          ) : (
+            <span className="block text-[11px] text-muted-foreground mt-0.5">Uncategorized</span>
+          )}
+        </div>
+        <Badge
+          variant={programmeType === "GROUP" ? "secondary" : "outline"}
+          className="text-[10px] shrink-0"
+        >
+          {programmeType}
+        </Badge>
+      </div>
+      <div className="p-3">
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="rounded-md border bg-muted/20 px-2.5 py-2">
+            <p className="text-muted-foreground">Attendees</p>
+            <p className="font-semibold text-foreground mt-0.5">{attendeesCount}</p>
+          </div>
+          <div className="rounded-md border bg-muted/20 px-2.5 py-2">
+            <p className="text-muted-foreground">
+              {programmeType === "GROUP" ? "Teams" : "Type"}
+            </p>
+            <p className="font-semibold text-foreground mt-0.5">
+              {programmeType === "GROUP" ? teamCount : "Individual"}
+            </p>
           </div>
         </div>
-        <div className="shrink-0 pt-0.5">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {onViewTeam && (
-                <DropdownMenuItem onClick={onViewTeam}>
-                  <Users className="h-3.5 w-3.5 mr-2" />
-                  View team
-                </DropdownMenuItem>
-              )}
-              {!isReadOnly && (
-                <DropdownMenuItem
-                  onClick={onRemove}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="h-3.5 w-3.5 mr-2" />
-                  Remove
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="flex items-center justify-between gap-2 text-xs mt-3 px-0.5">
+          <span className="text-muted-foreground">Last assigned</span>
+          <span className="font-medium text-foreground">{assignedAt ?? "—"}</span>
         </div>
       </div>
-    </div>
+    </button>
   );
 }
-
-type AssignmentTableRow =
-  | { kind: "individual"; assignment: any }
-  | {
-      kind: "team";
-      programme: any;
-      category: any;
-      groupId: string;
-      groupName: string;
-      teamNumber: number;
-      assignments: any[];
-      assignedAt: string | null;
-    };
 
 interface AssignmentsClientProps {
   festivalId: string;
@@ -172,16 +152,12 @@ export function AssignmentsClient({
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<
     | { kind: "individual"; assignment: any }
-    | { kind: "team"; row: AssignmentTableRow & { kind: "team" } }
+    | { kind: "team"; row: GroupTeamRow }
     | null
   >(null);
-  const [teamStudentsDialog, setTeamStudentsDialog] = useState<{
-    open: boolean;
-    programmeName: string;
-    teamLabel: string;
-    groupName: string;
-    students: TeamStudentRow[];
-  }>({ open: false, programmeName: "", teamLabel: "", groupName: "", students: [] });
+  const [selectedProgrammeCard, setSelectedProgrammeCard] =
+    useState<ProgrammeCardRow | null>(null);
+  const [detailsSearch, setDetailsSearch] = useState("");
 
   // Global Filters
   const [filterGroup, setFilterGroup] = useState<string>("ALL");
@@ -241,7 +217,15 @@ export function AssignmentsClient({
     const rows: AssignmentTableRow[] = [];
     const teamMap = new Map<
       string,
-      { programme: any; category: any; groupId: string; groupName: string; teamNumber: number; assignments: any[] }
+      {
+        programme: any;
+        category: any;
+        groupId: string;
+        groupName: string;
+        teamNumber: number;
+        assignments: any[];
+        latestAssignedAtDate: Date | null;
+      }
     >();
 
     for (const a of filteredAssignments) {
@@ -260,9 +244,15 @@ export function AssignmentsClient({
             groupName,
             teamNumber: tn,
             assignments: [],
+            latestAssignedAtDate: null,
           });
         }
-        teamMap.get(key)!.assignments.push(a);
+        const bucket = teamMap.get(key)!;
+        bucket.assignments.push(a);
+        const dt = a.assignedAt ? new Date(a.assignedAt) : null;
+        if (dt && (!bucket.latestAssignedAtDate || dt > bucket.latestAssignedAtDate)) {
+          bucket.latestAssignedAtDate = dt;
+        }
       } else {
         rows.push({ kind: "individual", assignment: a });
       }
@@ -281,11 +271,66 @@ export function AssignmentsClient({
         teamNumber: val.teamNumber,
         assignments: val.assignments,
         assignedAt,
+        latestAssignedAtDate: val.latestAssignedAtDate,
       });
     });
 
     return rows;
   }, [filteredAssignments]);
+
+  const programmeCards = useMemo<ProgrammeCardRow[]>(() => {
+    const map = new Map<string, ProgrammeCardRow>();
+    for (const row of tableRows) {
+      const programme = row.kind === "individual" ? row.assignment.programme : row.programme;
+      if (!programme?.id) continue;
+      if (!map.has(programme.id)) {
+        map.set(programme.id, {
+          programmeId: programme.id,
+          programmeName: programme.name ?? "—",
+          programmeType: programme.type,
+          categoryName:
+            (row.kind === "individual"
+              ? row.assignment.category?.name || row.assignment.programme?.category?.name
+              : row.category?.name || row.programme?.category?.name) ?? null,
+          attendeesCount: 0,
+          teamCount: 0,
+          assignedAt: null,
+          latestAssignedAtDate: null,
+          rows: [],
+        });
+      }
+      const card = map.get(programme.id)!;
+      card.rows.push(row);
+      if (row.kind === "individual") {
+        card.attendeesCount += 1;
+        const dt = row.assignment.assignedAt ? new Date(row.assignment.assignedAt) : null;
+        if (dt && (!card.latestAssignedAtDate || dt > card.latestAssignedAtDate)) {
+          card.latestAssignedAtDate = dt;
+        }
+      } else {
+        card.attendeesCount += row.assignments.length;
+        card.teamCount += 1;
+        const dt = row.latestAssignedAtDate;
+        if (dt && (!card.latestAssignedAtDate || dt > card.latestAssignedAtDate)) {
+          card.latestAssignedAtDate = dt;
+        }
+      }
+    }
+
+    const cards = Array.from(map.values());
+    for (const c of cards) {
+      c.assignedAt = c.latestAssignedAtDate ? format(c.latestAssignedAtDate, "PP") : null;
+    }
+    cards.sort((a, b) => {
+      const at = a.latestAssignedAtDate?.getTime() ?? 0;
+      const bt = b.latestAssignedAtDate?.getTime() ?? 0;
+      if (bt !== at) return bt - at;
+      return a.programmeName.localeCompare(b.programmeName, undefined, {
+        sensitivity: "base",
+      });
+    });
+    return cards;
+  }, [tableRows]);
 
   const hasFilters =
     filterGroup !== "ALL" ||
@@ -340,7 +385,7 @@ export function AssignmentsClient({
             </p>
             <p className="text-sm text-muted-foreground">
               <strong>Team programmes:</strong> Assign teams. Each team can have
-              multiple members; one score per team. Use &quot;New assignment&quot;
+              multiple members; one result per team. Use &quot;New assignment&quot;
               to pick a programme, then add students to the queue to form
               teams.
             </p>
@@ -370,19 +415,19 @@ export function AssignmentsClient({
 
       <Card className="overflow-hidden">
         <CardHeader className="p-3 sm:p-4 border-b bg-muted/5">
-          {/* Filters: search first, mobile = flex-col w-full */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
-            <div className="relative w-full sm:w-auto sm:min-w-[140px] sm:max-w-[200px] order-first">
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+            <div className="relative w-full sm:w-auto sm:min-w-[180px] sm:max-w-[240px] order-first">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               <Input
-                placeholder="Search student, programme, group..."
+                placeholder="Search attendee, programme, group..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-8 w-full pl-8 text-xs sm:w-[200px]"
+                inputSize="s"
+                className="w-full pl-8 sm:w-[230px]"
               />
             </div>
             <Select value={filterCategory} onValueChange={setFilterCategory}>
-              <SelectTrigger className="h-8 w-full sm:w-[130px] text-xs">
+              <SelectTrigger className="h-9 w-full sm:w-[150px] text-xs">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
@@ -395,7 +440,7 @@ export function AssignmentsClient({
               </SelectContent>
             </Select>
             <Select value={filterGroup} onValueChange={setFilterGroup}>
-              <SelectTrigger className="h-8 w-full sm:w-[130px] text-xs">
+              <SelectTrigger className="h-9 w-full sm:w-[140px] text-xs">
                 <SelectValue placeholder="Group" />
               </SelectTrigger>
               <SelectContent>
@@ -408,20 +453,20 @@ export function AssignmentsClient({
               </SelectContent>
             </Select>
             <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="h-8 w-full sm:w-[110px] text-xs">
-                <SelectValue placeholder="Type" />
+              <SelectTrigger className="h-9 w-full sm:w-[170px] text-xs">
+                <SelectValue placeholder="Programme type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">All</SelectItem>
+                <SelectItem value="ALL">All types</SelectItem>
                 <SelectItem value="INDIVIDUAL">Individual</SelectItem>
-                <SelectItem value="GROUP">Team</SelectItem>
+                <SelectItem value="GROUP">Group</SelectItem>
               </SelectContent>
             </Select>
             {hasFilters && (
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 w-full sm:w-8 shrink-0"
+                className="h-9 w-full sm:w-9 shrink-0"
                 onClick={clearFilters}
                 title="Clear filters"
               >
@@ -430,276 +475,37 @@ export function AssignmentsClient({
               </Button>
             )}
             <span className="text-xs text-muted-foreground sm:ml-auto">
-              {tableRows.length} row{tableRows.length !== 1 ? "s" : ""}
+              {programmeCards.length} programme
+              {programmeCards.length !== 1 ? "s" : ""}
             </span>
           </div>
         </CardHeader>
-        <CardContent className="p-0 overflow-x-auto">
-          {/* Mobile: assignment cards */}
-          <div className="block md:hidden p-3 sm:p-4 space-y-3">
-            {tableRows.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-3 py-14 px-6 text-center text-muted-foreground rounded-xl border border-dashed bg-muted/20">
-                <Users className="h-10 w-10 text-muted-foreground/50" />
-                <p className="font-medium">No assignments found</p>
-                <p className="text-sm">Try changing filters or add a new assignment.</p>
-              </div>
-            ) : (
-              tableRows.map((row) =>
-                row.kind === "individual" ? (
-                  <AssignmentCard
-                    key={row.assignment.id}
-                    kind="individual"
-                    groupColor={
-                      row.assignment.group?.color ||
-                      row.assignment.student?.group?.color ||
-                      "#2563eb"
-                    }
-                    groupName={
-                      row.assignment.group?.name ||
-                      row.assignment.student?.group?.name ||
-                      "—"
-                    }
-                    studentName={row.assignment.student?.name ?? "—"}
-                    programmeName={row.assignment.programme?.name}
-                    categoryName={
-                      row.assignment.category?.name ||
-                      row.assignment.programme?.category?.name
-                    }
-                    assignedAt={
-                      row.assignment.assignedAt
-                        ? format(new Date(row.assignment.assignedAt), "PP")
-                        : null
-                    }
-                    isReadOnly={isReadOnlyMode}
-                    onRemove={() => setDeleteTarget({ kind: "individual", assignment: row.assignment })}
-                    onViewTeam={undefined}
-                  />
-                ) : (
-                  <AssignmentCard
-                    key={`team-${row.programme?.id}-${row.groupId}-${row.teamNumber}`}
-                    kind="team"
-                    groupColor={
-                      groups.find((g: any) => g.id === row.groupId)?.color || "#2563eb"
-                    }
-                    groupName={row.groupName}
-                    studentName={
-                      row.assignments.length > 0
-                        ? `${row.assignments[0]?.student?.name ?? "—"}${row.assignments.length > 1 ? " + team" : ""}`
-                        : "—"
-                    }
-                    programmeName={row.programme?.name}
-                    categoryName={row.category?.name || row.programme?.category?.name}
-                    assignedAt={row.assignedAt}
-                    teamNumber={row.teamNumber}
-                    isReadOnly={isReadOnlyMode}
-                    onRemove={() => setDeleteTarget({ kind: "team", row })}
-                    onViewTeam={() =>
-                      setTeamStudentsDialog({
-                        open: true,
-                        programmeName: row.programme?.name ?? "",
-                        teamLabel: `${row.groupName} – Team ${row.teamNumber}`,
-                        groupName: row.groupName,
-                        students: row.assignments.map((a: any) => ({
-                          id: a.student?.id ?? a.id,
-                          name: a.student?.name ?? "—",
-                          chestNumber: a.student?.chestNumber,
-                          categoryName: a.student?.category?.name,
-                        })),
-                      })
-                    }
-                  />
-                )
-              )
-            )}
-          </div>
-
-          {/* Desktop: table */}
-          <Table className="hidden md:table">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Programme</TableHead>
-                <TableHead>Student</TableHead>
-                <TableHead>Participants</TableHead>
-                <TableHead>Group</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Assigned at</TableHead>
-                <TableHead className="text-right w-24">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tableRows.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="h-32 text-center text-muted-foreground"
-                  >
-                    No assignments found matching your filters.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                tableRows.map((row) =>
-                  row.kind === "individual" ? (
-                    <TableRow key={row.assignment.id}>
-                      <TableCell className="text-sm">
-                        {row.assignment.programme?.name ?? "—"}
-                      </TableCell>
-                      <TableCell className="font-medium text-sm">
-                        {row.assignment.student?.name ?? (
-                          <span className="text-muted-foreground italic">
-                            —
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        1
-                      </TableCell>
-                      <TableCell className="text-sm">
-                         <div className="flex items-center gap-2">
-                          <span
-                            className="w-2 h-2 rounded-full shrink-0"
-                            style={{
-                              backgroundColor:
-                                row.assignment.group?.color ||
-                                row.assignment.student?.group?.color ||
-                                "#2563eb",
-                            }}
-                          />
-                          {row.assignment.group?.name ||
-                            row.assignment.student?.group?.name ||
-                            "—"}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="font-normal text-xs">
-                          {row.assignment.category?.name ||
-                            row.assignment.programme?.category?.name}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-xs">
-                        {row.assignment.assignedAt
-                          ? format(
-                              new Date(row.assignment.assignedAt),
-                              "PP",
-                            )
-                          : "—"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7">
-                              <MoreVertical className="h-3.5 w-3.5" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {!isReadOnlyMode && (
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() =>
-                                  setDeleteTarget({ kind: "individual", assignment: row.assignment })
-                                }
-                              >
-                                <Trash2 className="h-3.5 w-3.5 mr-2" />
-                                Remove
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    <TableRow
-                      key={`team-${row.programme?.id}-${row.groupId}-${row.teamNumber}`}
-                    >
-                      <TableCell className="text-sm">
-                        <span>
-                          {row.programme?.name ?? "—"}
-                          <Badge
-                            variant="secondary"
-                            className="ml-1.5 text-[10px] h-4"
-                          >
-                            T{row.teamNumber}
-                          </Badge>
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        <span className="font-medium">
-                          {row.assignments.length > 0
-                            ? `${row.assignments[0]?.student?.name ?? "—"}`
-                            : "—"}
-                          {row.assignments.length > 1 && (
-                            <span className="text-muted-foreground text-xs"> + team</span>
-                          )}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {row.assignments.length}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="w-2 h-2 rounded-full shrink-0"
-                            style={{
-                              backgroundColor:
-                                groups.find((g: any) => g.id === row.groupId)
-                                  ?.color || "#2563eb",
-                            }}
-                          />
-                          {row.groupName}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="font-normal text-xs">
-                          {row.category?.name || row.programme?.category?.name}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-xs">
-                        {row.assignedAt ?? "—"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7">
-                              <MoreVertical className="h-3.5 w-3.5" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() =>
-                                setTeamStudentsDialog({
-                                  open: true,
-                                  programmeName: row.programme?.name ?? "",
-                                  teamLabel: `${row.groupName} – Team ${row.teamNumber}`,
-                                  groupName: row.groupName,
-                                  students: row.assignments.map((a: any) => ({
-                                    id: a.student?.id ?? a.id,
-                                    name: a.student?.name ?? "—",
-                                    chestNumber: a.student?.chestNumber,
-                                    categoryName: a.student?.category?.name,
-                                  })),
-                                })
-                              }
-                            >
-                              <Users className="h-3.5 w-3.5 mr-2" />
-                              View team
-                            </DropdownMenuItem>
-                            {!isReadOnlyMode && (
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => setDeleteTarget({ kind: "team", row })}
-                              >
-                                <Trash2 className="h-3.5 w-3.5 mr-2" />
-                                Remove team
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ),
-                )
-              )}
-            </TableBody>
-          </Table>
+        <CardContent className="p-3 sm:p-4">
+          {programmeCards.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-14 px-6 text-center text-muted-foreground rounded-xl border border-dashed bg-muted/20">
+              <Users className="h-10 w-10 text-muted-foreground/50" />
+              <p className="font-medium">No assignments found</p>
+              <p className="text-sm">Try changing filters or add a new assignment.</p>
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {programmeCards.map((card) => (
+                <ProgrammeCard
+                  key={card.programmeId}
+                  programmeName={card.programmeName}
+                  programmeType={card.programmeType}
+                  categoryName={card.categoryName}
+                  attendeesCount={card.attendeesCount}
+                  teamCount={card.teamCount}
+                  assignedAt={card.assignedAt}
+                  onViewDetails={() => {
+                    setDetailsSearch("");
+                    setSelectedProgrammeCard(card);
+                  }}
+                />
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -743,16 +549,157 @@ export function AssignmentsClient({
         isDeleting={isDeletingTeam}
       />
 
-      <TeamStudentsDialog
-        open={teamStudentsDialog.open}
-        onOpenChange={(open) =>
-          setTeamStudentsDialog((prev) => ({ ...prev, open }))
-        }
-        programmeName={teamStudentsDialog.programmeName}
-        teamLabel={teamStudentsDialog.teamLabel}
-        groupName={teamStudentsDialog.groupName}
-        students={teamStudentsDialog.students}
-      />
+      <Dialog
+        open={Boolean(selectedProgrammeCard)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedProgrammeCard(null);
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Programme details</DialogTitle>
+          </DialogHeader>
+          {selectedProgrammeCard ? (
+            <div className="space-y-4">
+              <div className="grid gap-2 sm:grid-cols-2 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Programme:</span>{" "}
+                  <span className="font-medium">{selectedProgrammeCard.programmeName}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Type:</span>{" "}
+                  {selectedProgrammeCard.programmeType}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Attendees:</span>{" "}
+                  {selectedProgrammeCard.attendeesCount}
+                </div>
+                {selectedProgrammeCard.programmeType === "GROUP" ? (
+                  <div>
+                    <span className="text-muted-foreground">Teams:</span>{" "}
+                    {selectedProgrammeCard.teamCount}
+                  </div>
+                ) : null}
+              </div>
+
+              <Input
+                inputSize="s"
+                placeholder="Search attendees by name, chest number or group..."
+                value={detailsSearch}
+                onChange={(e) => setDetailsSearch(e.target.value)}
+              />
+
+              {selectedProgrammeCard.programmeType === "INDIVIDUAL" ? (
+                <div className="space-y-2 max-h-80 overflow-auto pr-1">
+                  {selectedProgrammeCard.rows
+                    .filter((r): r is IndividualAssignmentRow => r.kind === "individual")
+                    .filter((r) => {
+                      const q = detailsSearch.trim().toLowerCase();
+                      if (!q) return true;
+                      const s = r.assignment.student;
+                      const g = r.assignment.group || r.assignment.student?.group;
+                      return (
+                        (s?.name ?? "").toLowerCase().includes(q) ||
+                        (s?.chestNumber ?? "").toLowerCase().includes(q) ||
+                        (g?.name ?? "").toLowerCase().includes(q)
+                      );
+                    })
+                    .map((r) => (
+                      <div
+                        key={r.assignment.id}
+                        className="rounded-md border p-2 text-sm flex items-center justify-between gap-3"
+                      >
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">
+                            {r.assignment.student?.name ?? "—"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            #{r.assignment.student?.chestNumber ?? "—"} ·{" "}
+                            {r.assignment.group?.name ||
+                              r.assignment.student?.group?.name ||
+                              "—"}{" "}
+                            ·{" "}
+                            {r.assignment.assignedAt
+                              ? format(new Date(r.assignment.assignedAt), "PPp")
+                              : "—"}
+                          </div>
+                        </div>
+                        {!isReadOnlyMode ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() =>
+                              setDeleteTarget({
+                                kind: "individual",
+                                assignment: r.assignment,
+                              })
+                            }
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-1" />
+                            Remove attendee
+                          </Button>
+                        ) : null}
+                      </div>
+                    ))}
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-80 overflow-auto pr-1">
+                  {selectedProgrammeCard.rows
+                    .filter((r): r is GroupTeamRow => r.kind === "team")
+                    .filter((row) => {
+                      const q = detailsSearch.trim().toLowerCase();
+                      if (!q) return true;
+                      if (row.groupName.toLowerCase().includes(q)) return true;
+                      if (`team ${row.teamNumber}`.includes(q)) return true;
+                      return row.assignments.some((a: any) => {
+                        const s = a.student;
+                        return (
+                          (s?.name ?? "").toLowerCase().includes(q) ||
+                          (s?.chestNumber ?? "").toLowerCase().includes(q)
+                        );
+                      });
+                    })
+                    .map((row) => (
+                      <div key={`${row.groupId}:${row.teamNumber}`} className="rounded-md border p-3">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <div className="text-sm font-medium">
+                            {row.groupName} - Team {row.teamNumber}
+                          </div>
+                          {!isReadOnlyMode ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => setDeleteTarget({ kind: "team", row })}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-1" />
+                              Remove team
+                            </Button>
+                          ) : null}
+                        </div>
+                        <div className="text-xs text-muted-foreground mb-2">
+                          Attendees: {row.assignments.length} · Assigned at: {row.assignedAt ?? "—"}
+                        </div>
+                        <div className="space-y-1">
+                          {row.assignments.map((a: any) => (
+                            <div key={a.id} className="text-xs">
+                              {a.student?.name ?? "—"}{" "}
+                              <span className="text-muted-foreground">
+                                (#{a.student?.chestNumber ?? "—"})
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }

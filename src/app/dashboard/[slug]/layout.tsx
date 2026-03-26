@@ -130,7 +130,15 @@ export default async function FestivalDashboardLayout({
 
               {/* Header Actions */}
               <div className="flex items-center gap-2">
-                <FestivalStatusBadge status={derivedStatus} size="default" />
+                <FestivalStatusBadge
+                  status={derivedStatus}
+                  createdAt={festival.createdAt}
+                  startDate={festival.startDate}
+                  endDate={festival.endDate}
+                  expiresAt={festival.expiresAt}
+                  size="default"
+                  interactive={true}
+                />
                 <SupportNotifications slug={slug} />
                 <DashboardRightSidebar
                   trigger={
@@ -146,6 +154,10 @@ export default async function FestivalDashboardLayout({
                   }
                   festivalName={festival.name}
                   festivalStatus={derivedStatus}
+                  festivalCreatedAt={festival.createdAt}
+                  festivalStartDate={festival.startDate}
+                  festivalEndDate={festival.endDate}
+                  festivalExpiresAt={festival.expiresAt}
                   daysRemaining={
                     festival.expiresAt
                       ? Math.ceil(

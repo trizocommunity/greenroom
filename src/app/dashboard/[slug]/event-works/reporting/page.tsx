@@ -8,7 +8,7 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { getProgrammeReportingBoardAction } from "@/server/actions/programme-reporting.actions";
 import { getFestivalContext } from "@/server/services/festival-context.service";
-import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
+import { getEffectiveFeatureTagEnabled } from "@/server/services/plan-features-tags.service";
 
 export default async function ProgrammeReportingPage({
   params,
@@ -21,9 +21,9 @@ export default async function ProgrammeReportingPage({
     select: { id: true, name: true, tier: true },
   });
   if (!festival) notFound();
-  const canUseReporting = await getEffectiveFeatureEnabled(
+  const canUseReporting = await getEffectiveFeatureTagEnabled(
     festival.tier,
-    "schedule",
+    "eventWorks.reporting",
   );
   if (!canUseReporting) notFound();
   const session = await getSession();

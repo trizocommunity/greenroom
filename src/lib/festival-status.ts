@@ -7,6 +7,7 @@ export type DerivedFestivalStatus = "READY" | "ONGOING" | "PAST" | "EXPIRED";
 
 export interface FestivalForStatus {
   status: string;
+  createdAt?: Date | string | null;
   startDate?: Date | string | null;
   endDate?: Date | string | null;
   expiresAt?: Date | string | null;
@@ -51,3 +52,68 @@ export const FESTIVAL_STATUS_LABELS: Record<
   PAST: "Past",
   EXPIRED: "Expired",
 };
+
+function toDate(value?: Date | string | null): Date | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function daysUntil(target: Date, now: Date): number {
+  return Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * Format Date as dd/MM/yy.
+ */
+export function formatFestivalDateDDMMYY(value?: Date | string | null): string {
+  const date = toDate(value);
+  if (!date) return "—";
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yy = String(date.getFullYear()).slice(-2);
+  return `${dd}/${mm}/${yy}`;
+}
+
+/**
+ * Compact countdown text used in navbar/status badges.
+ */
+export function getFestivalStatusCountdownText(
+  status: DerivedFestivalStatus,
+  festival: Pick<FestivalForStatus, "startDate" | "endDate" | "expiresAt">,
+): string | null {
+  const now = new Date();
+  const startDate = toDate(festival.startDate);
+  const endDate = toDate(festival.endDate);
+  const expiresAt = toDate(festival.expiresAt);
+
+  if (status === "READY" && startDate) {
+    const d = daysUntil(startDate, now);
+    if (d > 0) return `${d}d to start`;
+    if (d === 0) return "Starts today";
+    return `Started ${Math.abs(d)}d ago`;
+  }
+
+  if (status === "ONGOING" && endDate) {
+    const d = daysUntil(endDate, now);
+    if (d > 0) return `${d}d left`;
+    if (d === 0) return "Ends today";
+    return `Ended ${Math.abs(d)}d ago`;
+  }
+
+  if (status === "PAST" && expiresAt) {
+    const d = daysUntil(expiresAt, now);
+    if (d > 0) return `${d}d to expire`;
+    if (d === 0) return "Expires today";
+    return `Expired ${Math.abs(d)}d ago`;
+  }
+
+  if (status === "EXPIRED" && expiresAt) {
+    const d = daysUntil(expiresAt, now);
+    if (d < 0) return `Expired ${Math.abs(d)}d ago`;
+    if (d === 0) return "Expired today";
+    return `${d}d to expire`;
+  }
+
+  return null;
+}

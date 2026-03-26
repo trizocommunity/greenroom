@@ -6,16 +6,28 @@ import {
   CheckCircle,
   Clock,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   type DerivedFestivalStatus,
   FESTIVAL_STATUS_LABELS,
+  formatFestivalDateDDMMYY,
+  getFestivalStatusCountdownText,
 } from "@/lib/festival-status";
 
 interface FestivalStatusBadgeProps {
   status: DerivedFestivalStatus | string;
+  createdAt?: Date | string | null;
+  startDate?: Date | string | null;
+  endDate?: Date | string | null;
   expiresAt?: Date | string | null;
   size?: "sm" | "default";
+  interactive?: boolean;
 }
 
 const statusConfig: Record<
@@ -46,42 +58,79 @@ const statusConfig: Record<
 
 export function FestivalStatusBadge({
   status,
+  createdAt,
+  startDate,
+  endDate,
   expiresAt,
   size = "default",
+  interactive = false,
 }: FestivalStatusBadgeProps) {
   const normalized = status as DerivedFestivalStatus;
   const isExpiredByTime = expiresAt ? new Date(expiresAt) < new Date() : false;
+  const effectiveStatus: DerivedFestivalStatus =
+    normalized === "EXPIRED" || isExpiredByTime ? "EXPIRED" : normalized;
+  const countdown = getFestivalStatusCountdownText(effectiveStatus, {
+    startDate,
+    endDate,
+    expiresAt,
+  });
 
-  if (normalized === "EXPIRED" || isExpiredByTime) {
-    const config = statusConfig.EXPIRED;
+  const badgeSizeClass = size === "sm" ? "text-xs px-1.5 py-0" : "";
+  const iconSizeClass = size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3";
+
+  const renderBadge = () => {
+    const config = statusConfig[effectiveStatus] ?? statusConfig.READY;
     const Icon = config.icon;
+    const label =
+      FESTIVAL_STATUS_LABELS[effectiveStatus] ?? FESTIVAL_STATUS_LABELS.READY;
     return (
-      <Badge
-        variant={config.variant}
-        className={`${size === "sm" ? "text-xs px-1.5 py-0" : ""} ${config.className}`}
-      >
-        <Icon
-          className={`${size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3"} mr-1`}
-        />
-        {FESTIVAL_STATUS_LABELS.EXPIRED}
+      <Badge variant={config.variant} className={`${badgeSizeClass} ${config.className}`}>
+        <Icon className={`${iconSizeClass} mr-1`} />
+        <span>{label}</span>
+        {countdown ? (
+          <span className="ml-1.5 border-l border-current/20 pl-1.5 opacity-90">
+            {countdown}
+          </span>
+        ) : null}
       </Badge>
     );
-  }
+  };
 
-  const config = statusConfig[normalized] ?? statusConfig.READY;
-  const Icon = config.icon;
-  const label =
-    FESTIVAL_STATUS_LABELS[normalized] ?? FESTIVAL_STATUS_LABELS.READY;
+  if (!interactive) return renderBadge();
 
   return (
-    <Badge
-      variant={config.variant}
-      className={`${size === "sm" ? "text-xs px-1.5 py-0" : ""} ${config.className}`}
-    >
-      <Icon
-        className={`${size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3"} mr-1`}
-      />
-      {label}
-    </Badge>
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-auto p-0 hover:bg-transparent">
+          {renderBadge()}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-72 p-3">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-semibold">Festival timeline</div>
+            {renderBadge()}
+          </div>
+          <div className="space-y-2 text-xs">
+            <div className="grid grid-cols-[1fr_auto] gap-2">
+              <span className="text-muted-foreground">Ready (create festival)</span>
+              <span className="font-medium">{formatFestivalDateDDMMYY(createdAt)}</span>
+            </div>
+            <div className="grid grid-cols-[1fr_auto] gap-2">
+              <span className="text-muted-foreground">Start</span>
+              <span className="font-medium">{formatFestivalDateDDMMYY(startDate)}</span>
+            </div>
+            <div className="grid grid-cols-[1fr_auto] gap-2">
+              <span className="text-muted-foreground">End</span>
+              <span className="font-medium">{formatFestivalDateDDMMYY(endDate)}</span>
+            </div>
+            <div className="grid grid-cols-[1fr_auto] gap-2">
+              <span className="text-muted-foreground">Expire</span>
+              <span className="font-medium">{formatFestivalDateDDMMYY(expiresAt)}</span>
+            </div>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

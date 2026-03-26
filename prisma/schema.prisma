@@ -458,12 +458,13 @@ model Result {
   
   assignmentId  String              @unique
   assignment    ProgrammeAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  codeLetterId  String?
+  codeLetter    ProgrammeCodeLetter? @relation(fields: [codeLetterId], references: [id], onDelete: SetNull)
   
   // Scoring & Ranking
 
   grade         String?             // A+, A, B+, B, C, etc.
   position      Int?                // 1, 2, 3 (rank within programme)
-  score         Float               @default(0) // Judge's score (out of 10)
   points        Int                 @default(0) // Points awarded based on position
   
   // Metadata
@@ -474,6 +475,7 @@ model Result {
   updatedAt     DateTime            @updatedAt
   
   @@index([festivalId, createdAt(sort: Desc)])
+  @@index([programmeId, codeLetterId])
   @@map("result")
 }
 
@@ -823,6 +825,7 @@ model ProgrammeCodeLetter {
   issuedAt           DateTime                  @default(now())
   issuedBy           String?
   recipients         ProgrammeCodeLetterRecipient[]
+  results            Result[]
 
   @@unique([reportingSessionId, code])
   @@index([festivalId, issuedAt])

@@ -34,6 +34,10 @@ interface DashboardRightSidebarProps {
   // Panel Props
   festivalName?: string;
   festivalStatus?: FestivalStatus | string;
+  festivalCreatedAt?: Date | string | null;
+  festivalStartDate?: Date | string | null;
+  festivalEndDate?: Date | string | null;
+  festivalExpiresAt?: Date | string | null;
   daysRemaining?: number | null;
   userRole?: FestivalRole | string;
   usage?: {
@@ -58,6 +62,10 @@ export function DashboardRightSidebar({
   showStatusAndUsage = true,
   festivalName,
   festivalStatus,
+  festivalCreatedAt,
+  festivalStartDate,
+  festivalEndDate,
+  festivalExpiresAt,
   daysRemaining,
   userRole,
   usage,
@@ -129,6 +137,10 @@ export function DashboardRightSidebar({
                 <div className="flex items-center justify-between gap-3">
                   <FestivalStatusBadge
                     status={festivalStatus || "READY"}
+                    createdAt={festivalCreatedAt}
+                    startDate={festivalStartDate}
+                    endDate={festivalEndDate}
+                    expiresAt={festivalExpiresAt}
                     size="sm"
                   />
                   {tierLabel ? (

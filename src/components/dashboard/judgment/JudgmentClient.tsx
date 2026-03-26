@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, GripVertical, Share2, Sparkles } from "lucide-react";
+import { Copy, Share2, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -50,10 +50,12 @@ export function JudgmentClient({
   festival,
   stages,
   judgedProgrammes,
+  canPublish,
 }: {
   festival: { id: string; slug: string; tier: string };
   stages: ProgrammeJudgingBoardStage[];
   judgedProgrammes: JudgingProgrammeRow[];
+  canPublish: boolean;
 }) {
   const router = useRouter();
   // Avoid hydration mismatch: don't render a moving timer during SSR/hydration.
@@ -63,7 +65,6 @@ export function JudgmentClient({
   const [judgeLinksByProgrammeId, setJudgeLinksByProgrammeId] = useState<
     Record<string, { judgeUrl: string; startedAt: Date }>
   >({});
-  const [isJudgeLinkDropOver, setIsJudgeLinkDropOver] = useState(false);
   const [activeStageId, setActiveStageId] = useState<string>("__all__");
   const [search, setSearch] = useState("");
 
@@ -279,18 +280,18 @@ export function JudgmentClient({
     const rows = p.codeLetters ?? [];
     if (rows.length === 0) {
       return (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           No code letters available yet.
         </p>
       );
     }
 
     return (
-      <div className="space-y-2">
+      <div className="space-y-1">
         {rows.map((cl) => (
           <div
             key={cl.code}
-            className="flex items-center justify-between gap-3 text-sm"
+            className="flex items-center justify-between gap-3 text-xs"
           >
             <div className="min-w-0">
               <div className="font-mono font-semibold truncate">{cl.code}</div>
@@ -362,43 +363,6 @@ export function JudgmentClient({
 
               return (
                 <div className="space-y-3">
-                  <button
-                    type="button"
-                    className={[
-                      "rounded-lg border-2 border-dashed p-3 text-sm transition-colors",
-                      isJudgeLinkDropOver
-                        ? "border-primary/60 bg-primary/5"
-                        : "border-muted-foreground/25 bg-muted/10",
-                    ].join(" ")}
-                    onDragOver={(e) => {
-                      // Required to allow dropping.
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = "copy";
-                      setIsJudgeLinkDropOver(true);
-                    }}
-                    onDragLeave={() => setIsJudgeLinkDropOver(false)}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setIsJudgeLinkDropOver(false);
-                      const programmeId = e.dataTransfer.getData(
-                        "text/programmeId",
-                      );
-                      if (!programmeId) return;
-                      handleCreateJudgeLink(programmeId);
-                    }}
-                    onKeyDown={(e) => {
-                      // Non-visual drag/drop action; keep keyboard focusable for accessibility.
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                      }
-                    }}
-                  >
-                    <div className="font-medium">Drag a programme here</div>
-                    <div className="text-xs text-muted-foreground">
-                      to create judge link for that STARTED programme.
-                    </div>
-                  </button>
-
                   <div className="overflow-x-auto">
                   <div
                       className="flex gap-4 min-w-max pb-2 cursor-grab active:cursor-grabbing select-none"
@@ -409,10 +373,7 @@ export function JudgmentClient({
                           e.target instanceof HTMLElement &&
                           (e.target.closest("button") ||
                             e.target.closest("a") ||
-                            e.target.closest('[role="button"]') ||
-                            e.target.closest(
-                              "[data-judge-link-drag-handle]",
-                            ));
+                            e.target.closest('[role="button"]'));
                         if (isButtonTarget) return;
                         const startX = e.clientX;
                         const startScrollLeft = el.scrollLeft;
@@ -460,34 +421,6 @@ export function JudgmentClient({
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          draggable={!hasOpenJudgeSession}
-                          data-judge-link-drag-handle
-                          onDragStart={(e) => {
-                            if (hasOpenJudgeSession) return;
-                            e.dataTransfer.setData(
-                              "text/programmeId",
-                              p.programmeId,
-                            );
-                            e.dataTransfer.effectAllowed = "copy";
-                          }}
-                          className={[
-                            "inline-flex items-center justify-center rounded-md",
-                            "h-9 w-9 border border-muted-foreground/20",
-                            "cursor-grab active:cursor-grabbing select-none",
-                            !hasOpenJudgeSession
-                              ? "bg-background hover:bg-muted/30"
-                              : "bg-muted/20 cursor-not-allowed opacity-70",
-                          ].join(" ")}
-                          title={
-                            hasOpenJudgeSession
-                              ? "Judge link already active"
-                              : "Drag to create judge link"
-                          }
-                        >
-                          <GripVertical className="w-4 h-4 text-muted-foreground" />
-                        </button>
                         <Badge variant="outline" className="shrink-0">
                           STARTED
                         </Badge>
@@ -572,43 +505,46 @@ export function JudgmentClient({
             Judges will appear here after they submit points.
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {filteredJudgedProgrammes.map((p) => {
               const publishState = p.status === "PUBLISHED";
               return (
                 <Card key={p.programmeId} className="overflow-hidden">
-                  <CardHeader className="p-3">
+                  <CardHeader className="p-2">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <CardTitle className="text-base truncate">
+                        <CardTitle className="text-sm truncate">
                           {p.programmeName}
                         </CardTitle>
                       </div>
                       <Badge
                         variant={publishState ? "default" : "outline"}
-                        className="shrink-0"
+                        className="shrink-0 text-[11px]"
                       >
                         {publishState ? "PUBLISHED" : "ENDED"}
                       </Badge>
                     </div>
                   </CardHeader>
-                  <CardContent className="p-3">
-                    <div className="space-y-3">
+                  <CardContent className="p-2">
+                    <div className="space-y-2">
                       {renderJudgedCodeLettersCompact(p)}
-                      <div className="pt-1">
-                        <Button
-                          className="w-full gap-2"
-                          onClick={() =>
-                            publishProgramme(p.programmeId, !publishState)
-                          }
-                          disabled={isPending}
-                          variant={publishState ? "outline" : "default"}
-                        >
-                          {publishState
-                            ? "Unpublish to edit"
-                            : "Publish results"}
-                        </Button>
-                      </div>
+                      {canPublish ? (
+                        <div className="pt-1">
+                          <Button
+                            size="sm"
+                            className="w-full gap-2"
+                            onClick={() =>
+                              publishProgramme(p.programmeId, !publishState)
+                            }
+                            disabled={isPending}
+                            variant={publishState ? "outline" : "default"}
+                          >
+                            {publishState
+                              ? "Unpublish to edit"
+                              : "Publish results"}
+                          </Button>
+                        </div>
+                      ) : null}
                     </div>
                   </CardContent>
                 </Card>

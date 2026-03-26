@@ -5,6 +5,7 @@ import { PLAN_FEATURE_TOGGLE_KEYS } from "@/config/plan-features.config";
 import { prisma } from "@/lib/db";
 
 const CONFIG_KEY = "planFeatureOverrides";
+const TOGGLE_KEY_SET = new Set<string>(PLAN_FEATURE_TOGGLE_KEYS);
 
 export type PlanFeatureOverrides = Partial<
   Record<Tier, Partial<Record<FeaturePath, boolean>>>
@@ -60,7 +61,7 @@ export async function getEffectivePlanFeatureMatrix(): Promise<
     const tierOverrides = overrides[tier];
     if (tierOverrides && typeof tierOverrides === "object") {
       for (const key of Object.keys(tierOverrides) as FeaturePath[]) {
-        if (PLAN_FEATURE_TOGGLE_KEYS.includes(key) && typeof tierOverrides[key] === "boolean") {
+        if (TOGGLE_KEY_SET.has(key) && typeof tierOverrides[key] === "boolean") {
           result[tier][key] = tierOverrides[key];
         }
       }

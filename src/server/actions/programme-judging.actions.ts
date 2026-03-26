@@ -7,7 +7,9 @@ import { APP_URL } from "@/config/routes";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
-import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
+import {
+  getEffectiveFeatureTagEnabled,
+} from "@/server/services/plan-features-tags.service";
 import { calculateGrade, calculatePosition } from "@/lib/results-calculator";
 import { updateProgrammeStatus } from "@/server/services/programme-status.service";
 import type { ActionResponse } from "@/types/actions";
@@ -59,7 +61,10 @@ async function assertStageManagerAccess(festivalId: string): Promise<{
   });
   if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
 
-  const canUseJudging = await getEffectiveFeatureEnabled(festival.tier, "schedule");
+  const canUseJudging = await getEffectiveFeatureTagEnabled(
+    festival.tier,
+    "eventWorks.externalJudging",
+  );
   if (!canUseJudging) {
     throw new AppError("External judging is available on Standard plan and above.");
   }
@@ -117,6 +122,14 @@ export async function createProgrammeJudgeLinkAction(
     }
     if (programme.status !== "STARTED") {
       throw new AppError("Programme must be in STARTED state to create a judge link.");
+    }
+
+    const canUseJudging = await getEffectiveFeatureTagEnabled(
+      festival.tier,
+      "eventWorks.externalJudging",
+    );
+    if (!canUseJudging) {
+      throw new AppError("External judging is not available on this tier.");
     }
 
     const latestClosedReportingSession = await prisma.programmeReportingSession.findFirst({
@@ -226,7 +239,10 @@ export async function submitProgrammeJudgeSessionAction(
     });
     if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
 
-    const canUseJudging = await getEffectiveFeatureEnabled(festival.tier, "schedule");
+    const canUseJudging = await getEffectiveFeatureTagEnabled(
+      festival.tier,
+      "eventWorks.externalJudging",
+    );
     if (!canUseJudging) throw new AppError("Judging closed.");
 
     const codeLetters = await prisma.programmeCodeLetter.findMany({
@@ -330,6 +346,7 @@ export async function submitProgrammeJudgeSessionAction(
               festivalId: judgeSession.festivalId,
               programmeId: judgeSession.programmeId,
               assignmentId,
+              codeLetterId: cl.id,
               grade,
               position,
               points: roundedPoints,
@@ -337,6 +354,7 @@ export async function submitProgrammeJudgeSessionAction(
               isPublished: false,
             },
             update: {
+              codeLetterId: cl.id,
               grade,
               position,
               points: roundedPoints,

@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
+import {
+  getEffectiveFeatureTagEnabled,
+} from "@/server/services/plan-features-tags.service";
 import { ExternalJudgeClient } from "@/components/judge/ExternalJudgeClient";
 
 function hashTokenSHA256(token: string): string {
@@ -50,9 +52,9 @@ export default async function JudgeTokenPage({
     return notFound();
   }
 
-  const canUseJudging = await getEffectiveFeatureEnabled(
+  const canUseJudging = await getEffectiveFeatureTagEnabled(
     festival.tier,
-    "schedule",
+    "eventWorks.externalJudging",
   );
   if (!canUseJudging) return notFound();
 

@@ -5,7 +5,9 @@ import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
 import { JudgmentClient } from "@/components/dashboard/judgment/JudgmentClient";
 import { prisma } from "@/lib/db";
-import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
+import { getSession } from "@/lib/auth/session";
+import { getFestivalContext } from "@/server/services/festival-context.service";
+import { getEffectiveFeatureTagEnabled } from "@/server/services/plan-features-tags.service";
 import { getProgrammeJudgingBoard } from "@/server/services/programme-judgment-board.service";
 
 export const metadata: Metadata = {
@@ -30,12 +32,27 @@ export default async function JudgmentPage({
 
   const tier = (festival.tier ?? "STANDARD") as Tier;
 
-  // Standard/Pro judging is tied to schedule feature gates.
-  const canUseJudging = await getEffectiveFeatureEnabled(tier, "schedule");
+  // Standard/Pro judging is tied to external judging UI capability.
+  const canUseJudging = await getEffectiveFeatureTagEnabled(
+    tier,
+    "eventWorks.judgmentUI",
+  );
   if (!canUseJudging) {
     // BASIC must not access this plan-based page.
     return notFound();
   }
+
+  const session = await getSession();
+  const context = await getFestivalContext({
+    slugOrId: slug,
+    userId: session?.userId ?? null,
+    globalRole: session?.role ?? null,
+  });
+  if (!context) return notFound();
+  if (!["OWNER", "ADMIN", "STAGE_MANAGER", "SUPER_ADMIN"].includes(context.role))
+    return notFound();
+
+  const canPublish = ["OWNER", "ADMIN", "SUPER_ADMIN"].includes(context.role);
 
   const board = await getProgrammeJudgingBoard(festival.id);
 
@@ -56,6 +73,7 @@ export default async function JudgmentPage({
       festival={{ id: festival.id, slug: festival.slug, tier: festival.tier }}
       stages={board.stages}
       judgedProgrammes={board.judgedProgrammes}
+      canPublish={canPublish}
     />
   );
 }

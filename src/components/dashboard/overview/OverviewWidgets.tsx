@@ -36,6 +36,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { FeaturePath } from "@/lib/features";
+import { isFeatureTagEnabled } from "@/lib/features-tags";
 import { getResolvedTier } from "@/lib/tier";
 import { getDashboardOverviewData } from "@/server/models/festival.model";
 import { getEffectivePlanFeatureMatrix } from "@/server/services/plan-features.service";
@@ -60,6 +61,16 @@ export default async function OverviewWidgets({
 
   const matrix = await getEffectivePlanFeatureMatrix();
   const features = matrix[tier] ?? {};
+  const canUseExternalJudging = isFeatureTagEnabled({
+    tier,
+    tag: "eventWorks.externalJudging",
+    effectiveFeatureMatrix: features,
+  });
+  const canUseMarksUI = isFeatureTagEnabled({
+    tier,
+    tag: "eventWorks.marksUI",
+    effectiveFeatureMatrix: features,
+  });
 
   const fmt = (n: number | undefined) => n?.toLocaleString() || "0";
 
@@ -125,13 +136,17 @@ export default async function OverviewWidgets({
       condition: planFeature(features, "stageManagement"),
     },
     {
-      label: tier === "BASIC" ? "Marks" : "Judgment",
+      label: canUseExternalJudging
+        ? "Judgment"
+        : canUseMarksUI
+          ? "Marks"
+          : "Judgment",
       icon: Gavel,
       href:
-        tier === "BASIC"
-          ? `/dashboard/${slug}/event-works/marks`
-          : `/dashboard/${slug}/event-works/judgment`,
-      condition: planFeature(features, "results"),
+        canUseExternalJudging
+          ? `/dashboard/${slug}/event-works/judgment`
+          : `/dashboard/${slug}/event-works/marks`,
+      condition: (canUseExternalJudging || canUseMarksUI) && planFeature(features, "results"),
     },
     {
       label: "Results",

@@ -31,7 +31,7 @@ interface FestivalDashboardSidebarProps {
   role: string;
 }
 
-import { useFeatures } from "@/hooks/useFeature";
+import { useFeatureTag, useFeatures } from "@/hooks/useFeature";
 
 export function FestivalDashboardSidebar({
   festival,
@@ -39,12 +39,15 @@ export function FestivalDashboardSidebar({
 }: FestivalDashboardSidebarProps) {
   const pathname = usePathname();
   const features = useFeatures();
+  const canUseExternalJudging = useFeatureTag("eventWorks.externalJudging");
+  const canUseMarksUI = useFeatureTag("eventWorks.marksUI");
+  const canUseReporting = useFeatureTag("eventWorks.reporting");
 
   const basePath = `/dashboard/${festival.slug}`;
   const dashboardPath = basePath;
 
   const rawMenuGroups = getFestivalDashboardSidebarConfig(dashboardPath, role, {
-    useExternalJudging: features.canManageSchedule,
+    useExternalJudging: canUseExternalJudging,
   });
 
   // Filter menu items based on features
@@ -94,8 +97,22 @@ export function FestivalDashboardSidebar({
         // Reporting is stage-driven (mark / reporting sessions). Schedule is
         // required for external judge links, but reporting itself should follow
         // the stage-management capability.
-        if (item.title === "Reporting" && !features.canManageStages)
+        if (item.title === "Reporting" && !canUseReporting)
           return false;
+
+        // "Judgment/Marks" is business-capability routed:
+        // - BASIC: Marks UI
+        // - STANDARD/PRO: Judgment UI (external judging)
+        // If Super Admin disables the underlying capability(s), hide the link to
+        // avoid unreachable redirects.
+        if (
+          (item.href.endsWith("/event-works/judgment") ||
+            item.href.endsWith("/event-works/marks")) &&
+          !canUseExternalJudging &&
+          !canUseMarksUI
+        ) {
+          return false;
+        }
 
         return true;
       }),

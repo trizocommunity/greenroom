@@ -2,7 +2,7 @@ import type { FeaturePath } from "@/lib/features";
 import type { Tier } from "@prisma/client";
 
 /** Keys in TierFeatures that are boolean and can be toggled by Super Admin. */
-export const PLAN_FEATURE_TOGGLE_KEYS: FeaturePath[] = [
+export const PLAN_FEATURE_TOGGLE_KEYS = [
   "categories",
   "groups",
   "students",
@@ -47,7 +47,7 @@ export const PLAN_FEATURE_TOGGLE_KEYS: FeaturePath[] = [
   "festivalSettings",
   "advancedSettings",
   "programmeAssignmentDeadline",
-];
+] as const satisfies readonly FeaturePath[];
 
 /** Human-readable labels for the plan features matrix. */
 export const PLAN_FEATURE_LABELS: Record<FeaturePath, string> = {
