@@ -1,7 +1,8 @@
 import { TIER_CONFIG } from "@/config/pricing";
 import { prisma } from "@/lib/db";
-import { getResolvedTier } from "@/lib/tier";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
+import { generateProfileSlug } from "@/lib/slug";
+import { getResolvedTier } from "@/lib/tier";
 import { findCategoryById } from "@/server/models/category.model";
 import { findFestivalById } from "@/server/models/festival.model";
 import { findGroupById } from "@/server/models/group.model";
@@ -12,7 +13,6 @@ import {
   findStudentsByFestival,
 } from "@/server/models/student.model";
 import { UsageCounterService } from "./usage-counter.service";
-import { generateProfileSlug } from "@/lib/slug";
 
 export const StudentService = {
   async getAll(festivalId: string, groupId?: string) {
@@ -35,7 +35,8 @@ export const StudentService = {
     const normalizedName = data.name.trim();
     const festival = await findFestivalById(festivalId);
     if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
-    if (festival.status === "EXPIRED") throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
+    if (festival.status === "EXPIRED")
+      throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
 
     // Enforce "no duplicate student names in the same festival"
     const existingByName = await prisma.student.findFirst({
@@ -65,7 +66,8 @@ export const StudentService = {
       where: { festivalId },
     });
 
-    const tierLimit = TIER_CONFIG[getResolvedTier(festival.tier)].limits.students;
+    const tierLimit =
+      TIER_CONFIG[getResolvedTier(festival.tier)].limits.students;
     if (count >= tierLimit) {
       throw new AppError(ERROR_MESSAGES.STUDENT_LIMIT_REACHED);
     }
@@ -86,13 +88,17 @@ export const StudentService = {
     });
 
     // 5. Set unique profileSlug for public URL /{festivalSlug}/{profileSlug}
-    let profileSlug = generateProfileSlug(created.name, created.id);
+    let profileSlug = generateProfileSlug(
+      created.name,
+      created.id,
+      created.chestNumber,
+    );
     let exists = await prisma.student.findFirst({
       where: { festivalId, profileSlug },
     });
     let suffix = 2;
     while (exists) {
-      profileSlug = `${generateProfileSlug(created.name, created.id)}-${suffix}`;
+      profileSlug = `${generateProfileSlug(created.name, created.id, created.chestNumber)}-${suffix}`;
       exists = await prisma.student.findFirst({
         where: { festivalId, profileSlug },
       });
@@ -153,6 +159,33 @@ export const StudentService = {
         throw new AppError(ERROR_MESSAGES.STUDENT_INVALID_CATEGORY);
     }
 
+    // Update profileSlug if Name changes
+    let profileSlug = existing.profileSlug;
+    if (data.name && data.name.trim() !== existing.name) {
+      const newName = data.name.trim();
+      profileSlug = generateProfileSlug(
+        newName,
+        existing.id,
+        existing.chestNumber,
+      );
+      let exists = await prisma.student.findFirst({
+        where: { festivalId, profileSlug, NOT: { id } },
+      });
+      let suffix = 2;
+      const baseSlug = generateProfileSlug(
+        newName,
+        existing.id,
+        existing.chestNumber,
+      );
+      while (exists) {
+        profileSlug = `${baseSlug}-${suffix}`;
+        exists = await prisma.student.findFirst({
+          where: { festivalId, profileSlug, NOT: { id } },
+        });
+        suffix++;
+      }
+    }
+
     return prisma.student.update({
       where: { id },
       data: {
@@ -164,6 +197,7 @@ export const StudentService = {
         gender: data.gender,
         age: data.age,
         standard: data.standard,
+        profileSlug,
       },
     });
   },

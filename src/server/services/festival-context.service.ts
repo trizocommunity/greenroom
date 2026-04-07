@@ -1,8 +1,8 @@
 import type { FestivalRole, GlobalRole } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
-import { findFestivalBySlugOrId } from "@/server/models/festival.model";
 import { getDerivedFestivalStatus } from "@/lib/festival-status";
+import { findFestivalBySlugOrId } from "@/server/models/festival.model";
 
 export type FestivalAccessRole =
   | "SUPER_ADMIN"
@@ -11,9 +11,7 @@ export type FestivalAccessRole =
   | "NONE";
 
 export interface FestivalContext {
-  festival: NonNullable<
-    Awaited<ReturnType<typeof findFestivalBySlugOrId>>
-  >;
+  festival: NonNullable<Awaited<ReturnType<typeof findFestivalBySlugOrId>>>;
   role: FestivalAccessRole;
   isExpired: boolean;
   /** Kept for backward compat; always false (no read-only after expiry). */
@@ -76,7 +74,9 @@ export async function getFestivalContext(
 }
 
 /** Throws if the festival is expired. No read-only window; expired = full lock. Call from mutation actions. */
-export async function ensureFestivalWritable(festivalId: string): Promise<void> {
+export async function ensureFestivalWritable(
+  festivalId: string,
+): Promise<void> {
   const festival = await prisma.festival.findUnique({
     where: { id: festivalId },
     select: { status: true, startDate: true, endDate: true, expiresAt: true },
@@ -90,4 +90,3 @@ export async function ensureFestivalWritable(festivalId: string): Promise<void> 
     throw new AppError(ERROR_MESSAGES.FESTIVAL_PAST_READONLY);
   }
 }
-

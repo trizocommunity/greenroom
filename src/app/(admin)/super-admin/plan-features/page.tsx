@@ -31,8 +31,8 @@ export default async function PlanFeaturesPage() {
             <div>
               <CardTitle className="text-lg">Feature Tags</CardTitle>
               <CardDescription>
-                Toggle business-intent feature tags per plan. Alias tags map
-                1:1 to underlying feature flags.
+                Toggle business-intent feature tags per plan. Alias tags map 1:1
+                to underlying feature flags.
               </CardDescription>
             </div>
           </div>

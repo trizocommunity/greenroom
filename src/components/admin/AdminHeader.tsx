@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import {
   Breadcrumb,
@@ -9,7 +10,17 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { SupportNotifications } from "@/components/dashboard/support/SupportNotifications";
+
+// SupportNotifications uses a Radix UI Popover which generates unique IDs
+// during SSR that differ from the client-side IDs, causing a hydration
+// mismatch. Disabling SSR here prevents the server from rendering IDs at all.
+const SupportNotifications = dynamic(
+  () =>
+    import("@/components/dashboard/support/SupportNotifications").then(
+      (m) => m.SupportNotifications,
+    ),
+  { ssr: false },
+);
 
 export function AdminHeader() {
   const pathname = usePathname();

@@ -2,12 +2,12 @@ import { ArrowLeft, FileDown } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { getDerivedFestivalStatus } from "@/lib/festival-status";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { findFestivalBySlugOrId } from "@/server/models/festival.model";
 import { prisma } from "@/lib/db";
+import { getDerivedFestivalStatus } from "@/lib/festival-status";
+import { findFestivalBySlugOrId } from "@/server/models/festival.model";
 
 export default async function AdminFestivalDetailPage({
   params,
@@ -43,8 +43,7 @@ export default async function AdminFestivalDetailPage({
     : [];
 
   const hasPdf =
-    isExpired &&
-    (!!festival.resultPdfUrl || expiredResults.length > 0);
+    isExpired && (!!festival.resultPdfUrl || expiredResults.length > 0);
   const downloadPdfUrl = festival.resultPdfUrl
     ? festival.resultPdfUrl
     : `/api/festivals/${festival.slug}/expired-results-pdf`;
@@ -109,9 +108,7 @@ export default async function AdminFestivalDetailPage({
             {isExpired && festival.expiredAt && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Expired At</span>
-                <span>
-                  {new Date(festival.expiredAt).toLocaleDateString()}
-                </span>
+                <span>{new Date(festival.expiredAt).toLocaleDateString()}</span>
               </div>
             )}
           </CardContent>
@@ -198,10 +195,7 @@ export default async function AdminFestivalDetailPage({
             <CardContent>
               <ul className="space-y-2">
                 {lifecycleEvents.map((ev) => (
-                  <li
-                    key={ev.id}
-                    className="flex items-center gap-3 text-sm"
-                  >
+                  <li key={ev.id} className="flex items-center gap-3 text-sm">
                     <Badge variant="outline">{ev.event}</Badge>
                     <span className="text-muted-foreground">
                       {new Date(ev.occurredAt).toLocaleString()}

@@ -1,14 +1,17 @@
 "use server";
 
-import { getSession } from "@/lib/auth/session";
-import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
-import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
-import { findFestivalById } from "@/server/models/festival.model";
-import { prisma } from "@/lib/db";
-import { APP_URL } from "@/config/routes";
-import { getStudentProfileUrl } from "@/lib/student-profile-url";
-import QRCode from "qrcode";
 import { jsPDF } from "jspdf";
+import QRCode from "qrcode";
+import { APP_URL } from "@/config/routes";
+import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
+import { getSession } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
+import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
+import {
+  getQrCodeContent,
+  getStudentProfileUrl,
+} from "@/lib/student-profile-url";
+import { findFestivalById } from "@/server/models/festival.model";
 
 export async function exportStudentsQrPdfAction(
   festivalId: string,
@@ -61,13 +64,14 @@ export async function exportStudentsQrPdfAction(
 
   for (let i = 0; i < students.length; i++) {
     const student = students[i];
-    const studentProfileUrl = getStudentProfileUrl(baseUrl, festival.slug, student);
+    // Use chest number for QR code encoding (not profile URL)
+    const qrContent = getQrCodeContent(student);
 
     const x = margin + col * cellW + (cellW - qrSize) / 2;
     const y = margin + row * cellH + 2;
 
     try {
-      const dataUrl = await QRCode.toDataURL(studentProfileUrl, {
+      const dataUrl = await QRCode.toDataURL(qrContent, {
         width: 256,
         margin: 1,
         color: { dark: "#000000", light: "#ffffff" },

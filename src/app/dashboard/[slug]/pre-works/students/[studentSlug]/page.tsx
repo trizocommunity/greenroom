@@ -1,20 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
-import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
-import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
-import { APP_URL } from "@/config/routes";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import {
-  findStudentByFestivalAndProfileSlug,
-  findStudentByFestivalAndId,
-} from "@/server/models/student.model";
 import { StudentProfileView } from "@/components/festival/pre-works/students/StudentProfileView";
-
-/** UUID v4 pattern – allow legacy links with student id */
-function looksLikeUuid(s: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
-}
+import { APP_URL } from "@/config/routes";
+import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
+import { getSession } from "@/lib/auth/session";
+import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
+import { findFestivalBySlug } from "@/server/models/festival.model";
+import { findStudentByFestivalAndProfileSlug } from "@/server/models/student.model";
 
 export async function generateMetadata({
   params,
@@ -24,9 +16,10 @@ export async function generateMetadata({
   const { slug, studentSlug } = await params;
   const festival = await findFestivalBySlug(slug);
   if (!festival) return { title: "Student" };
-  const student = looksLikeUuid(studentSlug)
-    ? await findStudentByFestivalAndId(festival.id, studentSlug)
-    : await findStudentByFestivalAndProfileSlug(festival.id, studentSlug);
+  const student = await findStudentByFestivalAndProfileSlug(
+    festival.id,
+    studentSlug,
+  );
   if (!student) return { title: "Student" };
   return {
     title: `${student.name} – Student profile`,
@@ -54,9 +47,10 @@ async function StudentProfileContent({
   );
   if (!canViewProfile) notFound();
 
-  const student = looksLikeUuid(studentSlug)
-    ? await findStudentByFestivalAndId(festival.id, studentSlug)
-    : await findStudentByFestivalAndProfileSlug(festival.id, studentSlug);
+  const student = await findStudentByFestivalAndProfileSlug(
+    festival.id,
+    studentSlug,
+  );
   if (!student) notFound();
 
   const baseUrl = APP_URL.replace(/\/$/, "");

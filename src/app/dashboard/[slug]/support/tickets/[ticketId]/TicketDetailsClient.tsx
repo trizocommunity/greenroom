@@ -1,5 +1,12 @@
 "use client";
 
+import { cx } from "class-variance-authority";
+import { format } from "date-fns";
+import { ArrowLeft, Loader2, Send } from "lucide-react";
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,17 +19,10 @@ import {
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
-import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import {
   getTicketDetailsAction,
   sendMessageAction,
 } from "@/server/actions/support.actions";
-import { cx } from "class-variance-authority";
-import { format } from "date-fns";
-import { ArrowLeft, Loader2, Send } from "lucide-react";
-import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 
 interface Message {
   id: string;
@@ -131,35 +131,38 @@ export default function TicketDetailsClient({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center justify-between w-full gap-2">
           <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href={`/dashboard/${slug}/support/tickets`}>
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-          </Button>
+            <Button variant="ghost" size="icon" asChild>
+              <Link href={`/dashboard/${slug}/support/tickets`}>
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+            </Button>
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight truncate min-w-0">
               {ticket.subject}
             </h1>
           </div>
-            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mt-1">
-              <Badge variant="outline">#{ticket.id.slice(0, 8)}</Badge>
-              {ticket.senderRole && (
-                <FestivalRoleBadge festivalRole={ticket.senderRole} className="text-xs" />
-              )}
-              <span>•</span>
-              <span>{ticket.category}</span>
-              <span>•</span>
-              <Badge
-                variant={
-                  ticket.status === "RESOLVED"
-                    ? "default"
-                    : ticket.status === "OPEN"
-                      ? "secondary"
-                      : "outline"
-                }
-              >
-                {ticket.status.replace("_", " ")}
-              </Badge>
-            </div>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mt-1">
+            <Badge variant="outline">#{ticket.id.slice(0, 8)}</Badge>
+            {ticket.senderRole && (
+              <FestivalRoleBadge
+                festivalRole={ticket.senderRole}
+                className="text-xs"
+              />
+            )}
+            <span>•</span>
+            <span>{ticket.category}</span>
+            <span>•</span>
+            <Badge
+              variant={
+                ticket.status === "RESOLVED"
+                  ? "default"
+                  : ticket.status === "OPEN"
+                    ? "secondary"
+                    : "outline"
+              }
+            >
+              {ticket.status.replace("_", " ")}
+            </Badge>
+          </div>
         </div>
       </div>
 
@@ -191,7 +194,7 @@ export default function TicketDetailsClient({
                             "text-[9px]",
                             msg.senderType === "USER"
                               ? "bg-primary text-primary-foreground"
-                              : "bg-muted"
+                              : "bg-muted",
                           )}
                         >
                           {msg.senderType === "USER" ? "ME" : "SP"}

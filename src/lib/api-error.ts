@@ -22,7 +22,11 @@ export function formatZodError(zodError: ZodError): ApiErrorResponse {
     const path = issue.path.length > 0 ? String(issue.path[0]) : "body";
     if (!(path in fields)) fields[path] = issue.message;
   }
-  return { error, code: "VALIDATION", fields: Object.keys(fields).length ? fields : undefined };
+  return {
+    error,
+    code: "VALIDATION",
+    fields: Object.keys(fields).length ? fields : undefined,
+  };
 }
 
 /**
@@ -30,7 +34,11 @@ export function formatZodError(zodError: ZodError): ApiErrorResponse {
  * Use for catch blocks in API routes.
  */
 export function formatApiError(error: unknown): ApiErrorResponse {
-  if (error instanceof Error && "issues" in error && Array.isArray((error as ZodError).issues)) {
+  if (
+    error instanceof Error &&
+    "issues" in error &&
+    Array.isArray((error as ZodError).issues)
+  ) {
     return formatZodError(error as ZodError);
   }
   if (error instanceof Error) {

@@ -13,7 +13,10 @@ export default function DashboardNotFound() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center min-h-[60vh] px-6 text-center relative">
       {/* Ambient glow */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+      >
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[500px] rounded-full bg-violet-600/10 blur-[100px]" />
       </div>
 

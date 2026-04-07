@@ -1,9 +1,9 @@
-import { prisma } from "@/lib/db";
 import type {
   FestivalCategoryPreference,
   UserLoginEvent,
   UserPurchaseSummary,
 } from "@prisma/client";
+import { prisma } from "@/lib/db";
 
 interface PurchaseSummaryDto {
   userId: string;
@@ -38,24 +38,36 @@ export async function getPurchaseSummaries(): Promise<PurchaseSummaryDto[]> {
     orderBy: { totalSpend: "desc" },
   });
 
-  return rows.map((row: UserPurchaseSummary & { user: { email: string; fullName: string | null; displayName: string | null } }) => ({
-    userId: row.userId,
-    email: row.user.email,
-    name: row.user.displayName || row.user.fullName || row.user.email,
-    totalSpend: row.totalSpend,
-    festivalsCount: row.festivalsCount,
-    lastPurchaseAt: row.lastPurchaseAt ?? null,
-    planCountsByTier:
-      (row.planCountsByTier as Record<string, number> | null) ?? {},
-  }));
+  return rows.map(
+    (
+      row: UserPurchaseSummary & {
+        user: {
+          email: string;
+          fullName: string | null;
+          displayName: string | null;
+        };
+      },
+    ) => ({
+      userId: row.userId,
+      email: row.user.email,
+      name: row.user.displayName || row.user.fullName || row.user.email,
+      totalSpend: row.totalSpend,
+      festivalsCount: row.festivalsCount,
+      lastPurchaseAt: row.lastPurchaseAt ?? null,
+      planCountsByTier:
+        (row.planCountsByTier as Record<string, number> | null) ?? {},
+    }),
+  );
 }
 
-export async function getTopCategories(limit = 8): Promise<CategoryAggregateDto[]> {
+export async function getTopCategories(
+  limit = 8,
+): Promise<CategoryAggregateDto[]> {
   const rows: FestivalCategoryPreference[] =
     await prisma.festivalCategoryPreference.findMany({
-    orderBy: { weight: "desc" },
-    take: limit * 4, // fetch extra for grouping
-  });
+      orderBy: { weight: "desc" },
+      take: limit * 4, // fetch extra for grouping
+    });
 
   const byCategory = new Map<string, CategoryAggregateDto>();
 
@@ -168,4 +180,3 @@ export async function getRevenueByDay(days = 14): Promise<TimeSeriesPoint[]> {
   }
   return result;
 }
-

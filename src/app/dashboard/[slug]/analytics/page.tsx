@@ -1,12 +1,12 @@
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
+import { getResolvedTier } from "@/lib/tier";
 import {
   findFestivalBySlugOrId,
   getFestivalAnalyticsData,
 } from "@/server/models/festival.model";
 import { getFestivalContext } from "@/server/services/festival-context.service";
 import { getEffectiveTierFeatures } from "@/server/services/plan-features.service";
-import { getResolvedTier } from "@/lib/tier";
 import { AnalyticsView } from "./_components/AnalyticsView";
 
 export default async function AnalyticsPage({
@@ -26,8 +26,7 @@ export default async function AnalyticsPage({
     userId: session.userId,
     globalRole: session.role,
   });
-  if (!context || context.role === "NONE")
-    redirect("/");
+  if (!context || context.role === "NONE") redirect("/");
   const features = await getEffectiveTierFeatures(
     getResolvedTier(festival.tier),
   );

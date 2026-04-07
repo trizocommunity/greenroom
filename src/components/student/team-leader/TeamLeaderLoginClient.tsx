@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,10 +78,15 @@ export function TeamLeaderLoginClient({
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Sign in as <span className="font-medium">{studentName}</span> using OTP.
+          Sign in as <span className="font-medium">{studentName}</span> using
+          OTP.
         </p>
         {!requested ? (
-          <Button onClick={requestOtp} disabled={isSubmitting} className="w-full">
+          <Button
+            onClick={requestOtp}
+            disabled={isSubmitting}
+            className="w-full"
+          >
             {isSubmitting ? "Sending..." : "Send OTP"}
           </Button>
         ) : (
@@ -107,7 +112,11 @@ export function TeamLeaderLoginClient({
               >
                 Resend
               </Button>
-              <Button onClick={verifyOtp} disabled={isSubmitting || otp.length !== 6} className="flex-1">
+              <Button
+                onClick={verifyOtp}
+                disabled={isSubmitting || otp.length !== 6}
+                className="flex-1"
+              >
                 Verify
               </Button>
             </div>

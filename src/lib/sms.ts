@@ -20,10 +20,10 @@ export async function sendTeamLeaderOtpSms({
 
   if (!accountSid || !authToken || !fromPhone) {
     // Dev-friendly fallback: treat as not sent so caller can fallback to email.
-    console.warn(
-      "[SMS] Twilio config missing. Team leader OTP (dev only):",
-      { toPhone, otpCode },
-    );
+    console.warn("[SMS] Twilio config missing. Team leader OTP (dev only):", {
+      toPhone,
+      otpCode,
+    });
     return false;
   }
 

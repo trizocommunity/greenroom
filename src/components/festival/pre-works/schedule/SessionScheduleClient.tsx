@@ -1,27 +1,35 @@
 "use client";
 
-import type { SessionType } from "@/lib/prisma-enums";
 import {
-  createScheduleEntry,
-  updateScheduleEntry,
-  deleteScheduleEntry,
-  checkScheduleConflict,
-  type ScheduleEntryWithRelations,
-  type ConflictParts,
-} from "@/server/actions/schedule.actions";
-import { format, parseISO, isSameDay, eachDayOfInterval, startOfDay } from "date-fns";
-import { Calendar, Clock, Loader2, MapPin, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
-import { useState, useCallback, useEffect, useRef } from "react";
+  eachDayOfInterval,
+  format,
+  isSameDay,
+  parseISO,
+  startOfDay,
+} from "date-fns";
+import {
+  Calendar,
+  Clock,
+  Loader2,
+  MapPin,
+  MoreVertical,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -39,10 +47,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DeleteDialog } from "@/components/ui/delete-dialog";
-import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
-import { cn } from "@/lib/utils";
 import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
+import type { SessionType } from "@/lib/prisma-enums";
+import { cn } from "@/lib/utils";
+import {
+  type ConflictParts,
+  checkScheduleConflict,
+  createScheduleEntry,
+  deleteScheduleEntry,
+  type ScheduleEntryWithRelations,
+  updateScheduleEntry,
+} from "@/server/actions/schedule.actions";
 
 const SESSION_TYPE_LABELS: Record<string, string> = {
   GENERAL: "General",
@@ -93,14 +108,22 @@ export function SessionScheduleClient({
   festivalEndDate,
 }: SessionScheduleClientProps) {
   const { isReadOnly } = useFestivalReadOnly();
-  const dateOptions = getFestivalDateOptions(festivalStartDate, festivalEndDate);
-  const [entries, setEntries] = useState<ScheduleEntryWithRelations[]>(initialEntries);
+  const dateOptions = getFestivalDateOptions(
+    festivalStartDate,
+    festivalEndDate,
+  );
+  const [entries, setEntries] =
+    useState<ScheduleEntryWithRelations[]>(initialEntries);
   const [addOpen, setAddOpen] = useState(false);
   const [addFormError, setAddFormError] = useState<string | null>(null);
-  const [addFormConflictParts, setAddFormConflictParts] = useState<ConflictParts | null>(null);
+  const [addFormConflictParts, setAddFormConflictParts] =
+    useState<ConflictParts | null>(null);
   const [editFormError, setEditFormError] = useState<string | null>(null);
-  const [editFormConflictParts, setEditFormConflictParts] = useState<ConflictParts | null>(null);
-  const [editEntry, setEditEntry] = useState<ScheduleEntryWithRelations | null>(null);
+  const [editFormConflictParts, setEditFormConflictParts] =
+    useState<ConflictParts | null>(null);
+  const [editEntry, setEditEntry] = useState<ScheduleEntryWithRelations | null>(
+    null,
+  );
   const [deleteEntryId, setDeleteEntryId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -114,7 +137,9 @@ export function SessionScheduleClient({
     window.location.reload();
   }, []);
 
-  const groupedByDay = entries.reduce<Record<string, ScheduleEntryWithRelations[]>>((acc, entry) => {
+  const groupedByDay = entries.reduce<
+    Record<string, ScheduleEntryWithRelations[]>
+  >((acc, entry) => {
     const key = getDateKey(new Date(entry.startTime));
     if (!acc[key]) acc[key] = [];
     acc[key].push(entry);
@@ -123,9 +148,13 @@ export function SessionScheduleClient({
 
   const sortedDays = Object.keys(groupedByDay).sort();
   const effectiveActiveDay =
-    activeDayKey && groupedByDay[activeDayKey] ? activeDayKey : sortedDays[0] ?? null;
+    activeDayKey && groupedByDay[activeDayKey]
+      ? activeDayKey
+      : (sortedDays[0] ?? null);
 
-  const dayEntries = effectiveActiveDay ? groupedByDay[effectiveActiveDay] ?? [] : [];
+  const dayEntries = effectiveActiveDay
+    ? (groupedByDay[effectiveActiveDay] ?? [])
+    : [];
   const filteredDayEntries =
     activeStageId === ""
       ? dayEntries
@@ -149,7 +178,9 @@ export function SessionScheduleClient({
         title: data.title.trim() || null,
         description: data.description?.trim() || null,
         speakers: data.speakers?.trim() || null,
-        sessionType: data.sessionType ? (data.sessionType as "GENERAL" | "CEREMONY" | "TALK" | "CONCERT") : null,
+        sessionType: data.sessionType
+          ? (data.sessionType as "GENERAL" | "CEREMONY" | "TALK" | "CONCERT")
+          : null,
         stageId: data.stageId || null,
         startTime: data.startTime,
         endTime: data.endTime ?? null,
@@ -246,7 +277,9 @@ export function SessionScheduleClient({
                 return;
               }
               if (!hasStages) {
-                toast.error("Please create at least one stage before adding sessions.");
+                toast.error(
+                  "Please create at least one stage before adding sessions.",
+                );
                 return;
               }
               setAddOpen(true);
@@ -265,14 +298,18 @@ export function SessionScheduleClient({
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Calendar className="h-12 w-12 text-muted-foreground mb-3" />
             <p className="font-medium">
-              {isReadOnly ? "Read-only mode" : !hasStages ? "No stages yet" : "No sessions yet"}
+              {isReadOnly
+                ? "Read-only mode"
+                : !hasStages
+                  ? "No stages yet"
+                  : "No sessions yet"}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
               {isReadOnly
                 ? "Create, edit, and delete session actions are disabled."
                 : !hasStages
-                ? "Please create a stage first in Pre-Works → Stage Management before adding sessions."
-                : "Add sessions with title, stage, and time."}
+                  ? "Please create a stage first in Pre-Works → Stage Management before adding sessions."
+                  : "Add sessions with title, stage, and time."}
             </p>
             <Button
               variant="outline"
@@ -283,7 +320,9 @@ export function SessionScheduleClient({
                   return;
                 }
                 if (!hasStages) {
-                  toast.error("Please create at least one stage before adding sessions.");
+                  toast.error(
+                    "Please create at least one stage before adding sessions.",
+                  );
                   return;
                 }
                 setAddOpen(true);
@@ -296,7 +335,10 @@ export function SessionScheduleClient({
         </Card>
       ) : (
         <div className="space-y-5">
-          <div className="flex flex-wrap gap-2 border-b border-border pb-3" role="tablist">
+          <div
+            className="flex flex-wrap gap-2 border-b border-border pb-3"
+            role="tablist"
+          >
             {sortedDays.map((dayKey, index) => {
               const dayEntries = groupedByDay[dayKey];
               const isActive = effectiveActiveDay === dayKey;
@@ -330,7 +372,9 @@ export function SessionScheduleClient({
                 {hasStages && (
                   <Select
                     value={activeStageId === "" ? "__all__" : activeStageId}
-                    onValueChange={(v) => setActiveStageId(v === "__all__" ? "" : v)}
+                    onValueChange={(v) =>
+                      setActiveStageId(v === "__all__" ? "" : v)
+                    }
                   >
                     <SelectTrigger className="w-[180px] h-8 text-sm">
                       <SelectValue placeholder="Stage" />
@@ -349,27 +393,33 @@ export function SessionScheduleClient({
               <p className="text-sm text-muted-foreground">
                 {filteredDayEntries.length} session
                 {filteredDayEntries.length !== 1 ? "s" : ""}
-                {activeStageId !== "" && dayEntries.length !== filteredDayEntries.length && (
-                  " on this stage"
-                )}
+                {activeStageId !== "" &&
+                  dayEntries.length !== filteredDayEntries.length &&
+                  " on this stage"}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredDayEntries.map((entry) => (
-                    <Card
-                      key={entry.id}
-                      className="group relative overflow-hidden border border-border/80 bg-card shadow-sm transition-all hover:shadow-md hover:border-primary/20"
-                    >
+                  <Card
+                    key={entry.id}
+                    className="group relative overflow-hidden border border-border/80 bg-card shadow-sm transition-all hover:shadow-md hover:border-primary/20"
+                  >
                     <div className="absolute top-3 right-3 z-10">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="secondary" size="icon" className="h-8 w-8 rounded-lg shadow-sm">
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="h-8 w-8 rounded-lg shadow-sm"
+                          >
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           {!isReadOnly && (
                             <>
-                              <DropdownMenuItem onClick={() => setEditEntry(entry)}>
+                              <DropdownMenuItem
+                                onClick={() => setEditEntry(entry)}
+                              >
                                 <Pencil className="h-4 w-4 mr-2" />
                                 Edit
                               </DropdownMenuItem>
@@ -393,7 +443,8 @@ export function SessionScheduleClient({
                         </h4>
                         {entry.sessionType && (
                           <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                            {SESSION_TYPE_LABELS[entry.sessionType] ?? entry.sessionType}
+                            {SESSION_TYPE_LABELS[entry.sessionType] ??
+                              entry.sessionType}
                           </span>
                         )}
                       </div>
@@ -439,18 +490,18 @@ export function SessionScheduleClient({
       />
 
       {!isReadOnly && (
-      <DeleteDialog
-        title="Remove session"
-        description="This session will be removed from the schedule."
-        open={!!deleteEntryId}
-        onOpenChange={(open) => !open && setDeleteEntryId(null)}
-        onDelete={async () => {
-          if (deleteEntryId) {
-            await handleDelete(deleteEntryId);
-          }
-        }}
-        isDeleting={!!deletingId}
-      />
+        <DeleteDialog
+          title="Remove session"
+          description="This session will be removed from the schedule."
+          open={!!deleteEntryId}
+          onOpenChange={(open) => !open && setDeleteEntryId(null)}
+          onDelete={async () => {
+            if (deleteEntryId) {
+              await handleDelete(deleteEntryId);
+            }
+          }}
+          isDeleting={!!deletingId}
+        />
       )}
 
       {!isReadOnly && editEntry && (
@@ -522,7 +573,9 @@ function AddSessionDialog({
   const [startTimeStr, setStartTimeStr] = useState("09:00");
   const [endTimeStr, setEndTimeStr] = useState("");
   const [conflictError, setConflictError] = useState<string | null>(null);
-  const [conflictParts, setConflictParts] = useState<ConflictParts | null>(null);
+  const [conflictParts, setConflictParts] = useState<ConflictParts | null>(
+    null,
+  );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const effectiveDate =
@@ -534,7 +587,9 @@ function AddSessionDialog({
     if (!open) return;
     debounceRef.current = setTimeout(async () => {
       const startTime = new Date(`${effectiveDate}T${startTimeStr}`);
-      const endTime = endTimeStr ? new Date(`${effectiveDate}T${endTimeStr}`) : null;
+      const endTime = endTimeStr
+        ? new Date(`${effectiveDate}T${endTimeStr}`)
+        : null;
       const res = await checkScheduleConflict(festivalId, {
         startTime,
         endTime,
@@ -569,7 +624,9 @@ function AddSessionDialog({
         ? dateOptions[0]!.value
         : dateStr;
     const startTime = new Date(`${effectiveDate}T${startTimeStr}`);
-    const endTime = endTimeStr ? new Date(`${effectiveDate}T${endTimeStr}`) : undefined;
+    const endTime = endTimeStr
+      ? new Date(`${effectiveDate}T${endTimeStr}`)
+      : undefined;
     await onSubmit({
       title: t,
       description: description.trim() || null,
@@ -587,7 +644,8 @@ function AddSessionDialog({
         <DialogHeader className="pb-3">
           <DialogTitle className="text-base">Add session</DialogTitle>
           <DialogDescription className="text-xs">
-            Title, stage, and time. Same time on the same stage will show an error; different stages can use the same time.
+            Title, stage, and time. Same time on the same stage will show an
+            error; different stages can use the same time.
           </DialogDescription>
         </DialogHeader>
 
@@ -597,12 +655,22 @@ function AddSessionDialog({
               role="alert"
               className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
             >
-              <span className="shrink-0 size-3.5 rounded-full bg-destructive/20 flex items-center justify-center text-[9px] font-bold">!</span>
+              <span className="shrink-0 size-3.5 rounded-full bg-destructive/20 flex items-center justify-center text-[9px] font-bold">
+                !
+              </span>
               <span>
                 {(formConflictParts ?? conflictParts)
                   ? (() => {
                       const p = formConflictParts ?? conflictParts!;
-                      return <>{p.prefix}<strong className="font-semibold">{p.highlight}</strong>{p.suffix}</>;
+                      return (
+                        <>
+                          {p.prefix}
+                          <strong className="font-semibold">
+                            {p.highlight}
+                          </strong>
+                          {p.suffix}
+                        </>
+                      );
                     })()
                   : (formError ?? conflictError)}
               </span>
@@ -611,7 +679,9 @@ function AddSessionDialog({
 
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="add-session-title" className="text-xs">Title</Label>
+              <Label htmlFor="add-session-title" className="text-xs">
+                Title
+              </Label>
               <Input
                 id="add-session-title"
                 value={title}
@@ -623,22 +693,28 @@ function AddSessionDialog({
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="add-session-type" className="text-xs">Type</Label>
+                <Label htmlFor="add-session-type" className="text-xs">
+                  Type
+                </Label>
                 <Select value={sessionType} onValueChange={setSessionType}>
                   <SelectTrigger id="add-session-type" className="h-9 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(["GENERAL", "CEREMONY", "TALK", "CONCERT"] as const).map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {SESSION_TYPE_LABELS[t] ?? t}
-                      </SelectItem>
-                    ))}
+                    {(["GENERAL", "CEREMONY", "TALK", "CONCERT"] as const).map(
+                      (t) => (
+                        <SelectItem key={t} value={t}>
+                          {SESSION_TYPE_LABELS[t] ?? t}
+                        </SelectItem>
+                      ),
+                    )}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="add-session-stage" className="text-xs">Stage</Label>
+                <Label htmlFor="add-session-stage" className="text-xs">
+                  Stage
+                </Label>
                 <Select value={stageId} onValueChange={setStageId}>
                   <SelectTrigger id="add-session-stage" className="h-9 text-sm">
                     <SelectValue placeholder="Select stage" />
@@ -654,7 +730,10 @@ function AddSessionDialog({
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="add-session-description" className="text-xs">Description <span className="text-muted-foreground font-normal">(opt)</span></Label>
+              <Label htmlFor="add-session-description" className="text-xs">
+                Description{" "}
+                <span className="text-muted-foreground font-normal">(opt)</span>
+              </Label>
               <textarea
                 id="add-session-description"
                 value={description}
@@ -665,7 +744,10 @@ function AddSessionDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="add-session-speakers" className="text-xs">Speakers <span className="text-muted-foreground font-normal">(opt)</span></Label>
+              <Label htmlFor="add-session-speakers" className="text-xs">
+                Speakers{" "}
+                <span className="text-muted-foreground font-normal">(opt)</span>
+              </Label>
               <Input
                 id="add-session-speakers"
                 value={speakers}
@@ -678,10 +760,16 @@ function AddSessionDialog({
 
           <div className="grid grid-cols-2 gap-2 items-end">
             <div className="space-y-1.5 col-span-2">
-              <Label htmlFor="add-session-date" className="text-xs">Date</Label>
+              <Label htmlFor="add-session-date" className="text-xs">
+                Date
+              </Label>
               {dateOptions.length > 0 ? (
                 <Select
-                  value={dateOptions.some((o) => o.value === dateStr) ? dateStr : dateOptions[0]!.value}
+                  value={
+                    dateOptions.some((o) => o.value === dateStr)
+                      ? dateStr
+                      : dateOptions[0]!.value
+                  }
                   onValueChange={setDateStr}
                 >
                   <SelectTrigger id="add-session-date" className="h-9 text-sm">
@@ -706,7 +794,9 @@ function AddSessionDialog({
               )}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="add-session-start" className="text-xs">Start</Label>
+              <Label htmlFor="add-session-start" className="text-xs">
+                Start
+              </Label>
               <Input
                 id="add-session-start"
                 type="time"
@@ -716,7 +806,10 @@ function AddSessionDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="add-session-end" className="text-xs">End <span className="text-muted-foreground font-normal">(opt)</span></Label>
+              <Label htmlFor="add-session-end" className="text-xs">
+                End{" "}
+                <span className="text-muted-foreground font-normal">(opt)</span>
+              </Label>
               <Input
                 id="add-session-end"
                 type="time"
@@ -728,7 +821,12 @@ function AddSessionDialog({
           </div>
 
           <DialogFooter className="pt-3 pb-0 gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button
@@ -736,7 +834,9 @@ function AddSessionDialog({
               type="submit"
               disabled={saving || !title.trim() || !stageId || !!conflictError}
             >
-              {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              {saving && (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              )}
               Add
             </Button>
           </DialogFooter>
@@ -783,16 +883,28 @@ function EditSessionDialog({
       ? dateOptions.some((o) => o.value === entryDateStr)
         ? dateOptions
         : [
-            { value: entryDateStr, label: format(new Date(entry.startTime), "EEE, d MMM yyyy") },
+            {
+              value: entryDateStr,
+              label: format(new Date(entry.startTime), "EEE, d MMM yyyy"),
+            },
             ...dateOptions,
           ]
-      : [{ value: entryDateStr, label: format(new Date(entry.startTime), "EEE, d MMM yyyy") }];
+      : [
+          {
+            value: entryDateStr,
+            label: format(new Date(entry.startTime), "EEE, d MMM yyyy"),
+          },
+        ];
   const [title, setTitle] = useState(entry.title ?? "");
   const [description, setDescription] = useState(entry.description ?? "");
   const [speakers, setSpeakers] = useState(entry.speakers ?? "");
-  const [sessionType, setSessionType] = useState<string>(entry.sessionType ?? "GENERAL");
+  const [sessionType, setSessionType] = useState<string>(
+    entry.sessionType ?? "GENERAL",
+  );
   const [conflictError, setConflictError] = useState<string | null>(null);
-  const [conflictParts, setConflictParts] = useState<ConflictParts | null>(null);
+  const [conflictParts, setConflictParts] = useState<ConflictParts | null>(
+    null,
+  );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [stageId, setStageId] = useState(entry.stageId ?? "");
   const [dateStr, setDateStr] = useState(entryDateStr);
@@ -851,15 +963,17 @@ function EditSessionDialog({
       <DialogContent className="max-w-md p-4 sm:p-5 gap-0">
         <DialogHeader className="pb-3">
           <DialogTitle className="text-base">Edit session</DialogTitle>
-          <DialogDescription className="text-xs">{getEntryLabel(entry)}</DialogDescription>
+          <DialogDescription className="text-xs">
+            {getEntryLabel(entry)}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
-        
-
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="edit-session-title" className="text-xs">Title</Label>
+              <Label htmlFor="edit-session-title" className="text-xs">
+                Title
+              </Label>
               <Input
                 id="edit-session-title"
                 value={title}
@@ -870,24 +984,33 @@ function EditSessionDialog({
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="edit-session-type" className="text-xs">Type</Label>
+                <Label htmlFor="edit-session-type" className="text-xs">
+                  Type
+                </Label>
                 <Select value={sessionType} onValueChange={setSessionType}>
                   <SelectTrigger id="edit-session-type" className="h-9 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(["GENERAL", "CEREMONY", "TALK", "CONCERT"] as const).map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {SESSION_TYPE_LABELS[t] ?? t}
-                      </SelectItem>
-                    ))}
+                    {(["GENERAL", "CEREMONY", "TALK", "CONCERT"] as const).map(
+                      (t) => (
+                        <SelectItem key={t} value={t}>
+                          {SESSION_TYPE_LABELS[t] ?? t}
+                        </SelectItem>
+                      ),
+                    )}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="edit-session-stage" className="text-xs">Stage</Label>
+                <Label htmlFor="edit-session-stage" className="text-xs">
+                  Stage
+                </Label>
                 <Select value={stageId} onValueChange={setStageId}>
-                  <SelectTrigger id="edit-session-stage" className="h-9 text-sm">
+                  <SelectTrigger
+                    id="edit-session-stage"
+                    className="h-9 text-sm"
+                  >
                     <SelectValue placeholder="Select stage" />
                   </SelectTrigger>
                   <SelectContent>
@@ -901,7 +1024,10 @@ function EditSessionDialog({
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="edit-session-description" className="text-xs">Description <span className="text-muted-foreground font-normal">(opt)</span></Label>
+              <Label htmlFor="edit-session-description" className="text-xs">
+                Description{" "}
+                <span className="text-muted-foreground font-normal">(opt)</span>
+              </Label>
               <textarea
                 id="edit-session-description"
                 value={description}
@@ -912,7 +1038,10 @@ function EditSessionDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="edit-session-speakers" className="text-xs">Speakers <span className="text-muted-foreground font-normal">(opt)</span></Label>
+              <Label htmlFor="edit-session-speakers" className="text-xs">
+                Speakers{" "}
+                <span className="text-muted-foreground font-normal">(opt)</span>
+              </Label>
               <Input
                 id="edit-session-speakers"
                 value={speakers}
@@ -925,9 +1054,15 @@ function EditSessionDialog({
 
           <div className="grid grid-cols-2 gap-2 items-end">
             <div className="space-y-1.5 col-span-2">
-              <Label htmlFor="edit-session-date" className="text-xs">Date</Label>
+              <Label htmlFor="edit-session-date" className="text-xs">
+                Date
+              </Label>
               <Select
-                value={optionsForEdit.some((o) => o.value === dateStr) ? dateStr : optionsForEdit[0]!.value}
+                value={
+                  optionsForEdit.some((o) => o.value === dateStr)
+                    ? dateStr
+                    : optionsForEdit[0]!.value
+                }
                 onValueChange={setDateStr}
               >
                 <SelectTrigger id="edit-session-date" className="h-9 text-sm">
@@ -943,7 +1078,9 @@ function EditSessionDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="edit-session-start" className="text-xs">Start</Label>
+              <Label htmlFor="edit-session-start" className="text-xs">
+                Start
+              </Label>
               <Input
                 id="edit-session-start"
                 type="time"
@@ -953,7 +1090,10 @@ function EditSessionDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="edit-session-end" className="text-xs">End <span className="text-muted-foreground font-normal">(opt)</span></Label>
+              <Label htmlFor="edit-session-end" className="text-xs">
+                End{" "}
+                <span className="text-muted-foreground font-normal">(opt)</span>
+              </Label>
               <Input
                 id="edit-session-end"
                 type="time"
@@ -969,24 +1109,45 @@ function EditSessionDialog({
               role="alert"
               className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
             >
-              <span className="shrink-0 size-3.5 rounded-full bg-destructive/20 flex items-center justify-center text-[9px] font-bold">!</span>
+              <span className="shrink-0 size-3.5 rounded-full bg-destructive/20 flex items-center justify-center text-[9px] font-bold">
+                !
+              </span>
               <span>
                 {(formConflictParts ?? conflictParts)
                   ? (() => {
                       const p = formConflictParts ?? conflictParts!;
-                      return <>{p.prefix}<strong className="font-semibold">{p.highlight}</strong>{p.suffix}</>;
+                      return (
+                        <>
+                          {p.prefix}
+                          <strong className="font-semibold">
+                            {p.highlight}
+                          </strong>
+                          {p.suffix}
+                        </>
+                      );
                     })()
                   : (formError ?? conflictError)}
               </span>
             </div>
           )}
-          
+
           <DialogFooter className="pt-3 pb-0 gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
-            <Button size="sm" type="submit" disabled={saving || !stageId || !!conflictError}>
-              {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+            <Button
+              size="sm"
+              type="submit"
+              disabled={saving || !stageId || !!conflictError}
+            >
+              {saving && (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              )}
               Update
             </Button>
           </DialogFooter>

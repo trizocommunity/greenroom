@@ -36,7 +36,8 @@ export function GroupDialog({
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
-  const setOpen = isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
+  const setOpen =
+    isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
   const { createGroup, isCreating, updateGroup, isUpdating } =
     useGroups(festivalId);
 

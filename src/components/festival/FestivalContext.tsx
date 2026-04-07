@@ -14,7 +14,6 @@ export type FestivalPublicData = {
   location: string | null;
   status: string;
   tier: string;
-  accentColor: string;
   logo: string | null;
   heroImage: string | null;
   orgName: string | null;

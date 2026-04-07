@@ -1,3 +1,7 @@
+import { format } from "date-fns";
+import { Plus, Ticket } from "lucide-react";
+import Link from "next/link";
+import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,11 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import { getUserTicketsAction } from "@/server/actions/support.actions";
-import { format } from "date-fns";
-import { Plus, Ticket } from "lucide-react";
-import Link from "next/link";
 
 export default async function TicketsPage({
   params,
@@ -25,7 +25,9 @@ export default async function TicketsPage({
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Support Tickets</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            Support Tickets
+          </h1>
           <p className="text-base sm:text-lg text-muted-foreground mt-2">
             View and manage your support requests.
           </p>

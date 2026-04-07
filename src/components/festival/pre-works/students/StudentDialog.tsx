@@ -3,7 +3,7 @@
 import { Hash, Loader2, Plus, RefreshCw, Tag, User, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-
+import { useFestival } from "@/components/festival/FestivalContext";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -61,6 +61,9 @@ export function StudentDialog({
 
   const [isLoading, setIsLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const festivalContext = useFestival();
+  const isBasicTier = festivalContext.tier === "BASIC";
 
   // Form State
   const [formData, setFormData] = useState({
@@ -295,44 +298,46 @@ export function StudentDialog({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="email"
-                    className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                  >
-                    Email (Optional)
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="jane@example.com"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    className="h-10"
-                  />
+              {!isBasicTier && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="email"
+                      className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                    >
+                      Email (Optional)
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="jane@example.com"
+                      value={formData.email}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
+                      className="h-10"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="phone"
+                      className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                    >
+                      Mobile Number
+                    </Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="e.g. 017XXXXXXXX"
+                      value={formData.phone}
+                      onChange={(e) =>
+                        setFormData({ ...formData, phone: e.target.value })
+                      }
+                      className="h-10"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="phone"
-                    className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                  >
-                    Mobile Number
-                  </Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="e.g. 017XXXXXXXX"
-                    value={formData.phone}
-                    onChange={(e) =>
-                      setFormData({ ...formData, phone: e.target.value })
-                    }
-                    className="h-10"
-                  />
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Group & Category */}
@@ -402,8 +407,6 @@ export function StudentDialog({
               </div>
             </div>
           </div>
-
-          
 
           <DialogFooter className="px-4 sm:px-8 py-4 sm:py-6 border-t bg-muted/10 shrink-0 flex-col items-end justify-end gap-3">
             {submitError ? (

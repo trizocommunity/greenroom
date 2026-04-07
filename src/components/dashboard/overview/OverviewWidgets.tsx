@@ -142,11 +142,12 @@ export default async function OverviewWidgets({
           ? "Marks"
           : "Judgment",
       icon: Gavel,
-      href:
-        canUseExternalJudging
-          ? `/dashboard/${slug}/event-works/judgment`
-          : `/dashboard/${slug}/event-works/marks`,
-      condition: (canUseExternalJudging || canUseMarksUI) && planFeature(features, "results"),
+      href: canUseExternalJudging
+        ? `/dashboard/${slug}/event-works/judgment`
+        : `/dashboard/${slug}/event-works/marks`,
+      condition:
+        (canUseExternalJudging || canUseMarksUI) &&
+        planFeature(features, "results"),
     },
     {
       label: "Results",
@@ -176,12 +177,6 @@ export default async function OverviewWidgets({
 
   return (
     <div className="flex flex-col gap-5">
-      {festival.expiresAt && (
-        <div className="bg-muted/50 p-2 text-xs text-center text-muted-foreground border-b mb-4">
-          Expires on {new Date(festival.expiresAt).toLocaleDateString()}
-        </div>
-      )}
-
       {/* Top: 3 Stat Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>

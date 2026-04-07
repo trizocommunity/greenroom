@@ -4,6 +4,7 @@ import crypto from "crypto";
 import type { z } from "zod";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import {
@@ -24,7 +25,6 @@ import {
   updateUser,
 } from "@/server/models/user.model";
 import type { ActionResponse } from "@/types/actions";
-import { prisma } from "@/lib/db";
 
 export async function loginAction(
   data: z.infer<typeof loginSchema>,

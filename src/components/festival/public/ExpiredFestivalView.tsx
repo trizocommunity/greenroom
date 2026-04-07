@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { FileDown } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 interface ExpiredFestivalViewProps {
@@ -24,9 +24,7 @@ export function ExpiredFestivalView({
         <p className="text-xl font-medium text-muted-foreground">
           This festival has ended.
         </p>
-        <p className="text-muted-foreground">
-          Thank you for participating.
-        </p>
+        <p className="text-muted-foreground">Thank you for participating.</p>
         <p className="text-muted-foreground">See you next year.</p>
         {hasPdf && (
           <Button variant="outline" className="gap-2" asChild>

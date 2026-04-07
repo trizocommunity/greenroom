@@ -17,14 +17,25 @@ type DerivedTeamContextKey = {
   teamNumber: number;
 };
 
-export async function getTeamLeaderMyStudents(festivalId: string, leaderStudentId: string) {
+export async function getTeamLeaderMyStudents(
+  festivalId: string,
+  leaderStudentId: string,
+) {
   const leader = await prisma.student.findFirst({
     where: { id: leaderStudentId, festivalId },
-    select: { id: true, groupId: true, group: { select: { id: true, name: true, color: true } }, profileSlug: true },
+    select: {
+      id: true,
+      groupId: true,
+      group: { select: { id: true, name: true, color: true } },
+      profileSlug: true,
+    },
   });
 
   if (!leader?.groupId) {
-    return { myStudents: [] as StudentSummaryForStudentPage[], derivedTeamContexts: [] as DerivedTeamContextKey[] };
+    return {
+      myStudents: [] as StudentSummaryForStudentPage[],
+      derivedTeamContexts: [] as DerivedTeamContextKey[],
+    };
   }
 
   // Derived team contexts: teams where the leader already participates for GROUP programmes.
@@ -43,11 +54,15 @@ export async function getTeamLeaderMyStudents(festivalId: string, leaderStudentI
   for (const row of derivedContextsRows) {
     if (!row.groupId) continue;
     const key = `${row.programmeId}:${row.groupId}:${row.teamNumber}`;
-    contextsMap.set(key, { programmeId: row.programmeId, groupId: row.groupId, teamNumber: row.teamNumber });
+    contextsMap.set(key, {
+      programmeId: row.programmeId,
+      groupId: row.groupId,
+      teamNumber: row.teamNumber,
+    });
   }
   const derivedTeamContexts = Array.from(contextsMap.values());
 
-  let myStudentsMap = new Map<string, StudentSummaryForStudentPage>();
+  const myStudentsMap = new Map<string, StudentSummaryForStudentPage>();
 
   if (derivedTeamContexts.length > 0) {
     // Union of participants across all derived team contexts.
@@ -140,4 +155,3 @@ export async function getTeamLeaderGroupStudentsForSelection(
 
   return { groupStudents };
 }
-

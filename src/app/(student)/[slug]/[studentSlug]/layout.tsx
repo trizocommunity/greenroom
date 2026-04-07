@@ -1,15 +1,12 @@
+import type { ProgrammeStatus } from "@prisma/client";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
-import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import {
-  findStudentByFestivalAndId,
-  findStudentByFestivalAndProfileSlug,
-} from "@/server/models/student.model";
-import { StudentNavbar } from "@/components/student/StudentNavbar";
-import type { ProgrammeStatus } from "@prisma/client";
-import { getTopPriorityProgrammeStatus } from "@/lib/programme-status-priority";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
+import { StudentNavbar } from "@/components/student/StudentNavbar";
+import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
+import { getTopPriorityProgrammeStatus } from "@/lib/programme-status-priority";
+import { findFestivalBySlug } from "@/server/models/festival.model";
+import { findStudentByFestivalAndProfileSlug } from "@/server/models/student.model";
 
 const RESERVED_SLUGS = new Set([
   "results",
@@ -19,10 +16,6 @@ const RESERVED_SLUGS = new Set([
   "sessions",
   "about",
 ]);
-
-function looksLikeUuid(s: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
-}
 
 export default async function StudentLayout({
   children,
@@ -44,17 +37,11 @@ export default async function StudentLayout({
   );
   if (!canViewProfile) notFound();
 
-  const student = looksLikeUuid(studentSlug)
-    ? await findStudentByFestivalAndId(festival.id, studentSlug)
-    : await findStudentByFestivalAndProfileSlug(festival.id, studentSlug);
+  const student = await findStudentByFestivalAndProfileSlug(
+    festival.id,
+    studentSlug,
+  );
   if (!student) notFound();
-
-  const accentColor =
-    festival.branding &&
-    typeof festival.branding === "object" &&
-    "colors" in festival.branding
-      ? (festival.branding as any).colors?.primary || "#000000"
-      : "#000000";
 
   const logo =
     festival.branding &&
@@ -81,7 +68,6 @@ export default async function StudentLayout({
     location: festival.location ?? null,
     status: festival.status,
     tier: festival.tier,
-    accentColor,
     logo,
     heroImage,
     orgName: festival.orgName ?? null,
@@ -102,10 +88,9 @@ export default async function StudentLayout({
     .map((a: any) => a.programme?.status)
     .filter(Boolean);
 
-  const assignedProgrammesTopStatus =
-    student.isTeamLeader
-      ? null
-      : (getTopPriorityProgrammeStatus(statuses) as ProgrammeStatus | null);
+  const assignedProgrammesTopStatus = student.isTeamLeader
+    ? null
+    : (getTopPriorityProgrammeStatus(statuses) as ProgrammeStatus | null);
 
   return (
     <FestivalProvider festival={festivalProviderValue}>
@@ -114,7 +99,6 @@ export default async function StudentLayout({
           festival={{
             slug: festival.slug ?? slug,
             name: festival.name,
-            accentColor,
           }}
           student={{
             isTeamLeader: Boolean(student.isTeamLeader),
@@ -133,4 +117,3 @@ export default async function StudentLayout({
     </FestivalProvider>
   );
 }
-

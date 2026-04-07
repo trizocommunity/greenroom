@@ -110,7 +110,6 @@ export function FestivalsTab() {
           )}
         </div>
       </div>
-
     </div>
   );
 }

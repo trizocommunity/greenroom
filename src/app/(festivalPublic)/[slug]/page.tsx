@@ -6,10 +6,10 @@ import { HeroSection } from "@/components/festival/landing/HeroSection";
 import { ResultsList } from "@/components/festival/landing/ResultsList";
 import { ResultsTeaser } from "@/components/festival/landing/ResultsTeaser";
 import { StatsSection } from "@/components/festival/landing/StatsSection";
-import { getPublicFestivalData } from "@/server/loader/festivalPublic";
-import { getPublicFestivalResults } from "@/server/loader/festivalResults";
 import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 import { getResolvedTier } from "@/lib/tier";
+import { getPublicFestivalData } from "@/server/loader/festivalPublic";
+import { getPublicFestivalResults } from "@/server/loader/festivalResults";
 
 export async function generateMetadata({
   params,

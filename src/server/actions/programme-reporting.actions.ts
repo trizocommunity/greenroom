@@ -9,6 +9,49 @@ import { findFestivalById } from "@/server/models/festival.model";
 import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
 import { ProgrammeReportingService } from "@/server/services/programme-reporting.service";
 
+async function assertStudentNotificationAccess(studentId: string) {
+  const student = await prisma.student.findUnique({
+    where: { id: studentId },
+    select: { id: true, festivalId: true, groupId: true },
+  });
+  if (!student) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
+
+  const session = await getSession();
+  if (session?.userId) {
+    if (session.role === "SUPER_ADMIN") return student;
+
+    const festival = await prisma.festival.findUnique({
+      where: { id: student.festivalId },
+      select: { ownerId: true },
+    });
+    if (festival?.ownerId === session.userId) return student;
+
+    const membership = await prisma.festivalMember.findUnique({
+      where: {
+        festivalId_userId: {
+          festivalId: student.festivalId,
+          userId: session.userId,
+        },
+      },
+      select: { isActive: true },
+    });
+    if (membership?.isActive) return student;
+  }
+
+  const tlSession = await getTeamLeaderSessionFromCookie();
+  if (
+    tlSession &&
+    tlSession.expiresAt > new Date() &&
+    !tlSession.revokedAt &&
+    tlSession.festivalId === student.festivalId &&
+    tlSession.studentId === studentId
+  ) {
+    return student;
+  }
+
+  throw new AppError(ERROR_MESSAGES.FORBIDDEN);
+}
+
 async function assertStageManagerAccess(festivalId: string): Promise<string> {
   const session = await getSession();
   if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
@@ -160,23 +203,7 @@ export async function closeProgrammeReportingAction(
 export async function getStudentProgrammeNotificationsAction(
   studentId: string,
 ) {
-  const session = await getSession();
-  if (session?.userId) {
-    const student = await prisma.student.findUnique({
-      where: { id: studentId },
-      select: { festivalId: true },
-    });
-    if (!student) return [];
-  } else {
-    const tlSession = await getTeamLeaderSessionFromCookie();
-    if (
-      !tlSession ||
-      tlSession.studentId !== studentId ||
-      tlSession.expiresAt <= new Date()
-    ) {
-      // Public student profiles have no auth; allow read-only notifications by id.
-    }
-  }
+  await assertStudentNotificationAccess(studentId);
 
   return prisma.programmeNotification.findMany({
     where: { recipientStudentId: studentId },
@@ -189,6 +216,7 @@ export async function markStudentProgrammeNotificationReadAction(
   studentId: string,
   notificationId: string,
 ) {
+  await assertStudentNotificationAccess(studentId);
   await prisma.programmeNotification.updateMany({
     where: { id: notificationId, recipientStudentId: studentId },
     data: { isRead: true },
@@ -199,6 +227,7 @@ export async function markStudentProgrammeNotificationReadAction(
 export async function markAllStudentProgrammeNotificationsReadAction(
   studentId: string,
 ) {
+  await assertStudentNotificationAccess(studentId);
   await prisma.programmeNotification.updateMany({
     where: { recipientStudentId: studentId, isRead: false },
     data: { isRead: true },
@@ -207,6 +236,7 @@ export async function markAllStudentProgrammeNotificationsReadAction(
 }
 
 export async function getStudentOngoingProgrammesAction(studentId: string) {
+  await assertStudentNotificationAccess(studentId);
   const assignments = await prisma.programmeAssignment.findMany({
     where: { studentId },
     select: { programmeId: true },
@@ -237,4 +267,184 @@ export async function getStudentOngoingProgrammesAction(studentId: string) {
     take: 10,
   });
   return sessions;
+}
+
+/**
+ * Scan QR code (chest number) and report student for current programme
+ * Validates: festival exists, student exists, student assigned to programme
+ */
+export async function scanAndReportStudentAction(
+  festivalId: string,
+  reportingSessionId: string,
+  chestNumber: string,
+) {
+  try {
+    // Validate stage manager access
+    const actorName = await assertStageManagerAccess(festivalId);
+
+    // Normalize chest number (trim and uppercase)
+    const normalizedChestNumber = chestNumber.trim().toUpperCase();
+
+    if (!normalizedChestNumber) {
+      return {
+        success: false,
+        error: "Invalid chest number",
+        reason: "CHEST_NUMBER_EMPTY",
+      };
+    }
+
+    // Find student by chest number in this festival
+    const student = await prisma.student.findFirst({
+      where: {
+        festivalId,
+        chestNumber: {
+          equals: normalizedChestNumber,
+          mode: "insensitive",
+        },
+      },
+      include: {
+        group: { select: { id: true, name: true } },
+        category: { select: { id: true, name: true } },
+      },
+    });
+
+    if (!student) {
+      return {
+        success: false,
+        error: `No student found with chest number: ${normalizedChestNumber}`,
+        reason: "STUDENT_NOT_FOUND",
+        chestNumber: normalizedChestNumber,
+      };
+    }
+
+    // Get the reporting session with programme info
+    const session = await prisma.programmeReportingSession.findUnique({
+      where: { id: reportingSessionId },
+      include: {
+        programme: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      return {
+        success: false,
+        error: "Reporting session not found",
+        reason: "SESSION_NOT_FOUND",
+      };
+    }
+
+    if (session.status !== "IN_PROGRESS") {
+      return {
+        success: false,
+        error: `Reporting is ${session.status.toLowerCase()}`,
+        reason: "SESSION_NOT_ACTIVE",
+        sessionStatus: session.status,
+      };
+    }
+
+    // Check if student is assigned to this programme
+    const assignment = await prisma.programmeAssignment.findFirst({
+      where: {
+        programmeId: session.programmeId,
+        studentId: student.id,
+      },
+      include: {
+        programme: { select: { name: true, type: true } },
+        group: { select: { name: true } },
+      },
+    });
+
+    if (!assignment) {
+      return {
+        success: false,
+        error: `${student.name} is not assigned to "${session.programme?.name}"`,
+        reason: "NOT_ASSIGNED_TO_PROGRAMME",
+        student: {
+          id: student.id,
+          name: student.name,
+          chestNumber: student.chestNumber,
+          groupName: student.group?.name,
+          categoryName: student.category?.name,
+        },
+        programme: {
+          id: session.programmeId,
+          name: session.programme?.name,
+        },
+      };
+    }
+
+    // Check if already reported
+    const existingReport = await prisma.programmeReportedParticipant.findFirst({
+      where: {
+        reportingSessionId,
+        assignmentId: assignment.id,
+      },
+    });
+
+    if (existingReport) {
+      return {
+        success: false,
+        error: `${student.name} has already been reported`,
+        reason: "ALREADY_REPORTED",
+        student: {
+          id: student.id,
+          name: student.name,
+          chestNumber: student.chestNumber,
+          groupName: student.group?.name,
+        },
+        programme: {
+          id: session.programmeId,
+          name: session.programme?.name,
+        },
+      };
+    }
+
+    // Mark as present
+    await ProgrammeReportingService.markParticipant(
+      reportingSessionId,
+      assignment.id,
+      true,
+      actorName,
+    );
+
+    // Revalidate paths
+    const festival = await findFestivalById(festivalId);
+    if (festival) {
+      revalidatePath(`/dashboard/${festival.slug}/event-works/reporting`);
+    }
+
+    return {
+      success: true,
+      message: `${student.name} reported successfully`,
+      student: {
+        id: student.id,
+        name: student.name,
+        chestNumber: student.chestNumber,
+        groupName: student.group?.name,
+        categoryName: student.category?.name,
+      },
+      programme: {
+        id: session.programmeId,
+        name: session.programme?.name,
+      },
+      assignment: {
+        id: assignment.id,
+        teamNumber: assignment.teamNumber,
+      },
+    };
+  } catch (error) {
+    console.error("QR scan and report failed:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to process QR code",
+      reason: "SYSTEM_ERROR",
+    };
+  }
 }

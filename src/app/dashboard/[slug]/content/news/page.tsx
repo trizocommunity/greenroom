@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
+import { getNewsPostsAction } from "@/server/actions/news.actions";
 import { findFestivalBySlug } from "@/server/models/festival.model";
 import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
-import { getNewsPostsAction } from "@/server/actions/news.actions";
 import { NewsClient } from "./NewsClient";
 
 interface PageProps {
@@ -15,9 +15,7 @@ export default async function NewsPage({ params }: PageProps) {
 
   const canManage = await getEffectiveFeatureEnabled(festival.tier, "news");
   if (!canManage) {
-    redirect(
-      `/dashboard/${slug}?error=upgrade_required&feature=news`,
-    );
+    redirect(`/dashboard/${slug}?error=upgrade_required&feature=news`);
   }
 
   const posts = await getNewsPostsAction(festival.id);

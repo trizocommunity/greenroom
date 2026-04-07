@@ -6,17 +6,25 @@ import { TIER_CONFIG } from "@/config/pricing";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
+import { getUnusedPayment } from "@/server/services/billing.service";
 import {
   getRazorpayKeyId,
   RazorpayService,
 } from "@/server/services/razorpay.service";
-import { getUnusedPayment } from "@/server/services/billing.service";
 import type { ActionResponse } from "@/types/actions";
 
 export async function initiatePayment(
   purpose: PaymentPurpose,
   tier: Tier,
-): Promise<ActionResponse<{ paymentId: string; orderId: string; amount: number; currency: string; key: string | undefined }>> {
+): Promise<
+  ActionResponse<{
+    paymentId: string;
+    orderId: string;
+    amount: number;
+    currency: string;
+    key: string | undefined;
+  }>
+> {
   try {
     const session = await getSession();
     if (!session?.userId) {

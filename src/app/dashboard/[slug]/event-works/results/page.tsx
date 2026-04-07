@@ -1,11 +1,11 @@
+import type { Tier } from "@prisma/client";
+import { Calendar } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ResultsExploreClient } from "@/components/dashboard/event-works/ResultsExploreClient";
 import { EmptyState } from "@/components/common/EmptyState";
-import { getFestivalResultsDataBySlug } from "@/server/services/results.service";
+import { ResultsExploreClient } from "@/components/dashboard/event-works/ResultsExploreClient";
 import { filterProgrammesForEventWorks } from "@/server/services/programme-status.service";
-import type { Tier } from "@prisma/client";
-import { Calendar, ListChecks } from "lucide-react";
+import { getFestivalResultsDataBySlug } from "@/server/services/results.service";
 
 export const metadata: Metadata = {
   title: "Results",
@@ -26,23 +26,18 @@ export default async function ResultsPage({
   }
 
   const tier = (festival.tier ?? "STANDARD") as Tier;
+
+  // BASIC excludes the dedicated Results page feature.
+  if (tier === "BASIC") {
+    return notFound();
+  }
+
   const eventWorksProgrammes = filterProgrammesForEventWorks(
     festival.programmes,
     tier,
   );
 
   if (eventWorksProgrammes.length === 0) {
-    if (tier === "BASIC") {
-      return (
-        <EmptyState
-          title="No Programmes"
-          description="Add programmes and assign students to see results here."
-          actionLabel="Go to Programmes"
-          actionLink={`/dashboard/${slug}/pre-works/programmes`}
-          icon={ListChecks}
-        />
-      );
-    }
     return (
       <EmptyState
         title="No programmes in Event Works yet"
@@ -66,7 +61,9 @@ export default async function ResultsPage({
         categories={festival.categories}
       >
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Results</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            Results
+          </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
             Explore published results by programme.
           </p>

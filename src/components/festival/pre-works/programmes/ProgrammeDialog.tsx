@@ -54,7 +54,8 @@ export function ProgrammeDialog({
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
-  const setOpen = isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
+  const setOpen =
+    isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
   const { createProgramme, isCreating, updateProgramme, isUpdating } =
     useProgrammes(festivalId);
   const { categories } = useCategories(festivalId);
@@ -266,7 +267,13 @@ export function ProgrammeDialog({
           )}
         </DialogTrigger>
       )}
-      <DialogContent className={readOnly ? "w-[calc(100%-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6" : "w-[calc(100%-2rem)] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6"}>
+      <DialogContent
+        className={
+          readOnly
+            ? "w-[calc(100%-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6"
+            : "w-[calc(100%-2rem)] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6"
+        }
+      >
         <DialogHeader>
           <DialogTitle>
             {readOnly

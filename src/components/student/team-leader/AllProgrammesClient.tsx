@@ -130,6 +130,29 @@ function formatReportingChipNote(note: string, programmeType: string): string {
   return note;
 }
 
+function extractTeamCodeFromMembers(members: MemberChip[]): string | null {
+  for (const m of members) {
+    const note = m.reportingNote ?? "";
+    if (note.startsWith("Team code ")) {
+      return note.replace("Team code ", "").trim() || null;
+    }
+    if (note.startsWith("Code ")) {
+      return note.replace("Code ", "").trim() || null;
+    }
+  }
+  return null;
+}
+
+function normalizeMemberReportingLabel(
+  note: string | null | undefined,
+): string | null {
+  if (!note) return null;
+  if (note.startsWith("Team code ") || note.startsWith("Code ")) {
+    return "Reported";
+  }
+  return note;
+}
+
 function ProgrammeCard({ p }: { p: ProgrammeCardData }) {
   return (
     <Card className={programmeCardBorderClass(p.reportingHighlight)}>
@@ -144,7 +167,10 @@ function ProgrammeCard({ p }: { p: ProgrammeCardData }) {
                   Live reporting
                 </Badge>
                 {p.reportingWindowEndsAt ? (
-                  <ReportingEndsInCountdown endsAt={p.reportingWindowEndsAt} />
+                  <ReportingEndsInCountdown
+                    endsAt={p.reportingWindowEndsAt}
+                    autoRefreshOnExpire
+                  />
                 ) : null}
               </>
             ) : null}
@@ -209,8 +235,15 @@ function ProgrammeCard({ p }: { p: ProgrammeCardData }) {
                 p.myGroupTeams.length > 0 ? (
                   p.myGroupTeams.map((t) => (
                     <div key={`${t.groupId}-${t.teamNumber}`}>
-                      <div className="font-medium text-foreground">
-                        {t.groupName} – Team {t.teamNumber}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="font-medium text-foreground">
+                          {t.groupName} – Team {t.teamNumber}
+                        </div>
+                        {extractTeamCodeFromMembers(t.members) ? (
+                          <span className="rounded border border-blue-500/35 bg-blue-500/10 px-1.5 py-0.5 font-mono text-[11px] text-blue-900 dark:text-blue-100">
+                            Team code {extractTeamCodeFromMembers(t.members)}
+                          </span>
+                        ) : null}
                       </div>
                       <div className="mt-1 flex flex-wrap gap-2">
                         {t.members.map((m) => (
@@ -228,14 +261,11 @@ function ProgrammeCard({ p }: { p: ProgrammeCardData }) {
                               <span
                                 className={
                                   isReportingCodeChipNote(m.reportingNote)
-                                    ? "ml-1 rounded border border-blue-500/35 bg-blue-500/10 px-1 font-mono text-[11px] text-blue-900 dark:text-blue-100"
+                                    ? "ml-1 text-[11px] text-muted-foreground"
                                     : "ml-1 text-[11px] text-muted-foreground"
                                 }
                               >
-                                {formatReportingChipNote(
-                                  m.reportingNote,
-                                  "GROUP",
-                                )}
+                                {normalizeMemberReportingLabel(m.reportingNote)}
                               </span>
                             ) : null}
                           </span>

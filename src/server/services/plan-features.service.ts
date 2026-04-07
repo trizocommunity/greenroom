@@ -1,8 +1,8 @@
 import type { Tier } from "@prisma/client";
-import type { FeaturePath } from "@/lib/features";
-import { TIER_CONFIG } from "@/config/pricing";
 import { PLAN_FEATURE_TOGGLE_KEYS } from "@/config/plan-features.config";
+import { TIER_CONFIG } from "@/config/pricing";
 import { prisma } from "@/lib/db";
+import type { FeaturePath } from "@/lib/features";
 
 const CONFIG_KEY = "planFeatureOverrides";
 const TOGGLE_KEY_SET = new Set<string>(PLAN_FEATURE_TOGGLE_KEYS);
@@ -61,7 +61,10 @@ export async function getEffectivePlanFeatureMatrix(): Promise<
     const tierOverrides = overrides[tier];
     if (tierOverrides && typeof tierOverrides === "object") {
       for (const key of Object.keys(tierOverrides) as FeaturePath[]) {
-        if (TOGGLE_KEY_SET.has(key) && typeof tierOverrides[key] === "boolean") {
+        if (
+          TOGGLE_KEY_SET.has(key) &&
+          typeof tierOverrides[key] === "boolean"
+        ) {
           result[tier][key] = tierOverrides[key];
         }
       }

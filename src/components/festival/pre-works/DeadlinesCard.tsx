@@ -29,11 +29,15 @@ export function DeadlinesCard({
     >
       <div className="flex items-center gap-1.5">
         <CalendarClock className="h-4 w-4" />
-        <span className="font-medium text-foreground flex  items-center">Assignments<span className="hidden lg:block">Close</span>:</span>
+        <span className="font-medium text-foreground flex  items-center">
+          Assignments<span className="hidden lg:block">Close</span>:
+        </span>
       </div>
 
       <div className="flex items-center gap-2 justify-between sm:justify-normal">
-        <span className="whitespace-nowrap">{format(deadlineDate, "MMM d, h:mm a")}</span>
+        <span className="whitespace-nowrap">
+          {format(deadlineDate, "MMM d, h:mm a")}
+        </span>
         {isExpired ? (
           <Badge
             variant="destructive"

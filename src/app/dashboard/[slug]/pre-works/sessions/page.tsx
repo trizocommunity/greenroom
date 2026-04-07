@@ -1,10 +1,10 @@
+import { eachDayOfInterval, format, startOfDay } from "date-fns";
+import { notFound, redirect } from "next/navigation";
 import { SessionScheduleClient } from "@/components/festival/pre-works/schedule/SessionScheduleClient";
-import { findFestivalBySlug } from "@/server/models/festival.model";
 import { getScheduleEntries } from "@/server/actions/schedule.actions";
 import { getStages } from "@/server/actions/stage.actions";
-import { notFound, redirect } from "next/navigation";
+import { findFestivalBySlug } from "@/server/models/festival.model";
 import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
-import { format, eachDayOfInterval, startOfDay } from "date-fns";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -33,9 +33,7 @@ export default async function SessionsPage({ params }: PageProps) {
 
   const canManage = await getEffectiveFeatureEnabled(festival.tier, "schedule");
   if (!canManage) {
-    redirect(
-      `/dashboard/${slug}?error=upgrade_required&feature=schedule`,
-    );
+    redirect(`/dashboard/${slug}?error=upgrade_required&feature=schedule`);
   }
 
   const [sessionEntries, stages] = await Promise.all([

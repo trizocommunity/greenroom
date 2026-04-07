@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { getSession } from "@/lib/auth/session";
-import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { prisma } from "@/lib/db";
+import { AppError, ERROR_MESSAGES } from "@/lib/errors";
+import { generateProfileSlug } from "@/lib/slug";
 
 export async function getChestNumberSettings(festivalId: string) {
   const session = await getSession();
@@ -76,7 +77,8 @@ export async function generateChestNumbers(festivalId: string) {
     numberingStyle?: "ALPHANUMERIC" | "NUMERIC";
   } | null;
 
-  if (!settings) throw new AppError(ERROR_MESSAGES.CHEST_SETTINGS_NOT_CONFIGURED);
+  if (!settings)
+    throw new AppError(ERROR_MESSAGES.CHEST_SETTINGS_NOT_CONFIGURED);
 
   const style = settings.numberingStyle || "ALPHANUMERIC";
 
@@ -164,7 +166,14 @@ export async function generateChestNumbers(festivalId: string) {
     updates.push(
       prisma.student.update({
         where: { id: student.id },
-        data: { chestNumber },
+        data: {
+          chestNumber,
+          profileSlug: generateProfileSlug(
+            student.name,
+            student.id,
+            chestNumber,
+          ),
+        },
       }),
     );
 
@@ -277,7 +286,9 @@ export async function assignChestNumberForNewStudent(
   );
 
   const catId = student.categoryId;
-  const categorySequences = settings.categories ? { ...settings.categories } : {};
+  const categorySequences = settings.categories
+    ? { ...settings.categories }
+    : {};
   let currentSeq = categorySequences[catId];
   if (currentSeq === undefined) {
     currentSeq = 1;
@@ -301,7 +312,10 @@ export async function assignChestNumberForNewStudent(
 
   await prisma.student.update({
     where: { id: studentId },
-    data: { chestNumber },
+    data: {
+      chestNumber,
+      profileSlug: generateProfileSlug(student.name, studentId, chestNumber),
+    },
   });
 
   await prisma.festival.update({
@@ -416,7 +430,14 @@ export async function updateAllChestNumbers(
     updates.push(
       prisma.student.update({
         where: { id: student.id },
-        data: { chestNumber },
+        data: {
+          chestNumber,
+          profileSlug: generateProfileSlug(
+            student.name,
+            student.id,
+            chestNumber,
+          ),
+        },
       }),
     );
 

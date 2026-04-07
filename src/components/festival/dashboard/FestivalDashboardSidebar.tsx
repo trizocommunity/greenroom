@@ -31,7 +31,8 @@ interface FestivalDashboardSidebarProps {
   role: string;
 }
 
-import { useFeatureTag, useFeatures } from "@/hooks/useFeature";
+import { useFestival } from "@/components/festival/FestivalContext";
+import { useFeatures, useFeatureTag } from "@/hooks/useFeature";
 
 export function FestivalDashboardSidebar({
   festival,
@@ -46,8 +47,12 @@ export function FestivalDashboardSidebar({
   const basePath = `/dashboard/${festival.slug}`;
   const dashboardPath = basePath;
 
+  const festivalContext = useFestival();
+  const isBasic = festivalContext.tier === "BASIC";
+
   const rawMenuGroups = getFestivalDashboardSidebarConfig(dashboardPath, role, {
     useExternalJudging: canUseExternalJudging,
+    isBasic,
   });
 
   // Filter menu items based on features
@@ -97,8 +102,7 @@ export function FestivalDashboardSidebar({
         // Reporting is stage-driven (mark / reporting sessions). Schedule is
         // required for external judge links, but reporting itself should follow
         // the stage-management capability.
-        if (item.title === "Reporting" && !canUseReporting)
-          return false;
+        if (item.title === "Reporting" && !canUseReporting) return false;
 
         // "Judgment/Marks" is business-capability routed:
         // - BASIC: Marks UI

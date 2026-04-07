@@ -1,26 +1,35 @@
 import crypto from "crypto";
-import { AppError, ERROR_MESSAGES } from "@/lib/errors";
-import { sendTeamLeaderOtpEmail } from "@/lib/email";
 import { prisma } from "@/lib/db";
+import { sendTeamLeaderOtpEmail } from "@/lib/email";
+import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import {
   createRawSessionToken,
   getSessionExpiryDate,
   getTokenHash,
 } from "@/lib/team-leader-auth/session";
 import { findFestivalBySlug } from "@/server/models/festival.model";
-import {
-  findStudentByFestivalAndId,
-  findStudentByFestivalAndProfileSlug,
-} from "@/server/models/student.model";
+import { findStudentByFestivalAndProfileSlug } from "@/server/models/student.model";
 
 const OTP_TTL_MS = 10 * 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
 const OTP_MAX_REQUESTS_PER_10_MIN = 5;
 
-function looksLikeUuid(s: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    s,
+async function resolveFestivalAndStudent(
+  festivalSlug: string,
+  studentSlug: string,
+) {
+  const festival = await findFestivalBySlug(festivalSlug);
+  if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
+
+  const student = await findStudentByFestivalAndProfileSlug(
+    festival.id,
+    studentSlug,
   );
+
+  if (!student) throw new AppError(ERROR_MESSAGES.STUDENT_NOT_FOUND);
+  if (!student.isTeamLeader) throw new AppError(ERROR_MESSAGES.FORBIDDEN);
+
+  return { festival, student };
 }
 
 function hashOtp(code: string): string {
@@ -30,20 +39,6 @@ function hashOtp(code: string): string {
 function generateOtpCode(): string {
   const n = crypto.randomInt(100000, 1000000);
   return String(n);
-}
-
-async function resolveFestivalAndStudent(festivalSlug: string, studentSlug: string) {
-  const festival = await findFestivalBySlug(festivalSlug);
-  if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
-
-  const student = looksLikeUuid(studentSlug)
-    ? await findStudentByFestivalAndId(festival.id, studentSlug)
-    : await findStudentByFestivalAndProfileSlug(festival.id, studentSlug);
-
-  if (!student) throw new AppError(ERROR_MESSAGES.STUDENT_NOT_FOUND);
-  if (!student.isTeamLeader) throw new AppError(ERROR_MESSAGES.FORBIDDEN);
-
-  return { festival, student };
 }
 
 export const TeamLeaderAuthService = {
@@ -68,7 +63,9 @@ export const TeamLeaderAuthService = {
       },
     });
     if (recentCount >= OTP_MAX_REQUESTS_PER_10_MIN) {
-      throw new AppError("Too many OTP requests. Please try again in 10 minutes.");
+      throw new AppError(
+        "Too many OTP requests. Please try again in 10 minutes.",
+      );
     }
 
     const otpCode = generateOtpCode();

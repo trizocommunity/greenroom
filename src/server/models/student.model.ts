@@ -30,21 +30,6 @@ export async function findStudentById(id: string) {
   });
 }
 
-export async function findStudentByFestivalAndId(festivalId: string, studentId: string) {
-  return prisma.student.findFirst({
-    where: { id: studentId, festivalId },
-    include: {
-      category: true,
-      group: true,
-      assignments: {
-        include: {
-          programme: { include: { category: true } },
-        },
-      },
-    },
-  });
-}
-
 export async function findStudentByFestivalAndProfileSlug(
   festivalId: string,
   profileSlug: string,

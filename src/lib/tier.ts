@@ -12,9 +12,7 @@ export const DEFAULT_TIER: Tier = "BASIC";
  * Resolves nullable tier to a Tier. Use everywhere we read festival.tier for limits/features.
  * Accepts string for loaders/API that return tier as string.
  */
-export function getResolvedTier(
-  tier: Tier | string | null | undefined,
-): Tier {
+export function getResolvedTier(tier: Tier | string | null | undefined): Tier {
   return (tier as Tier) ?? DEFAULT_TIER;
 }
 
@@ -24,7 +22,9 @@ export function isBasicTier(tier: Tier | string | null | undefined): boolean {
 }
 
 /** True when plan is STANDARD or higher (for future STANDARD/PRO feature gating). */
-export function isStandardOrAbove(tier: Tier | string | null | undefined): boolean {
+export function isStandardOrAbove(
+  tier: Tier | string | null | undefined,
+): boolean {
   const t = getResolvedTier(tier);
   return t === "STANDARD" || t === "PRO";
 }

@@ -21,7 +21,9 @@ export async function addMemberAction(
     email: string;
     role: "ADMIN" | "ANNOUNCER" | "STAGE_MANAGER";
   },
-): Promise<ActionResponse<Awaited<ReturnType<typeof MemberService.addMember>>>> {
+): Promise<
+  ActionResponse<Awaited<ReturnType<typeof MemberService.addMember>>>
+> {
   try {
     const session = await getSession();
     await assertFestivalAccess(session, festivalId, { requireWritable: true });

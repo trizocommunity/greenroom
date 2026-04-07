@@ -1,8 +1,4 @@
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { queryKeys } from "@/lib/query-keys";
 import {
@@ -47,9 +43,7 @@ export function useSupportNotifications() {
       queryClient.setQueryData<SupportNotification[]>(
         queryKeys.support.notifications(user?.id),
         (prev) =>
-          (prev ?? []).map((n) =>
-            n.id === id ? { ...n, isRead: true } : n,
-          ),
+          (prev ?? []).map((n) => (n.id === id ? { ...n, isRead: true } : n)),
       );
     },
     onError: () => {

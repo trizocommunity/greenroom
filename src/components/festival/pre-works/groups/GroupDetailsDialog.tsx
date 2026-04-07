@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { Eye, Loader2, Users } from "lucide-react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,8 +21,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useStudents } from "@/hooks/useStudents";
 import { useFeature } from "@/hooks/useFeature";
+import { useStudents } from "@/hooks/useStudents";
 
 interface User {
   id: string;
@@ -78,7 +78,8 @@ export function GroupDetailsDialog({
   const isControlled = controlledOpen !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
   const open = isControlled ? controlledOpen : internalOpen;
-  const setOpen = isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
+  const setOpen =
+    isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -95,7 +96,9 @@ export function GroupDetailsDialog({
         <DialogHeader className="pr-8 sm:pr-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
-              <DialogTitle className="text-lg sm:text-xl truncate">{group.name}</DialogTitle>
+              <DialogTitle className="text-lg sm:text-xl truncate">
+                {group.name}
+              </DialogTitle>
             </div>
           </div>
           <DialogDescription>{groupStudents.length} Students</DialogDescription>
@@ -123,7 +126,10 @@ export function GroupDetailsDialog({
                       </div>
                     ) : (
                       groupStudents.map((p: Student) => (
-                        <div key={p.id} className="p-3 flex items-center justify-between gap-2">
+                        <div
+                          key={p.id}
+                          className="p-3 flex items-center justify-between gap-2"
+                        >
                           <div className="min-w-0 flex-1">
                             <p className="font-medium truncate">{p.name}</p>
                             <p className="text-xs text-muted-foreground">
@@ -131,7 +137,10 @@ export function GroupDetailsDialog({
                             </p>
                           </div>
                           {canAssignTeamLeaders && (p as any).isTeamLeader && (
-                            <Badge variant="secondary" className="text-[10px] shrink-0 bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-200">
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] shrink-0 bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-200"
+                            >
                               Leader
                             </Badge>
                           )}
@@ -158,14 +167,15 @@ export function GroupDetailsDialog({
                             <TableCell className="font-medium">
                               <div className="flex items-center gap-2">
                                 {p.name}
-                                {canAssignTeamLeaders && (p as any).isTeamLeader && (
-                                  <Badge
-                                    variant="secondary"
-                                    className="text-[10px] h-5 px-1.5 font-normal bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200"
-                                  >
-                                    Team Leader
-                                  </Badge>
-                                )}
+                                {canAssignTeamLeaders &&
+                                  (p as any).isTeamLeader && (
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-[10px] h-5 px-1.5 font-normal bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200"
+                                    >
+                                      Team Leader
+                                    </Badge>
+                                  )}
                               </div>
                             </TableCell>
                             <TableCell className="text-muted-foreground">

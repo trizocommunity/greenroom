@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
-import { findFestivalBySlug } from "@/server/models/festival.model";
 import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
+import { findFestivalBySlug } from "@/server/models/festival.model";
 import { SettingsForm } from "./_components/SettingsForm";
 
 export default async function SettingsPage({
@@ -18,7 +18,10 @@ export default async function SettingsPage({
 
   // Feature Access Check
   if (
-    !FeatureService.isFeatureEnabled(getTierForFeatureCheck(festival.tier), "festivalSettings")
+    !FeatureService.isFeatureEnabled(
+      getTierForFeatureCheck(festival.tier),
+      "festivalSettings",
+    )
   ) {
     redirect(`/dashboard/${slug}?error=upgrade_required&feature=settings`);
   }
@@ -35,7 +38,9 @@ export default async function SettingsPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Settings</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+          Settings
+        </h1>
         <p className="text-sm sm:text-base text-muted-foreground">
           Manage your festival configuration and deadlines.
         </p>

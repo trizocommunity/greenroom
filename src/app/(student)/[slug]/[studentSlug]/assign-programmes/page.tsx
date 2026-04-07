@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/db";
-import { AssignProgrammesClient } from "@/components/student/team-leader/AssignProgrammesClient";
-import { getTeamLeaderGroupStudentsForSelection } from "@/lib/team-leader/my-team";
 import { DeadlinesCard } from "@/components/festival/pre-works/DeadlinesCard";
+import { AssignProgrammesClient } from "@/components/student/team-leader/AssignProgrammesClient";
+import { prisma } from "@/lib/db";
+import { getTeamLeaderGroupStudentsForSelection } from "@/lib/team-leader/my-team";
 import { requireTeamLeaderSession } from "@/lib/team-leader-auth/guard";
 
 export default async function AssignProgrammesPage({
@@ -11,12 +11,18 @@ export default async function AssignProgrammesPage({
   params: Promise<{ slug: string; studentSlug: string }>;
 }) {
   const { slug, studentSlug } = await params;
-  const { festival, student } = await requireTeamLeaderSession({ slug, studentSlug });
+  const { festival, student } = await requireTeamLeaderSession({
+    slug,
+    studentSlug,
+  });
 
   const deadline = festival.programmeAssignmentDeadline;
   const isReadOnly = deadline ? new Date() > new Date(deadline) : false;
   const managerName =
-    festival.owner?.displayName || festival.owner?.fullName || festival.owner?.email || null;
+    festival.owner?.displayName ||
+    festival.owner?.fullName ||
+    festival.owner?.email ||
+    null;
   const managerEmail = festival.owner?.email ?? null;
   const managerPhone =
     festival.branding &&
@@ -86,4 +92,3 @@ export default async function AssignProgrammesPage({
     </div>
   );
 }
-

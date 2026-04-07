@@ -54,4 +54,3 @@ export function useDeadlineLock(deadlineInput: DeadlineLike, graceMs = 0) {
 
   return { isLocked, justLocked, deadline };
 }
-

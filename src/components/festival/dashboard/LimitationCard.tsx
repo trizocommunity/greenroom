@@ -1,4 +1,4 @@
-import { Database, LayoutList, Users, MapPin } from "lucide-react";
+import { Database, LayoutList, MapPin, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";

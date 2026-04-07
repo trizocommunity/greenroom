@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import {
@@ -27,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCategories } from "@/hooks/useCategories";
+import { queryKeys } from "@/lib/query-keys";
 import { bulkCreateProgrammesAction } from "@/server/actions/programme.actions";
 
 // --- Types & Schema ---
@@ -382,7 +382,9 @@ export function BulkUploadProgrammesModal({
     );
 
     if (result.success) {
-      queryClient.invalidateQueries({ queryKey: queryKeys.programmes.list(festivalId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.programmes.list(festivalId),
+      });
     }
     // Narrow the result type to access .error safely across all union branches
     const r = result as { success: boolean; count?: number; error?: string };

@@ -24,7 +24,8 @@ export const FestivalStatus = {
   PAST: "PAST",
   EXPIRED: "EXPIRED",
 } as const;
-export type FestivalStatus = (typeof FestivalStatus)[keyof typeof FestivalStatus];
+export type FestivalStatus =
+  (typeof FestivalStatus)[keyof typeof FestivalStatus];
 
 export const Gender = {
   MALE: "MALE",
@@ -56,12 +57,14 @@ export const InstitutionType = {
   SCHOOL: "SCHOOL",
   OTHER: "OTHER",
 } as const;
-export type InstitutionType = (typeof InstitutionType)[keyof typeof InstitutionType];
+export type InstitutionType =
+  (typeof InstitutionType)[keyof typeof InstitutionType];
 
 export const PaymentPurpose = {
   FESTIVAL_CREATION: "FESTIVAL_CREATION",
 } as const;
-export type PaymentPurpose = (typeof PaymentPurpose)[keyof typeof PaymentPurpose];
+export type PaymentPurpose =
+  (typeof PaymentPurpose)[keyof typeof PaymentPurpose];
 
 export const PaymentStatus = {
   PENDING: "PENDING",
@@ -87,7 +90,8 @@ export const ScheduleEntryType = {
   PROGRAMME: "PROGRAMME",
   SESSION: "SESSION",
 } as const;
-export type ScheduleEntryType = (typeof ScheduleEntryType)[keyof typeof ScheduleEntryType];
+export type ScheduleEntryType =
+  (typeof ScheduleEntryType)[keyof typeof ScheduleEntryType];
 
 export const SessionType = {
   GENERAL: "GENERAL",
@@ -108,7 +112,8 @@ export const TicketPriority = {
   MEDIUM: "MEDIUM",
   HIGH: "HIGH",
 } as const;
-export type TicketPriority = (typeof TicketPriority)[keyof typeof TicketPriority];
+export type TicketPriority =
+  (typeof TicketPriority)[keyof typeof TicketPriority];
 
 export const TicketStatus = {
   OPEN: "OPEN",

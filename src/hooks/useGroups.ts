@@ -35,7 +35,9 @@ export function useGroups(festivalId: string) {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(festivalId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.groups.list(festivalId),
+      });
       toast.success("Group created successfully");
     },
     onError: (error: any) => {
@@ -49,7 +51,9 @@ export function useGroups(festivalId: string) {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(festivalId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.groups.list(festivalId),
+      });
       toast.success("Group deleted successfully");
     },
     onError: (error: any) => {
@@ -71,9 +75,13 @@ export function useGroups(festivalId: string) {
       };
     }) => updateGroupAction(festivalId, id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(festivalId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.groups.list(festivalId),
+      });
       // Team leader assignment toggles Student.isTeamLeader, so refresh students cache too.
-      queryClient.invalidateQueries({ queryKey: queryKeys.students.list(festivalId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.students.list(festivalId),
+      });
       toast.success("Group updated successfully");
     },
     onError: (error: any) => {

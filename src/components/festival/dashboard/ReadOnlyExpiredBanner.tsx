@@ -13,7 +13,9 @@ export function ReadOnlyExpiredBanner() {
       <AlertTriangle className="h-4 w-4 text-amber-600" />
       <AlertTitle>Festival expired — read-only access</AlertTitle>
       <AlertDescription>
-        This festival has passed its end date. You can still view data during the retention period, but create, edit, and delete actions are disabled. Renew or upgrade to restore full access.
+        This festival has passed its end date. You can still view data during
+        the retention period, but create, edit, and delete actions are disabled.
+        Renew or upgrade to restore full access.
       </AlertDescription>
     </Alert>
   );

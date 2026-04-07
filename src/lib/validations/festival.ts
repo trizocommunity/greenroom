@@ -1,5 +1,5 @@
-import { InstitutionType } from "@/lib/prisma-enums";
 import { z } from "zod";
+import { InstitutionType } from "@/lib/prisma-enums";
 
 export const createFestivalSchema = z
   .object({
@@ -12,10 +12,7 @@ export const createFestivalSchema = z
       .string()
       .min(3)
       .max(50)
-      .regex(
-        /^[a-z0-9-]+$/,
-        "Slug must be lowercase alphanumeric with dashes",
-      )
+      .regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with dashes")
       .optional()
       .or(z.literal("")),
     institutionType: z.nativeEnum(InstitutionType),

@@ -1,5 +1,4 @@
-import type { ProgrammeStatus } from "@prisma/client";
-import type { Tier } from "@prisma/client";
+import type { ProgrammeStatus, Tier } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
 /**
@@ -39,10 +38,9 @@ export function isProgrammeInEventWorks(
 /**
  * Filter programmes to those that should appear in Event-works (Marks, Results, Leaderboard) for the given tier.
  */
-export function filterProgrammesForEventWorks<T extends { status: ProgrammeStatus }>(
-  programmes: T[],
-  tier: Tier,
-): T[] {
+export function filterProgrammesForEventWorks<
+  T extends { status: ProgrammeStatus },
+>(programmes: T[], tier: Tier): T[] {
   return programmes.filter((p) => isProgrammeInEventWorks(p.status, tier));
 }
 
@@ -65,6 +63,9 @@ export async function updateProgrammeStatus(
       maxParticipantsPerGroup: true,
       maxTeamsPerGroup: true,
       maxStudentsPerTeam: true,
+      festival: {
+        select: { tier: true },
+      },
     },
   });
 
@@ -85,12 +86,15 @@ export async function updateProgrammeStatus(
       });
 
   if (latestClosedReportingSession) {
-    const reportedParticipants = await prisma.programmeReportedParticipant.findMany({
-      where: { reportingSessionId: latestClosedReportingSession.id },
-      select: { assignmentId: true },
-    });
+    const reportedParticipants =
+      await prisma.programmeReportedParticipant.findMany({
+        where: { reportingSessionId: latestClosedReportingSession.id },
+        select: { assignmentId: true },
+      });
 
-    const reportedAssignmentIds = reportedParticipants.map((r) => r.assignmentId);
+    const reportedAssignmentIds = reportedParticipants.map(
+      (r) => r.assignmentId,
+    );
     const reportedTotal = reportedAssignmentIds.length;
 
     const reportedScored = await prisma.result.count({
@@ -160,17 +164,22 @@ export async function updateProgrammeStatus(
   const isFullyAssignedAcrossAllGroups =
     expectedAssignmentsTotal > 0 && assignmentCount >= expectedAssignmentsTotal;
   const allAssignmentsHaveResult =
-    assignmentCountForProgramme > 0 && resultCount >= assignmentCountForProgramme;
+    assignmentCountForProgramme > 0 &&
+    resultCount >= assignmentCountForProgramme;
   const allResultsPublished =
     resultCount > 0 && publishedResultCount >= resultCount;
+
+  const isBasic = programme.festival.tier === "BASIC";
 
   let status: ProgrammeStatus = "READY";
   if (allResultsPublished) {
     status = "PUBLISHED";
   } else if (allAssignmentsHaveResult) {
     status = "JUDGED";
-  } else if (hasScheduleEntry) {
+  } else if (!isBasic && hasScheduleEntry) {
     status = "SCHEDULED";
+  } else if (isBasic && hasAssignments) {
+    status = "ASSIGNED";
   } else if (hasAssignments && isFullyAssignedAcrossAllGroups) {
     status = "ASSIGNED";
   }
@@ -194,11 +203,13 @@ export async function setProgrammePublished(
   published: boolean,
 ): Promise<void> {
   if (!published) {
-    const hasClosedReporting = await prisma.programmeReportingSession.findFirst({
-      where: { programmeId, status: "CLOSED" },
-      select: { id: true },
-      orderBy: { endedAt: "desc" },
-    });
+    const hasClosedReporting = await prisma.programmeReportingSession.findFirst(
+      {
+        where: { programmeId, status: "CLOSED" },
+        select: { id: true },
+        orderBy: { endedAt: "desc" },
+      },
+    );
     await prisma.programme.update({
       where: { id: programmeId },
       data: {

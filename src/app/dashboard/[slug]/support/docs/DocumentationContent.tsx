@@ -1,13 +1,6 @@
 "use client";
 
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
   Book,
   Calendar,
   FileText,
@@ -16,6 +9,13 @@ import {
   Megaphone,
   Search,
 } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const STAGE_MANAGER_FAQ_IDS = [
   "stage-diff",
@@ -90,7 +90,8 @@ const allFaqs = [
   },
   {
     id: "programme-status-event-works",
-    question: "Why don't my programmes appear in Event Works (Marks, Results, Leaderboard)?",
+    question:
+      "Why don't my programmes appear in Event Works (Marks, Results, Leaderboard)?",
     answer:
       "Programmes have a status (Ready, Assigned, Scheduled, Judged, Published). On Standard and Pro plans, a programme appears in Event Works only after it is added to the schedule (Scheduled or later). Add your programmes in Pre-Works -> Schedule to see them in Marks, Results, and Leaderboard. On the Basic plan, programmes appear once they have at least one assignment.",
   },
@@ -142,7 +143,9 @@ interface DocumentationContentProps {
   role: string | null;
 }
 
-export default function DocumentationContent({ role }: DocumentationContentProps) {
+export default function DocumentationContent({
+  role,
+}: DocumentationContentProps) {
   const isStageManager = role === "STAGE_MANAGER";
   const faqs = isStageManager
     ? allFaqs.filter((faq) => STAGE_MANAGER_FAQ_IDS.includes(faq.id))
@@ -153,7 +156,9 @@ export default function DocumentationContent({ role }: DocumentationContentProps
     <div className="space-y-6 sm:space-y-8 px-1">
       <div className="space-y-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Documentation</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            Documentation
+          </h1>
           <p className="text-base sm:text-lg text-muted-foreground mt-2">
             {isStageManager
               ? "Stage Manager guide: stages and schedule."
@@ -230,7 +235,8 @@ export default function DocumentationContent({ role }: DocumentationContentProps
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Can't find what you're looking for? Our support team is here to help.
+                  Can't find what you're looking for? Our support team is here
+                  to help.
                 </p>
               </CardContent>
             </Card>

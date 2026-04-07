@@ -52,7 +52,9 @@ export function HowItWorksButton({
           <DialogHeader className="text-left">
             <DialogTitle>{title}</DialogTitle>
             {description && (
-              <DialogDescription className="text-left">{description}</DialogDescription>
+              <DialogDescription className="text-left">
+                {description}
+              </DialogDescription>
             )}
           </DialogHeader>
           <div className="space-y-4 text-left">{children}</div>

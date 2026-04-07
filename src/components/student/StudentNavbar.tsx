@@ -1,26 +1,25 @@
 "use client";
 
+import type { ProgrammeStatus } from "@prisma/client";
+import { ArrowUpRight, Bell, Crown, Menu, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowUpRight, Bell, Crown, Menu, User } from "lucide-react";
+import type { ReactNode } from "react";
+import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
-import type { ProgrammeStatus } from "@prisma/client";
-import { cn } from "@/lib/utils";
-import type { ReactNode } from "react";
 import {
   Sheet,
   SheetClose,
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 
 interface StudentNavbarProps {
   festival: {
     slug: string;
     name: string;
-    accentColor?: string;
   };
   student: {
     isTeamLeader: boolean;
@@ -51,7 +50,10 @@ export function StudentNavbar({
 
   if (isTeamLeader) {
     menuItems.push(
-      { label: "Assign Programmes", href: `${linkBase}/leader/assign-programmes` },
+      {
+        label: "Assign Programmes",
+        href: `${linkBase}/leader/assign-programmes`,
+      },
       { label: "My Students", href: `${linkBase}/leader/my-students` },
       { label: "Programmes", href: `${linkBase}/leader/all-programmes` },
       { label: "Leaderboard", href: `${linkBase}/leader/leaderboard` },
@@ -62,7 +64,10 @@ export function StudentNavbar({
         label: "Programmes",
         href: `${linkBase}/assigned-programmes`,
         badge: assignedProgrammesTopStatus ? (
-          <ProgrammeStatusBadge status={assignedProgrammesTopStatus} className="h-5 px-2" />
+          <ProgrammeStatusBadge
+            status={assignedProgrammesTopStatus}
+            className="h-5 px-2"
+          />
         ) : undefined,
       },
       { label: "Students", href: `${linkBase}/my-group` },
@@ -78,10 +83,7 @@ export function StudentNavbar({
         >
           <div className="min-w-0 flex items-center gap-2">
             <div
-              className="h-8 w-8 uppercase rounded-full flex border border-border items-center justify-center font-bold text-sm text-white shrink-0"
-              style={{
-                backgroundColor: festival.accentColor || "#2563eb",
-              }}
+              className="h-8 w-8 uppercase rounded-full flex border border-border items-center justify-center font-bold text-sm text-primary-foreground bg-primary shrink-0"
               aria-hidden
             >
               {student.name?.charAt(0) ?? "S"}
@@ -123,7 +125,13 @@ export function StudentNavbar({
           </div>
 
           {/* Notification icon only (no implementation required). */}
-          <Link href={isTeamLeader ? `${linkBase}/leader/notifications` : `${linkBase}/notifications`}>
+          <Link
+            href={
+              isTeamLeader
+                ? `${linkBase}/leader/notifications`
+                : `${linkBase}/notifications`
+            }
+          >
             <Button
               variant="outline"
               size="icon"
@@ -154,7 +162,6 @@ export function StudentNavbar({
             </Button>
           </Link>
 
-          
           <div className="lg:hidden">
             <Sheet>
               <SheetTrigger asChild>
@@ -201,4 +208,3 @@ export function StudentNavbar({
     </header>
   );
 }
-

@@ -1,11 +1,11 @@
-import {
-  getPurchaseSummaries,
-  getLoginCounts,
-  getTopCategories,
-  getLoginsByDay,
-  getRevenueByDay,
-} from "@/server/services/analytics.service";
 import { AnalyticsCharts } from "@/components/super-admin/AnalyticsCharts";
+import {
+  getLoginCounts,
+  getLoginsByDay,
+  getPurchaseSummaries,
+  getRevenueByDay,
+  getTopCategories,
+} from "@/server/services/analytics.service";
 
 export default async function SuperAdminAnalyticsPage() {
   const [purchases, logins, topCategories, loginsByDay, revenueByDay] =
@@ -48,4 +48,3 @@ export default async function SuperAdminAnalyticsPage() {
     </div>
   );
 }
-

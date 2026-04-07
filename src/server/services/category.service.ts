@@ -1,4 +1,6 @@
 import { TIER_CONFIG } from "@/config/pricing";
+import { prisma } from "@/lib/db";
+import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { getResolvedTier } from "@/lib/tier";
 import {
   countCategories,
@@ -9,8 +11,6 @@ import {
   updateCategory,
 } from "@/server/models/category.model";
 import { findFestivalById } from "@/server/models/festival.model";
-import { AppError, ERROR_MESSAGES } from "@/lib/errors";
-import { prisma } from "@/lib/db";
 
 export const CategoryService = {
   async getAll(festivalId: string) {

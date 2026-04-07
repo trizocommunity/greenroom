@@ -1,10 +1,10 @@
+import { format } from "date-fns";
+import Link from "next/link";
+import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import { getAllTicketsAction } from "@/server/actions/support.actions";
-import { format } from "date-fns";
-import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -74,7 +74,9 @@ export default async function AdminSupportPage() {
 
                 <div className="space-y-1">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-xs text-muted-foreground">Sent by:</span>
+                    <span className="text-xs text-muted-foreground">
+                      Sent by:
+                    </span>
                     <span className="text-xs font-semibold text-foreground">
                       {ticket.user.fullName || ticket.user.email || "User"}
                     </span>

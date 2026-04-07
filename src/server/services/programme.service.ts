@@ -1,15 +1,15 @@
 import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { findFestivalById } from "@/server/models/festival.model";
-import { UsageCounterService } from "./usage-counter.service";
 import {
   createProgramme,
   deleteProgramme,
   findProgrammeById,
   findProgrammesByFestival,
+  findProgrammeWithAssignments,
   updateProgramme,
 } from "@/server/models/programme.model";
-import { findProgrammeWithAssignments } from "@/server/models/programme.model";
+import { UsageCounterService } from "./usage-counter.service";
 
 export const ProgrammeService = {
   async getAll(festivalId: string, categoryId?: string) {

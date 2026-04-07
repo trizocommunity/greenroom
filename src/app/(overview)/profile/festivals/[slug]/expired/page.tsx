@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import Link from "next/link";
 import { ArrowLeft, FileDown } from "lucide-react";
-import { getSession } from "@/lib/auth/session";
-import { findFestivalBySlug } from "@/server/models/festival.model";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { getSession } from "@/lib/auth/session";
+import { findFestivalBySlug } from "@/server/models/festival.model";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -36,14 +36,13 @@ export default async function ExpiredFestivalPage({ params }: Props) {
   if (!isExpired || (!isOwner && !isSuperAdmin)) notFound();
 
   const hasPdf = !!festival.resultPdfUrl;
-  const hasSnapshot =
-    (await (async () => {
-      const { prisma } = await import("@/lib/db");
-      const c = await prisma.expiredFestivalResult.count({
-        where: { festivalId: festival.id },
-      });
-      return c > 0;
-    })());
+  const hasSnapshot = await (async () => {
+    const { prisma } = await import("@/lib/db");
+    const c = await prisma.expiredFestivalResult.count({
+      where: { festivalId: festival.id },
+    });
+    return c > 0;
+  })();
 
   return (
     <div className="container max-w-2xl py-8 space-y-6">
@@ -97,7 +96,7 @@ export default async function ExpiredFestivalPage({ params }: Props) {
               Results are not shown in the UI. Download the PDF to view final
               results.
             </p>
-            {(hasPdf || hasSnapshot) ? (
+            {hasPdf || hasSnapshot ? (
               <Button variant="outline" className="gap-2" asChild>
                 <Link
                   href={`/api/profile/festivals/${festival.slug}/expired-results-pdf`}

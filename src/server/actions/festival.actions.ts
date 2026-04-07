@@ -7,15 +7,14 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import { validatePublicSiteRequirements } from "@/lib/festival-public-validation";
-import { assertFestivalMutationAllowed } from "@/server/services/festival-lifecycle-policy.service";
-import { StorageUsageService } from "@/server/services/storage-usage.service";
-import { UsageCounterService } from "@/server/services/usage-counter.service";
-
 import {
   type CreateFestivalInput,
   createFestivalSchema,
 } from "@/lib/validations/festival";
 import { createAuditLog } from "@/server/services/audit-log.service";
+import { assertFestivalMutationAllowed } from "@/server/services/festival-lifecycle-policy.service";
+import { StorageUsageService } from "@/server/services/storage-usage.service";
+import { UsageCounterService } from "@/server/services/usage-counter.service";
 
 export async function createFestival(input: CreateFestivalInput) {
   try {
@@ -199,7 +198,10 @@ export async function updateFestivalSettingsAction(
             : null,
         }),
         ...(data.teamLeaderLimit !== undefined && {
-          teamLeaderLimit: Math.max(1, Math.min(10, Number(data.teamLeaderLimit) || 2)),
+          teamLeaderLimit: Math.max(
+            1,
+            Math.min(10, Number(data.teamLeaderLimit) || 2),
+          ),
         }),
         ...(data.startDate !== undefined && {
           startDate: data.startDate ? new Date(data.startDate) : null,
@@ -268,7 +270,8 @@ export async function setPublicSiteEnabledAction(
       });
       if (!validation.canEnable) {
         throw new AppError(
-          validation.errors.join(" ") || "Complete required content before enabling the public site.",
+          validation.errors.join(" ") ||
+            "Complete required content before enabling the public site.",
         );
       }
     }
@@ -286,13 +289,10 @@ export async function setPublicSiteEnabledAction(
   }
 }
 
-export async function updateFestivalBrandingAction(
-  data: {
-    logo?: string | null;
-    heroImage?: string | null;
-    accentColor?: string | null;
-  },
-) {
+export async function updateFestivalBrandingAction(data: {
+  logo?: string | null;
+  heroImage?: string | null;
+}) {
   try {
     const session = await getSession();
     if (!session?.userId) {
@@ -323,26 +323,27 @@ export async function updateFestivalBrandingAction(
       ...current,
       logo: data.logo ?? current.logo ?? null,
       heroImage: data.heroImage ?? current.heroImage ?? null,
-      colors:
-        data.accentColor !== undefined
-          ? { ...currentColors, primary: data.accentColor || null }
-          : current.colors,
     } as Prisma.InputJsonValue;
 
     const previousLogo = typeof current.logo === "string" ? current.logo : null;
-    const previousHero = typeof current.heroImage === "string" ? current.heroImage : null;
-    const nextLogo = typeof (data.logo ?? current.logo) === "string"
-      ? String(data.logo ?? current.logo)
-      : null;
-    const nextHero = typeof (data.heroImage ?? current.heroImage) === "string"
-      ? String(data.heroImage ?? current.heroImage)
-      : null;
+    const previousHero =
+      typeof current.heroImage === "string" ? current.heroImage : null;
+    const nextLogo =
+      typeof (data.logo ?? current.logo) === "string"
+        ? String(data.logo ?? current.logo)
+        : null;
+    const nextHero =
+      typeof (data.heroImage ?? current.heroImage) === "string"
+        ? String(data.heroImage ?? current.heroImage)
+        : null;
 
     const urlsToAdd: string[] = [];
     const urlsToRemove: string[] = [];
 
-    if (previousLogo && previousLogo !== nextLogo) urlsToRemove.push(previousLogo);
-    if (previousHero && previousHero !== nextHero) urlsToRemove.push(previousHero);
+    if (previousLogo && previousLogo !== nextLogo)
+      urlsToRemove.push(previousLogo);
+    if (previousHero && previousHero !== nextHero)
+      urlsToRemove.push(previousHero);
     if (nextLogo && nextLogo !== previousLogo) urlsToAdd.push(nextLogo);
     if (nextHero && nextHero !== previousHero) urlsToAdd.push(nextHero);
 
@@ -358,7 +359,12 @@ export async function updateFestivalBrandingAction(
         data: { branding: nextBranding },
       });
       if (deltaMb !== 0) {
-        await UsageCounterService.incrementUsage(festival.id, "storage", deltaMb, tx);
+        await UsageCounterService.incrementUsage(
+          festival.id,
+          "storage",
+          deltaMb,
+          tx,
+        );
       }
     });
 

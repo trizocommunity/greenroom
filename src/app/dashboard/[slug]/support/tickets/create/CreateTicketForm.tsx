@@ -1,5 +1,10 @@
 "use client";
 
+import { ArrowLeft, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,11 +25,6 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { createTicketAction } from "@/server/actions/support.actions";
-import { ArrowLeft, Loader2 } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { toast } from "sonner";
 
 export default function CreateTicketForm({ slug }: { slug: string }) {
   const router = useRouter();
@@ -65,7 +65,9 @@ export default function CreateTicketForm({ slug }: { slug: string }) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Create Ticket</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+          Create Ticket
+        </h1>
         <p className="text-base sm:text-lg text-muted-foreground mt-1">
           Submit a new support request.
         </p>

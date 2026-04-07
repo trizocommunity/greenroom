@@ -15,7 +15,10 @@ export function useFestivalPayment() {
   const [loading, setLoading] = useState(false);
   const queryClient = useQueryClient();
 
-  const handlePay = async (tier: Tier, onSuccess?: (credit: unknown) => void) => {
+  const handlePay = async (
+    tier: Tier,
+    onSuccess?: (credit: unknown) => void,
+  ) => {
     setLoading(true);
     try {
       const isLoaded = await loadRazorpay();

@@ -4,7 +4,6 @@ export interface ResultInput {
   festivalId: string;
   programmeId: string;
   assignmentId: string;
-  codeLetterId?: string | null;
   grade?: string | null;
   position?: number | null;
   points?: number;
@@ -85,7 +84,6 @@ async function upsert(assignmentId: string, data: ResultInput) {
     where: { assignmentId },
     create: data,
     update: {
-      codeLetterId: data.codeLetterId,
       grade: data.grade,
       position: data.position,
       points: data.points,

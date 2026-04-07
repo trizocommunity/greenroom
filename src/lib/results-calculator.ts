@@ -70,10 +70,7 @@ export function calculateGrade(
 /**
  * Calculate position (rank) based on points among all points.
  */
-export function calculatePosition(
-  points: number,
-  allPoints: number[],
-): number {
+export function calculatePosition(points: number, allPoints: number[]): number {
   const unique = Array.from(new Set(allPoints)).sort((a, b) => b - a);
   const position = unique.indexOf(points) + 1;
   return position > 0 ? position : 1;

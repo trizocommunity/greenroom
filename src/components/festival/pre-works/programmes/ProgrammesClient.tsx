@@ -1,12 +1,27 @@
 "use client";
 
-import { Eye, FileText, Loader2, Mic2, MoreVertical, Pencil, Plus, Search, Trash2, User, Users, X } from "lucide-react";
-import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
+import type { ProgrammeStatus } from "@prisma/client";
+import {
+  Eye,
+  FileText,
+  Loader2,
+  Mic2,
+  MoreVertical,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  User,
+  Users,
+  X,
+} from "lucide-react";
 import { useState } from "react";
+import { FeatureGate } from "@/components/common/FeatureGate";
+import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
+import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { FeatureGate } from "@/components/common/FeatureGate";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
   DropdownMenu,
@@ -37,11 +52,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { useCategories } from "@/hooks/useCategories";
-import { useProgrammes } from "@/hooks/useProgrammes";
 import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
-import type { ProgrammeStatus } from "@prisma/client";
+import { useProgrammes } from "@/hooks/useProgrammes";
 import {
   getAssignmentProgressLabel,
   getExpectedAssignmentsTotal,
@@ -85,8 +98,10 @@ export function ProgrammesClient({
   }
 
   const filteredProgrammes = programmes.filter((p: any) => {
-    if (categoryFilter !== "ALL" && p.category?.id !== categoryFilter) return false;
-    if (stageTypeFilter !== "ALL" && p.stageType !== stageTypeFilter) return false;
+    if (categoryFilter !== "ALL" && p.category?.id !== categoryFilter)
+      return false;
+    if (stageTypeFilter !== "ALL" && p.stageType !== stageTypeFilter)
+      return false;
     if (typeFilter !== "ALL" && p.type !== typeFilter) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
@@ -124,7 +139,9 @@ export function ProgrammesClient({
       <div className="flex flex-row items-center justify-between gap-4">
         {children ?? (
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Programmes</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+              Programmes
+            </h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
               Create programmes (events) and assign students or teams.
             </p>
@@ -136,9 +153,10 @@ export function ProgrammesClient({
             description="Programmes are the events or competitions in your festival."
           >
             <p className="text-sm text-muted-foreground">
-              <strong>Type:</strong> Individual = one student per entry;
-              Team = one team per entry (multiple members). <strong>Stage
-              type:</strong> Stage or Off-Stage is for organisation only.
+              <strong>Type:</strong> Individual = one student per entry; Team =
+              one team per entry (multiple members).{" "}
+              <strong>Stage type:</strong> Stage or Off-Stage is for
+              organisation only.
             </p>
             <p className="text-sm text-muted-foreground">
               Create categories first, then add programmes. After that, assign
@@ -246,7 +264,8 @@ export function ProgrammesClient({
               </Button>
             )}
             <span className="text-xs text-muted-foreground sm:ml-auto">
-              {filteredProgrammes.length} row{filteredProgrammes.length !== 1 ? "s" : ""}
+              {filteredProgrammes.length} row
+              {filteredProgrammes.length !== 1 ? "s" : ""}
             </span>
           </div>
         </CardHeader>
@@ -257,7 +276,9 @@ export function ProgrammesClient({
               <div className="flex flex-col items-center justify-center gap-3 py-14 px-6 text-center text-muted-foreground rounded-xl border border-dashed bg-muted/20">
                 <FileText className="h-10 w-10 text-muted-foreground/50" />
                 <p className="font-medium">No programmes found</p>
-                <p className="text-sm">Try changing your filters or add a new programme.</p>
+                <p className="text-sm">
+                  Try changing your filters or add a new programme.
+                </p>
               </div>
             ) : (
               filteredProgrammes.map((programme: any) => (
@@ -282,7 +303,11 @@ export function ProgrammesClient({
                           />
                         )}
                         <Badge
-                          variant={getProgressMeta(programme).isFullyAssigned ? "secondary" : "outline"}
+                          variant={
+                            getProgressMeta(programme).isFullyAssigned
+                              ? "secondary"
+                              : "outline"
+                          }
                           className="text-[10px]"
                         >
                           {getProgressMeta(programme).label}
@@ -302,7 +327,9 @@ export function ProgrammesClient({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-44">
                         <DropdownMenuItem
-                          onSelect={() => setActionProgramme({ programme, action: "view" })}
+                          onSelect={() =>
+                            setActionProgramme({ programme, action: "view" })
+                          }
                         >
                           <Eye className="h-4 w-4 mr-2" />
                           View
@@ -310,7 +337,12 @@ export function ProgrammesClient({
                         {!isReadOnly && (
                           <>
                             <DropdownMenuItem
-                              onSelect={() => setActionProgramme({ programme, action: "edit" })}
+                              onSelect={() =>
+                                setActionProgramme({
+                                  programme,
+                                  action: "edit",
+                                })
+                              }
                             >
                               <Pencil className="h-4 w-4 mr-2" />
                               Edit
@@ -318,7 +350,12 @@ export function ProgrammesClient({
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive"
-                              onSelect={() => setActionProgramme({ programme, action: "delete" })}
+                              onSelect={() =>
+                                setActionProgramme({
+                                  programme,
+                                  action: "delete",
+                                })
+                              }
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
                               Delete
@@ -345,7 +382,9 @@ export function ProgrammesClient({
                       <span className="inline-flex items-center gap-1.5 text-muted-foreground">
                         <Mic2 className="h-3.5 w-3.5 shrink-0" />
                         <span>
-                          {programme.stageType === "STAGE" ? "On stage" : "Off stage"}
+                          {programme.stageType === "STAGE"
+                            ? "On stage"
+                            : "Off stage"}
                         </span>
                       </span>
                     </div>
@@ -354,19 +393,19 @@ export function ProgrammesClient({
                         <span className="text-muted-foreground">
                           <span className="font-medium text-foreground">
                             {programme.maxParticipantsPerGroup}
-                          </span>
-                          {" "}max entries per group
+                          </span>{" "}
+                          max entries per group
                         </span>
                       ) : (
                         <span className="text-muted-foreground">
                           <span className="font-medium text-foreground">
                             {programme.maxTeamsPerGroup}
-                          </span>
-                          {" "}teams per group, {" "}
+                          </span>{" "}
+                          teams per group,{" "}
                           <span className="font-medium text-foreground">
                             {programme.maxStudentsPerTeam}
-                          </span>
-                          {" "}members per team
+                          </span>{" "}
+                          members per team
                         </span>
                       )}
                     </div>
@@ -394,7 +433,9 @@ export function ProgrammesClient({
               <TableBody>
                 {filteredProgrammes.map((programme: any) => (
                   <TableRow key={programme.id}>
-                    <TableCell className="font-medium">{programme.name}</TableCell>
+                    <TableCell className="font-medium">
+                      {programme.name}
+                    </TableCell>
                     <TableCell>
                       {programme.category?.name || "No Category"}
                     </TableCell>
@@ -406,10 +447,16 @@ export function ProgrammesClient({
                             className="text-[10px]"
                           />
                         ) : (
-                          <span className="text-muted-foreground text-xs">—</span>
+                          <span className="text-muted-foreground text-xs">
+                            —
+                          </span>
                         )}
                         <Badge
-                          variant={getProgressMeta(programme).isFullyAssigned ? "secondary" : "outline"}
+                          variant={
+                            getProgressMeta(programme).isFullyAssigned
+                              ? "secondary"
+                              : "outline"
+                          }
                           className="text-[10px]"
                         >
                           {getProgressMeta(programme).label}
@@ -418,7 +465,9 @@ export function ProgrammesClient({
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={programme.type === "GROUP" ? "secondary" : "outline"}
+                        variant={
+                          programme.type === "GROUP" ? "secondary" : "outline"
+                        }
                         className="text-[10px] font-medium"
                       >
                         {programme.type === "GROUP" ? "Team" : "Individual"}
@@ -426,7 +475,9 @@ export function ProgrammesClient({
                     </TableCell>
                     <TableCell>
                       <span className="text-[10px] text-muted-foreground">
-                        {programme.stageType === "STAGE" ? "Stage" : "Off-Stage"}
+                        {programme.stageType === "STAGE"
+                          ? "Stage"
+                          : "Off-Stage"}
                       </span>
                     </TableCell>
                     <TableCell className="text-xs">
@@ -457,7 +508,9 @@ export function ProgrammesClient({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-44">
                           <DropdownMenuItem
-                            onSelect={() => setActionProgramme({ programme, action: "view" })}
+                            onSelect={() =>
+                              setActionProgramme({ programme, action: "view" })
+                            }
                           >
                             <Eye className="h-4 w-4 mr-2" />
                             View
@@ -465,7 +518,12 @@ export function ProgrammesClient({
                           {!isReadOnly && (
                             <>
                               <DropdownMenuItem
-                                onSelect={() => setActionProgramme({ programme, action: "edit" })}
+                                onSelect={() =>
+                                  setActionProgramme({
+                                    programme,
+                                    action: "edit",
+                                  })
+                                }
                               >
                                 <Pencil className="h-4 w-4 mr-2" />
                                 Edit
@@ -473,7 +531,12 @@ export function ProgrammesClient({
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
-                                onSelect={() => setActionProgramme({ programme, action: "delete" })}
+                                onSelect={() =>
+                                  setActionProgramme({
+                                    programme,
+                                    action: "delete",
+                                  })
+                                }
                               >
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Delete
@@ -514,27 +577,31 @@ export function ProgrammesClient({
           onOpenChange={(open) => !open && setActionProgramme(null)}
         />
       )}
-      {!isReadOnly && actionProgramme?.action === "edit" && actionProgramme.programme && (
-        <ProgrammeDialog
-          festivalId={festivalId}
-          programme={actionProgramme.programme}
-          open={true}
-          onOpenChange={(open) => !open && setActionProgramme(null)}
-        />
-      )}
-      {!isReadOnly && actionProgramme?.action === "delete" && actionProgramme.programme && (
-        <DeleteDialog
-          title="Delete Programme"
-          description="Are you sure? This will delete all assignments associated with this programme."
-          onDelete={async () => {
-            await deleteProgramme(actionProgramme.programme.id);
-            setActionProgramme(null);
-          }}
-          isDeleting={isDeleting}
-          open={true}
-          onOpenChange={(open) => !open && setActionProgramme(null)}
-        />
-      )}
+      {!isReadOnly &&
+        actionProgramme?.action === "edit" &&
+        actionProgramme.programme && (
+          <ProgrammeDialog
+            festivalId={festivalId}
+            programme={actionProgramme.programme}
+            open={true}
+            onOpenChange={(open) => !open && setActionProgramme(null)}
+          />
+        )}
+      {!isReadOnly &&
+        actionProgramme?.action === "delete" &&
+        actionProgramme.programme && (
+          <DeleteDialog
+            title="Delete Programme"
+            description="Are you sure? This will delete all assignments associated with this programme."
+            onDelete={async () => {
+              await deleteProgramme(actionProgramme.programme.id);
+              setActionProgramme(null);
+            }}
+            isDeleting={isDeleting}
+            open={true}
+            onOpenChange={(open) => !open && setActionProgramme(null)}
+          />
+        )}
     </div>
   );
 }

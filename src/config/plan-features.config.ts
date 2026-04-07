@@ -1,5 +1,5 @@
-import type { FeaturePath } from "@/lib/features";
 import type { Tier } from "@prisma/client";
+import type { FeaturePath } from "@/lib/features";
 
 /** Keys in TierFeatures that are boolean and can be toggled by Super Admin. */
 export const PLAN_FEATURE_TOGGLE_KEYS = [

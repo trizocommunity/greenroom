@@ -98,12 +98,14 @@ interface SidebarGroup {
 export const getFestivalDashboardSidebarConfig = (
   basePath: string,
   role: string = "OWNER",
-  plan: { useExternalJudging?: boolean } = {},
+  plan: { useExternalJudging?: boolean; isBasic?: boolean } = {},
 ): SidebarGroup[] => {
   const isSuperAdmin = role === "SUPER_ADMIN";
   const normalizedRole = role as FestivalRole;
   const useExternalJudging = plan.useExternalJudging ?? false;
-  const judgmentTitle = useExternalJudging ? "Judgment" : "Marks";
+  // Results page is excluded for BASIC; available only when external judging plan path is enabled.
+  const canUseResultsPage = useExternalJudging;
+  const judgmentTitle = useExternalJudging ? "Judgment" : "Results";
   const judgmentHref = useExternalJudging
     ? `${basePath}/event-works/judgment`
     : `${basePath}/event-works/marks`;
@@ -140,7 +142,7 @@ export const getFestivalDashboardSidebarConfig = (
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {
-          title: "Festival Live",
+          title: plan.isBasic ? "Festival" : "Festival Live",
           href: `${basePath}/festival-live`,
           icon: Radio,
           allowedRoles: ["ADMIN", "OWNER"],
@@ -239,6 +241,7 @@ export const getFestivalDashboardSidebarConfig = (
           href: `${basePath}/event-works/results`,
           icon: ListChecks,
           allowedRoles: ["ADMIN", "OWNER", "ANNOUNCER"] as FestivalRole[],
+          disabled: !canUseResultsPage,
         },
         {
           title: "Leaderboard",
@@ -275,7 +278,9 @@ export const getFestivalDashboardSidebarConfig = (
   return groups
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => hasAccess(item.allowedRoles)),
+      items: group.items.filter(
+        (item) => hasAccess(item.allowedRoles) && !item.disabled,
+      ),
     }))
     .filter((group) => group.items.length > 0);
 };

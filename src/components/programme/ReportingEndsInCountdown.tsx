@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { formatCountdownHms } from "@/lib/format-countdown-hms";
@@ -10,13 +11,17 @@ type Props = {
   className?: string;
   /** Smaller inline style without outer badge padding variant differences */
   variant?: "badge" | "inline";
+  /** Refreshes server-rendered status once countdown reaches zero. */
+  autoRefreshOnExpire?: boolean;
 };
 
 export function ReportingEndsInCountdown({
   endsAt,
   className,
   variant = "badge",
+  autoRefreshOnExpire = false,
 }: Props) {
+  const router = useRouter();
   const [tick, setTick] = useState(0);
 
   const endMs = useMemo(() => {
@@ -34,10 +39,21 @@ export function ReportingEndsInCountdown({
     return () => window.clearInterval(id);
   }, [endMs]);
 
+  const remaining =
+    endMs == null ? 0 : Math.max(0, Math.ceil((endMs - Date.now()) / 1000));
+  void tick;
+  const isExpired = remaining <= 0;
+
+  useEffect(() => {
+    if (endMs == null) return;
+    if (!autoRefreshOnExpire) return;
+    if (!isExpired) return;
+    router.refresh();
+  }, [autoRefreshOnExpire, endMs, isExpired, router]);
+
   if (endMs == null) return null;
 
-  const remaining = Math.max(0, Math.ceil((endMs - Date.now()) / 1000));
-  void tick;
+  if (isExpired) return null;
 
   if (variant === "inline") {
     return (

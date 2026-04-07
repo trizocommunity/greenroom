@@ -1,27 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
 import { Loader2, Settings2 } from "lucide-react";
-import {
-  generateChestNumbers,
-  saveChestNumberSettings,
-  updateAllChestNumbers,
-  resetChestNumbers,
-} from "@/server/actions/chest-number.actions";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { useState } from "react";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,8 +15,26 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
+import { queryKeys } from "@/lib/query-keys";
+import {
+  generateChestNumbers,
+  resetChestNumbers,
+  saveChestNumberSettings,
+  updateAllChestNumbers,
+} from "@/server/actions/chest-number.actions";
 
 type CategoryItem = { id: string; name: string };
 
@@ -63,7 +63,9 @@ export function ChestNumberSetup({
   const queryClient = useQueryClient();
 
   const invalidateStudentsAndNotify = () => {
-    queryClient.invalidateQueries({ queryKey: queryKeys.students.list(festivalId) });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.students.list(festivalId),
+    });
     onGenerated();
   };
 
@@ -152,12 +154,11 @@ export function ChestNumberSetup({
     const code =
       editCategoryCodes[demoCat.id] || demoCat.name.charAt(0).toUpperCase();
 
-    const safePrefix =
-      currentPrefix?.endsWith("-")
-        ? currentPrefix
-        : currentPrefix
-          ? `${currentPrefix}-`
-          : "";
+    const safePrefix = currentPrefix?.endsWith("-")
+      ? currentPrefix
+      : currentPrefix
+        ? `${currentPrefix}-`
+        : "";
 
     return `${safePrefix}${code}${formattedStart}`;
   };
@@ -279,7 +280,9 @@ export function ChestNumberSetup({
       invalidateStudentsAndNotify();
     } catch (error: unknown) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to update configuration",
+        error instanceof Error
+          ? error.message
+          : "Failed to update configuration",
       );
     } finally {
       setIsUpdatingPrefix(false);
@@ -308,7 +311,9 @@ export function ChestNumberSetup({
       invalidateStudentsAndNotify();
     } catch (error: unknown) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to reset chest numbers",
+        error instanceof Error
+          ? error.message
+          : "Failed to reset chest numbers",
       );
     } finally {
       setIsResetting(false);
@@ -327,16 +332,26 @@ export function ChestNumberSetup({
           </h3>
           <div className="text-[11px] sm:text-xs text-muted-foreground">
             {isConfigured ? (
-              <span>{categories.length} categories · {pendingCount > 0 ? `${pendingCount} pending` : "All set"}</span>
+              <span>
+                {categories.length} categories ·{" "}
+                {pendingCount > 0 ? `${pendingCount} pending` : "All set"}
+              </span>
             ) : (
-              <span className="text-destructive font-medium">Not configured</span>
+              <span className="text-destructive font-medium">
+                Not configured
+              </span>
             )}
           </div>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2 shrink-0">
         {!isConfigured && (
-          <Button size="sm" onClick={handleOpenEdit} className="h-8 gap-1.5 text-xs" disabled={isReadOnly}>
+          <Button
+            size="sm"
+            onClick={handleOpenEdit}
+            className="h-8 gap-1.5 text-xs"
+            disabled={isReadOnly}
+          >
             <Settings2 className="h-3.5 w-3.5" />
             Configure
           </Button>

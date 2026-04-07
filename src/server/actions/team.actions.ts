@@ -3,9 +3,9 @@
 import type { FestivalRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 import { hashPassword } from "@/lib/auth/password";
 import { prisma } from "@/lib/db";
+import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 import { createAuditLog } from "@/server/services/audit-log.service";
 import { ensureFestivalWritable } from "@/server/services/festival-context.service";
 
@@ -125,7 +125,8 @@ export async function getFestivalMembers(
   role?: FestivalRole,
 ) {
   try {
-    const whereClause: import("@prisma/client").Prisma.FestivalMemberWhereInput = { festivalId };
+    const whereClause: import("@prisma/client").Prisma.FestivalMemberWhereInput =
+      { festivalId };
     if (role) {
       whereClause.role = role;
     }
@@ -154,7 +155,10 @@ export async function getFestivalMembers(
       email: m.user.email,
       role: m.role,
       status: m.isActive ? "Active" : "Disabled",
-      initialPassword: (m.metadata as Record<string, unknown>)?.initialPassword as string | null || null,
+      initialPassword:
+        ((m.metadata as Record<string, unknown>)?.initialPassword as
+          | string
+          | null) || null,
       createdAt: m.createdAt,
     }));
   } catch (error) {

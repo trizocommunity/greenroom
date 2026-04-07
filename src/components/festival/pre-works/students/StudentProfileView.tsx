@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import { format } from "date-fns";
 import { ArrowLeft, Crown, Loader2, Mail, Phone } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
+import { QrCodeDisplay } from "@/components/common/QrCodeDisplay";
+import { useFestival } from "@/components/festival/FestivalContext";
+import { TeamStudentsDialog } from "@/components/festival/pre-works/assignments/TeamStudentsDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { QrCodeDisplay } from "@/components/common/QrCodeDisplay";
 import {
   Table,
   TableBody,
@@ -16,10 +18,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getStudentProfileUrl } from "@/lib/student-profile-url";
-import { TeamStudentsDialog } from "@/components/festival/pre-works/assignments/TeamStudentsDialog";
-import { getProgrammeTeamMembersAction } from "@/server/actions/assignment.actions";
 import { useFeature } from "@/hooks/useFeature";
+import {
+  getQrCodeContent,
+  getStudentProfileUrl,
+} from "@/lib/student-profile-url";
+import { getProgrammeTeamMembersAction } from "@/server/actions/assignment.actions";
 
 interface StudentProfileViewProps {
   student: {
@@ -55,23 +59,46 @@ interface StudentProfileViewProps {
   baseUrl: string;
 }
 
-export function StudentProfileView({ student, festivalId, festivalSlug, baseUrl }: StudentProfileViewProps) {
+export function StudentProfileView({
+  student,
+  festivalId,
+  festivalSlug,
+  baseUrl,
+}: StudentProfileViewProps) {
   const assignments = student.assignments ?? [];
-  const studentProfileUrl = getStudentProfileUrl(baseUrl, festivalSlug, student);
+  const studentProfileUrl = getStudentProfileUrl(
+    baseUrl,
+    festivalSlug,
+    student,
+  );
   const canViewTeamLeaders = useFeature("members");
+  const festivalContext = useFestival();
+  const isBasicTier = festivalContext.tier === "BASIC";
   const [teamDialog, setTeamDialog] = useState<{
     open: boolean;
     programmeName: string;
     teamLabel: string;
     groupName: string;
-    students: { id: string; name: string; chestNumber?: string | null; categoryName?: string }[];
-  }>({ open: false, programmeName: "", teamLabel: "", groupName: "", students: [] });
+    students: {
+      id: string;
+      name: string;
+      chestNumber?: string | null;
+      categoryName?: string;
+    }[];
+  }>({
+    open: false,
+    programmeName: "",
+    teamLabel: "",
+    groupName: "",
+    students: [],
+  });
   const [loadingTeamFor, setLoadingTeamFor] = useState<string | null>(null);
 
   async function openTeamModal(assignment: (typeof assignments)[number]) {
     const programme = assignment.programme;
     const programmeId = assignment.programmeId ?? programme?.id;
-    const groupId = assignment.groupId ?? (student.group as { id?: string } | undefined)?.id;
+    const groupId =
+      assignment.groupId ?? (student.group as { id?: string } | undefined)?.id;
     const teamNumber = assignment.teamNumber ?? 1;
     const groupName = student.group?.name ?? "—";
     if (!programmeId || !groupId || programme?.type !== "GROUP") return;
@@ -123,33 +150,34 @@ export function StudentProfileView({ student, festivalId, festivalSlug, baseUrl 
                 <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide block mb-0.5">
                   Name
                 </span>
-                <div className="text-lg">
-                  {student.name}
+                <div className="text-lg">{student.name}</div>
+              </div>
+              <div>
+                <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide block mb-0.5">
+                  QR Code (Chest #)
+                </span>
+                <div>
+                  <QrCodeDisplay
+                    url={getQrCodeContent(student)}
+                    size={100}
+                    showViewButton
+                    buttonOnly
+                    viewHref={studentProfileUrl}
+                    viewLabel="Open student page"
+                    highlightViewButton
+                  />
                 </div>
               </div>
-            <div>
-              <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide block mb-0.5">
-                QR Code
-              </span>
-              <div>
-                <QrCodeDisplay
-                  url={studentProfileUrl}
-                  size={100}
-                  showViewButton
-                  buttonOnly
-                  viewHref={studentProfileUrl}
-                  viewLabel="Open student page"
-                  highlightViewButton
-                />
-              </div>
-            </div>
               <div className="min-w-0">
                 <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide block mb-0.5">
                   Chest No
                 </span>
                 <div className="text-sm">
                   {student.chestNumber ? (
-                    <Badge variant="secondary" className="font-mono bg-primary/10 text-primary text-xs">
+                    <Badge
+                      variant="secondary"
+                      className="font-mono bg-primary/10 text-primary text-xs"
+                    >
                       {student.chestNumber}
                     </Badge>
                   ) : (
@@ -177,7 +205,9 @@ export function StudentProfileView({ student, festivalId, festivalSlug, baseUrl 
                 <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide block mb-0.5">
                   Category
                 </span>
-                <div className="text-sm truncate">{student.category?.name ?? "—"}</div>
+                <div className="text-sm truncate">
+                  {student.category?.name ?? "—"}
+                </div>
               </div>
               <div className="min-w-0">
                 <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide block mb-0.5">
@@ -212,16 +242,22 @@ export function StudentProfileView({ student, festivalId, festivalSlug, baseUrl 
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 pt-3 border-t">
-              <div className="min-w-0 flex items-center gap-1.5 text-sm text-muted-foreground">
-                <Mail className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{student.email || "No email"}</span>
+            {!isBasicTier && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 pt-3 border-t">
+                <div className="min-w-0 flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Mail className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">
+                    {student.email || "No email"}
+                  </span>
+                </div>
+                <div className="min-w-0 flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Phone className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">
+                    {student.phone || "No phone"}
+                  </span>
+                </div>
               </div>
-              <div className="min-w-0 flex items-center gap-1.5 text-sm text-muted-foreground">
-                <Phone className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{student.phone || "No phone"}</span>
-              </div>
-            </div>
+            )}
 
             <div className="flex flex-wrap gap-x-4 gap-y-0.5 pt-2 border-t text-xs text-muted-foreground">
               {student.createdAt && (
@@ -266,16 +302,17 @@ export function StudentProfileView({ student, festivalId, festivalSlug, baseUrl 
                             : undefined
                         }
                         onClick={
-                          isGroup
-                            ? () => openTeamModal(assignment)
-                            : undefined
+                          isGroup ? () => openTeamModal(assignment) : undefined
                         }
                       >
                         <TableCell className="text-sm font-medium">
                           <span className="flex items-center gap-1.5">
                             {assignment.programme?.name ?? "—"}
                             {isGroup && (
-                              <Badge variant="secondary" className="text-[10px] h-4">
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] h-4"
+                              >
                                 Team
                               </Badge>
                             )}

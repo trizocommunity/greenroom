@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/db";
 import { MyStudentsClient } from "@/components/student/team-leader/MyStudentsClient";
+import { prisma } from "@/lib/db";
 import { requireTeamLeaderSession } from "@/lib/team-leader-auth/guard";
 
 export default async function MyStudentsPage({
@@ -10,7 +10,10 @@ export default async function MyStudentsPage({
 }) {
   const { slug, studentSlug } = await params;
 
-  const { festival, student } = await requireTeamLeaderSession({ slug, studentSlug });
+  const { festival, student } = await requireTeamLeaderSession({
+    slug,
+    studentSlug,
+  });
 
   const groupStudents = await prisma.student.findMany({
     where: { festivalId: festival.id, groupId: student.groupId },
@@ -34,4 +37,3 @@ export default async function MyStudentsPage({
     </div>
   );
 }
-

@@ -5,7 +5,14 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -16,8 +23,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { InstitutionType } from "@/lib/prisma-enums";
 import { useFeatures } from "@/hooks/useFeature";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
+import type { InstitutionType } from "@/lib/prisma-enums";
+import { cn } from "@/lib/utils";
 import {
   setPublicSiteEnabledAction,
   updateFestivalBrandingAction,
@@ -25,9 +34,6 @@ import {
 } from "@/server/actions/festival.actions";
 import { updateFestivalAction } from "@/server/actions/user-festival.actions";
 import type { FestivalBranding } from "@/types/festival";
-import { cn } from "@/lib/utils";
-import { DatePicker } from "@/components/ui/date-picker";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 
 interface FestivalLiveClientProps {
   festivalId: string;
@@ -79,7 +85,6 @@ export function FestivalLiveClient({
   const [brandingForm, setBrandingForm] = useState({
     logo: branding?.logo || "",
     heroImage: branding?.heroImage || "",
-    accentColor: branding?.colors?.primary || "#000000",
   });
   const [savingAll, setSavingAll] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -89,7 +94,6 @@ export function FestivalLiveClient({
   const initialBrandingRef = useRef({
     logo: branding?.logo || "",
     heroImage: branding?.heroImage || "",
-    accentColor: branding?.colors?.primary || "#000000",
   });
 
   const hasFestivalChanges =
@@ -109,15 +113,21 @@ export function FestivalLiveClient({
       normalizeDateValue(initialFestivalRef.current.endDate);
   const hasNonDateFestivalChange =
     (festivalForm.name ?? "") !== (initialFestivalRef.current.name ?? "") ||
-    (festivalForm.description ?? null) !== (initialFestivalRef.current.description ?? null) ||
-    (festivalForm.location ?? null) !== (initialFestivalRef.current.location ?? null) ||
-    (festivalForm.orgName ?? null) !== (initialFestivalRef.current.orgName ?? null) ||
+    (festivalForm.description ?? null) !==
+      (initialFestivalRef.current.description ?? null) ||
+    (festivalForm.location ?? null) !==
+      (initialFestivalRef.current.location ?? null) ||
+    (festivalForm.orgName ?? null) !==
+      (initialFestivalRef.current.orgName ?? null) ||
     (festivalForm.orgDescription ?? null) !==
       (initialFestivalRef.current.orgDescription ?? null) ||
-    (festivalForm.orgWebsite ?? null) !== (initialFestivalRef.current.orgWebsite ?? null) ||
-    (festivalForm.orgLocation ?? null) !== (initialFestivalRef.current.orgLocation ?? null) ||
+    (festivalForm.orgWebsite ?? null) !==
+      (initialFestivalRef.current.orgWebsite ?? null) ||
+    (festivalForm.orgLocation ?? null) !==
+      (initialFestivalRef.current.orgLocation ?? null) ||
     (festivalForm.slug ?? "") !== (initialFestivalRef.current.slug ?? "");
-  const canSaveInReadOnly = hasDateOnlyFestivalChange && !hasNonDateFestivalChange;
+  const canSaveInReadOnly =
+    hasDateOnlyFestivalChange && !hasNonDateFestivalChange;
   const canSave = isReadOnly ? canSaveInReadOnly : hasChanges;
   const hasFestivalDateChange = hasDateOnlyFestivalChange;
   const parseSafeDate = (value: Date | string | null | undefined) => {
@@ -142,7 +152,12 @@ export function FestivalLiveClient({
           ? new Date(festivalForm.endDate)
           : null;
 
-    if (!start || !end || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    if (
+      !start ||
+      !end ||
+      Number.isNaN(start.getTime()) ||
+      Number.isNaN(end.getTime())
+    ) {
       toast.error("Please select valid start and end dates.");
       return null;
     }
@@ -168,7 +183,11 @@ export function FestivalLiveClient({
       const result = await setPublicSiteEnabledAction(festivalId, checked);
       if (result?.success) {
         setEnabled(checked);
-        toast.success(checked ? "Public website is now live." : "Public website is now disabled.");
+        toast.success(
+          checked
+            ? "Public website is now live."
+            : "Public website is now disabled.",
+        );
       } else {
         const message =
           result && "error" in result && typeof result.error === "string"
@@ -189,7 +208,11 @@ export function FestivalLiveClient({
     toast.success("Link copied to clipboard.");
   };
 
-  const fullPublicUrl = publicUrl || (typeof window !== "undefined" ? `${window.location.origin}/${festivalSlug}` : `/${festivalSlug}`);
+  const fullPublicUrl =
+    publicUrl ||
+    (typeof window !== "undefined"
+      ? `${window.location.origin}/${festivalSlug}`
+      : `/${festivalSlug}`);
 
   const uploadToCloudinary = async (file: File, kind: "logo" | "hero") => {
     const maxSizeBytes = kind === "logo" ? 1 * 1024 * 1024 : 3 * 1024 * 1024; // 1MB logo, 3MB hero
@@ -205,12 +228,14 @@ export function FestivalLiveClient({
     // Basic dimension check
     const objectUrl = URL.createObjectURL(file);
     try {
-      const dims = await new Promise<{ width: number; height: number }>((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve({ width: img.width, height: img.height });
-        img.onerror = reject;
-        img.src = objectUrl;
-      });
+      const dims = await new Promise<{ width: number; height: number }>(
+        (resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve({ width: img.width, height: img.height });
+          img.onerror = reject;
+          img.src = objectUrl;
+        },
+      );
       const minSize = kind === "logo" ? 64 : 400;
       if (dims.width < minSize || dims.height < minSize) {
         toast.error(
@@ -224,8 +249,7 @@ export function FestivalLiveClient({
       URL.revokeObjectURL(objectUrl);
     }
 
-    const cloudName =
-      process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "demo";
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "demo";
     const preset =
       process.env.NEXT_PUBLIC_CLOUDINARY_FESTIVAL_PRESET ||
       "greenroom_festival_unsigned";
@@ -279,7 +303,9 @@ export function FestivalLiveClient({
           };
           router.refresh();
         } else {
-          toast.error("error" in res ? res.error : "Failed to update festival dates.");
+          toast.error(
+            "error" in res ? res.error : "Failed to update festival dates.",
+          );
         }
         return;
       }
@@ -305,7 +331,9 @@ export function FestivalLiveClient({
           festivalUpdated = true;
           initialFestivalRef.current = festivalForm;
         } else {
-          toast.error("error" in res ? res.error : "Failed to update festival details.");
+          toast.error(
+            "error" in res ? res.error : "Failed to update festival details.",
+          );
         }
       }
 
@@ -313,9 +341,6 @@ export function FestivalLiveClient({
         const res = await updateFestivalBrandingAction({
           logo: brandingForm.logo || null,
           heroImage: brandingForm.heroImage || null,
-          accentColor: features.canUseCustomColors
-            ? brandingForm.accentColor || null
-            : undefined,
         });
         if (res.success) {
           brandingUpdated = true;
@@ -341,47 +366,60 @@ export function FestivalLiveClient({
       <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2">
           {/* When Live: copiable link section at top — unique shareable UI */}
-          {enabled && fullPublicUrl && (
+          {!isBasicTier && enabled && fullPublicUrl && (
             <Card className="overflow-hidden border-primary/20 bg-linear-to-br from-primary/5 via-background to-background">
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-2 text-primary">
                   <Radio className="h-5 w-5" />
-                  <CardTitle className="text-lg">Your festival is live</CardTitle>
+                  <CardTitle className="text-lg">
+                    Your festival is live
+                  </CardTitle>
                 </div>
                 <CardDescription>
-                  Share this link with your audience. Anyone with the link can view your public festival site.
+                  Share this link with your audience. Anyone with the link can
+                  view your public festival site.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                  <div className="flex-1 flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2.5 font-mono text-sm break-all">
-                    <span className="text-muted-foreground shrink-0">URL</span>
-                    <span className="min-w-0 truncate" title={fullPublicUrl}>
-                      {fullPublicUrl}
-                    </span>
-                  </div>
+                <div className="flex-1 flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2.5 font-mono text-sm break-all">
+                  <span className="text-muted-foreground shrink-0">URL</span>
+                  <span className="min-w-0 truncate" title={fullPublicUrl}>
+                    {fullPublicUrl}
+                  </span>
+                </div>
                 <div className="flex flex-col sm:flex-row gap-2">
-                <Button asChild variant="secondary" size="sm" className="gap-2">
-                  <a href={fullPublicUrl} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-4 w-4" />
-                    View public site
-                  </a>
-                </Button>
+                  <Button
+                    asChild
+                    variant="secondary"
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <a
+                      href={fullPublicUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      View public site
+                    </a>
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     className="shrink-0 gap-2"
                     onClick={copyUrl}
-                    >
+                  >
                     <Copy className="h-4 w-4" />
                     Copy link
                   </Button>
-                    </div>
+                </div>
               </CardContent>
             </Card>
           )}
 
           {/* Enable / Disable control */}
-          <Card className={ cn("col-span-2", enabled && "col-span-1 h-full")}>
+          {!isBasicTier && (
+            <Card className={cn("col-span-2", enabled && "col-span-1 h-full")}>
               <CardHeader>
                 <CardTitle className="text-base">Public website</CardTitle>
                 <CardDescription>
@@ -392,7 +430,10 @@ export function FestivalLiveClient({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between gap-4">
-                  <Label htmlFor="public-site-toggle" className="text-sm font-medium">
+                  <Label
+                    htmlFor="public-site-toggle"
+                    className="text-sm font-medium"
+                  >
                     Enable public festival website
                   </Label>
                   {canEnable ? (
@@ -413,13 +454,19 @@ export function FestivalLiveClient({
                               if (checked) return;
                               handleToggle(false);
                             }}
-                            disabled={loading || isReadOnly || (!enabled && !canEnable)}
-                            
+                            disabled={
+                              loading || isReadOnly || (!enabled && !canEnable)
+                            }
                           />
                         </span>
                       </TooltipTrigger>
                       <TooltipContent side="left" className="max-w-xs">
-                        Complete all required details to enable: festival name & description, organization name & description{!isBasicTier ? ", gallery (4+ images), and at least 1 news post with title, description, and image" : ""}.
+                        Complete all required details to enable: festival name &
+                        description, organization name & description
+                        {!isBasicTier
+                          ? ", gallery (4+ images), and at least 1 news post with title, description, and image"
+                          : ""}
+                        .
                       </TooltipContent>
                     </Tooltip>
                   )}
@@ -438,15 +485,18 @@ export function FestivalLiveClient({
                   </div>
                 )}
               </CardContent>
-          </Card>
+            </Card>
+          )}
         </div>
-          
+
         {/* Festival Details */}
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Festival basics</CardTitle>
-              <CardDescription>Update name, description, dates, and location.</CardDescription>
+              <CardDescription>
+                Update name, description, dates, and location.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-2">
@@ -455,7 +505,10 @@ export function FestivalLiveClient({
                   id="fest-name"
                   value={festivalForm.name}
                   onChange={(e) =>
-                    setFestivalForm((prev) => ({ ...prev, name: e.target.value }))
+                    setFestivalForm((prev) => ({
+                      ...prev,
+                      name: e.target.value,
+                    }))
                   }
                   placeholder="E.g. Summer Arts 2025"
                   disabled={isReadOnly}
@@ -485,7 +538,8 @@ export function FestivalLiveClient({
                     date={
                       festivalForm.startDate instanceof Date
                         ? festivalForm.startDate
-                        : typeof festivalForm.startDate === "string" && festivalForm.startDate
+                        : typeof festivalForm.startDate === "string" &&
+                            festivalForm.startDate
                           ? new Date(festivalForm.startDate)
                           : undefined
                     }
@@ -507,7 +561,8 @@ export function FestivalLiveClient({
                     date={
                       festivalForm.endDate instanceof Date
                         ? festivalForm.endDate
-                        : typeof festivalForm.endDate === "string" && festivalForm.endDate
+                        : typeof festivalForm.endDate === "string" &&
+                            festivalForm.endDate
                           ? new Date(festivalForm.endDate)
                           : undefined
                     }
@@ -541,222 +596,230 @@ export function FestivalLiveClient({
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Organization & online</CardTitle>
-              <CardDescription>Organization info and public subdomain.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 grid gap-3 grid-cols-2">
-              <div className="space-y-2 col-span-2">
-                <Label htmlFor="fest-org-name">Organization name</Label>
-                <Input
-                  id="fest-org-name"
-                  value={festivalForm.orgName || ""}
-                  onChange={(e) =>
-                    setFestivalForm((prev) => ({ ...prev, orgName: e.target.value }))
-                  }
-                  placeholder="Org name"
-                  disabled={isReadOnly}
-                />
-              </div>
-              <div className="space-y-2 col-span-2">
-                <Label htmlFor="fest-org-description">Organization description</Label>
-                <Textarea
-                  id="fest-org-description"
-                  value={festivalForm.orgDescription || ""}
-                  onChange={(e) =>
-                    setFestivalForm((prev) => ({ ...prev, orgDescription: e.target.value }))
-                  }
-                  placeholder="Short description of your organization (required to go live)"
-                  rows={3}
-                  disabled={isReadOnly}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="fest-org-website">Website</Label>
-                <Input
-                  id="fest-org-website"
-                  value={festivalForm.orgWebsite || ""}
-                  onChange={(e) =>
-                    setFestivalForm((prev) => ({
-                      ...prev,
-                      orgWebsite: e.target.value,
-                    }))
-                  }
-                  placeholder="https://..."
-                  disabled={isReadOnly}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="fest-org-location">Org location</Label>
-                <Input
-                  id="fest-org-location"
-                  value={festivalForm.orgLocation || ""}
-                  onChange={(e) =>
-                    setFestivalForm((prev) => ({
-                      ...prev,
-                      orgLocation: e.target.value,
-                    }))
-                  }
-                  placeholder="City"
-                  disabled={isReadOnly}
-                />
-              </div>
-              <div className="space-y-2 col-span-2">
-                <Label htmlFor="fest-slug">Subdomain</Label>
-                <div className="flex items-center gap-2">
+          {!isBasicTier && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  Organization & online
+                </CardTitle>
+                <CardDescription>
+                  Organization info and public subdomain.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 grid gap-3 grid-cols-2">
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="fest-org-name">Organization name</Label>
                   <Input
-                    id="fest-slug"
-                    value={festivalForm.slug}
+                    id="fest-org-name"
+                    value={festivalForm.orgName || ""}
                     onChange={(e) =>
-                      setFestivalForm((prev) => ({ ...prev, slug: e.target.value }))
+                      setFestivalForm((prev) => ({
+                        ...prev,
+                        orgName: e.target.value,
+                      }))
                     }
-                    className="font-mono"
-                    placeholder="my-festival"
+                    placeholder="Org name"
                     disabled={isReadOnly}
                   />
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    .greenroom.com
-                  </span>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Preview:{" "}
-                  <span className="font-mono">
-                    https://{festivalForm.slug || "your-festival"}.greenroom.com
-                  </span>
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="fest-org-description">
+                    Organization description
+                  </Label>
+                  <Textarea
+                    id="fest-org-description"
+                    value={festivalForm.orgDescription || ""}
+                    onChange={(e) =>
+                      setFestivalForm((prev) => ({
+                        ...prev,
+                        orgDescription: e.target.value,
+                      }))
+                    }
+                    placeholder="Short description of your organization (required to go live)"
+                    rows={3}
+                    disabled={isReadOnly}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="fest-org-website">Website</Label>
+                  <Input
+                    id="fest-org-website"
+                    value={festivalForm.orgWebsite || ""}
+                    onChange={(e) =>
+                      setFestivalForm((prev) => ({
+                        ...prev,
+                        orgWebsite: e.target.value,
+                      }))
+                    }
+                    placeholder="https://..."
+                    disabled={isReadOnly}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="fest-org-location">Org location</Label>
+                  <Input
+                    id="fest-org-location"
+                    value={festivalForm.orgLocation || ""}
+                    onChange={(e) =>
+                      setFestivalForm((prev) => ({
+                        ...prev,
+                        orgLocation: e.target.value,
+                      }))
+                    }
+                    placeholder="City"
+                    disabled={isReadOnly}
+                  />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="fest-slug">Subdomain</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="fest-slug"
+                      value={festivalForm.slug}
+                      onChange={(e) =>
+                        setFestivalForm((prev) => ({
+                          ...prev,
+                          slug: e.target.value,
+                        }))
+                      }
+                      className="font-mono"
+                      placeholder="my-festival"
+                      disabled={isReadOnly}
+                    />
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      .greenroom.com
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Preview:{" "}
+                    <span className="font-mono">
+                      https://{festivalForm.slug || "your-festival"}
+                      .greenroom.com
+                    </span>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Branding */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Branding</CardTitle>
-            <CardDescription>Control logo, hero image, and accent color used on the public site.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {features.canUseCustomColors && (
-              <div className="space-y-2">
-                <Label htmlFor="brand-accent">Accent color</Label>
-                <div className="flex items-center gap-2">
+        {!isBasicTier && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Branding</CardTitle>
+              <CardDescription>
+                Control logo, hero image, and accent color used on the public
+                site.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="brand-logo">Logo URL</Label>
                   <Input
-                    id="brand-accent"
-                    type="color"
-                    className="h-10 w-14 p-1 cursor-pointer"
-                    value={brandingForm.accentColor}
+                    id="brand-logo"
+                    value={brandingForm.logo}
                     onChange={(e) =>
-                      setBrandingForm((prev) => ({ ...prev, accentColor: e.target.value }))
+                      setBrandingForm((prev) => ({
+                        ...prev,
+                        logo: e.target.value,
+                      }))
                     }
+                    placeholder="https://..."
                     disabled={isReadOnly}
                   />
                   <Input
-                    value={brandingForm.accentColor}
-                    onChange={(e) =>
-                      setBrandingForm((prev) => ({ ...prev, accentColor: e.target.value }))
-                    }
-                    placeholder="#000000"
-                    className="font-mono max-w-32"
+                    type="file"
+                    accept="image/*"
                     disabled={isReadOnly}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setUploadingLogo(true);
+                      try {
+                        const url = await uploadToCloudinary(file, "logo");
+                        if (url) {
+                          setBrandingForm((prev) => ({ ...prev, logo: url }));
+                          toast.success(
+                            "Logo uploaded. Click Save branding to apply.",
+                          );
+                        }
+                      } finally {
+                        setUploadingLogo(false);
+                        e.target.value = "";
+                      }
+                    }}
                   />
+                  {uploadingLogo && (
+                    <p className="text-xs text-muted-foreground">
+                      Uploading logo…
+                    </p>
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground">Primary/accent color for buttons and highlights on your public site.</p>
+                <div className="space-y-2">
+                  <Label htmlFor="brand-hero">Hero image URL</Label>
+                  <Input
+                    id="brand-hero"
+                    value={brandingForm.heroImage}
+                    onChange={(e) =>
+                      setBrandingForm((prev) => ({
+                        ...prev,
+                        heroImage: e.target.value,
+                      }))
+                    }
+                    placeholder="https://..."
+                    disabled={isReadOnly}
+                  />
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    disabled={isReadOnly}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setUploadingHero(true);
+                      try {
+                        const url = await uploadToCloudinary(file, "hero");
+                        if (url) {
+                          setBrandingForm((prev) => ({
+                            ...prev,
+                            heroImage: url,
+                          }));
+                          toast.success(
+                            "Hero image uploaded. Click Save branding to apply.",
+                          );
+                        }
+                      } finally {
+                        setUploadingHero(false);
+                        e.target.value = "";
+                      }
+                    }}
+                  />
+                  {uploadingHero && (
+                    <p className="text-xs text-muted-foreground">
+                      Uploading hero image…
+                    </p>
+                  )}
+                </div>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Save changes bar */}
+        <div className="w-full pt-3 pb-10 flex items-center justify-end bg-background/80 backdrop-blur">
+          <Button
+            size="lg"
+            disabled={!canSave || savingAll}
+            onClick={handleSaveAll}
+          >
+            {savingAll && (
+              <span className="mr-2 h-3 w-3 animate-spin border border-current border-t-transparent rounded-full" />
             )}
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="brand-logo">Logo URL</Label>
-                <Input
-                  id="brand-logo"
-                  value={brandingForm.logo}
-                  onChange={(e) =>
-                    setBrandingForm((prev) => ({ ...prev, logo: e.target.value }))
-                  }
-                  placeholder="https://..."
-                  disabled={isReadOnly}
-                />
-                <Input
-                  type="file"
-                  accept="image/*"
-                  disabled={isReadOnly}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    setUploadingLogo(true);
-                    try {
-                      const url = await uploadToCloudinary(file, "logo");
-                      if (url) {
-                        setBrandingForm((prev) => ({ ...prev, logo: url }));
-                        toast.success("Logo uploaded. Click Save branding to apply.");
-                      }
-                    } finally {
-                      setUploadingLogo(false);
-                      e.target.value = "";
-                    }
-                  }}
-                />
-                {uploadingLogo && (
-                  <p className="text-xs text-muted-foreground">Uploading logo…</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="brand-hero">Hero image URL</Label>
-                <Input
-                  id="brand-hero"
-                  value={brandingForm.heroImage}
-                  onChange={(e) =>
-                    setBrandingForm((prev) => ({
-                      ...prev,
-                      heroImage: e.target.value,
-                    }))
-                  }
-                  placeholder="https://..."
-                  disabled={isReadOnly}
-                />
-                <Input
-                  type="file"
-                  accept="image/*"
-                  disabled={isReadOnly}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    setUploadingHero(true);
-                    try {
-                      const url = await uploadToCloudinary(file, "hero");
-                      if (url) {
-                        setBrandingForm((prev) => ({ ...prev, heroImage: url }));
-                        toast.success("Hero image uploaded. Click Save branding to apply.");
-                      }
-                    } finally {
-                      setUploadingHero(false);
-                      e.target.value = "";
-                    }
-                  }}
-                />
-                {uploadingHero && (
-                  <p className="text-xs text-muted-foreground">Uploading hero image…</p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-         {/* Save changes bar */}
-         <div className="w-full pt-3 pb-10 flex items-center justify-end bg-background/80 backdrop-blur">
-            <Button
-              size="lg"
-              disabled={!canSave || savingAll}
-              
-              onClick={handleSaveAll}
-            >
-              {savingAll && (
-                <span className="mr-2 h-3 w-3 animate-spin border border-current border-t-transparent rounded-full" />
-              )}
-              Save changes
-            </Button>
-          </div>
-
+            Save changes
+          </Button>
+        </div>
       </div>
     </TooltipProvider>
   );

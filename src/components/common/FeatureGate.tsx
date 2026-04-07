@@ -28,8 +28,8 @@
 
 "use client";
 
-import { useFeature } from "@/hooks/useFeature";
 import { UpgradeTrigger } from "@/components/common/UpgradeTrigger";
+import { useFeature } from "@/hooks/useFeature";
 import type { FeaturePath } from "@/lib/features";
 
 interface FeatureGateProps {

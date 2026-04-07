@@ -1,5 +1,9 @@
 "use client";
 
+import { format } from "date-fns";
+import { Bell } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -8,10 +12,6 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSupportNotifications } from "@/hooks/useSupportNotifications";
-import { format } from "date-fns";
-import { Bell } from "lucide-react";
-import Link from "next/link";
-import { useState } from "react";
 
 export function SupportNotifications({
   slug,
@@ -21,12 +21,8 @@ export function SupportNotifications({
   isAdmin?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const {
-    notifications,
-    unreadCount,
-    markAsRead,
-    markAllAsRead,
-  } = useSupportNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } =
+    useSupportNotifications();
 
   const handleMarkAsRead = (id: string) => {
     markAsRead(id);

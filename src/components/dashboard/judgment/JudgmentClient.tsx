@@ -1,10 +1,11 @@
 "use client";
 
-import { Copy, History, Share2, Sparkles } from "lucide-react";
+import { Copy, Share2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { CompactHistoryList } from "@/components/dashboard/event-works/CompactHistoryList";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useRealtimeChannel } from "@/hooks/useRealtimeChannel";
 import { formatCountdownHms } from "@/lib/format-countdown-hms";
 import {
   createProgrammeJudgeLinkAction,
@@ -65,10 +67,12 @@ type ProgrammeJudgingBoardStage = {
 export function JudgmentClient({
   festival,
   stages,
+  festivalStages,
   judgedProgrammes,
 }: {
   festival: { id: string; slug: string; tier: string };
   stages: ProgrammeJudgingBoardStage[];
+  festivalStages: { id: string; name: string }[];
   judgedProgrammes: JudgingProgrammeRow[];
 }) {
   const router = useRouter();
@@ -80,6 +84,7 @@ export function JudgmentClient({
     Record<string, { judgeUrl: string; startedAt: Date }>
   >({});
   const [activeStageId, setActiveStageId] = useState<string>("__all__");
+  const [lastRefreshAt, setLastRefreshAt] = useState(0);
 
   useEffect(() => {
     setNowMs(Date.now());
@@ -93,24 +98,76 @@ export function JudgmentClient({
     );
   }, [stages]);
 
+  const judgementRoomKeys = useMemo(() => {
+    const rooms = [`festival:${festival.id}:all`];
+    for (const stage of stages) {
+      for (const programme of stage.programmesToJudge) {
+        rooms.push(
+          `festival:${festival.id}:programme:${programme.programmeId}:judgment`,
+        );
+      }
+    }
+    return rooms;
+  }, [festival.id, stages]);
+
+  useRealtimeChannel({
+    roomKeys: judgementRoomKeys,
+    enabled: hasStartedProgrammes,
+    onEvent: (event) => {
+      const eventName =
+        typeof event.eventName === "string"
+          ? event.eventName
+          : typeof event.type === "string"
+            ? event.type
+            : "";
+      if (!eventName.includes("judgment") && !eventName.includes("results")) {
+        return;
+      }
+      const now = Date.now();
+      if (now - lastRefreshAt < 1500) return;
+      setLastRefreshAt(now);
+      router.refresh();
+    },
+  });
+
   useEffect(() => {
     if (!hasStartedProgrammes) return;
     const id = window.setInterval(() => {
       router.refresh();
-    }, 7000);
+    }, 12000);
     return () => window.clearInterval(id);
   }, [hasStartedProgrammes, router]);
 
   const stageTabs = useMemo(() => {
-    const tabs = stages.map((s) => ({
-      id: s.stage?.id ?? "__none__",
-      name: s.stage?.name ?? "No stage",
-      programmesToJudge: s.programmesToJudge,
-    }));
+    const byStageId = new Map<
+      string,
+      { id: string; name: string; programmesToJudge: JudgingProgrammeRow[] }
+    >();
+
+    for (const s of festivalStages) {
+      byStageId.set(s.id, { id: s.id, name: s.name, programmesToJudge: [] });
+    }
+
+    for (const s of stages) {
+      const stageId = s.stage?.id ?? "__none__";
+      const stageName = s.stage?.name ?? "No stage";
+      const existing = byStageId.get(stageId);
+      if (existing) {
+        existing.programmesToJudge = s.programmesToJudge;
+      } else {
+        byStageId.set(stageId, {
+          id: stageId,
+          name: stageName,
+          programmesToJudge: s.programmesToJudge,
+        });
+      }
+    }
+
+    const tabs = Array.from(byStageId.values());
     return tabs.sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
     );
-  }, [stages]);
+  }, [stages, festivalStages]);
 
   const filteredJudgedProgrammes = useMemo(() => {
     const sorted = [...judgedProgrammes].sort((a, b) => {
@@ -364,63 +421,33 @@ export function JudgmentClient({
         </div>
       </div>
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <History className="h-4 w-4" />
-            Judging history
-          </h2>
-          <Badge variant="secondary">{filteredJudgedProgrammes.length}</Badge>
-        </div>
-
-        {filteredJudgedProgrammes.length === 0 ? (
-          <div className="text-sm text-muted-foreground">
-            History appears here after judges submit points.
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {filteredJudgedProgrammes.map((p) => {
-              const judgedAt = p.latestUsedJudgeSession?.usedAt
-                ? new Date(p.latestUsedJudgeSession.usedAt)
-                : null;
-              const judgeLabel =
-                p.latestUsedJudgeSession?.submittedByName ??
-                p.latestUsedJudgeSession?.createdBy ??
-                "External judge";
-              const extraInfo = [
-                p.latestUsedJudgeSession?.submittedByContact,
-                p.latestUsedJudgeSession?.submittedByNote,
-              ]
-                .filter(Boolean)
-                .join(" | ");
-              return (
-                <Card key={p.programmeId} className="overflow-hidden">
-                  <CardContent className="px-3 py-2.5">
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="font-medium truncate">
-                        {p.programmeName}
-                      </span>
-                      <span className="text-muted-foreground">•</span>
-                      <span className="text-muted-foreground shrink-0">
-                        {judgedAt
-                          ? judgedAt.toLocaleString()
-                          : "Judged time unavailable"}
-                      </span>
-                      <span className="text-muted-foreground">•</span>
-                      <span
-                        className="text-muted-foreground truncate"
-                        title={extraInfo || undefined}
-                      >
-                        Judge: {judgeLabel}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      <CompactHistoryList
+        title="Judging history"
+        count={filteredJudgedProgrammes.length}
+        emptyText="History appears here after judges submit points."
+        items={filteredJudgedProgrammes.map((p) => {
+          const judgedAt = p.latestUsedJudgeSession?.usedAt
+            ? new Date(p.latestUsedJudgeSession.usedAt).toLocaleString()
+            : "Judged time unavailable";
+          const judgeLabel =
+            p.latestUsedJudgeSession?.submittedByName ??
+            p.latestUsedJudgeSession?.createdBy ??
+            "External judge";
+          const extraInfo = [
+            p.latestUsedJudgeSession?.submittedByContact,
+            p.latestUsedJudgeSession?.submittedByNote,
+          ]
+            .filter(Boolean)
+            .join(" | ");
+          return {
+            id: p.programmeId,
+            title: p.programmeName,
+            metaPrimary: judgedAt,
+            metaSecondary: `Judge: ${judgeLabel}`,
+            metaSecondaryTitle: extraInfo || undefined,
+          };
+        })}
+      />
     </div>
   );
 }

@@ -1,15 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { FileText, X } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Select,
@@ -18,8 +12,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { X, FileText } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface ChestNumberTableProps {
   students: any[];
@@ -65,7 +65,8 @@ export function ChestNumberTable({ students }: ChestNumberTableProps) {
       <CardHeader className="p-3 border-b bg-muted/5">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-muted-foreground mr-auto">
-            {filteredStudents.length} row{filteredStudents.length !== 1 ? "s" : ""}
+            {filteredStudents.length} row
+            {filteredStudents.length !== 1 ? "s" : ""}
           </span>
           <Select value={groupFilter} onValueChange={setGroupFilter}>
             <SelectTrigger className="h-8 w-[130px] text-xs">

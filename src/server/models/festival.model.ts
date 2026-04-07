@@ -140,7 +140,11 @@ function buildResultRowsForProgramme(
     student?: { name: string | null; chestNumber: string | null } | null;
     group?: { name: string } | null;
     teamNumber?: number | null;
-    result?: { grade: string | null; points: number; position: number | null } | null;
+    result?: {
+      grade: string | null;
+      points: number;
+      position: number | null;
+    } | null;
   }>,
   maxRows: number,
 ): OverviewResultRow[] {
@@ -150,7 +154,14 @@ function buildResultRowsForProgramme(
   if (programme.type === "GROUP") {
     const teamMap = new Map<
       string,
-      { assignmentId: string; displayName: string; subText: string; grade: string | null; points: number; position: number }
+      {
+        assignmentId: string;
+        displayName: string;
+        subText: string;
+        grade: string | null;
+        points: number;
+        position: number;
+      }
     >();
     withResult.forEach((assignment) => {
       const result = assignment.result!;
@@ -189,7 +200,9 @@ function buildResultRowsForProgramme(
     return {
       displayName: assignment.student?.name || "Unknown",
       subText: "",
-      chestNumber: assignment.student?.chestNumber ? `#${assignment.student.chestNumber}` : "",
+      chestNumber: assignment.student?.chestNumber
+        ? `#${assignment.student.chestNumber}`
+        : "",
       grade: result.grade,
       points: result.points,
       position: result.position ?? 0,
@@ -247,8 +260,8 @@ export async function getDashboardOverviewData(festivalId: string) {
     }),
   ]);
 
-  const recentResultsByProgramme: OverviewProgrammeResults[] = programmesWithPublishedResults.map(
-    (prog) => {
+  const recentResultsByProgramme: OverviewProgrammeResults[] =
+    programmesWithPublishedResults.map((prog) => {
       const resultDates = prog.assignments
         .map((a) => a.result?.createdAt)
         .filter((d): d is Date => d != null);
@@ -268,8 +281,7 @@ export async function getDashboardOverviewData(festivalId: string) {
         },
         rows: buildResultRowsForProgramme(prog, prog.assignments, 5),
       };
-    },
-  );
+    });
 
   return {
     totalProgrammes,
@@ -307,10 +319,12 @@ export async function getFestivalAnalyticsData(festivalId: string) {
       },
     }),
     prisma.category.count({ where: { festivalId } }),
-    prisma.festival.findUnique({
-      where: { id: festivalId },
-      select: { judgesCount: true },
-    }).then((f) => f?.judgesCount ?? 0),
+    prisma.festival
+      .findUnique({
+        where: { id: festivalId },
+        select: { judgesCount: true },
+      })
+      .then((f) => f?.judgesCount ?? 0),
   ]);
 
   return {

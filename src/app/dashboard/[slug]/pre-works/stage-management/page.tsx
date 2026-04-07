@@ -1,7 +1,7 @@
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import { getStages } from "@/server/actions/stage.actions";
 import { notFound, redirect } from "next/navigation";
 import { StagesClient } from "@/components/festival/event-works/stage-management/StagesClient";
+import { getStages } from "@/server/actions/stage.actions";
+import { findFestivalBySlug } from "@/server/models/festival.model";
 import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
 
 interface PageProps {

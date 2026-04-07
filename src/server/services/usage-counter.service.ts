@@ -1,8 +1,8 @@
 import type { Prisma } from "@prisma/client";
 import { TIER_CONFIG } from "@/config/pricing";
 import { prisma } from "@/lib/db";
-import { getResolvedTier } from "@/lib/tier";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
+import { getResolvedTier } from "@/lib/tier";
 
 /**
  * Usage Counter Service

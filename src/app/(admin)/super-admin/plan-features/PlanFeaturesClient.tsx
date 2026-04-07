@@ -1,16 +1,10 @@
 "use client";
 
-import type { Tier } from "@/lib/prisma-enums";
+import { Check, Loader2, Square } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Check, Loader2, Square } from "lucide-react";
-import type { FeatureTag } from "@/lib/features-tags";
-import {
-  FEATURE_TAGS,
-  getFeatureTagLabel,
-  getFeatureTagRequirements,
-} from "@/lib/features-tags";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -19,11 +13,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
 import { PLANS } from "@/config/plan-features.config";
+import type { FeatureTag } from "@/lib/features-tags";
 import {
-  setPlanFeatureTagOverrideAction,
-} from "@/server/actions/plan-features.actions";
+  FEATURE_TAGS,
+  getFeatureTagLabel,
+  getFeatureTagRequirements,
+} from "@/lib/features-tags";
+import type { Tier } from "@/lib/prisma-enums";
+import { setPlanFeatureTagOverrideAction } from "@/server/actions/plan-features.actions";
 
 type TagMatrix = Record<Tier, Partial<Record<FeatureTag, boolean>>>;
 
@@ -31,11 +29,7 @@ function cellKey(tier: Tier, key: string) {
   return `${tier}:${key}`;
 }
 
-export function PlanFeaturesClient({
-  tagMatrix,
-}: {
-  tagMatrix: TagMatrix;
-}) {
+export function PlanFeaturesClient({ tagMatrix }: { tagMatrix: TagMatrix }) {
   const router = useRouter();
   const [pendingCell, setPendingCell] = useState<string | null>(null);
 
@@ -69,7 +63,9 @@ export function PlanFeaturesClient({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50 hover:bg-muted/50">
-              <TableHead className="w-[280px] font-semibold">Feature Tags</TableHead>
+              <TableHead className="w-[280px] font-semibold">
+                Feature Tags
+              </TableHead>
               {PLANS.map((plan) => (
                 <TableHead
                   key={plan}

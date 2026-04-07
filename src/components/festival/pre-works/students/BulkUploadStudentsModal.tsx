@@ -2,13 +2,13 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import {
   BulkUploadFlow,
   type ParsedItem,
 } from "@/components/common/bulk-upload/BulkUploadFlow";
+import { useFestival } from "@/components/festival/FestivalContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { useCategories } from "@/hooks/useCategories";
 import { useGroups } from "@/hooks/useGroups";
+import { queryKeys } from "@/lib/query-keys";
 import {
   bulkCreateStudentsAction,
   validateStudentsAction,
@@ -70,12 +71,14 @@ function StudentEditForm({
   categories,
   onSave,
   onCancel,
+  isBasic,
 }: {
   data: StudentData;
   groups: any[];
   categories: any[];
   onSave: (updated: StudentData) => void;
   onCancel: () => void;
+  isBasic?: boolean;
 }) {
   const form = useForm<StudentFormValues>({
     resolver: zodResolver(StudentSchema),
@@ -127,34 +130,36 @@ function StudentEditForm({
           )}
         />
 
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input {...field} placeholder="Optional" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="phone"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Phone</FormLabel>
-                <FormControl>
-                  <Input {...field} placeholder="Optional" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        {!isBasic && (
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Optional" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Optional" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <FormField
@@ -296,6 +301,8 @@ export function BulkUploadStudentsModal({
   festivalId,
   trigger,
 }: BulkUploadStudentsModalProps) {
+  const festivalContext = useFestival();
+  const isBasicTier = festivalContext.tier === "BASIC";
   const queryClient = useQueryClient();
 
   const { groups, isLoading: loadingGroups } = useGroups(festivalId);
@@ -465,7 +472,9 @@ export function BulkUploadStudentsModal({
     const result = await bulkCreateStudentsAction(festivalId, studentsToCreate);
 
     if (result.successCount > 0) {
-      queryClient.invalidateQueries({ queryKey: queryKeys.students.list(festivalId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.students.list(festivalId),
+      });
     }
 
     const success = result.errors.length === 0;
@@ -491,8 +500,7 @@ export function BulkUploadStudentsModal({
         "Group",
         "Category",
         "Gender",
-        "Email",
-        "Phone",
+        ...(isBasicTier ? [] : ["Email", "Phone"]),
         "Age",
         "Class/Standard",
       ]}
@@ -502,8 +510,7 @@ export function BulkUploadStudentsModal({
           "(Group Name)",
           "(Category Name)",
           "(Male/Female/Other)",
-          "(Email - Optional)",
-          "(Phone - Optional)",
+          ...(isBasicTier ? [] : ["(Email - Optional)", "(Phone - Optional)"]),
           "(Age - Optional)",
           "(Class/Standard - Optional)",
         ],
@@ -516,6 +523,7 @@ export function BulkUploadStudentsModal({
           {...props}
           groups={groups}
           categories={categories}
+          isBasic={isBasicTier}
         />
       )}
       columns={[
@@ -525,9 +533,11 @@ export function BulkUploadStudentsModal({
           cell: (item) => (
             <div className="flex flex-col">
               <span className="font-semibold text-sm">{item.name}</span>
-              <span className="text-[11px] text-muted-foreground">
-                {item.email}
-              </span>
+              {!isBasicTier && (
+                <span className="text-[11px] text-muted-foreground">
+                  {item.email}
+                </span>
+              )}
             </div>
           ),
         },

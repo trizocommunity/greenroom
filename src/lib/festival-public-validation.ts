@@ -19,7 +19,11 @@ export interface ValidationInput {
   /** For non-BASIC: number of gallery images (min 4 required). */
   galleryImageCount?: number;
   /** For non-BASIC: list of news posts; each must have title, content, image. Min 1 required. */
-  newsPosts?: Array<{ title?: string | null; content?: string | null; imageUrl?: string | null }>;
+  newsPosts?: Array<{
+    title?: string | null;
+    content?: string | null;
+    imageUrl?: string | null;
+  }>;
 }
 
 export interface ValidationResult {
@@ -27,30 +31,47 @@ export interface ValidationResult {
   errors: string[];
 }
 
-function basicDetailsComplete(name: string | null, description: string | null): boolean {
-  return typeof name === "string" && name.trim().length > 0 &&
-    typeof description === "string" && description.trim().length > 0;
+function basicDetailsComplete(
+  name: string | null,
+  description: string | null,
+): boolean {
+  return (
+    typeof name === "string" &&
+    name.trim().length > 0 &&
+    typeof description === "string" &&
+    description.trim().length > 0
+  );
 }
 
 function orgDetailsComplete(input: ValidationInput): boolean {
-  const hasOrgName = typeof input.orgName === "string" && input.orgName.trim().length > 0;
-  const hasOrgDescription = typeof input.orgDescription === "string" && input.orgDescription.trim().length > 0;
+  const hasOrgName =
+    typeof input.orgName === "string" && input.orgName.trim().length > 0;
+  const hasOrgDescription =
+    typeof input.orgDescription === "string" &&
+    input.orgDescription.trim().length > 0;
   return hasOrgName && hasOrgDescription;
 }
 
-function newsPostComplete(
-  post: { title?: string | null; content?: string | null; imageUrl?: string | null },
-): boolean {
-  const hasTitle = typeof post.title === "string" && post.title.trim().length > 0;
-  const hasContent = typeof post.content === "string" && post.content.trim().length > 0;
-  const hasImage = typeof post.imageUrl === "string" && post.imageUrl.trim().length > 0;
+function newsPostComplete(post: {
+  title?: string | null;
+  content?: string | null;
+  imageUrl?: string | null;
+}): boolean {
+  const hasTitle =
+    typeof post.title === "string" && post.title.trim().length > 0;
+  const hasContent =
+    typeof post.content === "string" && post.content.trim().length > 0;
+  const hasImage =
+    typeof post.imageUrl === "string" && post.imageUrl.trim().length > 0;
   return hasTitle && hasContent && hasImage;
 }
 
 /**
  * Returns whether the festival can enable the public site and any error messages.
  */
-export function validatePublicSiteRequirements(input: ValidationInput): ValidationResult {
+export function validatePublicSiteRequirements(
+  input: ValidationInput,
+): ValidationResult {
   const errors: string[] = [];
   const tier = getResolvedTier(input.tier);
   const isBasic = tier === "BASIC";
@@ -62,7 +83,9 @@ export function validatePublicSiteRequirements(input: ValidationInput): Validati
 
   // All plans: organization details required to enable (no enable without org info)
   if (!orgDetailsComplete(input)) {
-    errors.push("Organization name and organization description are required to enable Festival Live.");
+    errors.push(
+      "Organization name and organization description are required to enable Festival Live.",
+    );
   }
 
   if (isBasic) {
@@ -82,7 +105,9 @@ export function validatePublicSiteRequirements(input: ValidationInput): Validati
   const posts = input.newsPosts ?? [];
   const completePosts = posts.filter(newsPostComplete);
   if (completePosts.length < 1) {
-    errors.push("At least 1 news post is required; it must have title, description, and image.");
+    errors.push(
+      "At least 1 news post is required; it must have title, description, and image.",
+    );
   }
 
   return {

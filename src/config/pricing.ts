@@ -108,7 +108,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       students: 250,
       programmes: 100,
       events: 10,
-      stages: 2,
+      stages: 10,
       storageMB: 512, // 0.5 GB
       categories: 5,
     },
@@ -173,8 +173,8 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       // Advanced Features
       apiAccess: false,
       webhooks: false,
-      liveScoreboard: false,
-      liveResults: false,
+      liveScoreboard: true,
+      liveResults: true,
       multiFestivalManagement: false,
 
       // Settings — BASIC has no settings page (sidebar/route already gate on this)

@@ -1,10 +1,13 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import QRCode from "qrcode";
 import { Download, FileDown, Loader2, Search, Share2, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import QRCode from "qrcode";
+import { useCallback, useState } from "react";
+import { toast } from "sonner";
+import { QrCodeDisplay } from "@/components/common/QrCodeDisplay";
+import { QrCodeWithActions } from "@/components/common/QrCodeWithActions";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Dialog,
@@ -28,13 +31,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { QrCodeDisplay } from "@/components/common/QrCodeDisplay";
 import { useCategories } from "@/hooks/useCategories";
 import { useGroups } from "@/hooks/useGroups";
 import type { StudentsListItem } from "@/hooks/useStudents";
 import { useStudents } from "@/hooks/useStudents";
-import { getStudentProfileUrl } from "@/lib/student-profile-url";
-import { toast } from "sonner";
+import {
+  getQrCodeContent,
+  getStudentProfileUrl,
+} from "@/lib/student-profile-url";
 import { exportStudentsQrPdfAction } from "@/server/actions/qr.actions";
 
 interface QrCodesClientProps {
@@ -50,12 +54,13 @@ const POSTER_QR_SIZE = 360;
 const BOTTOM_BAR_HEIGHT = 50;
 
 async function drawPosterJpeg(
-  studentProfileUrl: string,
+  chestNumber: string,
   festivalName: string,
-  chestNumber: string | null | undefined,
+  studentName: string | null | undefined,
 ): Promise<Blob> {
   const qrCanvas = document.createElement("canvas");
-  await QRCode.toCanvas(qrCanvas, studentProfileUrl, {
+  // Use chest number for QR code encoding (not profile URL)
+  await QRCode.toCanvas(qrCanvas, chestNumber, {
     width: POSTER_QR_SIZE,
     margin: 2,
     color: { dark: "#000000", light: "#ffffff" },
@@ -85,7 +90,10 @@ async function drawPosterJpeg(
   const badgePadding = 12;
   const centerX = POSTER_WIDTH / 2;
   const centerY = barY + BOTTOM_BAR_HEIGHT / 2;
-  const labels = [festivalName.slice(0, 28), `Chest Number: ${chestNumber ?? "—"}`];
+  const labels = [
+    festivalName.slice(0, 28),
+    `Chest Number: ${chestNumber ?? "—"}`,
+  ];
   const gap = 10;
   const totalWidth = labels.reduce(
     (acc, l) => acc + ctx.measureText(l).width + badgePadding * 2 + gap,
@@ -97,7 +105,14 @@ async function drawPosterJpeg(
     const w = ctx.measureText(label).width + badgePadding * 2;
     const badgeX = x - badgePadding;
     ctx.fillStyle = "#0f172a";
-    roundRect(ctx, badgeX, centerY - badgeRadius, w, badgeRadius * 2, badgeRadius);
+    roundRect(
+      ctx,
+      badgeX,
+      centerY - badgeRadius,
+      w,
+      badgeRadius * 2,
+      badgeRadius,
+    );
     ctx.fill();
     ctx.fillStyle = "#ffffff";
     ctx.fillText(label, x + ctx.measureText(label).width / 2, centerY);
@@ -134,7 +149,6 @@ function roundRect(
   ctx.closePath();
 }
 
-
 type StudentRow = StudentsListItem;
 
 export function QrCodesClient({
@@ -150,14 +164,22 @@ export function QrCodesClient({
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [selectedGroup, setSelectedGroup] = useState<string>("ALL");
   const [pdfLoading, setPdfLoading] = useState(false);
-  const [viewStudent, setViewStudent] = useState<{ student: StudentRow; url: string } | null>(null);
+  const [viewStudent, setViewStudent] = useState<{
+    student: StudentRow;
+    url: string;
+  } | null>(null);
 
   const filteredStudents = students.filter((s: StudentRow) => {
     if (selectedGroup !== "ALL") {
-      if (s.groupId !== selectedGroup && s.group?.id !== selectedGroup) return false;
+      if (s.groupId !== selectedGroup && s.group?.id !== selectedGroup)
+        return false;
     }
     if (selectedCategory !== "ALL") {
-      if (s.categoryId !== selectedCategory && s.category?.id !== selectedCategory) return false;
+      if (
+        s.categoryId !== selectedCategory &&
+        s.category?.id !== selectedCategory
+      )
+        return false;
     }
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
@@ -181,12 +203,13 @@ export function QrCodesClient({
 
   const getPosterBlob = useCallback(
     async (student: StudentRow) => {
-      const url = getStudentProfileUrl(baseUrl, festivalSlug, student);
-      const blob = await drawPosterJpeg(url, festivalName, student.chestNumber);
+      // Use chest number for QR code
+      const qrContent = getQrCodeContent(student);
+      const blob = await drawPosterJpeg(qrContent, festivalName, student.name);
       const filename = `qr-${(student.chestNumber || student.name || student.id).replace(/[^a-zA-Z0-9-_]/g, "_")}.jpg`;
       return { blob, filename };
     },
-    [baseUrl, festivalSlug, festivalName],
+    [festivalName],
   );
 
   const handleDownloadJpeg = useCallback(
@@ -208,8 +231,9 @@ export function QrCodesClient({
 
   const handleShare = useCallback(
     async (student: StudentRow) => {
-      const studentProfileUrl = getStudentProfileUrl(baseUrl, festivalSlug, student);
-      const title = `${student.name ?? "Student"} – QR Code`;
+      // Use chest number for sharing
+      const qrContent = getQrCodeContent(student);
+      const title = `${student.name ?? "Student"} – Chest Number QR`;
       try {
         if (typeof navigator !== "undefined" && navigator.share) {
           const { blob, filename } = await getPosterBlob(student);
@@ -219,24 +243,26 @@ export function QrCodesClient({
             toast.success("QR poster shared");
             return;
           }
-          await navigator.share({ title, url: studentProfileUrl });
-          toast.success("Link shared");
+          // Share chest number as text
+          await navigator.share({ title, text: `Chest number: ${qrContent}` });
+          toast.success("Chest number shared");
         } else {
-          await navigator.clipboard.writeText(studentProfileUrl);
-          toast.success("Link copied to clipboard");
+          // Copy chest number to clipboard
+          await navigator.clipboard.writeText(qrContent);
+          toast.success("Chest number copied to clipboard");
         }
       } catch (e) {
         if ((e as Error).name !== "AbortError") {
           try {
-            await navigator.clipboard.writeText(studentProfileUrl);
-            toast.success("Link copied to clipboard");
+            await navigator.clipboard.writeText(qrContent);
+            toast.success("Chest number copied to clipboard");
           } catch {
             toast.error("Share failed");
           }
         }
       }
     },
-    [baseUrl, festivalSlug, getPosterBlob],
+    [getPosterBlob],
   );
 
   const handleDownloadAllPdf = useCallback(async () => {
@@ -287,7 +313,10 @@ export function QrCodesClient({
                 className="h-8 pl-8 text-xs"
               />
             </div>
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <Select
+              value={selectedCategory}
+              onValueChange={setSelectedCategory}
+            >
               <SelectTrigger className="h-8 w-[120px] text-xs">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
@@ -355,20 +384,22 @@ export function QrCodesClient({
                   <TableHead>Chest Number</TableHead>
                   <TableHead>Group</TableHead>
                   <TableHead>Category</TableHead>
-                  <TableHead className="text-right w-[160px]">Actions</TableHead>
+                  <TableHead className="text-right w-[160px]">
+                    Actions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredStudents.map((student: StudentRow) => {
-                  const studentProfileUrl = getStudentProfileUrl(baseUrl, festivalSlug, student);
+                  const qrContent = getQrCodeContent(student);
                   return (
                     <TableRow key={student.id}>
                       <TableCell className="p-2">
                         <QrCodeDisplay
-                          url={studentProfileUrl}
+                          url={qrContent}
                           size={56}
                           onQrClick={() =>
-                            setViewStudent({ student, url: studentProfileUrl })
+                            setViewStudent({ student, url: qrContent })
                           }
                         />
                       </TableCell>
@@ -421,20 +452,30 @@ export function QrCodesClient({
         </CardContent>
       </Card>
 
-      <Dialog open={!!viewStudent} onOpenChange={(open) => !open && setViewStudent(null)}>
-        <DialogContent className="sm:max-w-sm">
+      <Dialog
+        open={!!viewStudent}
+        onOpenChange={(open) => !open && setViewStudent(null)}
+      >
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>View QR Code</DialogTitle>
+            <DialogTitle>Chest Number QR Code</DialogTitle>
           </DialogHeader>
           {viewStudent && (
             <div className="flex flex-col items-center gap-4">
-              <div className="rounded-lg border bg-white p-3">
-                <QrCodeDisplay url={viewStudent.url} size={200} />
-              </div>
+              <QrCodeWithActions
+                url={getQrCodeContent(viewStudent.student)}
+                qrContent={getQrCodeContent(viewStudent.student)}
+                size={200}
+                fileName={`${viewStudent.student.name.replace(/\s+/g, "-").toLowerCase()}-chest-${viewStudent.student.chestNumber || "unknown"}.png`}
+                shareMessage={`Chest number: ${getQrCodeContent(viewStudent.student)}`}
+              />
               <div className="text-center space-y-1">
                 <p className="font-medium">{viewStudent.student.name}</p>
                 <p className="text-sm text-muted-foreground font-mono">
                   Chest Number: {viewStudent.student.chestNumber ?? "—"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  This QR code contains the chest number for programme reporting
                 </p>
               </div>
             </div>

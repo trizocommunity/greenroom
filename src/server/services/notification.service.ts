@@ -1,6 +1,15 @@
 import type { Prisma, ProgrammeNotificationEventType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { sendPlainFestivalEmail } from "@/lib/email";
+import { realtimeConfig } from "@/lib/realtime-config";
+import { dispatchRealtimeOutboxBatch } from "@/server/realtime/dispatcher.worker";
+import {
+  createEventId,
+  createIdempotencyKey,
+  type RealtimeEventName,
+} from "@/server/realtime/events";
+import { enqueueRealtimeOutboxEvent } from "@/server/realtime/outbox.service";
+import { RealtimeRoom } from "@/server/realtime/rooms";
 import { RealtimeNotificationBus } from "@/server/services/realtime-notification-bus.service";
 
 type DeliveryChannel = "IN_APP" | "REALTIME" | "EMAIL";
@@ -30,8 +39,38 @@ type NotificationInput = {
 };
 
 type ResolvedRecipients = {
-  studentRecipients: Array<{ studentId: string; email: string | null; isTeamLeader: boolean }>;
+  studentRecipients: Array<{
+    studentId: string;
+    email: string | null;
+    isTeamLeader: boolean;
+  }>;
 };
+
+export function notificationEventSequenceFromId(eventId: string): number {
+  const compact = eventId.replace(/-/g, "");
+  const suffix = compact.slice(-8);
+  const parsed = Number.parseInt(suffix, 16);
+  return Number.isFinite(parsed) ? parsed : Date.now();
+}
+
+function mapNotificationEventToRealtimeEventName(
+  eventType: ProgrammeNotificationEventType,
+): RealtimeEventName {
+  switch (eventType) {
+    case "PROGRAMME_STATUS_CHANGED":
+      return "programme.status_changed";
+    case "REPORTING_PARTICIPANT_MARKED":
+      return "reporting.participant_marked";
+    case "REPORTING_CLOSED":
+    case "REPORTING_RESET":
+    case "REPORTING_STARTED":
+      return "reporting.updated";
+    case "CODE_LETTER_ISSUED":
+      return "notification.created";
+    default:
+      return "notification.created";
+  }
+}
 
 async function resolveRecipients(
   festivalId: string,
@@ -84,8 +123,8 @@ export const NotificationService = {
     const recipients = await resolveRecipients(input.festivalId, input.targets);
     if (!recipients.studentRecipients.length) return { created: 0 };
 
-    const notificationRows: Prisma.ProgrammeNotificationCreateManyInput[] = recipients.studentRecipients.map(
-      (recipient) => ({
+    const notificationRows: Prisma.ProgrammeNotificationCreateManyInput[] =
+      recipients.studentRecipients.map((recipient) => ({
         festivalId: input.festivalId,
         eventType: input.eventType,
         recipientStudentId: recipient.studentId,
@@ -94,8 +133,7 @@ export const NotificationService = {
         payload: (input.context.payload ?? {}) as Prisma.InputJsonValue,
         channels: input.channels as unknown as Prisma.InputJsonValue,
         isRead: false,
-      }),
-    );
+      }));
 
     if (input.channels.includes("IN_APP")) {
       await prisma.programmeNotification.createMany({
@@ -106,13 +144,53 @@ export const NotificationService = {
     if (input.channels.includes("REALTIME")) {
       const createdAt = new Date().toISOString();
       for (const recipient of recipients.studentRecipients) {
+        const eventName = mapNotificationEventToRealtimeEventName(
+          input.eventType,
+        );
+        const eventId = createEventId();
+        const roomKeys = [
+          RealtimeRoom.festivalStudent(input.festivalId, recipient.studentId),
+        ];
+        if (realtimeConfig.enableDualPublish) {
+          await enqueueRealtimeOutboxEvent({
+            envelope: {
+              eventId,
+              eventName,
+              eventVersion: 1,
+              occurredAt: createdAt,
+              festivalId: input.festivalId,
+              entityType: "programmeNotification",
+              entityId: recipient.studentId,
+              idempotencyKey: createIdempotencyKey({
+                eventName,
+                entityId: recipient.studentId,
+                sequence: notificationEventSequenceFromId(eventId),
+              }),
+              payload: {
+                ...input.context.payload,
+                title: input.context.title,
+                body: input.context.body,
+                notificationType: input.eventType,
+              },
+            },
+            roomKeys,
+          });
+        }
         RealtimeNotificationBus.publish({
+          eventId,
           festivalId: input.festivalId,
           recipientStudentId: recipient.studentId,
           type: input.eventType,
           payload: input.context.payload ?? {},
           createdAt,
+          rooms: roomKeys,
         });
+      }
+      if (
+        realtimeConfig.enableDualPublish &&
+        realtimeConfig.outboxDispatcherEnabled
+      ) {
+        void dispatchRealtimeOutboxBatch();
       }
     }
 

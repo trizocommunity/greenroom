@@ -3,11 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
-export function TeamLeaderLogoutButton({
-  redirectTo,
-}: {
-  redirectTo: string;
-}) {
+export function TeamLeaderLogoutButton({ redirectTo }: { redirectTo: string }) {
   const router = useRouter();
   return (
     <Button

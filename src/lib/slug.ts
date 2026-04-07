@@ -14,11 +14,22 @@ export function slugify(text: string): string {
 
 /**
  * Generate a unique profile slug for a student in a festival.
- * Format: slugify(name)-shortId, or with -2, -3 suffix if duplicate.
+ * Format: slugify(name)-chestNumber, fallback to slugify(name)-shortId if missing.
  */
-export function generateProfileSlug(name: string, id: string): string {
+export function generateProfileSlug(
+  name: string,
+  id: string,
+  chestNumber?: string | null,
+): string {
   const base = slugify(name);
-  const shortId = id.replace(/-/g, "").slice(0, 8);
-  if (!base) return `s-${shortId}`;
-  return `${base}-${shortId}`;
+  let tail = "";
+  if (chestNumber) {
+    tail = slugify(chestNumber);
+  } else {
+    // We expect uuid, but just in case, guard length to prevent errors.
+    tail = id.replace(/-/g, "").slice(0, 8);
+  }
+
+  if (!base) return `s-${tail}`;
+  return `${base}-${tail}`;
 }

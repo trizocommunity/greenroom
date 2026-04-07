@@ -2,9 +2,10 @@
 
 import { format } from "date-fns";
 import { Eye, Loader2, Plus, Search, Trash2, Users, X } from "lucide-react";
-import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
+import { DeadlinesCard } from "@/components/festival/pre-works/DeadlinesCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -25,11 +26,10 @@ import {
 } from "@/components/ui/select";
 import { useAssignments } from "@/hooks/useAssignments";
 import { useCategories } from "@/hooks/useCategories";
-import { useGroups } from "@/hooks/useGroups";
-import { AssignmentModal } from "./AssignmentModal";
-import { DeadlinesCard } from "@/components/festival/pre-works/DeadlinesCard";
 import { useDeadlineLock } from "@/hooks/useDeadlineLock";
 import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
+import { useGroups } from "@/hooks/useGroups";
+import { AssignmentModal } from "./AssignmentModal";
 
 type IndividualAssignmentRow = {
   kind: "individual";
@@ -87,13 +87,17 @@ function ProgrammeCard({
     >
       <div className="flex items-start gap-2 px-3 py-2.5 bg-muted/25 border-b border-border/50">
         <div className="min-w-0 flex-1">
-          <span className="block font-semibold truncate text-sm">{programmeName}</span>
+          <span className="block font-semibold truncate text-sm">
+            {programmeName}
+          </span>
           {categoryName ? (
             <span className="block text-[11px] text-muted-foreground truncate mt-0.5">
               {categoryName}
             </span>
           ) : (
-            <span className="block text-[11px] text-muted-foreground mt-0.5">Uncategorized</span>
+            <span className="block text-[11px] text-muted-foreground mt-0.5">
+              Uncategorized
+            </span>
           )}
         </div>
         <Badge
@@ -107,7 +111,9 @@ function ProgrammeCard({
         <div className="grid grid-cols-2 gap-2 text-xs">
           <div className="rounded-md border bg-muted/20 px-2.5 py-2">
             <p className="text-muted-foreground">Attendees</p>
-            <p className="font-semibold text-foreground mt-0.5">{attendeesCount}</p>
+            <p className="font-semibold text-foreground mt-0.5">
+              {attendeesCount}
+            </p>
           </div>
           <div className="rounded-md border bg-muted/20 px-2.5 py-2">
             <p className="text-muted-foreground">
@@ -120,7 +126,9 @@ function ProgrammeCard({
         </div>
         <div className="flex items-center justify-between gap-2 text-xs mt-3 px-0.5">
           <span className="text-muted-foreground">Last assigned</span>
-          <span className="font-medium text-foreground">{assignedAt ?? "—"}</span>
+          <span className="font-medium text-foreground">
+            {assignedAt ?? "—"}
+          </span>
         </div>
       </div>
     </button>
@@ -234,8 +242,7 @@ export function AssignmentsClient({
         if (!gid) continue;
         const tn = a.teamNumber ?? 1;
         const key = `${a.programmeId}-${gid}-${tn}`;
-        const groupName =
-          a.group?.name || a.student?.group?.name || "Unknown";
+        const groupName = a.group?.name || a.student?.group?.name || "Unknown";
         if (!teamMap.has(key)) {
           teamMap.set(key, {
             programme: a.programme,
@@ -250,7 +257,10 @@ export function AssignmentsClient({
         const bucket = teamMap.get(key)!;
         bucket.assignments.push(a);
         const dt = a.assignedAt ? new Date(a.assignedAt) : null;
-        if (dt && (!bucket.latestAssignedAtDate || dt > bucket.latestAssignedAtDate)) {
+        if (
+          dt &&
+          (!bucket.latestAssignedAtDate || dt > bucket.latestAssignedAtDate)
+        ) {
           bucket.latestAssignedAtDate = dt;
         }
       } else {
@@ -281,7 +291,8 @@ export function AssignmentsClient({
   const programmeCards = useMemo<ProgrammeCardRow[]>(() => {
     const map = new Map<string, ProgrammeCardRow>();
     for (const row of tableRows) {
-      const programme = row.kind === "individual" ? row.assignment.programme : row.programme;
+      const programme =
+        row.kind === "individual" ? row.assignment.programme : row.programme;
       if (!programme?.id) continue;
       if (!map.has(programme.id)) {
         map.set(programme.id, {
@@ -290,7 +301,8 @@ export function AssignmentsClient({
           programmeType: programme.type,
           categoryName:
             (row.kind === "individual"
-              ? row.assignment.category?.name || row.assignment.programme?.category?.name
+              ? row.assignment.category?.name ||
+                row.assignment.programme?.category?.name
               : row.category?.name || row.programme?.category?.name) ?? null,
           attendeesCount: 0,
           teamCount: 0,
@@ -303,15 +315,23 @@ export function AssignmentsClient({
       card.rows.push(row);
       if (row.kind === "individual") {
         card.attendeesCount += 1;
-        const dt = row.assignment.assignedAt ? new Date(row.assignment.assignedAt) : null;
-        if (dt && (!card.latestAssignedAtDate || dt > card.latestAssignedAtDate)) {
+        const dt = row.assignment.assignedAt
+          ? new Date(row.assignment.assignedAt)
+          : null;
+        if (
+          dt &&
+          (!card.latestAssignedAtDate || dt > card.latestAssignedAtDate)
+        ) {
           card.latestAssignedAtDate = dt;
         }
       } else {
         card.attendeesCount += row.assignments.length;
         card.teamCount += 1;
         const dt = row.latestAssignedAtDate;
-        if (dt && (!card.latestAssignedAtDate || dt > card.latestAssignedAtDate)) {
+        if (
+          dt &&
+          (!card.latestAssignedAtDate || dt > card.latestAssignedAtDate)
+        ) {
           card.latestAssignedAtDate = dt;
         }
       }
@@ -319,7 +339,9 @@ export function AssignmentsClient({
 
     const cards = Array.from(map.values());
     for (const c of cards) {
-      c.assignedAt = c.latestAssignedAtDate ? format(c.latestAssignedAtDate, "PP") : null;
+      c.assignedAt = c.latestAssignedAtDate
+        ? format(c.latestAssignedAtDate, "PP")
+        : null;
     }
     cards.sort((a, b) => {
       const at = a.latestAssignedAtDate?.getTime() ?? 0;
@@ -385,15 +407,15 @@ export function AssignmentsClient({
             </p>
             <p className="text-sm text-muted-foreground">
               <strong>Team programmes:</strong> Assign teams. Each team can have
-              multiple members; one result per team. Use &quot;New assignment&quot;
-              to pick a programme, then add students to the queue to form
-              teams.
+              multiple members; one result per team. Use &quot;New
+              assignment&quot; to pick a programme, then add students to the
+              queue to form teams.
             </p>
             <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-left">
               <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                <strong>Note:</strong> Creating new assignments is only available
-                on laptop or large screens. On smaller devices you can view and
-                remove assignments.
+                <strong>Note:</strong> Creating new assignments is only
+                available on laptop or large screens. On smaller devices you can
+                view and remove assignments.
               </p>
             </div>
           </HowItWorksButton>
@@ -413,6 +435,7 @@ export function AssignmentsClient({
         </div>
       </div>
 
+      {/* Filters Card */}
       <Card className="overflow-hidden">
         <CardHeader className="p-3 sm:p-4 border-b bg-muted/5">
           <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
@@ -480,34 +503,40 @@ export function AssignmentsClient({
             </span>
           </div>
         </CardHeader>
-        <CardContent className="p-3 sm:p-4">
-          {programmeCards.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-14 px-6 text-center text-muted-foreground rounded-xl border border-dashed bg-muted/20">
-              <Users className="h-10 w-10 text-muted-foreground/50" />
-              <p className="font-medium">No assignments found</p>
-              <p className="text-sm">Try changing filters or add a new assignment.</p>
-            </div>
-          ) : (
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {programmeCards.map((card) => (
-                <ProgrammeCard
-                  key={card.programmeId}
-                  programmeName={card.programmeName}
-                  programmeType={card.programmeType}
-                  categoryName={card.categoryName}
-                  attendeesCount={card.attendeesCount}
-                  teamCount={card.teamCount}
-                  assignedAt={card.assignedAt}
-                  onViewDetails={() => {
-                    setDetailsSearch("");
-                    setSelectedProgrammeCard(card);
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </CardContent>
       </Card>
+
+      {/* Programme Cards - Outside Card for better visibility */}
+      {programmeCards.length === 0 ? (
+        <Card className="rounded-xl border border-dashed bg-muted/20">
+          <CardContent className="py-16 text-center">
+            <Users className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+            <p className="font-medium text-muted-foreground">
+              No assignments found
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Try changing filters or add a new assignment.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {programmeCards.map((card) => (
+            <ProgrammeCard
+              key={card.programmeId}
+              programmeName={card.programmeName}
+              programmeType={card.programmeType}
+              categoryName={card.categoryName}
+              attendeesCount={card.attendeesCount}
+              teamCount={card.teamCount}
+              assignedAt={card.assignedAt}
+              onViewDetails={() => {
+                setDetailsSearch("");
+                setSelectedProgrammeCard(card);
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Controlled delete dialogs */}
       <DeleteDialog
@@ -564,7 +593,9 @@ export function AssignmentsClient({
               <div className="grid gap-2 sm:grid-cols-2 text-sm">
                 <div>
                   <span className="text-muted-foreground">Programme:</span>{" "}
-                  <span className="font-medium">{selectedProgrammeCard.programmeName}</span>
+                  <span className="font-medium">
+                    {selectedProgrammeCard.programmeName}
+                  </span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Type:</span>{" "}
@@ -592,12 +623,16 @@ export function AssignmentsClient({
               {selectedProgrammeCard.programmeType === "INDIVIDUAL" ? (
                 <div className="space-y-2 max-h-80 overflow-auto pr-1">
                   {selectedProgrammeCard.rows
-                    .filter((r): r is IndividualAssignmentRow => r.kind === "individual")
+                    .filter(
+                      (r): r is IndividualAssignmentRow =>
+                        r.kind === "individual",
+                    )
                     .filter((r) => {
                       const q = detailsSearch.trim().toLowerCase();
                       if (!q) return true;
                       const s = r.assignment.student;
-                      const g = r.assignment.group || r.assignment.student?.group;
+                      const g =
+                        r.assignment.group || r.assignment.student?.group;
                       return (
                         (s?.name ?? "").toLowerCase().includes(q) ||
                         (s?.chestNumber ?? "").toLowerCase().includes(q) ||
@@ -661,7 +696,10 @@ export function AssignmentsClient({
                       });
                     })
                     .map((row) => (
-                      <div key={`${row.groupId}:${row.teamNumber}`} className="rounded-md border p-3">
+                      <div
+                        key={`${row.groupId}:${row.teamNumber}`}
+                        className="rounded-md border p-3"
+                      >
                         <div className="flex items-center justify-between gap-2 mb-2">
                           <div className="text-sm font-medium">
                             {row.groupName} - Team {row.teamNumber}
@@ -671,7 +709,9 @@ export function AssignmentsClient({
                               variant="ghost"
                               size="sm"
                               className="text-destructive hover:text-destructive"
-                              onClick={() => setDeleteTarget({ kind: "team", row })}
+                              onClick={() =>
+                                setDeleteTarget({ kind: "team", row })
+                              }
                             >
                               <Trash2 className="h-3.5 w-3.5 mr-1" />
                               Remove team
@@ -679,7 +719,8 @@ export function AssignmentsClient({
                           ) : null}
                         </div>
                         <div className="text-xs text-muted-foreground mb-2">
-                          Attendees: {row.assignments.length} · Assigned at: {row.assignedAt ?? "—"}
+                          Attendees: {row.assignments.length} · Assigned at:{" "}
+                          {row.assignedAt ?? "—"}
                         </div>
                         <div className="space-y-1">
                           {row.assignments.map((a: any) => (
@@ -699,7 +740,6 @@ export function AssignmentsClient({
           ) : null}
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }

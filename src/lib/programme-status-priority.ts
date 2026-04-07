@@ -4,7 +4,9 @@ import type { ProgrammeStatus } from "@prisma/client";
  * Priority order for showing programme "live status" in student UI.
  * Lower rank = shown as more "current".
  */
-export const PROGRAMME_STATUS_PRIORITY_RANK: Partial<Record<ProgrammeStatus, number>> = {
+export const PROGRAMME_STATUS_PRIORITY_RANK: Partial<
+  Record<ProgrammeStatus, number>
+> = {
   // Active / event day first
   REPORTING: 0,
   STARTED: 1,
@@ -19,14 +21,22 @@ export const PROGRAMME_STATUS_PRIORITY_RANK: Partial<Record<ProgrammeStatus, num
   READY: 7,
 };
 
-export function getProgrammeStatusPriorityRank(status: ProgrammeStatus): number {
+export function getProgrammeStatusPriorityRank(
+  status: ProgrammeStatus,
+): number {
   return PROGRAMME_STATUS_PRIORITY_RANK[status] ?? 999;
 }
 
-export function getTopPriorityProgrammeStatus(statuses: ProgrammeStatus[]): ProgrammeStatus | null {
+export function getTopPriorityProgrammeStatus(
+  statuses: ProgrammeStatus[],
+): ProgrammeStatus | null {
   if (!statuses.length) return null;
-  return statuses
-    .filter(Boolean)
-    .sort((a, b) => getProgrammeStatusPriorityRank(a) - getProgrammeStatusPriorityRank(b))[0] ?? null;
+  return (
+    statuses
+      .filter(Boolean)
+      .sort(
+        (a, b) =>
+          getProgrammeStatusPriorityRank(a) - getProgrammeStatusPriorityRank(b),
+      )[0] ?? null
+  );
 }
-

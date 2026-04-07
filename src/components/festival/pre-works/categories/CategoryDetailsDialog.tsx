@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { Eye, Loader2, Users } from "lucide-react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,7 +52,8 @@ export function CategoryDetailsDialog({
   const isControlled = controlledOpen !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
   const open = isControlled ? controlledOpen : internalOpen;
-  const setOpen = isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
+  const setOpen =
+    isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -68,7 +69,9 @@ export function CategoryDetailsDialog({
       <DialogContent className="w-[calc(100%-2rem)] max-w-3xl max-h-[85vh] flex flex-col overflow-hidden p-4 sm:p-6">
         <DialogHeader className="pr-8 sm:pr-0 text-left shrink-0">
           <div className="flex flex-wrap items-center gap-2">
-            <DialogTitle className="text-lg sm:text-xl text-left">{category.name}</DialogTitle>
+            <DialogTitle className="text-lg sm:text-xl text-left">
+              {category.name}
+            </DialogTitle>
             <Badge
               variant={category.type === "GENERAL" ? "default" : "outline"}
             >
@@ -95,70 +98,76 @@ export function CategoryDetailsDialog({
 
           <div className="flex-1 min-h-0 border rounded-md overflow-y-auto">
             {isLoading ? (
-                <div className="flex items-center justify-center p-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <>
-                  {/* Mobile: list of cards */}
-                  <div className="block md:hidden divide-y text-left">
-                    {filteredStudents.length === 0 ? (
-                      <div className="py-8 text-muted-foreground text-sm text-left">
-                        No students found.
+              <div className="flex items-center justify-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <>
+                {/* Mobile: list of cards */}
+                <div className="block md:hidden divide-y text-left">
+                  {filteredStudents.length === 0 ? (
+                    <div className="py-8 text-muted-foreground text-sm text-left">
+                      No students found.
+                    </div>
+                  ) : (
+                    filteredStudents.map((p: any) => (
+                      <div key={p.id} className="p-3 text-left">
+                        <p className="font-medium truncate">{p.name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 text-left">
+                          {p.group?.name || "—"}
+                          {category.type === "GENERAL" &&
+                            p.category?.name &&
+                            ` · ${p.category.name}`}
+                        </p>
                       </div>
-                    ) : (
-                      filteredStudents.map((p: any) => (
-                        <div key={p.id} className="p-3 text-left">
-                          <p className="font-medium truncate">{p.name}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5 text-left">
-                            {p.group?.name || "—"}
-                            {category.type === "GENERAL" && p.category?.name && ` · ${p.category.name}`}
-                          </p>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                  {/* Desktop: table */}
-                  <div className="hidden md:block">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="text-left">Name</TableHead>
-                          <TableHead className="text-left">Group</TableHead>
+                    ))
+                  )}
+                </div>
+                {/* Desktop: table */}
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-left">Name</TableHead>
+                        <TableHead className="text-left">Group</TableHead>
+                        {category.type === "GENERAL" && (
+                          <TableHead className="text-left">Category</TableHead>
+                        )}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredStudents.map((p: any) => (
+                        <TableRow key={p.id}>
+                          <TableCell className="font-medium text-left">
+                            {p.name}
+                          </TableCell>
+                          <TableCell className="text-left">
+                            {p.group?.name || "-"}
+                          </TableCell>
                           {category.type === "GENERAL" && (
-                            <TableHead className="text-left">Category</TableHead>
+                            <TableCell className="text-left">
+                              <Badge variant="secondary" className="text-xs">
+                                {p.category?.name}
+                              </Badge>
+                            </TableCell>
                           )}
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredStudents.map((p: any) => (
-                          <TableRow key={p.id}>
-                            <TableCell className="font-medium text-left">{p.name}</TableCell>
-                            <TableCell className="text-left">{p.group?.name || "-"}</TableCell>
-                            {category.type === "GENERAL" && (
-                              <TableCell className="text-left">
-                                <Badge variant="secondary" className="text-xs">
-                                  {p.category?.name}
-                                </Badge>
-                              </TableCell>
-                            )}
-                          </TableRow>
-                        ))}
-                        {filteredStudents.length === 0 && (
-                          <TableRow>
-                            <TableCell
-                              colSpan={category.type === "GENERAL" ? 4 : 3}
-                              className="h-24 text-muted-foreground text-left"
-                            >
-                              No students found.
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </>
-              )}
+                      ))}
+                      {filteredStudents.length === 0 && (
+                        <TableRow>
+                          <TableCell
+                            colSpan={category.type === "GENERAL" ? 4 : 3}
+                            className="h-24 text-muted-foreground text-left"
+                          >
+                            No students found.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </DialogContent>

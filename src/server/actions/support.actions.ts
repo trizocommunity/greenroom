@@ -112,7 +112,7 @@ export async function getUserTicketsAction() {
   return tickets.map((t) => ({
     ...t,
     senderRole: t.festivalId
-      ? senderRoles.get(`${t.festivalId}:${t.userId}`) ?? null
+      ? (senderRoles.get(`${t.festivalId}:${t.userId}`) ?? null)
       : null,
   }));
 }
@@ -337,7 +337,8 @@ export async function getAllTicketsAction() {
   // SEC-1 FIX: SUPER_ADMIN-only action.
   const session = await getSession();
   if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
-  if (session.role !== "SUPER_ADMIN") throw new AppError(ERROR_MESSAGES.FORBIDDEN);
+  if (session.role !== "SUPER_ADMIN")
+    throw new AppError(ERROR_MESSAGES.FORBIDDEN);
 
   const tickets = await prisma.supportTicket.findMany({
     include: {
@@ -383,7 +384,7 @@ export async function getAllTicketsAction() {
   return tickets.map((t) => ({
     ...t,
     senderRole: t.festivalId
-      ? senderRoles.get(`${t.festivalId}:${t.userId}`) ?? null
+      ? (senderRoles.get(`${t.festivalId}:${t.userId}`) ?? null)
       : null,
   }));
 }
@@ -395,7 +396,8 @@ export async function updateTicketStatusAction(
   // SEC-2 FIX: SUPER_ADMIN-only action.
   const session = await getSession();
   if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
-  if (session.role !== "SUPER_ADMIN") throw new AppError(ERROR_MESSAGES.FORBIDDEN);
+  if (session.role !== "SUPER_ADMIN")
+    throw new AppError(ERROR_MESSAGES.FORBIDDEN);
 
   try {
     const ticket = await prisma.supportTicket.update({

@@ -1,38 +1,41 @@
 "use client";
 
 import {
-  ImagePlus,
-  Loader2,
-  Trash2,
-  X,
+  CheckSquare,
   ChevronLeft,
   ChevronRight,
-  CheckSquare,
+  ImagePlus,
+  Loader2,
   Square,
+  Trash2,
   Upload,
+  X,
 } from "lucide-react";
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { Button } from "@/components/ui/button";
+import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { uploadImageToCloudinary, isCloudinaryConfigured } from "@/lib/cloudinary";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
+import {
+  isCloudinaryConfigured,
+  uploadImageToCloudinary,
+} from "@/lib/cloudinary";
+import { cn } from "@/lib/utils";
 import {
   addGalleryImagesAction,
   deleteGalleryImageAction,
   deleteGalleryImagesAction,
 } from "@/server/actions/gallery.actions";
-import { DeleteDialog } from "@/components/ui/delete-dialog";
-import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
-import { cn } from "@/lib/utils";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 
 type ImageRecord = { id: string; url: string; order: number };
 
@@ -54,7 +57,10 @@ export function GalleryClient({
     previewUrls: string[];
   } | null>(null);
   const [uploadModalUploading, setUploadModalUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+  const [uploadProgress, setUploadProgress] = useState({
+    current: 0,
+    total: 0,
+  });
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
@@ -103,7 +109,8 @@ export function GalleryClient({
   const removePendingFile = useCallback((index: number) => {
     setPendingUpload((prev) => {
       if (!prev || (prev.files?.length ?? 0) <= 1) {
-        if (prev?.previewUrls[index]) URL.revokeObjectURL(prev.previewUrls[index]);
+        if (prev?.previewUrls[index])
+          URL.revokeObjectURL(prev.previewUrls[index]);
         return (prev?.files?.length ?? 0) <= 1 ? null : prev;
       }
       if (prev.previewUrls[index]) URL.revokeObjectURL(prev.previewUrls[index]);
@@ -116,7 +123,9 @@ export function GalleryClient({
   const confirmUploadAll = useCallback(async () => {
     if (!pendingUpload?.files.length || isReadOnly) return;
     if (!isCloudinaryConfigured()) {
-      toast.error("Cloudinary is not configured. Set NEXT_PUBLIC_CLOUDINARY_* env.");
+      toast.error(
+        "Cloudinary is not configured. Set NEXT_PUBLIC_CLOUDINARY_* env.",
+      );
       return;
     }
     setUploadModalUploading(true);
@@ -168,7 +177,10 @@ export function GalleryClient({
           return next;
         });
         if (lightboxIndex !== null) {
-          const next = images.length <= 1 ? null : Math.min(lightboxIndex, images.length - 2);
+          const next =
+            images.length <= 1
+              ? null
+              : Math.min(lightboxIndex, images.length - 2);
           setLightboxIndex(next);
         }
         toast.success("Photo removed.");
@@ -244,8 +256,8 @@ export function GalleryClient({
           >
             <p className="text-sm text-muted-foreground">
               Upload images to show on your festival&apos;s public gallery. You
-              can upload multiple photos at once, reorder them, and remove single
-              or multiple images.
+              can upload multiple photos at once, reorder them, and remove
+              single or multiple images.
             </p>
             <p className="text-sm text-muted-foreground">
               Use the lightbox to preview the gallery. Photos are displayed in
@@ -276,10 +288,20 @@ export function GalleryClient({
       {hasSelection && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-sm">
           <span className="font-medium">{selectedCount} selected</span>
-              <Button variant="ghost" size="sm" onClick={selectAll} disabled={isReadOnly}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={selectAll}
+            disabled={isReadOnly}
+          >
             Select all
           </Button>
-              <Button variant="ghost" size="sm" onClick={clearSelection} disabled={isReadOnly}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearSelection}
+            disabled={isReadOnly}
+          >
             Clear
           </Button>
           <DeleteDialog
@@ -383,7 +405,10 @@ export function GalleryClient({
       )}
 
       {/* Upload preview modal: list of selected images, then Upload all */}
-      <Dialog open={!!pendingUpload} onOpenChange={(open) => !open && closeUploadModal()}>
+      <Dialog
+        open={!!pendingUpload}
+        onOpenChange={(open) => !open && closeUploadModal()}
+      >
         <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden gap-4 p-4">
           <DialogHeader className="shrink-0">
             <DialogTitle>Upload photos</DialogTitle>
@@ -429,7 +454,8 @@ export function GalleryClient({
                   <div className="absolute inset-0 bg-background/90 rounded-lg flex flex-col items-center justify-center gap-3 z-10">
                     <Loader2 className="h-10 w-10 animate-spin text-primary" />
                     <p className="text-sm font-medium">
-                      Uploading {uploadProgress.current} of {uploadProgress.total}…
+                      Uploading {uploadProgress.current} of{" "}
+                      {uploadProgress.total}…
                     </p>
                   </div>
                 )}
@@ -464,7 +490,10 @@ export function GalleryClient({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={lightboxIndex !== null} onOpenChange={() => closeLightbox()}>
+      <Dialog
+        open={lightboxIndex !== null}
+        onOpenChange={() => closeLightbox()}
+      >
         <DialogContent className="max-w-4xl w-[95vw] p-0 gap-0 overflow-hidden bg-black/95 border-0">
           <DialogHeader className="sr-only">
             <DialogTitle>Gallery preview</DialogTitle>

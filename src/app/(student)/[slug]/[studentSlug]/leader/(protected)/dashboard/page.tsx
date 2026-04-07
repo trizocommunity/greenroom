@@ -1,15 +1,18 @@
 import { format } from "date-fns";
 import { MapPin, Trophy, Users } from "lucide-react";
 import Link from "next/link";
+import { QrViewButton } from "@/components/common/QrViewButton";
 import { ReportingEndsInCountdown } from "@/components/programme/ReportingEndsInCountdown";
-import { StudentQrButtonModal } from "@/components/student/StudentQrButtonModal";
 import { TeamLeaderLogoutButton } from "@/components/student/team-leader/TeamLeaderLogoutButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_URL } from "@/config/routes";
 import { prisma } from "@/lib/db";
-import { getStudentProfileUrl } from "@/lib/student-profile-url";
+import {
+  getQrCodeContent,
+  getStudentProfileUrl,
+} from "@/lib/student-profile-url";
 import { getTeamLeaderMyStudents } from "@/lib/team-leader/my-team";
 import { requireTeamLeaderSession } from "@/lib/team-leader-auth/guard";
 
@@ -85,56 +88,87 @@ export default async function TeamLeaderDashboardPage({
     take: 5,
   });
 
-  const stripIsLive = ongoingSessions.some((s) => s.status === "IN_PROGRESS");
-  const topSession =
-    ongoingSessions.find((s) => s.status === "IN_PROGRESS") ??
-    ongoingSessions[0];
-  const stripIsClosed = Boolean(
-    topSession?.status === "CLOSED" &&
-      ongoingSessions.length > 0 &&
-      !stripIsLive,
+  const isSessionTimedOut = (session: {
+    status: string;
+    windowEndsAt: Date | null;
+  }) =>
+    session.status === "IN_PROGRESS" &&
+    Boolean(
+      session.windowEndsAt && session.windowEndsAt.getTime() <= Date.now(),
+    );
+
+  const liveSessions = ongoingSessions.filter(
+    (s) => s.status === "IN_PROGRESS" && !isSessionTimedOut(s),
   );
+  const topLiveSession = liveSessions[0];
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
-      {ongoingSessions.length > 0 ? (
-        <div
-          className={`w-full rounded-xl border px-4 ${
-            stripIsLive
-              ? "min-h-20 border-emerald-600/30 bg-emerald-500/10 py-3"
-              : stripIsClosed
-                ? "min-h-20 border-blue-600/35 bg-blue-500/10 py-3"
-                : "min-h-16 border-amber-600/25 bg-amber-500/10 py-3"
-          } flex items-center justify-between gap-3`}
-        >
+      {liveSessions.length > 1 ? (
+        <div className="w-full rounded-xl border border-emerald-600/30 bg-emerald-500/10 p-3 sm:p-4">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Live reporting
+            </p>
+            <Badge className="bg-emerald-600 text-white">
+              {liveSessions.length} active
+            </Badge>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {liveSessions.slice(0, 4).map((session) => (
+              <div
+                key={session.id}
+                className="rounded-md border border-emerald-700/20 bg-background/50 px-2.5 py-2"
+              >
+                <p className="truncate text-sm font-medium">
+                  {session.programme?.name ?? "Programme"}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {session.stage?.name ?? "No stage"}
+                </p>
+                {session.windowEndsAt ? (
+                  <div className="mt-1">
+                    <ReportingEndsInCountdown
+                      endsAt={session.windowEndsAt.toISOString()}
+                      autoRefreshOnExpire
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 text-right">
+            <Link
+              href={`${base}/all-programmes`}
+              className="text-xs font-medium underline underline-offset-4"
+            >
+              View all programmes
+            </Link>
+          </div>
+        </div>
+      ) : liveSessions.length === 1 ? (
+        <div className="w-full rounded-xl border px-4 min-h-20 border-emerald-600/30 bg-emerald-500/10 py-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
               Current programme
             </p>
             <p className="text-sm font-medium truncate">
-              {topSession?.programme?.name ?? "Programme"}
-              {topSession?.stage?.name ? (
+              {topLiveSession?.programme?.name ?? "Programme"}
+              {topLiveSession?.stage?.name ? (
                 <span className="font-normal text-muted-foreground">
                   {" "}
-                  · {topSession.stage.name}
+                  · {topLiveSession.stage.name}
                 </span>
               ) : null}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {topSession?.status === "IN_PROGRESS"
-                ? "Live reporting for your group’s programmes."
-                : topSession?.status === "CLOSED"
-                  ? "Reporting ended — open All Programmes to see each student’s code letter."
-                  : topSession?.status === "RESET"
-                    ? "Reporting closed — no codes were issued."
-                    : "Programme reporting update."}
+              Live reporting for your group’s programmes.
             </p>
-            {stripIsLive &&
-            topSession?.status === "IN_PROGRESS" &&
-            topSession.windowEndsAt ? (
+            {topLiveSession?.windowEndsAt ? (
               <div className="mt-2">
                 <ReportingEndsInCountdown
-                  endsAt={topSession.windowEndsAt.toISOString()}
+                  endsAt={topLiveSession.windowEndsAt.toISOString()}
+                  autoRefreshOnExpire
                 />
               </div>
             ) : null}
@@ -153,7 +187,10 @@ export default async function TeamLeaderDashboardPage({
           {student.name}
         </p>
         <div className="flex items-center gap-2">
-          <StudentQrButtonModal profileUrl={profileUrl} />
+          <QrViewButton
+            qrContent={getQrCodeContent(student)}
+            studentName={student.name}
+          />
           <TeamLeaderLogoutButton
             redirectTo={`/${slug}/${studentSlug}/leader`}
           />

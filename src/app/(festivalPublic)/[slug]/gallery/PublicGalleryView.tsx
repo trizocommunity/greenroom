@@ -2,11 +2,8 @@
 
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 type ImageItem = { id: string; url: string; order: number };
@@ -50,11 +47,7 @@ export function PublicGalleryView({ images }: PublicGalleryViewProps) {
             )}
             onClick={() => open(index)}
           >
-            <img
-              src={img.url}
-              alt=""
-              className="w-full h-full object-cover"
-            />
+            <img src={img.url} alt="" className="w-full h-full object-cover" />
           </button>
         ))}
       </div>

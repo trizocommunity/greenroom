@@ -12,9 +12,9 @@
  * const maxMembers = FeatureService.getFeatureValue<number>('BASIC', 'maxTeamMembers');
  */
 
+import type { Tier } from "@prisma/client";
 import type { TierFeatures } from "@/config/pricing";
 import { TIER_CONFIG } from "@/config/pricing";
-import type { Tier } from "@prisma/client";
 import { getResolvedTier } from "@/lib/tier";
 
 /** Derived from TierFeatures so config and feature paths cannot drift. */

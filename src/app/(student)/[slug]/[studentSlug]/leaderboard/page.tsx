@@ -1,11 +1,9 @@
+import type { Tier } from "@prisma/client";
 import { notFound } from "next/navigation";
 import { LeaderboardClient } from "@/components/dashboard/leaderboard/LeaderboardClient";
-import { getFestivalLeaderboardDataBySlug } from "@/server/services/leaderboard.service";
-import {
-  isProgrammeInEventWorks,
-} from "@/server/services/programme-status.service";
-import type { Tier } from "@prisma/client";
 import { requireTeamLeaderSession } from "@/lib/team-leader-auth/guard";
+import { getFestivalLeaderboardDataBySlug } from "@/server/services/leaderboard.service";
+import { isProgrammeInEventWorks } from "@/server/services/programme-status.service";
 
 export default async function StudentLeaderboardPage({
   params,
@@ -14,20 +12,23 @@ export default async function StudentLeaderboardPage({
 }) {
   const { slug, studentSlug } = await params;
 
-  const { festival, student } = await requireTeamLeaderSession({ slug, studentSlug });
+  const { festival, student } = await requireTeamLeaderSession({
+    slug,
+    studentSlug,
+  });
 
   const leaderGroupId = student.groupId;
   const leaderCategoryId = student.categoryId;
   if (!leaderGroupId || !leaderCategoryId) notFound();
 
-  const { festival: leaderboardFestival } = await getFestivalLeaderboardDataBySlug(slug);
+  const { festival: leaderboardFestival } =
+    await getFestivalLeaderboardDataBySlug(slug);
   if (!leaderboardFestival) notFound();
 
   const tier = (leaderboardFestival.tier ?? "STANDARD") as Tier;
   const resultsInEventWorks = leaderboardFestival.results.filter(
     (r: any) =>
-      r.programme &&
-      isProgrammeInEventWorks(r.programme.status, tier),
+      r.programme && isProgrammeInEventWorks(r.programme.status, tier),
   );
 
   const groupName = student.group?.name;
@@ -71,4 +72,3 @@ export default async function StudentLeaderboardPage({
     </div>
   );
 }
-

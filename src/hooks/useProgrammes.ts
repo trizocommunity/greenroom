@@ -38,7 +38,9 @@ export function useProgrammes(festivalId: string) {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.programmes.list(festivalId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.programmes.list(festivalId),
+      });
       toast.success("Programme created successfully");
     },
     onError: (error: any) => {
@@ -52,7 +54,9 @@ export function useProgrammes(festivalId: string) {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.programmes.list(festivalId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.programmes.list(festivalId),
+      });
       toast.success("Programme deleted successfully");
     },
     onError: (error: any) => {
@@ -65,7 +69,9 @@ export function useProgrammes(festivalId: string) {
       return updateProgrammeAction(festivalId, id, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.programmes.list(festivalId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.programmes.list(festivalId),
+      });
       toast.success("Programme updated successfully");
     },
     onError: (error: any) => {

@@ -33,4 +33,3 @@ export function getAssignmentProgressLabel(params: {
   if (assignedCount >= expectedCount) return "Fully assigned";
   return `Assigned: ${assignedCount}/${expectedCount}`;
 }
-

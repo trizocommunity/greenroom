@@ -3,14 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { TIER_CONFIG } from "@/config/pricing";
 import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
-import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
-import { getResolvedTier } from "@/lib/tier";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
+import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
+import { getResolvedTier } from "@/lib/tier";
+import { assignChestNumberForNewStudent } from "@/server/actions/chest-number.actions";
 import { findFestivalById } from "@/server/models/festival.model";
 import { StudentService } from "@/server/services/student.service";
-import { assignChestNumberForNewStudent } from "@/server/actions/chest-number.actions";
 
 export async function getStudentsAction(festivalId: string) {
   const session = await getSession();
@@ -229,7 +229,9 @@ export async function updateStudentAction(
 }
 
 /** Export students list as Excel; gated by excelExport feature (STANDARD+). */
-export async function exportStudentsToExcelAction(festivalId: string): Promise<
+export async function exportStudentsToExcelAction(
+  festivalId: string,
+): Promise<
   | { success: true; data: string; filename: string }
   | { success: false; error: string }
 > {
@@ -237,7 +239,8 @@ export async function exportStudentsToExcelAction(festivalId: string): Promise<
   await assertFestivalAccess(session, festivalId);
 
   const festival = await findFestivalById(festivalId);
-  if (!festival) return { success: false, error: ERROR_MESSAGES.FESTIVAL_NOT_FOUND };
+  if (!festival)
+    return { success: false, error: ERROR_MESSAGES.FESTIVAL_NOT_FOUND };
 
   if (
     !FeatureService.isFeatureEnabled(

@@ -1,6 +1,15 @@
 "use client";
 
-import { Crown, Eye, Loader2, MoreVertical, Pencil, Plus, Trash2, Users } from "lucide-react";
+import {
+  Crown,
+  Eye,
+  Loader2,
+  MoreVertical,
+  Pencil,
+  Plus,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,8 +21,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useGroups } from "@/hooks/useGroups";
 import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
+import { useGroups } from "@/hooks/useGroups";
 import { GroupDetailsDialog } from "./GroupDetailsDialog";
 import { GroupDialog } from "./GroupDialog";
 
@@ -57,7 +66,8 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
       <div className="grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
         {groups.map((group: any) => {
           const groupColor = group.color || "#2563eb";
-          const teamLeaders = group.students?.filter((p: any) => p.isTeamLeader) ?? [];
+          const teamLeaders =
+            group.students?.filter((p: any) => p.isTeamLeader) ?? [];
           return (
             <div
               key={group.id}
@@ -84,8 +94,8 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
                       <span>
                         <span className="font-medium text-foreground">
                           {group._count?.students ?? 0}
-                        </span>
-                        {" "}student{(group._count?.students ?? 0) !== 1 ? "s" : ""}
+                        </span>{" "}
+                        student{(group._count?.students ?? 0) !== 1 ? "s" : ""}
                       </span>
                     </div>
                   </div>
@@ -102,7 +112,9 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-44">
                       <DropdownMenuItem
-                        onSelect={() => setActionGroup({ group, action: "view" })}
+                        onSelect={() =>
+                          setActionGroup({ group, action: "view" })
+                        }
                       >
                         <Eye className="h-4 w-4 mr-2" />
                         View
@@ -110,7 +122,9 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
                       {!isReadOnly && (
                         <>
                           <DropdownMenuItem
-                            onSelect={() => setActionGroup({ group, action: "edit" })}
+                            onSelect={() =>
+                              setActionGroup({ group, action: "edit" })
+                            }
                           >
                             <Pencil className="h-4 w-4 mr-2" />
                             Edit
@@ -118,7 +132,9 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive focus:text-destructive"
-                            onSelect={() => setActionGroup({ group, action: "delete" })}
+                            onSelect={() =>
+                              setActionGroup({ group, action: "delete" })
+                            }
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
                             Delete

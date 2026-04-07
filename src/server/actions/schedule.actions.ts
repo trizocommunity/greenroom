@@ -1,7 +1,8 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import type { ScheduleEntryType, SessionType } from "@prisma/client";
 import { format } from "date-fns";
+import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
@@ -9,10 +10,11 @@ import { findFestivalById } from "@/server/models/festival.model";
 import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
 import { ProgrammeReportingService } from "@/server/services/programme-reporting.service";
 import { updateProgrammeStatus } from "@/server/services/programme-status.service";
-import type { ScheduleEntryType, SessionType } from "@prisma/client";
 
 const scheduleInclude = {
-  programme: { select: { id: true, name: true, category: { select: { name: true } } } },
+  programme: {
+    select: { id: true, name: true, category: { select: { name: true } } },
+  },
   stage: { select: { id: true, name: true } },
 } as const;
 
@@ -41,7 +43,8 @@ function getEntryDisplayName(entry: {
 }): string {
   if (entry.type === "PROGRAMME" && entry.programme?.name)
     return entry.programme.name;
-  if (entry.type === "SESSION" && entry.title?.trim()) return entry.title.trim();
+  if (entry.type === "SESSION" && entry.title?.trim())
+    return entry.title.trim();
   return "an existing entry";
 }
 
@@ -128,8 +131,7 @@ export async function checkScheduleConflict(
     excludeEntryId?: string;
   },
 ): Promise<
-  | { ok: true }
-  | { ok: false; error: string; conflictParts?: ConflictParts }
+  { ok: true } | { ok: false; error: string; conflictParts?: ConflictParts }
 > {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
@@ -195,10 +197,12 @@ export async function createScheduleEntry(
     if (!data.title)
       return { success: false, error: "Please enter a session title." };
     if (data.programmeId)
-      return { success: false, error: "Session entries cannot be linked to a programme." };
+      return {
+        success: false,
+        error: "Session entries cannot be linked to a programme.",
+      };
   }
-  if (!data.stageId)
-    return { success: false, error: "Please select a stage." };
+  if (!data.stageId) return { success: false, error: "Please select a stage." };
 
   if (data.endTime != null && data.endTime <= data.startTime)
     return { success: false, error: "End time must be after start time." };
@@ -216,7 +220,9 @@ export async function createScheduleEntry(
       conflictParts: conflict,
     };
 
-  const createdBy = session?.userId ? await getDisplayName(session.userId) : null;
+  const createdBy = session?.userId
+    ? await getDisplayName(session.userId)
+    : null;
 
   await prisma.scheduleEntry.create({
     data: {
@@ -224,7 +230,7 @@ export async function createScheduleEntry(
       type: data.type,
       programmeId: data.type === "PROGRAMME" ? data.programmeId : null,
       stageId: data.stageId || null,
-      title: data.type === "SESSION" ? (data.title || null) : null,
+      title: data.type === "SESSION" ? data.title || null : null,
       description: data.type === "SESSION" ? (data.description ?? null) : null,
       speakers: data.type === "SESSION" ? (data.speakers ?? null) : null,
       sessionType: data.type === "SESSION" ? (data.sessionType ?? null) : null,
@@ -283,8 +289,10 @@ export async function updateScheduleEntry(
   if (existing.type === "SESSION" && data.title !== undefined && !data.title)
     return { success: false, error: "Session must have a title." };
 
-  const newStartTime = data.startTime !== undefined ? data.startTime : existing.startTime;
-  const newEndTime = data.endTime !== undefined ? data.endTime : existing.endTime;
+  const newStartTime =
+    data.startTime !== undefined ? data.startTime : existing.startTime;
+  const newEndTime =
+    data.endTime !== undefined ? data.endTime : existing.endTime;
   const newStageId =
     data.stageId !== undefined ? data.stageId : existing.stageId;
 
@@ -305,7 +313,9 @@ export async function updateScheduleEntry(
       conflictParts: conflict,
     };
 
-  const updatedBy = session?.userId ? await getDisplayName(session.userId) : null;
+  const updatedBy = session?.userId
+    ? await getDisplayName(session.userId)
+    : null;
 
   await prisma.scheduleEntry.update({
     where: { id },
@@ -409,7 +419,10 @@ export async function reorderScheduleEntries(
   });
 
   if (oldOrder.length !== entryIds.length)
-    return { success: false, error: "Some entries not found or not in this festival." };
+    return {
+      success: false,
+      error: "Some entries not found or not in this festival.",
+    };
 
   await prisma.$transaction(
     entryIds.map((entryId, i) => {

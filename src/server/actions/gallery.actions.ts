@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
 import { findFestivalById } from "@/server/models/festival.model";
+import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
 import { StorageUsageService } from "@/server/services/storage-usage.service";
 import { UsageCounterService } from "@/server/services/usage-counter.service";
 
@@ -38,7 +38,12 @@ export async function addGalleryImageAction(festivalId: string, url: string) {
       data: { festivalId, url, order },
     });
     if (addedMb > 0) {
-      await UsageCounterService.incrementUsage(festivalId, "storage", addedMb, tx);
+      await UsageCounterService.incrementUsage(
+        festivalId,
+        "storage",
+        addedMb,
+        tx,
+      );
     }
   });
   revalidatePath(`/dashboard/${festival.slug}/content/gallery`);
@@ -69,7 +74,12 @@ export async function addGalleryImagesAction(
       data: urls.map((url) => ({ festivalId, url, order: order++ })),
     });
     if (addedMb > 0) {
-      await UsageCounterService.incrementUsage(festivalId, "storage", addedMb, tx);
+      await UsageCounterService.incrementUsage(
+        festivalId,
+        "storage",
+        addedMb,
+        tx,
+      );
     }
   });
   revalidatePath(`/dashboard/${festival.slug}/content/gallery`);
@@ -96,7 +106,12 @@ export async function deleteGalleryImageAction(
       where: { id: image.id },
     });
     if (removedMb > 0) {
-      await UsageCounterService.incrementUsage(festivalId, "storage", -removedMb, tx);
+      await UsageCounterService.incrementUsage(
+        festivalId,
+        "storage",
+        -removedMb,
+        tx,
+      );
     }
   });
   revalidatePath(`/dashboard/${festival.slug}/content/gallery`);
@@ -117,13 +132,20 @@ export async function deleteGalleryImagesAction(
     where: { id: { in: imageIds }, festivalId },
     select: { id: true, url: true },
   });
-  const removedMb = await StorageUsageService.getUrlsSizeMB(rows.map((r) => r.url));
+  const removedMb = await StorageUsageService.getUrlsSizeMB(
+    rows.map((r) => r.url),
+  );
   await prisma.$transaction(async (tx) => {
     await tx.festivalGalleryImage.deleteMany({
       where: { id: { in: imageIds }, festivalId },
     });
     if (removedMb > 0) {
-      await UsageCounterService.incrementUsage(festivalId, "storage", -removedMb, tx);
+      await UsageCounterService.incrementUsage(
+        festivalId,
+        "storage",
+        -removedMb,
+        tx,
+      );
     }
   });
   revalidatePath(`/dashboard/${festival.slug}/content/gallery`);

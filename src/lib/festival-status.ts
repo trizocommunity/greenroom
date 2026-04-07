@@ -32,21 +32,13 @@ export function getDerivedFestivalStatus(
   const endDate = festival.endDate ? new Date(festival.endDate) : null;
   if (endDate && now > endDate) return "PAST";
   // ONGOING only when we have both dates and now is inside [startDate, endDate]
-  if (
-    startDate &&
-    endDate &&
-    now >= startDate &&
-    now <= endDate
-  ) {
+  if (startDate && endDate && now >= startDate && now <= endDate) {
     return "ONGOING";
   }
   return "READY";
 }
 
-export const FESTIVAL_STATUS_LABELS: Record<
-  DerivedFestivalStatus,
-  string
-> = {
+export const FESTIVAL_STATUS_LABELS: Record<DerivedFestivalStatus, string> = {
   READY: "Ready",
   ONGOING: "Ongoing",
   PAST: "Past",

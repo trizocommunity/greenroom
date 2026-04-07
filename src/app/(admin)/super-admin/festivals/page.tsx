@@ -1,5 +1,5 @@
-import { Suspense } from "react";
 import { LayoutGrid } from "lucide-react";
+import { Suspense } from "react";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminFestivalCard } from "@/components/admin/AdminFestivalCard";
 import { FestivalStatusTabs } from "@/components/super-admin/FestivalStatusTabs";
@@ -43,7 +43,11 @@ export default async function AdminFestivalsPage({
       {festivals.length === 0 ? (
         <AdminEmptyState
           icon={<LayoutGrid className="h-10 w-10 text-primary animate-pulse" />}
-          title={statusFilter === "EXPIRED" ? "No Expired Festivals" : "No Festivals Found"}
+          title={
+            statusFilter === "EXPIRED"
+              ? "No Expired Festivals"
+              : "No Festivals Found"
+          }
           description={
             statusFilter === "EXPIRED"
               ? "No expired festivals match this filter. Try viewing All festivals."

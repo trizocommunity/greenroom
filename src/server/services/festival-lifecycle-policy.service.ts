@@ -1,8 +1,12 @@
-import { getDerivedFestivalStatus } from "@/lib/festival-status";
 import { prisma } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
+import { getDerivedFestivalStatus } from "@/lib/festival-status";
 
-export type FestivalLifecyclePolicyStatus = "READY" | "ONGOING" | "PAST" | "EXPIRED";
+export type FestivalLifecyclePolicyStatus =
+  | "READY"
+  | "ONGOING"
+  | "PAST"
+  | "EXPIRED";
 
 export async function getFestivalLifecyclePolicyStatus(
   festivalId: string,
@@ -34,4 +38,3 @@ export async function assertFestivalMutationAllowed(
     throw new AppError(ERROR_MESSAGES.FESTIVAL_PAST_READONLY);
   }
 }
-

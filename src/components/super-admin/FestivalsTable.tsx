@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  MoreHorizontal,
-  Settings,
-  Trash2,
-} from "lucide-react";
+import { MoreHorizontal, Settings, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";

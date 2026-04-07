@@ -1,20 +1,22 @@
 "use client";
 
+import { AnimatePresence, motion } from "framer-motion";
+import { ChevronRight, Crown, Medal, Search, Trophy } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Search, Trophy, Medal, Crown, ChevronRight } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { useRealtimeChannel } from "@/hooks/useRealtimeChannel";
 import { cn } from "@/lib/utils";
 
 export interface Result {
@@ -28,6 +30,7 @@ export interface Result {
   position: number;
   points: number;
   grade?: string | null;
+  codeLetter?: string | null;
 }
 
 export interface TeamStanding {
@@ -38,6 +41,7 @@ export interface TeamStanding {
 }
 
 interface ResultsListProps {
+  festivalId?: string;
   festivalName: string;
   accentColor: string; // We'll essentially use this as the primary active color
   results: Result[];
@@ -46,17 +50,33 @@ interface ResultsListProps {
 }
 
 export function ResultsList({
+  festivalId,
   festivalName,
   accentColor,
   results,
   teamStandings: initialTeamStandings,
 }: ResultsListProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"program" | "team">("program");
   const [searchQuery, setSearchQuery] = useState("");
   const [programTypeFilter, setProgramTypeFilter] = useState<
     "ALL" | "INDIVIDUAL" | "GROUP"
   >("ALL");
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
+
+  useRealtimeChannel({
+    roomKeys: festivalId ? [`festival:${festivalId}:public:standings`] : [],
+    enabled: Boolean(festivalId),
+    onEvent: (payload) => {
+      const eventName = String(payload.eventName ?? "");
+      if (
+        eventName === "standings.updated" ||
+        eventName === "results.publish_toggled"
+      ) {
+        router.refresh();
+      }
+    },
+  });
 
   // --- Data Processing ---
 
@@ -158,12 +178,16 @@ export function ResultsList({
             {activeTab === "program" ? (
               <>
                 Published results for{" "}
-                <span className="font-bold text-foreground">{festivalName}</span>
+                <span className="font-bold text-foreground">
+                  {festivalName}
+                </span>
               </>
             ) : (
               <>
                 Team points status for{" "}
-                <span className="font-bold text-foreground">{festivalName}</span>
+                <span className="font-bold text-foreground">
+                  {festivalName}
+                </span>
               </>
             )}
           </p>
@@ -262,7 +286,8 @@ export function ResultsList({
                       onClick={() => setSelectedProgram(program.id)}
                       className="group relative bg-card hover:bg-accent/5 cursor-pointer border rounded-xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-all duration-300 border-l-4"
                       style={{
-                        borderLeftColor: idx % 2 === 0 ? accentColor : undefined,
+                        borderLeftColor:
+                          idx % 2 === 0 ? accentColor : undefined,
                       }} // Optional: alternate border colors or keep distinct
                     >
                       {/* Number Circle */}
@@ -277,7 +302,9 @@ export function ResultsList({
                             {program.name}
                           </h3>
                           <Badge
-                            variant={program.type === "GROUP" ? "secondary" : "outline"}
+                            variant={
+                              program.type === "GROUP" ? "secondary" : "outline"
+                            }
                             className="text-[10px] uppercase"
                           >
                             {program.type === "GROUP" ? "Team" : "Individual"}
@@ -415,7 +442,7 @@ export function ResultsList({
           )}
         </AnimatePresence>
         {/* Program Details Modal */}
-        <Dialog 
+        <Dialog
           open={!!selectedProgram}
           onOpenChange={(open) => !open && setSelectedProgram(null)}
         >
@@ -435,7 +462,9 @@ export function ResultsList({
                         {program.category}
                       </Badge>
                       <Badge
-                        variant={program.type === "GROUP" ? "secondary" : "outline"}
+                        variant={
+                          program.type === "GROUP" ? "secondary" : "outline"
+                        }
                         className="uppercase text-[10px]"
                       >
                         {program.type === "GROUP" ? "Team" : "Individual"}
@@ -482,11 +511,18 @@ export function ResultsList({
                               </div>
                               <div>
                                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                                  {program.type === "GROUP" ? "Team" : "Student"}
+                                  {program.type === "GROUP"
+                                    ? "Team"
+                                    : "Student"}
                                 </p>
                                 <p className="font-bold text-sm">
                                   {result.winner}
                                 </p>
+                                {result.codeLetter ? (
+                                  <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                                    Code {result.codeLetter}
+                                  </p>
+                                ) : null}
                                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">
                                   Group / School
                                 </p>

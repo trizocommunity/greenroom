@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   ClipboardList,
   Eye,
@@ -12,6 +11,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
@@ -33,7 +33,10 @@ interface CategoriesClientProps {
   children?: React.ReactNode;
 }
 
-export function CategoriesClient({ festivalId, children }: CategoriesClientProps) {
+export function CategoriesClient({
+  festivalId,
+  children,
+}: CategoriesClientProps) {
   const {
     categories,
     isLoading: isCategoriesLoading,
@@ -159,7 +162,8 @@ export function CategoriesClient({ festivalId, children }: CategoriesClientProps
                         {count}
                       </span>
                       <span className="text-muted-foreground">
-                        {" "}student{count !== 1 ? "s" : ""}
+                        {" "}
+                        student{count !== 1 ? "s" : ""}
                       </span>
                     </span>
                   </div>
@@ -170,7 +174,8 @@ export function CategoriesClient({ festivalId, children }: CategoriesClientProps
                         {programmeCount}
                       </span>
                       <span className="text-muted-foreground">
-                        {" "}programme{programmeCount !== 1 ? "s" : ""}
+                        {" "}
+                        programme{programmeCount !== 1 ? "s" : ""}
                       </span>
                     </span>
                   </div>
@@ -213,27 +218,31 @@ export function CategoriesClient({ festivalId, children }: CategoriesClientProps
           onOpenChange={(open) => !open && setActionCategory(null)}
         />
       )}
-      {!isReadOnly && actionCategory?.action === "edit" && actionCategory.category && (
-        <CategoryDialog
-          festivalId={festivalId}
-          category={actionCategory.category}
-          open={true}
-          onOpenChange={(open) => !open && setActionCategory(null)}
-        />
-      )}
-      {!isReadOnly && actionCategory?.action === "delete" && actionCategory.category && (
-        <DeleteDialog
-          title="Delete Category"
-          description="Are you sure you want to delete this category? This will fail if there are programmes in this category."
-          onDelete={async () => {
-            await deleteCategory(actionCategory.category.id);
-            setActionCategory(null);
-          }}
-          isDeleting={isDeleting}
-          open={true}
-          onOpenChange={(open) => !open && setActionCategory(null)}
-        />
-      )}
+      {!isReadOnly &&
+        actionCategory?.action === "edit" &&
+        actionCategory.category && (
+          <CategoryDialog
+            festivalId={festivalId}
+            category={actionCategory.category}
+            open={true}
+            onOpenChange={(open) => !open && setActionCategory(null)}
+          />
+        )}
+      {!isReadOnly &&
+        actionCategory?.action === "delete" &&
+        actionCategory.category && (
+          <DeleteDialog
+            title="Delete Category"
+            description="Are you sure you want to delete this category? This will fail if there are programmes in this category."
+            onDelete={async () => {
+              await deleteCategory(actionCategory.category.id);
+              setActionCategory(null);
+            }}
+            isDeleting={isDeleting}
+            open={true}
+            onOpenChange={(open) => !open && setActionCategory(null)}
+          />
+        )}
     </div>
   );
 }

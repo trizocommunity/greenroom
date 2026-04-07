@@ -142,13 +142,20 @@ export default async function AdminAuditLogsPage({
                           <>
                             <span
                               className="text-xs font-bold text-foreground truncate w-32"
-                              title={(log.actor as { fullName?: string | null }).fullName || ""}
+                              title={
+                                (log.actor as { fullName?: string | null })
+                                  .fullName || ""
+                              }
                             >
-                              {(log.actor as { fullName?: string | null }).fullName || "Unnamed User"}
+                              {(log.actor as { fullName?: string | null })
+                                .fullName || "Unnamed User"}
                             </span>
                             <span
                               className="text-[10px] font-medium text-muted-foreground font-mono opacity-60 truncate w-32"
-                              title={(log.actor as { email?: string | null }).email || ""}
+                              title={
+                                (log.actor as { email?: string | null })
+                                  .email || ""
+                              }
                             >
                               {(log.actor as { email?: string | null }).email}
                             </span>

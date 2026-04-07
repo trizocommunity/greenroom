@@ -3,12 +3,9 @@
 import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { GroupService } from "@/server/services/group.service";
-import {
-  FeatureService,
-  getTierForFeatureCheck,
-} from "@/lib/features";
 import { ERROR_MESSAGES, handleActionError } from "@/lib/errors";
+import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
+import { GroupService } from "@/server/services/group.service";
 
 export async function getGroupsAction(festivalId: string) {
   const session = await getSession();

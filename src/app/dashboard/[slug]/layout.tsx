@@ -1,26 +1,26 @@
 import { Menu } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
+import { SupportNotifications } from "@/components/dashboard/support/SupportNotifications";
+// Removed unused breadcrumb imports
+import { DashboardBreadcrumb } from "@/components/festival/dashboard/DashboardBreadcrumb";
 import { DashboardRightSidebar } from "@/components/festival/dashboard/DashboardRightSidebar";
 import { FestivalDashboardSidebar } from "@/components/festival/dashboard/FestivalDashboardSidebar";
 import { ReadOnlyExpiredBanner } from "@/components/festival/dashboard/ReadOnlyExpiredBanner";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
-// Removed unused breadcrumb imports
-import { DashboardBreadcrumb } from "@/components/festival/dashboard/DashboardBreadcrumb";
+import { FestivalStatusBadge } from "@/components/festival/FestivalStatusBadge";
 import { Button } from "@/components/ui/button";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { SupportNotifications } from "@/components/dashboard/support/SupportNotifications";
 import { TIER_CONFIG } from "@/config/pricing";
-import { getResolvedTier } from "@/lib/tier";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getSession } from "@/lib/auth/session";
 import { getDerivedFestivalStatus } from "@/lib/festival-status";
+import { getResolvedTier } from "@/lib/tier";
 import { getFestivalContext } from "@/server/services/festival-context.service";
 import { getEffectiveTierFeatures } from "@/server/services/plan-features.service";
-import { FestivalStatusBadge } from "@/components/festival/FestivalStatusBadge";
 
 export default async function FestivalDashboardLayout({
   children,
@@ -121,69 +121,69 @@ export default async function FestivalDashboardLayout({
         <FestivalDashboardSidebar festival={festivalData} role={userRole} />
 
         <SidebarInset>
-            <header className="sticky top-0 z-10 w-full flex h-14 shrink-0 items-center justify-between border-b bg-background/95 backdrop-blur px-4 md:px-8 shadow-sm">
-              <div className="flex items-center gap-2">
-                <SidebarTrigger className="h-8 w-8" />
-                <div className="mr-2 h-4 w-px bg-border" />
-                <DashboardBreadcrumb slug={slug} />
-              </div>
+          <header className="sticky top-0 z-10 w-full flex h-14 shrink-0 items-center justify-between border-b bg-background/95 backdrop-blur px-4 md:px-8 shadow-sm">
+            <div className="flex items-center gap-2">
+              <SidebarTrigger className="h-8 w-8" />
+              <div className="mr-2 h-4 w-px bg-border" />
+              <DashboardBreadcrumb slug={slug} />
+            </div>
 
-              {/* Header Actions */}
-              <div className="flex items-center gap-2">
-                <FestivalStatusBadge
-                  status={derivedStatus}
-                  createdAt={festival.createdAt}
-                  startDate={festival.startDate}
-                  endDate={festival.endDate}
-                  expiresAt={festival.expiresAt}
-                  size="default"
-                  interactive={true}
-                />
-                <SupportNotifications slug={slug} />
-                <DashboardRightSidebar
-                  trigger={
-                    <Button variant="ghost" size="icon" className="">
-                      <Menu className="h-5 w-5" />
-                      <span className="sr-only">Toggle user menu</span>
-                    </Button>
-                  }
-                  user={userData}
-                  festivalSlug={slug}
-                  showStatusAndUsage={
-                    userRole === "OWNER" || userRole === "SUPER_ADMIN"
-                  }
-                  festivalName={festival.name}
-                  festivalStatus={derivedStatus}
-                  festivalCreatedAt={festival.createdAt}
-                  festivalStartDate={festival.startDate}
-                  festivalEndDate={festival.endDate}
-                  festivalExpiresAt={festival.expiresAt}
-                  daysRemaining={
-                    festival.expiresAt
-                      ? Math.ceil(
-                          (new Date(festival.expiresAt).getTime() -
-                            Date.now()) /
-                            (1000 * 60 * 60 * 24),
-                        )
-                      : null
-                  }
-                  userRole={userRole}
-                  usage={{
-                    studentsCount: festival._count?.students || 0,
-                    programmesCount: festival._count?.programmes || 0,
-                    stagesCount: festival.stagesCount || 0,
-                    storageUsedMB: festival.storageUsedMB ?? 0,
-                  }}
-                  limits={festivalData.limits}
-                  tierLabel={TIER_CONFIG[getResolvedTier(festival.tier)].label}
-                />
-              </div>
-            </header>
+            {/* Header Actions */}
+            <div className="flex items-center gap-2">
+              <FestivalStatusBadge
+                status={derivedStatus}
+                createdAt={festival.createdAt}
+                startDate={festival.startDate}
+                endDate={festival.endDate}
+                expiresAt={festival.expiresAt}
+                size="default"
+                interactive={true}
+              />
+              <SupportNotifications slug={slug} />
+              <DashboardRightSidebar
+                trigger={
+                  <Button variant="ghost" size="icon" className="">
+                    <Menu className="h-5 w-5" />
+                    <span className="sr-only">Toggle user menu</span>
+                  </Button>
+                }
+                user={userData}
+                festivalSlug={slug}
+                showStatusAndUsage={
+                  userRole === "OWNER" || userRole === "SUPER_ADMIN"
+                }
+                festivalName={festival.name}
+                festivalStatus={derivedStatus}
+                festivalCreatedAt={festival.createdAt}
+                festivalStartDate={festival.startDate}
+                festivalEndDate={festival.endDate}
+                festivalExpiresAt={festival.expiresAt}
+                daysRemaining={
+                  festival.expiresAt
+                    ? Math.ceil(
+                        (new Date(festival.expiresAt).getTime() - Date.now()) /
+                          (1000 * 60 * 60 * 24),
+                      )
+                    : null
+                }
+                userRole={userRole}
+                usage={{
+                  studentsCount: festival._count?.students || 0,
+                  programmesCount: festival._count?.programmes || 0,
+                  stagesCount: festival.stagesCount || 0,
+                  storageUsedMB: festival.storageUsedMB ?? 0,
+                }}
+                limits={festivalData.limits}
+                tierLabel={TIER_CONFIG[getResolvedTier(festival.tier)].label}
+                canAccessSettings={effectiveFeatures.festivalSettings}
+              />
+            </div>
+          </header>
 
-            <main className="flex flex-1 flex-col gap-4 md:gap-6 p-4 md:p-8 relative overflow-hidden">
-              <ReadOnlyExpiredBanner />
-              {children}
-            </main>
+          <main className="flex flex-1 flex-col gap-4 md:gap-6 p-4 md:p-8 relative overflow-hidden">
+            <ReadOnlyExpiredBanner />
+            {children}
+          </main>
         </SidebarInset>
       </FestivalProvider>
     </SidebarProvider>

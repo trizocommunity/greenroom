@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import {
-  getPurchaseSummaries,
   getLoginCounts,
-  getTopCategories,
   getLoginsByDay,
+  getPurchaseSummaries,
   getRevenueByDay,
+  getTopCategories,
 } from "@/server/services/analytics.service";
 
 export const dynamic = "force-dynamic";

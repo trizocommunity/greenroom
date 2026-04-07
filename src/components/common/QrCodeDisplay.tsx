@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import QRCode from "qrcode";
 import { Eye } from "lucide-react";
+import QRCode from "qrcode";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -83,7 +83,9 @@ export function QrCodeDisplay({
       {canvasEl}
     </button>
   ) : (
-    <div className="rounded border border-border bg-white p-0.5">{canvasEl}</div>
+    <div className="rounded border border-border bg-white p-0.5">
+      {canvasEl}
+    </div>
   );
 
   const showCanvas = !buttonOnly || !showViewButton;

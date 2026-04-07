@@ -47,7 +47,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -89,11 +88,11 @@ type Programme = {
   status?: ProgrammeStatus;
   type: "INDIVIDUAL" | "GROUP";
   category: { id: string; name: string };
-  judgeSessions?: Array<{
+  programme_judge_session?: Array<{
     id: string;
-    startedAt: Date;
-    usedAt: Date | null;
-    endedAt: Date | null;
+    started_at: Date;
+    used_at: Date | null;
+    ended_at: Date | null;
   }>;
   assignments: Array<{
     id: string;
@@ -107,6 +106,7 @@ type Programme = {
       points: number;
       remarks: string | null;
       isPublished: boolean;
+      codeLetter?: { code: string } | null;
     } | null;
   }>;
   stats?: {
@@ -216,6 +216,7 @@ export function ResultsManagementClient({
           displayName: string;
           subText: string;
           chestNumber: string;
+          codeLetter: string;
           grade: string | null;
           points: number;
           position: number | null;
@@ -233,6 +234,7 @@ export function ResultsManagementClient({
             displayName: studentAndTeam,
             subText: groupName,
             chestNumber: "",
+            codeLetter: assignment.result?.codeLetter?.code ?? "-",
             grade: assignment.result.grade,
             points: assignment.result.points,
             position: assignment.result.position ?? null,
@@ -258,6 +260,7 @@ export function ResultsManagementClient({
           chestNumber: assignment.student?.chestNumber
             ? `#${assignment.student.chestNumber}`
             : "",
+          codeLetter: assignment.result?.codeLetter?.code ?? "-",
           grade: result.grade,
           points: result.points,
           position: result.position ?? null,
@@ -430,7 +433,26 @@ export function ResultsManagementClient({
       result = result.filter((p) => p.type === filterProgrammeType);
     }
 
-    return result;
+    return result.sort((a, b) => {
+      const aPublished =
+        a.stats.status === "published" ||
+        a.stats.status === "partial-published";
+      const bPublished =
+        b.stats.status === "published" ||
+        b.stats.status === "partial-published";
+
+      // Keep unpublished programmes at top by default.
+      if (aPublished !== bPublished) {
+        return aPublished ? 1 : -1;
+      }
+
+      // Then prioritize more recently active items by scored count.
+      if (b.stats.enteredScores !== a.stats.enteredScores) {
+        return b.stats.enteredScores - a.stats.enteredScores;
+      }
+
+      return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    });
   }, [
     programmeStats,
     searchQuery,
@@ -776,13 +798,13 @@ export function ResultsManagementClient({
                 disabled={isReadOnly || canUseExternalJudging}
               >
                 <Plus className="w-4 h-4 sm:mr-0" />
-                <span className="hidden sm:inline">Enter marks</span>
+                <span className="hidden sm:inline">Add results</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="w-[calc(100%-0.5rem)] sm:w-[calc(100%-2rem)] max-w-3xl max-h-[90dvh] sm:max-h-[90vh] overflow-y-auto p-2.5 sm:p-6 rounded-lg sm:rounded-xl">
               <DialogHeader className="text-left space-y-0.5 sm:space-y-1.5 px-0.5 sm:px-0">
                 <DialogTitle className="text-sm sm:text-lg pr-7 sm:pr-8">
-                  Enter marks
+                  Add results
                 </DialogTitle>
                 <DialogDescription className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
                   Select programme and enter points. Grade and rank update
@@ -1397,7 +1419,7 @@ export function ResultsManagementClient({
                               );
                             }}
                           >
-                            Enter marks
+                            Add results
                           </Button>
                         </div>
                       </div>
@@ -1472,17 +1494,16 @@ export function ResultsManagementClient({
         </div>
       </div>
 
-      {/* Judgment / programme cards */}
       {filteredTableProgrammes.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredTableProgrammes.map((prog) => {
             const isPublished =
               prog.stats.status === "published" ||
               prog.stats.status === "partial-published";
-            const openJudgeSession = prog.judgeSessions?.[0] ?? null;
+            const openJudgeSession = prog.programme_judge_session?.[0] ?? null;
             const startedAtForTimer =
               judgeLinksByProgrammeId[prog.id]?.startedAt ??
-              openJudgeSession?.startedAt;
+              openJudgeSession?.started_at;
             const elapsedSeconds =
               startedAtForTimer != null && nowMs != null
                 ? Math.max(
@@ -1507,104 +1528,95 @@ export function ResultsManagementClient({
                   <span className="text-xs font-medium text-muted-foreground truncate">
                     {prog.category.name}
                   </span>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 shrink-0 rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
-                        aria-label="Actions"
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuItem
-                        onClick={() => setViewProgramme(prog)}
-                        className="gap-2 cursor-pointer"
-                      >
-                        <Eye className="h-4 w-4" />
-                        View details
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleEditResult(prog)}
-                        disabled={isReadOnly || canUseExternalJudging}
-                        className="gap-2 cursor-pointer"
-                      >
-                        <Pencil className="h-4 w-4" />
-                        Enter marks
-                      </DropdownMenuItem>
-                      {canUseExternalJudging &&
-                      !isReadOnly &&
-                      prog.status === "STARTED" ? (
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      size="sm"
+                      variant={isPublished ? "outline" : "default"}
+                      className="h-7 text-[11px] px-2.5"
+                      onClick={() =>
+                        handlePublishProgramme(prog.id, !isPublished)
+                      }
+                      disabled={
+                        isReadOnly ||
+                        isPending ||
+                        (!isPublished && prog.stats.enteredScores === 0)
+                      }
+                    >
+                      {publishingProgrammeId === prog.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : isPublished ? (
+                        "Unpublish"
+                      ) : (
+                        "Publish"
+                      )}
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 shrink-0 rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
+                          aria-label="Actions"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
                         <DropdownMenuItem
-                          onClick={() => handleCreateJudgeLink(prog.id)}
-                          disabled={creatingJudgeLinkProgrammeId === prog.id}
+                          onClick={() => setViewProgramme(prog)}
                           className="gap-2 cursor-pointer"
                         >
-                          {creatingJudgeLinkProgrammeId === prog.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Sparkles className="h-4 w-4" />
-                          )}
-                          {openJudgeSession
-                            ? "Recreate judge link"
-                            : "Create judge link"}
+                          <Eye className="h-4 w-4" />
+                          View details
                         </DropdownMenuItem>
-                      ) : null}
+                        <DropdownMenuItem
+                          onClick={() => handleEditResult(prog)}
+                          disabled={isReadOnly || canUseExternalJudging}
+                          className="gap-2 cursor-pointer"
+                        >
+                          <Pencil className="h-4 w-4" />
+                          Add results
+                        </DropdownMenuItem>
+                        {canUseExternalJudging &&
+                        !isReadOnly &&
+                        prog.status === "STARTED" ? (
+                          <DropdownMenuItem
+                            onClick={() => handleCreateJudgeLink(prog.id)}
+                            disabled={creatingJudgeLinkProgrammeId === prog.id}
+                            className="gap-2 cursor-pointer"
+                          >
+                            {creatingJudgeLinkProgrammeId === prog.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-4 w-4" />
+                            )}
+                            {openJudgeSession
+                              ? "Recreate judge link"
+                              : "Create judge link"}
+                          </DropdownMenuItem>
+                        ) : null}
 
-                      {judgeLinksByProgrammeId[prog.id]?.judgeUrl ? (
-                        <>
-                          <DropdownMenuItem
-                            onClick={() => handleCopyJudgeLink(prog.id)}
-                            className="gap-2 cursor-pointer"
-                          >
-                            Copy judge link
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              handleShareJudgeLinkWhatsApp(prog.id)
-                            }
-                            className="gap-2 cursor-pointer"
-                          >
-                            Share on WhatsApp
-                          </DropdownMenuItem>
-                        </>
-                      ) : null}
-                      <DropdownMenuSeparator />
-                      {isPublished ? (
-                        <DropdownMenuItem
-                          onClick={() => handlePublishProgramme(prog.id, false)}
-                          disabled={isReadOnly || isPending}
-                          className="gap-2 cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/30"
-                        >
-                          {publishingProgrammeId === prog.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Lock className="h-4 w-4" />
-                          )}
-                          Unpublish
-                        </DropdownMenuItem>
-                      ) : (
-                        <DropdownMenuItem
-                          onClick={() => handlePublishProgramme(prog.id, true)}
-                          disabled={
-                            isReadOnly ||
-                            isPending ||
-                            prog.stats.enteredScores === 0
-                          }
-                          className="gap-2 cursor-pointer text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50 dark:focus:bg-emerald-950/30"
-                        >
-                          {publishingProgrammeId === prog.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <CheckCircle2 className="h-4 w-4" />
-                          )}
-                          Publish
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        {judgeLinksByProgrammeId[prog.id]?.judgeUrl ? (
+                          <>
+                            <DropdownMenuItem
+                              onClick={() => handleCopyJudgeLink(prog.id)}
+                              className="gap-2 cursor-pointer"
+                            >
+                              Copy judge link
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                handleShareJudgeLinkWhatsApp(prog.id)
+                              }
+                              className="gap-2 cursor-pointer"
+                            >
+                              Share on WhatsApp
+                            </DropdownMenuItem>
+                          </>
+                        ) : null}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
                 <CardContent className="p-4">
                   <h3 className="font-semibold text-base leading-snug flex items-center gap-1.5 line-clamp-2 text-foreground mb-2">
@@ -1716,8 +1728,13 @@ export function ResultsManagementClient({
                         <div className="font-medium text-foreground truncate">
                           {row.displayName}
                         </div>
-                        {(row.chestNumber || row.subText) && (
+                        {(row.chestNumber ||
+                          row.subText ||
+                          row.codeLetter !== "-") && (
                           <div className="text-xs text-muted-foreground truncate">
+                            {row.codeLetter !== "-"
+                              ? `Code ${row.codeLetter} · `
+                              : ""}
                             {row.chestNumber} {row.subText}
                           </div>
                         )}
@@ -1772,6 +1789,7 @@ export function ResultsManagementClient({
                           ? "Team"
                           : "Chest & Name"}
                       </TableHead>
+                      <TableHead className="text-center">Code</TableHead>
                       <TableHead className="text-center">Grade</TableHead>
                       <TableHead className="text-center">Points</TableHead>
                       <TableHead>Remarks</TableHead>
@@ -1800,11 +1818,18 @@ export function ResultsManagementClient({
                         </TableCell>
                         <TableCell>
                           <div className="font-medium">{row.displayName}</div>
-                          {(row.chestNumber || row.subText) && (
+                          {(row.chestNumber ||
+                            row.subText ||
+                            row.codeLetter !== "-") && (
                             <div className="text-xs text-muted-foreground">
                               {row.chestNumber} {row.subText}
                             </div>
                           )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="font-mono">
+                            {row.codeLetter}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-center">
                           <Badge

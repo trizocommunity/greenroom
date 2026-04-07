@@ -644,7 +644,9 @@ export function AssignmentModal({
                             selectedProgrammeId === p.id
                               ? "border-primary bg-primary/5 ring-1 ring-primary/50"
                               : "bg-card hover:bg-accent/50",
-                            isReadOnly ? "cursor-not-allowed opacity-60 hover:shadow-none" : "",
+                            isReadOnly
+                              ? "cursor-not-allowed opacity-60 hover:shadow-none"
+                              : "",
                           )}
                         >
                           <div className="font-semibold text-sm mb-1">
@@ -704,11 +706,13 @@ export function AssignmentModal({
                           : "Select students"}
                       </h3>
                     </div>
-                    {selectedProgramme?.type === "GROUP" && limitInfo && limitInfo.type === "GROUP" && (
-                      <p className="text-xs text-muted-foreground pl-7">
-                        Max {limitInfo.maxPerTeam} per team.
-                      </p>
-                    )}
+                    {selectedProgramme?.type === "GROUP" &&
+                      limitInfo &&
+                      limitInfo.type === "GROUP" && (
+                        <p className="text-xs text-muted-foreground pl-7">
+                          Max {limitInfo.maxPerTeam} per team.
+                        </p>
+                      )}
                   </div>
 
                   {/* Controls */}
@@ -765,7 +769,9 @@ export function AssignmentModal({
                         // Disabled if: (Limit reached AND not selected) OR (Already Assigned)
                         // Disabled if: (Limit reached AND not selected) OR (Already Assigned)
                         const isDisabled =
-                          isReadOnly || isAssigned || (isLimitReached && !isSelected);
+                          isReadOnly ||
+                          isAssigned ||
+                          (isLimitReached && !isSelected);
 
                         return (
                           <button
@@ -779,11 +785,11 @@ export function AssignmentModal({
                                 ? "bg-destructive/5 border-destructive/20 text-muted-foreground opacity-60 cursor-not-allowed" // Assigned State (Red & Disabled)
                                 : isReadOnly
                                   ? "bg-muted opacity-50 cursor-not-allowed"
-                                : isSelected
-                                  ? "bg-primary/10 border-primary text-primary font-medium ring-1 ring-primary" // Selected State
-                                  : isDisabled
-                                    ? "bg-muted opacity-50 cursor-not-allowed" // Limit Reached Disabled
-                                    : "bg-card hover:border-primary/50 hover:shadow-sm", // Default
+                                  : isSelected
+                                    ? "bg-primary/10 border-primary text-primary font-medium ring-1 ring-primary" // Selected State
+                                    : isDisabled
+                                      ? "bg-muted opacity-50 cursor-not-allowed" // Limit Reached Disabled
+                                      : "bg-card hover:border-primary/50 hover:shadow-sm", // Default
                             )}
                           >
                             <span className="truncate">{s.name}</span>
@@ -887,7 +893,9 @@ export function AssignmentModal({
                     </Button>
                     <Button
                       onClick={handleSave}
-                      disabled={isReadOnly || isSubmitting || queue.length === 0}
+                      disabled={
+                        isReadOnly || isSubmitting || queue.length === 0
+                      }
                     >
                       {isSubmitting && (
                         <AlertCircle className="mr-2 h-4 w-4 animate-spin" />

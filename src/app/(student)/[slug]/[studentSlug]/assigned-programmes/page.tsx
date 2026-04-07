@@ -9,10 +9,7 @@ import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 import { getCodeForStudentFromLetters } from "@/lib/programme-reporting-code";
 import { getProgrammeStatusPriorityRank } from "@/lib/programme-status-priority";
 import { findFestivalBySlug } from "@/server/models/festival.model";
-import {
-  findStudentByFestivalAndId,
-  findStudentByFestivalAndProfileSlug,
-} from "@/server/models/student.model";
+import { findStudentByFestivalAndProfileSlug } from "@/server/models/student.model";
 
 const RESERVED_SLUGS = new Set([
   "results",
@@ -23,9 +20,19 @@ const RESERVED_SLUGS = new Set([
   "about",
 ]);
 
-function looksLikeUuid(s: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    s,
+function isSessionTimedOut(
+  session:
+    | {
+        status: string;
+        windowEndsAt: Date | null;
+      }
+    | null
+    | undefined,
+): boolean {
+  return Boolean(
+    session?.status === "IN_PROGRESS" &&
+      session.windowEndsAt &&
+      session.windowEndsAt.getTime() <= Date.now(),
   );
 }
 
@@ -46,9 +53,10 @@ export default async function AssignedProgrammesPage({
   );
   if (!canViewProfile) notFound();
 
-  const student = looksLikeUuid(studentSlug)
-    ? await findStudentByFestivalAndId(festival.id, studentSlug)
-    : await findStudentByFestivalAndProfileSlug(festival.id, studentSlug);
+  const student = await findStudentByFestivalAndProfileSlug(
+    festival.id,
+    studentSlug,
+  );
   if (!student) notFound();
 
   if (student.isTeamLeader) notFound();
@@ -153,8 +161,9 @@ export default async function AssignedProgrammesPage({
                 ? getCodeForStudentFromLetters(sess.codeLetters, student.id)
                 : null;
 
-            const highlightClass =
-              sess?.status === "IN_PROGRESS"
+            const highlightClass = isSessionTimedOut(sess)
+              ? "border-amber-500/40 bg-amber-500/10"
+              : sess?.status === "IN_PROGRESS"
                 ? "border-emerald-500/40 bg-emerald-500/5"
                 : sess?.status === "CLOSED"
                   ? "border-blue-500/35 bg-blue-500/5"
@@ -168,7 +177,8 @@ export default async function AssignedProgrammesPage({
                   <CardTitle className="text-base flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <span className="truncate">{p.name}</span>
                     <div className="flex items-center gap-2 flex-wrap">
-                      {sess?.status === "IN_PROGRESS" ? (
+                      {sess?.status === "IN_PROGRESS" &&
+                      !isSessionTimedOut(sess) ? (
                         <>
                           <Badge className="bg-emerald-600 text-white">
                             Live reporting
@@ -179,6 +189,11 @@ export default async function AssignedProgrammesPage({
                             />
                           ) : null}
                         </>
+                      ) : null}
+                      {isSessionTimedOut(sess) ? (
+                        <Badge className="bg-amber-600 text-white">
+                          Reporting ended
+                        </Badge>
                       ) : null}
                       {sess?.status === "CLOSED" ? (
                         <Badge className="bg-blue-600 text-white">
@@ -216,9 +231,16 @@ export default async function AssignedProgrammesPage({
                       You were not marked present when reporting ended.
                     </p>
                   ) : null}
-                  {sess?.status === "IN_PROGRESS" ? (
+                  {sess?.status === "IN_PROGRESS" &&
+                  !isSessionTimedOut(sess) ? (
                     <p className="text-xs text-muted-foreground">
                       Report to the stage manager when called.
+                    </p>
+                  ) : null}
+                  {isSessionTimedOut(sess) ? (
+                    <p className="text-xs text-muted-foreground">
+                      Reporting time ended. Wait for stage manager to restart or
+                      proceed with current reported participants.
                     </p>
                   ) : null}
                 </CardContent>

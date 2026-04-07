@@ -1,26 +1,29 @@
 "use client";
 
+import { format } from "date-fns";
 import {
+  Eye,
+  ImagePlus,
+  Loader2,
+  MoreVertical,
   Newspaper,
   Pencil,
   Plus,
   Trash2,
-  Loader2,
-  ImagePlus,
-  Eye,
-  MoreVertical,
 } from "lucide-react";
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -32,17 +35,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { DeleteDialog } from "@/components/ui/delete-dialog";
-import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
-import { uploadImageToCloudinary, isCloudinaryConfigured } from "@/lib/cloudinary";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
+import {
+  isCloudinaryConfigured,
+  uploadImageToCloudinary,
+} from "@/lib/cloudinary";
 import { cn } from "@/lib/utils";
 import {
   createNewsPostAction,
-  updateNewsPostAction,
   deleteNewsPostAction,
+  updateNewsPostAction,
 } from "@/server/actions/news.actions";
-import { format } from "date-fns";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 
 type NewsPost = {
   id: string;
@@ -181,9 +184,7 @@ export function NewsClient({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-            News
-          </h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">News</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             Posts appear on your public news page.
           </p>
@@ -194,8 +195,8 @@ export function NewsClient({
             description="News posts show on your festival's public news page."
           >
             <p className="text-sm text-muted-foreground">
-              Create posts with a title, content, and optional image. They appear
-              on your festival&apos;s public news page for visitors and
+              Create posts with a title, content, and optional image. They
+              appear on your festival&apos;s public news page for visitors and
               participants.
             </p>
             <p className="text-sm text-muted-foreground">
@@ -295,7 +296,9 @@ export function NewsClient({
         description="This cannot be undone."
         open={!!deleteConfirmId}
         onOpenChange={(open) => !open && setDeleteConfirmId(null)}
-        onDelete={async () => { if (deleteConfirmId) await handleDelete(deleteConfirmId); }}
+        onDelete={async () => {
+          if (deleteConfirmId) await handleDelete(deleteConfirmId);
+        }}
         isDeleting={false}
       />
       {posts.length === 0 && (
@@ -306,9 +309,16 @@ export function NewsClient({
             </div>
             <p className="font-medium text-foreground">No news posts yet</p>
             <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-              Create a post to show on your public news page. Add a title, content, and optional image.
+              Create a post to show on your public news page. Add a title,
+              content, and optional image.
             </p>
-            <Button size="sm" variant="outline" className="mt-6" onClick={openCreate} disabled={isReadOnly}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-6"
+              onClick={openCreate}
+              disabled={isReadOnly}
+            >
               <Plus className="h-4 w-4 mr-2" />
               Create news
             </Button>
@@ -317,12 +327,13 @@ export function NewsClient({
       )}
 
       {/* View details modal */}
-      <Dialog open={!!viewDetailsPost} onOpenChange={(open) => !open && setViewDetailsPost(null)}>
+      <Dialog
+        open={!!viewDetailsPost}
+        onOpenChange={(open) => !open && setViewDetailsPost(null)}
+      >
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {viewDetailsPost?.title}
-            </DialogTitle>
+            <DialogTitle>{viewDetailsPost?.title}</DialogTitle>
             <DialogDescription>
               {viewDetailsPost?.publishedAt
                 ? `Published ${format(new Date(viewDetailsPost.publishedAt), "MMM d, yyyy")}`
@@ -349,7 +360,11 @@ export function NewsClient({
             </div>
           )}
           <DialogFooter>
-            <Button size="sm" variant="outline" onClick={() => setViewDetailsPost(null)}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setViewDetailsPost(null)}
+            >
               Close
             </Button>
             {viewDetailsPost && !isReadOnly && (
@@ -426,7 +441,9 @@ export function NewsClient({
                   type="button"
                   variant="outline"
                   size="icon"
-                  disabled={isReadOnly || uploadingImage || !isCloudinaryConfigured()}
+                  disabled={
+                    isReadOnly || uploadingImage || !isCloudinaryConfigured()
+                  }
                   onClick={() => fileInputRef.current?.click()}
                 >
                   {uploadingImage ? (
@@ -466,10 +483,18 @@ export function NewsClient({
             </div>
           </div>
           <DialogFooter>
-            <Button size="sm" variant="outline" onClick={() => setDialogOpen(false)}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setDialogOpen(false)}
+            >
               Cancel
             </Button>
-            <Button size="sm" onClick={handleSave} disabled={saving || isReadOnly}>
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={saving || isReadOnly}
+            >
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {editingId ? "Update" : "Create"}
             </Button>

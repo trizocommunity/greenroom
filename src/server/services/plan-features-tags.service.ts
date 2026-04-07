@@ -1,9 +1,9 @@
 "use server";
 
-import type { Tier } from "@/lib/prisma-enums";
-import type { FeatureTag } from "@/lib/features-tags";
 import type { FeaturePath } from "@/lib/features";
+import type { FeatureTag } from "@/lib/features-tags";
 import { FEATURE_TAGS, isFeatureTagEnabled } from "@/lib/features-tags";
+import type { Tier } from "@/lib/prisma-enums";
 import { getEffectivePlanFeatureMatrix } from "@/server/services/plan-features.service";
 
 const TIERS: Tier[] = ["BASIC", "STANDARD", "PRO"];
@@ -13,8 +13,9 @@ export async function getEffectiveFeatureTagEnabled(
   tag: FeatureTag,
 ): Promise<boolean> {
   const matrix = await getEffectivePlanFeatureMatrix();
-  const effectiveFeatureMatrix = (matrix[tier] ??
-    {}) as Partial<Record<FeaturePath, boolean>>;
+  const effectiveFeatureMatrix = (matrix[tier] ?? {}) as Partial<
+    Record<FeaturePath, boolean>
+  >;
 
   // `isFeatureTagEnabled` applies tier constraints + hard-block rules.
   return isFeatureTagEnabled({
@@ -49,4 +50,3 @@ export async function getEffectiveFeatureTagMatrix(): Promise<
 
   return out;
 }
-

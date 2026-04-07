@@ -8,7 +8,7 @@ import { prisma } from "@/lib/db";
 import { filterProgrammesForEventWorks } from "@/server/services/programme-status.service";
 
 export const metadata: Metadata = {
-  title: "Marks",
+  title: "Results",
 };
 
 export default async function MarksRedirectPage({
@@ -32,11 +32,11 @@ export default async function MarksRedirectPage({
               result: true,
             },
           },
-          judgeSessions: {
-            where: { usedAt: null },
-            orderBy: { startedAt: "desc" },
+          programme_judge_session: {
+            where: { used_at: null },
+            orderBy: { started_at: "desc" },
             take: 1,
-            select: { id: true, startedAt: true, usedAt: true, endedAt: true },
+            select: { id: true, started_at: true, used_at: true, ended_at: true },
           },
         },
         orderBy: { createdAt: "desc" },
@@ -119,7 +119,9 @@ export default async function MarksRedirectPage({
         programmes={eventWorksProgrammes}
         categories={festival.categories}
       >
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Marks</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+          Results
+        </h1>
       </BasicMarksClient>
     </div>
   );

@@ -1,19 +1,19 @@
 "use client";
 
+import type {
+  CategoryType,
+  ProgrammeStatus,
+  ProgrammeType,
+} from "@prisma/client";
 import { format } from "date-fns";
+import { CalendarClock, Mail, Phone, ShieldAlert, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { CalendarClock, Mail, Phone, ShieldAlert, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -27,12 +27,9 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAssignments } from "@/hooks/useAssignments";
 import { useDeadlineLock } from "@/hooks/useDeadlineLock";
-import type { ProgrammeStatus } from "@prisma/client";
-import type { ProgrammeType } from "@prisma/client";
-import type { CategoryType } from "@prisma/client";
 import { getProgrammeStatusPriorityRank } from "@/lib/programme-status-priority";
 
 type ProgrammeForAssignment = {
@@ -100,7 +97,10 @@ export function AssignProgrammesClient({
   }, [programmes]);
 
   const programmeCategoryOptions = useMemo(() => {
-    const map = new Map<string, { id: string; name: string; type: CategoryType | null }>();
+    const map = new Map<
+      string,
+      { id: string; name: string; type: CategoryType | null }
+    >();
     for (const p of programmes) {
       if (!p.category?.id) continue;
       map.set(p.category.id, {
@@ -109,14 +109,15 @@ export function AssignProgrammesClient({
         type: p.category.type ?? null,
       });
     }
-    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return Array.from(map.values()).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
   }, [programmes]);
 
   // Category filter: choose which (non-GENERAL) programme category to show.
   // GENERAL programmes are always allowed for any student selection.
-  const [selectedProgrammeCategoryId, setSelectedProgrammeCategoryId] = useState<string>(
-    leaderCategoryId,
-  );
+  const [selectedProgrammeCategoryId, setSelectedProgrammeCategoryId] =
+    useState<string>(leaderCategoryId);
 
   const selectedProgrammeCategoryType = useMemo(() => {
     return (
@@ -180,7 +181,10 @@ export function AssignProgrammesClient({
       setSelectedProgrammeId(null);
       return;
     }
-    if (selectedProgrammeId && eligibleProgrammes.some((p) => p.id === selectedProgrammeId)) {
+    if (
+      selectedProgrammeId &&
+      eligibleProgrammes.some((p) => p.id === selectedProgrammeId)
+    ) {
       return;
     }
     setSelectedProgrammeId(eligibleProgrammes[0]?.id ?? null);
@@ -219,7 +223,9 @@ export function AssignProgrammesClient({
     // GENERAL programmes accept any student category.
     if (selectedProgramme.category.type === "GENERAL") return myStudents;
     // Otherwise, only students matching the programme category can be assigned.
-    return myStudents.filter((s) => s.categoryId === selectedProgramme.category.id);
+    return myStudents.filter(
+      (s) => s.categoryId === selectedProgramme.category.id,
+    );
   }, [myStudents, selectedProgramme]);
 
   const selectedStudents = useMemo(() => {
@@ -228,7 +234,9 @@ export function AssignProgrammesClient({
   }, [studentsForSelectedProgramme, selectedStudentIds]);
 
   const studentByIdLookup = useMemo(() => {
-    return new Map<string, MyStudentForAssignment>(myStudents.map((s) => [s.id, s]));
+    return new Map<string, MyStudentForAssignment>(
+      myStudents.map((s) => [s.id, s]),
+    );
   }, [myStudents]);
 
   // Mobile UX: quick-search + shortcuts
@@ -270,7 +278,11 @@ export function AssignProgrammesClient({
     return selectedStudentIds.filter(
       (id) => !alreadyAssignedStudentIdsForSelectedProgramme.has(id),
     );
-  }, [selectedProgramme, selectedStudentIds, alreadyAssignedStudentIdsForSelectedProgramme]);
+  }, [
+    selectedProgramme,
+    selectedStudentIds,
+    alreadyAssignedStudentIdsForSelectedProgramme,
+  ]);
 
   const selectedNewCount = selectedNewStudentIdsToAssign.length;
 
@@ -284,14 +296,18 @@ export function AssignProgrammesClient({
     return map;
   }, [assignments]);
 
-  const getUiProgrammeStatus = (programme: ProgrammeForAssignment): ProgrammeStatus => {
+  const getUiProgrammeStatus = (
+    programme: ProgrammeForAssignment,
+  ): ProgrammeStatus => {
     const assignmentCount = assignmentCountByProgrammeId.get(programme.id) || 0;
     const expectedPerGroup =
       programme.type === "INDIVIDUAL"
-        ? programme.maxParticipantsPerGroup ?? 1
-        : (programme.maxTeamsPerGroup ?? 1) * (programme.maxStudentsPerTeam ?? 1);
+        ? (programme.maxParticipantsPerGroup ?? 1)
+        : (programme.maxTeamsPerGroup ?? 1) *
+          (programme.maxStudentsPerTeam ?? 1);
     const expectedTotal = groupCount * expectedPerGroup;
-    const isFullyAssignedAcrossAllGroups = assignmentCount >= expectedTotal && expectedTotal > 0;
+    const isFullyAssignedAcrossAllGroups =
+      assignmentCount >= expectedTotal && expectedTotal > 0;
 
     // Only override between READY <-> ASSIGNED; other statuses come from backend logic.
     if (programme.status === "READY" || programme.status === "ASSIGNED") {
@@ -321,11 +337,17 @@ export function AssignProgrammesClient({
 
     const getProgrammeId = (a: any) => a?.programmeId ?? a?.programme?.id;
     const getGroupId = (a: any) =>
-      a?.groupId ?? a?.group?.id ?? a?.student?.groupId ?? a?.student?.group?.id;
+      a?.groupId ??
+      a?.group?.id ??
+      a?.student?.groupId ??
+      a?.student?.group?.id;
 
-    const dbAssignmentsForProgrammeInLeaderGroup = (assignments as any[]).filter((a) => {
+    const dbAssignmentsForProgrammeInLeaderGroup = (
+      assignments as any[]
+    ).filter((a) => {
       return (
-        getProgrammeId(a) === selectedProgramme.id && getGroupId(a) === leaderGroupId
+        getProgrammeId(a) === selectedProgramme.id &&
+        getGroupId(a) === leaderGroupId
       );
     });
 
@@ -356,16 +378,16 @@ export function AssignProgrammesClient({
   const isOverLimit =
     limitTracking?.type === "INDIVIDUAL"
       ? (limitTracking.remaining ?? 0) < 0
-      : (limitTracking?.type === "GROUP"
+      : limitTracking?.type === "GROUP"
         ? (limitTracking.remainingSlots ?? 0) < 0
-        : false);
+        : false;
 
   const isCapacityFull =
     limitTracking?.type === "INDIVIDUAL"
       ? (limitTracking.remaining ?? 0) <= 0
-      : (limitTracking?.type === "GROUP"
+      : limitTracking?.type === "GROUP"
         ? (limitTracking.remainingSlots ?? 0) <= 0
-        : false);
+        : false;
 
   const toggleStudent = (studentId: string) => {
     setSelectedStudentIds((prev) => {
@@ -420,7 +442,11 @@ export function AssignProgrammesClient({
       return null;
     };
 
-    const result: { programmeId: string; studentId: string; teamNumber: number }[] = [];
+    const result: {
+      programmeId: string;
+      studentId: string;
+      teamNumber: number;
+    }[] = [];
     for (const studentId of studentIds) {
       const teamNumber = allocateOneStudent();
       if (!teamNumber) {
@@ -452,7 +478,8 @@ export function AssignProgrammesClient({
     // Existing DB assignments in this leader group for this programme.
     for (const a of assignments as any[]) {
       const assignmentProgrammeId = a?.programme?.id ?? a?.programmeId;
-      const assignmentGroupId = a?.group?.id ?? a?.student?.groupId ?? a?.student?.group?.id;
+      const assignmentGroupId =
+        a?.group?.id ?? a?.student?.groupId ?? a?.student?.group?.id;
 
       if (assignmentProgrammeId !== selectedProgramme.id) continue;
       if (assignmentGroupId !== leaderGroupId) continue;
@@ -478,20 +505,22 @@ export function AssignProgrammesClient({
       studentIdToTeamNumber.set(item.studentId, tn);
     }
 
-    const teams = Array.from({ length: maxTeams }, (_, i) => i + 1).map((tn) => {
-      const existingIds = Array.from(teamToExistingStudentIds.get(tn) || []);
-      const newIds = Array.from(teamToNewStudentIds.get(tn) || []);
-      const used = existingIds.length + newIds.length;
-      const remaining = Math.max(0, maxPerTeam - used);
-      return {
-        teamNumber: tn,
-        existingIds,
-        newIds,
-        used,
-        remaining,
-        isFull: remaining <= 0,
-      };
-    });
+    const teams = Array.from({ length: maxTeams }, (_, i) => i + 1).map(
+      (tn) => {
+        const existingIds = Array.from(teamToExistingStudentIds.get(tn) || []);
+        const newIds = Array.from(teamToNewStudentIds.get(tn) || []);
+        const used = existingIds.length + newIds.length;
+        const remaining = Math.max(0, maxPerTeam - used);
+        return {
+          teamNumber: tn,
+          existingIds,
+          newIds,
+          used,
+          remaining,
+          isFull: remaining <= 0,
+        };
+      },
+    );
 
     return { maxTeams, maxPerTeam, teams, studentIdToTeamNumber };
   }, [
@@ -605,14 +634,23 @@ export function AssignProgrammesClient({
       .filter((id) => !alreadyAssignedStudentIdsForSelectedProgramme.has(id));
 
     if (studentIdsToAssign.length === 0) {
-      toast.error("All selected students are already assigned to this programme");
+      toast.error(
+        "All selected students are already assigned to this programme",
+      );
       return;
     }
 
-    let bulkPayload: { programmeId: string; studentId: string; teamNumber?: number }[] = [];
+    let bulkPayload: {
+      programmeId: string;
+      studentId: string;
+      teamNumber?: number;
+    }[] = [];
 
     if (selectedProgramme.type === "GROUP") {
-      const payload = allocateTeamsForGroupProgramme(selectedProgramme, studentIdsToAssign);
+      const payload = allocateTeamsForGroupProgramme(
+        selectedProgramme,
+        studentIdsToAssign,
+      );
       if (payload.length === 0) {
         toast.error("Not enough team capacity for the selected students");
         return;
@@ -638,9 +676,7 @@ export function AssignProgrammesClient({
         }}
       >
         <TabsList className="w-full justify-start gap-2">
-          <TabsTrigger value="ASSIGN">
-            Assign
-          </TabsTrigger>
+          <TabsTrigger value="ASSIGN">Assign</TabsTrigger>
           <TabsTrigger value="ASSIGNMENTS">Assignments</TabsTrigger>
         </TabsList>
 
@@ -658,8 +694,10 @@ export function AssignProgrammesClient({
                       Assignment window closed
                     </h3>
                     <p className="leading-tight text-sm sm:text-base text-destructive/90">
-                      Deadline passed - {deadlineLabel ?? "time/date unavailable"}. <br />
-                      Please contact the festival manager to request further changes.
+                      Deadline passed -{" "}
+                      {deadlineLabel ?? "time/date unavailable"}. <br />
+                      Please contact the festival manager to request further
+                      changes.
                     </p>
                   </div>
 
@@ -675,7 +713,9 @@ export function AssignProgrammesClient({
                     </div>
 
                     <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm">
-                      <span className="font-medium text-destructive">Manager</span>
+                      <span className="font-medium text-destructive">
+                        Manager
+                      </span>
                       <div className="mt-1 text-destructive/90 wrap-break-word">
                         {managerName || "Festival Manager"}
                       </div>
@@ -714,7 +754,9 @@ export function AssignProgrammesClient({
                     <CardHeader className="pb-3">
                       <div className="space-y-3">
                         <div className="flex items-start justify-between gap-3">
-                          <CardTitle className="text-base">Select Programme</CardTitle>
+                          <CardTitle className="text-base">
+                            Select Programme
+                          </CardTitle>
                           {eligibleProgrammes.length ? (
                             <Badge
                               variant="outline"
@@ -745,7 +787,9 @@ export function AssignProgrammesClient({
                           <Select
                             value={selectedProgrammeType}
                             onValueChange={(v) =>
-                              setSelectedProgrammeType(v as "ALL" | "GROUP" | "INDIVIDUAL")
+                              setSelectedProgrammeType(
+                                v as "ALL" | "GROUP" | "INDIVIDUAL",
+                              )
                             }
                           >
                             <SelectTrigger className="h-9 w-full sm:w-[170px]">
@@ -754,7 +798,9 @@ export function AssignProgrammesClient({
                             <SelectContent>
                               <SelectItem value="ALL">All types</SelectItem>
                               <SelectItem value="GROUP">Group</SelectItem>
-                              <SelectItem value="INDIVIDUAL">Individual</SelectItem>
+                              <SelectItem value="INDIVIDUAL">
+                                Individual
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -780,12 +826,16 @@ export function AssignProgrammesClient({
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
-                                <div className="font-medium truncate">{p.name}</div>
+                                <div className="font-medium truncate">
+                                  {p.name}
+                                </div>
                                 <div className="text-xs text-muted-foreground mt-1">
                                   {p.type === "GROUP" ? "Group" : "Individual"}
                                 </div>
                               </div>
-                              <ProgrammeStatusBadge status={getUiProgrammeStatus(p)} />
+                              <ProgrammeStatusBadge
+                                status={getUiProgrammeStatus(p)}
+                              />
                             </div>
                           </button>
                         ))
@@ -796,7 +846,9 @@ export function AssignProgrammesClient({
                 <div className="lg:col-span-2">
                   <Card className="h-full">
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-base">Assign My Students</CardTitle>
+                      <CardTitle className="text-base">
+                        Assign My Students
+                      </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {selectedProgramme ? (
@@ -806,13 +858,14 @@ export function AssignProgrammesClient({
                               Selected: {selectedProgramme.name}
                             </Badge>
                             <Badge variant="outline" className="text-xs">
-                            {limitTracking?.type === "GROUP"
-                              ? `Capacity: ${limitTracking.existingMembersCount}/${limitTracking.maxTeams * limitTracking.maxPerTeam} · Remaining: ${Math.max(0, limitTracking.remainingSlots)}`
-                              : limitTracking?.type === "INDIVIDUAL"
-                                ? `Capacity: ${limitTracking.existingMembersCount}/${limitTracking.max} · Remaining: ${Math.max(0, limitTracking.remaining)}`
-                                : "Capacity: —"}
+                              {limitTracking?.type === "GROUP"
+                                ? `Capacity: ${limitTracking.existingMembersCount}/${limitTracking.maxTeams * limitTracking.maxPerTeam} · Remaining: ${Math.max(0, limitTracking.remainingSlots)}`
+                                : limitTracking?.type === "INDIVIDUAL"
+                                  ? `Capacity: ${limitTracking.existingMembersCount}/${limitTracking.max} · Remaining: ${Math.max(0, limitTracking.remaining)}`
+                                  : "Capacity: —"}
                             </Badge>
-                            {!runtimeIsReadOnly && (isOverLimit || isCapacityFull) ? (
+                            {!runtimeIsReadOnly &&
+                            (isOverLimit || isCapacityFull) ? (
                               <div
                                 className={[
                                   "inline-flex items-center gap-2 rounded-md border px-2 py-0.5 text-xs font-semibold",
@@ -821,12 +874,15 @@ export function AssignProgrammesClient({
                                     : "border-destructive bg-destructive text-destructive-foreground",
                                 ].join(" ")}
                               >
-                                {isOverLimit ? "Limit exceeded" : "Programme capacity reached"}
+                                {isOverLimit
+                                  ? "Limit exceeded"
+                                  : "Programme capacity reached"}
                               </div>
                             ) : null}
                           </div>
 
-                          {selectedProgramme.type === "GROUP" && groupTeamPreview ? (
+                          {selectedProgramme.type === "GROUP" &&
+                          groupTeamPreview ? (
                             <div className="space-y-2">
                               <div className="text-sm font-medium">Teams</div>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -835,7 +891,9 @@ export function AssignProgrammesClient({
                                     key={t.teamNumber}
                                     className={[
                                       "rounded-lg border p-3",
-                                      t.isFull ? "border-destructive/30 bg-destructive/5" : "bg-muted/10",
+                                      t.isFull
+                                        ? "border-destructive/30 bg-destructive/5"
+                                        : "bg-muted/10",
                                     ].join(" ")}
                                   >
                                     <div className="flex items-center justify-between gap-3">
@@ -853,16 +911,21 @@ export function AssignProgrammesClient({
                                       Remaining: {t.remaining}
                                     </div>
                                     <div className="flex flex-wrap gap-1 mt-2">
-                                      {[...t.existingIds, ...t.newIds].map((id) => (
-                                        <Badge
-                                          key={id}
-                                          variant="secondary"
-                                          className="text-[10px] h-5 px-2 bg-muted/40"
-                                        >
-                                          {studentByIdLookup.get(id)?.name ?? id}
-                                        </Badge>
-                                      ))}
-                                      {t.existingIds.length + t.newIds.length === 0 ? (
+                                      {[...t.existingIds, ...t.newIds].map(
+                                        (id) => (
+                                          <Badge
+                                            key={id}
+                                            variant="secondary"
+                                            className="text-[10px] h-5 px-2 bg-muted/40"
+                                          >
+                                            {studentByIdLookup.get(id)?.name ??
+                                              id}
+                                          </Badge>
+                                        ),
+                                      )}
+                                      {t.existingIds.length +
+                                        t.newIds.length ===
+                                      0 ? (
                                         <span className="text-xs text-muted-foreground">
                                           —
                                         </span>
@@ -878,9 +941,13 @@ export function AssignProgrammesClient({
                             <div className="text-sm font-medium">Students</div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                               {studentsForSelectedProgramme.map((s) => {
-                                const checked = selectedStudentIds.includes(s.id);
+                                const checked = selectedStudentIds.includes(
+                                  s.id,
+                                );
                                 const isAssignedDB =
-                                  alreadyAssignedStudentIdsForSelectedProgramme.has(s.id);
+                                  alreadyAssignedStudentIdsForSelectedProgramme.has(
+                                    s.id,
+                                  );
                                 const disableForLimit =
                                   !checked && !isAssignedDB && isCapacityFull;
                                 return (
@@ -891,12 +958,16 @@ export function AssignProgrammesClient({
                                       checked
                                         ? "bg-amber-500/10 border-amber-500/30"
                                         : "",
-                                      disableForLimit ? "opacity-40 cursor-not-allowed bg-muted/20" : "",
+                                      disableForLimit
+                                        ? "opacity-40 cursor-not-allowed bg-muted/20"
+                                        : "",
                                       isAssignedDB ? "opacity-60" : "",
                                     ].join(" ")}
                                   >
                                     <span className="min-w-0">
-                                      <span className="font-medium truncate block">{s.name}</span>
+                                      <span className="font-medium truncate block">
+                                        {s.name}
+                                      </span>
                                       {s.chestNumber ? (
                                         <span className="text-xs text-muted-foreground">
                                           {s.chestNumber}
@@ -909,7 +980,10 @@ export function AssignProgrammesClient({
                                             variant="outline"
                                             className="text-[10px] h-5 px-2"
                                           >
-                                            T{groupTeamPreview.studentIdToTeamNumber.get(s.id) ?? "?"}
+                                            T
+                                            {groupTeamPreview.studentIdToTeamNumber.get(
+                                              s.id,
+                                            ) ?? "?"}
                                           </Badge>
                                         </div>
                                       ) : null}
@@ -919,7 +993,11 @@ export function AssignProgrammesClient({
                                       className="h-4 w-4"
                                       checked={checked}
                                       onChange={() => toggleStudent(s.id)}
-                                      disabled={runtimeIsReadOnly || isAssignedDB || disableForLimit}
+                                      disabled={
+                                        runtimeIsReadOnly ||
+                                        isAssignedDB ||
+                                        disableForLimit
+                                      }
                                     />
                                   </label>
                                 );
@@ -930,9 +1008,15 @@ export function AssignProgrammesClient({
                           <div className="flex items-center justify-end gap-2">
                             <Button
                               onClick={onAssign}
-                              disabled={runtimeIsReadOnly || selectedNewCount === 0 || isOverLimit}
+                              disabled={
+                                runtimeIsReadOnly ||
+                                selectedNewCount === 0 ||
+                                isOverLimit
+                              }
                               className={
-                                runtimeIsReadOnly ? "opacity-60 cursor-not-allowed" : ""
+                                runtimeIsReadOnly
+                                  ? "opacity-60 cursor-not-allowed"
+                                  : ""
                               }
                             >
                               Assign
@@ -953,7 +1037,9 @@ export function AssignProgrammesClient({
               <div className="lg:hidden space-y-4">
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Choose programme</CardTitle>
+                    <CardTitle className="text-base">
+                      Choose programme
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="flex flex-col gap-2">
@@ -976,7 +1062,9 @@ export function AssignProgrammesClient({
                       <Select
                         value={selectedProgrammeType}
                         onValueChange={(v) =>
-                          setSelectedProgrammeType(v as "ALL" | "GROUP" | "INDIVIDUAL")
+                          setSelectedProgrammeType(
+                            v as "ALL" | "GROUP" | "INDIVIDUAL",
+                          )
                         }
                       >
                         <SelectTrigger className="h-10 w-full">
@@ -997,7 +1085,9 @@ export function AssignProgrammesClient({
                             type="button"
                           >
                             <span className="truncate">
-                              {selectedProgramme ? selectedProgramme.name : "Select a programme"}
+                              {selectedProgramme
+                                ? selectedProgramme.name
+                                : "Select a programme"}
                             </span>
                             <ProgrammeStatusBadge
                               status={
@@ -1034,7 +1124,9 @@ export function AssignProgrammesClient({
                                   <SheetClose asChild key={p.id}>
                                     <button
                                       type="button"
-                                      onClick={() => setSelectedProgrammeId(p.id)}
+                                      onClick={() =>
+                                        setSelectedProgrammeId(p.id)
+                                      }
                                       className={[
                                         "w-full text-left rounded-lg border p-3 transition-colors",
                                         isSelected
@@ -1048,10 +1140,14 @@ export function AssignProgrammesClient({
                                             {p.name}
                                           </div>
                                           <div className="text-xs text-muted-foreground mt-1">
-                                            {p.type === "GROUP" ? "Group" : "Individual"}
+                                            {p.type === "GROUP"
+                                              ? "Group"
+                                              : "Individual"}
                                           </div>
                                         </div>
-                                        <ProgrammeStatusBadge status={getUiProgrammeStatus(p)} />
+                                        <ProgrammeStatusBadge
+                                          status={getUiProgrammeStatus(p)}
+                                        />
                                       </div>
                                     </button>
                                   </SheetClose>
@@ -1088,7 +1184,8 @@ export function AssignProgrammesClient({
                           </Badge>
                         </div>
 
-                        {!runtimeIsReadOnly && (isOverLimit || isCapacityFull) ? (
+                        {!runtimeIsReadOnly &&
+                        (isOverLimit || isCapacityFull) ? (
                           <div
                             className={[
                               "inline-flex items-center gap-2 rounded-md border px-2 py-1 text-xs font-semibold",
@@ -1097,11 +1194,14 @@ export function AssignProgrammesClient({
                                 : "border-destructive bg-destructive text-destructive-foreground",
                             ].join(" ")}
                           >
-                            {isOverLimit ? "Limit exceeded" : "Programme capacity reached"}
+                            {isOverLimit
+                              ? "Limit exceeded"
+                              : "Programme capacity reached"}
                           </div>
                         ) : null}
 
-                        {selectedProgramme.type === "GROUP" && groupTeamPreview ? (
+                        {selectedProgramme.type === "GROUP" &&
+                        groupTeamPreview ? (
                           <div className="space-y-2">
                             <div className="text-sm font-medium">Teams</div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1110,14 +1210,19 @@ export function AssignProgrammesClient({
                                   key={t.teamNumber}
                                   className={[
                                     "rounded-lg border p-3",
-                                    t.isFull ? "border-destructive/30 bg-destructive/5" : "bg-muted/10",
+                                    t.isFull
+                                      ? "border-destructive/30 bg-destructive/5"
+                                      : "bg-muted/10",
                                   ].join(" ")}
                                 >
                                   <div className="flex items-center justify-between gap-3">
                                     <div className="font-semibold text-sm">
                                       Team {t.teamNumber}
                                     </div>
-                                    <Badge variant="outline" className="text-xs">
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs"
+                                    >
                                       {t.used}/{groupTeamPreview.maxPerTeam}
                                     </Badge>
                                   </div>
@@ -1125,17 +1230,23 @@ export function AssignProgrammesClient({
                                     Remaining: {t.remaining}
                                   </div>
                                   <div className="flex flex-wrap gap-1 mt-2">
-                                    {[...t.existingIds, ...t.newIds].map((id) => (
-                                      <Badge
-                                        key={id}
-                                        variant="secondary"
-                                        className="text-[10px] h-5 px-2 bg-muted/40"
-                                      >
-                                        {studentByIdLookup.get(id)?.name ?? id}
-                                      </Badge>
-                                    ))}
-                                    {t.existingIds.length + t.newIds.length === 0 ? (
-                                      <span className="text-xs text-muted-foreground">—</span>
+                                    {[...t.existingIds, ...t.newIds].map(
+                                      (id) => (
+                                        <Badge
+                                          key={id}
+                                          variant="secondary"
+                                          className="text-[10px] h-5 px-2 bg-muted/40"
+                                        >
+                                          {studentByIdLookup.get(id)?.name ??
+                                            id}
+                                        </Badge>
+                                      ),
+                                    )}
+                                    {t.existingIds.length + t.newIds.length ===
+                                    0 ? (
+                                      <span className="text-xs text-muted-foreground">
+                                        —
+                                      </span>
                                     ) : null}
                                   </div>
                                 </div>
@@ -1158,7 +1269,9 @@ export function AssignProgrammesClient({
                               variant="ghost"
                               size="sm"
                               onClick={clearSelection}
-                              disabled={runtimeIsReadOnly || selectedNewCount === 0}
+                              disabled={
+                                runtimeIsReadOnly || selectedNewCount === 0
+                              }
                             >
                               Clear
                             </Button>
@@ -1178,7 +1291,9 @@ export function AssignProgrammesClient({
                             filteredStudents.map((s) => {
                               const checked = selectedStudentIds.includes(s.id);
                               const isAssignedDB =
-                                alreadyAssignedStudentIdsForSelectedProgramme.has(s.id);
+                                alreadyAssignedStudentIdsForSelectedProgramme.has(
+                                  s.id,
+                                );
                               const disableForLimit =
                                 !checked && !isAssignedDB && isCapacityFull;
                               return (
@@ -1186,7 +1301,9 @@ export function AssignProgrammesClient({
                                   key={s.id}
                                   className={[
                                     "flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors",
-                                    checked ? "bg-amber-500/10 border-amber-500/30" : "",
+                                    checked
+                                      ? "bg-amber-500/10 border-amber-500/30"
+                                      : "",
                                     disableForLimit
                                       ? "opacity-40 cursor-not-allowed bg-muted/20"
                                       : "",
@@ -1209,7 +1326,10 @@ export function AssignProgrammesClient({
                                           variant="outline"
                                           className="text-[10px] h-5 px-2"
                                         >
-                                          T{groupTeamPreview.studentIdToTeamNumber.get(s.id) ?? "?"}
+                                          T
+                                          {groupTeamPreview.studentIdToTeamNumber.get(
+                                            s.id,
+                                          ) ?? "?"}
                                         </Badge>
                                       </div>
                                     ) : null}
@@ -1219,7 +1339,11 @@ export function AssignProgrammesClient({
                                     className="h-4 w-4"
                                     checked={checked}
                                     onChange={() => toggleStudent(s.id)}
-                                    disabled={runtimeIsReadOnly || isAssignedDB || disableForLimit}
+                                    disabled={
+                                      runtimeIsReadOnly ||
+                                      isAssignedDB ||
+                                      disableForLimit
+                                    }
                                   />
                                 </label>
                               );
@@ -1231,7 +1355,11 @@ export function AssignProgrammesClient({
                           <Button
                             className="w-full"
                             onClick={onAssign}
-                            disabled={runtimeIsReadOnly || selectedNewCount === 0 || isOverLimit}
+                            disabled={
+                              runtimeIsReadOnly ||
+                              selectedNewCount === 0 ||
+                              isOverLimit
+                            }
                           >
                             Assign ({selectedNewCount})
                           </Button>
@@ -1278,7 +1406,9 @@ export function AssignProgrammesClient({
                                 </Badge>
                                 {row.programme ? (
                                   <ProgrammeStatusBadge
-                                    status={getUiProgrammeStatus(row.programme as any)}
+                                    status={getUiProgrammeStatus(
+                                      row.programme as any,
+                                    )}
                                   />
                                 ) : null}
                               </div>
@@ -1288,9 +1418,7 @@ export function AssignProgrammesClient({
                                   ? format(row.assignedAt, "PP")
                                   : "—"}{" "}
                                 by{" "}
-                                {row.createdByName ||
-                                  row.createdByEmail ||
-                                  "—"}
+                                {row.createdByName || row.createdByEmail || "—"}
                               </div>
                             </div>
 
@@ -1347,13 +1475,17 @@ export function AssignProgrammesClient({
                               </span>
                               {a.programme ? (
                                 <ProgrammeStatusBadge
-                                  status={getUiProgrammeStatus(a.programme as any)}
+                                  status={getUiProgrammeStatus(
+                                    a.programme as any,
+                                  )}
                                 />
                               ) : null}
                             </div>
                             <div className="text-xs text-muted-foreground mt-1">
                               {a.student?.name ?? "—"} · Assigned on{" "}
-                              {a.assignedAt ? format(new Date(a.assignedAt), "PP") : "—"}{" "}
+                              {a.assignedAt
+                                ? format(new Date(a.assignedAt), "PP")
+                                : "—"}{" "}
                               by {a.createdByName || a.createdByEmail || "—"}
                             </div>
                           </div>
@@ -1381,4 +1513,3 @@ export function AssignProgrammesClient({
     </div>
   );
 }
-

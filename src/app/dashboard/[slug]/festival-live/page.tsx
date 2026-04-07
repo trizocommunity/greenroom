@@ -2,10 +2,10 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { isBasicTier } from "@/lib/tier";
-import { getBrandingFromJson } from "@/types/festival";
-import { findFestivalBySlug } from "@/server/models/festival.model";
 import { validatePublicSiteRequirements } from "@/lib/festival-public-validation";
+import { isBasicTier } from "@/lib/tier";
+import { findFestivalBySlug } from "@/server/models/festival.model";
+import { getBrandingFromJson } from "@/types/festival";
 import { FestivalLiveClient } from "./FestivalLiveClient";
 
 export default async function FestivalLivePage({
@@ -45,8 +45,8 @@ export default async function FestivalLivePage({
   if (!isOwner && !isAdmin && !isSuperAdmin) notFound();
 
   const validation = validatePublicSiteRequirements({
-      name: festival.name,
-      description: festival.description,
+    name: festival.name,
+    description: festival.description,
     orgName: festival.orgName,
     orgDescription: festival.orgDescription,
     orgWebsite: festival.orgWebsite,
@@ -63,7 +63,9 @@ export default async function FestivalLivePage({
   const headersList = await headers();
   const host = headersList.get("host") || "";
   const protocol = headersList.get("x-forwarded-proto") || "http";
-  const baseUrl = host ? `${protocol}://${host}` : process.env.NEXT_PUBLIC_APP_URL || "";
+  const baseUrl = host
+    ? `${protocol}://${host}`
+    : process.env.NEXT_PUBLIC_APP_URL || "";
 
   return (
     <div className="space-y-8 pt-5">

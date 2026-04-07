@@ -1,16 +1,13 @@
 "use client";
 
 import {
-  createScheduleEntry,
-  updateScheduleEntry,
-  deleteScheduleEntry,
-  reorderScheduleEntries,
-  checkScheduleConflict,
-  getScheduleEntries,
-  type ScheduleEntryWithRelations,
-  type ConflictParts,
-} from "@/server/actions/schedule.actions";
-import { format, parseISO, isSameDay, eachDayOfInterval, startOfDay } from "date-fns";
+  eachDayOfInterval,
+  format,
+  isSameDay,
+  parseISO,
+  startOfDay,
+} from "date-fns";
+import { motion } from "framer-motion";
 import {
   Calendar,
   ChevronDown,
@@ -21,9 +18,9 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { motion } from "framer-motion";
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -32,13 +29,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -56,17 +54,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DeleteDialog } from "@/components/ui/delete-dialog";
-import { cn } from "@/lib/utils";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
-
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
+import { cn } from "@/lib/utils";
+import {
+  type ConflictParts,
+  checkScheduleConflict,
+  createScheduleEntry,
+  deleteScheduleEntry,
+  getScheduleEntries,
+  reorderScheduleEntries,
+  type ScheduleEntryWithRelations,
+  updateScheduleEntry,
+} from "@/server/actions/schedule.actions";
 
 type ProgrammeOption = {
   id: string;
@@ -104,7 +109,8 @@ function getFestivalDateOptions(
 }
 
 function getEntryLabel(entry: ScheduleEntryWithRelations): string {
-  if (entry.type === "PROGRAMME" && entry.programme) return entry.programme.name;
+  if (entry.type === "PROGRAMME" && entry.programme)
+    return entry.programme.name;
   if (entry.type === "SESSION") return entry.title || "—";
   return "—";
 }
@@ -126,12 +132,19 @@ export function ScheduleClient({
   festivalEndDate,
 }: ScheduleClientProps) {
   const { isReadOnly } = useFestivalReadOnly();
-  const dateOptions = getFestivalDateOptions(festivalStartDate, festivalEndDate);
-  const [entries, setEntries] = useState<ScheduleEntryWithRelations[]>(initialEntries);
+  const dateOptions = getFestivalDateOptions(
+    festivalStartDate,
+    festivalEndDate,
+  );
+  const [entries, setEntries] =
+    useState<ScheduleEntryWithRelations[]>(initialEntries);
   const [addOpen, setAddOpen] = useState(false);
   const [addFormError, setAddFormError] = useState<string | null>(null);
-  const [addFormConflictParts, setAddFormConflictParts] = useState<ConflictParts | null>(null);
-  const [editEntry, setEditEntry] = useState<ScheduleEntryWithRelations | null>(null);
+  const [addFormConflictParts, setAddFormConflictParts] =
+    useState<ConflictParts | null>(null);
+  const [editEntry, setEditEntry] = useState<ScheduleEntryWithRelations | null>(
+    null,
+  );
   const [deleteEntryId, setDeleteEntryId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -148,7 +161,9 @@ export function ScheduleClient({
     setEntries(data);
   }, [festivalId]);
 
-  const groupedByDay = entries.reduce<Record<string, ScheduleEntryWithRelations[]>>((acc, entry) => {
+  const groupedByDay = entries.reduce<
+    Record<string, ScheduleEntryWithRelations[]>
+  >((acc, entry) => {
     const key = getDateKey(new Date(entry.startTime));
     if (!acc[key]) acc[key] = [];
     acc[key].push(entry);
@@ -159,9 +174,11 @@ export function ScheduleClient({
   const effectiveActiveDay =
     activeDayKey && groupedByDay[activeDayKey]
       ? activeDayKey
-      : sortedDays[0] ?? null;
+      : (sortedDays[0] ?? null);
 
-  const dayEntries = effectiveActiveDay ? groupedByDay[effectiveActiveDay] ?? [] : [];
+  const dayEntries = effectiveActiveDay
+    ? (groupedByDay[effectiveActiveDay] ?? [])
+    : [];
   const filteredDayEntries =
     activeStageId === ""
       ? dayEntries
@@ -235,13 +252,18 @@ export function ScheduleClient({
     }
   };
 
-  const moveEntry = async (entry: ScheduleEntryWithRelations, direction: "up" | "down") => {
+  const moveEntry = async (
+    entry: ScheduleEntryWithRelations,
+    direction: "up" | "down",
+  ) => {
     if (isReadOnly) return;
     const dayKey = getDateKey(new Date(entry.startTime));
     const list =
       activeStageId === ""
-        ? groupedByDay[dayKey] ?? []
-        : (groupedByDay[dayKey] ?? []).filter((e) => e.stageId === activeStageId);
+        ? (groupedByDay[dayKey] ?? [])
+        : (groupedByDay[dayKey] ?? []).filter(
+            (e) => e.stageId === activeStageId,
+          );
     const idx = list.findIndex((e) => e.id === entry.id);
     if (idx < 0) return;
     const newIdx = direction === "up" ? idx - 1 : idx + 1;
@@ -260,12 +282,7 @@ export function ScheduleClient({
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Schedule</h2>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            Schedule programmes and events by day, time, and stage.
-          </p>
-        </div>
+        <h2 className="text-2xl font-bold tracking-tight">Schedule</h2>
         <div className="flex items-center gap-2 shrink-0">
           <HowItWorksButton
             title="How the Schedule works"
@@ -295,11 +312,15 @@ export function ScheduleClient({
                 return;
               }
               if (!hasStages) {
-                toast.error("Please create at least one stage before adding to the schedule.");
+                toast.error(
+                  "Please create at least one stage before adding to the schedule.",
+                );
                 return;
               }
               if (!hasProgrammes) {
-                toast.error("Please create programmes first before scheduling.");
+                toast.error(
+                  "Please create programmes first before scheduling.",
+                );
                 return;
               }
               setAddOpen(true);
@@ -321,19 +342,24 @@ export function ScheduleClient({
               {isReadOnly
                 ? "Festival is read-only in past/expired mode."
                 : !hasStages
-                ? "No stages yet"
-                : !hasProgrammes
-                  ? "No programmes yet"
-                  : "No schedule entries yet"}
+                  ? "No stages yet"
+                  : !hasProgrammes
+                    ? "No programmes yet"
+                    : "No schedule entries yet"}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
               {isReadOnly &&
                 "Create, edit, delete, and reorder are disabled in read-only mode."}
-              {!isReadOnly && !hasStages &&
+              {!isReadOnly &&
+                !hasStages &&
                 "Please create a stage first in Pre-Works → Stage Management."}
-              {!isReadOnly && hasStages && !hasProgrammes &&
+              {!isReadOnly &&
+                hasStages &&
+                !hasProgrammes &&
                 "Please create programmes first in Pre-Works → Programmes."}
-              {!isReadOnly && hasStages && hasProgrammes &&
+              {!isReadOnly &&
+                hasStages &&
+                hasProgrammes &&
                 "Add programmes to build your schedule."}
             </p>
             <Button
@@ -345,11 +371,15 @@ export function ScheduleClient({
                   return;
                 }
                 if (!hasStages) {
-                  toast.error("Please create at least one stage before adding to the schedule.");
+                  toast.error(
+                    "Please create at least one stage before adding to the schedule.",
+                  );
                   return;
                 }
                 if (!hasProgrammes) {
-                  toast.error("Please create programmes first before scheduling.");
+                  toast.error(
+                    "Please create programmes first before scheduling.",
+                  );
                   return;
                 }
                 setAddOpen(true);
@@ -397,34 +427,40 @@ export function ScheduleClient({
               <CardHeader className="pb-2">
                 <CardTitle className="flex text-lg gap-2 items-center justify-between">
                   {format(parseISO(effectiveActiveDay), "EEEE, MMM d, yyyy")}
-                    {hasStages && (
-                      <Select
-                        value={activeStageId === "" ? "__all__" : activeStageId}
-                        onValueChange={(v) => setActiveStageId(v === "__all__" ? "" : v)}
-                      >
-                        <SelectTrigger className="w-[180px] h-8 text-sm">
-                          <SelectValue placeholder="Stage" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem className="font-normal" value="__all__">
-                            All stages
+                  {hasStages && (
+                    <Select
+                      value={activeStageId === "" ? "__all__" : activeStageId}
+                      onValueChange={(v) =>
+                        setActiveStageId(v === "__all__" ? "" : v)
+                      }
+                    >
+                      <SelectTrigger className="w-[180px] h-8 text-sm">
+                        <SelectValue placeholder="Stage" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem className="font-normal" value="__all__">
+                          All stages
+                        </SelectItem>
+                        {stages.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name}
                           </SelectItem>
-                          {stages.map((s) => (
-                            <SelectItem key={s.id} value={s.id}>
-                              {s.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </CardTitle>
-                  <CardDescription className="mt-0!">
-                    {filteredDayEntries.length} item
-                    {filteredDayEntries.length !== 1 ? "s" : ""}
-                    {activeStageId !== "" && dayEntries.length !== filteredDayEntries.length && (
-                      <span className="text-muted-foreground"> on this stage</span>
+                <CardDescription className="mt-0!">
+                  {filteredDayEntries.length} item
+                  {filteredDayEntries.length !== 1 ? "s" : ""}
+                  {activeStageId !== "" &&
+                    dayEntries.length !== filteredDayEntries.length && (
+                      <span className="text-muted-foreground">
+                        {" "}
+                        on this stage
+                      </span>
                     )}
-                  </CardDescription>
+                </CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
                 <motion.ul
@@ -464,7 +500,7 @@ export function ScheduleClient({
                           disabled={
                             isReadOnly ||
                             filteredDayEntries.indexOf(entry) ===
-                            filteredDayEntries.length - 1
+                              filteredDayEntries.length - 1
                           }
                           aria-label="Move down"
                         >
@@ -473,7 +509,9 @@ export function ScheduleClient({
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-medium truncate">{getEntryLabel(entry)}</p>
+                          <p className="font-medium truncate">
+                            {getEntryLabel(entry)}
+                          </p>
                           {entry.programme?.category?.name && (
                             <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
                               {entry.programme.category.name}
@@ -502,7 +540,14 @@ export function ScheduleClient({
                                       ? `Created by ${entry.createdBy}`
                                       : ""}
                                   {entry.updatedAt && (
-                                    <> · {format(new Date(entry.updatedAt), "MMM d, h:mm a")}</>
+                                    <>
+                                      {" "}
+                                      ·{" "}
+                                      {format(
+                                        new Date(entry.updatedAt),
+                                        "MMM d, h:mm a",
+                                      )}
+                                    </>
                                   )}
                                 </p>
                               </TooltipTrigger>
@@ -514,7 +559,10 @@ export function ScheduleClient({
                                   <p>
                                     Updated by {entry.updatedBy} on{" "}
                                     {entry.updatedAt &&
-                                      format(new Date(entry.updatedAt), "MMM d, yyyy 'at' h:mm a")}
+                                      format(
+                                        new Date(entry.updatedAt),
+                                        "MMM d, yyyy 'at' h:mm a",
+                                      )}
                                   </p>
                                 )}
                               </TooltipContent>
@@ -525,14 +573,20 @@ export function ScheduleClient({
                       {isProgrammeEntry(entry) ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                            >
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             {!isReadOnly && (
                               <>
-                                <DropdownMenuItem onClick={() => setEditEntry(entry)}>
+                                <DropdownMenuItem
+                                  onClick={() => setEditEntry(entry)}
+                                >
                                   <Pencil className="h-4 w-4 mr-2" />
                                   Edit
                                 </DropdownMenuItem>
@@ -549,7 +603,9 @@ export function ScheduleClient({
                           </DropdownMenuContent>
                         </DropdownMenu>
                       ) : (
-                        <span className="text-xs text-muted-foreground">Read-only</span>
+                        <span className="text-xs text-muted-foreground">
+                          Read-only
+                        </span>
                       )}
                     </motion.li>
                   ))}
@@ -580,19 +636,19 @@ export function ScheduleClient({
       />
 
       {!isReadOnly && (
-      <DeleteDialog
-        title="Remove from schedule"
-        description="This entry will be removed. You can add it again later."
-        open={!!deleteEntryId}
-        onOpenChange={(open) => !open && setDeleteEntryId(null)}
-        onDelete={async () => {
-          if (deleteEntryId) {
-            await handleDelete(deleteEntryId);
-            setDeleteEntryId(null);
-          }
-        }}
-        isDeleting={!!deletingId}
-      />
+        <DeleteDialog
+          title="Remove from schedule"
+          description="This entry will be removed. You can add it again later."
+          open={!!deleteEntryId}
+          onOpenChange={(open) => !open && setDeleteEntryId(null)}
+          onDelete={async () => {
+            if (deleteEntryId) {
+              await handleDelete(deleteEntryId);
+              setDeleteEntryId(null);
+            }
+          }}
+          isDeleting={!!deletingId}
+        />
       )}
 
       {!isReadOnly && editEntry && (
@@ -653,7 +709,9 @@ function AddEntryDialog({
   const [startTimeStr, setStartTimeStr] = useState("09:00");
   const [endTimeStr, setEndTimeStr] = useState("");
   const [conflictError, setConflictError] = useState<string | null>(null);
-  const [conflictParts, setConflictParts] = useState<ConflictParts | null>(null);
+  const [conflictParts, setConflictParts] = useState<ConflictParts | null>(
+    null,
+  );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const effectiveDate =
@@ -665,7 +723,9 @@ function AddEntryDialog({
     if (!open) return;
     debounceRef.current = setTimeout(async () => {
       const startTime = new Date(`${effectiveDate}T${startTimeStr}`);
-      const endTime = endTimeStr ? new Date(`${effectiveDate}T${endTimeStr}`) : null;
+      const endTime = endTimeStr
+        ? new Date(`${effectiveDate}T${endTimeStr}`)
+        : null;
       const res = await checkScheduleConflict(festivalId, {
         startTime,
         endTime,
@@ -688,7 +748,10 @@ function AddEntryDialog({
     new Map(
       programmes
         .filter((p) => p.categoryId && p.categoryName)
-        .map((p) => [p.categoryId as string, { id: p.categoryId as string, name: p.categoryName as string }]),
+        .map((p) => [
+          p.categoryId as string,
+          { id: p.categoryId as string, name: p.categoryName as string },
+        ]),
     ).values(),
   );
 
@@ -715,7 +778,9 @@ function AddEntryDialog({
         ? dateOptions[0]!.value
         : dateStr;
     const startTime = new Date(`${effectiveDate}T${startTimeStr}`);
-    const endTime = endTimeStr ? new Date(`${effectiveDate}T${endTimeStr}`) : undefined;
+    const endTime = endTimeStr
+      ? new Date(`${effectiveDate}T${endTimeStr}`)
+      : undefined;
     await onSubmit({
       programmeId,
       stageId: stageId || undefined,
@@ -728,19 +793,22 @@ function AddEntryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md p-4 sm:p-5 gap-0">
         <DialogHeader className="pb-3">
-          <DialogTitle className="text-base">Add programme to schedule</DialogTitle>
+          <DialogTitle className="text-base">
+            Add programme to schedule
+          </DialogTitle>
           <DialogDescription className="text-xs">
             Programme, stage, and time. Sessions are on the Sessions page.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
-         
-
           <div className="grid grid-cols-1 gap-1">
             <div className="space-y-1.5">
               <Label htmlFor="add-category" className="text-xs">
-                Category <span className="text-muted-foreground font-normal">(filters programmes)</span>
+                Category{" "}
+                <span className="text-muted-foreground font-normal">
+                  (filters programmes)
+                </span>
               </Label>
               <Select
                 value={categoryId}
@@ -762,7 +830,9 @@ function AddEntryDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="add-programme" className="text-xs">Programme</Label>
+              <Label htmlFor="add-programme" className="text-xs">
+                Programme
+              </Label>
               <Select
                 value={programmeId}
                 onValueChange={setProgrammeId}
@@ -770,12 +840,18 @@ function AddEntryDialog({
                 disabled={!categoryId}
               >
                 <SelectTrigger id="add-programme" className="h-9 text-sm">
-                  <SelectValue placeholder={categoryId ? "Select programme" : "Select category first"} />
+                  <SelectValue
+                    placeholder={
+                      categoryId ? "Select programme" : "Select category first"
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {visibleProgrammes.length === 0 ? (
                     <SelectItem value="__none__" disabled>
-                      {categoryId ? "No programmes in this category" : "Select category first"}
+                      {categoryId
+                        ? "No programmes in this category"
+                        : "Select category first"}
                     </SelectItem>
                   ) : (
                     visibleProgrammes.map((p) => (
@@ -788,7 +864,9 @@ function AddEntryDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="add-stage" className="text-xs">Stage</Label>
+              <Label htmlFor="add-stage" className="text-xs">
+                Stage
+              </Label>
               <Select value={stageId} onValueChange={setStageId}>
                 <SelectTrigger id="add-stage" className="h-9 text-sm">
                   <SelectValue placeholder="Select stage" />
@@ -811,10 +889,16 @@ function AddEntryDialog({
 
           <div className="grid grid-cols-2 gap-2 items-end">
             <div className="space-y-1.5 col-span-2">
-              <Label htmlFor="add-date" className="text-xs">Date</Label>
+              <Label htmlFor="add-date" className="text-xs">
+                Date
+              </Label>
               {dateOptions.length > 0 ? (
                 <Select
-                  value={dateOptions.some((o) => o.value === dateStr) ? dateStr : dateOptions[0]!.value}
+                  value={
+                    dateOptions.some((o) => o.value === dateStr)
+                      ? dateStr
+                      : dateOptions[0]!.value
+                  }
                   onValueChange={setDateStr}
                 >
                   <SelectTrigger id="add-date" className="h-9 text-sm">
@@ -839,7 +923,9 @@ function AddEntryDialog({
               )}
             </div>
             <div className="space-y-1.5 col-span-1">
-              <Label htmlFor="add-start" className="text-xs">Start</Label>
+              <Label htmlFor="add-start" className="text-xs">
+                Start
+              </Label>
               <Input
                 id="add-start"
                 type="time"
@@ -849,7 +935,10 @@ function AddEntryDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="add-end" className="text-xs">End <span className="text-muted-foreground font-normal">(opt)</span></Label>
+              <Label htmlFor="add-end" className="text-xs">
+                End{" "}
+                <span className="text-muted-foreground font-normal">(opt)</span>
+              </Label>
               <Input
                 id="add-end"
                 type="time"
@@ -865,12 +954,22 @@ function AddEntryDialog({
               role="alert"
               className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
             >
-              <span className="shrink-0 size-3.5 rounded-full bg-destructive/20 flex items-center justify-center text-[9px] font-bold">!</span>
+              <span className="shrink-0 size-3.5 rounded-full bg-destructive/20 flex items-center justify-center text-[9px] font-bold">
+                !
+              </span>
               <span>
                 {(formConflictParts ?? conflictParts)
                   ? (() => {
                       const p = formConflictParts ?? conflictParts!;
-                      return <>{p.prefix}<strong className="font-semibold">{p.highlight}</strong>{p.suffix}</>;
+                      return (
+                        <>
+                          {p.prefix}
+                          <strong className="font-semibold">
+                            {p.highlight}
+                          </strong>
+                          {p.suffix}
+                        </>
+                      );
                     })()
                   : (formError ?? conflictError)}
               </span>
@@ -878,15 +977,28 @@ function AddEntryDialog({
           )}
 
           <DialogFooter className="pt-3 pb-0 gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button
               size="sm"
               type="submit"
-              disabled={saving || !categoryId || !programmeId || !stageId || !!conflictError}
+              disabled={
+                saving ||
+                !categoryId ||
+                !programmeId ||
+                !stageId ||
+                !!conflictError
+              }
             >
-              {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              {saving && (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              )}
               Add
             </Button>
           </DialogFooter>
@@ -931,7 +1043,12 @@ function EditEntryDialog({
             },
             ...dateOptions,
           ]
-      : [{ value: entryDateStr, label: format(new Date(entry.startTime), "EEE, d MMM yyyy") }];
+      : [
+          {
+            value: entryDateStr,
+            label: format(new Date(entry.startTime), "EEE, d MMM yyyy"),
+          },
+        ];
   const [stageId, setStageId] = useState(entry.stageId ?? "");
   const [dateStr, setDateStr] = useState(entryDateStr);
   const [startTimeStr, setStartTimeStr] = useState(
@@ -941,7 +1058,9 @@ function EditEntryDialog({
     entry.endTime ? format(new Date(entry.endTime), "HH:mm") : "",
   );
   const [conflictError, setConflictError] = useState<string | null>(null);
-  const [conflictParts, setConflictParts] = useState<ConflictParts | null>(null);
+  const [conflictParts, setConflictParts] = useState<ConflictParts | null>(
+    null,
+  );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const effectiveDate =
@@ -1020,7 +1139,11 @@ function EditEntryDialog({
             <div className="space-y-2">
               <Label>Date</Label>
               <Select
-                value={optionsForEdit.some((o) => o.value === dateStr) ? dateStr : optionsForEdit[0]!.value}
+                value={
+                  optionsForEdit.some((o) => o.value === dateStr)
+                    ? dateStr
+                    : optionsForEdit[0]!.value
+                }
                 onValueChange={setDateStr}
               >
                 <SelectTrigger>
@@ -1059,19 +1182,36 @@ function EditEntryDialog({
               role="alert"
               className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
             >
-              <span className="shrink-0 size-3.5 rounded-full bg-destructive/20 flex items-center justify-center text-[9px] font-bold">!</span>
+              <span className="shrink-0 size-3.5 rounded-full bg-destructive/20 flex items-center justify-center text-[9px] font-bold">
+                !
+              </span>
               <span>
-                {conflictParts
-                  ? <>{conflictParts.prefix}<strong className="font-semibold">{conflictParts.highlight}</strong>{conflictParts.suffix}</>
-                  : conflictError}
+                {conflictParts ? (
+                  <>
+                    {conflictParts.prefix}
+                    <strong className="font-semibold">
+                      {conflictParts.highlight}
+                    </strong>
+                    {conflictParts.suffix}
+                  </>
+                ) : (
+                  conflictError
+                )}
               </span>
             </div>
           )}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={saving || !stageId || !!conflictError}>
+            <Button
+              type="submit"
+              disabled={saving || !stageId || !!conflictError}
+            >
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Update
             </Button>

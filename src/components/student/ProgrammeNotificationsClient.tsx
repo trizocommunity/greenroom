@@ -6,9 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useProgrammeNotifications } from "@/hooks/useProgrammeNotifications";
 
-export function ProgrammeNotificationsClient({ studentId }: { studentId: string }) {
+export function ProgrammeNotificationsClient({
+  studentId,
+  festivalId,
+}: {
+  studentId: string;
+  festivalId: string;
+}) {
   const { notifications, unreadCount, isLoading, markAllRead, markOneRead } =
-    useProgrammeNotifications(studentId);
+    useProgrammeNotifications(studentId, festivalId);
 
   return (
     <div className="space-y-4">
@@ -19,7 +25,11 @@ export function ProgrammeNotificationsClient({ studentId }: { studentId: string 
             Live updates for programme reporting and code letters.
           </p>
         </div>
-        <Button variant="outline" onClick={markAllRead} disabled={unreadCount === 0}>
+        <Button
+          variant="outline"
+          onClick={markAllRead}
+          disabled={unreadCount === 0}
+        >
           Mark all read ({unreadCount})
         </Button>
       </div>
@@ -30,7 +40,9 @@ export function ProgrammeNotificationsClient({ studentId }: { studentId: string 
         </CardHeader>
         <CardContent className="space-y-2">
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading notifications...</p>
+            <p className="text-sm text-muted-foreground">
+              Loading notifications...
+            </p>
           ) : notifications.length === 0 ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Bell className="h-4 w-4" />
@@ -49,7 +61,9 @@ export function ProgrammeNotificationsClient({ studentId }: { studentId: string 
                 <div className="text-sm font-semibold">{n.title}</div>
                 <div className="text-sm text-muted-foreground">{n.body}</div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                  {formatDistanceToNow(new Date(n.createdAt), {
+                    addSuffix: true,
+                  })}
                 </div>
               </button>
             ))

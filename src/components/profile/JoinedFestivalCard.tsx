@@ -5,11 +5,11 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  getDerivedFestivalStatus,
-  FESTIVAL_STATUS_LABELS,
-} from "@/lib/festival-status";
 import type { Festival } from "@/hooks/useFestivals";
+import {
+  FESTIVAL_STATUS_LABELS,
+  getDerivedFestivalStatus,
+} from "@/lib/festival-status";
 
 interface JoinedFestivalCardProps {
   festival: Festival & { memberRole?: string };
@@ -35,7 +35,9 @@ export function JoinedFestivalCard({ festival }: JoinedFestivalCardProps) {
         <div className="space-y-2 min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <Badge
-              variant={isExpired ? "destructive" : isActive ? "default" : "secondary"}
+              variant={
+                isExpired ? "destructive" : isActive ? "default" : "secondary"
+              }
               className={
                 isExpired
                   ? "bg-red-500/90 text-white"

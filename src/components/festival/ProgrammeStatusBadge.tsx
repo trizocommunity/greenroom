@@ -26,8 +26,7 @@ const STATUS_LABELS: Record<ProgrammeStatus, string> = {
  * - PUBLISHED: success green (final, live)
  */
 const STATUS_STYLES: Record<ProgrammeStatus, string> = {
-  READY:
-    "border-transparent bg-muted text-muted-foreground hover:bg-muted/80",
+  READY: "border-transparent bg-muted text-muted-foreground hover:bg-muted/80",
   ASSIGNED:
     "border-transparent bg-slate-500/15 text-slate-700 dark:text-slate-300 dark:bg-slate-500/20",
   SCHEDULED:
@@ -36,10 +35,8 @@ const STATUS_STYLES: Record<ProgrammeStatus, string> = {
     "border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-300 dark:bg-amber-500/20",
   STARTED:
     "border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-300 dark:bg-amber-500/20",
-  ENDED:
-    "border-transparent bg-muted text-muted-foreground hover:bg-muted/80",
-  JUDGED:
-    "border-transparent bg-primary/15 text-primary dark:bg-primary/20",
+  ENDED: "border-transparent bg-muted text-muted-foreground hover:bg-muted/80",
+  JUDGED: "border-transparent bg-primary/15 text-primary dark:bg-primary/20",
   PUBLISHED:
     "border-transparent bg-green-500/15 text-green-700 dark:text-green-400 dark:bg-green-500/20",
 };
@@ -49,7 +46,10 @@ interface ProgrammeStatusBadgeProps {
   className?: string;
 }
 
-export function ProgrammeStatusBadge({ status, className }: ProgrammeStatusBadgeProps) {
+export function ProgrammeStatusBadge({
+  status,
+  className,
+}: ProgrammeStatusBadgeProps) {
   const label = STATUS_LABELS[status] ?? status;
   const style = STATUS_STYLES[status] ?? STATUS_STYLES.READY;
   return (

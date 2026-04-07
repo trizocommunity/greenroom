@@ -3,10 +3,10 @@ import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { FestivalFooter } from "@/components/festival/FestivalFooter";
 import { FestivalNavbar } from "@/components/festival/FestivalNavbar";
 import { ExpiredFestivalView } from "@/components/festival/public/ExpiredFestivalView";
-import { getBrandingFromJson } from "@/types/festival";
 import { getSession } from "@/lib/auth/session";
-import { findFestivalBySlug } from "@/server/models/festival.model";
 import { prisma } from "@/lib/db";
+import { findFestivalBySlug } from "@/server/models/festival.model";
+import { getBrandingFromJson } from "@/types/festival";
 
 export default async function FestivalLayout({
   children,
@@ -69,7 +69,6 @@ export default async function FestivalLayout({
     endDate: new Date().toISOString(), // Placeholder
     location: festival.orgLocation || "",
     status: festival.status,
-    accentColor: branding?.colors?.primary ?? "#000000",
     logo: branding?.logo ?? null,
     heroImage: branding?.heroImage ?? null,
     orgName: festival.orgName || "",

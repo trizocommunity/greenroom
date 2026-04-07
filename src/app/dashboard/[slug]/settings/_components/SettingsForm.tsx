@@ -12,13 +12,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
+import { DateTimePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 import { FeatureService } from "@/lib/features";
 import { getResolvedTier } from "@/lib/tier";
 import { updateFestivalSettingsAction } from "@/server/actions/festival.actions";
-import { DateTimePicker } from "@/components/ui/date-picker";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 
 interface SettingsFormProps {
   festival: any;
@@ -32,7 +32,9 @@ export function SettingsForm({ festival }: SettingsFormProps) {
   // (Used to keep presets within [durationStart, festival.startDate).)
   const [durationStart] = useState(() => {
     const createdAt = festival?.createdAt ? new Date(festival.createdAt) : null;
-    return createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : new Date();
+    return createdAt && !Number.isNaN(createdAt.getTime())
+      ? createdAt
+      : new Date();
   });
   const [nowAtPageOpen] = useState(() => new Date());
   const [formData, setFormData] = useState({
@@ -99,10 +101,10 @@ export function SettingsForm({ festival }: SettingsFormProps) {
   return (
     <Card className="overflow-hidden">
       <CardHeader className="p-4 sm:p-6">
-        <CardTitle className="text-lg sm:text-xl">Festival Configuration</CardTitle>
-        <CardDescription>
-          Manage deadlines and access controls.
-        </CardDescription>
+        <CardTitle className="text-lg sm:text-xl">
+          Festival Configuration
+        </CardTitle>
+        <CardDescription>Manage deadlines and access controls.</CardDescription>
       </CardHeader>
       <CardContent className="p-4 sm:p-6 pt-0">
         <form onSubmit={handleSave} className="space-y-6">
@@ -137,7 +139,9 @@ export function SettingsForm({ festival }: SettingsFormProps) {
 
                   setFormData({
                     ...formData,
-                    programmeAssignmentDeadline: validated.toISOString().slice(0, 16),
+                    programmeAssignmentDeadline: validated
+                      .toISOString()
+                      .slice(0, 16),
                   });
                 }}
                 placeholder="Pick deadline"
@@ -167,7 +171,9 @@ export function SettingsForm({ festival }: SettingsFormProps) {
 
           {resolvedTier !== "BASIC" && (
             <div className="grid gap-2">
-              <Label htmlFor="teamLeaderLimit">Team Leader Limit Per Group</Label>
+              <Label htmlFor="teamLeaderLimit">
+                Team Leader Limit Per Group
+              </Label>
               <Input
                 id="teamLeaderLimit"
                 type="number"
@@ -202,13 +208,18 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                 Advanced settings
               </h4>
               <p className="text-sm text-muted-foreground">
-                Additional options for your plan. More advanced controls may be added here.
+                Additional options for your plan. More advanced controls may be
+                added here.
               </p>
             </div>
           )}
 
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-            <Button type="submit" disabled={isLoading || isReadOnly} className="w-full sm:w-auto">
+            <Button
+              type="submit"
+              disabled={isLoading || isReadOnly}
+              className="w-full sm:w-auto"
+            >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Changes
             </Button>

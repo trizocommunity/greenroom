@@ -1,14 +1,14 @@
+import type { Tier } from "@prisma/client";
+import { Calendar, Trophy } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
-import { LeaderboardClient } from "@/components/dashboard/leaderboard/LeaderboardClient";
 import { EmptyState } from "@/components/common/EmptyState";
+import { LeaderboardClient } from "@/components/dashboard/leaderboard/LeaderboardClient";
 import { getFestivalLeaderboardDataBySlug } from "@/server/services/leaderboard.service";
 import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
 import {
   filterProgrammesForEventWorks,
   isProgrammeInEventWorks,
 } from "@/server/services/programme-status.service";
-import type { Tier } from "@prisma/client";
-import { Calendar, Trophy } from "lucide-react";
 
 export default async function TeamStatusPage({
   params,
@@ -79,7 +79,9 @@ export default async function TeamStatusPage({
         categories={festival.categories}
         groups={festival.groups}
       >
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Leaderboard</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+          Leaderboard
+        </h1>
       </LeaderboardClient>
     </div>
   );

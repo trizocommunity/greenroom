@@ -12,9 +12,15 @@ import {
 } from "@/server/services/payments-domain.service";
 import type { ActionResponse } from "@/types/actions";
 
-export async function initiateFestivalPayment(
-  tier: Tier,
-): Promise<ActionResponse<{ paymentId: string; orderId: string; amount: number; currency: string; key: string | undefined }>> {
+export async function initiateFestivalPayment(tier: Tier): Promise<
+  ActionResponse<{
+    paymentId: string;
+    orderId: string;
+    amount: number;
+    currency: string;
+    key: string | undefined;
+  }>
+> {
   try {
     const session = await getSession();
     if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);

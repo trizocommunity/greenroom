@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { getTeamLeaderSessionFromCookie } from "@/lib/team-leader-auth/session";
 import { getPublicFestivalStudentOrNotFound } from "@/lib/team-leader-auth/guard";
+import { getTeamLeaderSessionFromCookie } from "@/lib/team-leader-auth/session";
 
 export default async function TeamLeaderRootPage({
   params,
@@ -8,7 +8,10 @@ export default async function TeamLeaderRootPage({
   params: Promise<{ slug: string; studentSlug: string }>;
 }) {
   const { slug, studentSlug } = await params;
-  const { festival, student } = await getPublicFestivalStudentOrNotFound(slug, studentSlug);
+  const { festival, student } = await getPublicFestivalStudentOrNotFound(
+    slug,
+    studentSlug,
+  );
 
   const session = await getTeamLeaderSessionFromCookie();
   const isValidSession =

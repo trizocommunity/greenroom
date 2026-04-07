@@ -10,11 +10,11 @@
  *   because it maps tags -> required feature flags deterministically).
  */
 
-import type { FeaturePath } from "@/lib/features";
 import {
   PLAN_FEATURE_LABELS,
   PLAN_FEATURE_TOGGLE_KEYS,
 } from "@/config/plan-features.config";
+import type { FeaturePath } from "@/lib/features";
 import type { Tier } from "@/lib/prisma-enums";
 
 export type FeatureToggleKey = (typeof PLAN_FEATURE_TOGGLE_KEYS)[number];
@@ -99,13 +99,18 @@ export function getFeatureTagLabel(tag: FeatureTag): string {
 }
 
 export function isFeatureToggleKey(tag: FeatureTag): tag is FeatureToggleKey {
-  return (PLAN_FEATURE_TOGGLE_KEYS as readonly FeaturePath[]).includes(tag as FeaturePath);
+  return (PLAN_FEATURE_TOGGLE_KEYS as readonly FeaturePath[]).includes(
+    tag as FeaturePath,
+  );
 }
 
 export function isFeatureTagEnabled(params: {
   tier: Tier;
   tag: FeatureTag;
-  effectiveFeatureMatrix: Partial<Record<FeaturePath, boolean>> | null | undefined;
+  effectiveFeatureMatrix:
+    | Partial<Record<FeaturePath, boolean>>
+    | null
+    | undefined;
 }): boolean {
   const { tier, tag, effectiveFeatureMatrix } = params;
   const req = getFeatureTagRequirements(tag);
@@ -120,4 +125,3 @@ export function isFeatureTagEnabled(params: {
 
   return true;
 }
-

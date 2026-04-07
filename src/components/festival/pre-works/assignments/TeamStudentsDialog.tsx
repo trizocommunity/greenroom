@@ -66,7 +66,10 @@ export function TeamStudentsDialog({
             <TableBody>
               {students.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground py-6">
+                  <TableCell
+                    colSpan={3}
+                    className="text-center text-muted-foreground py-6"
+                  >
                     No students in this team.
                   </TableCell>
                 </TableRow>

@@ -1,9 +1,15 @@
 "use client";
 
 import { format, isPast, parseISO } from "date-fns";
-import { Calendar, ChevronDown, ChevronUp, MapPin, Mic2, Users } from "lucide-react";
-import { useState, useMemo } from "react";
-import { cn } from "@/lib/utils";
+import {
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+  MapPin,
+  Mic2,
+  Users,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -11,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 const SESSION_TYPE_LABELS: Record<string, string> = {
   GENERAL: "General",
@@ -54,18 +61,15 @@ export function PublicSessionCards({ entries }: { entries: SessionEntry[] }) {
     });
     const labels: Record<string, string> = {};
     keys.forEach((k, i) => {
-      labels[k] =
-        k === TBA_DAY_KEY ? "Date & time TBA" : `Day ${i + 1}`;
+      labels[k] = k === TBA_DAY_KEY ? "Date & time TBA" : `Day ${i + 1}`;
     });
     return { groupedByDay: byDay, sortedDayKeys: keys, dayLabels: labels };
   }, [entries]);
 
-  const [activeDayKey, setActiveDayKey] = useState(
-    sortedDayKeys[0] ?? "",
-  );
+  const [activeDayKey, setActiveDayKey] = useState(sortedDayKeys[0] ?? "");
   const [activeStageId, setActiveStageId] = useState("");
 
-  const dayEntries = activeDayKey ? groupedByDay[activeDayKey] ?? [] : [];
+  const dayEntries = activeDayKey ? (groupedByDay[activeDayKey] ?? []) : [];
   const stagesForDay = useMemo(() => {
     const seen = new Map<string, { id: string; name: string }>();
     for (const e of dayEntries) {
@@ -107,7 +111,9 @@ export function PublicSessionCards({ entries }: { entries: SessionEntry[] }) {
               )}
             >
               {dayLabels[key]}
-              <span className="ml-2 opacity-80">({(groupedByDay[key] ?? []).length})</span>
+              <span className="ml-2 opacity-80">
+                ({(groupedByDay[key] ?? []).length})
+              </span>
             </button>
           ))}
         </div>
@@ -143,7 +149,9 @@ export function PublicSessionCards({ entries }: { entries: SessionEntry[] }) {
             <p className="text-sm text-muted-foreground">
               {filteredEntries.length} session
               {filteredEntries.length !== 1 ? "s" : ""}
-              {activeStageId !== "" && dayEntries.length !== filteredEntries.length && " on this stage"}
+              {activeStageId !== "" &&
+                dayEntries.length !== filteredEntries.length &&
+                " on this stage"}
             </p>
           </div>
         )}

@@ -94,8 +94,8 @@ export default async function ProgrammeReportingPage({
               Use filters for stage, category, type, and status.
             </li>
             <li>
-              Press <strong>Start</strong> to open the live window. Mark who
-              has reported. Group programmes can mark a full team together.
+              Press <strong>Start</strong> to open the live window. Mark who has
+              reported. Group programmes can mark a full team together.
             </li>
             <li>
               <strong>Stop / Reset</strong> closes reporting with no code

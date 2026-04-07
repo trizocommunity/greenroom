@@ -1,16 +1,13 @@
-import { notFound } from "next/navigation";
 import { Crown } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { notFound } from "next/navigation";
+import { StudentDetailsDialog } from "@/components/festival/pre-works/students/StudentDetailsDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/db";
+import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 import { findFestivalBySlug } from "@/server/models/festival.model";
-import {
-  findStudentByFestivalAndId,
-  findStudentByFestivalAndProfileSlug,
-} from "@/server/models/student.model";
-import { StudentDetailsDialog } from "@/components/festival/pre-works/students/StudentDetailsDialog";
+import { findStudentByFestivalAndProfileSlug } from "@/server/models/student.model";
 
 const RESERVED_SLUGS = new Set([
   "results",
@@ -20,10 +17,6 @@ const RESERVED_SLUGS = new Set([
   "sessions",
   "about",
 ]);
-
-function looksLikeUuid(s: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
-}
 
 export default async function MyGroupPage({
   params,
@@ -42,9 +35,10 @@ export default async function MyGroupPage({
   );
   if (!canViewProfile) notFound();
 
-  const student = looksLikeUuid(studentSlug)
-    ? await findStudentByFestivalAndId(festival.id, studentSlug)
-    : await findStudentByFestivalAndProfileSlug(festival.id, studentSlug);
+  const student = await findStudentByFestivalAndProfileSlug(
+    festival.id,
+    studentSlug,
+  );
   if (!student) notFound();
 
   // Non-leader pages are public; leaders use /leader routes.
@@ -124,4 +118,3 @@ export default async function MyGroupPage({
     </div>
   );
 }
-

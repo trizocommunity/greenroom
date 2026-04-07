@@ -1,7 +1,5 @@
 "use client";
 
-import { getDerivedFestivalStatus } from "@/lib/festival-status";
-import type { Tier } from "@/lib/prisma-enums";
 import { ArrowRight, Check, Loader2, Plus, Sparkles } from "lucide-react";
 import { useState } from "react";
 import {
@@ -30,6 +28,8 @@ import { useFestivalPayment } from "@/hooks/useFestivalPayment";
 import { useMyFestival } from "@/hooks/useFestivals";
 import { useJoinedFestivals } from "@/hooks/useJoinedFestivals";
 import { useUnusedCredit } from "@/hooks/useUnusedCredit";
+import { getDerivedFestivalStatus } from "@/lib/festival-status";
+import type { Tier } from "@/lib/prisma-enums";
 import { CreateFestivalModal } from "../CreateFestivalModal";
 import { FestivalCard } from "../FestivalCard";
 import { JoinedFestivalCard } from "../JoinedFestivalCard";
@@ -240,13 +240,17 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
                   <CardContent className="flex flex-col flex-1 space-y-4 pt-0">
                     <div className="text-2xl font-bold">
                       ₹{basicTier.price}
-                      <span className="text-xs font-normal text-muted-foreground ml-1">/festival</span>
+                      <span className="text-xs font-normal text-muted-foreground ml-1">
+                        /festival
+                      </span>
                     </div>
                     <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5 text-xs text-muted-foreground flex-1 min-h-0">
                       {basicTier.features.map((feature, i) => (
                         <li key={i} className="flex items-center gap-1.5">
                           <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-                          <span className="truncate" title={feature}>{feature}</span>
+                          <span className="truncate" title={feature}>
+                            {feature}
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -257,7 +261,8 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
                       onClick={() => handlePayClick(basicTier.id)}
                       disabled={isPaymentProcessing}
                     >
-                      {isPaymentProcessing && confirmationTier === basicTier.id ? (
+                      {isPaymentProcessing &&
+                      confirmationTier === basicTier.id ? (
                         <Loader2 className="animate-spin mr-2 h-3.5 w-3.5" />
                       ) : null}
                       Pay to Proceed
@@ -286,13 +291,17 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
                     <CardContent className="flex flex-col flex-1 space-y-4 pt-0">
                       <div className="text-2xl font-bold">
                         ₹{standardTier.price}
-                        <span className="text-xs font-normal text-muted-foreground ml-1">/festival</span>
+                        <span className="text-xs font-normal text-muted-foreground ml-1">
+                          /festival
+                        </span>
                       </div>
                       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5 text-xs text-muted-foreground flex-1 min-h-0">
                         {standardTier.features.map((feature, i) => (
                           <li key={i} className="flex items-center gap-1.5">
                             <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-                            <span className="truncate" title={feature}>{feature}</span>
+                            <span className="truncate" title={feature}>
+                              {feature}
+                            </span>
                           </li>
                         ))}
                       </ul>
@@ -302,7 +311,8 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
                         onClick={() => handlePayClick(standardTier.id)}
                         disabled={isPaymentProcessing}
                       >
-                        {isPaymentProcessing && confirmationTier === standardTier.id ? (
+                        {isPaymentProcessing &&
+                        confirmationTier === standardTier.id ? (
                           <Loader2 className="animate-spin mr-2 h-3.5 w-3.5" />
                         ) : null}
                         Pay to Proceed
@@ -326,13 +336,17 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
                     <CardContent className="flex flex-col flex-1 space-y-4 pt-0">
                       <div className="text-2xl font-bold">
                         ₹{proTier.price}
-                        <span className="text-xs font-normal text-muted-foreground ml-1">/festival</span>
+                        <span className="text-xs font-normal text-muted-foreground ml-1">
+                          /festival
+                        </span>
                       </div>
                       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5 text-xs text-muted-foreground flex-1 min-h-0">
                         {proTier.features.map((feature, i) => (
                           <li key={i} className="flex items-center gap-1.5">
                             <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-                            <span className="truncate" title={feature}>{feature}</span>
+                            <span className="truncate" title={feature}>
+                              {feature}
+                            </span>
                           </li>
                         ))}
                       </ul>
@@ -343,7 +357,8 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
                         onClick={() => handlePayClick(proTier.id)}
                         disabled={isPaymentProcessing}
                       >
-                        {isPaymentProcessing && confirmationTier === proTier.id ? (
+                        {isPaymentProcessing &&
+                        confirmationTier === proTier.id ? (
                           <Loader2 className="animate-spin mr-2 h-3.5 w-3.5" />
                         ) : null}
                         Pay to Proceed

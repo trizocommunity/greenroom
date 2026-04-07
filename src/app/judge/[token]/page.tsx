@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { notFound, redirect } from "next/navigation";
+import { ExternalJudgeClient } from "@/components/judge/ExternalJudgeClient";
 import { prisma } from "@/lib/db";
 import { getEffectiveFeatureTagEnabled } from "@/server/services/plan-features-tags.service";
-import { ExternalJudgeClient } from "@/components/judge/ExternalJudgeClient";
 
 function hashTokenSHA256(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -18,13 +18,13 @@ export default async function JudgeTokenPage({
   const tokenHash = hashTokenSHA256(token);
 
   const judgeSession = await prisma.programmeJudgeSession.findUnique({
-    where: { tokenHash },
+    where: { token_hash: tokenHash },
     select: {
-      programmeId: true,
-      festivalId: true,
-      reportingSessionId: true,
-      startedAt: true,
-      usedAt: true,
+      programme_id: true,
+      festival_id: true,
+      reporting_session_id: true,
+      started_at: true,
+      used_at: true,
     },
   });
 
@@ -33,26 +33,41 @@ export default async function JudgeTokenPage({
       <ExternalJudgeClient
         token={token}
         programmeName="Judging"
+        festival={{
+          name: "Festival",
+          slug: "festival",
+          location: null,
+          startDate: null,
+          endDate: null,
+        }}
+        programmeDetails={{
+          stageName: null,
+          categoryName: null,
+          programmeType: null,
+        }}
         codeLetters={[]}
         startedAt={new Date()}
         isClosed={true}
+        openNonce={null}
+        lockState="closed"
+        recentJudges={[]}
       />
     );
   }
 
   const [programme, festival, codeLettersRows] = await Promise.all([
     prisma.programme.findUnique({
-      where: { id: judgeSession.programmeId },
+      where: { id: judgeSession.programme_id },
       select: { name: true },
     }),
     prisma.festival.findUnique({
-      where: { id: judgeSession.festivalId },
+      where: { id: judgeSession.festival_id },
       select: { tier: true, slug: true },
     }),
     prisma.programmeCodeLetter.findMany({
       where: {
-        programmeId: judgeSession.programmeId,
-        reportingSessionId: judgeSession.reportingSessionId,
+        programmeId: judgeSession.programme_id,
+        reportingSessionId: judgeSession.reporting_session_id,
       },
       select: { code: true },
       orderBy: { issuedAt: "asc" },
@@ -76,4 +91,3 @@ export default async function JudgeTokenPage({
 
   // (Unreachable: redirect always returns.)
 }
-

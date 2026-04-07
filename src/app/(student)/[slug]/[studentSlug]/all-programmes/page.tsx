@@ -7,6 +7,22 @@ import { getProgrammeStatusPriorityRank } from "@/lib/programme-status-priority"
 import { getTeamLeaderMyStudents } from "@/lib/team-leader/my-team";
 import { requireTeamLeaderSession } from "@/lib/team-leader-auth/guard";
 
+function isSessionTimedOut(
+  session:
+    | {
+        status: string;
+        windowEndsAt: Date | null;
+      }
+    | null
+    | undefined,
+): boolean {
+  return Boolean(
+    session?.status === "IN_PROGRESS" &&
+      session.windowEndsAt &&
+      session.windowEndsAt.getTime() <= Date.now(),
+  );
+}
+
 export default async function AllProgrammesPage({
   params,
 }: {
@@ -89,6 +105,25 @@ export default async function AllProgrammesPage({
         orderBy: { assignedAt: "desc" },
       })
     : [];
+
+  const groupProgrammeIds = programmes
+    .filter((p) => p.type === "GROUP")
+    .map((p) => p.id);
+  const groupProgrammeAssignments =
+    groupProgrammeIds.length > 0
+      ? await prisma.programmeAssignment.findMany({
+          where: {
+            festivalId: festival.id,
+            programmeId: { in: groupProgrammeIds },
+            groupId: student.groupId ?? undefined,
+            studentId: { not: null },
+          },
+          include: {
+            student: { select: { id: true, name: true, chestNumber: true } },
+            group: true,
+          },
+        })
+      : [];
 
   // programmeId -> { individual: Student[], group: { key: teamNumber -> Student[] } }
   const participantsByProgramme = new Map<
@@ -178,8 +213,11 @@ export default async function AllProgrammesPage({
       sess.status === "CLOSED" && memberStudentId
         ? getCodeForStudentFromLetters(sess.codeLetters, memberStudentId)
         : null;
-    if (sess.status === "IN_PROGRESS") {
+    if (sess.status === "IN_PROGRESS" && !isSessionTimedOut(sess)) {
       return reported ? "Reported" : "Pending";
+    }
+    if (sess.status === "IN_PROGRESS" && isSessionTimedOut(sess)) {
+      return reported ? "Reported" : "Not reported";
     }
     if (sess.status === "CLOSED") {
       if (reported && code) {
@@ -202,24 +240,59 @@ export default async function AllProgrammesPage({
     );
 
     const myGroupTeams =
-      p.type === "GROUP" && entry?.groupTeams
-        ? Array.from(entry.groupTeams.values()).map((t: any) => ({
-            groupId: t.groupId,
-            groupName: t.groupName,
-            teamNumber: t.teamNumber,
-            members: (t.members ?? []).map((m: any) => ({
-              id: m.id,
-              name: m.name,
-              chestNumber: m.chestNumber ?? null,
-              assignmentId: m.assignmentId as string,
-              reportingNote: reportingNoteForMember(
-                p.type,
-                latestSession,
-                m.assignmentId,
-                m.id,
-              ),
-            })),
-          }))
+      p.type === "GROUP"
+        ? (() => {
+            const teamMap = new Map<
+              string,
+              {
+                groupId: string;
+                groupName: string;
+                teamNumber: number;
+                members: Array<{
+                  id: string;
+                  name: string;
+                  chestNumber: string | null;
+                  assignmentId: string;
+                  reportingNote: string | null;
+                }>;
+              }
+            >();
+
+            for (const a of groupProgrammeAssignments) {
+              if (a.programmeId !== p.id || !a.student) continue;
+              const gid = a.group?.id ?? "__unknown__";
+              const teamNum = a.teamNumber ?? 1;
+              const key = `${gid}:${teamNum}`;
+              if (!teamMap.has(key)) {
+                teamMap.set(key, {
+                  groupId: gid,
+                  groupName: a.group?.name ?? "—",
+                  teamNumber: teamNum,
+                  members: [],
+                });
+              }
+              teamMap.get(key)!.members.push({
+                id: a.student.id,
+                name: a.student.name,
+                chestNumber: a.student.chestNumber ?? null,
+                assignmentId: a.id,
+                reportingNote: reportingNoteForMember(
+                  p.type,
+                  latestSession,
+                  a.id,
+                  a.student.id,
+                ),
+              });
+            }
+
+            return Array.from(teamMap.values()).sort((x, y) => {
+              const g = x.groupName.localeCompare(y.groupName, undefined, {
+                sensitivity: "base",
+              });
+              if (g !== 0) return g;
+              return x.teamNumber - y.teamNumber;
+            });
+          })()
         : [];
 
     const myIndividualMembers =
@@ -257,13 +330,24 @@ export default async function AllProgrammesPage({
         : [];
 
     let reportingHighlight: "live" | "closed" | "reset" | null = null;
-    if (latestSession?.status === "IN_PROGRESS") reportingHighlight = "live";
+    if (
+      latestSession?.status === "IN_PROGRESS" &&
+      !isSessionTimedOut(latestSession)
+    )
+      reportingHighlight = "live";
+    else if (
+      latestSession?.status === "IN_PROGRESS" &&
+      isSessionTimedOut(latestSession)
+    )
+      reportingHighlight = "reset";
     else if (latestSession?.status === "CLOSED") reportingHighlight = "closed";
     else if (latestSession?.status === "RESET") reportingHighlight = "reset";
 
     const sessionCodeLetter = null;
     const reportingWindowEndsAt =
-      latestSession?.status === "IN_PROGRESS" && latestSession.windowEndsAt
+      latestSession?.status === "IN_PROGRESS" &&
+      !isSessionTimedOut(latestSession) &&
+      latestSession.windowEndsAt
         ? latestSession.windowEndsAt.toISOString()
         : null;
 

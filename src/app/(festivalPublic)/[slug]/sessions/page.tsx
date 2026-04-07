@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getPublicFestivalData } from "@/server/loader/festivalPublic";
 import { getScheduleEntriesPublic } from "@/server/actions/schedule.actions";
+import { getPublicFestivalData } from "@/server/loader/festivalPublic";
 import { PublicSessionCards } from "./PublicSessionCards";
 
 export async function generateMetadata({
@@ -63,8 +63,8 @@ export default async function SessionsPage({
             Sessions
           </h1>
           <p className="text-muted-foreground text-lg max-w-2xl">
-            Sessions, talks, and ceremonies at {festival.name}. Select a session to
-            see more.
+            Sessions, talks, and ceremonies at {festival.name}. Select a session
+            to see more.
           </p>
         </header>
 

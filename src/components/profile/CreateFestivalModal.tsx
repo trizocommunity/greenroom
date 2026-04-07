@@ -1,13 +1,13 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { InstitutionType } from "@/lib/prisma-enums";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -32,10 +32,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DatePicker } from "@/components/ui/date-picker";
+import { TIER_CONFIG } from "@/config/pricing";
+import { InstitutionType } from "@/lib/prisma-enums";
 import { queryKeys } from "@/lib/query-keys";
 import { getResolvedTier } from "@/lib/tier";
-import { TIER_CONFIG } from "@/config/pricing";
 import {
   type CreateFestivalInput,
   createFestivalSchema,
@@ -188,7 +188,11 @@ export function CreateFestivalModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto relative">
+      <DialogContent
+        className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto relative"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>Launch Your Festival</DialogTitle>
           <DialogDescription>
@@ -203,7 +207,8 @@ export function CreateFestivalModal({
               <div className="text-5xl animate-bounce">🎉</div>
               <p className="text-lg font-semibold">Festival launched!</p>
               <p className="text-sm text-muted-foreground max-w-xs">
-                Your festival is ready. You can manage it anytime from your dashboard.
+                Your festival is ready. You can manage it anytime from your
+                dashboard.
               </p>
             </div>
           </div>
@@ -265,10 +270,7 @@ export function CreateFestivalModal({
                   <FormItem>
                     <FormLabel>Institution Name</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="e.g. Al Noor College"
-                        {...field}
-                      />
+                      <Input placeholder="e.g. Al Noor College" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -379,10 +381,20 @@ export function CreateFestivalModal({
               </div>
             </div>
 
-            <div className="flex justify-end pt-4">
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={form.formState.isSubmitting}
+              >
+                Cancel
+              </Button>
               <Button
                 type="submit"
-                disabled={form.formState.isSubmitting || !form.formState.isValid}
+                disabled={
+                  form.formState.isSubmitting || !form.formState.isValid
+                }
               >
                 {form.formState.isSubmitting && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

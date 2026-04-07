@@ -1,18 +1,18 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-  BarChart,
+  Area,
+  AreaChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -140,9 +140,7 @@ export function AnalyticsCharts({ initialData }: AnalyticsChartsProps) {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium">
-              Top spenders
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Top spenders</CardTitle>
           </CardHeader>
           <CardContent>
             {topSpendersChart.length === 0 ? (
@@ -443,7 +441,7 @@ export function AnalyticsCharts({ initialData }: AnalyticsChartsProps) {
                             {formatShortDate(p.date)}
                           </p>
                           <p className="font-medium">
-                            {formatRupee((p.amount ?? 0))} · {p.count} payments
+                            {formatRupee(p.amount ?? 0)} · {p.count} payments
                           </p>
                         </div>
                       );

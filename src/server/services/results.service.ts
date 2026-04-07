@@ -27,4 +27,3 @@ export async function getFestivalResultsDataBySlug(slug: string) {
 
   return { festival };
 }
-

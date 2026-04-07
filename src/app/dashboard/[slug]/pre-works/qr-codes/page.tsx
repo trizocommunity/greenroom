@@ -1,9 +1,9 @@
-import { findFestivalBySlug } from "@/server/models/festival.model";
 import { notFound, redirect } from "next/navigation";
-import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
-import { APP_URL } from "@/config/routes";
 import { QrCodesClient } from "@/components/festival/pre-works/qr-codes/QrCodesClient";
 import { QrCodesHowItWorks } from "@/components/festival/pre-works/qr-codes/QrCodesHowItWorks";
+import { APP_URL } from "@/config/routes";
+import { findFestivalBySlug } from "@/server/models/festival.model";
+import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -22,9 +22,7 @@ export default async function QrCodesPage({ params }: PageProps) {
     "qrCodes",
   );
   if (!canGenerateQR) {
-    redirect(
-      `/dashboard/${slug}?error=upgrade_required&feature=qrCodes`,
-    );
+    redirect(`/dashboard/${slug}?error=upgrade_required&feature=qrCodes`);
   }
 
   const baseUrl = APP_URL.replace(/\/$/, "");

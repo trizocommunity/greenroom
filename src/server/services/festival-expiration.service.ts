@@ -3,15 +3,17 @@
  * All plans use fixed 30-day duration; no read-only after expiry.
  */
 
+import { jsPDF } from "jspdf";
 import { prisma } from "@/lib/db";
 import { getPublicFestivalResults } from "@/server/loader/festivalResults";
-import { jsPDF } from "jspdf";
 
 export const FestivalExpirationService = {
   /**
    * Find festivals that have passed expiresAt and are not yet EXPIRED.
    */
-  async getFestivalsToExpire(): Promise<{ id: string; name: string; slug: string }[]> {
+  async getFestivalsToExpire(): Promise<
+    { id: string; name: string; slug: string }[]
+  > {
     const now = new Date();
     const list = await prisma.festival.findMany({
       where: {
@@ -108,7 +110,11 @@ export const FestivalExpirationService = {
       orderBy: [{ programmeName: "asc" }, { position: "asc" }],
     });
 
-    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
     const pageW = doc.internal.pageSize.getWidth();
     const margin = 15;
     let y = 20;

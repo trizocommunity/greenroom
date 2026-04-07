@@ -27,7 +27,9 @@ export function useCategories(festivalId: string) {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.categories.list(festivalId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.categories.list(festivalId),
+      });
       toast.success("Category created successfully");
     },
     onError: (error: any) => {
@@ -49,7 +51,9 @@ export function useCategories(festivalId: string) {
       return updateCategoryAction(festivalId, id, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.categories.list(festivalId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.categories.list(festivalId),
+      });
       toast.success("Category updated successfully");
     },
     onError: (error: any) => {
@@ -63,7 +67,9 @@ export function useCategories(festivalId: string) {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.categories.list(festivalId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.categories.list(festivalId),
+      });
       toast.success("Category deleted successfully");
     },
     onError: (error: any) => {

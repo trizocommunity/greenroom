@@ -1,9 +1,9 @@
-import { notFound } from "next/navigation";
-import { AssignmentsClient } from "@/components/festival/pre-works/assignments/AssignmentsClient";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import { prisma } from "@/lib/db";
-import { EmptyState } from "@/components/common/EmptyState";
 import { CalendarRange, Users } from "lucide-react";
+import { notFound } from "next/navigation";
+import { EmptyState } from "@/components/common/EmptyState";
+import { AssignmentsClient } from "@/components/festival/pre-works/assignments/AssignmentsClient";
+import { prisma } from "@/lib/db";
+import { findFestivalBySlug } from "@/server/models/festival.model";
 
 export default async function AssignmentsPage({
   params,
@@ -54,9 +54,9 @@ export default async function AssignmentsPage({
         festivalId={festival.id}
         programmeAssignmentDeadline={festival.programmeAssignmentDeadline}
       >
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-            Programme Assignments
-          </h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+          Programme Assignments
+        </h1>
       </AssignmentsClient>
     </div>
   );

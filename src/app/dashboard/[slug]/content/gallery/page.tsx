@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
+import { getGalleryImagesAction } from "@/server/actions/gallery.actions";
 import { findFestivalBySlug } from "@/server/models/festival.model";
 import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
-import { getGalleryImagesAction } from "@/server/actions/gallery.actions";
 import { GalleryClient } from "./GalleryClient";
 
 interface PageProps {
@@ -15,9 +15,7 @@ export default async function GalleryPage({ params }: PageProps) {
 
   const canManage = await getEffectiveFeatureEnabled(festival.tier, "gallery");
   if (!canManage) {
-    redirect(
-      `/dashboard/${slug}?error=upgrade_required&feature=gallery`,
-    );
+    redirect(`/dashboard/${slug}?error=upgrade_required&feature=gallery`);
   }
 
   const images = await getGalleryImagesAction(festival.id);

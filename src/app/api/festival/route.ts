@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { formatApiError } from "@/lib/api-error";
-import { systemConfig } from "@/lib/config";
 import { getSession } from "@/lib/auth/session";
+import { systemConfig } from "@/lib/config";
 import {
   createFestival,
   findFestivalByOwnerId,

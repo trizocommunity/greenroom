@@ -14,7 +14,7 @@ export default async function GroupsPage({
   return (
     <div className="pt-4 sm:pt-6">
       <GroupsClient festivalId={festival.id}>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Groups</h1>        
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Groups</h1>
       </GroupsClient>
     </div>
   );

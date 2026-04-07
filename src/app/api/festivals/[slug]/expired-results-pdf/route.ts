@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
 import { findFestivalBySlug } from "@/server/models/festival.model";
 import { FestivalExpirationService } from "@/server/services/festival-expiration.service";
-import { prisma } from "@/lib/db";
 
 /**
  * GET: Public download of results PDF for an expired festival (by slug).
@@ -40,10 +40,11 @@ export async function GET(
     );
   }
 
-  const buffer = await FestivalExpirationService.generateExpiredResultsPdfBuffer(
-    festival.id,
-    festival.name,
-  );
+  const buffer =
+    await FestivalExpirationService.generateExpiredResultsPdfBuffer(
+      festival.id,
+      festival.name,
+    );
   const filename = `results-${festival.slug}-${new Date().toISOString().slice(0, 10)}.pdf`;
 
   return new NextResponse(new Uint8Array(buffer), {

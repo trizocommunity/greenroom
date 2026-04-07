@@ -1,17 +1,8 @@
 import { notFound } from "next/navigation";
+import { TeamLeaderLoginClient } from "@/components/student/team-leader/TeamLeaderLoginClient";
 import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 import { findFestivalBySlug } from "@/server/models/festival.model";
-import {
-  findStudentByFestivalAndId,
-  findStudentByFestivalAndProfileSlug,
-} from "@/server/models/student.model";
-import { TeamLeaderLoginClient } from "@/components/student/team-leader/TeamLeaderLoginClient";
-
-function looksLikeUuid(s: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    s,
-  );
-}
+import { findStudentByFestivalAndProfileSlug } from "@/server/models/student.model";
 
 export default async function TeamLeaderLoginPage({
   params,
@@ -28,9 +19,10 @@ export default async function TeamLeaderLoginPage({
   );
   if (!canViewProfile) notFound();
 
-  const student = looksLikeUuid(studentSlug)
-    ? await findStudentByFestivalAndId(festival.id, studentSlug)
-    : await findStudentByFestivalAndProfileSlug(festival.id, studentSlug);
+  const student = await findStudentByFestivalAndProfileSlug(
+    festival.id,
+    studentSlug,
+  );
   if (!student?.isTeamLeader) notFound();
 
   return (

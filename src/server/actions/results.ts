@@ -2,16 +2,18 @@
 
 import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import type { ActionResponse } from "@/types/actions";
 import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { getSession } from "@/lib/auth/session";
-import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import { prisma } from "@/lib/db";
+import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import { ResultModel } from "@/server/models/result.model";
+import { emitDomainRealtimeEvent } from "@/server/realtime/domain-events";
+import { RealtimeRoom } from "@/server/realtime/rooms";
 import {
-  updateProgrammeStatus,
   setProgrammePublished,
+  updateProgrammeStatus,
 } from "@/server/services/programme-status.service";
+import type { ActionResponse } from "@/types/actions";
 
 export interface SaveResultInput {
   festivalId: string;
@@ -24,7 +26,10 @@ export interface SaveResultInput {
   isPublished?: boolean;
 }
 
-function revalidateResultsPaths(slug: string, options?: { includeTeamStatus?: boolean }) {
+function revalidateResultsPaths(
+  slug: string,
+  options?: { includeTeamStatus?: boolean },
+) {
   // Keep both routes in sync:
   // - BASIC uses legacy `/event-works/marks`
   // - STANDARD/PRO redirect to `/event-works/judgment`
@@ -40,10 +45,14 @@ function revalidateResultsPaths(slug: string, options?: { includeTeamStatus?: bo
 /**
  * Save or update a result for a programme assignment
  */
-export async function saveResult(data: SaveResultInput): Promise<ActionResponse<Awaited<ReturnType<typeof ResultModel.upsert>>>> {
+export async function saveResult(
+  data: SaveResultInput,
+): Promise<ActionResponse<Awaited<ReturnType<typeof ResultModel.upsert>>>> {
   try {
     const session = await getSession();
-    await assertFestivalAccess(session, data.festivalId, { requireWritable: true });
+    await assertFestivalAccess(session, data.festivalId, {
+      requireWritable: true,
+    });
 
     const result = await ResultModel.upsert(data.assignmentId, data);
     await updateProgrammeStatus(data.programmeId);
@@ -63,7 +72,10 @@ export async function saveResult(data: SaveResultInput): Promise<ActionResponse<
 /**
  * Delete a result
  */
-export async function deleteResult(resultId: string, festivalSlug: string): Promise<ActionResponse<void>> {
+export async function deleteResult(
+  resultId: string,
+  festivalSlug: string,
+): Promise<ActionResponse<void>> {
   try {
     const session = await getSession();
     const result = await prisma.result.findUnique({
@@ -71,7 +83,9 @@ export async function deleteResult(resultId: string, festivalSlug: string): Prom
       select: { festivalId: true, programmeId: true },
     });
     if (!result) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
-    await assertFestivalAccess(session, result.festivalId, { requireWritable: true });
+    await assertFestivalAccess(session, result.festivalId, {
+      requireWritable: true,
+    });
 
     await ResultModel.delete(resultId);
     await updateProgrammeStatus(result.programmeId);
@@ -97,12 +111,25 @@ export async function bulkPublishProgrammeResults(
       select: { festivalId: true },
     });
     if (!programme) throw new AppError(ERROR_MESSAGES.PROGRAMME_NOT_FOUND);
-    await assertFestivalAccess(session, programme.festivalId, { requireWritable: true });
+    await assertFestivalAccess(session, programme.festivalId, {
+      requireWritable: true,
+    });
 
     await ResultModel.bulkPublishByProgramme(programmeId, isPublished);
     await setProgrammePublished(programmeId, isPublished);
     // Recompute derived status from current data for consistent lifecycle.
     await updateProgrammeStatus(programmeId);
+    await emitDomainRealtimeEvent({
+      eventName: "results.publish_toggled",
+      festivalId: programme.festivalId,
+      entityType: "programme",
+      entityId: programmeId,
+      roomKeys: [
+        RealtimeRoom.festivalAll(programme.festivalId),
+        RealtimeRoom.judgementProgramme(programme.festivalId, programmeId),
+      ],
+      payload: { programmeId, isPublished, festivalSlug },
+    });
     revalidateResultsPaths(festivalSlug);
     return { success: true, data: undefined };
   } catch (error) {
@@ -129,6 +156,20 @@ export async function publishTeamStandings(
       JSON.stringify(standings),
     ) as Prisma.InputJsonValue;
     await updateTeamStandings(festivalId, standingsJson);
+    await emitDomainRealtimeEvent({
+      eventName: "standings.updated",
+      festivalId,
+      entityType: "festival",
+      entityId: festivalId,
+      roomKeys: [
+        RealtimeRoom.festivalAll(festivalId),
+        RealtimeRoom.publicStandings(festivalId),
+      ],
+      payload: {
+        festivalId,
+        standings,
+      },
+    });
 
     revalidatePath(`/${festivalSlug}`);
     revalidatePath(`/${festivalSlug}/results`);

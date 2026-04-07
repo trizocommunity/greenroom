@@ -7,7 +7,10 @@ import {
   getPaymentByOrderId,
   updatePaymentStatus,
 } from "@/server/models/payment.model";
-import { RazorpayService, getRazorpayKeyId } from "@/server/services/razorpay.service";
+import {
+  getRazorpayKeyId,
+  RazorpayService,
+} from "@/server/services/razorpay.service";
 
 type InitiatePaymentParams = {
   userId: string;
@@ -236,4 +239,3 @@ export async function getUserStatusDomain(userId: string, role: string) {
     canCreateFestival: false,
   };
 }
-

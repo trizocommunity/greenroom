@@ -33,7 +33,9 @@ async function resolveRemoteBytes(url: string): Promise<number | null> {
       cache: "no-store",
       headers: { Range: "bytes=0-0" },
     });
-    const fromRange = parseContentRangeTotal(range.headers.get("content-range"));
+    const fromRange = parseContentRangeTotal(
+      range.headers.get("content-range"),
+    );
     if (fromRange) return fromRange;
     const fromLength = parseContentLength(range.headers.get("content-length"));
     if (fromLength) return fromLength;

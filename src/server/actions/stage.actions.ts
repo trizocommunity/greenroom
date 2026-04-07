@@ -57,7 +57,9 @@ export async function updateStage(stageId: string, data: StageData) {
     select: { festivalId: true },
   });
   if (!stage) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
-  await assertFestivalAccess(session, stage.festivalId, { requireWritable: true });
+  await assertFestivalAccess(session, stage.festivalId, {
+    requireWritable: true,
+  });
 
   const updated = await prisma.stage.update({
     where: { id: stageId },
@@ -84,7 +86,9 @@ export async function deleteStage(stageId: string) {
 
   if (!stage) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
 
-  await assertFestivalAccess(session, stage.festivalId, { requireWritable: true });
+  await assertFestivalAccess(session, stage.festivalId, {
+    requireWritable: true,
+  });
 
   await prisma.$transaction(async (tx) => {
     await tx.stage.delete({

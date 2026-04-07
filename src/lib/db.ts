@@ -1,5 +1,5 @@
-import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@prisma/client";
 import { Pool, type PoolConfig } from "pg";
 
 const globalForPrisma = globalThis as unknown as {
@@ -13,7 +13,9 @@ if (!connectionString) throw new Error("DATABASE_URL is not defined");
 // Strip SSL params from URL so pg doesn't override our ssl config (connection-string parser
 // replaces the config ssl object when sslmode/etc. are present, re-enabling cert verification).
 const cleanedConnectionString = connectionString
-  .replace(/([?&])(sslmode|sslcert|sslkey|sslrootcert)=[^&]*/gi, (m, p) => (p === "?" ? "?" : ""))
+  .replace(/([?&])(sslmode|sslcert|sslkey|sslrootcert)=[^&]*/gi, (m, p) =>
+    p === "?" ? "?" : "",
+  )
   .replace(/\?&+/, "?")
   .replace(/\?$/, "");
 

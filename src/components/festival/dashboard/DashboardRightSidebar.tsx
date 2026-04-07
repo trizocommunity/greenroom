@@ -7,8 +7,8 @@ import { LogoutButton } from "@/components/auth/LogoutButton";
 import { LimitationCard } from "@/components/festival/dashboard/LimitationCard";
 import { StatusStrip } from "@/components/festival/dashboard/StatusStrip";
 import type { FestivalRole } from "@/components/festival/FestivalRoleBadge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { FestivalStatusBadge } from "@/components/festival/FestivalStatusBadge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -53,6 +53,7 @@ interface DashboardRightSidebarProps {
     maxStorageMB: number;
   };
   tierLabel?: string;
+  canAccessSettings?: boolean;
 }
 
 export function DashboardRightSidebar({
@@ -71,6 +72,7 @@ export function DashboardRightSidebar({
   usage,
   limits,
   tierLabel,
+  canAccessSettings = true,
 }: DashboardRightSidebarProps) {
   const safeUser = {
     name: user?.name || "User",
@@ -117,13 +119,15 @@ export function DashboardRightSidebar({
                 <User className="h-4 w-4" />
                 <span>My Profile</span>
               </Link>
-              <Link
-                href={`/dashboard/${festivalSlug}/settings`}
-                className="flex items-center gap-2 text-sm p-2 hover:bg-accent rounded-md transition-colors"
-              >
-                <Settings className="h-4 w-4" />
-                <span>Settings</span>
-              </Link>
+              {canAccessSettings && (
+                <Link
+                  href={`/dashboard/${festivalSlug}/settings`}
+                  className="flex items-center gap-2 text-sm p-2 hover:bg-accent rounded-md transition-colors"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span>Settings</span>
+                </Link>
+              )}
             </div>
 
             {showStatusAndUsage && <Separator />}

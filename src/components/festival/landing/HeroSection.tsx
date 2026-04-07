@@ -25,8 +25,8 @@ export function HeroSection({ festival, basicMode = false }: HeroSectionProps) {
         className="absolute inset-0 z-0 opacity-80"
         style={{
           background: `
-            radial-gradient(circle at 0% 0%, ${festival.accentColor}22, transparent 55%),
-            radial-gradient(circle at 100% 100%, ${festival.accentColor}33, transparent 55%),
+            radial-gradient(circle at 0% 0%, #3b82f622, transparent 55%),
+            radial-gradient(circle at 100% 100%, #3b82f633, transparent 55%),
             linear-gradient(to bottom, #020617, #020617 40%, #000000)
           `,
         }}
@@ -51,8 +51,8 @@ export function HeroSection({ festival, basicMode = false }: HeroSectionProps) {
             <span
               className="inline-flex items-center gap-2 py-1.5 px-3 rounded-full text-xs sm:text-sm font-semibold border bg-white/70 backdrop-blur-md tracking-wide uppercase"
               style={{
-                borderColor: festival.accentColor,
-                color: festival.accentColor,
+                borderColor: "#3b82f6",
+                color: "#3b82f6",
               }}
             >
               {festival.tagline ||
@@ -98,7 +98,9 @@ export function HeroSection({ festival, basicMode = false }: HeroSectionProps) {
               {festival.studentsCount != null && festival.studentsCount > 0 && (
                 <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 backdrop-blur">
                   <Users className="h-4 w-4" />
-                  <span>{festival.studentsCount.toLocaleString()} students</span>
+                  <span>
+                    {festival.studentsCount.toLocaleString()} students
+                  </span>
                 </div>
               )}
             </div>
@@ -109,7 +111,7 @@ export function HeroSection({ festival, basicMode = false }: HeroSectionProps) {
                 <Button
                   size="lg"
                   className="rounded-full h-12 px-8 text-base sm:text-lg shadow-[0_18px_45px_rgba(0,0,0,0.55)] hover:shadow-[0_24px_60px_rgba(0,0,0,0.7)] transition-all hover:-translate-y-0.5"
-                  style={{ backgroundColor: festival.accentColor }}
+                  style={{ backgroundColor: "#3b82f6" }}
                 >
                   View Live Results
                 </Button>
@@ -181,11 +183,13 @@ export function HeroSection({ festival, basicMode = false }: HeroSectionProps) {
                     <p className="font-medium truncate">
                       {festival.orgName || "Festival Committee"}
                     </p>
-                    {festival.tier && festival.tier !== "BASIC" && festival.orgDescription && (
-                      <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">
-                        {festival.orgDescription}
-                      </p>
-                    )}
+                    {festival.tier &&
+                      festival.tier !== "BASIC" &&
+                      festival.orgDescription && (
+                        <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">
+                          {festival.orgDescription}
+                        </p>
+                      )}
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-black/30 px-3 py-3 space-y-1">
                     <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">

@@ -1,8 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { useState, useMemo } from "react";
-import { cn } from "@/lib/utils";
+import { useMemo, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -10,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 export type ProgrammeEntry = {
   id: string;
@@ -160,7 +160,9 @@ function ProgrammeCard({ entry }: { entry: ProgrammeEntry }) {
         )}
       </div>
       {entry.stage?.name && (
-        <p className="text-sm font-medium text-primary">Stage {entry.stage.name}</p>
+        <p className="text-sm font-medium text-primary">
+          Stage {entry.stage.name}
+        </p>
       )}
     </article>
   );

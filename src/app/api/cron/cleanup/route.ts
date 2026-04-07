@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { realtimeConfig } from "@/lib/realtime-config";
 import { FestivalExpirationService } from "@/server/services/festival-expiration.service";
 
 /**
@@ -9,16 +10,26 @@ import { FestivalExpirationService } from "@/server/services/festival-expiration
  */
 export async function GET(request: Request) {
   try {
+    if (
+      process.env.NODE_ENV === "production" &&
+      realtimeConfig.requireCronSecretInProduction &&
+      !process.env.CRON_SECRET
+    ) {
+      return NextResponse.json(
+        { error: "CRON_SECRET is required in production" },
+        { status: 500 },
+      );
+    }
+
     const authHeader = request.headers.get("authorization");
     if (
-      process.env.CRON_SECRET &&
+      !process.env.CRON_SECRET ||
       authHeader !== `Bearer ${process.env.CRON_SECRET}`
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { processed } =
-      await FestivalExpirationService.runExpirationCycle();
+    const { processed } = await FestivalExpirationService.runExpirationCycle();
 
     return NextResponse.json({
       success: true,

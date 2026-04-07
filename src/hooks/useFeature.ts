@@ -24,10 +24,10 @@
 "use client";
 
 import { useFestival } from "@/components/festival/FestivalContext";
-import { FeatureService, type FeaturePath } from "@/lib/features";
-import { getResolvedTier } from "@/lib/tier";
+import { type FeaturePath, FeatureService } from "@/lib/features";
 import type { FeatureTag } from "@/lib/features-tags";
 import { getFeatureTagRequirements } from "@/lib/features-tags";
+import { getResolvedTier } from "@/lib/tier";
 
 /**
  * Hook to check if a feature is enabled for the current festival's tier
@@ -44,7 +44,10 @@ export function useFeature(featurePath: FeaturePath): boolean {
   const festival = useFestival();
   const tier = getResolvedTier(festival?.tier);
 
-  if (festival?.effectiveFeatures && featurePath in festival.effectiveFeatures) {
+  if (
+    festival?.effectiveFeatures &&
+    featurePath in festival.effectiveFeatures
+  ) {
     return Boolean(festival.effectiveFeatures[featurePath]);
   }
   return FeatureService.isFeatureEnabled(tier, featurePath);

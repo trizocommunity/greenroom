@@ -114,7 +114,10 @@ export async function sendTeamLeaderOtpEmail(
   if (error) {
     // In local/dev environments, don't block login if provider/domain is not configured.
     if (process.env.NODE_ENV !== "production") {
-      console.warn("[EMAIL] Failed to send team leader OTP (dev fallback):", error);
+      console.warn(
+        "[EMAIL] Failed to send team leader OTP (dev fallback):",
+        error,
+      );
       console.warn("[EMAIL] Team leader OTP code (dev only):", otpCode);
       return;
     }
@@ -163,7 +166,10 @@ export async function sendPlainFestivalEmail(
 
   if (error) {
     if (process.env.NODE_ENV !== "production") {
-      console.warn("[EMAIL] Failed to send plain festival email (dev fallback):", error);
+      console.warn(
+        "[EMAIL] Failed to send plain festival email (dev fallback):",
+        error,
+      );
       return;
     }
     throw new Error("Email delivery failed.");

@@ -16,12 +16,7 @@ export function FestivalHero({ festival }: FestivalHeroProps) {
   const endDate = new Date(festival.endDate || new Date());
 
   return (
-    <section
-      className="relative min-h-[70vh] flex items-center justify-center overflow-hidden"
-      style={{
-        background: `linear-gradient(135deg, ${festival.accentColor}15 0%, ${festival.accentColor}05 50%, transparent 100%)`,
-      }}
-    >
+    <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden bg-linear-to-br from-primary/10 via-primary/5 to-transparent">
       {/* Background Pattern */}
       <div
         className="absolute inset-0 opacity-5"
@@ -58,10 +53,7 @@ export function FestivalHero({ festival }: FestivalHeroProps) {
         )}
 
         {/* Festival Name */}
-        <h1
-          className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight mb-4"
-          style={{ color: festival.accentColor }}
-        >
+        <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight mb-4 text-primary">
           {festival.name}
         </h1>
 
@@ -75,19 +67,13 @@ export function FestivalHero({ festival }: FestivalHeroProps) {
         {/* Date & Location */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 mb-10">
           <div className="flex items-center gap-2 text-lg text-muted-foreground">
-            <Calendar
-              className="h-5 w-5"
-              style={{ color: festival.accentColor }}
-            />
+            <Calendar className="h-5 w-5 text-primary" />
             <span>
               {format(startDate, "MMM d")} - {format(endDate, "MMM d, yyyy")}
             </span>
           </div>
           <div className="flex items-center gap-2 text-lg text-muted-foreground">
-            <MapPin
-              className="h-5 w-5"
-              style={{ color: festival.accentColor }}
-            />
+            <MapPin className="h-5 w-5 text-primary" />
             <span>{festival.location}</span>
           </div>
         </div>
@@ -95,11 +81,7 @@ export function FestivalHero({ festival }: FestivalHeroProps) {
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link href={`/${festival.slug}/results`}>
-            <Button
-              size="lg"
-              className="min-w-[160px]"
-              style={{ backgroundColor: festival.accentColor }}
-            >
+            <Button size="lg" className="min-w-[160px]">
               View Results
             </Button>
           </Link>

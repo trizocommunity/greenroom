@@ -1,13 +1,21 @@
 "use client";
 
+import { CheckCircle2, Crown, Loader2, Medal, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Crown, CheckCircle2, Loader2, Medal, X } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
+import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
+import { useFestival } from "@/components/festival/FestivalContext";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -16,17 +24,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { publishTeamStandings } from "@/server/actions/results";
-import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
-import { cn } from "@/lib/utils";
 import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
+import { useRealtimeChannel } from "@/hooks/useRealtimeChannel";
+import { cn } from "@/lib/utils";
+import { publishTeamStandings } from "@/server/actions/results";
 
 // Types matching what's passed from the page
 interface LeaderboardClientProps {
@@ -72,12 +73,17 @@ export function LeaderboardClient({
     defaultStudentFilterGroup ?? "all",
   );
 
+  const festivalContext = useFestival();
+  const isBasicTier = festivalContext.tier === "BASIC";
+
   // --- Leaderboard Calculation (Live Preview) ---
   const teamStandings = useMemo(() => {
     const scopedResults =
       studentFilterGroup === "all"
         ? results
-        : results.filter((r: any) => r?.assignment?.group?.id === studentFilterGroup);
+        : results.filter(
+            (r: any) => r?.assignment?.group?.id === studentFilterGroup,
+          );
 
     const standings: Record<
       string,
@@ -136,10 +142,7 @@ export function LeaderboardClient({
 
     results.forEach((r) => {
       if (!r.isPublished || !r.assignment?.student) return;
-      // Student standings should be based on student-linked results.
-      // On some plans (incl. BASIC), programmes can be stored as GROUP,
-      // but the result row is still tied to a student (assignment.student).
-      // In that case, we should include the student's points.
+      if (r.programme?.type !== "INDIVIDUAL") return;
 
       // Filter by student's category (the category the student belongs to)
       if (
@@ -148,7 +151,10 @@ export function LeaderboardClient({
       )
         return;
       // Filter by student's group
-      if (studentFilterGroup !== "all" && r.assignment?.groupId !== studentFilterGroup)
+      if (
+        studentFilterGroup !== "all" &&
+        r.assignment?.groupId !== studentFilterGroup
+      )
         return;
 
       const sid = r.assignment.student.id;
@@ -178,7 +184,8 @@ export function LeaderboardClient({
       .map((row, index) => ({ ...row, rank: index + 1 }));
   }, [results, studentFilterCategory, studentFilterGroup]);
 
-  const hasStudentFilters = studentFilterCategory !== "all" || studentFilterGroup !== "all";
+  const hasStudentFilters =
+    studentFilterCategory !== "all" || studentFilterGroup !== "all";
   const clearStudentFilters = () => {
     setStudentFilterCategory("all");
     setStudentFilterGroup("all");
@@ -196,13 +203,32 @@ export function LeaderboardClient({
     null,
   );
 
+  useRealtimeChannel({
+    roomKeys: [
+      `festival:${festival.id}:all`,
+      `festival:${festival.id}:public:standings`,
+    ],
+    enabled: true,
+    onEvent: (payload) => {
+      const eventName = String(payload.eventName ?? "");
+      if (
+        eventName === "results.publish_toggled" ||
+        eventName === "standings.updated"
+      ) {
+        router.refresh();
+      }
+    },
+  });
+
   return (
     <div className="space-y-4">
       {/* Header row: children left, Publish right — icon only on mobile */}
       <div className="flex flex-row items-center justify-between gap-4">
         {children ?? (
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Leaderboard</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+              Leaderboard
+            </h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
               Team and student standings from published results.
             </p>
@@ -220,8 +246,8 @@ export function LeaderboardClient({
                 unpublish results from the Marks page.
               </p>
               <p className="text-sm text-muted-foreground">
-                <strong>Publish Standings</strong> copies the live snapshot to the
-                public festival page so visitors can see the leaderboard.
+                <strong>Publish Standings</strong> copies the live snapshot to
+                the public festival page so visitors can see the leaderboard.
               </p>
             </HowItWorksButton>
             <Button
@@ -337,7 +363,9 @@ export function LeaderboardClient({
                       key={team.name}
                       className={cn(
                         "flex items-center justify-between gap-3 rounded-lg border px-3 py-2",
-                        idx < 3 ? "border-yellow-500/25 bg-yellow-500/5" : "border-border/70 bg-background",
+                        idx < 3
+                          ? "border-yellow-500/25 bg-yellow-500/5"
+                          : "border-border/70 bg-background",
                       )}
                     >
                       <div className="min-w-0">
@@ -488,7 +516,10 @@ export function LeaderboardClient({
                   <SelectContent>
                     <SelectItem value="all">All categories</SelectItem>
                     {categories
-                      .filter((c: { id: string; name: string; type?: string }) => c.type !== "GENERAL")
+                      .filter(
+                        (c: { id: string; name: string; type?: string }) =>
+                          c.type !== "GENERAL",
+                      )
                       .map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {c.name}
@@ -527,101 +558,107 @@ export function LeaderboardClient({
             ) : null}
           </div>
           <div className="hidden md:block">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-14 text-center">#</TableHead>
-                <TableHead>Student</TableHead>
-                <TableHead className="hidden sm:table-cell">Category</TableHead>
-                <TableHead className="hidden sm:table-cell">Group</TableHead>
-                <TableHead className="text-right w-24">Points</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {studentStandings.length > 0 ? (
-                studentStandings.map((row, idx) => (
-                  <TableRow
-                    key={row.studentId}
-                    className={cn(
-                      idx < 3 && "bg-primary/5",
-                      idx === 0 && "border-l-4 border-l-yellow-500",
-                      idx === 1 && "border-l-4 border-l-gray-400",
-                      idx === 2 && "border-l-4 border-l-amber-600",
-                    )}
-                  >
-                    <TableCell className="text-center font-bold">
-                      {idx < 3 ? (
-                        <span className="flex items-center justify-center gap-0.5">
-                          {idx === 0 && (
-                            <span className="text-yellow-500" title="1st">
-                              🥇
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-14 text-center">#</TableHead>
+                  <TableHead>Student</TableHead>
+                  <TableHead className="hidden sm:table-cell">
+                    Category
+                  </TableHead>
+                  <TableHead className="hidden sm:table-cell">Group</TableHead>
+                  <TableHead className="text-right w-24">Points</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {studentStandings.length > 0 ? (
+                  studentStandings.map((row, idx) => (
+                    <TableRow
+                      key={row.studentId}
+                      className={cn(
+                        idx < 3 && "bg-primary/5",
+                        idx === 0 && "border-l-4 border-l-yellow-500",
+                        idx === 1 && "border-l-4 border-l-gray-400",
+                        idx === 2 && "border-l-4 border-l-amber-600",
+                      )}
+                    >
+                      <TableCell className="text-center font-bold">
+                        {idx < 3 ? (
+                          <span className="flex items-center justify-center gap-0.5">
+                            {idx === 0 && (
+                              <span className="text-yellow-500" title="1st">
+                                🥇
+                              </span>
+                            )}
+                            {idx === 1 && (
+                              <span className="text-gray-500" title="2nd">
+                                🥈
+                              </span>
+                            )}
+                            {idx === 2 && (
+                              <span className="text-amber-600" title="3rd">
+                                🥉
+                              </span>
+                            )}
+                            <span className="text-muted-foreground ml-0.5">
+                              {row.rank}
                             </span>
-                          )}
-                          {idx === 1 && (
-                            <span className="text-gray-500" title="2nd">
-                              🥈
-                            </span>
-                          )}
-                          {idx === 2 && (
-                            <span className="text-amber-600" title="3rd">
-                              🥉
-                            </span>
-                          )}
-                          <span className="text-muted-foreground ml-0.5">
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">
                             {row.rank}
                           </span>
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">{row.rank}</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-medium">{row.name}</div>
-                      {row.chestNumber && (
-                        <div className="text-xs text-muted-foreground">
-                          #{row.chestNumber}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
-                      {row.categoryName ?? "—"}
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
-                      <span className="flex items-center gap-2">
-                        {row.groupName ? (
-                          <>
-                            <span
-                              className="h-2.5 w-2.5 shrink-0 rounded-full border border-white/50 shadow-sm"
-                              style={{ backgroundColor: row.groupColor ?? "#94a3b8" }}
-                              title={row.groupName}
-                              aria-hidden
-                            />
-                            {row.groupName}
-                          </>
-                        ) : (
-                          "—"
                         )}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right font-semibold tabular-nums">
-                      {row.points}
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">{row.name}</div>
+                        {row.chestNumber && (
+                          <div className="text-xs text-muted-foreground">
+                            #{row.chestNumber}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
+                        {row.categoryName ?? "—"}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
+                        <span className="flex items-center gap-2">
+                          {row.groupName ? (
+                            <>
+                              <span
+                                className="h-2.5 w-2.5 shrink-0 rounded-full border border-white/50 shadow-sm"
+                                style={{
+                                  backgroundColor: row.groupColor ?? "#94a3b8",
+                                }}
+                                title={row.groupName}
+                                aria-hidden
+                              />
+                              {row.groupName}
+                            </>
+                          ) : (
+                            "—"
+                          )}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right font-semibold tabular-nums">
+                        {row.points}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      {hasStudentFilters
+                        ? "No students match the selected filters."
+                        : "No published student results yet."}
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    {hasStudentFilters
-                      ? "No students match the selected filters."
-                      : "No published student results yet."}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                )}
+              </TableBody>
+            </Table>
           </div>
 
           <div className="md:hidden p-3 space-y-2">
@@ -639,7 +676,13 @@ export function LeaderboardClient({
                   <div className="min-w-0">
                     <div className="flex items-center gap-3">
                       <div className="w-6 text-center text-xs font-bold text-muted-foreground">
-                        {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : row.rank}
+                        {idx === 0
+                          ? "🥇"
+                          : idx === 1
+                            ? "🥈"
+                            : idx === 2
+                              ? "🥉"
+                              : row.rank}
                       </div>
                       <div className="min-w-0">
                         <div className="font-medium truncate">{row.name}</div>
@@ -655,7 +698,10 @@ export function LeaderboardClient({
                               <>
                                 <span
                                   className="h-1.5 w-1.5 rounded-full border border-white/60 shadow-sm"
-                                  style={{ backgroundColor: row.groupColor ?? "#94a3b8" }}
+                                  style={{
+                                    backgroundColor:
+                                      row.groupColor ?? "#94a3b8",
+                                  }}
                                   aria-hidden
                                 />
                                 <span>{row.groupName}</span>

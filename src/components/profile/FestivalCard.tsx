@@ -1,18 +1,13 @@
 "use client";
 
 import { addDays, differenceInDays, format } from "date-fns";
-import {
-  Clock,
-  LayoutDashboard,
-  Lock,
-  Pencil,
-} from "lucide-react";
+import { Clock, LayoutDashboard, Lock, Pencil } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getDerivedFestivalStatus } from "@/lib/festival-status";
 import type { Festival } from "@/hooks/useFestivals";
+import { getDerivedFestivalStatus } from "@/lib/festival-status";
 
 interface FestivalCardProps {
   festival: Festival;
@@ -52,7 +47,9 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
           <div className="space-y-2 min-w-0">
             <div className="flex items-center gap-2 flex-wrap text-xs">
               <Badge
-                variant={isExpired ? "destructive" : isActive ? "default" : "secondary"}
+                variant={
+                  isExpired ? "destructive" : isActive ? "default" : "secondary"
+                }
                 className={
                   isExpired
                     ? "bg-red-500/90 text-white"

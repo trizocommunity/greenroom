@@ -29,8 +29,16 @@ export const GroupService = {
     }
 
     const defaultColors = [
-      "#ef4444", "#f97316", "#f59e0b", "#84cc16", "#10b981",
-      "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6", "#ec4899",
+      "#ef4444",
+      "#f97316",
+      "#f59e0b",
+      "#84cc16",
+      "#10b981",
+      "#06b6d4",
+      "#3b82f6",
+      "#6366f1",
+      "#8b5cf6",
+      "#ec4899",
     ];
     const randomColor =
       data.color ||
@@ -61,8 +69,7 @@ export const GroupService = {
     if (data.teamLeaderIds !== undefined) {
       const festival = await findFestivalById(festivalId);
       if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
-
-      const leaderLimit = Math.max(1, Number(festival.teamLeaderLimit ?? 2));
+      const leaderLimit = Math.max(1, Number((festival as any).teamLeaderLimit ?? 2));
       if (data.teamLeaderIds.length > leaderLimit) {
         throw new AppError(
           `Team leader limit exceeded. Maximum allowed is ${leaderLimit}.`,

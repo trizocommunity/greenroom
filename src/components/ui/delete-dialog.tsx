@@ -37,7 +37,8 @@ export function DeleteDialog({
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
-  const setOpen = isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
+  const setOpen =
+    isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
 
   const handleDelete = async () => {
     await onDelete();

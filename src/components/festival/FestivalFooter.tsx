@@ -24,10 +24,7 @@ export function FestivalFooter({ festival }: FestivalFooterProps) {
                   className="h-11 w-11 object-contain rounded-lg bg-black/40"
                 />
               ) : (
-                <div
-                  className="w-11 h-11 rounded-lg flex items-center justify-center font-bold text-lg text-white shadow-lg"
-                  style={{ backgroundColor: festival.accentColor }}
-                >
+                <div className="w-11 h-11 rounded-lg flex items-center justify-center font-bold text-lg text-primary-foreground bg-primary shadow-lg">
                   {festival.name.charAt(0)}
                 </div>
               )}
@@ -92,11 +89,13 @@ export function FestivalFooter({ festival }: FestivalFooterProps) {
             <p className="font-medium text-slate-100">
               {festival.orgName || "Festival committee"}
             </p>
-            {festival.tier && festival.tier !== "BASIC" && festival.orgDescription && (
-              <p className="text-sm text-slate-400 line-clamp-2">
-                {festival.orgDescription}
-              </p>
-            )}
+            {festival.tier &&
+              festival.tier !== "BASIC" &&
+              festival.orgDescription && (
+                <p className="text-sm text-slate-400 line-clamp-2">
+                  {festival.orgDescription}
+                </p>
+              )}
             <p className="text-sm text-slate-400">
               {festival.orgLocation || festival.location || ""}
             </p>
@@ -105,8 +104,7 @@ export function FestivalFooter({ festival }: FestivalFooterProps) {
                 href={festival.orgWebsite}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm font-medium hover:underline"
-                style={{ color: festival.accentColor }}
+                className="inline-flex items-center gap-1.5 text-sm font-medium hover:underline text-primary"
               >
                 <Link2 className="h-3.5 w-3.5" />
                 Visit organization website
@@ -137,7 +135,8 @@ export function FestivalFooter({ festival }: FestivalFooterProps) {
             </div>
             <div className="pt-4 border-t border-white/10 text-xs text-slate-500 space-y-1">
               <p>
-                © {new Date().getFullYear()} {festival.name}. All rights reserved.
+                © {new Date().getFullYear()} {festival.name}. All rights
+                reserved.
               </p>
               <p className="flex items-center gap-1">
                 <span>Powered by</span>

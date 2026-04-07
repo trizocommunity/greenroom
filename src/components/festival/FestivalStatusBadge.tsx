@@ -1,13 +1,8 @@
 "use client";
 
-import {
-  AlertTriangle,
-  Calendar,
-  CheckCircle,
-  Clock,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { AlertTriangle, Calendar, CheckCircle, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,
@@ -32,22 +27,29 @@ interface FestivalStatusBadgeProps {
 
 const statusConfig: Record<
   DerivedFestivalStatus,
-  { icon: typeof Clock; variant: "default" | "secondary" | "destructive"; className: string }
+  {
+    icon: typeof Clock;
+    variant: "default" | "secondary" | "destructive";
+    className: string;
+  }
 > = {
   READY: {
     icon: Clock,
     variant: "secondary",
-    className: "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100",
+    className:
+      "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100",
   },
   ONGOING: {
     icon: CheckCircle,
     variant: "default",
-    className: "bg-green-100 text-green-700 border-green-200 hover:bg-green-100",
+    className:
+      "bg-green-100 text-green-700 border-green-200 hover:bg-green-100",
   },
   PAST: {
     icon: Calendar,
     variant: "secondary",
-    className: "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100",
+    className:
+      "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100",
   },
   EXPIRED: {
     icon: AlertTriangle,
@@ -84,7 +86,10 @@ export function FestivalStatusBadge({
     const label =
       FESTIVAL_STATUS_LABELS[effectiveStatus] ?? FESTIVAL_STATUS_LABELS.READY;
     return (
-      <Badge variant={config.variant} className={`${badgeSizeClass} ${config.className}`}>
+      <Badge
+        variant={config.variant}
+        className={`${badgeSizeClass} ${config.className}`}
+      >
         <Icon className={`${iconSizeClass} mr-1`} />
         <span>{label}</span>
         {countdown ? (
@@ -101,7 +106,11 @@ export function FestivalStatusBadge({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-auto p-0 hover:bg-transparent">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-auto p-0 hover:bg-transparent"
+        >
           {renderBadge()}
         </Button>
       </PopoverTrigger>
@@ -113,20 +122,30 @@ export function FestivalStatusBadge({
           </div>
           <div className="space-y-2 text-xs">
             <div className="grid grid-cols-[1fr_auto] gap-2">
-              <span className="text-muted-foreground">Ready (create festival)</span>
-              <span className="font-medium">{formatFestivalDateDDMMYY(createdAt)}</span>
+              <span className="text-muted-foreground">
+                Ready (create festival)
+              </span>
+              <span className="font-medium">
+                {formatFestivalDateDDMMYY(createdAt)}
+              </span>
             </div>
             <div className="grid grid-cols-[1fr_auto] gap-2">
               <span className="text-muted-foreground">Start</span>
-              <span className="font-medium">{formatFestivalDateDDMMYY(startDate)}</span>
+              <span className="font-medium">
+                {formatFestivalDateDDMMYY(startDate)}
+              </span>
             </div>
             <div className="grid grid-cols-[1fr_auto] gap-2">
               <span className="text-muted-foreground">End</span>
-              <span className="font-medium">{formatFestivalDateDDMMYY(endDate)}</span>
+              <span className="font-medium">
+                {formatFestivalDateDDMMYY(endDate)}
+              </span>
             </div>
             <div className="grid grid-cols-[1fr_auto] gap-2">
               <span className="text-muted-foreground">Expire</span>
-              <span className="font-medium">{formatFestivalDateDDMMYY(expiresAt)}</span>
+              <span className="font-medium">
+                {formatFestivalDateDDMMYY(expiresAt)}
+              </span>
             </div>
           </div>
         </div>

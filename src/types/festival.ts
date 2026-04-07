@@ -15,7 +15,8 @@ export function getBrandingFromJson(
       b.colors && typeof b.colors === "object" && b.colors !== null
         ? { primary: (b.colors as { primary?: string }).primary }
         : undefined,
-    logo: typeof b.logo === "string" ? b.logo : b.logo === null ? null : undefined,
+    logo:
+      typeof b.logo === "string" ? b.logo : b.logo === null ? null : undefined,
     heroImage:
       typeof b.heroImage === "string"
         ? b.heroImage
@@ -28,12 +29,7 @@ export function getBrandingFromJson(
 export interface JoinedFestival {
   id: string;
   name: string;
-  role:
-    | "ADMIN"
-    | "TEAM-LEADER"
-    | "STAGE-MANAGER"
-    | "ANNOUNCER"
-    | "OWNER";
+  role: "ADMIN" | "TEAM-LEADER" | "STAGE-MANAGER" | "ANNOUNCER" | "OWNER";
   startDate: Date;
   location: string;
 }

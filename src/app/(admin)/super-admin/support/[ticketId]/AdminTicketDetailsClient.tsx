@@ -1,5 +1,11 @@
 "use client";
 
+import { format } from "date-fns";
+import { ArrowLeft, Loader2, Send } from "lucide-react";
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,17 +19,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import {
   getTicketDetailsAction,
   sendMessageAction,
   updateTicketStatusAction,
 } from "@/server/actions/support.actions";
-import { format } from "date-fns";
-import { ArrowLeft, Loader2, Send } from "lucide-react";
-import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 
 interface Message {
   id: string;
@@ -159,9 +159,17 @@ export default function AdminTicketDetailsClient({
               {ticket.subject}
             </h1>
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mt-1">
-              <span>Sent by: <span className="font-medium text-foreground">{ticket.user.fullName || ticket.user.email}</span></span>
+              <span>
+                Sent by:{" "}
+                <span className="font-medium text-foreground">
+                  {ticket.user.fullName || ticket.user.email}
+                </span>
+              </span>
               {ticket.senderRole && (
-                <FestivalRoleBadge festivalRole={ticket.senderRole} className="text-xs" />
+                <FestivalRoleBadge
+                  festivalRole={ticket.senderRole}
+                  className="text-xs"
+                />
               )}
               {ticket.festival && (
                 <>

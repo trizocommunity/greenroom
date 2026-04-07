@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
 import { findFestivalById } from "@/server/models/festival.model";
+import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
 import { StorageUsageService } from "@/server/services/storage-usage.service";
 import { UsageCounterService } from "@/server/services/usage-counter.service";
 
@@ -54,7 +54,12 @@ export async function createNewsPostAction(
       },
     });
     if (addedMb > 0) {
-      await UsageCounterService.incrementUsage(festivalId, "storage", addedMb, tx);
+      await UsageCounterService.incrementUsage(
+        festivalId,
+        "storage",
+        addedMb,
+        tx,
+      );
     }
   });
 
@@ -86,7 +91,8 @@ export async function updateNewsPostAction(
   });
   if (!existing) return { success: false, error: "News post not found" };
 
-  const nextImageUrl = data.imageUrl !== undefined ? data.imageUrl : existing.imageUrl;
+  const nextImageUrl =
+    data.imageUrl !== undefined ? data.imageUrl : existing.imageUrl;
   const [addedMb, removedMb] = await Promise.all([
     data.imageUrl !== undefined && data.imageUrl !== existing.imageUrl
       ? StorageUsageService.getUrlSizeMB(nextImageUrl)
@@ -105,11 +111,18 @@ export async function updateNewsPostAction(
         ...(data.excerpt !== undefined && { excerpt: data.excerpt }),
         ...(data.content !== undefined && { content: data.content }),
         ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
-        ...(data.publishedAt !== undefined && { publishedAt: data.publishedAt }),
+        ...(data.publishedAt !== undefined && {
+          publishedAt: data.publishedAt,
+        }),
       },
     });
     if (deltaMb !== 0) {
-      await UsageCounterService.incrementUsage(festivalId, "storage", deltaMb, tx);
+      await UsageCounterService.incrementUsage(
+        festivalId,
+        "storage",
+        deltaMb,
+        tx,
+      );
     }
   });
 
@@ -118,10 +131,7 @@ export async function updateNewsPostAction(
   return { success: true };
 }
 
-export async function deleteNewsPostAction(
-  festivalId: string,
-  postId: string,
-) {
+export async function deleteNewsPostAction(festivalId: string, postId: string) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
@@ -137,7 +147,12 @@ export async function deleteNewsPostAction(
   await prisma.$transaction(async (tx) => {
     await tx.festivalNews.delete({ where: { id: existing.id } });
     if (removedMb > 0) {
-      await UsageCounterService.incrementUsage(festivalId, "storage", -removedMb, tx);
+      await UsageCounterService.incrementUsage(
+        festivalId,
+        "storage",
+        -removedMb,
+        tx,
+      );
     }
   });
 

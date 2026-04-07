@@ -47,7 +47,10 @@ export async function getPublicNewsData(
 export async function getPublicNewsPostBySlug(
   festivalSlug: string,
   postId: string,
-): Promise<{ festival: { name: string; slug: string }; post: PublicNewsPost } | null> {
+): Promise<{
+  festival: { name: string; slug: string };
+  post: PublicNewsPost;
+} | null> {
   const festival = await prisma.festival.findUnique({
     where: { slug: festivalSlug },
     select: { id: true, name: true, slug: true },

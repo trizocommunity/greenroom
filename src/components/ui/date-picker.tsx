@@ -1,28 +1,27 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { format } from "date-fns"
-import { Calendar as CalendarIcon, ChevronDownIcon, Clock } from "lucide-react"
-
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
+import { format } from "date-fns";
+import { Calendar as CalendarIcon, ChevronDownIcon, Clock } from "lucide-react";
+import * as React from "react";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 interface DatePickerProps {
-  id?: string
-  date?: Date
-  onChange: (date: Date | undefined) => void
-  from?: Date
-  to?: Date
-  placeholder?: string
-  disabled?: boolean
-  className?: string
+  id?: string;
+  date?: Date;
+  onChange: (date: Date | undefined) => void;
+  from?: Date;
+  to?: Date;
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
 }
 
 export function DatePicker({
@@ -35,7 +34,7 @@ export function DatePicker({
   disabled,
   className,
 }: DatePickerProps) {
-  const isEmpty = !date
+  const isEmpty = !date;
 
   return (
     <Popover>
@@ -63,25 +62,23 @@ export function DatePicker({
           defaultMonth={date}
           disabled={
             from || to
-              ? (day) =>
-                  (!!from && day < from) ||
-                  (!!to && day > to)
+              ? (day) => (!!from && day < from) || (!!to && day > to)
               : undefined
           }
         />
       </PopoverContent>
     </Popover>
-  )
+  );
 }
 
 interface DateTimePickerProps {
-  id?: string
-  value?: Date | null
-  onChange: (value: Date | null) => void
-  from?: Date
-  to?: Date
-  placeholder?: string
-  disabled?: boolean
+  id?: string;
+  value?: Date | null;
+  onChange: (value: Date | null) => void;
+  from?: Date;
+  to?: Date;
+  placeholder?: string;
+  disabled?: boolean;
 }
 
 export function DateTimePicker({
@@ -95,30 +92,30 @@ export function DateTimePicker({
 }: DateTimePickerProps) {
   const [internalDate, setInternalDate] = React.useState<Date | undefined>(
     value ?? undefined,
-  )
+  );
   const [time, setTime] = React.useState(
     value ? format(value, "HH:mm") : "09:00",
-  )
+  );
 
   React.useEffect(() => {
-    setInternalDate(value ?? undefined)
+    setInternalDate(value ?? undefined);
     if (value) {
-      setTime(format(value, "HH:mm"))
+      setTime(format(value, "HH:mm"));
     }
-  }, [value])
+  }, [value]);
 
-  const isEmpty = !value
+  const isEmpty = !value;
 
   const commit = (nextDate: Date | undefined, nextTime: string) => {
     if (!nextDate) {
-      onChange(null)
-      return
+      onChange(null);
+      return;
     }
-    const [h, m] = nextTime.split(":").map((s) => parseInt(s || "0", 10))
-    const withTime = new Date(nextDate)
-    withTime.setHours(h || 0, m || 0, 0, 0)
-    onChange(withTime)
-  }
+    const [h, m] = nextTime.split(":").map((s) => parseInt(s || "0", 10));
+    const withTime = new Date(nextDate);
+    withTime.setHours(h || 0, m || 0, 0, 0);
+    onChange(withTime);
+  };
 
   return (
     <Popover>
@@ -146,15 +143,13 @@ export function DateTimePicker({
           mode="single"
           selected={internalDate}
           onSelect={(d) => {
-            setInternalDate(d ?? undefined)
-            commit(d ?? undefined, time)
+            setInternalDate(d ?? undefined);
+            commit(d ?? undefined, time);
           }}
           defaultMonth={internalDate}
           disabled={
             from || to
-              ? (day) =>
-                  (!!from && day < from) ||
-                  (!!to && day > to)
+              ? (day) => (!!from && day < from) || (!!to && day > to)
               : undefined
           }
         />
@@ -164,15 +159,14 @@ export function DateTimePicker({
             type="time"
             value={time}
             onChange={(e) => {
-              const next = e.target.value || "00:00"
-              setTime(next)
-              commit(internalDate, next)
+              const next = e.target.value || "00:00";
+              setTime(next);
+              commit(internalDate, next);
             }}
             className="h-8 w-[110px]"
           />
         </div>
       </PopoverContent>
     </Popover>
-  )
+  );
 }
-

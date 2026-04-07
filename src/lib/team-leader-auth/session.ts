@@ -17,7 +17,10 @@ export function getSessionExpiryDate(): Date {
   return new Date(Date.now() + SESSION_TTL_MS);
 }
 
-export async function setTeamLeaderSessionCookie(rawToken: string, expiresAt: Date) {
+export async function setTeamLeaderSessionCookie(
+  rawToken: string,
+  expiresAt: Date,
+) {
   const cookieStore = await cookies();
   cookieStore.set(TEAM_LEADER_SESSION_COOKIE, rawToken, {
     httpOnly: true,

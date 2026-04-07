@@ -1,10 +1,10 @@
 "use client";
 
-import type { FestivalRole } from "@/lib/prisma-enums";
 import { format } from "date-fns";
 import { Copy, Eye, Loader2, Trash2, User } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useFestival } from "@/components/festival/FestivalContext";
 import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,13 +34,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 import { useMembers } from "@/hooks/useMembers";
-import { useFestival } from "@/components/festival/FestivalContext";
+import type { FestivalRole } from "@/lib/prisma-enums";
 import {
   createFestivalMember,
   revokeFestivalMember,
 } from "@/server/actions/team.actions";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 
 interface MembersClientProps {
   festivalId: string;
@@ -296,7 +296,13 @@ function AddMemberDialog({
   );
 }
 
-function MemberActions({ member, isReadOnly }: { member: any; isReadOnly: boolean }) {
+function MemberActions({
+  member,
+  isReadOnly,
+}: {
+  member: any;
+  isReadOnly: boolean;
+}) {
   const [isRevoking, setIsRevoking] = useState(false);
 
   const handleRevoke = async () => {

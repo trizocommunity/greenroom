@@ -1,20 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
-import { Crown, ExternalLink, Eye, MoreVertical, QrCode } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Crown,
+  Download,
+  ExternalLink,
+  Eye,
+  FileDown,
+  Link as LinkIcon,
+  MoreVertical,
+  QrCode,
+  Share2,
+} from "lucide-react";
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { QrCodeWithActions } from "@/components/common/QrCodeWithActions";
 import { StudentDetailsDialog } from "@/components/festival/pre-works/students/StudentDetailsDialog";
-import { QrCodeDisplay } from "@/components/common/QrCodeDisplay";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -27,8 +31,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { APP_URL } from "@/config/routes";
-import { getStudentProfilePath, getStudentProfileUrl } from "@/lib/student-profile-url";
+import { generateBulkQrPdf, prepareStudentQrData } from "@/lib/qr-pdf-utils";
+import {
+  getQrCodeContent,
+  getStudentProfilePath,
+  getStudentProfileUrl,
+} from "@/lib/student-profile-url";
 
 type StudentForMyStudents = {
   id: string;
@@ -62,22 +78,65 @@ export function MyStudentsClient({
       if (!s.category) continue;
       map.set(s.category.id, { id: s.category.id, name: s.category.name });
     }
-    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return Array.from(map.values()).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
   }, [students]);
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
-  const [detailsStudent, setDetailsStudent] = useState<StudentForMyStudents | null>(null);
+  const [detailsStudent, setDetailsStudent] =
+    useState<StudentForMyStudents | null>(null);
   const [qrStudent, setQrStudent] = useState<StudentForMyStudents | null>(null);
+  const [isDownloadingBulk, setIsDownloadingBulk] = useState(false);
 
   const visibleStudents = useMemo(() => {
     if (selectedCategoryId === "all") return students;
     return students.filter((s) => s.category?.id === selectedCategoryId);
   }, [students, selectedCategoryId]);
 
+  // Handle bulk PDF download
+  const handleBulkDownload = async () => {
+    try {
+      setIsDownloadingBulk(true);
+
+      // Prepare QR data for all visible students
+      const studentData = visibleStudents.map((s) => ({
+        name: s.name,
+        chestNumber: s.chestNumber || "N/A",
+        groupName: s.group?.name,
+        categoryName: s.category?.name,
+        profileUrl: getStudentProfileUrl(
+          APP_URL.replace(/\/$/, ""),
+          festivalSlug,
+          s,
+        ),
+      }));
+
+      const qrData = await prepareStudentQrData(studentData);
+
+      // Generate and download PDF
+      await generateBulkQrPdf({
+        festivalName: festivalSlug,
+        students: qrData,
+        fileName: `${festivalSlug}-team-qr-codes.pdf`,
+      });
+
+      toast.success("PDF downloaded successfully!");
+    } catch (error) {
+      console.error("Bulk download failed:", error);
+      toast.error("Failed to download PDF. Please try again.");
+    } finally {
+      setIsDownloadingBulk(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
+        <Select
+          value={selectedCategoryId}
+          onValueChange={setSelectedCategoryId}
+        >
           <SelectTrigger className="h-10 w-full sm:w-[220px]">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
@@ -90,6 +149,20 @@ export function MyStudentsClient({
             ))}
           </SelectContent>
         </Select>
+
+        {/* Bulk Download Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleBulkDownload}
+          disabled={isDownloadingBulk || visibleStudents.length === 0}
+          className="shrink-0"
+        >
+          <FileDown className="h-4 w-4 mr-2" />
+          {isDownloadingBulk
+            ? "Generating..."
+            : `Download All (${visibleStudents.length})`}
+        </Button>
       </div>
 
       {visibleStudents.length === 0 ? (
@@ -140,7 +213,34 @@ export function MyStudentsClient({
                       </DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => setQrStudent(s)}>
                         <QrCode className="h-4 w-4 mr-2" />
-                        View QR
+                        View QR (Chest #)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          const profileUrl = getStudentProfileUrl(
+                            APP_URL.replace(/\/$/, ""),
+                            festivalSlug,
+                            s,
+                          );
+                          navigator.clipboard.writeText(profileUrl);
+                          toast.success("Profile link copied!");
+                        }}
+                      >
+                        <LinkIcon className="h-4 w-4 mr-2" />
+                        Copy Profile URL
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          const chestNumber =
+                            s.chestNumber || getQrCodeContent(s);
+                          const message = `Chest number: ${chestNumber}`;
+                          const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+                          window.open(whatsappUrl, "_blank");
+                          toast.success("Opening WhatsApp...");
+                        }}
+                      >
+                        <Share2 className="h-4 w-4 mr-2" />
+                        Share Chest Number
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -162,21 +262,34 @@ export function MyStudentsClient({
         />
       ) : null}
 
-      <Dialog open={Boolean(qrStudent)} onOpenChange={(open) => !open && setQrStudent(null)}>
-        <DialogContent className="sm:max-w-sm">
+      <Dialog
+        open={Boolean(qrStudent)}
+        onOpenChange={(open) => !open && setQrStudent(null)}
+      >
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{qrStudent?.name ?? "Student"} - QR Code</DialogTitle>
+            <DialogTitle>
+              {qrStudent?.name ?? "Student"} - Chest Number QR
+            </DialogTitle>
           </DialogHeader>
           {qrStudent ? (
             <div className="flex flex-col items-center gap-4 py-1">
-              <div className="rounded-lg border bg-white p-4">
-                <QrCodeDisplay
-                  url={getStudentProfileUrl(APP_URL.replace(/\/$/, ""), festivalSlug, qrStudent)}
-                  size={200}
-                />
+              <QrCodeWithActions
+                url={getQrCodeContent(qrStudent)}
+                qrContent={getQrCodeContent(qrStudent)}
+                size={200}
+                fileName={`${qrStudent.name.replace(/\s+/g, "-").toLowerCase()}-chest-${qrStudent.chestNumber || "unknown"}.png`}
+                shareMessage={`Chest number: ${qrStudent.chestNumber || getQrCodeContent(qrStudent)}`}
+              />
+              <div className="text-sm text-muted-foreground text-center">
+                <p>This QR code contains the chest number</p>
+                <p className="text-xs mt-1">
+                  Used for programme reporting and attendance
+                </p>
               </div>
               <Button asChild className="w-full">
                 <Link href={getStudentProfilePath(festivalSlug, qrStudent)}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
                   Open Profile
                 </Link>
               </Button>
@@ -187,4 +300,3 @@ export function MyStudentsClient({
     </div>
   );
 }
-

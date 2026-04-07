@@ -14,7 +14,12 @@ export default async function MembersPage({
   if (!festival) return notFound();
 
   // Feature Access Check
-  if (!FeatureService.isFeatureEnabled(getTierForFeatureCheck(festival.tier), "members")) {
+  if (
+    !FeatureService.isFeatureEnabled(
+      getTierForFeatureCheck(festival.tier),
+      "members",
+    )
+  ) {
     redirect(`/dashboard/${slug}?error=upgrade_required&feature=members`);
   }
 

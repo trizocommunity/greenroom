@@ -1,6 +1,8 @@
 import { randomInt } from "node:crypto";
 import type { ProgrammeReportingStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { emitDomainRealtimeEvent } from "@/server/realtime/domain-events";
+import { RealtimeRoom } from "@/server/realtime/rooms";
 import { NotificationService } from "@/server/services/notification.service";
 
 const REPORTING_WINDOW_MINUTES = 5;
@@ -72,20 +74,10 @@ export const ProgrammeReportingService = {
   REPORTING_WINDOW_MINUTES,
 
   async listByFestival(festivalId: string) {
-    const assignedRows = await prisma.programmeAssignment.groupBy({
-      by: ["programmeId"],
-      where: { festivalId },
-    });
-    const assignedProgrammeIds = assignedRows.map((r) => r.programmeId);
-    if (assignedProgrammeIds.length === 0) {
-      return [];
-    }
-
     const entries = await prisma.scheduleEntry.findMany({
       where: {
         festivalId,
         type: "PROGRAMME",
-        programmeId: { in: assignedProgrammeIds },
       },
       include: {
         programme: {
@@ -108,15 +100,13 @@ export const ProgrammeReportingService = {
               },
             },
           },
-          orderBy: { createdAt: "desc" },
-          take: 1,
         },
       },
       orderBy: [{ startTime: "asc" }, { order: "asc" }],
     });
     return entries.map((entry) => ({
       ...entry,
-      reportingSession: entry.reportingSessions[0] ?? null,
+      reportingSession: entry.reportingSessions ?? null,
     }));
   },
 
@@ -183,6 +173,21 @@ export const ProgrammeReportingService = {
       },
       channels: ["IN_APP", "REALTIME"],
     });
+    await emitDomainRealtimeEvent({
+      eventName: "reporting.updated",
+      festivalId: session.festivalId,
+      entityType: "reportingSession",
+      entityId: updated.id,
+      roomKeys: [
+        RealtimeRoom.festivalAll(session.festivalId),
+        RealtimeRoom.reportingSession(session.festivalId, updated.id),
+      ],
+      payload: {
+        reportingSessionId: updated.id,
+        programmeId: session.programmeId,
+        status: "IN_PROGRESS",
+      },
+    });
 
     return updated;
   },
@@ -238,6 +243,21 @@ export const ProgrammeReportingService = {
       },
       channels: ["IN_APP", "REALTIME", "EMAIL"],
     });
+    await emitDomainRealtimeEvent({
+      eventName: "reporting.updated",
+      festivalId: session.festivalId,
+      entityType: "reportingSession",
+      entityId: reportingSessionId,
+      roomKeys: [
+        RealtimeRoom.festivalAll(session.festivalId),
+        RealtimeRoom.reportingSession(session.festivalId, reportingSessionId),
+      ],
+      payload: {
+        reportingSessionId,
+        programmeId: session.programmeId,
+        status: "RESET",
+      },
+    });
 
     return updated;
   },
@@ -254,6 +274,7 @@ export const ProgrammeReportingService = {
         id: true,
         status: true,
         isLocked: true,
+        windowEndsAt: true,
         festivalId: true,
         programmeId: true,
         programme: { select: { type: true } },
@@ -263,6 +284,11 @@ export const ProgrammeReportingService = {
     if (session.isLocked) throw new Error("Reporting is locked");
     if (session.status !== "IN_PROGRESS") {
       throw new Error("Reporting must be in progress to mark participants");
+    }
+    if (session.windowEndsAt && session.windowEndsAt.getTime() <= Date.now()) {
+      throw new Error(
+        "Reporting window has ended. Restart reporting to continue marking.",
+      );
     }
 
     const assignment = await prisma.programmeAssignment.findUnique({
@@ -335,6 +361,21 @@ export const ProgrammeReportingService = {
         channels: ["IN_APP", "REALTIME"],
       });
     }
+    await emitDomainRealtimeEvent({
+      eventName: "reporting.participant_marked",
+      festivalId: session.festivalId,
+      entityType: "reportingSession",
+      entityId: reportingSessionId,
+      roomKeys: [
+        RealtimeRoom.festivalAll(session.festivalId),
+        RealtimeRoom.reportingSession(session.festivalId, reportingSessionId),
+      ],
+      payload: {
+        reportingSessionId,
+        assignmentId,
+        isReported,
+      },
+    });
   },
 
   /**
@@ -354,6 +395,7 @@ export const ProgrammeReportingService = {
         id: true,
         status: true,
         isLocked: true,
+        windowEndsAt: true,
         festivalId: true,
         programmeId: true,
         programme: { select: { type: true } },
@@ -363,6 +405,11 @@ export const ProgrammeReportingService = {
     if (session.isLocked) throw new Error("Reporting is locked");
     if (session.status !== "IN_PROGRESS") {
       throw new Error("Reporting must be in progress to mark participants");
+    }
+    if (session.windowEndsAt && session.windowEndsAt.getTime() <= Date.now()) {
+      throw new Error(
+        "Reporting window has ended. Restart reporting to continue marking.",
+      );
     }
 
     const assignments = await prisma.programmeAssignment.findMany({
@@ -457,6 +504,21 @@ export const ProgrammeReportingService = {
         channels: ["IN_APP", "REALTIME"],
       });
     }
+    await emitDomainRealtimeEvent({
+      eventName: "reporting.participant_marked",
+      festivalId: session.festivalId,
+      entityType: "reportingSession",
+      entityId: reportingSessionId,
+      roomKeys: [
+        RealtimeRoom.festivalAll(session.festivalId),
+        RealtimeRoom.reportingSession(session.festivalId, reportingSessionId),
+      ],
+      payload: {
+        reportingSessionId,
+        assignmentIds,
+        isReported,
+      },
+    });
   },
 
   async close(reportingSessionId: string, actorName: string) {
@@ -640,6 +702,21 @@ export const ProgrammeReportingService = {
         channels: ["IN_APP", "REALTIME"],
       });
     }
+    await emitDomainRealtimeEvent({
+      eventName: "reporting.updated",
+      festivalId: session.festivalId,
+      entityType: "reportingSession",
+      entityId: reportingSessionId,
+      roomKeys: [
+        RealtimeRoom.festivalAll(session.festivalId),
+        RealtimeRoom.reportingSession(session.festivalId, reportingSessionId),
+      ],
+      payload: {
+        reportingSessionId,
+        programmeId: session.programmeId,
+        status: "CLOSED",
+      },
+    });
 
     return closed;
   },

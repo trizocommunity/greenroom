@@ -1,5 +1,7 @@
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
+import { forgotPasswordAction } from "@/server/actions/auth.actions";
+import { findFestivalById } from "@/server/models/festival.model";
 import {
   createMember,
   deleteMember,
@@ -7,10 +9,8 @@ import {
   findMemberById,
   findMembersByFestival,
 } from "@/server/models/member.model";
-import { findFestivalById } from "@/server/models/festival.model";
-import { ensureFestivalWritable } from "@/server/services/festival-context.service";
 import { createUser, findUserByEmail } from "@/server/models/user.model";
-import { forgotPasswordAction } from "@/server/actions/auth.actions";
+import { ensureFestivalWritable } from "@/server/services/festival-context.service";
 
 export const MemberService = {
   async getMembers(festivalId: string) {

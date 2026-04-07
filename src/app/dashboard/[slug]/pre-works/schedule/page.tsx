@@ -1,10 +1,10 @@
-import { ScheduleClient } from "@/components/festival/pre-works/schedule/ScheduleClient";
-import { findFestivalBySlug } from "@/server/models/festival.model";
 import { notFound, redirect } from "next/navigation";
-import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
+import { ScheduleClient } from "@/components/festival/pre-works/schedule/ScheduleClient";
+import { prisma } from "@/lib/db";
 import { getScheduleEntries } from "@/server/actions/schedule.actions";
 import { getStages } from "@/server/actions/stage.actions";
-import { prisma } from "@/lib/db";
+import { findFestivalBySlug } from "@/server/models/festival.model";
+import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -23,9 +23,7 @@ export default async function SchedulePage({ params }: PageProps) {
     "schedule",
   );
   if (!canManageSchedule) {
-    redirect(
-      `/dashboard/${slug}?error=upgrade_required&feature=schedule`,
-    );
+    redirect(`/dashboard/${slug}?error=upgrade_required&feature=schedule`);
   }
 
   const [entries, stages, allProgrammes] = await Promise.all([
@@ -64,7 +62,11 @@ export default async function SchedulePage({ params }: PageProps) {
         festivalId={festival.id}
         initialEntries={entries}
         programmes={programmes}
-        stages={stages.map((s) => ({ id: s.id, name: s.name, description: s.description ?? null }))}
+        stages={stages.map((s) => ({
+          id: s.id,
+          name: s.name,
+          description: s.description ?? null,
+        }))}
         festivalStartDate={festival.startDate?.toISOString() ?? null}
         festivalEndDate={festival.endDate?.toISOString() ?? null}
       />
