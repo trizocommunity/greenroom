@@ -24,3 +24,8 @@ export const resetPasswordSchema = z
     message: "Passwords don't match",
     path: ["confirmPassword"],
   });
+
+export const onboardingSchema = z.object({
+  fullName: z.string().min(2, "Full name must be at least 2 characters"),
+  displayName: z.string().min(2, "Display name must be at least 2 characters"),
+});

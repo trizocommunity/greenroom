@@ -13,6 +13,11 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
+  // FORCE ONBOARDING: If the user hasn't set their full name, they MUST go through onboarding
+  if (!user.fullName) {
+    redirect("/onboarding");
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <DashboardNavbar user={user} />

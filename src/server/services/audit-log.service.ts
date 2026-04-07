@@ -5,7 +5,7 @@ import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 type AuditAction =
   | "DELETE_FESTIVAL"
   | "UPDATE_USER"
-  | "Delete_FESTIVAL_ADMIN"
+  | "DELETE_FESTIVAL_ADMIN"
   | "CREATE_FESTIVAL"
   | "UPDATE_FESTIVAL"
   | "UPDATE_FESTIVAL_STATUS"
@@ -13,7 +13,8 @@ type AuditAction =
   | "PAYMENT_FAILED"
   | "UPDATE_PROFILE"
   | "CREATE_MEMBER"
-  | "REVOKE_MEMBER";
+  | "REVOKE_MEMBER"
+  | "COMPLETE_ONBOARDING";
 
 type TargetType = "FESTIVAL" | "USER" | "PAYMENT";
 

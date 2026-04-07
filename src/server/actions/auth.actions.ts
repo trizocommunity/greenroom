@@ -1,15 +1,17 @@
 "use server";
 
 import crypto from "crypto";
+import { revalidatePath } from "next/cache";
 import type { z } from "zod";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
-import { createSession } from "@/lib/auth/session";
+import { createSession, getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import {
   forgotPasswordSchema,
   loginSchema,
+  onboardingSchema,
   registerSchema,
   resetPasswordSchema,
 } from "@/lib/validations/auth";
@@ -24,6 +26,7 @@ import {
   findUserById,
   updateUser,
 } from "@/server/models/user.model";
+import { createAuditLog } from "@/server/services/audit-log.service";
 import type { ActionResponse } from "@/types/actions";
 
 export async function loginAction(
@@ -152,6 +155,40 @@ export async function resetPasswordAction(
     await updatePasswordResetToken(resetTokenRecord.id, {
       usedAt: new Date(),
     });
+
+    return { success: true, data: null };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
+
+export async function completeOnboardingAction(
+  data: z.infer<typeof onboardingSchema>,
+): Promise<ActionResponse<null>> {
+  try {
+    const session = await getSession();
+
+    if (!session?.userId) {
+      throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+    }
+
+    const { fullName, displayName } = onboardingSchema.parse(data);
+
+    await updateUser(session.userId, {
+      fullName,
+      displayName,
+    });
+
+    await createAuditLog({
+      action: "COMPLETE_ONBOARDING",
+      targetType: "USER",
+      targetId: session.userId,
+      metadata: { fullName, displayName },
+    });
+
+    // Revalidate relevant paths
+    revalidatePath("/profile");
+    revalidatePath("/dashboard");
 
     return { success: true, data: null };
   } catch (error) {
