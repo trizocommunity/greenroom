@@ -1,5 +1,5 @@
 import { TIER_CONFIG } from "@/config/pricing";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { getResolvedTier } from "@/lib/tier";
 import {
@@ -11,6 +11,8 @@ import {
   updateCategory,
 } from "@/server/models/category.model";
 import { findFestivalById } from "@/server/models/festival.model";
+import { programme as programmes } from "../db/schema";
+import { eq, count } from "drizzle-orm";
 
 export const CategoryService = {
   async getAll(festivalId: string) {
@@ -32,17 +34,17 @@ export const CategoryService = {
       throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
     }
 
-    // 2. Check Tier Limits — use TIER_CONFIG as single source of truth
-    const count = await countCategories(festivalId);
+    // 2. Check Tier Limits
+    const categoryCount = await countCategories(festivalId);
     const tierConfig = TIER_CONFIG[getResolvedTier(festival.tier)];
     const limit = tierConfig.limits.categories;
-    if (count >= limit) {
+    if (categoryCount >= limit) {
       throw new AppError(ERROR_MESSAGES.CATEGORY_LIMIT_REACHED);
     }
 
     // 3. Create
     return createCategory({
-      festival: { connect: { id: festivalId } },
+      festivalId,
       name: data.name,
       description: data.description,
       type: data.type || "SINGLE",
@@ -77,10 +79,11 @@ export const CategoryService = {
       throw new AppError(ERROR_MESSAGES.CATEGORY_NOT_FOUND);
     }
 
-    // QA-6 fix: explicit count query instead of (existing as any)._count
-    const progCount = await prisma.programme.count({
-      where: { categoryId: id },
-    });
+    const [{ progCount }] = await db
+      .select({ progCount: count() })
+      .from(programmes)
+      .where(eq(programmes.categoryId, id));
+
     if (progCount > 0) {
       throw new AppError(ERROR_MESSAGES.CATEGORY_HAS_PROGRAMMES);
     }
@@ -88,3 +91,4 @@ export const CategoryService = {
     return deleteCategory(id);
   },
 };
+

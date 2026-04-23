@@ -1,5 +1,5 @@
 import { TIER_CONFIG } from "@/config/pricing";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { generateProfileSlug } from "@/lib/slug";
 import { getResolvedTier } from "@/lib/tier";
@@ -11,7 +11,10 @@ import {
   deleteStudent,
   findStudentById,
   findStudentsByFestival,
+  updateStudent,
 } from "@/server/models/student.model";
+import { student as students } from "../db/schema";
+import { eq, and, count, ne, ilike } from "drizzle-orm";
 import { UsageCounterService } from "./usage-counter.service";
 
 export const StudentService = {
@@ -38,13 +41,13 @@ export const StudentService = {
     if (festival.status === "EXPIRED")
       throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
 
-    // Enforce "no duplicate student names in the same festival"
-    const existingByName = await prisma.student.findFirst({
-      where: {
-        festivalId,
-        name: { equals: normalizedName, mode: "insensitive" },
-      },
-      select: { id: true },
+    // Enforce no duplicate student names in the same festival
+    const existingByName = await db.query.student.findFirst({
+      where: and(
+        eq(students.festivalId, festivalId),
+        ilike(students.name, normalizedName)
+      ),
+      columns: { id: true },
     });
 
     if (existingByName) {
@@ -62,13 +65,14 @@ export const StudentService = {
       throw new AppError(ERROR_MESSAGES.STUDENT_INVALID_CATEGORY);
 
     // 3. Limit Check & Increment (Atomic)
-    const count = await prisma.student.count({
-      where: { festivalId },
-    });
+    const [{ studentCount }] = await db
+      .select({ studentCount: count() })
+      .from(students)
+      .where(eq(students.festivalId, festivalId));
 
     const tierLimit =
       TIER_CONFIG[getResolvedTier(festival.tier)].limits.students;
-    if (count >= tierLimit) {
+    if (studentCount >= tierLimit) {
       throw new AppError(ERROR_MESSAGES.STUDENT_LIMIT_REACHED);
     }
 
@@ -76,11 +80,11 @@ export const StudentService = {
 
     // 4. Create (no profileSlug yet — set after we have id)
     const created = await createStudent({
-      festival: { connect: { id: festivalId } },
-      group: { connect: { id: data.groupId } },
-      category: { connect: { id: data.categoryId } },
+      festivalId,
+      groupId: data.groupId,
+      categoryId: data.categoryId,
       name: normalizedName,
-      gender: data.gender,
+      gender: data.gender ?? "MALE",
       email: data.email || undefined,
       phone: data.phone,
       age: data.age,
@@ -93,25 +97,21 @@ export const StudentService = {
       created.id,
       created.chestNumber,
     );
-    let exists = await prisma.student.findFirst({
-      where: { festivalId, profileSlug },
+    let slugExists = await db.query.student.findFirst({
+      where: and(eq(students.festivalId, festivalId), eq(students.profileSlug, profileSlug)),
+      columns: { id: true },
     });
     let suffix = 2;
-    while (exists) {
+    while (slugExists) {
       profileSlug = `${generateProfileSlug(created.name, created.id, created.chestNumber)}-${suffix}`;
-      exists = await prisma.student.findFirst({
-        where: { festivalId, profileSlug },
+      slugExists = await db.query.student.findFirst({
+        where: and(eq(students.festivalId, festivalId), eq(students.profileSlug, profileSlug)),
+        columns: { id: true },
       });
       suffix++;
     }
-    await prisma.student.update({
-      where: { id: created.id },
-      data: { profileSlug },
-    });
-    return prisma.student.findUnique({
-      where: { id: created.id },
-      include: { category: true, group: true },
-    }) as Promise<typeof created>;
+
+    return updateStudent(created.id, { profileSlug });
   },
 
   async update(
@@ -134,13 +134,13 @@ export const StudentService = {
 
     if (data.name) {
       const normalizedName = data.name.trim();
-      const existingByName = await prisma.student.findFirst({
-        where: {
-          festivalId,
-          name: { equals: normalizedName, mode: "insensitive" },
-          NOT: { id },
-        },
-        select: { id: true },
+      const existingByName = await db.query.student.findFirst({
+        where: and(
+          eq(students.festivalId, festivalId),
+          ilike(students.name, normalizedName),
+          ne(students.id, id)
+        ),
+        columns: { id: true },
       });
 
       if (existingByName) {
@@ -163,42 +163,33 @@ export const StudentService = {
     let profileSlug = existing.profileSlug;
     if (data.name && data.name.trim() !== existing.name) {
       const newName = data.name.trim();
-      profileSlug = generateProfileSlug(
-        newName,
-        existing.id,
-        existing.chestNumber,
-      );
-      let exists = await prisma.student.findFirst({
-        where: { festivalId, profileSlug, NOT: { id } },
+      const baseSlug = generateProfileSlug(newName, existing.id, existing.chestNumber);
+      profileSlug = baseSlug;
+      let slugExists = await db.query.student.findFirst({
+        where: and(eq(students.festivalId, festivalId), eq(students.profileSlug, profileSlug), ne(students.id, id)),
+        columns: { id: true },
       });
       let suffix = 2;
-      const baseSlug = generateProfileSlug(
-        newName,
-        existing.id,
-        existing.chestNumber,
-      );
-      while (exists) {
+      while (slugExists) {
         profileSlug = `${baseSlug}-${suffix}`;
-        exists = await prisma.student.findFirst({
-          where: { festivalId, profileSlug, NOT: { id } },
+        slugExists = await db.query.student.findFirst({
+          where: and(eq(students.festivalId, festivalId), eq(students.profileSlug, profileSlug), ne(students.id, id)),
+          columns: { id: true },
         });
         suffix++;
       }
     }
 
-    return prisma.student.update({
-      where: { id },
-      data: {
-        name: data.name,
-        groupId: data.groupId,
-        categoryId: data.categoryId,
-        email: data.email,
-        phone: data.phone,
-        gender: data.gender,
-        age: data.age,
-        standard: data.standard,
-        profileSlug,
-      },
+    return updateStudent(id, {
+      name: data.name,
+      groupId: data.groupId,
+      categoryId: data.categoryId,
+      email: data.email,
+      phone: data.phone,
+      gender: data.gender,
+      age: data.age,
+      standard: data.standard,
+      profileSlug: profileSlug ?? undefined,
     });
   },
 
@@ -207,7 +198,6 @@ export const StudentService = {
     if (!exists || exists.festivalId !== festivalId)
       throw new AppError(ERROR_MESSAGES.STUDENT_NOT_FOUND);
 
-    // Decrement usage counter
     await UsageCounterService.incrementUsage(festivalId, "students", -1);
 
     return deleteStudent(id);

@@ -1,4 +1,3 @@
-import type { FestivalStatus, Prisma } from "@prisma/client";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import {
   createFestival,
@@ -7,11 +6,16 @@ import {
   findFestivalById,
   updateFestival,
 } from "@/server/models/festival.model";
+import { festival as festivalTable } from "../db/schema";
+import { eq } from "drizzle-orm";
+import { db } from "@/lib/db";
 
 export async function index(userId: string, role: string) {
-  const where = role === "SUPER_ADMIN" ? {} : { ownerId: userId };
-  const festivals = await findAllFestivals(where);
-  return festivals;
+  if (role === "SUPER_ADMIN") {
+    return findAllFestivals();
+  } else {
+    return findAllFestivals(eq(festivalTable.ownerId, userId));
+  }
 }
 
 export async function store(
@@ -25,24 +29,25 @@ export async function store(
     throw new AppError(ERROR_MESSAGES.VALIDATION);
   }
 
-  // One-festival limit: BASIC plan allows only one festival per user. When STANDARD/PRO are
-  // implemented, this will be driven by TIER_CONFIG[tier].features.multiFestivalManagement.
+  // One-festival limit: BASIC plan allows only one festival per user.
   if (role === "USER") {
-    const userFestivals = await findAllFestivals({ ownerId: userId });
+    const userFestivals = await findAllFestivals(eq(festivalTable.ownerId, userId));
     if (userFestivals.length > 0) {
       throw new AppError(ERROR_MESSAGES.TIER_NOT_FOUND);
     }
   }
 
-  // Generate slug from name
   const slug = name.toLowerCase().replace(/ /g, "-") + "-" + Date.now();
+  const { randomUUID } = await import("crypto");
 
   const festival = await createFestival({
+    id: randomUUID(),
+    ownerId: userId,
     name,
     slug,
-    owner: { connect: { id: userId } },
     status: "READY",
     isLocked: true,
+    updatedAt: new Date().toISOString(),
   });
 
   return festival;
@@ -97,23 +102,18 @@ export async function update(
     establishedYear: (establishedYear as number) ?? existing.establishedYear,
     founderName: (founderName as string) ?? existing.founderName,
     founderMessage: (founderMessage as string) ?? existing.founderMessage,
-  } as Prisma.FestivalUpdateInput);
+  });
 
-  // Revalidate old and new paths
   const revalidatePath = (await import("next/cache")).revalidatePath;
   revalidatePath(`/dashboard/${existing.slug}`);
   if (slug && slug !== existing.slug) {
     revalidatePath(`/dashboard/${slug as string}`);
   }
   revalidatePath(`/dashboard/${existing.slug}/settings`);
-
-  // Public Paths
   revalidatePath(`/${existing.slug}`);
   if (slug && slug !== existing.slug) {
     revalidatePath(`/${slug as string}`);
   }
-
-  // Revalidate Profile/Dashboard Lists
   revalidatePath("/profile");
   revalidatePath("/dashboard");
 

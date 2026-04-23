@@ -1,71 +1,69 @@
-import type { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { programme as programmes } from "../db/schema";
+import { eq, and, desc, count } from "drizzle-orm";
 
-export async function createProgramme(data: Prisma.ProgrammeCreateInput) {
-  return prisma.programme.create({
-    data,
-  });
+export async function createProgramme(data: typeof programmes.$inferInsert) {
+  const result = await db.insert(programmes).values(data).returning();
+  return result[0];
 }
 
-export async function updateProgramme(
-  id: string,
-  data: Prisma.ProgrammeUpdateInput,
-) {
-  return prisma.programme.update({
-    where: { id },
-    data,
-  });
+export async function updateProgramme(id: string, data: Partial<typeof programmes.$inferInsert>) {
+  const result = await db.update(programmes).set(data).where(eq(programmes.id, id)).returning();
+  return result[0];
 }
 
 export async function deleteProgramme(id: string) {
-  return prisma.programme.delete({
-    where: { id },
-  });
+  const result = await db.delete(programmes).where(eq(programmes.id, id)).returning();
+  return result[0];
 }
 
 export async function findProgrammeById(id: string) {
-  return prisma.programme.findUnique({
-    where: { id },
-    include: { category: true, _count: { select: { assignments: true } } },
+  const programme = await db.query.programme.findFirst({
+    where: eq(programmes.id, id),
+    with: {
+      category: true,
+      programmeAssignments: { columns: { id: true } }
+    },
   });
+
+  if (!programme) return null;
+  const { programmeAssignments: pa, ...rest } = programme;
+  return { ...rest, _count: { assignments: pa.length } };
 }
 
-export async function findProgrammesByFestival(
-  festivalId: string,
-  categoryId?: string,
-) {
-  const where: Prisma.ProgrammeWhereInput = { festivalId };
-  if (categoryId) where.categoryId = categoryId;
+export async function findProgrammesByFestival(festivalId: string, categoryId?: string) {
+  const results = await db.query.programme.findMany({
+    where: categoryId ? and(eq(programmes.festivalId, festivalId), eq(programmes.categoryId, categoryId)) : eq(programmes.festivalId, festivalId),
+    orderBy: [desc(programmes.createdAt)],
+    with: {
+      category: true,
+      programmeAssignments: { columns: { id: true } }
+    },
+  });
 
-  return prisma.programme.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    include: { category: true, _count: { select: { assignments: true } } },
+  return results.map(p => {
+    const { programmeAssignments: pa, ...rest } = p;
+    return { ...rest, _count: { assignments: pa.length } };
   });
 }
 
 export async function countProgrammes(festivalId: string) {
-  return prisma.programme.count({
-    where: { festivalId },
-  });
+  const result = await db.select({ c: count() }).from(programmes).where(eq(programmes.festivalId, festivalId));
+  return result[0].c;
 }
 
 export async function findProgrammeWithAssignments(id: string) {
-  return prisma.programme.findUnique({
-    where: { id },
-    include: {
+  return db.query.programme.findFirst({
+    where: eq(programmes.id, id),
+    with: {
       category: true,
-      assignments: {
-        include: {
+      programmeAssignments: {
+        with: {
           student: {
-            select: {
-              id: true,
-              name: true,
-
-              group: true,
-            },
+            columns: { id: true, name: true, groupId: true },
+            with: { group: true },
           },
-          group: true, // For group assignments
+          group: true,
         },
       },
     },

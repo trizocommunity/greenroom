@@ -1,64 +1,59 @@
-import type { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { programmeAssignment } from "../db/schema";
+import { eq, and, desc } from "drizzle-orm";
 
 export async function createAssignment(
-  data: Prisma.ProgrammeAssignmentCreateInput,
+  data: typeof programmeAssignment.$inferInsert
 ) {
-  return prisma.programmeAssignment.create({
-    data,
-  });
+  const result = await db.insert(programmeAssignment).values(data).returning();
+  return result[0];
 }
 
 export async function deleteAssignment(id: string) {
-  return prisma.programmeAssignment.delete({
-    where: { id },
-  });
+  const result = await db.delete(programmeAssignment).where(eq(programmeAssignment.id, id)).returning();
+  return result[0];
 }
 
 export async function updateAssignment(
   id: string,
-  data: Prisma.ProgrammeAssignmentUpdateInput,
+  data: Partial<typeof programmeAssignment.$inferInsert>
 ) {
-  return prisma.programmeAssignment.update({
-    where: { id },
-    data,
-  });
+  const result = await db.update(programmeAssignment).set(data).where(eq(programmeAssignment.id, id)).returning();
+  return result[0];
 }
 
 export async function findAssignmentsByProgramme(programmeId: string) {
-  return prisma.programmeAssignment.findMany({
-    where: { programmeId },
-    include: {
+  return db.query.programmeAssignment.findMany({
+    where: eq(programmeAssignment.programmeId, programmeId),
+    with: {
       student: {
-        include: {
+        with: {
           group: true,
         },
       },
       group: true,
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: [desc(programmeAssignment.createdAt)],
   });
 }
 
 export async function findAssignmentsByStudent(studentId: string) {
-  return prisma.programmeAssignment.findMany({
-    where: { studentId },
-    include: { programme: true },
-    orderBy: { createdAt: "desc" },
+  return db.query.programmeAssignment.findMany({
+    where: eq(programmeAssignment.studentId, studentId),
+    with: { programme: true },
+    orderBy: [desc(programmeAssignment.createdAt)],
   });
 }
 
 export async function checkAssignmentExists(
   programmeId: string,
-  studentId: string,
+  studentId: string
 ) {
-  const assignment = await prisma.programmeAssignment.findUnique({
-    where: {
-      programmeId_studentId: {
-        programmeId,
-        studentId,
-      },
-    },
+  const assignment = await db.query.programmeAssignment.findFirst({
+    where: and(
+      eq(programmeAssignment.programmeId, programmeId),
+      eq(programmeAssignment.studentId, studentId)
+    ),
   });
   return !!assignment;
 }

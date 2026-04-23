@@ -1,35 +1,36 @@
-import type { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { festival as festivals, user as users, payment } from "../db/schema";
+import { desc } from "drizzle-orm";
 
 export const adminService = {
   getFestivalsForAdmin: async () => {
-    return prisma.festival.findMany({
-      include: {
-        owner: { select: { email: true } },
+    return db.query.festival.findMany({
+      with: {
+        user: { columns: { email: true } },
       },
-      orderBy: { createdAt: "desc" },
-      take: 50,
+      orderBy: [desc(festivals.createdAt)],
+      limit: 50,
     });
   },
 
   getUsersForAdmin: async () => {
-    return prisma.user.findMany({
-      include: {
-        festival: { select: { name: true } },
+    return db.query.user.findMany({
+      with: {
+        festivals: { columns: { name: true } },
       },
-      orderBy: { createdAt: "desc" },
-      take: 50,
+      orderBy: [desc(users.createdAt)],
+      limit: 50,
     });
   },
 
   getPaymentsForAdmin: async () => {
-    return prisma.payment.findMany({
-      include: {
-        user: { select: { email: true, fullName: true } },
-        festival: { select: { name: true } },
+    return db.query.payment.findMany({
+      with: {
+        user: { columns: { email: true, fullName: true } },
+        festival: { columns: { name: true } },
       },
-      orderBy: { createdAt: "desc" },
-      take: 50,
+      orderBy: [desc(payment.createdAt)],
+      limit: 50,
     });
   },
 };

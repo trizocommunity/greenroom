@@ -1,45 +1,56 @@
-import type { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { category as categories } from "../db/schema";
+import { eq, desc, count } from "drizzle-orm";
 
-export async function createCategory(data: Prisma.CategoryCreateInput) {
-  return prisma.category.create({
-    data,
-  });
+export async function createCategory(data: typeof categories.$inferInsert) {
+  const result = await db.insert(categories).values(data).returning();
+  return result[0];
 }
 
 export async function updateCategory(
   id: string,
-  data: Prisma.CategoryUpdateInput,
+  data: Partial<typeof categories.$inferInsert>
 ) {
-  return prisma.category.update({
-    where: { id },
-    data,
-  });
+  const result = await db.update(categories).set(data).where(eq(categories.id, id)).returning();
+  return result[0];
 }
 
 export async function deleteCategory(id: string) {
-  return prisma.category.delete({
-    where: { id },
-  });
+  const result = await db.delete(categories).where(eq(categories.id, id)).returning();
+  return result[0];
 }
 
 export async function findCategoryById(id: string) {
-  return prisma.category.findUnique({
-    where: { id },
-    include: { _count: { select: { programmes: true, students: true } } },
+  const category = await db.query.category.findFirst({
+    where: eq(categories.id, id),
+    with: {
+      programmes: { columns: { id: true } },
+      students: { columns: { id: true } },
+    },
   });
+
+  if (!category) return null;
+  const { programmes, students, ...rest } = category;
+  return { ...rest, _count: { programmes: programmes.length, students: students.length } };
 }
 
 export async function findCategoriesByFestival(festivalId: string) {
-  return prisma.category.findMany({
-    where: { festivalId },
-    orderBy: { createdAt: "desc" },
-    include: { _count: { select: { programmes: true, students: true } } },
+  const results = await db.query.category.findMany({
+    where: eq(categories.festivalId, festivalId),
+    orderBy: [desc(categories.createdAt)],
+    with: {
+      programmes: { columns: { id: true } },
+      students: { columns: { id: true } },
+    },
+  });
+
+  return results.map((cat) => {
+    const { programmes, students, ...rest } = cat;
+    return { ...rest, _count: { programmes: programmes.length, students: students.length } };
   });
 }
 
 export async function countCategories(festivalId: string) {
-  return prisma.category.count({
-    where: { festivalId },
-  });
+  const result = await db.select({ c: count() }).from(categories).where(eq(categories.festivalId, festivalId));
+  return result[0].c;
 }

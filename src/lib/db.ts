@@ -1,10 +1,15 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
+import { drizzle } from "drizzle-orm/node-postgres";
+import * as schema from "../server/db/schema";
+import * as relations from "../server/db/relations";
+const dbSchema = { ...schema, ...relations };
 import { Pool, type PoolConfig } from "pg";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
   pool: Pool | undefined;
+  db: ReturnType<typeof drizzle<typeof dbSchema>> | undefined;
 };
 
 const connectionString = process.env.DATABASE_URL;
@@ -65,7 +70,15 @@ if (!globalForPrisma.prisma) {
 }
 export const prisma = globalForPrisma.prisma;
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+if (!globalForPrisma.db) {
+  globalForPrisma.db = drizzle(pool, { schema: dbSchema });
+}
+export const db = globalForPrisma.db;
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
+  globalForPrisma.db = db;
+}
 
 // Graceful shutdown (production only, skip build)
 if (

@@ -1,21 +1,23 @@
-import type { PaymentPurpose } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { payment } from "../db/schema";
+import { eq, and, gt, asc } from "drizzle-orm";
+
+export type PaymentPurpose = "FESTIVAL_CREATION";
 
 export async function getUnusedPayment(
   userId: string,
   purpose?: PaymentPurpose,
 ) {
   const now = new Date();
-  return prisma.payment.findFirst({
-    where: {
-      userId,
-      status: "PAID",
-      used: false,
-      purpose: purpose,
-      // Check if payment hasn't expired yet
-      validUntil: { gt: now },
-    },
-    orderBy: { createdAt: "asc" },
+  return db.query.payment.findFirst({
+    where: and(
+      eq(payment.userId, userId),
+      eq(payment.status, "PAID"),
+      eq(payment.used, false),
+      purpose ? eq(payment.purpose, purpose) : undefined,
+      gt(payment.validUntil, now)
+    ),
+    orderBy: [asc(payment.createdAt)],
   });
 }
 
@@ -23,11 +25,13 @@ export async function consumePayment(
   paymentId: string,
   metadata: { festivalId?: string } = {},
 ) {
-  return prisma.payment.update({
-    where: { id: paymentId },
-    data: {
+  const result = await db
+    .update(payment)
+    .set({
       used: true,
       festivalId: metadata.festivalId,
-    },
-  });
+    })
+    .where(eq(payment.id, paymentId))
+    .returning();
+  return result[0];
 }

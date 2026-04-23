@@ -1,4 +1,6 @@
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { festival as festivals } from "../db/schema";
+import { eq, lt, ne, isNotNull } from "drizzle-orm";
 
 /**
  * Service to handle Festival Lifecycle management (Auto-Expiry).
@@ -7,7 +9,7 @@ import { prisma } from "@/lib/db";
 export const FestivalLifecycleService = {
   /**
    * Deletes festivals that have passed their 40-day lifetime.
-   * This is a hard delete of the festival and all its data (students, programmes, etc.)
+   * This is a hard delete of the festival and all its data (students, programme as programmes, etc.)
    * except Payments (which are preserved but unlinked via SetNull).
    *
    * @returns Number of festivals deleted
@@ -18,23 +20,19 @@ export const FestivalLifecycleService = {
     try {
       // Hard delete festivals expiring before NOW.
       // Relies on database CASCADE for internal data (Students, Programmes)
-      // Relies on SetNull for Payments.
-      const result = await prisma.festival.deleteMany({
-        where: {
-          expiresAt: {
-            lt: now,
-          },
-          // Only delete if expiresAt is set (Safety against unmigrated data)
-          NOT: {
-            expiresAt: null,
-          },
-        },
-      });
+      const result = await db
+        .delete(festivals)
+        .where(
+          // expiresAt < now AND expiresAt IS NOT NULL
+          lt(festivals.expiresAt, now)
+        )
+        .returning();
 
-      if (result.count > 0) {
+      if (result.length > 0) {
+        // Logging hook
       }
 
-      return result.count;
+      return result.length;
     } catch (error) {
       console.error("[Lifecycle] Failed to cleanup festivals:", error);
       throw error;

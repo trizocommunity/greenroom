@@ -1,58 +1,46 @@
-import type { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { festivalMember } from "../db/schema";
+import { eq, and, desc, SQL } from "drizzle-orm";
 
 export async function findMemberByFestivalAndUser(
   festivalId: string,
-  userId: string,
+  userId: string
 ) {
-  return prisma.festivalMember.findUnique({
-    where: {
-      festivalId_userId: {
-        festivalId,
-        userId,
-      },
-    },
-    include: {
-      user: true,
-    },
+  return db.query.festivalMember.findFirst({
+    where: and(
+      eq(festivalMember.festivalId, festivalId),
+      eq(festivalMember.userId, userId)
+    ),
+    with: { user: true },
   });
 }
 
 export async function findMembersByFestival(
   festivalId: string,
-  where: Prisma.FestivalMemberWhereInput = {},
+  where?: SQL
 ) {
-  return prisma.festivalMember.findMany({
-    where: {
-      festivalId,
-      ...where,
-    },
-    include: {
-      user: true,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
+  return db.query.festivalMember.findMany({
+    where: where ? and(eq(festivalMember.festivalId, festivalId), where) : eq(festivalMember.festivalId, festivalId),
+    with: { user: true },
+    orderBy: [desc(festivalMember.createdAt)],
   });
 }
 
 export async function findMemberById(id: string) {
-  return prisma.festivalMember.findUnique({
-    where: { id },
+  return db.query.festivalMember.findFirst({
+    where: eq(festivalMember.id, id),
   });
 }
 
-export async function createMember(data: Prisma.FestivalMemberCreateInput) {
-  return prisma.festivalMember.create({
-    data,
-    include: {
-      user: true,
-    },
+export async function createMember(data: typeof festivalMember.$inferInsert) {
+  const result = await db.insert(festivalMember).values(data).returning();
+  return db.query.festivalMember.findFirst({
+    where: eq(festivalMember.id, result[0].id),
+    with: { user: true }
   });
 }
 
 export async function deleteMember(id: string) {
-  return prisma.festivalMember.delete({
-    where: { id },
-  });
+  const result = await db.delete(festivalMember).where(eq(festivalMember.id, id)).returning();
+  return result[0];
 }

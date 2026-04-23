@@ -1,69 +1,56 @@
-import type { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { student as students } from "../db/schema";
+import { eq, and, desc, count } from "drizzle-orm";
 
-export async function createStudent(data: Prisma.StudentCreateInput) {
-  return prisma.student.create({
-    data,
-  });
+export async function createStudent(data: typeof students.$inferInsert) {
+  const result = await db.insert(students).values(data).returning();
+  return result[0];
 }
 
 export async function deleteStudent(id: string) {
-  return prisma.student.delete({
-    where: { id },
-  });
+  const result = await db.delete(students).where(eq(students.id, id)).returning();
+  return result[0];
 }
 
-export async function updateStudent(
-  id: string,
-  data: Prisma.StudentUpdateInput,
-) {
-  return prisma.student.update({
-    where: { id },
-    data,
-  });
+export async function updateStudent(id: string, data: Partial<typeof students.$inferInsert>) {
+  const result = await db.update(students).set(data).where(eq(students.id, id)).returning();
+  return result[0];
 }
 
 export async function findStudentById(id: string) {
-  return prisma.student.findUnique({
-    where: { id },
-    include: { category: true, group: true }, // Include relations
+  return db.query.student.findFirst({
+    where: eq(students.id, id),
+    with: { category: true, group: true },
   });
 }
 
 export async function findStudentByFestivalAndProfileSlug(
   festivalId: string,
-  profileSlug: string,
+  profileSlug: string
 ) {
-  return prisma.student.findFirst({
-    where: { festivalId, profileSlug },
-    include: {
+  return db.query.student.findFirst({
+    where: and(eq(students.festivalId, festivalId), eq(students.profileSlug, profileSlug)),
+    with: {
       category: true,
       group: true,
-      assignments: {
-        include: {
-          programme: { include: { category: true } },
+      programmeAssignments: {
+        with: {
+          programme: { with: { category: true } },
         },
       },
     },
   });
 }
 
-export async function findStudentsByFestival(
-  festivalId: string,
-  groupId?: string,
-) {
-  const where: Prisma.StudentWhereInput = { festivalId };
-  if (groupId) where.groupId = groupId;
-
-  return prisma.student.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    include: { category: true, group: true },
+export async function findStudentsByFestival(festivalId: string, groupId?: string) {
+  return db.query.student.findMany({
+    where: groupId ? and(eq(students.festivalId, festivalId), eq(students.groupId, groupId)) : eq(students.festivalId, festivalId),
+    orderBy: [desc(students.createdAt)],
+    with: { category: true, group: true },
   });
 }
 
 export async function countStudents(festivalId: string) {
-  return prisma.student.count({
-    where: { festivalId },
-  });
+  const result = await db.select({ c: count() }).from(students).where(eq(students.festivalId, festivalId));
+  return result[0].c;
 }

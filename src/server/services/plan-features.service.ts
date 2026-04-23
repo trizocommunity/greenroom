@@ -1,8 +1,11 @@
-import type { Tier } from "@prisma/client";
 import { PLAN_FEATURE_TOGGLE_KEYS } from "@/config/plan-features.config";
 import { TIER_CONFIG } from "@/config/pricing";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
 import type { FeaturePath } from "@/lib/features";
+import { systemConfig } from "../db/schema";
+import { eq } from "drizzle-orm";
+
+type Tier = "BASIC" | "STANDARD" | "PRO";
 
 const CONFIG_KEY = "planFeatureOverrides";
 const TOGGLE_KEY_SET = new Set<string>(PLAN_FEATURE_TOGGLE_KEYS);
@@ -13,8 +16,8 @@ export type PlanFeatureOverrides = Partial<
 
 async function getStoredOverrides(): Promise<PlanFeatureOverrides> {
   try {
-    const row = await prisma.systemConfig.findUnique({
-      where: { key: CONFIG_KEY },
+    const row = await db.query.systemConfig.findFirst({
+      where: eq(systemConfig.key, CONFIG_KEY),
     });
     if (!row || !row.value || typeof row.value !== "object") return {};
     return row.value as PlanFeatureOverrides;
@@ -27,7 +30,6 @@ export async function getPlanFeatureOverrides(): Promise<PlanFeatureOverrides> {
   return getStoredOverrides();
 }
 
-/** Effective boolean feature state per tier (config merged with admin overrides). */
 export function getEffectiveFeatureMatrix(): Record<
   Tier,
   Partial<Record<FeaturePath, boolean>>
@@ -46,7 +48,6 @@ export function getEffectiveFeatureMatrix(): Record<
   return result;
 }
 
-/** Get effective feature matrix (config + DB overrides). Used by super-admin UI and by feature checks. */
 export async function getEffectivePlanFeatureMatrix(): Promise<
   Record<Tier, Partial<Record<FeaturePath, boolean>>>
 > {
@@ -73,7 +74,6 @@ export async function getEffectivePlanFeatureMatrix(): Promise<
   return result;
 }
 
-/** Single feature enabled for a tier (respects admin overrides). */
 export async function getEffectiveFeatureEnabled(
   tier: Tier,
   feature: FeaturePath,
@@ -84,7 +84,6 @@ export async function getEffectiveFeatureEnabled(
   return Boolean(TIER_CONFIG[tier]?.features?.[feature]);
 }
 
-/** Effective features for one tier (for dashboard context). */
 export async function getEffectiveTierFeatures(
   tier: Tier,
 ): Promise<Partial<Record<FeaturePath, boolean>>> {
@@ -103,14 +102,16 @@ export async function setPlanFeatureOverride(
   overrides[tier] = tierOverrides;
 
   try {
-    await prisma.systemConfig.upsert({
-      where: { key: CONFIG_KEY },
-      create: { key: CONFIG_KEY, value: overrides },
-      update: { value: overrides },
-    });
+    await db
+      .insert(systemConfig)
+      .values({ key: CONFIG_KEY, value: overrides })
+      .onConflictDoUpdate({
+        target: systemConfig.key,
+        set: { value: overrides },
+      });
   } catch (err) {
     throw new Error(
-      "Plan feature overrides are not available. Run: npx prisma migrate dev --name add_system_config_plan_features",
+      "Plan feature overrides are not available.",
       { cause: err },
     );
   }

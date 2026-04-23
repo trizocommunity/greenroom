@@ -1,4 +1,4 @@
-import { prisma as db } from "@/lib/db";
+import { db } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { findFestivalById } from "@/server/models/festival.model";
 import {
@@ -8,6 +8,8 @@ import {
   findGroupsByFestival,
   updateGroup,
 } from "@/server/models/group.model";
+import { student as students } from "../db/schema";
+import { eq, and, count, inArray } from "drizzle-orm";
 
 export const GroupService = {
   async getAll(festivalId: string) {
@@ -45,7 +47,7 @@ export const GroupService = {
       defaultColors[Math.floor(Math.random() * defaultColors.length)];
 
     return createGroup({
-      festival: { connect: { id: festivalId } },
+      festivalId,
       name: data.name,
       color: randomColor,
       seriesStart: data.seriesStart || 100,
@@ -77,14 +79,16 @@ export const GroupService = {
       }
 
       if (data.teamLeaderIds.length > 0) {
-        const selectedStudents = await db.student.findMany({
-          where: {
-            id: { in: data.teamLeaderIds },
-            groupId: id,
-            festivalId,
-          },
-          select: { id: true, email: true },
-        });
+        const selectedStudents = await db
+          .select({ id: students.id, email: students.email })
+          .from(students)
+          .where(
+            and(
+              inArray(students.id, data.teamLeaderIds),
+              eq(students.groupId, id),
+              eq(students.festivalId, festivalId)
+            )
+          );
 
         if (selectedStudents.length !== data.teamLeaderIds.length) {
           throw new AppError(ERROR_MESSAGES.STUDENT_INVALID_GROUP);
@@ -100,20 +104,19 @@ export const GroupService = {
         }
       }
 
-      await db.$transaction(async (tx) => {
-        await tx.student.updateMany({
-          where: { groupId: id },
-          data: { isTeamLeader: false },
-        });
+      await db.transaction(async (tx) => {
+        await tx.update(students).set({ isTeamLeader: false }).where(eq(students.groupId, id));
 
         if (data.teamLeaderIds && data.teamLeaderIds.length > 0) {
-          await tx.student.updateMany({
-            where: {
-              id: { in: data.teamLeaderIds },
-              groupId: id,
-            },
-            data: { isTeamLeader: true },
-          });
+          await tx
+            .update(students)
+            .set({ isTeamLeader: true })
+            .where(
+              and(
+                inArray(students.id, data.teamLeaderIds),
+                eq(students.groupId, id)
+              )
+            );
         }
       });
     }
@@ -127,8 +130,11 @@ export const GroupService = {
     if (!exists || exists.festivalId !== festivalId)
       throw new AppError(ERROR_MESSAGES.GROUP_NOT_FOUND);
 
-    // QA-6 fix: explicit count query instead of (exists as any)._count
-    const studentCount = await db.student.count({ where: { groupId: id } });
+    const [{ studentCount }] = await db
+      .select({ studentCount: count() })
+      .from(students)
+      .where(eq(students.groupId, id));
+
     if (studentCount > 0) {
       throw new AppError(ERROR_MESSAGES.GROUP_HAS_STUDENTS);
     }

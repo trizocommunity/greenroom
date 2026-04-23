@@ -1,9 +1,11 @@
-import type { FestivalRole, GlobalRole } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { festivals, festivalMember } from "../db/schema";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { getDerivedFestivalStatus } from "@/lib/festival-status";
 import { findFestivalBySlugOrId } from "@/server/models/festival.model";
+import { eq, and } from "drizzle-orm";
 
+export type FestivalRole = "ADMIN" | "ANNOUNCER" | "STAGE_MANAGER";
 export type FestivalAccessRole =
   | "SUPER_ADMIN"
   | "OWNER"
@@ -21,7 +23,7 @@ export interface FestivalContext {
 interface GetFestivalContextOptions {
   slugOrId: string;
   userId: string | null | undefined;
-  globalRole: GlobalRole | null | undefined;
+  globalRole: string | null | undefined;
 }
 
 export async function getFestivalContext(
@@ -42,17 +44,15 @@ export async function getFestivalContext(
       : "NONE";
 
   if (!isCreator && !isSuperAdmin && userId) {
-    const member = await prisma.festivalMember.findUnique({
-      where: {
-        festivalId_userId: {
-          festivalId: festival.id,
-          userId,
-        },
-      },
+    const member = await db.query.festivalMember.findFirst({
+      where: and(
+        eq(festivalMember.festivalId, festival.id),
+        eq(festivalMember.userId, userId)
+      ),
     });
 
     if (member?.isActive) {
-      role = member.role;
+      role = member.role as FestivalRole;
     }
   }
 
@@ -62,7 +62,6 @@ export async function getFestivalContext(
       (festival.expiresAt && new Date(festival.expiresAt) < now),
   );
 
-  // No read-only mode: all plans use fixed 30-day duration; once expired, full lock.
   const readOnlyExpired = false;
 
   return {
@@ -77,10 +76,12 @@ export async function getFestivalContext(
 export async function ensureFestivalWritable(
   festivalId: string,
 ): Promise<void> {
-  const festival = await prisma.festival.findUnique({
-    where: { id: festivalId },
-    select: { status: true, startDate: true, endDate: true, expiresAt: true },
-  });
+  const result = await db
+    .select({ status: festivals.status, startDate: festivals.startDate, endDate: festivals.endDate, expiresAt: festivals.expiresAt })
+    .from(festivals)
+    .where(eq(festivals.id, festivalId))
+    .limit(1);
+  const festival = result[0];
   if (!festival) return;
   const status = getDerivedFestivalStatus(festival);
   if (status === "EXPIRED") {

@@ -1,9 +1,12 @@
-import type {
-  FestivalCategoryPreference,
-  UserLoginEvent,
-  UserPurchaseSummary,
-} from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import {
+  userPurchaseSummary,
+  festivalCategoryPreference,
+  userLoginEvent as userLoginEvents,
+  user as users,
+  payment,
+} from "../db/schema";
+import { desc, eq, inArray, gte, count, sql } from "drizzle-orm";
 
 interface PurchaseSummaryDto {
   userId: string;
@@ -29,45 +32,35 @@ interface CategoryAggregateDto {
 }
 
 export async function getPurchaseSummaries(): Promise<PurchaseSummaryDto[]> {
-  const rows = await prisma.userPurchaseSummary.findMany({
-    include: {
+  const rows = await db.query.userPurchaseSummary.findMany({
+    with: {
       user: {
-        select: { id: true, email: true, fullName: true, displayName: true },
+        columns: { id: true, email: true, fullName: true, displayName: true },
       },
     },
-    orderBy: { totalSpend: "desc" },
+    orderBy: [desc(userPurchaseSummary.totalSpend)],
   });
 
-  return rows.map(
-    (
-      row: UserPurchaseSummary & {
-        user: {
-          email: string;
-          fullName: string | null;
-          displayName: string | null;
-        };
-      },
-    ) => ({
-      userId: row.userId,
-      email: row.user.email,
-      name: row.user.displayName || row.user.fullName || row.user.email,
-      totalSpend: row.totalSpend,
-      festivalsCount: row.festivalsCount,
-      lastPurchaseAt: row.lastPurchaseAt ?? null,
-      planCountsByTier:
-        (row.planCountsByTier as Record<string, number> | null) ?? {},
-    }),
-  );
+  return rows.map((row) => ({
+    userId: row.userId,
+    email: row.user.email,
+    name: row.user.displayName || row.user.fullName || row.user.email,
+    totalSpend: row.totalSpend,
+    festivalsCount: row.festivalsCount,
+    lastPurchaseAt: row.lastPurchaseAt ?? null,
+    planCountsByTier:
+      (row.planCountsByTier as Record<string, number> | null) ?? {},
+  }));
 }
 
 export async function getTopCategories(
   limit = 8,
 ): Promise<CategoryAggregateDto[]> {
-  const rows: FestivalCategoryPreference[] =
-    await prisma.festivalCategoryPreference.findMany({
-      orderBy: { weight: "desc" },
-      take: limit * 4, // fetch extra for grouping
-    });
+  const rows = await db
+    .select()
+    .from(festivalCategoryPreference)
+    .orderBy(desc(festivalCategoryPreference.weight))
+    .limit(limit * 4);
 
   const byCategory = new Map<string, CategoryAggregateDto>();
 
@@ -88,16 +81,24 @@ export async function getTopCategories(
 }
 
 export async function getLoginCounts(): Promise<LoginCountDto[]> {
-  const rows = await prisma.userLoginEvent.groupBy({
-    by: ["userId"],
-    _count: { _all: true },
-  });
+  // Group by userId, count logins
+  const rows = await db
+    .select({
+      userId: userLoginEvents.userId,
+      loginCount: count(userLoginEvents.id),
+    })
+    .from(userLoginEvents)
+    .groupBy(userLoginEvents.userId);
 
-  const users = await prisma.user.findMany({
-    where: { id: { in: rows.map((r) => r.userId) } },
-    select: { id: true, email: true, fullName: true, displayName: true },
-  });
-  const byId = new Map(users.map((u) => [u.id, u]));
+  const userIds = rows.map((r) => r.userId);
+  const userList = userIds.length > 0
+    ? await db
+        .select({ id: users.id, email: users.email, fullName: users.fullName, displayName: users.displayName })
+        .from(users)
+        .where(inArray(users.id, userIds))
+    : [];
+
+  const byId = new Map(userList.map((u) => [u.id, u]));
 
   return rows
     .map((row) => {
@@ -106,29 +107,27 @@ export async function getLoginCounts(): Promise<LoginCountDto[]> {
         userId: row.userId,
         email: u?.email ?? "unknown",
         name: u?.displayName || u?.fullName || u?.email || "Unknown",
-        loginCount: row._count._all,
+        loginCount: row.loginCount,
       };
     })
     .sort((a, b) => b.loginCount - a.loginCount);
 }
 
-/** Data point for time-series charts (e.g. logins or revenue by day). */
 export interface TimeSeriesPoint {
   date: string; // YYYY-MM-DD
   count: number;
-  amount?: number; // revenue in smallest unit (paise)
+  amount?: number;
 }
 
-/** Logins per day for the last N days (for charts). */
 export async function getLoginsByDay(days = 14): Promise<TimeSeriesPoint[]> {
   const start = new Date();
   start.setDate(start.getDate() - days);
   start.setHours(0, 0, 0, 0);
 
-  const events = await prisma.userLoginEvent.findMany({
-    where: { loggedAt: { gte: start } },
-    select: { loggedAt: true },
-  });
+  const events = await db
+    .select({ loggedAt: userLoginEvents.loggedAt })
+    .from(userLoginEvents)
+    .where(gte(userLoginEvents.loggedAt, start));
 
   const byDay = new Map<string, number>();
   for (const e of events) {
@@ -146,16 +145,15 @@ export async function getLoginsByDay(days = 14): Promise<TimeSeriesPoint[]> {
   return result;
 }
 
-/** Revenue (PAID payments) per day for the last N days (for charts). */
 export async function getRevenueByDay(days = 14): Promise<TimeSeriesPoint[]> {
   const start = new Date();
   start.setDate(start.getDate() - days);
   start.setHours(0, 0, 0, 0);
 
-  const payments = await prisma.payment.findMany({
-    where: { status: "PAID", createdAt: { gte: start } },
-    select: { amount: true, createdAt: true },
-  });
+  const payments = await db
+    .select({ amount: payment.amount, createdAt: payment.createdAt })
+    .from(payment)
+    .where(gte(payment.createdAt, start));
 
   const byDay = new Map<string, { count: number; amount: number }>();
   for (const p of payments) {

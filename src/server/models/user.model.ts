@@ -1,51 +1,51 @@
-import type { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { user as users } from "../db/schema";
+import { eq, desc, count, sql, SQL } from "drizzle-orm";
 
-// Phase 1 User Model
 export async function findUserById(id: string) {
-  return prisma.user.findUnique({
-    where: { id },
-    include: { festival: true }, // Max 1 festival
+  return db.query.user.findFirst({
+    where: eq(users.id, id),
+    with: { festivals: true },
   });
 }
 
 export async function findUserByEmail(email: string) {
-  return prisma.user.findUnique({
-    where: { email },
+  return db.query.user.findFirst({
+    where: eq(users.email, email),
   });
 }
 
 export async function findAllUsers(
-  where: Prisma.UserWhereInput = {},
-  orderBy: Prisma.UserOrderByWithRelationInput = { createdAt: "desc" },
+  where?: SQL,
+  orderBy: "asc" | "desc" = "desc"
 ) {
-  return prisma.user.findMany({
+  return db.query.user.findMany({
     where,
-    orderBy,
+    orderBy: orderBy === "desc" ? [desc(users.createdAt)] : undefined,
   });
 }
 
-export async function countUsers(where: Prisma.UserWhereInput = {}) {
-  return prisma.user.count({
-    where,
-  });
+export async function countUsers(where?: SQL) {
+  const result = await db.select({ count: count() }).from(users).where(where);
+  return result[0]?.count ?? 0;
 }
 
-export async function createUser(data: Prisma.UserCreateInput) {
-  return prisma.user.create({
-    data,
-  });
+export async function createUser(data: Omit<typeof users.$inferInsert, "id" | "updatedAt"> & { id?: string; updatedAt?: string }) {
+  const { randomUUID } = await import("crypto");
+  const result = await db.insert(users).values({
+    id: data.id ?? randomUUID(),
+    updatedAt: data.updatedAt ?? new Date().toISOString(),
+    ...data,
+  }).returning();
+  return result[0];
 }
 
-export async function updateUser(id: string, data: Prisma.UserUpdateInput) {
-  return prisma.user.update({
-    where: { id },
-    data,
-  });
+export async function updateUser(id: string, data: Partial<typeof users.$inferInsert>) {
+  const result = await db.update(users).set(data).where(eq(users.id, id)).returning();
+  return result[0];
 }
 
 export async function deleteUser(id: string) {
-  return prisma.user.delete({
-    where: { id },
-  });
+  const result = await db.delete(users).where(eq(users.id, id)).returning();
+  return result[0];
 }

@@ -1,6 +1,11 @@
-import type { Payment, PaymentStatus, Tier } from "@prisma/client";
 import { TIER_CONFIG } from "@/config/pricing";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { payment } from "../db/schema";
+import { eq, and, gt, desc } from "drizzle-orm";
+
+export type Payment = typeof payment.$inferSelect;
+export type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "REFUNDED";
+export type Tier = "BASIC" | "STANDARD" | "PRO";
 
 export type CreatePaymentInput = {
   userId: string;
@@ -23,36 +28,40 @@ export async function createPayment(
     tier,
   } = input;
 
-  // Calculate validUntil: use provided validityDays or fallback to tier config
   const days =
     validityDays ?? (tier ? (TIER_CONFIG[tier]?.durationDays ?? 30) : 30);
-  const validUntil = new Date();
-  validUntil.setDate(validUntil.getDate() + days);
+  const validUntilDate = new Date();
+  validUntilDate.setDate(validUntilDate.getDate() + days);
 
-  return prisma.payment.create({
-    data: {
-      userId,
-      amount,
-      currency,
-      status: "PENDING",
-      validUntil,
-      providerId: razorpayOrderId!, // Map to providerId
-    },
-  });
+  const { randomUUID } = await import("crypto");
+
+  const result = await db.insert(payment).values({
+    id: randomUUID(),
+    updatedAt: new Date().toISOString(),
+    userId,
+    amount,
+    currency,
+    status: "PENDING",
+    validUntil: validUntilDate.toISOString(),
+    providerId: razorpayOrderId ?? "",
+  }).returning();
+  return result[0];
 }
 
 export async function getPaymentByOrderId(
   razorpayOrderId: string,
 ): Promise<Payment | null> {
-  return prisma.payment.findFirst({
-    where: { providerId: razorpayOrderId },
+  const result = await db.query.payment.findFirst({
+    where: eq(payment.providerId, razorpayOrderId),
   });
+  return result ?? null;
 }
 
 export async function getPaymentById(id: string): Promise<Payment | null> {
-  return prisma.payment.findUnique({
-    where: { id },
+  const result = await db.query.payment.findFirst({
+    where: eq(payment.id, id),
   });
+  return result ?? null;
 }
 
 export async function getActivePaymentForUser(
@@ -60,23 +69,25 @@ export async function getActivePaymentForUser(
 ): Promise<Payment | null> {
   const now = new Date();
 
-  return prisma.payment.findFirst({
-    where: {
-      userId,
-      status: "PAID",
-      validUntil: { gt: now },
-    },
-    orderBy: { createdAt: "desc" },
+  const result = await db.query.payment.findFirst({
+    where: and(
+      eq(payment.userId, userId),
+      eq(payment.status, "PAID"),
+      gt(payment.validUntil, new Date().toISOString())
+    ),
+    orderBy: [desc(payment.createdAt)],
   });
+  return result ?? null;
 }
 
 export async function getLatestPaymentForUser(
   userId: string,
 ): Promise<Payment | null> {
-  return prisma.payment.findFirst({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
+  const result = await db.query.payment.findFirst({
+    where: eq(payment.userId, userId),
+    orderBy: [desc(payment.createdAt)],
   });
+  return result ?? null;
 }
 
 export async function updatePaymentStatus(
@@ -84,13 +95,9 @@ export async function updatePaymentStatus(
   status: PaymentStatus,
   razorpayId?: string,
 ): Promise<Payment> {
-  return prisma.payment.update({
-    where: { id },
-    data: {
-      status,
-      ...(razorpayId && { referenceId: razorpayId }),
-      // Ensure we are using valid enum values if 'status' comes from outside,
-      // but here we trust the caller (controller) which now uses "PAID".
-    },
-  });
+  const result = await db.update(payment).set({
+    status,
+    ...(razorpayId && { referenceId: razorpayId }),
+  }).where(eq(payment.id, id)).returning();
+  return result[0];
 }

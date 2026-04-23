@@ -1,6 +1,6 @@
-import type { PaymentPurpose, PaymentStatus, Tier } from "@prisma/client";
 import { TIER_CONFIG } from "@/config/pricing";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { payment, userPurchaseSummary } from "../db/schema";
 import {
   getActivePaymentForUser,
   getLatestPaymentForUser,
@@ -11,6 +11,12 @@ import {
   getRazorpayKeyId,
   RazorpayService,
 } from "@/server/services/razorpay.service";
+import { eq, and, ne, gte } from "drizzle-orm";
+import { sql } from "drizzle-orm";
+
+type PaymentPurpose = "FESTIVAL_CREATION";
+type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "REFUNDED";
+type Tier = "BASIC" | "STANDARD" | "PRO";
 
 type InitiatePaymentParams = {
   userId: string;
@@ -36,17 +42,15 @@ export async function initiatePaymentDomain(
     throw new Error("Tier configuration not found");
   }
 
-  const existingPayment = await prisma.payment.findFirst({
-    where: {
-      userId,
-      tier,
-      purpose,
-      status: "PENDING",
-      used: false,
-      createdAt: {
-        gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
-      },
-    },
+  const existingPayment = await db.query.payment.findFirst({
+    where: and(
+      eq(payment.userId, userId),
+      eq(payment.tier, tier),
+      eq(payment.purpose, purpose),
+      eq(payment.status, "PENDING"),
+      eq(payment.used, false),
+      gte(payment.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000))
+    ),
   });
 
   if (existingPayment?.providerId) {
@@ -63,11 +67,7 @@ export async function initiatePaymentDomain(
     config.price * 100,
     "INR",
     `rcpt_${Date.now()}`.substring(0, 40),
-    {
-      userId,
-      purpose,
-      tier,
-    },
+    { userId, purpose, tier },
   );
 
   const now = new Date();
@@ -75,22 +75,20 @@ export async function initiatePaymentDomain(
     now.getTime() + config.durationDays * 24 * 60 * 60 * 1000,
   );
 
-  const payment = await prisma.payment.create({
-    data: {
-      amount: config.price,
-      currency: "INR",
-      status: "PENDING",
-      providerId: order.id,
-      userId,
-      purpose,
-      tier,
-      used: false,
-      validUntil,
-    },
-  });
+  const newPayment = await db.insert(payment).values({
+    amount: config.price,
+    currency: "INR",
+    status: "PENDING",
+    providerId: order.id,
+    userId,
+    purpose,
+    tier,
+    used: false,
+    validUntil,
+  }).returning();
 
   return {
-    paymentId: payment.id,
+    paymentId: newPayment[0].id,
     orderId: order.id,
     amount: config.price * 100,
     currency: "INR",
@@ -103,71 +101,64 @@ export async function verifyPaymentDomain(
   razorpayPaymentId: string,
   razorpaySignature: string,
 ): Promise<PaymentStatus> {
-  const payment = await prisma.payment.findUnique({
-    where: { id: paymentId },
+  const paymentRecord = await db.query.payment.findFirst({
+    where: eq(payment.id, paymentId),
   });
 
-  if (!payment) {
+  if (!paymentRecord) {
     throw new Error("Payment not found");
   }
 
-  if (payment.status === "PAID") {
-    return payment.status;
+  if (paymentRecord.status === "PAID") {
+    return paymentRecord.status;
   }
 
   const isValid = RazorpayService.verifyPaymentSignature(
-    payment.providerId,
+    paymentRecord.providerId ?? "",
     razorpayPaymentId,
     razorpaySignature,
   );
 
   if (!isValid) {
-    await prisma.payment.update({
-      where: { id: paymentId },
-      data: { status: "FAILED" },
-    });
+    await db.update(payment).set({ status: "FAILED" }).where(eq(payment.id, paymentId));
     throw new Error("Invalid payment signature");
   }
 
-  const updated = await prisma.payment.update({
-    where: { id: paymentId },
-    data: {
-      status: "PAID",
-      referenceId: razorpayPaymentId,
-    },
+  const updated = await db.update(payment).set({
+    status: "PAID",
+    referenceId: razorpayPaymentId,
+  }).where(eq(payment.id, paymentId)).returning();
+
+  const updatedPayment = updated[0];
+
+  // Cancel other pending payments for same user/purpose
+  await db.update(payment).set({ status: "FAILED" }).where(
+    and(
+      eq(payment.userId, updatedPayment.userId),
+      eq(payment.status, "PENDING"),
+      eq(payment.purpose, updatedPayment.purpose ?? "FESTIVAL_CREATION"),
+      ne(payment.id, updatedPayment.id)
+    )
+  );
+
+  // Update analytics summary for this user
+  await db.insert(userPurchaseSummary).values({
+    userId: updatedPayment.userId,
+    totalSpend: updatedPayment.amount,
+    festivalsCount: 1,
+    lastPurchaseAt: updatedPayment.createdAt,
+    festivalIds: [],
+    planCountsByTier: {},
+  }).onConflictDoUpdate({
+    target: userPurchaseSummary.userId,
+    set: {
+      totalSpend: sql`${userPurchaseSummary.totalSpend} + ${updatedPayment.amount}`,
+      festivalsCount: sql`${userPurchaseSummary.festivalsCount} + 1`,
+      lastPurchaseAt: updatedPayment.createdAt,
+    }
   });
 
-  await prisma.payment.updateMany({
-    where: {
-      userId: updated.userId,
-      status: "PENDING",
-      purpose: updated.purpose,
-      id: { not: updated.id },
-    },
-    data: {
-      status: "FAILED",
-    },
-  });
-
-  // Update analytics summary for this user (Phase 5)
-  await prisma.userPurchaseSummary.upsert({
-    where: { userId: updated.userId },
-    update: {
-      totalSpend: { increment: updated.amount },
-      festivalsCount: { increment: 1 },
-      lastPurchaseAt: updated.createdAt,
-    },
-    create: {
-      userId: updated.userId,
-      totalSpend: updated.amount,
-      festivalsCount: 1,
-      lastPurchaseAt: updated.createdAt,
-      festivalIds: [],
-      planCountsByTier: {},
-    },
-  });
-
-  return updated.status;
+  return updatedPayment.status;
 }
 
 export async function verifyPaymentByOrderIdDomain(payload: {
@@ -188,20 +179,20 @@ export async function verifyPaymentByOrderIdDomain(payload: {
     throw new Error("Invalid payment signature");
   }
 
-  const payment = await getPaymentByOrderId(razorpay_order_id);
-  if (!payment) {
+  const paymentRecord = await getPaymentByOrderId(razorpay_order_id);
+  if (!paymentRecord) {
     throw new Error("Payment record not found");
   }
 
-  await updatePaymentStatus(payment.id, "PAID", razorpay_payment_id);
+  await updatePaymentStatus(paymentRecord.id, "PAID", razorpay_payment_id);
 
   return true;
 }
 
 export async function getUserPaymentsDomain(userId: string) {
-  return prisma.payment.findMany({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
+  return db.query.payment.findMany({
+    where: eq(payment.userId, userId),
+    orderBy: (t, { desc }) => [desc(t.createdAt)],
   });
 }
 
@@ -211,9 +202,9 @@ export async function getUserStatusDomain(userId: string, role: string) {
 
   let hasExistingFestival = false;
   if (role === "USER") {
-    const { findAllFestivals } = await import("@/server/models/festival.model");
-    const userFestivals = await findAllFestivals({ ownerId: userId });
-    hasExistingFestival = userFestivals.length > 0;
+    const { findFestivalByOwnerId } = await import("@/server/models/festival.model");
+    const fest = await findFestivalByOwnerId(userId);
+    hasExistingFestival = !!fest;
   }
 
   if (activePayment) {
@@ -229,7 +220,6 @@ export async function getUserStatusDomain(userId: string, role: string) {
 
   const latestPayment = await getLatestPaymentForUser(userId);
 
-  // Check if latest payment is PAID but expired
   if (latestPayment && latestPayment.status === "PAID") {
     const isExpired =
       latestPayment.validUntil && latestPayment.validUntil <= now;

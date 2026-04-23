@@ -1,42 +1,46 @@
-import type { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { passwordResetToken as passwordResetTokens } from "../db/schema";
+import { eq, and, gt, isNull } from "drizzle-orm";
 
 export async function findPasswordResetTokenByHash(token: string) {
-  return prisma.passwordResetToken.findFirst({
-    where: { token },
+  return db.query.passwordResetToken.findFirst({
+    where: eq(passwordResetTokens.token, token),
   });
 }
 
 export async function findValidPasswordResetToken(token: string) {
-  return prisma.passwordResetToken.findFirst({
-    where: {
-      token,
-      expires: { gt: new Date() },
-      usedAt: null,
-    },
+  return db.query.passwordResetToken.findFirst({
+    where: and(
+      eq(passwordResetTokens.token, token),
+      gt(passwordResetTokens.expires, new Date()),
+      isNull(passwordResetTokens.usedAt)
+    ),
   });
 }
 
 export async function createPasswordResetToken(
-  data: Prisma.PasswordResetTokenCreateInput,
+  data: typeof passwordResetTokens.$inferInsert
 ) {
-  return prisma.passwordResetToken.create({
-    data,
-  });
+  const result = await db.insert(passwordResetTokens).values(data).returning();
+  return result[0];
 }
 
 export async function updatePasswordResetToken(
   id: string,
-  data: Prisma.PasswordResetTokenUpdateInput,
+  data: Partial<typeof passwordResetTokens.$inferInsert>
 ) {
-  return prisma.passwordResetToken.update({
-    where: { id },
-    data,
-  });
+  const result = await db
+    .update(passwordResetTokens)
+    .set(data)
+    .where(eq(passwordResetTokens.id, id))
+    .returning();
+  return result[0];
 }
 
 export async function deletePasswordResetToken(id: string) {
-  return prisma.passwordResetToken.delete({
-    where: { id },
-  });
+  const result = await db
+    .delete(passwordResetTokens)
+    .where(eq(passwordResetTokens.id, id))
+    .returning();
+  return result[0];
 }

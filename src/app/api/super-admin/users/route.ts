@@ -10,7 +10,8 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const users = await findAllUsers({}, { createdAt: "desc" });
+    // TODO: implement search filtering for Drizzle if needed
+    const users = await findAllUsers(undefined, "desc");
 
     return NextResponse.json(users);
   } catch (error) {

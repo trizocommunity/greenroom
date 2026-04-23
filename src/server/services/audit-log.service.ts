@@ -1,6 +1,8 @@
 import { getSession } from "@/lib/auth/session";
-import { prisma as db } from "@/lib/db";
+import { db } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
+import { auditLog, users } from "../db/schema";
+import { desc, eq, ilike, inArray, or } from "drizzle-orm";
 
 type AuditAction =
   | "DELETE_FESTIVAL"
@@ -22,7 +24,7 @@ interface CreateAuditLogParams {
   action: AuditAction;
   targetType: TargetType;
   targetId: string;
-  metadata?: import("@prisma/client").Prisma.JsonObject;
+  metadata?: Record<string, unknown>;
 }
 
 export async function createAuditLog(params: CreateAuditLogParams) {
@@ -32,16 +34,16 @@ export async function createAuditLog(params: CreateAuditLogParams) {
     throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
   }
 
-  return await db.auditLog.create({
-    data: {
-      actorId: session.userId,
-      actorRole: session.role,
-      action: params.action,
-      targetType: params.targetType,
-      targetId: params.targetId,
-      metadata: params.metadata || {},
-    },
-  });
+  const result = await db.insert(auditLog).values({
+    actorId: session.userId,
+    actorRole: session.role,
+    action: params.action,
+    targetType: params.targetType,
+    targetId: params.targetId,
+    metadata: params.metadata || {},
+  }).returning();
+
+  return result[0];
 }
 
 export async function getAuditLogs(params?: {
@@ -49,51 +51,54 @@ export async function getAuditLogs(params?: {
   limit?: number;
 }) {
   const { search, limit = 500 } = params || {};
-  let whereClause: import("@prisma/client").Prisma.AuditLogWhereInput = {};
+
+  let logs: (typeof auditLog.$inferSelect)[];
 
   if (search) {
     // 1. Find users matching the search
-    const matchingUsers = await db.user.findMany({
-      where: {
-        OR: [
-          { email: { contains: search, mode: "insensitive" } },
-          { fullName: { contains: search, mode: "insensitive" } },
-          { displayName: { contains: search, mode: "insensitive" } },
-        ],
-      },
-      select: { id: true },
-    });
+    const matchingUsers = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(
+        or(
+          ilike(users.email, `%${search}%`),
+          ilike(users.fullName ?? "", `%${search}%`),
+          ilike(users.displayName ?? "", `%${search}%`)
+        )
+      );
     const userIds = matchingUsers.map((u) => u.id);
 
     // 2. Build AuditLog filter
-    whereClause = {
-      OR: [
-        { actorId: { in: userIds } },
-        { action: { contains: search, mode: "insensitive" } },
-        { targetId: { contains: search, mode: "insensitive" } },
-        { targetType: { contains: search, mode: "insensitive" } },
-        { actorRole: { contains: search, mode: "insensitive" } },
-      ],
-    };
+    logs = await db
+      .select()
+      .from(auditLog)
+      .where(
+        or(
+          userIds.length > 0 ? inArray(auditLog.actorId, userIds) : undefined,
+          ilike(auditLog.action, `%${search}%`),
+          ilike(auditLog.targetId, `%${search}%`),
+          ilike(auditLog.targetType, `%${search}%`),
+          ilike(auditLog.actorRole, `%${search}%`)
+        )
+      )
+      .orderBy(desc(auditLog.createdAt))
+      .limit(limit);
+  } else {
+    logs = await db
+      .select()
+      .from(auditLog)
+      .orderBy(desc(auditLog.createdAt))
+      .limit(limit);
   }
-
-  const logs = await db.auditLog.findMany({
-    where: whereClause,
-    orderBy: { createdAt: "desc" },
-    take: limit,
-  });
 
   // 3. Enrich with Actor details
   const actorIds = Array.from(new Set(logs.map((log) => log.actorId)));
-  const actors = await db.user.findMany({
-    where: { id: { in: actorIds } },
-    select: {
-      id: true,
-      fullName: true,
-      email: true,
-      globalRole: true,
-    },
-  });
+  const actors = actorIds.length > 0
+    ? await db
+        .select({ id: users.id, fullName: users.fullName, email: users.email, globalRole: users.globalRole })
+        .from(users)
+        .where(inArray(users.id, actorIds))
+    : [];
 
   const actorMap = new Map(actors.map((actor) => [actor.id, actor]));
 

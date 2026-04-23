@@ -4,7 +4,24 @@
  */
 
 import { jsPDF } from "jspdf";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import {
+  festivals,
+  expiredFestivalResult,
+  results,
+  programmeAssignment,
+  scheduleEntry,
+  students,
+  programmes,
+  categories,
+  groups,
+  festivalGalleryImage,
+  festivalNews,
+  stages,
+  festivalMember,
+  festivalLifecycleEvent,
+} from "../db/schema";
+import { eq, lt, ne } from "drizzle-orm";
 import { getPublicFestivalResults } from "@/server/loader/festivalResults";
 
 export const FestivalExpirationService = {
@@ -15,95 +32,88 @@ export const FestivalExpirationService = {
     { id: string; name: string; slug: string }[]
   > {
     const now = new Date();
-    const list = await prisma.festival.findMany({
-      where: {
-        expiresAt: { lt: now },
-        status: { not: "EXPIRED" },
-      },
-      select: { id: true, name: true, slug: true },
-    });
-    return list;
+    const list = await db
+      .select({ id: festivals.id, name: festivals.name, slug: festivals.slug })
+      .from(festivals)
+      .where(
+        lt(festivals.expiresAt, now)
+      );
+    return list.filter((f) => f.slug !== null) as { id: string; name: string; slug: string }[];
   },
 
   /**
    * Run expiration for one festival: snapshot results, delete non-retained data, set EXPIRED.
-   * resultPdfUrl is left null unless storage is configured (caller can generate on-demand later).
    */
   async expireFestival(festivalId: string): Promise<void> {
-    const festival = await prisma.festival.findUnique({
-      where: { id: festivalId },
+    const festival = await db.query.festival.findFirst({
+      where: eq(festivals.id, festivalId),
     });
     if (!festival || festival.status === "EXPIRED") return;
 
     const publishedResults = await getPublicFestivalResults(festivalId);
 
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       // 1. Snapshot to ExpiredFestivalResult
       for (const r of publishedResults) {
-        await tx.expiredFestivalResult.create({
-          data: {
-            festivalId,
-            programmeName: r.programName,
-            categoryName: r.category ?? null,
-            participantName: r.winner ?? r.team ?? "—",
-            position: r.position ?? null,
-            grade: r.grade ?? null,
-            score: null,
-            points: r.points ?? null,
-          },
+        await tx.insert(expiredFestivalResult).values({
+          festivalId,
+          programmeName: r.programName,
+          categoryName: r.category ?? null,
+          participantName: r.winner ?? r.team ?? "—",
+          position: r.position ?? null,
+          grade: r.grade ?? null,
+          score: null,
+          points: r.points ?? null,
         });
       }
 
       // 2. Delete in order (respect FKs)
-      await tx.result.deleteMany({ where: { festivalId } });
-      await tx.programmeAssignment.deleteMany({ where: { festivalId } });
-      await tx.scheduleEntry.deleteMany({ where: { festivalId } });
-      await tx.student.deleteMany({ where: { festivalId } });
-      await tx.programme.deleteMany({ where: { festivalId } });
-      await tx.category.deleteMany({ where: { festivalId } });
-      await tx.group.deleteMany({ where: { festivalId } });
-      await tx.festivalGalleryImage.deleteMany({ where: { festivalId } });
-      await tx.festivalNews.deleteMany({ where: { festivalId } });
-      await tx.stage.deleteMany({ where: { festivalId } });
-      await tx.festivalMember.deleteMany({ where: { festivalId } });
+      await tx.delete(results).where(eq(results.festivalId, festivalId));
+      await tx.delete(programmeAssignment).where(eq(programmeAssignment.festivalId, festivalId));
+      await tx.delete(scheduleEntry).where(eq(scheduleEntry.festivalId, festivalId));
+      await tx.delete(students).where(eq(students.festivalId, festivalId));
+      await tx.delete(programmes).where(eq(programmes.festivalId, festivalId));
+      await tx.delete(categories).where(eq(categories.festivalId, festivalId));
+      await tx.delete(groups).where(eq(groups.festivalId, festivalId));
+      await tx.delete(festivalGalleryImage).where(eq(festivalGalleryImage.festivalId, festivalId));
+      await tx.delete(festivalNews).where(eq(festivalNews.festivalId, festivalId));
+      await tx.delete(stages).where(eq(stages.festivalId, festivalId));
+      await tx.delete(festivalMember).where(eq(festivalMember.festivalId, festivalId));
 
       // 3. Lifecycle event
-      await tx.festivalLifecycleEvent.create({
-        data: {
-          festivalId,
-          event: "EXPIRED",
-          metadata: { snapshotCount: publishedResults.length },
-        },
+      await tx.insert(festivalLifecycleEvent).values({
+        festivalId,
+        event: "EXPIRED",
+        metadata: { snapshotCount: publishedResults.length },
       });
 
       // 4. Update festival
       const now = new Date();
-      await tx.festival.update({
-        where: { id: festivalId },
-        data: {
+      await tx
+        .update(festivals)
+        .set({
           status: "EXPIRED",
           expiredAt: now,
-          resultPdfUrl: null, // Set when storage (e.g. Vercel Blob) is configured
+          resultPdfUrl: null,
           studentsCount: 0,
           programmesCount: 0,
           stagesCount: 0,
-          storageUsedMB: 0,
-        },
-      });
+          storageUsedMb: 0,
+        })
+        .where(eq(festivals.id, festivalId));
     });
   },
 
   /**
    * Generate results PDF buffer for an expired festival (from ExpiredFestivalResult).
-   * Used for on-demand download when resultPdfUrl is not set.
    */
   async generateExpiredResultsPdfBuffer(
     festivalId: string,
     festivalName: string,
   ): Promise<Buffer> {
-    const rows = await prisma.expiredFestivalResult.findMany({
-      where: { festivalId },
-      orderBy: [{ programmeName: "asc" }, { position: "asc" }],
+    const rows = await db.query.expiredFestivalResult.findMany({
+      where: eq(expiredFestivalResult.festivalId, festivalId),
+      orderBy: (t, { asc }) => [asc(t.programmeName), asc(t.position)],
     });
 
     const doc = new jsPDF({

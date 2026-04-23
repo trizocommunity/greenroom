@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { findFestivalById } from "@/server/models/festival.model";
 import {
@@ -9,6 +9,8 @@ import {
   findProgrammeWithAssignments,
   updateProgramme,
 } from "@/server/models/programme.model";
+import { programmes, programmeAssignment } from "../db/schema";
+import { eq, count } from "drizzle-orm";
 import { UsageCounterService } from "./usage-counter.service";
 
 export const ProgrammeService = {
@@ -24,9 +26,6 @@ export const ProgrammeService = {
     return programme;
   },
 
-  /*
-   * CREATE Programme
-   */
   async create(
     festivalId: string,
     data: {
@@ -44,9 +43,9 @@ export const ProgrammeService = {
 
     try {
       return await createProgramme({
-        festival: { connect: { id: festivalId } },
+        festivalId,
         name: data.name,
-        category: { connect: { id: data.categoryId } },
+        categoryId: data.categoryId,
         type: data.type,
         stageType: data.stageType,
         maxParticipantsPerGroup: data.maxParticipantsPerGroup || 1,
@@ -54,7 +53,6 @@ export const ProgrammeService = {
         maxStudentsPerTeam: data.maxStudentsPerTeam || 1,
       });
     } catch (error) {
-      // Rollback usage counter on create failure
       await UsageCounterService.incrementUsage(
         festivalId,
         "programmes",
@@ -64,12 +62,9 @@ export const ProgrammeService = {
     }
   },
 
-  /*
-   * BULK CREATE Programmes
-   */
   async bulkCreate(
     festivalId: string,
-    programmes: {
+    programmeList: {
       name: string;
       categoryId: string;
       type: "INDIVIDUAL" | "GROUP";
@@ -85,11 +80,11 @@ export const ProgrammeService = {
     await UsageCounterService.incrementUsage(
       festivalId,
       "programmes",
-      programmes.length,
+      programmeList.length,
     );
 
     try {
-      const data = programmes.map((p) => ({
+      const data = programmeList.map((p) => ({
         festivalId,
         name: p.name,
         categoryId: p.categoryId,
@@ -100,20 +95,17 @@ export const ProgrammeService = {
         maxStudentsPerTeam: p.maxStudentsPerTeam || 1,
       }));
 
-      return await prisma.programme.createMany({ data });
+      return await db.insert(programmes).values(data).returning();
     } catch (error) {
       await UsageCounterService.incrementUsage(
         festivalId,
         "programmes",
-        -programmes.length,
+        -programmeList.length,
       ).catch(() => {});
       throw error;
     }
   },
 
-  /*
-   * UPDATE Programme
-   */
   async update(
     id: string,
     festivalId: string,
@@ -128,14 +120,11 @@ export const ProgrammeService = {
       maxPoints?: number;
     },
   ) {
-    // Verify existence — throws PROGRAMME_NOT_FOUND if missing
     await this.getDetails(id, festivalId);
 
     return updateProgramme(id, {
       name: data.name,
-      category: data.categoryId
-        ? { connect: { id: data.categoryId } }
-        : undefined,
+      categoryId: data.categoryId,
       type: data.type,
       stageType: data.stageType,
       maxParticipantsPerGroup: data.maxParticipantsPerGroup,
@@ -150,10 +139,11 @@ export const ProgrammeService = {
       throw new AppError(ERROR_MESSAGES.PROGRAMME_NOT_FOUND);
     }
 
-    // QA-6 fix: explicit count instead of (existing as any)._count
-    const assignmentCount = await prisma.programmeAssignment.count({
-      where: { programmeId: id },
-    });
+    const [{ assignmentCount }] = await db
+      .select({ assignmentCount: count() })
+      .from(programmeAssignment)
+      .where(eq(programmeAssignment.programmeId, id));
+
     if (assignmentCount > 0) {
       throw new AppError(ERROR_MESSAGES.PROGRAMME_HAS_ASSIGNMENTS);
     }

@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import type { z } from "zod";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession, getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { userLoginEvent as userLoginEvents } from "../db/schema";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import {
@@ -49,12 +50,8 @@ export async function loginAction(
 
     await createSession(user.id, user.globalRole);
 
-    // Analytics: record login event (Phase 5)
-    await prisma.userLoginEvent.create({
-      data: {
-        userId: user.id,
-      },
-    });
+    const { randomUUID } = await import("crypto");
+    await db.insert(userLoginEvents).values({ id: randomUUID(), userId: user.id });
 
     return { success: true, data: { role: user.globalRole } };
   } catch (error) {
@@ -117,7 +114,7 @@ export async function forgotPasswordAction(
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
 
     await createPasswordResetToken({
-      user: { connect: { id: user.id } },
+      userId: user.id,
       token: tokenHash,
       expires: expiresAt,
     });

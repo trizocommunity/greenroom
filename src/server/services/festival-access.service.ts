@@ -1,11 +1,13 @@
-import type { Festival } from "@prisma/client";
 import { TIER_CONFIG } from "@/config/pricing";
 import type { FeaturePath } from "@/lib/features";
 import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 import { getResolvedTier } from "@/lib/tier";
+import type { festival as festivals } from "../db/schema";
+
+type FestivalRow = typeof festivals.$inferSelect;
 
 export function isFestivalActive(
-  festival: Pick<Festival, "status" | "expiresAt">,
+  festival: Pick<FestivalRow, "status" | "expiresAt">,
 ) {
   const now = new Date();
   if (festival.status === "EXPIRED") return false;
@@ -14,14 +16,14 @@ export function isFestivalActive(
 }
 
 export function canUseFeature(
-  festival: Pick<Festival, "tier">,
+  festival: Pick<FestivalRow, "tier">,
   feature: FeaturePath,
 ) {
   const tier = getTierForFeatureCheck(festival.tier);
   return FeatureService.isFeatureEnabled(tier, feature);
 }
 
-export function getTierLimits(festival: Pick<Festival, "tier">) {
+export function getTierLimits(festival: Pick<FestivalRow, "tier">) {
   const tier = getResolvedTier(festival.tier);
   return TIER_CONFIG[tier].limits;
 }

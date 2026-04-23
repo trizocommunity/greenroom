@@ -1,8 +1,9 @@
-import type { Prisma } from "@prisma/client";
 import { TIER_CONFIG } from "@/config/pricing";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { getResolvedTier } from "@/lib/tier";
+import { festival as festivals } from "../db/schema";
+import { eq, sql } from "drizzle-orm";
 
 /**
  * Usage Counter Service
@@ -17,19 +18,15 @@ export const UsageCounterService = {
    * @param festivalId The festival to update
    * @param resource The resource type ("students" | "programmes" | "stages" | "storage")
    * @param amount Amount to increment (default 1)
-   * @param transaction Optional existing transaction
    */
   async incrementUsage(
     festivalId: string,
     resource: "students" | "programmes" | "stages" | "storage",
     amount = 1,
-    tx?: Prisma.TransactionClient,
   ) {
-    const db = tx || prisma;
-
     // 1. Fetch current usage & limit relative to the resource
-    const festival = await db.festival.findUnique({
-      where: { id: festivalId },
+    const festival = await db.query.festival.findFirst({
+      where: eq(festivals.id, festivalId),
     });
 
     if (!festival) {
@@ -41,7 +38,7 @@ export const UsageCounterService = {
     // 2. Map resource to fields
     let currentUsage = 0;
     let maxLimit = 0;
-    let fieldToUpdate = "";
+    let fieldToUpdate: keyof typeof festivals.$inferInsert = "studentsCount";
 
     switch (resource) {
       case "students":
@@ -60,9 +57,9 @@ export const UsageCounterService = {
         fieldToUpdate = "stagesCount";
         break;
       case "storage":
-        currentUsage = festival.storageUsedMB;
+        currentUsage = festival.storageUsedMb;
         maxLimit = limits.storageMB;
-        fieldToUpdate = "storageUsedMB";
+        fieldToUpdate = "storageUsedMb";
         break;
     }
 
@@ -74,12 +71,10 @@ export const UsageCounterService = {
       amount = -currentUsage;
     }
 
-    // 4. Atomic Increment
-    await db.festival.update({
-      where: { id: festivalId },
-      data: {
-        [fieldToUpdate]: { increment: amount },
-      },
-    });
+    // 4. Atomic Increment using SQL
+    await db
+      .update(festivals)
+      .set({ [fieldToUpdate]: sql`${festivals[fieldToUpdate as keyof typeof festivals.$inferSelect]} + ${amount}` })
+      .where(eq(festivals.id, festivalId));
   },
 };

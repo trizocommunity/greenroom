@@ -1,6 +1,9 @@
-import type { User } from "@prisma/client";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { user as users } from "../db/schema";
+import { eq } from "drizzle-orm";
+
+export type User = typeof users.$inferSelect;
 
 export async function getCurrentUser(): Promise<User | null> {
   const session = await getSession();
@@ -8,9 +11,9 @@ export async function getCurrentUser(): Promise<User | null> {
     return null;
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId },
+  const user = await db.query.user.findFirst({
+    where: eq(users.id, session.userId),
   });
 
-  return user;
+  return user ?? null;
 }

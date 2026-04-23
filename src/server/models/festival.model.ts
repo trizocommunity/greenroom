@@ -1,107 +1,105 @@
-import type { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
-
-// Phase 1 Festival Model
+import { db } from "@/lib/db";
+import {
+  festival as festivals,
+  programme as programmes,
+  student as students,
+  group as groups,
+  result as results,
+  stage as stages,
+  category as categories,
+  programmeAssignment,
+} from "../db/schema";
+import { eq, desc, count, sql, and, exists, SQL } from "drizzle-orm";
 
 export async function findAllFestivals(
-  where: Prisma.FestivalWhereInput = {},
-  orderBy: Prisma.FestivalOrderByWithRelationInput = { createdAt: "desc" },
+  where?: SQL,
+  orderBy: "asc" | "desc" = "desc"
 ) {
-  return prisma.festival.findMany({
+  return db.query.festival.findMany({
     where,
-    orderBy,
-    include: { owner: true },
+    orderBy: orderBy === "desc" ? [desc(festivals.createdAt)] : undefined,
+    with: { user: true },
   });
 }
 
 export async function findFestivalById(id: string) {
-  return prisma.festival.findUnique({
-    where: { id },
-    include: { owner: true },
+  return db.query.festival.findFirst({
+    where: eq(festivals.id, id),
+    with: { user: true },
   });
 }
 
 export async function findFestivalBySlug(slug: string) {
-  return prisma.festival.findUnique({
-    where: { slug },
-    include: { owner: true },
+  return db.query.festival.findFirst({
+    where: eq(festivals.slug, slug),
+    with: { user: true },
   });
 }
 
-export async function createFestival(data: Prisma.FestivalCreateInput) {
-  return prisma.festival.create({
-    data,
-  });
+export async function createFestival(data: typeof festivals.$inferInsert) {
+  const result = await db.insert(festivals).values(data).returning();
+  return result[0];
 }
 
 export async function updateFestival(
   id: string,
-  data: Prisma.FestivalUpdateInput,
+  data: Partial<typeof festivals.$inferInsert>
 ) {
-  return prisma.festival.update({
-    where: { id },
-    data,
-  });
+  const result = await db.update(festivals).set(data).where(eq(festivals.id, id)).returning();
+  return result[0];
 }
 
 export async function deleteFestival(id: string) {
-  return prisma.festival.delete({
-    where: { id },
-  });
+  const result = await db.delete(festivals).where(eq(festivals.id, id)).returning();
+  return result[0];
 }
 
-// Helper to check if a user already owns a festival
 export async function findFestivalByOwnerId(ownerId: string) {
-  return prisma.festival.findUnique({
-    where: { ownerId },
-    include: { owner: true },
+  return db.query.festival.findFirst({
+    where: eq(festivals.ownerId, ownerId),
+    with: { user: true },
   });
 }
 
 export async function findFestivalBySlugOrId(slugOrId: string) {
-  // Try slug first as it is more common in URLs now
-  const bySlug = await prisma.festival.findUnique({
-    where: { slug: slugOrId },
-    include: {
-      owner: true,
-      _count: {
-        select: {
-          programmes: true,
-          students: true,
-        },
-      },
+  const bySlug = await db.query.festival.findFirst({
+    where: eq(festivals.slug, slugOrId),
+    with: {
+      user: true,
+      programmes: { columns: { id: true } },
+      students: { columns: { id: true } },
     },
   });
-  if (bySlug) return bySlug;
 
-  // Fallback to ID
-  return prisma.festival.findUnique({
-    where: { id: slugOrId },
-    include: {
-      owner: true,
-      _count: {
-        select: {
-          programmes: true,
-          students: true,
-        },
-      },
+  if (bySlug) {
+    const { programmes: p, students: s, ...rest } = bySlug;
+    return { ...rest, _count: { programmes: p.length, students: s.length } };
+  }
+
+  const byId = await db.query.festival.findFirst({
+    where: eq(festivals.id, slugOrId),
+    with: {
+      user: true,
+      programmes: { columns: { id: true } },
+      students: { columns: { id: true } },
     },
   });
+
+  if (byId) {
+    const { programmes: p, students: s, ...rest } = byId;
+    return { ...rest, _count: { programmes: p.length, students: s.length } };
+  }
+  return null;
 }
 
 export async function updateTeamStandings(
   festivalId: string,
-  standings: Prisma.InputJsonValue,
+  standings: any
 ) {
-  return prisma.festival.update({
-    where: { id: festivalId },
-    data: {
-      teamStandings: standings,
-    },
-  });
+  const result = await db.update(festivals).set({ teamStandings: standings }).where(eq(festivals.id, festivalId)).returning();
+  return result[0];
 }
 
-/** One row in the overview "Recent Results" per programme (student or team). */
 export type OverviewResultRow = {
   displayName: string;
   subText: string;
@@ -111,14 +109,12 @@ export type OverviewResultRow = {
   position: number;
 };
 
-/** Programme with its result rows for Overview Recent Results (priority: programme, then student/teams). */
 export type OverviewProgrammeResults = {
   programme: {
     id: string;
     name: string;
     type: string;
     category: { id: string; name: string };
-    /** Latest published result date for this programme (for simple list). */
     latestResultAt: Date | null;
   };
   rows: OverviewResultRow[];
@@ -135,36 +131,16 @@ function getTeamIdentifier(assignment: {
 
 function buildResultRowsForProgramme(
   programme: { type: string },
-  assignments: Array<{
-    id: string;
-    student?: { name: string | null; chestNumber: string | null } | null;
-    group?: { name: string } | null;
-    teamNumber?: number | null;
-    result?: {
-      grade: string | null;
-      points: number;
-      position: number | null;
-    } | null;
-  }>,
-  maxRows: number,
+  assignments: Array<any>,
+  maxRows: number
 ): OverviewResultRow[] {
-  const withResult = assignments.filter((a) => a.result != null);
+  const withResult = assignments.filter((a) => a.results && a.results.length > 0 && a.results[0]);
   if (withResult.length === 0) return [];
 
   if (programme.type === "GROUP") {
-    const teamMap = new Map<
-      string,
-      {
-        assignmentId: string;
-        displayName: string;
-        subText: string;
-        grade: string | null;
-        points: number;
-        position: number;
-      }
-    >();
+    const teamMap = new Map<string, any>();
     withResult.forEach((assignment) => {
-      const result = assignment.result!;
+      const result = assignment.results[0];
       const teamId = getTeamIdentifier(assignment);
       if (!teamMap.has(teamId)) {
         const displayName = `${assignment.student?.name || "Unknown"} and team`;
@@ -196,7 +172,7 @@ function buildResultRowsForProgramme(
   }
 
   const rows = withResult.map((assignment) => {
-    const result = assignment.result!;
+    const result = assignment.results[0];
     return {
       displayName: assignment.student?.name || "Unknown",
       subText: "",
@@ -217,53 +193,54 @@ function buildResultRowsForProgramme(
 
 export async function getDashboardOverviewData(festivalId: string) {
   const [
-    totalProgrammes,
-    totalStudents,
-    totalGroups,
+    tp,
+    ts,
+    tg,
     recentProgrammes,
     recentStudents,
     programmesWithPublishedResults,
   ] = await Promise.all([
-    prisma.programme.count({ where: { festivalId } }),
-    prisma.student.count({ where: { festivalId } }),
-    prisma.group.count({ where: { festivalId } }),
-    prisma.programme.findMany({
-      where: { festivalId },
-      orderBy: { createdAt: "desc" },
-      take: 4,
-      include: { category: true },
+    db.select({ c: count() }).from(programmes).where(eq(programmes.festivalId, festivalId)),
+    db.select({ c: count() }).from(students).where(eq(students.festivalId, festivalId)),
+    db.select({ c: count() }).from(groups).where(eq(groups.festivalId, festivalId)),
+    db.query.programme.findMany({
+      where: eq(programmes.festivalId, festivalId),
+      orderBy: [desc(programmes.createdAt)],
+      limit: 4,
+      with: { category: true },
     }),
-    prisma.student.findMany({
-      where: { festivalId },
-      orderBy: { createdAt: "desc" },
-      take: 6,
-      include: { group: true },
+    db.query.student.findMany({
+      where: eq(students.festivalId, festivalId),
+      orderBy: [desc(students.createdAt)],
+      limit: 6,
+      with: { group: true },
     }),
-    prisma.programme.findMany({
-      where: {
-        festivalId,
-        results: { some: { isPublished: true } },
-      },
-      orderBy: [{ category: { name: "asc" } }, { name: "asc" }],
-      take: 4,
-      include: {
+    db.query.programme.findMany({
+      where: and(
+        eq(programmes.festivalId, festivalId),
+        exists(db.select().from(results).where(and(eq(results.programmeId, programmes.id), eq(results.isPublished, true))))
+      ),
+      limit: 4,
+      with: {
         category: true,
-        assignments: {
-          where: { result: { isPublished: true } },
-          include: {
+        programmeAssignments: {
+          with: {
             student: true,
             group: true,
-            result: true,
-          },
-        },
-      },
+            results: {
+              where: eq(results.isPublished, true)
+            }
+          }
+        }
+      }
     }),
   ]);
 
   const recentResultsByProgramme: OverviewProgrammeResults[] =
     programmesWithPublishedResults.map((prog) => {
-      const resultDates = prog.assignments
-        .map((a) => a.result?.createdAt)
+      const resultDates = prog.programmeAssignments
+        .flatMap((a) => a.results)
+        .map((r) => r?.createdAt)
         .filter((d): d is Date => d != null);
       const latestResultAt =
         resultDates.length > 0
@@ -279,62 +256,49 @@ export async function getDashboardOverviewData(festivalId: string) {
             : { id: "", name: "Uncategorized" },
           latestResultAt,
         },
-        rows: buildResultRowsForProgramme(prog, prog.assignments, 5),
+        rows: buildResultRowsForProgramme(prog, prog.programmeAssignments, 5),
       };
     });
 
   return {
-    totalProgrammes,
-    totalStudents,
-    totalGroups,
+    totalProgrammes: tp[0].c,
+    totalStudents: ts[0].c,
+    totalGroups: tg[0].c,
     recentProgrammes,
     recentStudents,
     recentResultsByProgramme,
   };
 }
 
-/** Analytics aggregates for Phase 5 Analytics page (PRO / advancedAnalytics). */
 export async function getFestivalAnalyticsData(festivalId: string) {
   const [
-    studentsCount,
-    programmesCount,
-    groupsCount,
-    stagesCount,
-    resultsCount,
-    publishedResultsCount,
-    categoriesCount,
-    judgesCount,
+    sc,
+    pc,
+    gc,
+    stc,
+    rc,
+    prc,
+    cc,
+    fest,
   ] = await Promise.all([
-    prisma.student.count({ where: { festivalId } }),
-    prisma.programme.count({ where: { festivalId } }),
-    prisma.group.count({ where: { festivalId } }),
-    prisma.stage.count({ where: { festivalId } }),
-    prisma.result.count({
-      where: { programme: { festivalId } },
-    }),
-    prisma.result.count({
-      where: {
-        programme: { festivalId },
-        isPublished: true,
-      },
-    }),
-    prisma.category.count({ where: { festivalId } }),
-    prisma.festival
-      .findUnique({
-        where: { id: festivalId },
-        select: { judgesCount: true },
-      })
-      .then((f) => f?.judgesCount ?? 0),
+    db.select({ c: count() }).from(students).where(eq(students.festivalId, festivalId)),
+    db.select({ c: count() }).from(programmes).where(eq(programmes.festivalId, festivalId)),
+    db.select({ c: count() }).from(groups).where(eq(groups.festivalId, festivalId)),
+    db.select({ c: count() }).from(stages).where(eq(stages.festivalId, festivalId)),
+    db.select({ c: count() }).from(results).innerJoin(programmes, eq(results.programmeId, programmes.id)).where(eq(programmes.festivalId, festivalId)),
+    db.select({ c: count() }).from(results).innerJoin(programmes, eq(results.programmeId, programmes.id)).where(and(eq(programmes.festivalId, festivalId), eq(results.isPublished, true))),
+    db.select({ c: count() }).from(categories).where(eq(categories.festivalId, festivalId)),
+    db.query.festival.findFirst({ where: eq(festivals.id, festivalId), columns: { judgesCount: true } })
   ]);
 
   return {
-    studentsCount,
-    programmesCount,
-    groupsCount,
-    stagesCount,
-    resultsCount,
-    publishedResultsCount,
-    categoriesCount,
-    judgesCount,
+    studentsCount: sc[0].c,
+    programmesCount: pc[0].c,
+    groupsCount: gc[0].c,
+    stagesCount: stc[0].c,
+    resultsCount: rc[0].c,
+    publishedResultsCount: prc[0].c,
+    categoriesCount: cc[0].c,
+    judgesCount: fest?.judgesCount ?? 0,
   };
 }

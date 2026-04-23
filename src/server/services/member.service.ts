@@ -71,8 +71,8 @@ export const MemberService = {
 
     // 3. Create Member
     const member = await createMember({
-      festival: { connect: { id: festivalId } },
-      user: { connect: { id: user.id } },
+      festivalId,
+      userId: user.id,
       role: data.role,
     });
 

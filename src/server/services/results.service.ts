@@ -1,22 +1,24 @@
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { festival as festivals } from "../db/schema";
+import { eq, asc } from "drizzle-orm";
 
 export async function getFestivalResultsDataBySlug(slug: string) {
-  const festival = await prisma.festival.findUnique({
-    where: { slug },
-    include: {
-      categories: { orderBy: { name: "asc" } },
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivals.slug, slug),
+    with: {
+      categories: { orderBy: [asc(festivals.name)] },
       programmes: {
-        include: {
+        with: {
           category: true,
-          assignments: {
-            include: {
+          programmeAssignments: {
+            with: {
               student: true,
               group: true,
-              result: true,
+              results: true,
             },
           },
         },
-        orderBy: { name: "asc" },
+        orderBy: [asc(festivals.name)],
       },
     },
   });

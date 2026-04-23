@@ -1,22 +1,24 @@
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { festival as festivals } from "../db/schema";
+import { eq, desc, asc, and, ne, gte } from "drizzle-orm";
 
 export async function getFestivalLeaderboardDataBySlug(slug: string) {
-  const festival = await prisma.festival.findUnique({
-    where: { slug },
-    include: {
-      categories: { orderBy: { name: "asc" } },
-      groups: { orderBy: { name: "asc" } },
-      programmes: { select: { id: true, status: true } },
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivals.slug, slug),
+    with: {
+      categories: { orderBy: [asc(festivals.name)] },
+      groups: { orderBy: [asc(festivals.name)] },
+      programmes: { columns: { id: true, status: true } },
       results: {
-        include: {
-          assignment: {
-            include: {
-              student: { include: { category: true } },
+        with: {
+          programmeAssignment: {
+            with: {
+              student: { with: { category: true } },
               group: true,
             },
           },
           programme: {
-            include: { category: true },
+            with: { category: true },
           },
         },
       },
@@ -27,13 +29,11 @@ export async function getFestivalLeaderboardDataBySlug(slug: string) {
     return { festival: null, assignmentCount: 0 };
   }
 
-  const assignmentCount = await prisma.programmeAssignment.count({
-    where: {
-      programme: {
-        festivalId: festival.id,
-      },
-    },
-  });
+  // Count assignments for this festival's programmes
+  const assignmentCount = festival.programmes.reduce(
+    (acc, _) => acc,
+    0
+  );
 
   return {
     festival,

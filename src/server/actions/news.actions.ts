@@ -1,21 +1,24 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { festivalNews } from "@/server/db/schema";
 import { findFestivalById } from "@/server/models/festival.model";
 import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
 import { StorageUsageService } from "@/server/services/storage-usage.service";
 import { UsageCounterService } from "@/server/services/usage-counter.service";
+import { eq, and, desc } from "drizzle-orm";
 
 export async function getNewsPostsAction(festivalId: string) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
 
-  const posts = await prisma.festivalNews.findMany({
-    where: { festivalId },
-    orderBy: { publishedAt: "desc" },
+  const posts = await db.query.festivalNews.findMany({
+    where: eq(festivalNews.festivalId, festivalId),
+    orderBy: [desc(festivalNews.publishedAt)],
   });
   return posts;
 }
@@ -42,26 +45,19 @@ export async function createNewsPostAction(
   }
 
   const addedMb = await StorageUsageService.getUrlSizeMB(data.imageUrl);
-  await prisma.$transaction(async (tx) => {
-    await tx.festivalNews.create({
-      data: {
-        festivalId,
-        title: data.title,
-        excerpt: data.excerpt ?? null,
-        content: data.content,
-        imageUrl: data.imageUrl ?? null,
-        publishedAt: data.publishedAt ?? null,
-      },
-    });
-    if (addedMb > 0) {
-      await UsageCounterService.incrementUsage(
-        festivalId,
-        "storage",
-        addedMb,
-        tx,
-      );
-    }
+  await db.insert(festivalNews).values({
+    id: randomUUID(),
+    updatedAt: new Date().toISOString(),
+    festivalId,
+    title: data.title,
+    excerpt: data.excerpt ?? null,
+    content: data.content,
+    imageUrl: data.imageUrl ?? null,
+    publishedAt: data.publishedAt?.toISOString() ?? null,
   });
+  if (addedMb > 0) {
+    await UsageCounterService.incrementUsage(festivalId, "storage", addedMb);
+  }
 
   revalidatePath(`/dashboard/${festival.slug}/content/news`);
   revalidatePath(`/${festival.slug}/news`);
@@ -85,9 +81,9 @@ export async function updateNewsPostAction(
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
 
-  const existing = await prisma.festivalNews.findFirst({
-    where: { id: postId, festivalId },
-    select: { id: true, imageUrl: true },
+  const existing = await db.query.festivalNews.findFirst({
+    where: and(eq(festivalNews.id, postId), eq(festivalNews.festivalId, festivalId)),
+    columns: { id: true, imageUrl: true },
   });
   if (!existing) return { success: false, error: "News post not found" };
 
@@ -103,28 +99,19 @@ export async function updateNewsPostAction(
   ]);
   const deltaMb = addedMb - removedMb;
 
-  await prisma.$transaction(async (tx) => {
-    await tx.festivalNews.update({
-      where: { id: existing.id },
-      data: {
-        ...(data.title !== undefined && { title: data.title }),
-        ...(data.excerpt !== undefined && { excerpt: data.excerpt }),
-        ...(data.content !== undefined && { content: data.content }),
-        ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
-        ...(data.publishedAt !== undefined && {
-          publishedAt: data.publishedAt,
-        }),
-      },
-    });
-    if (deltaMb !== 0) {
-      await UsageCounterService.incrementUsage(
-        festivalId,
-        "storage",
-        deltaMb,
-        tx,
-      );
-    }
-  });
+  await db.update(festivalNews).set({
+    ...(data.title !== undefined && { title: data.title }),
+    ...(data.excerpt !== undefined && { excerpt: data.excerpt }),
+    ...(data.content !== undefined && { content: data.content }),
+    ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
+    ...(data.publishedAt !== undefined && {
+      publishedAt: data.publishedAt?.toISOString() ?? null,
+    }),
+  }).where(eq(festivalNews.id, existing.id));
+
+  if (deltaMb !== 0) {
+    await UsageCounterService.incrementUsage(festivalId, "storage", deltaMb);
+  }
 
   revalidatePath(`/dashboard/${festival.slug}/content/news`);
   revalidatePath(`/${festival.slug}/news`);
@@ -138,23 +125,16 @@ export async function deleteNewsPostAction(festivalId: string, postId: string) {
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
 
-  const existing = await prisma.festivalNews.findFirst({
-    where: { id: postId, festivalId },
-    select: { id: true, imageUrl: true },
+  const existing = await db.query.festivalNews.findFirst({
+    where: and(eq(festivalNews.id, postId), eq(festivalNews.festivalId, festivalId)),
+    columns: { id: true, imageUrl: true },
   });
   if (!existing) return { success: false, error: "News post not found" };
   const removedMb = await StorageUsageService.getUrlSizeMB(existing.imageUrl);
-  await prisma.$transaction(async (tx) => {
-    await tx.festivalNews.delete({ where: { id: existing.id } });
-    if (removedMb > 0) {
-      await UsageCounterService.incrementUsage(
-        festivalId,
-        "storage",
-        -removedMb,
-        tx,
-      );
-    }
-  });
+  await db.delete(festivalNews).where(eq(festivalNews.id, existing.id));
+  if (removedMb > 0) {
+    await UsageCounterService.incrementUsage(festivalId, "storage", -removedMb);
+  }
 
   revalidatePath(`/dashboard/${festival.slug}/content/news`);
   revalidatePath(`/${festival.slug}/news`);
