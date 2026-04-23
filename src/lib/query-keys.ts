@@ -93,11 +93,6 @@ export const queryKeys = {
   /**
    * Support / Notifications
    */
-  support: {
-    all: () => ["support"] as const,
-    notifications: (userId?: string) =>
-      ["support", "notifications", { userId }] as const,
-  },
   programmeNotifications: {
     all: () => ["programmeNotifications"] as const,
     student: (studentId: string) =>

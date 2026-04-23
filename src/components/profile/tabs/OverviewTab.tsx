@@ -2,6 +2,7 @@
 
 import { ArrowRight, Check, Loader2, Plus, Sparkles } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,7 +31,7 @@ import { useJoinedFestivals } from "@/hooks/useJoinedFestivals";
 import { useUnusedCredit } from "@/hooks/useUnusedCredit";
 import { getDerivedFestivalStatus } from "@/lib/festival-status";
 import type { Tier } from "@/lib/prisma-enums";
-import { CreateFestivalModal } from "../CreateFestivalModal";
+import { cn } from "@/lib/utils";
 import { FestivalCard } from "../FestivalCard";
 import { JoinedFestivalCard } from "../JoinedFestivalCard";
 
@@ -40,7 +41,7 @@ interface OverviewTabProps {
 }
 
 export function OverviewTab({ displayName, userId }: OverviewTabProps) {
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const router = useRouter();
   const [confirmationTier, setConfirmationTier] = useState<Tier | null>(null);
 
   const { data: festival, isLoading: isFestivalLoading } = useMyFestival();
@@ -105,29 +106,11 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
   // Render Owned Festival (Loading or Data)
   const renderOwnedSection = () => {
     if (isFestivalLoading) {
-      return (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold tracking-tight">
-              My Festival
-            </h3>
-          </div>
-          <FestivalCardSkeleton />
-        </div>
-      );
+      return <FestivalCardSkeleton />;
     }
 
     if (festival) {
-      return (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold tracking-tight">
-              My Festival
-            </h3>
-          </div>
-          <FestivalCard festival={festival} />
-        </div>
-      );
+      return <FestivalCard festival={festival} />;
     }
     return null; // Fall through to Credit/Plans if no active festival
   };
@@ -163,47 +146,115 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
             </div>
           ) : credit ? (
             <>
-              <div className="space-y-2">
-                <h3 className="text-xl font-semibold tracking-tight">
-                  Start Your Festival
-                </h3>
-                <p className="text-muted-foreground">
-                  You have a valid credit available.
-                </p>
-              </div>
-              <Card className="border-primary/50 bg-primary/5">
-                <CardHeader>
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-primary/20 rounded-full">
-                      <Check className="w-6 h-6 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle>Credit Available</CardTitle>
-                      <CardDescription>
-                        {credit.tier} Plan Credit &bull; {credit.amount} INR
-                      </CardDescription>
-                    </div>
+              <div className="space-y-4">
+                <Card className="border-primary/30 bg-linear-to-br from-primary/10 via-background to-background relative overflow-hidden ring-1 ring-primary/20">
+                  <div className="absolute right-0 top-0 p-4 opacity-10 pointer-events-none">
+                    <Sparkles className="w-32 h-32 text-primary" />
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <Button
-                    size="lg"
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="w-full sm:w-auto"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Festival Now
-                  </Button>
-                </CardContent>
-              </Card>
-              <CreateFestivalModal
-                open={isCreateModalOpen}
-                paymentId={credit.id}
-                onOpenChange={setIsCreateModalOpen}
-                tier={credit.tier || undefined}
-                planValidFrom={credit.validFrom as any}
-                planValidUntil={credit.validUntil as any}
-              />
+                  <CardContent className="p-5 sm:p-6 md:p-8">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6">
+                      <div className="flex items-center gap-4 w-full sm:w-auto">
+                        <div className="p-3 sm:p-4 bg-primary/20 rounded-2xl ring-1 ring-primary/30 shrink-0">
+                          <Check className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-lg sm:text-xl font-bold text-foreground flex flex-wrap items-center gap-2">
+                            {credit.tier} Plan Credit
+                            <Badge variant="secondary" className="bg-primary/15 text-primary hover:bg-primary/20 border-0 text-[10px] sm:text-xs px-1.5 py-0 sm:py-0.5">Available</Badge>
+                          </h4>
+                          <p className="text-xs sm:text-sm font-medium text-muted-foreground w-full">
+                            Value: ₹{credit.amount}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="w-full sm:w-auto shrink-0 z-10 pt-2 sm:pt-0">
+                        <Button
+                          size="lg"
+                          onClick={() =>
+                            router.push(
+                              `/festival-setup?paymentId=${credit.id}`,
+                            )
+                          }
+                          className="w-full md:w-auto h-12 text-sm font-bold uppercase tracking-wider rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all"
+                        >
+                          <Plus className="mr-2 h-5 w-5" />
+                          Launch Festival Now
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Expiry Progress Section */}
+                    <div className="mt-8 pt-6 border-t border-border/50">
+                      {(() => {
+                        const start = new Date(
+                          credit.validFrom as string | Date,
+                        );
+                        const end = credit.validUntil
+                          ? new Date(credit.validUntil as string | Date)
+                          : new Date(
+                              start.getTime() + 30 * 24 * 60 * 60 * 1000,
+                            );
+                        const now = new Date();
+
+                        const totalDuration = end.getTime() - start.getTime();
+                        const elapsed = now.getTime() - start.getTime();
+                        let progress = (elapsed / totalDuration) * 100;
+                        progress = Math.min(100, Math.max(0, progress));
+
+                        const daysLeft = Math.ceil(
+                          (end.getTime() - now.getTime()) /
+                            (1000 * 60 * 60 * 24),
+                        );
+                        const isExpiringSoon = daysLeft <= 7;
+
+                        return (
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-medium text-muted-foreground flex items-center gap-1.5">
+                                <span className="inline-block w-2 h-2 rounded-full bg-primary animate-pulse" />
+                                Credit Validity
+                              </span>
+                              <span
+                                className={cn(
+                                  "font-bold",
+                                  isExpiringSoon
+                                    ? "text-destructive"
+                                    : "text-foreground",
+                                )}
+                              >
+                                {daysLeft > 0
+                                  ? `${daysLeft} days remaining`
+                                  : "Expires today"}
+                              </span>
+                            </div>
+                            <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                              <div
+                                className={cn(
+                                  "h-full rounded-full transition-all duration-1000",
+                                  isExpiringSoon
+                                    ? "bg-destructive"
+                                    : "bg-primary",
+                                )}
+                                style={{ width: `${100 - progress}%` }}
+                              />
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Activate your festival before{" "}
+                              {end.toLocaleDateString(undefined, {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })}{" "}
+                              to use this credit.
+                            </p>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </>
           ) : (
             <>

@@ -70,6 +70,11 @@ export async function initiatePaymentDomain(
     },
   );
 
+  const now = new Date();
+  const validUntil = new Date(
+    now.getTime() + config.durationDays * 24 * 60 * 60 * 1000,
+  );
+
   const payment = await prisma.payment.create({
     data: {
       amount: config.price,
@@ -80,6 +85,7 @@ export async function initiatePaymentDomain(
       purpose,
       tier,
       used: false,
+      validUntil,
     },
   });
 
@@ -200,6 +206,7 @@ export async function getUserPaymentsDomain(userId: string) {
 }
 
 export async function getUserStatusDomain(userId: string, role: string) {
+  const now = new Date();
   const activePayment = await getActivePaymentForUser(userId);
 
   let hasExistingFestival = false;
@@ -222,14 +229,18 @@ export async function getUserStatusDomain(userId: string, role: string) {
 
   const latestPayment = await getLatestPaymentForUser(userId);
 
+  // Check if latest payment is PAID but expired
   if (latestPayment && latestPayment.status === "PAID") {
+    const isExpired =
+      latestPayment.validUntil && latestPayment.validUntil <= now;
+
     return {
-      status: "EXPIRED",
+      status: isExpired ? "EXPIRED" : "ACTIVE",
       payment: {
         ...latestPayment,
         validFrom: latestPayment.createdAt,
       },
-      canCreateFestival: false,
+      canCreateFestival: !isExpired && !hasExistingFestival,
     };
   }
 

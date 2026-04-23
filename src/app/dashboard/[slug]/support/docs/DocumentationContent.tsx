@@ -86,7 +86,7 @@ const allFaqs = [
     id: "leaderboard",
     question: "How can I view the leaderboard?",
     answer:
-      "The leaderboard is available under 'Event Works' -> 'Leaderboard'. It updates in real-time as results are published.",
+      "The leaderboard is available under 'Event Works' -> 'Leaderboard'. It updates in real-time as results are published. On the Basic plan, this is an internal leaderboard for coordination. Standard and Pro plans allow publishing a snapshot to the public festival page.",
   },
   {
     id: "programme-status-event-works",
@@ -100,6 +100,24 @@ const allFaqs = [
     question: "How do I manage chest numbers?",
     answer:
       "You can generate and manage chest numbers in the 'Pre-Works' -> 'Chest Numbers' section. Ensure students are assigned to groups first.",
+  },
+  {
+    id: "plan-diff",
+    question: "What are the differences between Basic, Standard, and Pro plans?",
+    answer:
+      "Basic is for small festivals (250 students, 1 member). Standard unlocks bulk uploads, stage management, scheduling, and public landing pages (500 students, 3 members). Pro is for large events with advanced analytics, RBAC, API access, and white-labeling (2000 students, 10 members).",
+  },
+  {
+    id: "plan-limits",
+    question: "What happens if I reach my plan limits?",
+    answer:
+      "You can view your current usage under 'Usage & Limits' in the right sidebar. If you reach a limit (e.g. students or stages), you'll need to upgrade to a higher tier to add more records.",
+  },
+  {
+    id: "basic-settings",
+    question: "Why can't I see 'Settings' or 'Members' on the Basic plan?",
+    answer:
+      "The Basic plan is designed for a single owner/manager and uses default festival configurations. Additional team members and advanced festival settings are available starting from the Standard tier.",
   },
 ];
 

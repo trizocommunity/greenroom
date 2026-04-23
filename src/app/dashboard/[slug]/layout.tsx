@@ -1,6 +1,7 @@
 import { Menu } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
-import { SupportNotifications } from "@/components/dashboard/support/SupportNotifications";
+import { Suspense } from "react";
+import { DashboardCelebration } from "@/components/festival/dashboard/DashboardCelebration";
 // Removed unused breadcrumb imports
 import { DashboardBreadcrumb } from "@/components/festival/dashboard/DashboardBreadcrumb";
 import { DashboardRightSidebar } from "@/components/festival/dashboard/DashboardRightSidebar";
@@ -124,7 +125,7 @@ export default async function FestivalDashboardLayout({
           <header className="sticky top-0 z-10 w-full flex h-14 shrink-0 items-center justify-between border-b bg-background/95 backdrop-blur px-4 md:px-8 shadow-sm">
             <div className="flex items-center gap-2">
               <SidebarTrigger className="h-8 w-8" />
-              <div className="mr-2 h-4 w-px bg-border" />
+              <div className="mr-2 h-4 w-px bg-border hidden lg:block" />
               <DashboardBreadcrumb slug={slug} />
             </div>
 
@@ -139,7 +140,6 @@ export default async function FestivalDashboardLayout({
                 size="default"
                 interactive={true}
               />
-              <SupportNotifications slug={slug} />
               <DashboardRightSidebar
                 trigger={
                   <Button variant="ghost" size="icon" className="">
@@ -181,6 +181,9 @@ export default async function FestivalDashboardLayout({
           </header>
 
           <main className="flex flex-1 flex-col gap-4 md:gap-6 p-4 md:p-8 relative overflow-hidden">
+            <Suspense fallback={null}>
+              <DashboardCelebration />
+            </Suspense>
             <ReadOnlyExpiredBanner />
             {children}
           </main>

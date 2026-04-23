@@ -44,6 +44,19 @@ export async function createFestival(input: CreateFestivalInput) {
     const tier = payment.tier || "BASIC";
     const tierConfig = TIER_CONFIG[tier];
 
+    // Validate date range doesn't exceed plan duration
+    if (data.startDate && data.endDate) {
+      const diffDays = Math.ceil(
+        (data.endDate.getTime() - data.startDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      if (diffDays > tierConfig.durationDays) {
+        return {
+          success: false,
+          error: `Your ${tier} plan allows a maximum festival duration of ${tierConfig.durationDays} days. Please adjust your dates.`,
+        } as any;
+      }
+    }
+
     // 3. Atomic Transaction
     const expiresAt =
       payment.validUntil ??

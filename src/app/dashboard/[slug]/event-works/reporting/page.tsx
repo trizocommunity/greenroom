@@ -60,6 +60,23 @@ export default async function ProgrammeReportingPage({
     }),
   ]);
 
+  // Fetch reported participants with reportedBy info
+  const reportedParticipants = await prisma.programmeReportedParticipant.findMany({
+    where: {
+      reportingSessionId: {
+        in: board
+          .map((b) => b.reportingSession?.id)
+          .filter((id): id is string => Boolean(id)),
+      },
+    },
+    select: {
+      assignmentId: true,
+      reportingSessionId: true,
+      reportedBy: true,
+      reportedAt: true,
+    },
+  });
+
   const normalizedBoard = board.map((item) => ({
     ...item,
     startTime: item.startTime,
@@ -115,6 +132,7 @@ export default async function ProgrammeReportingPage({
         board={normalizedBoard as ReportingBoardItem[]}
         assignments={assignments}
         festivalStages={festivalStages}
+        reportedParticipants={reportedParticipants}
       />
     </div>
   );

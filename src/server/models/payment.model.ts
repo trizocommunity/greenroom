@@ -1,4 +1,5 @@
-import type { Payment, PaymentStatus } from "@prisma/client";
+import type { Payment, PaymentStatus, Tier } from "@prisma/client";
+import { TIER_CONFIG } from "@/config/pricing";
 import { prisma } from "@/lib/db";
 
 export type CreatePaymentInput = {
@@ -7,6 +8,7 @@ export type CreatePaymentInput = {
   currency?: string;
   validityDays?: number;
   razorpayOrderId?: string;
+  tier?: Tier;
 };
 
 export async function createPayment(
@@ -16,12 +18,16 @@ export async function createPayment(
     userId,
     amount,
     currency = "INR",
-    validityDays = 30,
+    validityDays,
     razorpayOrderId,
+    tier,
   } = input;
 
+  // Calculate validUntil: use provided validityDays or fallback to tier config
+  const days =
+    validityDays ?? (tier ? (TIER_CONFIG[tier]?.durationDays ?? 30) : 30);
   const validUntil = new Date();
-  validUntil.setDate(validUntil.getDate() + validityDays);
+  validUntil.setDate(validUntil.getDate() + days);
 
   return prisma.payment.create({
     data: {

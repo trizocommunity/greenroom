@@ -15,9 +15,9 @@ export const createFestivalSchema = z
       .regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with dashes")
       .optional()
       .or(z.literal("")),
-    institutionType: z.nativeEnum(InstitutionType),
-    institutionName: z.string().min(2, "Institution name is required"),
-    location: z.string().min(2, "Location is required"),
+    institutionType: z.nativeEnum(InstitutionType).optional(),
+    institutionName: z.string().optional().or(z.literal("")),
+    location: z.string().optional().or(z.literal("")),
     startDate: z.coerce.date(),
     endDate: z.coerce.date(),
   })

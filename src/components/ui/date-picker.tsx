@@ -22,6 +22,7 @@ interface DatePickerProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  showValidityHint?: boolean; // Show hint about valid date range
 }
 
 export function DatePicker({
@@ -33,41 +34,55 @@ export function DatePicker({
   placeholder = "Pick a date",
   disabled,
   className,
+  showValidityHint = false,
 }: DatePickerProps) {
   const isEmpty = !date;
 
+  const hintLabel = () => {
+    if (!showValidityHint || (!from && !to)) return null;
+    const parts: string[] = [];
+    if (from) parts.push(`From ${format(from, "MMM d, yyyy")}`);
+    if (to) parts.push(`Until ${format(to, "MMM d, yyyy")}`);
+    return parts.join(" • ");
+  };
+
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          id={id}
-          disabled={disabled}
-          data-empty={isEmpty || undefined}
-          className={cn(
-            // Match Input visual style / sizing
-            "flex h-12 w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm shadow-sm transition-colors justify-between text-left font-normal data-[empty=true]:text-muted-foreground",
-            className,
-          )}
-        >
-          {date ? format(date, "PPP") : <span>{placeholder}</span>}
-          <ChevronDownIcon className="ml-2 h-4 w-4 opacity-70" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={onChange}
-          defaultMonth={date}
-          disabled={
-            from || to
-              ? (day) => (!!from && day < from) || (!!to && day > to)
-              : undefined
-          }
-        />
-      </PopoverContent>
-    </Popover>
+    <div className="space-y-1.5">
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            id={id}
+            disabled={disabled}
+            data-empty={isEmpty || undefined}
+            className={cn(
+              // Match Input visual style / sizing
+              "flex h-12 w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm shadow-sm transition-colors justify-between text-left font-normal data-[empty=true]:text-muted-foreground",
+              className,
+            )}
+          >
+            {date ? format(date, "PPP") : <span>{placeholder}</span>}
+            <ChevronDownIcon className="ml-2 h-4 w-4 opacity-70" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={onChange}
+            defaultMonth={date}
+            disabled={
+              from || to
+                ? (day) => (!!from && day < from) || (!!to && day > to)
+                : undefined
+            }
+          />
+        </PopoverContent>
+      </Popover>
+      {showValidityHint && hintLabel() && (
+        <p className="text-xs text-muted-foreground">{hintLabel()}</p>
+      )}
+    </div>
   );
 }
 

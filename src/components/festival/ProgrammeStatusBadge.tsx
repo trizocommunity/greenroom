@@ -13,6 +13,7 @@ const STATUS_LABELS: Record<ProgrammeStatus, string> = {
   ENDED: "Ended",
   JUDGED: "Judged",
   PUBLISHED: "Published",
+  RESET: "Reset",
 };
 
 /**
@@ -39,6 +40,7 @@ const STATUS_STYLES: Record<ProgrammeStatus, string> = {
   JUDGED: "border-transparent bg-primary/15 text-primary dark:bg-primary/20",
   PUBLISHED:
     "border-transparent bg-green-500/15 text-green-700 dark:text-green-400 dark:bg-green-500/20",
+  RESET: "border-transparent bg-red-500/15 text-red-700 dark:text-red-400 dark:bg-red-500/20",
 };
 
 interface ProgrammeStatusBadgeProps {

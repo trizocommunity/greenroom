@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ComponentPropsWithoutRef } from "react";
 import { cn } from "@/lib/utils";
+import { AuthShowcase } from "./AuthShowcase";
 
 interface AuthLayoutProps extends ComponentPropsWithoutRef<"div"> {
   title?: string;
@@ -18,44 +19,47 @@ export function AuthLayout({
 }: AuthLayoutProps) {
   return (
     <div
-      className={cn(
-        "relative flex min-h-screen items-center justify-center p-4 overflow-hidden",
-        className,
-      )}
+      className={cn("flex min-h-screen w-full bg-background", className)}
       {...props}
     >
-      <div className="absolute inset-0 bg-background -z-20" />
-      <div className="absolute inset-x-0 top-10 bottom-10 bg-linear-to-r from-transparent via-primary/5 to-transparent blur-3xl -z-10" />
+      {/* Left side: Form */}
+      <div className="flex w-full flex-col justify-center px-6 py-12 lg:w-1/2 lg:flex-none xl:px-20">
+        <div className="mx-auto w-full max-w-sm lg:max-w-md space-y-8">
+          {showLogo && (
+            <div className="flex justify-center lg:justify-start">
+              <Link
+                href="/"
+                className="flex items-center gap-2 font-black text-2xl md:text-3xl tracking-tighter uppercase bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent"
+              >
+                Greenroom
+              </Link>
+            </div>
+          )}
 
-      <div className="w-full max-w-[400px] relative z-10">
-        {showLogo && (
-          <div className="flex justify-center mb-8">
-            <Link
-              href="/"
-              className="flex items-center gap-2 font-black text-2xl tracking-tighter uppercase"
-            >
-              Greenroom
-            </Link>
-          </div>
-        )}
-        <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
-          {/* Subtle glow inside card */}
-          <div className="absolute -inset-1 bg-linear-to-br from-primary/10 via-transparent to-transparent opacity-50 blur-xl pointer-events-none" />
-
-          <div className="relative z-10 space-y-6">
+          <div className="space-y-6">
             {(title || description) && (
-              <div className="mb-6 space-y-2 text-center">
+              <div className="space-y-2 text-center lg:text-left">
                 {title && (
-                  <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+                  <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                    {title}
+                  </h1>
                 )}
                 {description && (
-                  <p className="text-sm text-muted-foreground">{description}</p>
+                  <p className="text-base text-muted-foreground">
+                    {description}
+                  </p>
                 )}
               </div>
             )}
-            {children}
+
+            <div className="mt-8">{children}</div>
           </div>
         </div>
+      </div>
+
+      {/* Right side: Showcase */}
+      <div className="hidden lg:block lg:w-1/2 relative overflow-hidden">
+        <AuthShowcase />
       </div>
     </div>
   );

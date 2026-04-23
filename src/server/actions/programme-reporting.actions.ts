@@ -448,3 +448,47 @@ export async function scanAndReportStudentAction(
     };
   }
 }
+
+/**
+ * Get reporting statistics with estimated completion time
+ * Returns progress data and time estimates for the UI
+ */
+export async function getReportingStatsAction(
+  festivalId: string,
+  reportingSessionId: string,
+) {
+  const actorName = await assertStageManagerAccess(festivalId);
+
+  const stats =
+    await ProgrammeReportingService.getReportingStats(reportingSessionId);
+
+  return { success: true, data: stats };
+}
+
+/**
+ * Assign code letters to teams using spin wheel selection
+ * Creates code letters and assigns them to team members
+ */
+export async function assignCodeLettersWithSpinAction(
+  festivalId: string,
+  reportingSessionId: string,
+  codeAssignments: Array<{
+    teamNumber: number;
+    code: string;
+  }>,
+) {
+  const actorName = await assertStageManagerAccess(festivalId);
+
+  const result = await ProgrammeReportingService.assignCodesWithSpin(
+    reportingSessionId,
+    codeAssignments,
+    actorName,
+  );
+
+  const festival = await findFestivalById(festivalId);
+  if (festival) {
+    revalidatePath(`/dashboard/${festival.slug}/event-works/reporting`);
+  }
+
+  return { success: true, data: result };
+}

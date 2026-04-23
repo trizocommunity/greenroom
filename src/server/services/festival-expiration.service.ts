@@ -66,10 +66,6 @@ export const FestivalExpirationService = {
       await tx.festivalNews.deleteMany({ where: { festivalId } });
       await tx.stage.deleteMany({ where: { festivalId } });
       await tx.festivalMember.deleteMany({ where: { festivalId } });
-      await tx.supportTicket.updateMany({
-        where: { festivalId },
-        data: { festivalId: null },
-      });
 
       // 3. Lifecycle event
       await tx.festivalLifecycleEvent.create({

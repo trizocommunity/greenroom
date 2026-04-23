@@ -1,22 +1,25 @@
 "use client";
 
+import { BarChart3, Clock } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { CompactHistoryList } from "@/components/dashboard/event-works/CompactHistoryList";
-import { ReportingEndsInCountdown } from "@/components/programme/ReportingEndsInCountdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRealtimeChannel } from "@/hooks/useRealtimeChannel";
 import { getCodeForStudentFromLetters } from "@/lib/programme-reporting-code";
 import {
+  assignCodeLettersWithSpinAction,
   closeProgrammeReportingAction,
+  getReportingStatsAction,
   resetProgrammeReportingAction,
   startProgrammeReportingAction,
 } from "@/server/actions/programme-reporting.actions";
 import { QrScanner } from "./QrScanner";
+import { CodeLetterSpinWheel } from "./CodeLetterSpinWheel";
 
 export type ReportingBoardItem = {
   id: string;
@@ -49,6 +52,13 @@ export type ProgrammeReportingAssignmentRow = {
   groupId: string | null;
   groupName: string | null;
   teamNumber: number | null;
+};
+
+export type ReportedParticipantInfo = {
+  assignmentId: string;
+  reportingSessionId: string;
+  reportedBy: string | null;
+  reportedAt: Date;
 };
 
 /** User-facing labels: RESET = window stopped without submit; CLOSED = submit & codes issued. */
@@ -97,6 +107,7 @@ type RosterTableRow =
       groupName: string | null;
       teamCell: string | number;
       isReported: boolean;
+      reportedBy?: string | null;
     }
   | {
       key: string;
@@ -107,6 +118,7 @@ type RosterTableRow =
       groupName: string | null;
       teamCell: number;
       isReported: boolean;
+      reportedBy?: string | null;
     };
 
 export function ProgrammeReportingClient({
@@ -114,12 +126,14 @@ export function ProgrammeReportingClient({
   board,
   assignments,
   festivalStages,
+  reportedParticipants = [],
 }: {
   festivalId: string;
   board: ReportingBoardItem[];
   assignments: ProgrammeReportingAssignmentRow[];
   /** All festival stages (filter dropdown); board alone only lists stages that appear on slots. */
   festivalStages: Array<{ id: string; name: string }>;
+  reportedParticipants?: ReportedParticipantInfo[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -138,6 +152,20 @@ export function ProgrammeReportingClient({
   const [optimisticReportedBySession, setOptimisticReportedBySession] =
     useState<Record<string, Set<string>>>({});
   const [lastRefreshAt, setLastRefreshAt] = useState(0);
+  const [reportingStats, setReportingStats] = useState<{
+    total: number;
+    reported: number;
+    remaining: number;
+    percentageComplete: number;
+    elapsedMinutes: number;
+    estimatedRemainingMinutes: number | null;
+    estimatedEnd: Date | null;
+  } | null>(null);
+  const [spinWheelOpen, setSpinWheelOpen] = useState(false);
+  const [reportedTeams, setReportedTeams] = useState<
+    Map<string, { teamNumber: number; members: number }>
+  >(new Map());
+  const [lastScannedTeam, setLastScannedTeam] = useState<string | null>(null);
 
   const reportingRoomKeys = useMemo(() => {
     const base = [`festival:${festivalId}:all`];
@@ -471,6 +499,7 @@ export function ProgrammeReportingClient({
     session?.windowEndsAt ?? null,
   );
   const isTimedOut = sessionStatus === "TIMED_OUT";
+  const isReset = sessionStatus === "RESET";
   const isPreStart =
     !session ||
     sessionStatus === "NOT_STARTED" ||
@@ -478,6 +507,29 @@ export function ProgrammeReportingClient({
     isTimedOut;
   const isInProgress = sessionStatus === "IN_PROGRESS";
   const isClosed = sessionStatus === "CLOSED";
+
+  // Fetch reporting stats every 30 seconds when session is in progress
+  useEffect(() => {
+    if (!session?.id || sessionStatus !== "IN_PROGRESS") {
+      setReportingStats(null);
+      return;
+    }
+
+    const fetchStats = async () => {
+      try {
+        const result = await getReportingStatsAction(festivalId, session.id);
+        if (result.success) {
+          setReportingStats(result.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch reporting stats:", error);
+      }
+    };
+
+    fetchStats();
+    const interval = setInterval(fetchStats, 30000); // Update every 30 seconds
+    return () => clearInterval(interval);
+  }, [session?.id, sessionStatus, festivalId, lastRefreshAt]);
   const canEdit = Boolean(
     session && !session.isLocked && isInProgress && !isTimedOut,
   );
@@ -519,8 +571,15 @@ export function ProgrammeReportingClient({
     setActiveAction("reset");
     startTransition(async () => {
       const res = await resetProgrammeReportingAction(festivalId, session.id);
-      if (res.success) toast.success("Reporting closed");
-      else toast.error("Failed to reset reporting");
+      if (res.success) {
+        const message =
+          res.data && typeof res.data === "object" && "message" in res.data
+            ? (res.data as { message: string }).message
+            : "Reporting reset successfully";
+        toast.success(message);
+      } else {
+        toast.error("Failed to reset reporting");
+      }
       setActiveAction(null);
     });
   };
@@ -542,6 +601,36 @@ export function ProgrammeReportingClient({
       }
       setActiveAction(null);
     });
+  };
+
+  const handleSpinWheelConfirm = async (
+    assignments: Array<{ teamNumber: number; code: string }>,
+  ) => {
+    if (!session?.id) return;
+
+    try {
+      toast.info("Assigning code letters...");
+      const result = await assignCodeLettersWithSpinAction(
+        festivalId,
+        session.id,
+        assignments,
+      );
+
+      if (result.success) {
+        toast.success(
+          `Successfully assigned ${assignments.length} code letters!`,
+        );
+        setSpinWheelOpen(false);
+        router.refresh();
+      } else {
+        toast.error("Failed to assign code letters");
+      }
+    } catch (error) {
+      console.error("Failed to assign codes:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to assign codes",
+      );
+    }
   };
 
   return (
@@ -674,7 +763,12 @@ export function ProgrammeReportingClient({
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base">Live Reporting</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2 justify-between">
+              <h3>Live Reporting</h3>
+              <p className="truncate text-sm font-semibold">
+                {selected?.programme?.name ?? "Programme"}
+              </p>
+            </CardTitle>
           </CardHeader>
           <CardContent className="max-h-[68vh] space-y-3 overflow-y-auto pr-1">
             {isInitialLoading ? (
@@ -690,13 +784,32 @@ export function ProgrammeReportingClient({
             ) : (
               <>
                 <div className="rounded-md border border-border/60 bg-muted/10 px-3 py-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">
-                        {selected.programme?.name ?? "Programme"}
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    {groupAssignmentMatrix.length > 0 ? (
+                      <div className="w-full lg:w-1/2 grid grid-cols-2 gap-3">
+                        <div className="rounded-md border flex items-center gap-2 bg-muted/10 justify-between px-2.5 py-1 text-center">
+                          <p className="text-[11px] text-muted-foreground">
+                            Assigned
+                          </p>
+                          <p className="text-sm font-semibold tabular-nums">
+                            {matrixTotals.assigned}
+                          </p>
+                        </div>
+                        <div className="rounded-md border bg-emerald-500/10 px-2.5 py-1 justify-between flex items-center gap-2 text-center">
+                          <p className="text-[11px] text-muted-foreground">
+                            Marked
+                          </p>
+                          <p className="text-sm font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
+                            {matrixTotals.reported}
+                          </p>
+                        </div>
+                      </div>
+                    ) : selected.programme ? (
+                      <p className="text-sm text-amber-700 dark:text-amber-300 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+                        Assignments have not been completed.
                       </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
+                    ) : null}
+                    <div className="flex lg:flex-wrap justify-between items-center gap-2">
                       {isInProgress ? (
                         <Badge className="gap-1 border-emerald-600/40 bg-emerald-600/15 text-emerald-800 dark:text-emerald-100">
                           <span className="relative inline-flex h-2 w-2">
@@ -714,46 +827,40 @@ export function ProgrammeReportingClient({
                       ) : (
                         <Badge variant="outline">Not started</Badge>
                       )}
-                      {isInProgress && session?.windowEndsAt ? (
-                        <ReportingEndsInCountdown
-                          endsAt={session.windowEndsAt}
-                        />
-                      ) : null}
+                      {/* Estimated time display - informational only, no hard limit */}
+                      {isInProgress && reportingStats && (
+                        <div className="flex items-center gap-3 text-xs">
+                          <div className="flex items-center gap-1.5 text-muted-foreground">
+                            <Clock className="h-3.5 w-3.5" />
+                            <span>
+                              Started {reportingStats.elapsedMinutes}m ago
+                            </span>
+                          </div>
+                          {reportingStats.estimatedRemainingMinutes && (
+                            <div className="flex items-center gap-1.5 text-primary">
+                              <BarChart3 className="h-3.5 w-3.5" />
+                              <span>
+                                Est. ~{reportingStats.estimatedRemainingMinutes}
+                                m
+                                {reportingStats.estimatedEnd && (
+                                  <span className="text-muted-foreground">
+                                    {" "}
+                                    (
+                                    {reportingStats.estimatedEnd.toLocaleTimeString(
+                                      [],
+                                      { hour: "2-digit", minute: "2-digit" },
+                                    )}
+                                    )
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
-
-                {groupAssignmentMatrix.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="rounded-md border bg-muted/10 px-2.5 py-2 text-center">
-                      <p className="text-[11px] text-muted-foreground">
-                        Assigned
-                      </p>
-                      <p className="text-sm font-semibold tabular-nums">
-                        {matrixTotals.assigned}
-                      </p>
-                    </div>
-                    <div className="rounded-md border bg-emerald-500/10 px-2.5 py-2 text-center">
-                      <p className="text-[11px] text-muted-foreground">
-                        Marked
-                      </p>
-                      <p className="text-sm font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
-                        {matrixTotals.reported}
-                      </p>
-                    </div>
-                    <div className="rounded-md border bg-amber-500/10 px-2.5 py-2 text-center">
-                      <p className="text-[11px] text-muted-foreground">Left</p>
-                      <p className="text-sm font-semibold tabular-nums text-amber-800 dark:text-amber-200">
-                        {matrixTotals.assigned - matrixTotals.reported}
-                      </p>
-                    </div>
-                  </div>
-                ) : selected.programme ? (
-                  <p className="text-sm text-amber-700 dark:text-amber-300 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
-                    Assignments have not been completed for this programme yet.
-                    Please complete assignments first in Pre-Works.
-                  </p>
-                ) : null}
 
                 {/* QR Code Scanner Panel - Only show when session is IN_PROGRESS */}
                 {isInProgress && selected && session?.id && (
@@ -774,9 +881,9 @@ export function ProgrammeReportingClient({
                   </div>
                 )}
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 w-fit">
                   {isPreStart ? (
-                    <div className="w-full flex justify-center">
+                    <div className="w-full flex justify-center pt-5">
                       <Button
                         onClick={onStart}
                         disabled={
@@ -823,6 +930,24 @@ export function ProgrammeReportingClient({
                           "Stop / Reset"
                         )}
                       </Button>
+                      {/* Assign Codes button for GROUP programmes */}
+                      {selected.programme?.type === "GROUP" &&
+                        reportingStats &&
+                        reportingStats.reported > 0 &&
+                        session && (
+                          <Button
+                            variant="default"
+                            onClick={() => setSpinWheelOpen(true)}
+                            disabled={
+                              isPending ||
+                              activeAction != null ||
+                              session.isLocked
+                            }
+                            className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"
+                          >
+                            🎰 Assign Codes ({reportingStats.reported} teams)
+                          </Button>
+                        )}
                       <Button
                         variant="secondary"
                         onClick={onClose}
@@ -857,6 +982,12 @@ export function ProgrammeReportingClient({
                     <p className="text-xs text-muted-foreground self-center">
                       Reporting time ended. Reported participants are saved. Use
                       Restart to continue reporting.
+                    </p>
+                  ) : null}
+                  {isReset ? (
+                    <p className="text-xs text-muted-foreground self-center">
+                      Programme has been reset. All reporting data cleared. Use
+                      Restart to start fresh reporting.
                     </p>
                   ) : null}
                 </div>
@@ -970,6 +1101,28 @@ export function ProgrammeReportingClient({
         items={reportingHistoryItems}
         maxHeightClass="max-h-[30vh]"
       />
+
+      {/* Code Letter Spin Wheel Modal - Only for GROUP programmes */}
+      {session && selected.programme?.type === "GROUP" && reportingStats && (
+        <CodeLetterSpinWheel
+          open={spinWheelOpen}
+          onOpenChange={setSpinWheelOpen}
+          teams={
+            // Create team list based on reported count
+            // Each "team" represents one unit that needs a code
+            Array.from({ length: reportingStats.reported }, (_, i) => ({
+              teamNumber: i + 1,
+              members: Math.round(
+                (reportingStats.total > 0
+                  ? (session.reportedParticipants?.length || 0) /
+                    reportingStats.total
+                  : 1) * 10
+              ) / 10, // Approximate members per team
+            }))
+          }
+          onConfirm={handleSpinWheelConfirm}
+        />
+      )}
     </div>
   );
 }

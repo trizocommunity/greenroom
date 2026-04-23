@@ -61,42 +61,74 @@ export function RegisterForm() {
   return (
     <div className="grid gap-6">
       <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="grid gap-4">
+        <div className="grid gap-5">
           <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className="text-sm font-medium">
+              Email
+            </Label>
             <Input
               id="email"
-              placeholder="name@example.com"
+              placeholder="Enter email address"
               type="email"
               autoCapitalize="none"
               autoComplete="email"
               autoCorrect="off"
               disabled={isPending}
+              className="h-11 rounded-lg px-4 bg-background border-input focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary transition-all"
               {...register("email")}
             />
             {errors.email && (
-              <p className="text-sm text-red-500">{errors.email.message}</p>
+              <p className="text-xs text-destructive mt-1">
+                {errors.email.message}
+              </p>
             )}
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password" className="text-sm font-medium">
+              Password
+            </Label>
             <Input
               id="password"
+              placeholder="Enter password"
               type="password"
               autoComplete="new-password"
               disabled={isPending}
+              className="h-11 rounded-lg px-4 bg-background border-input focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary transition-all"
               {...register("password")}
             />
             {errors.password && (
-              <p className="text-sm text-red-500">{errors.password.message}</p>
+              <p className="text-xs text-destructive mt-1">
+                {errors.password.message}
+              </p>
             )}
           </div>
-          <Button disabled={isPending}>
+          <Button
+            disabled={isPending}
+            className="h-11 rounded-lg font-semibold mt-2 text-base bg-primary hover:bg-primary/90 transition-colors"
+          >
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create Account
           </Button>
         </div>
       </form>
+
+      <p className="text-xs text-center text-muted-foreground px-4">
+        By continuing, you agree to Greenroom's{" "}
+        <a
+          href="/terms"
+          className="underline underline-offset-2 hover:text-primary transition-colors"
+        >
+          Terms of Service
+        </a>{" "}
+        and{" "}
+        <a
+          href="/privacy"
+          className="underline underline-offset-2 hover:text-primary transition-colors"
+        >
+          Privacy Policy
+        </a>
+        .
+      </p>
     </div>
   );
 }

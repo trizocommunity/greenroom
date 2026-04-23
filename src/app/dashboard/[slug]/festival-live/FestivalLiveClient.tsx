@@ -552,6 +552,7 @@ export function FestivalLiveClient({
                     placeholder="Pick start date"
                     from={planStartDate ?? undefined}
                     to={planExpiryDate ?? undefined}
+                    showValidityHint
                   />
                 </div>
                 <div className="space-y-2">
@@ -575,6 +576,7 @@ export function FestivalLiveClient({
                     placeholder="Pick end date"
                     from={planStartDate ?? undefined}
                     to={planExpiryDate ?? undefined}
+                    showValidityHint
                   />
                 </div>
               </div>

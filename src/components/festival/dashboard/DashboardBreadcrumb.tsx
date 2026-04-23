@@ -57,7 +57,7 @@ export function DashboardBreadcrumb({
   const isRoot = segments.length === 0;
 
   return (
-    <Breadcrumb>
+    <Breadcrumb className="hidden lg:block">
       <BreadcrumbList>
         {/* Root Item: Overview (Only shown if at root) */}
         {isRoot && (

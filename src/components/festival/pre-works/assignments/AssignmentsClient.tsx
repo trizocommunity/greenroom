@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { Eye, Loader2, Plus, Search, Trash2, Users, X } from "lucide-react";
+import { Loader2, Plus, Search, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -24,12 +25,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { useAssignments } from "@/hooks/useAssignments";
 import { useCategories } from "@/hooks/useCategories";
 import { useDeadlineLock } from "@/hooks/useDeadlineLock";
 import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 import { useGroups } from "@/hooks/useGroups";
+import { useStudents } from "@/hooks/useStudents";
 import { AssignmentModal } from "./AssignmentModal";
+import { useProgrammes } from "@/hooks/useProgrammes";
 
 type IndividualAssignmentRow = {
   kind: "individual";
@@ -50,35 +54,48 @@ type GroupTeamRow = {
 
 type AssignmentTableRow = IndividualAssignmentRow | GroupTeamRow;
 
+type GroupBreakdown = {
+  id: string;
+  name: string;
+  current: number;
+  target: number;
+  percent: number;
+};
+
 type ProgrammeCardRow = {
   programmeId: string;
   programmeName: string;
   programmeType: "INDIVIDUAL" | "GROUP";
   categoryName: string | null;
+  categoryId: string | null;
   attendeesCount: number;
   teamCount: number;
   assignedAt: string | null;
   latestAssignedAtDate: Date | null;
+  progress: number;
+  progressLabel: string;
+  groupBreakdown: GroupBreakdown[];
   rows: AssignmentTableRow[];
 };
 
 function ProgrammeCard({
   programmeName,
-  programmeType,
   categoryName,
-  attendeesCount,
-  teamCount,
   assignedAt,
+  progress,
+  progressLabel,
+  groupBreakdown,
   onViewDetails,
 }: {
   programmeName: string;
-  programmeType: "INDIVIDUAL" | "GROUP";
   categoryName: string | null;
-  attendeesCount: number;
-  teamCount: number;
   assignedAt: string | null;
+  progress: number;
+  progressLabel: string;
+  groupBreakdown: GroupBreakdown[];
   onViewDetails: () => void;
 }) {
+  const isComplete = progress === 100;
   return (
     <button
       type="button"
@@ -100,33 +117,62 @@ function ProgrammeCard({
             </span>
           )}
         </div>
-        <Badge
-          variant={programmeType === "GROUP" ? "secondary" : "outline"}
-          className="text-[10px] shrink-0"
-        >
-          {programmeType}
-        </Badge>
       </div>
-      <div className="p-3">
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="rounded-md border bg-muted/20 px-2.5 py-2">
-            <p className="text-muted-foreground">Attendees</p>
-            <p className="font-semibold text-foreground mt-0.5">
-              {attendeesCount}
-            </p>
+      <div className="p-3 space-y-3">
+        {/* Progress Bar */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-[10px] uppercase tracking-wider font-semibold">
+            <span className="text-muted-foreground">Assignment Progress</span>
+            <span
+              className={
+                isComplete
+                  ? "text-green-600 dark:text-green-500"
+                  : "text-primary"
+              }
+            >
+              {progressLabel} ({progress}%)
+            </span>
           </div>
-          <div className="rounded-md border bg-muted/20 px-2.5 py-2">
-            <p className="text-muted-foreground">
-              {programmeType === "GROUP" ? "Teams" : "Type"}
-            </p>
-            <p className="font-semibold text-foreground mt-0.5">
-              {programmeType === "GROUP" ? teamCount : "Individual"}
-            </p>
-          </div>
+          <Progress value={progress} className="h-1.5" />
         </div>
-        <div className="flex items-center justify-between gap-2 text-xs mt-3 px-0.5">
+
+        {/* Group-wise Breakdown on Card */}
+        {groupBreakdown.length > 0 && (
+          <div className="space-y-1.5">
+            <span className="text-[9px] font-bold uppercase text-muted-foreground/70 block">
+              Group Progress
+            </span>
+            <div className="grid grid-cols-2 border rounded-lg p-2 gap-4">
+              {groupBreakdown.map((g) => (
+                <div key={g.id} className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between gap-2 text-[9.5px]">
+                    <span className="font-medium truncate text-muted-foreground">
+                      {g.name}
+                    </span>
+                    <span className="tabular-nums font-semibold">
+                      {g.current}/{g.target}
+                    </span>
+                  </div>
+                  <Progress
+                    value={g.percent}
+                    className="h-1 bg-muted/30"
+                    indicatorClassName={
+                      g.percent === 100
+                        ? "bg-green-500/80"
+                        : g.percent > 0
+                          ? "bg-primary/80"
+                          : ""
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between gap-2 text-xs px-0.5">
           <span className="text-muted-foreground">Last assigned</span>
-          <span className="font-medium text-foreground">
+          <span className="font-medium text-foreground italic">
             {assignedAt ?? "—"}
           </span>
         </div>
@@ -148,14 +194,18 @@ export function AssignmentsClient({
 }: AssignmentsClientProps) {
   const {
     assignments,
-    isLoading,
+    isLoading: isAssignmentsLoading,
     deleteAssignment,
     deleteTeamAssignment,
     isDeleting,
     isDeletingTeam,
   } = useAssignments(festivalId);
+  const { programmes } = useProgrammes(festivalId);
   const { categories } = useCategories(festivalId);
   const { groups } = useGroups(festivalId);
+  const { students, isLoading: isStudentsLoading } = useStudents(festivalId);
+
+  const isLoading = isAssignmentsLoading || isStudentsLoading;
 
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<
@@ -189,7 +239,6 @@ export function AssignmentsClient({
     toast.error("Deadline passed. Assignments are closed.");
   }, [justLocked]);
 
-  // Filter raw assignments (same as before)
   const filteredAssignments = useMemo(() => {
     return assignments.filter((a: any) => {
       if (filterGroup !== "ALL") {
@@ -289,12 +338,25 @@ export function AssignmentsClient({
   }, [filteredAssignments]);
 
   const programmeCards = useMemo<ProgrammeCardRow[]>(() => {
-    const map = new Map<string, ProgrammeCardRow>();
+    const map = new Map<
+      string,
+      Omit<ProgrammeCardRow, "progress" | "progressLabel"> & {
+        progress: number;
+        progressLabel: string;
+      }
+    >();
+
     for (const row of tableRows) {
       const programme =
         row.kind === "individual" ? row.assignment.programme : row.programme;
       if (!programme?.id) continue;
+
       if (!map.has(programme.id)) {
+        const catId =
+          (row.kind === "individual"
+            ? row.assignment.programme?.categoryId
+            : row.programme?.categoryId) ?? null;
+
         map.set(programme.id, {
           programmeId: programme.id,
           programmeName: programme.name ?? "—",
@@ -304,15 +366,21 @@ export function AssignmentsClient({
               ? row.assignment.category?.name ||
                 row.assignment.programme?.category?.name
               : row.category?.name || row.programme?.category?.name) ?? null,
+          categoryId: catId,
           attendeesCount: 0,
           teamCount: 0,
           assignedAt: null,
           latestAssignedAtDate: null,
+          progress: 0,
+          progressLabel: "",
+          groupBreakdown: [],
           rows: [],
         });
       }
+
       const card = map.get(programme.id)!;
       card.rows.push(row);
+
       if (row.kind === "individual") {
         card.attendeesCount += 1;
         const dt = row.assignment.assignedAt
@@ -337,12 +405,113 @@ export function AssignmentsClient({
       }
     }
 
-    const cards = Array.from(map.values());
-    for (const c of cards) {
+    // Compute progress per card
+    const cards = Array.from(map.values()).map((c) => {
       c.assignedAt = c.latestAssignedAtDate
         ? format(c.latestAssignedAtDate, "PP")
         : null;
-    }
+
+      // Find the source programme object to get maxParticipantsPerGroup/maxTeamsPerGroup
+      const progInfo = programmes.find((p) => p.id === c.programmeId);
+      const catInfo = categories.find((cat: any) => cat.id === c.categoryId);
+      const isGeneral = catInfo?.type === "GENERAL";
+
+      // Eligible student pool for this programme's category
+      const eligibleStudents =
+        isGeneral || !c.categoryId
+          ? students
+          : students.filter((s: any) => s.categoryId === c.categoryId);
+
+      // Group students by groupId to calculated group-wise capacity
+      const studentCountByGroup = new Map<string, number>();
+      for (const s of eligibleStudents) {
+        studentCountByGroup.set(
+          s.groupId,
+          (studentCountByGroup.get(s.groupId) || 0) + 1,
+        );
+      }
+
+      let totalTarget = 0;
+      let currentProgress = 0;
+      let label = "";
+
+      if (c.programmeType === "GROUP") {
+        const maxTeams = progInfo?.maxTeamsPerGroup || 1;
+        const maxStudentsPerTeam = progInfo?.maxStudentsPerTeam || 1;
+
+        // A group can form a team if they have at least 1 student (ignoring strict size for now as per usual festival flow)
+        // Or should we be strict? Usually, if they have any students, they are expected to form teams up to max.
+        // Let's count groups that have at least one eligible student.
+        const eligibleGroupsCount = studentCountByGroup.size;
+        totalTarget = eligibleGroupsCount * maxTeams;
+        currentProgress = c.teamCount;
+        label = `${currentProgress}/${totalTarget} Team${totalTarget !== 1 ? "s" : ""}`;
+      } else {
+        const maxPerGroup = progInfo?.maxParticipantsPerGroup || 1;
+
+        // Total target is the sum of min(maxPerGroup, studentsInGroup) for all groups
+        studentCountByGroup.forEach((count) => {
+          totalTarget += Math.min(maxPerGroup, count);
+        });
+
+        currentProgress = c.attendeesCount;
+        label = `${currentProgress}/${totalTarget} Student${totalTarget !== 1 ? "s" : ""}`;
+      }
+
+      c.progress =
+        totalTarget > 0
+          ? Math.min(100, Math.round((currentProgress / totalTarget) * 100))
+          : 0;
+      c.progressLabel = label;
+
+      // Calculate Group-wise Breakdown for the card
+      const limit =
+        c.programmeType === "GROUP"
+          ? progInfo?.maxTeamsPerGroup || 1
+          : progInfo?.maxParticipantsPerGroup || 1;
+
+      const breakdown: GroupBreakdown[] = Array.from(studentCountByGroup.keys())
+        .map((gId) => {
+          const group = groups.find((g: any) => g.id === gId);
+          if (!group) return null;
+
+          let current = 0;
+          if (c.programmeType === "GROUP") {
+            current = c.rows.filter(
+              (r): r is GroupTeamRow => r.kind === "team" && r.groupId === gId,
+            ).length;
+          } else {
+            current = c.rows.filter(
+              (r): r is IndividualAssignmentRow =>
+                r.kind === "individual" &&
+                (r.assignment.groupId === gId ||
+                  r.assignment.student?.groupId === gId),
+            ).length;
+          }
+
+          const groupTotal = studentCountByGroup.get(gId) || 0;
+          const target =
+            c.programmeType === "GROUP" ? limit : Math.min(limit, groupTotal);
+
+          return {
+            id: gId,
+            name: group.name,
+            current,
+            target,
+            percent:
+              target > 0
+                ? Math.min(100, Math.round((current / target) * 100))
+                : 0,
+          };
+        })
+        .filter((b): b is GroupBreakdown => b !== null)
+        .sort((a, b) => b.percent - a.percent);
+
+      c.groupBreakdown = breakdown;
+
+      return c;
+    });
+
     cards.sort((a, b) => {
       const at = a.latestAssignedAtDate?.getTime() ?? 0;
       const bt = b.latestAssignedAtDate?.getTime() ?? 0;
@@ -351,8 +520,9 @@ export function AssignmentsClient({
         sensitivity: "base",
       });
     });
+
     return cards;
-  }, [tableRows]);
+  }, [tableRows, students, programmes, categories, groups]);
 
   const hasFilters =
     filterGroup !== "ALL" ||
@@ -384,7 +554,7 @@ export function AssignmentsClient({
         isReadOnly={isReadOnlyMode}
       />
 
-      {/* Header row: children left, Create right — icon only on mobile */}
+      {/* Header row */}
       <div className="flex flex-row items-center justify-between gap-4">
         {children ?? (
           <div>
@@ -505,7 +675,7 @@ export function AssignmentsClient({
         </CardHeader>
       </Card>
 
-      {/* Programme Cards - Outside Card for better visibility */}
+      {/* Programme Cards */}
       {programmeCards.length === 0 ? (
         <Card className="rounded-xl border border-dashed bg-muted/20">
           <CardContent className="py-16 text-center">
@@ -524,11 +694,11 @@ export function AssignmentsClient({
             <ProgrammeCard
               key={card.programmeId}
               programmeName={card.programmeName}
-              programmeType={card.programmeType}
               categoryName={card.categoryName}
-              attendeesCount={card.attendeesCount}
-              teamCount={card.teamCount}
               assignedAt={card.assignedAt}
+              progress={card.progress}
+              progressLabel={card.progressLabel}
+              groupBreakdown={card.groupBreakdown}
               onViewDetails={() => {
                 setDetailsSearch("");
                 setSelectedProgrammeCard(card);
@@ -538,7 +708,7 @@ export function AssignmentsClient({
         </div>
       )}
 
-      {/* Controlled delete dialogs */}
+      {/* Delete Dialogs */}
       <DeleteDialog
         open={deleteTarget?.kind === "individual"}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
@@ -578,6 +748,7 @@ export function AssignmentsClient({
         isDeleting={isDeletingTeam}
       />
 
+      {/* Programme Details Dialog */}
       <Dialog
         open={Boolean(selectedProgrammeCard)}
         onOpenChange={(open) => {
@@ -613,6 +784,135 @@ export function AssignmentsClient({
                 ) : null}
               </div>
 
+              {/* Progress in detail view */}
+              <div className="rounded-lg border bg-muted/10 p-3 space-y-3">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider">
+                    <span className="text-muted-foreground">
+                      Total Assignment Progress
+                    </span>
+                    <span
+                      className={
+                        selectedProgrammeCard.progress === 100
+                          ? "text-green-600 dark:text-green-500"
+                          : "text-primary"
+                      }
+                    >
+                      {selectedProgrammeCard.progressLabel} (
+                      {selectedProgrammeCard.progress}%)
+                    </span>
+                  </div>
+                  <Progress
+                    value={selectedProgrammeCard.progress}
+                    className="h-2"
+                  />
+                </div>
+
+                <Separator className="opacity-50" />
+
+                <div className="space-y-2">
+                  <span className="text-[10px] font-bold uppercase text-muted-foreground block">
+                    Group-wise Breakdown
+                  </span>
+                  <div className="grid gap-2 sm:grid-cols-2 max-h-40 overflow-y-auto pr-1">
+                    {(() => {
+                      const progInfo = programmes.find(
+                        (p) => p.id === selectedProgrammeCard.programmeId,
+                      );
+                      const catInfo = categories.find(
+                        (cat: any) =>
+                          cat.id === selectedProgrammeCard.categoryId,
+                      );
+                      const isGeneral = catInfo?.type === "GENERAL";
+
+                      const eligibleStudents =
+                        isGeneral || !selectedProgrammeCard.categoryId
+                          ? students
+                          : students.filter(
+                              (s: any) =>
+                                s.categoryId ===
+                                selectedProgrammeCard.categoryId,
+                            );
+
+                      // Groups that have at least one eligible student
+                      const eligibleGroupIds = Array.from(
+                        new Set(eligibleStudents.map((s: any) => s.groupId)),
+                      );
+
+                      const limit =
+                        selectedProgrammeCard.programmeType === "GROUP"
+                          ? progInfo?.maxTeamsPerGroup || 1
+                          : progInfo?.maxParticipantsPerGroup || 1;
+
+                      return eligibleGroupIds
+                        .map((gId) => {
+                          const group = groups.find((g: any) => g.id === gId);
+                          if (!group) return null;
+
+                          // Current count for THIS group
+                          let current = 0;
+                          if (selectedProgrammeCard.programmeType === "GROUP") {
+                            current = selectedProgrammeCard.rows.filter(
+                              (r): r is GroupTeamRow =>
+                                r.kind === "team" && r.groupId === gId,
+                            ).length;
+                          } else {
+                            current = selectedProgrammeCard.rows.filter(
+                              (r): r is IndividualAssignmentRow =>
+                                r.kind === "individual" &&
+                                (r.assignment.groupId === gId ||
+                                  r.assignment.student?.groupId === gId),
+                            ).length;
+                          }
+
+                          // Target for THIS specific group
+                          const groupStudentCount = eligibleStudents.filter(
+                            (s: any) => s.groupId === gId,
+                          ).length;
+                          const target =
+                            selectedProgrammeCard.programmeType === "GROUP"
+                              ? limit
+                              : Math.min(limit, groupStudentCount);
+
+                          const percent =
+                            target > 0
+                              ? Math.min(
+                                  100,
+                                  Math.round((current / target) * 100),
+                                )
+                              : 0;
+
+                          return {
+                            id: gId,
+                            name: group.name,
+                            current,
+                            target,
+                            percent,
+                          };
+                        })
+                        .filter(Boolean)
+                        .sort((a, b) => (b?.percent ?? 0) - (a?.percent ?? 0))
+                        .map((g: any) => (
+                          <div
+                            key={g.id}
+                            className="bg-card border rounded p-2 flex flex-col gap-1.5"
+                          >
+                            <div className="flex items-center justify-between gap-2 overflow-hidden">
+                              <span className="text-[11px] font-medium truncate">
+                                {g.name}
+                              </span>
+                              <span className="text-[10px] tabular-nums text-muted-foreground whitespace-nowrap">
+                                {g.current}/{g.target}
+                              </span>
+                            </div>
+                            <Progress value={g.percent} className="h-1" />
+                          </div>
+                        ));
+                    })()}
+                  </div>
+                </div>
+              </div>
+
               <Input
                 inputSize="s"
                 placeholder="Search attendees by name, chest number or group..."
@@ -645,8 +945,18 @@ export function AssignmentsClient({
                         className="rounded-md border p-2 text-sm flex items-center justify-between gap-3"
                       >
                         <div className="min-w-0">
-                          <div className="font-medium truncate">
-                            {r.assignment.student?.name ?? "—"}
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium truncate">
+                              {r.assignment.student?.name ?? "—"}
+                            </span>
+                            {r.assignment.student?.isTeamLeader && (
+                              <Badge
+                                variant="secondary"
+                                className="h-4 px-1 text-[9px] uppercase font-bold bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
+                              >
+                                Team Leader
+                              </Badge>
+                            )}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             #{r.assignment.student?.chestNumber ?? "—"} ·{" "}
@@ -657,13 +967,18 @@ export function AssignmentsClient({
                             {r.assignment.assignedAt
                               ? format(new Date(r.assignment.assignedAt), "PPp")
                               : "—"}
+                            {r.assignment.createdByName && (
+                              <span className="ml-1 text-[10px] opacity-70 italic">
+                                (by {r.assignment.createdByName})
+                              </span>
+                            )}
                           </div>
                         </div>
                         {!isReadOnlyMode ? (
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-destructive hover:text-destructive"
+                            className="text-destructive hover:text-destructive h-8"
                             onClick={() =>
                               setDeleteTarget({
                                 kind: "individual",
@@ -672,7 +987,7 @@ export function AssignmentsClient({
                             }
                           >
                             <Trash2 className="h-3.5 w-3.5 mr-1" />
-                            Remove attendee
+                            Remove
                           </Button>
                         ) : null}
                       </div>
@@ -708,7 +1023,7 @@ export function AssignmentsClient({
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="text-destructive hover:text-destructive"
+                              className="text-destructive hover:text-destructive h-8"
                               onClick={() =>
                                 setDeleteTarget({ kind: "team", row })
                               }
@@ -718,17 +1033,37 @@ export function AssignmentsClient({
                             </Button>
                           ) : null}
                         </div>
-                        <div className="text-xs text-muted-foreground mb-2">
-                          Attendees: {row.assignments.length} · Assigned at:{" "}
-                          {row.assignedAt ?? "—"}
+                        <div className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5 flex-wrap">
+                          <span>
+                            Attendees: {row.assignments.length} · Assigned at:{" "}
+                            {row.assignedAt ?? "—"}
+                          </span>
+                          {row.assignments[0]?.createdByName && (
+                            <span className="opacity-70 italic text-[10px]">
+                              (by {row.assignments[0].createdByName})
+                            </span>
+                          )}
                         </div>
                         <div className="space-y-1">
                           {row.assignments.map((a: any) => (
-                            <div key={a.id} className="text-xs">
-                              {a.student?.name ?? "—"}{" "}
-                              <span className="text-muted-foreground">
-                                (#{a.student?.chestNumber ?? "—"})
+                            <div
+                              key={a.id}
+                              className="text-xs flex items-center gap-1.5"
+                            >
+                              <span>
+                                {a.student?.name ?? "—"}{" "}
+                                <span className="text-muted-foreground">
+                                  (#{a.student?.chestNumber ?? "—"})
+                                </span>
                               </span>
+                              {a.student?.isTeamLeader && (
+                                <Badge
+                                  variant="secondary"
+                                  className="h-3.5 px-1 text-[8px] uppercase font-bold bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
+                                >
+                                  Leader
+                                </Badge>
+                              )}
                             </div>
                           ))}
                         </div>

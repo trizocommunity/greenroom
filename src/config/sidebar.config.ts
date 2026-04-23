@@ -65,11 +65,6 @@ export const SUPER_ADMIN_SIDEBAR_ITEMS = [
     icon: Shield,
   },
   {
-    title: "Support",
-    url: "/super-admin/support",
-    icon: LifeBuoy,
-  },
-  {
     title: "Plan Features",
     url: "/super-admin/plan-features",
     icon: Layers,
@@ -134,12 +129,14 @@ export const getFestivalDashboardSidebarConfig = (
           href: `${basePath}/settings`,
           icon: Settings,
           allowedRoles: ["ADMIN", "OWNER"],
+          disabled: plan.isBasic,
         },
         {
           title: "Members",
           href: `${basePath}/members`,
           icon: Users,
           allowedRoles: ["ADMIN", "OWNER"],
+          disabled: plan.isBasic,
         },
         {
           title: plan.isBasic ? "Festival" : "Festival Live",
@@ -264,11 +261,6 @@ export const getFestivalDashboardSidebarConfig = (
           title: "Documentation",
           href: `${basePath}/support/docs`,
           icon: BookOpen,
-        },
-        {
-          title: "My Tickets",
-          href: `${basePath}/support/tickets`,
-          icon: LifeBuoy,
         },
       ],
     },

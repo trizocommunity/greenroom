@@ -1,20 +1,13 @@
 "use client";
 
-import {
-  AlertCircle,
-  Camera,
-  CheckCircle,
-  FileImage,
-  Loader2,
-  Upload,
-  X,
-} from "lucide-react";
+import { AlertCircle, Camera, CheckCircle, Loader2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { scanAndReportStudentAction } from "@/server/actions/programme-reporting.actions";
+import jsQR from "jsqr";
 
 interface QrScannerProps {
   festivalId: string;
@@ -54,12 +47,12 @@ export function QrScanner({
   const [status, setStatus] = useState<ScanStatus>("idle");
   const [lastResult, setLastResult] = useState<ScanResult | null>(null);
   const [manualInput, setManualInput] = useState("");
-  const [uploadMode, setUploadMode] = useState<"camera" | "file">("file"); // Default to file upload
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanningRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const animationFrameRef = useRef<number>(null);
 
   // Start camera
   const startCamera = async () => {
@@ -76,21 +69,83 @@ export function QrScanner({
         streamRef.current = stream;
         scanningRef.current = true;
 
-        // Start scanning loop
-        requestAnimationFrame(scanFrame);
+        // Wait for video to load, then start scanning
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play();
+          scanVideoFrame();
+        };
       }
     } catch (error) {
       console.error("Camera access failed:", error);
-      toast.error("Camera access denied. Please use manual entry.");
+      toast.error(
+        "Camera access denied. Please use file upload or manual entry.",
+      );
       setStatus("error");
+    }
+  };
+
+  // Scan video frame for QR code
+  const scanVideoFrame = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+    if (!ctx || video.readyState !== video.HAVE_ENOUGH_DATA) {
+      if (scanningRef.current) {
+        animationFrameRef.current = requestAnimationFrame(scanVideoFrame);
+      }
+      return;
+    }
+
+    // Set canvas size to match video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    // Draw current frame
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Get frame data
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    // Decode QR code
+    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+      inversionAttempts: "dontInvert",
+    });
+
+    if (code && code.data) {
+      console.log("QR Code detected:", code.data);
+      const chestNumber = code.data.trim().toUpperCase();
+
+      if (chestNumber) {
+        // Stop scanning
+        scanningRef.current = false;
+        stopCamera();
+
+        // Process the chest number
+        processChestNumber(chestNumber);
+        return;
+      }
+    }
+
+    // Continue scanning
+    if (scanningRef.current) {
+      animationFrameRef.current = requestAnimationFrame(scanVideoFrame);
     }
   };
 
   // Stop camera
   const stopCamera = () => {
     scanningRef.current = false;
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current.getTracks().forEach((track) => {
+        track.stop();
+      });
       streamRef.current = null;
     }
     if (videoRef.current) {
@@ -152,7 +207,7 @@ export function QrScanner({
 
         // Reset after 3 seconds for next scan
         setTimeout(() => {
-          setStatus("scanning");
+          setStatus("idle");
           setLastResult(null);
           setManualInput("");
         }, 3000);
@@ -189,21 +244,81 @@ export function QrScanner({
     setStatus("processing");
 
     try {
-      // In production, you would use a QR code decoding library here
-      // For now, we'll prompt user to enter chest number from the QR image
-      toast.info(
-        "QR decoding coming soon! Please enter the chest number manually.",
-        {
-          duration: 5000,
-        },
-      );
+      // Create image element from uploaded file
+      const img = new Image();
+      const imageUrl = URL.createObjectURL(file);
 
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      img.onload = async () => {
+        try {
+          // Create canvas to get image data
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
-      setStatus("idle");
+          if (!ctx) {
+            throw new Error("Could not get canvas context");
+          }
+
+          // Set canvas size to match image
+          canvas.width = img.width;
+          canvas.height = img.height;
+
+          // Draw image on canvas
+          ctx.drawImage(img, 0, 0);
+
+          // Get image data
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+          // Decode QR code
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: "dontInvert",
+          });
+
+          // Clean up
+          URL.revokeObjectURL(imageUrl);
+
+          if (code && code.data) {
+            console.log("QR Code detected:", code.data);
+
+            // Extract chest number from QR code data
+            const chestNumber = code.data.trim().toUpperCase();
+
+            if (chestNumber) {
+              toast.success(`QR code detected: ${chestNumber}`);
+
+              // Auto-process the chest number
+              await processChestNumber(chestNumber);
+            } else {
+              toast.error("QR code is empty");
+              setStatus("error");
+            }
+          } else {
+            toast.error(
+              "No QR code found in image. Please try again or enter manually.",
+            );
+            setStatus("error");
+          }
+
+          // Reset file input
+          if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+          }
+        } catch (error) {
+          console.error("QR decoding error:", error);
+          toast.error(
+            "Failed to decode QR code. Please enter chest number manually.",
+          );
+          setStatus("error");
+          URL.revokeObjectURL(imageUrl);
+        }
+      };
+
+      img.onerror = () => {
+        toast.error("Failed to load image");
+        setStatus("error");
+        URL.revokeObjectURL(imageUrl);
+      };
+
+      img.src = imageUrl;
     } catch (error) {
       console.error("File upload failed:", error);
       toast.error("Failed to process image");
@@ -221,15 +336,45 @@ export function QrScanner({
   return (
     <Card className="border-primary/20">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Camera className="h-5 w-5 text-primary" />
-          QR Code Scanner
+        <CardTitle className="flex flex-col lg:flex-row items-start gap-1 lg:items-center justify-between">
+          <div className="text-lg flex items-center gap-2">
+            <Camera className="h-5 w-5 text-primary" />
+            QR Code Scanner
+          </div>
+          <form
+            onSubmit={handleManualSubmit}
+            className="flex items-center gap-2"
+          >
+            {/* {uploadMode === "file" && ( */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              disabled={status === "processing"}
+              className="lg:w-1/2 w-full border rounded-lg text-sm file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+            />
+            {/* )} */}
+            {status !== "scanning" && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={startCamera}
+                disabled={status === "processing"}
+                className="lg:w-1/2"
+              >
+                <Camera className="h-4 w-4 mr-2" />
+                <span className="hidden lg:inline-block">Start Camera</span>
+              </Button>
+            )}
+          </form>
         </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Scan student QR codes or enter chest number manually
-        </p>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Hidden canvas for QR processing */}
+        <canvas ref={canvasRef} className="hidden" />
+
         {/* Camera View */}
         {status === "scanning" && (
           <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
@@ -354,98 +499,20 @@ export function QrScanner({
         )}
 
         {/* Manual Entry Form */}
-        <form onSubmit={handleManualSubmit} className="space-y-3">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={manualInput}
-              onChange={(e) => setManualInput(e.target.value.toUpperCase())}
-              placeholder="Enter chest number (e.g., 01CS)"
-              disabled={status === "processing"}
-              className="flex-1 px-3 py-2 border rounded-md text-sm uppercase tracking-wider font-mono"
-            />
-            <Button
-              type="submit"
-              disabled={status === "processing" || !manualInput.trim()}
-            >
-              {status === "processing" ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Report"
-              )}
-            </Button>
-          </div>
-
-          {/* Upload Mode Toggle */}
-          <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
-            <Button
-              type="button"
-              variant={uploadMode === "file" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setUploadMode("file")}
-              className="flex-1"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Upload QR Image
-            </Button>
-            <Button
-              type="button"
-              variant={uploadMode === "camera" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setUploadMode("camera")}
-              className="flex-1"
-            >
-              <Camera className="h-4 w-4 mr-2" />
-              Use Camera
-            </Button>
-          </div>
-
-          {/* File Upload Section */}
-          {uploadMode === "file" && (
-            <div className="space-y-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileUpload}
-                disabled={status === "processing"}
-                className="w-full px-3 py-2 border rounded-md text-sm file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-              />
-              <p className="text-xs text-muted-foreground">
-                Upload a photo of the student's QR code
-              </p>
-            </div>
-          )}
-
-          {/* Camera Section */}
-          {uploadMode === "camera" && status !== "scanning" && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={startCamera}
-              disabled={status === "processing"}
-              className="w-full"
-            >
-              <Camera className="h-4 w-4 mr-2" />
-              Start Camera
-            </Button>
-          )}
-
-          {status === "scanning" && (
-            <p className="text-xs text-muted-foreground text-center">
-              Camera active - use manual entry for now
-            </p>
-          )}
-        </form>
+        {status === "scanning" && (
+          <p className="text-xs text-muted-foreground text-center">
+            Point camera at QR code - auto-detecting...
+          </p>
+        )}
 
         {/* Instructions */}
         <div className="text-xs text-muted-foreground space-y-1 pt-2 border-t">
           <p className="font-medium">How it works:</p>
           <ol className="list-decimal list-inside space-y-1 ml-1">
             <li>Student shows their QR code (contains chest number)</li>
-            <li>Upload QR image, use camera, or enter chest number manually</li>
-            <li>System validates student assignment to this programme</li>
+            <li>Upload QR image, scan with camera, or enter manually</li>
+            <li>System auto-detects chest number from QR code</li>
+            <li>Validates student assignment to this programme</li>
             <li>If valid, marks student as present</li>
           </ol>
         </div>

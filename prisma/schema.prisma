@@ -25,10 +25,8 @@ model User {
   payments               Payment[]
   programmeNotifications ProgrammeNotification[]
   realtimeOutboxEvents   RealtimeOutbox[]
-  supportNotifications   SupportNotification[]
-  supportTickets         SupportTicket[]
   loginEvents            UserLoginEvent[]
-  purchaseSummary        UserPurchaseSummary?
+  purchaseSummary        UserPurchaseSummary[]
 
   @@map("user")
 }
@@ -134,7 +132,6 @@ model Festival {
   scheduleEntries             ScheduleEntry[]
   stages                      Stage[]
   students                    Student[]
-  supportTickets              SupportTicket[]
   teamLeaderSessions          TeamLeaderSession[]
 
   @@index([expiresAt])
@@ -450,55 +447,6 @@ model ScheduleEntry {
   @@map("schedule_entry")
 }
 
-model SupportTicket {
-  id         String           @id @default(uuid())
-  userId     String
-  subject    String
-  category   String           @default("General")
-  status     TicketStatus     @default(OPEN)
-  priority   TicketPriority   @default(MEDIUM)
-  festivalId String?
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
-  messages   SupportMessage[]
-  festival   Festival?        @relation(fields: [festivalId], references: [id])
-  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([status])
-  @@index([festivalId])
-  @@map("support_ticket")
-}
-
-model SupportMessage {
-  id            String        @id @default(uuid())
-  ticketId      String
-  senderType    String
-  senderId      String
-  message       String
-  attachmentUrl String?
-  isRead        Boolean       @default(false)
-  createdAt     DateTime      @default(now())
-  ticket        SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-
-  @@index([ticketId])
-  @@map("support_message")
-}
-
-model SupportNotification {
-  id          String   @id @default(uuid())
-  userId      String
-  type        String
-  referenceId String
-  isRead      Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([isRead])
-  @@map("support_notification")
-}
-
 model ProgrammeReportingSession {
   id                      String                         @id @default(uuid())
   festivalId              String
@@ -783,6 +731,7 @@ enum ProgrammeStatus {
   ENDED
   JUDGED
   PUBLISHED
+  RESET
 }
 
 enum ProgrammeType {
@@ -818,19 +767,6 @@ enum SessionType {
 enum ScheduleEntryType {
   PROGRAMME
   SESSION
-}
-
-enum TicketStatus {
-  OPEN
-  IN_PROGRESS
-  RESOLVED
-  CLOSED
-}
-
-enum TicketPriority {
-  LOW
-  MEDIUM
-  HIGH
 }
 
 enum ProgrammeReportingStatus {

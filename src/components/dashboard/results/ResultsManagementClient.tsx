@@ -1419,7 +1419,7 @@ export function ResultsManagementClient({
                               );
                             }}
                           >
-                            Add results
+                            Edit results
                           </Button>
                         </div>
                       </div>

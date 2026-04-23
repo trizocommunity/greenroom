@@ -5,12 +5,15 @@ export async function getUnusedPayment(
   userId: string,
   purpose?: PaymentPurpose,
 ) {
+  const now = new Date();
   return prisma.payment.findFirst({
     where: {
       userId,
       status: "PAID",
       used: false,
       purpose: purpose,
+      // Check if payment hasn't expired yet
+      validUntil: { gt: now },
     },
     orderBy: { createdAt: "asc" },
   });

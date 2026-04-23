@@ -17,10 +17,10 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { onboardingSchema } from "@/lib/validations/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { onboardingSchema } from "@/lib/validations/auth";
 import { completeOnboardingAction } from "@/server/actions/auth.actions";
 import { cn } from "@/lib/utils";
 
@@ -47,7 +47,7 @@ const variants = {
   }),
 };
 
-export function OnboardingForm() {
+export function OnboardingForm({ email }: { email: string }) {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<Step>("welcome");
   const [direction, setDirection] = useState(1);
@@ -167,7 +167,11 @@ export function OnboardingForm() {
                     takes a moment.
                   </p>
                 </div>
-                <div className="max-w-2xl">
+                <div className=" text-sm text-muted-foreground">
+                  You are signing up as: <br />
+                  <span className="text-foreground font-medium">{email}</span>
+                </div>
+                <div className="max-w-2xl -mt-3">
                   <Button
                     size="lg"
                     onClick={handleNext}
