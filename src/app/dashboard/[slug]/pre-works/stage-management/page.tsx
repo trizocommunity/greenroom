@@ -1,8 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { StagesClient } from "@/components/festival/event-works/stage-management/StagesClient";
-import { getStages } from "@/server/actions/stage.actions";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import { getStages } from "@/features/stages/actions/stage.actions";
 
 interface PageProps {
   params: Promise<{ slug: string }>;

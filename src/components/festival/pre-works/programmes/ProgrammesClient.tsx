@@ -1,6 +1,5 @@
 "use client";
 
-import type { ProgrammeStatus } from "@/lib/app-enums";
 import {
   Eye,
   FileText,
@@ -52,13 +51,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useCategories } from "@/hooks/useCategories";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
-import { useProgrammes } from "@/hooks/useProgrammes";
+import type { ProgrammeStatus } from "@/core/types/app-enums";
+import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
+import { useProgrammes } from "@/features/programmes/hooks/use-programmes";
 import {
   getAssignmentProgressLabel,
   getExpectedAssignmentsTotal,
-} from "@/lib/programme-assignment-progress";
+} from "@/features/programmes/services/programme-assignment-progress";
 import { BulkUploadProgrammesModal } from "./BulkUploadProgrammesModal";
 import { ProgrammeDialog } from "./ProgrammeDialog";
 

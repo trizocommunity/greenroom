@@ -7,8 +7,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { getResolvedTier, isBasicTier } from "@/lib/tier";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils/cn";
+import {
+  getResolvedTier,
+  isBasicTier,
+} from "@/features/plan-features/services/tier";
 import type { FestivalPublicData } from "./FestivalContext";
 
 const navItems = [

@@ -1,4 +1,3 @@
-import { festival as festivalSchema } from "@/server/db/schema";
 import { format } from "date-fns";
 import {
   ArrowRight,
@@ -35,11 +34,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { FeaturePath } from "@/lib/features";
-import { isFeatureTagEnabled } from "@/lib/features-tags";
-import { getResolvedTier } from "@/lib/tier";
-import { getDashboardOverviewData } from "@/server/models/festival.model";
-import { getEffectivePlanFeatureMatrix } from "@/server/services/plan-features.service";
+import type { festival as festivalSchema } from "@/core/database/schema";
+import { getDashboardOverviewData } from "@/features/festivals/repositories/festival.repository";
+import type { FeaturePath } from "@/features/plan-features/services/features";
+import { isFeatureTagEnabled } from "@/features/plan-features/services/features-tags";
+import { getEffectivePlanFeatureMatrix } from "@/features/plan-features/services/plan-features.service";
+import { getResolvedTier } from "@/features/plan-features/services/tier";
 
 interface OverviewWidgetsProps {
   festival: typeof festivalSchema.$inferSelect;

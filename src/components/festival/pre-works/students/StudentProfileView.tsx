@@ -18,12 +18,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useFeature } from "@/hooks/useFeature";
+import { getProgrammeTeamMembersAction } from "@/features/assignments/actions/assignment.actions";
+import { useFeature } from "@/features/plan-features/hooks/use-feature";
 import {
   getQrCodeContent,
   getStudentProfileUrl,
-} from "@/lib/student-profile-url";
-import { getProgrammeTeamMembersAction } from "@/server/actions/assignment.actions";
+} from "@/features/students/services/student-profile-url";
 
 interface StudentProfileViewProps {
   student: {

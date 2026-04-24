@@ -1,11 +1,11 @@
-import type { Tier } from "@/lib/app-enums";
 import { Calendar } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ResultsExploreClient } from "@/components/dashboard/event-works/ResultsExploreClient";
-import { filterProgrammesForEventWorks } from "@/server/services/programme-status.service";
-import { getFestivalResultsDataBySlug } from "@/server/services/results.service";
+import type { Tier } from "@/core/types/app-enums";
+import { filterProgrammesForEventWorks } from "@/features/programmes/services/programme-status.service";
+import { getFestivalResultsDataBySlug } from "@/features/results/services/results.service";
 
 export const metadata: Metadata = {
   title: "Results",

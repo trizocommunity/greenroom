@@ -2,7 +2,7 @@ import { Building2, Calendar, Globe, MapPin } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getPublicFestivalData } from "@/server/loader/festivalPublic";
+import { getPublicFestivalData } from "@/features/festivals/loaders/festival-public.loader";
 
 export async function generateMetadata({
   params,

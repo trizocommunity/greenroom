@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Check, Mic, Users, Award, ShieldCheck, Activity } from "lucide-react";
+import { Activity, Award, Check, Mic, ShieldCheck, Users } from "lucide-react";
 
 export function AuthShowcase() {
   return (

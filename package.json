@@ -10,8 +10,7 @@
     "format": "biome format --write .",
     "check": "biome check --write .",
     "db:generate": "drizzle-kit generate",
-    "db:push": "drizzle-kit push",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "echo 'Run the SQL files from ./drizzle/ in Supabase SQL Editor'",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.ts"
   },

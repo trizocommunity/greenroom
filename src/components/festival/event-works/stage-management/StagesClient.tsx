@@ -8,6 +8,7 @@ interface Stage {
   description: string | null;
   createdBy: string | null;
 }
+
 import { useState } from "react";
 import { toast } from "sonner";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
@@ -28,8 +29,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
-import { deleteStage } from "@/server/actions/stage.actions";
+import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
+import { deleteStage } from "@/features/stages/actions/stage.actions";
 import { StageDialog } from "./StageDialog";
 
 interface StagesClientProps {

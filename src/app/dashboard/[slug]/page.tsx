@@ -2,9 +2,9 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { OverviewSkeleton } from "@/components/dashboard/overview/OverviewSkeleton";
 import OverviewWidgets from "@/components/dashboard/overview/OverviewWidgets";
-import { getSession } from "@/lib/auth/session";
-import { findFestivalBySlugOrId } from "@/server/models/festival.model";
-import { getFestivalContext } from "@/server/services/festival-context.service";
+import { getSession } from "@/core/auth/session";
+import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
+import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 
 export default async function FestivalDashboardPage({
   params,

@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
-import { getGalleryImagesAction } from "@/server/actions/gallery.actions";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { getGalleryImagesAction } from "@/features/gallery/actions/gallery.actions";
+import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 import { GalleryClient } from "./GalleryClient";
 
 interface PageProps {

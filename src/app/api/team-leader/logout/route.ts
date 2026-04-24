@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import {
   clearTeamLeaderSessionCookie,
   TEAM_LEADER_SESSION_COOKIE,
-} from "@/lib/team-leader-auth/session";
-import { TeamLeaderAuthService } from "@/server/services/team-leader-auth.service";
+} from "@/core/auth/team-leader-session";
+import { TeamLeaderAuthService } from "@/features/team-leader/services/team-leader-auth.service";
 
 export async function POST(request: Request) {
   const cookieHeader = request.headers.get("cookie") || "";

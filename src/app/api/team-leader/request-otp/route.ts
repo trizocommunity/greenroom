@@ -1,20 +1,24 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { formatApiError } from "@/lib/api-error";
-import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
-import { requestTeamLeaderOtpSchema } from "@/lib/validations/team-leader-auth";
-import { TeamLeaderAuthService } from "@/server/services/team-leader-auth.service";
+import { formatApiError } from "@/core/http/api-error";
+import { checkRateLimit, getClientIP } from "@/core/http/rate-limit";
+import { requestTeamLeaderOtpSchema } from "@/features/auth/schemas/team-leader-auth.schema";
+import { TeamLeaderAuthService } from "@/features/team-leader/services/team-leader-auth.service";
 
 export async function POST(request: Request) {
   try {
     // Rate limiting: 5 attempts per 15 minutes per IP
     const clientIP = getClientIP(request);
-    const rateLimit = checkRateLimit(`team-leader-otp:${clientIP}`, 5, 15 * 60 * 1000);
+    const rateLimit = checkRateLimit(
+      `team-leader-otp:${clientIP}`,
+      5,
+      15 * 60 * 1000,
+    );
 
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { error: "Too many attempts. Please try again later." },
-        { status: 429 }
+        { status: 429 },
       );
     }
 

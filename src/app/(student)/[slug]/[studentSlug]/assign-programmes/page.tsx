@@ -1,11 +1,14 @@
+import { desc, eq, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { DeadlinesCard } from "@/components/festival/pre-works/DeadlinesCard";
 import { AssignProgrammesClient } from "@/components/student/team-leader/AssignProgrammesClient";
-import { db } from "@/lib/db";
-import { programme as programmeTable, group as groupTable } from "@/server/db/schema";
-import { eq, sql, desc } from "drizzle-orm";
-import { getTeamLeaderGroupStudentsForSelection } from "@/lib/team-leader/my-team";
-import { requireTeamLeaderSession } from "@/lib/team-leader-auth/guard";
+import { requireTeamLeaderSession } from "@/core/auth/team-leader-guard";
+import { db } from "@/core/database/client";
+import {
+  group as groupTable,
+  programme as programmeTable,
+} from "@/core/database/schema";
+import { getTeamLeaderGroupStudentsForSelection } from "@/features/team-leader/services/my-team";
 
 export default async function AssignProgrammesPage({
   params,
@@ -29,7 +32,8 @@ export default async function AssignProgrammesPage({
   const managerPhone =
     festival.branding &&
     typeof festival.branding === "object" &&
-    ("contactNumber" in (festival.branding as any) || "phone" in (festival.branding as any))
+    ("contactNumber" in (festival.branding as any) ||
+      "phone" in (festival.branding as any))
       ? ((festival.branding as any).contactNumber ??
         (festival.branding as any).phone ??
         null)
@@ -47,7 +51,10 @@ export default async function AssignProgrammesPage({
     orderBy: [desc(programmeTable.createdAt)],
   });
 
-  const [groupCountResult] = await db.select({ count: sql`count(*)` }).from(groupTable).where(eq(groupTable.festivalId, festival.id));
+  const [groupCountResult] = await db
+    .select({ count: sql`count(*)` })
+    .from(groupTable)
+    .where(eq(groupTable.festivalId, festival.id));
   const groupCount = Number(groupCountResult.count);
 
   return (

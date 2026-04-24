@@ -1,10 +1,5 @@
 "use client";
 
-import type {
-  CategoryType,
-  ProgrammeStatus,
-  ProgrammeType,
-} from "@/lib/app-enums";
 import { format } from "date-fns";
 import { CalendarClock, Mail, Phone, ShieldAlert, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -28,9 +23,14 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAssignments } from "@/hooks/useAssignments";
-import { useDeadlineLock } from "@/hooks/useDeadlineLock";
-import { getProgrammeStatusPriorityRank } from "@/lib/programme-status-priority";
+import type {
+  CategoryType,
+  ProgrammeStatus,
+  ProgrammeType,
+} from "@/core/types/app-enums";
+import { useAssignments } from "@/features/assignments/hooks/use-assignments";
+import { useDeadlineLock } from "@/features/festivals/hooks/use-deadline-lock";
+import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
 
 type ProgrammeForAssignment = {
   id: string;

@@ -1,7 +1,10 @@
 import { notFound, redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
-import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
-import { findFestivalBySlug } from "@/server/models/festival.model";
+import { getSession } from "@/core/auth/session";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import {
+  FeatureService,
+  getTierForFeatureCheck,
+} from "@/features/plan-features/services/features";
 import { SettingsForm } from "./_components/SettingsForm";
 
 export default async function SettingsPage({

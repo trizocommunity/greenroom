@@ -1,11 +1,11 @@
+import { eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { FestivalSetupForm } from "@/components/festival-setup/FestivalSetupForm";
 import { TIER_CONFIG } from "@/config/pricing";
-import { getCurrentUser } from "@/lib/auth/current-user";
-import { db } from "@/lib/db";
-import { payment as paymentTable } from "@/server/db/schema";
-import { eq } from "drizzle-orm";
+import { getCurrentUser } from "@/core/auth/current-user";
+import { db } from "@/core/database/client";
+import { payment as paymentTable } from "@/core/database/schema";
 
 export const metadata: Metadata = {
   title: "Launch Festival | Greenroom",
@@ -38,7 +38,7 @@ export default async function FestivalSetupPage({ searchParams }: PageProps) {
     redirect("/profile");
   }
 
-  const tierConfig = TIER_CONFIG[payment.tier as any];
+  const tierConfig = TIER_CONFIG[payment.tier as keyof typeof TIER_CONFIG];
 
   const expiresAtStr =
     payment.validUntil ??

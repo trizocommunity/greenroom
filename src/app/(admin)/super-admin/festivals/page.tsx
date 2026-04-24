@@ -3,8 +3,8 @@ import { Suspense } from "react";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminFestivalCard } from "@/components/admin/AdminFestivalCard";
 import { FestivalStatusTabs } from "@/components/super-admin/FestivalStatusTabs";
-import { getDerivedFestivalStatus } from "@/lib/festival-status";
-import { adminService } from "@/server/services/admin.service";
+import { adminService } from "@/features/admin/services/admin.service";
+import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 
 export default async function AdminFestivalsPage({
   searchParams,

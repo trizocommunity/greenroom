@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
-import { getNewsPostsAction } from "@/server/actions/news.actions";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { getNewsPostsAction } from "@/features/news/actions/news.actions";
+import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 import { NewsClient } from "./NewsClient";
 
 interface PageProps {
@@ -19,13 +19,19 @@ export default async function NewsPage({ params }: PageProps) {
   }
 
   const posts = await getNewsPostsAction(festival.id);
+  const normalizedPosts = posts.map((post) => ({
+    ...post,
+    publishedAt: post.publishedAt ? new Date(post.publishedAt) : null,
+    createdAt: new Date(post.createdAt),
+    updatedAt: new Date(post.updatedAt),
+  }));
 
   return (
     <div className="pt-4 sm:pt-6">
       <NewsClient
         festivalId={festival.id}
         festivalSlug={festival.slug}
-        initialPosts={posts}
+        initialPosts={normalizedPosts}
       />
     </div>
   );

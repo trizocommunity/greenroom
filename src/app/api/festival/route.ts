@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { formatApiError } from "@/lib/api-error";
-import { getSession } from "@/lib/auth/session";
-import { systemConfig } from "@/lib/config";
+import { getSession } from "@/core/auth/session";
+import { formatApiError } from "@/core/http/api-error";
+import { systemConfig } from "@/core/utils/config";
 import {
   createFestival,
   findFestivalByOwnerId,
   findFestivalBySlug,
-} from "@/server/models/festival.model";
+} from "@/features/festivals/repositories/festival.repository";
 
 const createFestivalSchema = z.object({
   name: z.string().min(3).max(50),
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
 
     if (systemConfig.paymentFirstFlowEnabled) {
       const { getUnusedPayment, consumePayment } = await import(
-        "@/server/services/billing.service"
+        "@/features/billing/services/billing.service"
       );
       const payment = await getUnusedPayment(userId);
 
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     const festival = await createFestival({
       name,
       slug,
-      owner: { connect: { id: userId } },
+      ownerId: userId,
       status: "READY",
       isLocked: true,
     });
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
     // [New Phase 2] Consume Payment
     if (paymentIdToConsume) {
       const { consumePayment } = await import(
-        "@/server/services/billing.service"
+        "@/features/billing/services/billing.service"
       );
       await consumePayment(paymentIdToConsume, { festivalId: festival.id });
     }

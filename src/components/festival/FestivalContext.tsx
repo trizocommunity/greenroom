@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, type ReactNode, useContext } from "react";
-import type { FeaturePath } from "@/lib/features";
+import type { FeaturePath } from "@/features/plan-features/services/features";
 
 export type FestivalPublicData = {
   id: string;

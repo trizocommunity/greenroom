@@ -23,18 +23,18 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useFeatures } from "@/hooks/useFeature";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
-import type { InstitutionType } from "@/lib/app-enums";
-import { cn } from "@/lib/utils";
-import { uploadImageToCloudinary } from "@/lib/cloudinary";
+import { uploadImageToCloudinary } from "@/core/integrations/cloudinary";
+import type { InstitutionType } from "@/core/types/app-enums";
+import { cn } from "@/core/utils/cn";
 import {
   setPublicSiteEnabledAction,
   updateFestivalBrandingAction,
   updateFestivalSettingsAction,
-} from "@/server/actions/festival.actions";
-import { updateFestivalAction } from "@/server/actions/user-festival.actions";
-import type { FestivalBranding } from "@/types/festival";
+} from "@/features/festivals/actions/festival-crud.actions";
+import { updateFestivalAction } from "@/features/festivals/actions/user-festival.actions";
+import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
+import type { FestivalBranding } from "@/features/festivals/types/festival.types";
+import { useFeatures } from "@/features/plan-features/hooks/use-feature";
 
 interface FestivalLiveClientProps {
   festivalId: string;

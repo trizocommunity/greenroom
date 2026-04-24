@@ -16,11 +16,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useCategories } from "@/hooks/useCategories";
-import { useGroups } from "@/hooks/useGroups";
-import { useStudents } from "@/hooks/useStudents";
-import { cn } from "@/lib/utils";
-import { validateStudentsAction } from "@/server/actions/student.actions";
+import { cn } from "@/core/utils/cn";
+import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useGroups } from "@/features/groups/hooks/use-groups";
+import { validateStudentsAction } from "@/features/students/actions/student.actions";
+import { useStudents } from "@/features/students/hooks/use-students";
 
 interface StudentDialogProps {
   festivalId: string;

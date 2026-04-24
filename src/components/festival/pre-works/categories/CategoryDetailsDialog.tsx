@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useStudents } from "@/hooks/useStudents";
+import { useStudents } from "@/features/students/hooks/use-students";
 
 interface CategoryDetailsDialogProps {
   festivalId: string;

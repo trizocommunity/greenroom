@@ -26,14 +26,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { useAssignments } from "@/hooks/useAssignments";
-import { useCategories } from "@/hooks/useCategories";
-import { useDeadlineLock } from "@/hooks/useDeadlineLock";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
-import { useGroups } from "@/hooks/useGroups";
-import { useStudents } from "@/hooks/useStudents";
+import { useAssignments } from "@/features/assignments/hooks/use-assignments";
+import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useDeadlineLock } from "@/features/festivals/hooks/use-deadline-lock";
+import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
+import { useGroups } from "@/features/groups/hooks/use-groups";
+import { useProgrammes } from "@/features/programmes/hooks/use-programmes";
+import { useStudents } from "@/features/students/hooks/use-students";
 import { AssignmentModal } from "./AssignmentModal";
-import { useProgrammes } from "@/hooks/useProgrammes";
 
 type IndividualAssignmentRow = {
   kind: "individual";

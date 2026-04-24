@@ -29,8 +29,8 @@
 "use client";
 
 import { UpgradeTrigger } from "@/components/common/UpgradeTrigger";
-import { useFeature } from "@/hooks/useFeature";
-import type { FeaturePath } from "@/lib/features";
+import { useFeature } from "@/features/plan-features/hooks/use-feature";
+import type { FeaturePath } from "@/features/plan-features/services/features";
 
 interface FeatureGateProps {
   /**

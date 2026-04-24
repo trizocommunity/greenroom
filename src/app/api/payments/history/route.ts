@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
-import * as PaymentController from "@/server/controllers/payment.controller";
+import { getSession } from "@/core/auth/session";
+import { getUserPaymentsDomain } from "@/features/payments/services/payments-domain.service";
 
 export async function GET() {
   try {
@@ -9,7 +9,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const payments = await PaymentController.getUserPayments(session.userId);
+    const payments = await getUserPaymentsDomain(session.userId);
     return NextResponse.json(payments);
   } catch (error) {
     console.error("Failed to fetch payment history:", error);

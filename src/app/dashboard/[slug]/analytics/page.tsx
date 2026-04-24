@@ -1,12 +1,12 @@
 import { notFound, redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
-import { getResolvedTier } from "@/lib/tier";
+import { getSession } from "@/core/auth/session";
 import {
   findFestivalBySlugOrId,
   getFestivalAnalyticsData,
-} from "@/server/models/festival.model";
-import { getFestivalContext } from "@/server/services/festival-context.service";
-import { getEffectiveTierFeatures } from "@/server/services/plan-features.service";
+} from "@/features/festivals/repositories/festival.repository";
+import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
+import { getEffectiveTierFeatures } from "@/features/plan-features/services/plan-features.service";
+import { getResolvedTier } from "@/features/plan-features/services/tier";
 import { AnalyticsView } from "./_components/AnalyticsView";
 
 export default async function AnalyticsPage({

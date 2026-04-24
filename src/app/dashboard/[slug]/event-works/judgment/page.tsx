@@ -1,15 +1,18 @@
+import { asc, eq } from "drizzle-orm";
 import { Calendar } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
 import { JudgmentClient } from "@/components/dashboard/judgment/JudgmentClient";
-import { getSession } from "@/lib/auth/session";
-import { db } from "@/lib/db";
-import { festival as festivalTable, stage as stageTable } from "@/server/db/schema";
-import { eq, asc } from "drizzle-orm";
-import { getFestivalContext } from "@/server/services/festival-context.service";
-import { getEffectiveFeatureTagEnabled } from "@/server/services/plan-features-tags.service";
-import { getProgrammeJudgingBoard } from "@/server/services/programme-judgment-board.service";
+import { getSession } from "@/core/auth/session";
+import { db } from "@/core/database/client";
+import {
+  festival as festivalTable,
+  stage as stageTable,
+} from "@/core/database/schema";
+import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
+import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
+import { getProgrammeJudgingBoard } from "@/features/programmes/services/programme-judgment-board.service";
 
 export const metadata: Metadata = {
   title: "Judgment",
@@ -76,7 +79,11 @@ export default async function JudgmentPage({
 
   return (
     <JudgmentClient
-      festival={{ id: festival.id, slug: festival.slug, tier: festival.tier as any }}
+      festival={{
+        id: festival.id,
+        slug: festival.slug,
+        tier: festival.tier as any,
+      }}
       stages={board.stages as any}
       festivalStages={festivalStages}
       judgedProgrammes={board.judgedProgrammes as any}

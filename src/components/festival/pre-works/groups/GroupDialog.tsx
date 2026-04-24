@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useGroups } from "@/hooks/useGroups";
+import { useGroups } from "@/features/groups/hooks/use-groups";
 
 interface GroupDialogProps {
   festivalId: string;

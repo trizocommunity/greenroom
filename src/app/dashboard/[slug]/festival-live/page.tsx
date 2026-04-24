@@ -1,17 +1,17 @@
+import { and, asc, desc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
-import { db } from "@/lib/db";
-import { 
-  festivalGalleryImage as galleryImageTable, 
+import { getSession } from "@/core/auth/session";
+import { db } from "@/core/database/client";
+import {
+  festivalGalleryImage as galleryImageTable,
+  festivalMember as memberTable,
   festivalNews as newsTable,
-  festivalMember as memberTable
-} from "@/server/db/schema";
-import { eq, and, asc, desc } from "drizzle-orm";
-import { validatePublicSiteRequirements } from "@/lib/festival-public-validation";
-import { isBasicTier } from "@/lib/tier";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import { getBrandingFromJson } from "@/types/festival";
+} from "@/core/database/schema";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { validatePublicSiteRequirements } from "@/features/festivals/services/festival-public-validation.service";
+import { getBrandingFromJson } from "@/features/festivals/types/festival.types";
+import { isBasicTier } from "@/features/plan-features/services/tier";
 import { FestivalLiveClient } from "./FestivalLiveClient";
 
 export default async function FestivalLivePage({
@@ -44,7 +44,7 @@ export default async function FestivalLivePage({
   const member = await db.query.festivalMember.findFirst({
     where: and(
       eq(memberTable.festivalId, festival.id),
-      eq(memberTable.userId, session.userId)
+      eq(memberTable.userId, session.userId),
     ),
   });
   const isAdmin = member?.isActive && member.role === "ADMIN";

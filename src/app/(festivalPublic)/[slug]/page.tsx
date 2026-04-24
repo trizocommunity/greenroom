@@ -6,10 +6,15 @@ import { HeroSection } from "@/components/festival/landing/HeroSection";
 import { ResultsList } from "@/components/festival/landing/ResultsList";
 import { ResultsTeaser } from "@/components/festival/landing/ResultsTeaser";
 import { StatsSection } from "@/components/festival/landing/StatsSection";
-import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
-import { getResolvedTier } from "@/lib/tier";
-import { getPublicFestivalData } from "@/server/loader/festivalPublic";
-import { getPublicFestivalResults } from "@/server/loader/festivalResults";
+import { getPublicFestivalData } from "@/features/festivals/loaders/festival-public.loader";
+import { getPublicFestivalResults } from "@/features/festivals/loaders/festival-results.loader";
+import { getPublicGalleryData } from "@/features/gallery/loaders/gallery-public.loader";
+import { findProgrammesByFestival } from "@/features/programmes/repositories/programme.repository";
+import {
+  FeatureService,
+  getTierForFeatureCheck,
+} from "@/features/plan-features/services/features";
+import { getResolvedTier } from "@/features/plan-features/services/tier";
 
 export async function generateMetadata({
   params,
@@ -68,8 +73,12 @@ export default async function FestivalPage({
     );
   }
 
-  // Fetch published results for display
-  const publishedResults = await getPublicFestivalResults(festival.id);
+  // Fetch published results, programmes, and gallery for display
+  const [publishedResults, programmes, galleryData] = await Promise.all([
+    getPublicFestivalResults(festival.id),
+    fullLandingPage ? findProgrammesByFestival(festival.id) : Promise.resolve([]),
+    fullLandingPage ? getPublicGalleryData(festival.slug) : Promise.resolve(null),
+  ]);
 
   // MERGE DATA FOR COMPONENTS
   const displayData = {
@@ -136,10 +145,11 @@ export default async function FestivalPage({
         </section>
       )}
 
-      {fullLandingPage && (
+      {fullLandingPage && programmes.length > 0 && (
         <FeaturedPrograms
           accentColor={displayData.accentColor}
           slug={displayData.slug}
+          programmes={programmes}
         />
       )}
 
@@ -160,7 +170,9 @@ export default async function FestivalPage({
         )}
       </section>
 
-      {fullLandingPage && <GalleryPreview slug={displayData.slug} />}
+      {fullLandingPage && galleryData && galleryData.images.length > 0 && (
+        <GalleryPreview slug={displayData.slug} images={galleryData.images} />
+      )}
     </div>
   );
 }

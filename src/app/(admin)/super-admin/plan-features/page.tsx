@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getEffectiveFeatureTagMatrix } from "@/server/services/plan-features-tags.service";
+import { getEffectiveFeatureTagMatrix } from "@/features/plan-features/services/plan-features-tags.service";
 import { PlanFeaturesClient } from "./PlanFeaturesClient";
 
 export default async function PlanFeaturesPage() {

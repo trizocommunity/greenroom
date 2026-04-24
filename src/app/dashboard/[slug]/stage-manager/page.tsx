@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { Calendar, CheckCircle2, Megaphone, Mic2 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,12 +8,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getSession } from "@/lib/auth/session";
-import { db } from "@/lib/db";
-import { festival as festivalTable } from "@/server/db/schema";
-import { eq } from "drizzle-orm";
-import { getFestivalContext } from "@/server/services/festival-context.service";
-import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
+import { getSession } from "@/core/auth/session";
+import { db } from "@/core/database/client";
+import { festival as festivalTable } from "@/core/database/schema";
+import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
+import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 
 export default async function StageManagerOverviewPage({
   params,
@@ -33,7 +33,7 @@ export default async function StageManagerOverviewPage({
     where: eq(festivalTable.slug, slug),
     columns: { tier: true },
   });
-  
+
   const canStages = festival
     ? await getEffectiveFeatureEnabled(festival.tier as any, "stageManagement")
     : false;

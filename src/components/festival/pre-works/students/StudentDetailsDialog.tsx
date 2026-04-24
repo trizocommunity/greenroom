@@ -23,9 +23,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useAssignments } from "@/hooks/useAssignments";
-import { useFeature } from "@/hooks/useFeature";
-import { getProgrammeTeamMembersAction } from "@/server/actions/assignment.actions";
+import { getProgrammeTeamMembersAction } from "@/features/assignments/actions/assignment.actions";
+import { useAssignments } from "@/features/assignments/hooks/use-assignments";
+import { useFeature } from "@/features/plan-features/hooks/use-feature";
 
 interface StudentDetailsDialogProps {
   festivalId: string;

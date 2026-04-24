@@ -1,9 +1,9 @@
+import { and, desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { MyStudentsClient } from "@/components/student/team-leader/MyStudentsClient";
-import { db } from "@/lib/db";
-import { student as studentTable } from "@/server/db/schema";
-import { eq, and, desc } from "drizzle-orm";
-import { requireTeamLeaderSession } from "@/lib/team-leader-auth/guard";
+import { requireTeamLeaderSession } from "@/core/auth/team-leader-guard";
+import { db } from "@/core/database/client";
+import { student as studentTable } from "@/core/database/schema";
 
 export default async function MyStudentsPage({
   params,
@@ -18,7 +18,10 @@ export default async function MyStudentsPage({
   });
 
   const groupStudents = await db.query.student.findMany({
-    where: and(eq(studentTable.festivalId, festival.id), eq(studentTable.groupId, student.groupId!)),
+    where: and(
+      eq(studentTable.festivalId, festival.id),
+      eq(studentTable.groupId, student.groupId!),
+    ),
     with: { group: true, category: true },
     orderBy: [desc(studentTable.createdAt)],
   });

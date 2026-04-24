@@ -1,6 +1,11 @@
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
-import * as FestivalController from "@/server/controllers/festival.controller";
+import { festival as festivalsTable } from "@/core/database/schema";
+import { getSession } from "@/core/auth/session";
+import {
+  findAllFestivals,
+  createFestival,
+} from "@/features/festivals/repositories/festival.repository";
 
 export async function GET() {
   try {
@@ -9,10 +14,12 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const festivals = await FestivalController.index(
-      session.userId,
-      session.role,
-    );
+    const where =
+      session.role === "SUPER_ADMIN"
+        ? undefined
+        : eq(festivalsTable.ownerId, session.userId);
+
+    const festivals = await findAllFestivals(where);
     return NextResponse.json(festivals);
   } catch (error) {
     console.error("[FESTIVALS_GET]", error);
@@ -28,17 +35,12 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const festival = await FestivalController.store(
-      session.userId,
-      session.role,
-      body,
-    );
+    const festival = await createFestival({ ...body, ownerId: session.userId });
 
     return NextResponse.json(festival, { status: 201 });
   } catch (error) {
     console.error("[FESTIVALS_POST]", error);
     const message = error instanceof Error ? error.message : "Internal Error";
-    // Simple error mapping for now
     if (
       message === "Start a subscription to create a festival" ||
       message === "Standard users can only manage one festival"

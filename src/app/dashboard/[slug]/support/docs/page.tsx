@@ -1,5 +1,5 @@
-import { getSession } from "@/lib/auth/session";
-import { getFestivalContext } from "@/server/services/festival-context.service";
+import { getSession } from "@/core/auth/session";
+import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import DocumentationContent from "./DocumentationContent";
 
 export default async function DocumentationPage({

@@ -1,3 +1,4 @@
+import { eq, sql } from "drizzle-orm";
 import { ArrowLeft, FileDown } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -5,11 +6,10 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getSession } from "@/lib/auth/session";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import { db } from "@/lib/db";
-import { expiredFestivalResult as expiredTable } from "@/server/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { getSession } from "@/core/auth/session";
+import { db } from "@/core/database/client";
+import { expiredFestivalResult as expiredTable } from "@/core/database/schema";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 
 type Props = { params: Promise<{ slug: string }> };
 

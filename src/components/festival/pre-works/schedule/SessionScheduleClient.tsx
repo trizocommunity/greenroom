@@ -47,9 +47,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
-import type { SessionType } from "@/lib/app-enums";
-import { cn } from "@/lib/utils";
+import type { SessionType } from "@/core/types/app-enums";
+import { cn } from "@/core/utils/cn";
+import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
   type ConflictParts,
   checkScheduleConflict,
@@ -57,7 +57,7 @@ import {
   deleteScheduleEntry,
   type ScheduleEntryWithRelations,
   updateScheduleEntry,
-} from "@/server/actions/schedule.actions";
+} from "@/features/schedule/actions/schedule.actions";
 
 const SESSION_TYPE_LABELS: Record<string, string> = {
   GENERAL: "General",

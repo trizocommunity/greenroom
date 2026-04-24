@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { MapPin, Trophy, Users } from "lucide-react";
 import Link from "next/link";
 import { QrViewButton } from "@/components/common/QrViewButton";
@@ -8,20 +9,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_URL } from "@/config/routes";
-import { db } from "@/lib/db";
-import { 
-  result as resultTable, 
-  student as studentTable, 
+import { requireTeamLeaderSession } from "@/core/auth/team-leader-guard";
+import { db } from "@/core/database/client";
+import {
+  programmeAssignment as assignmentTable,
+  result as resultTable,
   programmeReportingSession as sessionTable,
-  programmeAssignment as assignmentTable
-} from "@/server/db/schema";
-import { eq, and, inArray, sql, desc } from "drizzle-orm";
+  student as studentTable,
+} from "@/core/database/schema";
 import {
   getQrCodeContent,
   getStudentProfileUrl,
-} from "@/lib/student-profile-url";
-import { getTeamLeaderMyStudents } from "@/lib/team-leader/my-team";
-import { requireTeamLeaderSession } from "@/lib/team-leader-auth/guard";
+} from "@/features/students/services/student-profile-url";
+import { getTeamLeaderMyStudents } from "@/features/team-leader/services/my-team";
 
 export default async function TeamLeaderDashboardPage({
   params,
@@ -39,7 +39,9 @@ export default async function TeamLeaderDashboardPage({
   const endDate =
     festival.endDate ??
     festival.expiresAt ??
-    new Date(new Date(festival.createdAt).getTime() + 40 * 24 * 60 * 60 * 1000).toISOString();
+    new Date(
+      new Date(festival.createdAt).getTime() + 40 * 24 * 60 * 60 * 1000,
+    ).toISOString();
   const venue = festival.location ?? festival.orgLocation ?? "—";
 
   const { myStudents } = await getTeamLeaderMyStudents(festival.id, student.id);
@@ -47,11 +49,20 @@ export default async function TeamLeaderDashboardPage({
 
   let publishedResultsCount = 0;
   if (myStudentIds.length > 0) {
-    const results = await db.select({ count: sql`count(*)` }).from(resultTable).innerJoin(assignmentTable, eq(resultTable.assignmentId, assignmentTable.id)).where(and(
-      eq(resultTable.festivalId, festival.id),
-      eq(resultTable.isPublished, true),
-      inArray(assignmentTable.studentId, myStudentIds)
-    ));
+    const results = await db
+      .select({ count: sql`count(*)` })
+      .from(resultTable)
+      .innerJoin(
+        assignmentTable,
+        eq(resultTable.assignmentId, assignmentTable.id),
+      )
+      .where(
+        and(
+          eq(resultTable.festivalId, festival.id),
+          eq(resultTable.isPublished, true),
+          inArray(assignmentTable.studentId, myStudentIds),
+        ),
+      );
     publishedResultsCount = Number(results[0]?.count ?? 0);
   }
 
@@ -59,7 +70,7 @@ export default async function TeamLeaderDashboardPage({
     where: and(
       eq(studentTable.festivalId, festival.id),
       eq(studentTable.groupId, student.groupId!),
-      eq(studentTable.isTeamLeader, true)
+      eq(studentTable.isTeamLeader, true),
     ),
     columns: { id: true, name: true },
   });
@@ -70,29 +81,38 @@ export default async function TeamLeaderDashboardPage({
     student as any,
   );
 
-  const groupProgrammeIdsRows = await db.select({ programmeId: assignmentTable.programmeId }).from(assignmentTable).where(and(
-    eq(assignmentTable.festivalId, festival.id),
-    eq(assignmentTable.groupId, student.groupId!)
-  ));
-  const groupProgrammeIds = groupProgrammeIdsRows.map(r => r.programmeId);
+  const groupProgrammeIdsRows = await db
+    .select({ programmeId: assignmentTable.programmeId })
+    .from(assignmentTable)
+    .where(
+      and(
+        eq(assignmentTable.festivalId, festival.id),
+        eq(assignmentTable.groupId, student.groupId!),
+      ),
+    );
+  const groupProgrammeIds = groupProgrammeIdsRows.map((r) => r.programmeId);
 
-  const ongoingSessions = groupProgrammeIds.length > 0 ? await db.query.programmeReportingSession.findMany({
-    where: and(
-      inArray(sessionTable.programmeId, groupProgrammeIds),
-      inArray(sessionTable.status, ["IN_PROGRESS", "CLOSED"])
-    ),
-    with: {
-      programme: { columns: { name: true } },
-      stage: { columns: { name: true } },
-    },
-    orderBy: [desc(sessionTable.updatedAt)],
-    limit: 5,
-  }) : [];
+  const ongoingSessions =
+    groupProgrammeIds.length > 0
+      ? await db.query.programmeReportingSession.findMany({
+          where: and(
+            inArray(sessionTable.programmeId, groupProgrammeIds),
+            inArray(sessionTable.status, ["IN_PROGRESS", "CLOSED"]),
+          ),
+          with: {
+            programme: { columns: { name: true } },
+            stage: { columns: { name: true } },
+          },
+          orderBy: [desc(sessionTable.updatedAt)],
+          limit: 5,
+        })
+      : [];
 
   const isSessionTimedOut = (session: any) =>
     session.status === "IN_PROGRESS" &&
     Boolean(
-      session.windowEndsAt && new Date(session.windowEndsAt).getTime() <= Date.now(),
+      session.windowEndsAt &&
+        new Date(session.windowEndsAt).getTime() <= Date.now(),
     );
 
   const liveSessions = ongoingSessions.filter(

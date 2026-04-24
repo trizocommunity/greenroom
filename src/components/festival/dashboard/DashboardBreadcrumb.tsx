@@ -11,7 +11,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { getFestivalDashboardSidebarConfig } from "@/config/sidebar.config";
-import { useFeatureTag } from "@/hooks/useFeature";
+import { useFeatureTag } from "@/features/plan-features/hooks/use-feature";
 
 interface DashboardBreadcrumbProps {
   festivalName: string;

@@ -1,6 +1,5 @@
 "use client";
 
-import type { ProgrammeStatus } from "@/lib/app-enums";
 import { ArrowUpRight, Bell, Crown, Menu, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -14,7 +13,8 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { cn } from "@/lib/utils";
+import type { ProgrammeStatus } from "@/core/types/app-enums";
+import { cn } from "@/core/utils/cn";
 
 interface StudentNavbarProps {
   festival: {

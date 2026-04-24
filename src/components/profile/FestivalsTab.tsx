@@ -7,7 +7,10 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { type Festival, useMyFestival } from "@/hooks/useFestivals";
+import {
+  type Festival,
+  useMyFestival,
+} from "@/features/festivals/hooks/use-festivals";
 
 import { FestivalCard } from "./FestivalCard";
 import { FestivalEmptyState } from "./FestivalEmptyState";

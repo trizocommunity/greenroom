@@ -5,24 +5,23 @@ import { useMutation } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowRight,
+  AtSign,
   CheckCircle2,
   Loader2,
   Sparkles,
   User,
-  AtSign,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
-
-import { onboardingSchema } from "@/lib/validations/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { completeOnboardingAction } from "@/server/actions/auth.actions";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils/cn";
+import { completeOnboardingAction } from "@/features/auth/actions/auth.actions";
+import { onboardingSchema } from "@/features/auth/schemas/auth.schema";
 
 type FormData = z.infer<typeof onboardingSchema>;
 

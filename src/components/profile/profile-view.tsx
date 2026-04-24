@@ -1,7 +1,7 @@
 "use client";
 
-import type { UserProfile } from "@/lib/app-enums";
 import { useSearchParams } from "next/navigation";
+import type { UserProfile } from "@/core/types/app-enums";
 import { ProfileSidebarContent } from "./ProfileSidebarContent";
 import { BillingTab } from "./tabs/BillingTab";
 import { FestivalsTab } from "./tabs/FestivalsTab";
@@ -23,9 +23,9 @@ export function ProfileView({ user }: ProfileViewProps) {
     user.displayName || user.fullName || user.email.split("@")[0];
 
   return (
-    <div className="flex flex-col md:flex-row gap-8">
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:block w-full md:w-64 shrink-0">
+    <div className="flex flex-col md:flex-row gap-6 md:gap-8">
+      {/* Sidebar */}
+      <aside className="w-full md:w-64 shrink-0">
         <ProfileSidebarContent user={user} />
       </aside>
 

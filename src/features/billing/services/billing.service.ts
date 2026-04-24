@@ -1,0 +1,37 @@
+import { and, asc, eq, gt } from "drizzle-orm";
+import { db } from "@/core/database/client";
+import { payment } from "@/core/database/schema";
+
+export type PaymentPurpose = "FESTIVAL_CREATION";
+
+export async function getUnusedPayment(
+  userId: string,
+  purpose?: PaymentPurpose,
+) {
+  const now = new Date();
+  return db.query.payment.findFirst({
+    where: and(
+      eq(payment.userId, userId),
+      eq(payment.status, "PAID"),
+      eq(payment.used, false),
+      purpose ? eq(payment.purpose, purpose) : undefined,
+      gt(payment.validUntil, new Date().toISOString()),
+    ),
+    orderBy: [asc(payment.createdAt)],
+  });
+}
+
+export async function consumePayment(
+  paymentId: string,
+  metadata: { festivalId?: string } = {},
+) {
+  const result = await db
+    .update(payment)
+    .set({
+      used: true,
+      festivalId: metadata.festivalId,
+    })
+    .where(eq(payment.id, paymentId))
+    .returning();
+  return result[0];
+}

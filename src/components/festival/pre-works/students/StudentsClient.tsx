@@ -58,16 +58,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useCategories } from "@/hooks/useCategories";
-import { useFeature } from "@/hooks/useFeature";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
-import { useGroups } from "@/hooks/useGroups";
-import { useStudents } from "@/hooks/useStudents";
+import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
+import { useGroups } from "@/features/groups/hooks/use-groups";
+import { useFeature } from "@/features/plan-features/hooks/use-feature";
+import { useStudents } from "@/features/students/hooks/use-students";
 import {
   getQrCodeContent,
   getStudentProfilePath,
   getStudentProfileUrl,
-} from "@/lib/student-profile-url";
+} from "@/features/students/services/student-profile-url";
 import { AssignTeamLeadersModal } from "./AssignTeamLeadersModal";
 import { BulkUploadStudentsModal } from "./BulkUploadStudentsModal";
 import { StudentDetailsDialog } from "./StudentDetailsDialog";

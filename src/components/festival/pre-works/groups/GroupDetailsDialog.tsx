@@ -21,8 +21,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useFeature } from "@/hooks/useFeature";
-import { useStudents } from "@/hooks/useStudents";
+import { useFeature } from "@/features/plan-features/hooks/use-feature";
+import { useStudents } from "@/features/students/hooks/use-students";
 
 interface User {
   id: string;

@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { deleteSession } from "@/lib/auth/session";
+import { deleteSession } from "@/core/auth/session";
 
 export async function POST(_req: NextRequest) {
   await deleteSession();

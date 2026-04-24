@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getPublicGalleryData } from "@/server/loader/festivalPublicGallery";
+import { getPublicGalleryData } from "@/features/gallery/loaders/gallery-public.loader";
 import { PublicGalleryView } from "./PublicGalleryView";
 
 type Props = { params: Promise<{ slug: string }> };

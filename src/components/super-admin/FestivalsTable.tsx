@@ -29,8 +29,8 @@ import {
   type Festival,
   useDeleteFestival,
   useFestivals,
-} from "@/hooks/useFestivals";
-import { getDerivedFestivalStatus } from "@/lib/festival-status";
+} from "@/features/festivals/hooks/use-festivals";
+import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 
 export function FestivalsTable() {
   const { data: festivals = [], isLoading } = useFestivals();

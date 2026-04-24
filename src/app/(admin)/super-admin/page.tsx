@@ -1,8 +1,8 @@
+import { eq } from "drizzle-orm";
 import { Shield, UserCheck, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { countUsers } from "@/server/models/user.model";
-import { user } from "@/server/db/schema";
-import { eq } from "drizzle-orm";
+import { user } from "@/core/database/schema";
+import { countUsers } from "@/features/auth/repositories/user.repository";
 
 export default async function SuperAdminDashboard() {
   const totalUsers = await countUsers();

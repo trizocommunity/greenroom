@@ -13,8 +13,7 @@ Required for the app to run:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `DATABASE_URL` | Yes | PostgreSQL connection string for **app runtime**, typically the Supabase **connection pooler** URL (e.g. `postgres://user:password@aws-1-...pooler.supabase.com:6543/postgres?pgbouncer=true`). |
-| `DIRECT_URL` | Yes (for migrations/seed) | Direct PostgreSQL connection string, typically the Supabase **direct** URL (e.g. `postgres://user:password@db.xxx.supabase.co:5432/postgres`). Used by Prisma CLI (migrate, seed). If migrations fail with **P1001**, see [docs/DATABASE.md](docs/DATABASE.md). |
+| `DATABASE_URL` | Yes | Supabase **connection pooler** URL for app runtime and seeding (e.g. `postgres://user:password@aws-1-...pooler.supabase.com:6543/postgres?pgbouncer=true`). |
 | `JWT_SECRET` | Yes | Secret used to sign/verify session cookies (e.g. a long random string) |
 
 Required for payment (Razorpay):
@@ -34,11 +33,31 @@ Example `.env.local` (Supabase):
 
 ```text
 DATABASE_URL="postgres://YOUR_USER:YOUR_PASSWORD@aws-1-YOUR_PROJECT_REF.pooler.supabase.com:6543/postgres?pgbouncer=true"
-DIRECT_URL="postgres://YOUR_USER:YOUR_PASSWORD@aws-1-YOUR_PROJECT_REF.supabase.com:5432/postgres"
 JWT_SECRET=your-secret-at-least-32-chars
 RAZORPAY_KEY_ID=rzp_...
 RAZORPAY_KEY_SECRET=...
 ```
+
+## Database Migrations (SQL-Only)
+
+This project uses **Supabase** for the database. Migrations are done via SQL files:
+
+1. **Generate SQL** from schema changes:
+   ```bash
+   npm run db:generate
+   ```
+
+2. **Apply SQL** manually in Supabase:
+   - Go to [Supabase Dashboard](https://app.supabase.com) → Your Project → SQL Editor
+   - Copy contents from `./drizzle/XXXX_migration_name.sql`
+   - Run the SQL
+
+3. **Seed data** (optional):
+   ```bash
+   npm run db:seed
+   ```
+
+**Note**: No local database or Docker needed. All database operations go directly to Supabase.
 
 ## Deployment Options
 

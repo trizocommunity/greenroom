@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
-import { db, pool } from "@/lib/db";
 import { sql } from "drizzle-orm";
+import { NextResponse } from "next/server";
+import { db, pool } from "@/core/database/client";
 
 /**
  * Database health check endpoint

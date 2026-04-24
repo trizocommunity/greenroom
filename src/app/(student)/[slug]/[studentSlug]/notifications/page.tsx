@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { ProgrammeNotificationsClient } from "@/components/student/ProgrammeNotificationsClient";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import { findStudentByFestivalAndProfileSlug } from "@/server/models/student.model";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { findStudentByFestivalAndProfileSlug } from "@/features/students/repositories/student.repository";
 
 export default async function StudentNotificationsPage({
   params,

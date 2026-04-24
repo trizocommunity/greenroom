@@ -31,15 +31,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useCategories } from "@/hooks/useCategories";
-import { useGroups } from "@/hooks/useGroups";
-import type { StudentsListItem } from "@/hooks/useStudents";
-import { useStudents } from "@/hooks/useStudents";
+import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useGroups } from "@/features/groups/hooks/use-groups";
+import { exportStudentsQrPdfAction } from "@/features/students/actions/qr.actions";
+import type { StudentsListItem } from "@/features/students/hooks/use-students";
+import { useStudents } from "@/features/students/hooks/use-students";
 import {
   getQrCodeContent,
   getStudentProfileUrl,
-} from "@/lib/student-profile-url";
-import { exportStudentsQrPdfAction } from "@/server/actions/qr.actions";
+} from "@/features/students/services/student-profile-url";
 
 interface QrCodesClientProps {
   festivalId: string;

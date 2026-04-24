@@ -5,15 +5,22 @@ import { Image as ImageIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { MOCK_GALLERY } from "@/data/mockFestivalData";
+
+interface GalleryImage {
+  id: string;
+  url: string;
+  order: number;
+}
 
 interface GalleryPreviewProps {
   slug: string;
+  images: GalleryImage[];
 }
 
-export function GalleryPreview({ slug }: GalleryPreviewProps) {
-  // Use first 4 images
-  const images = MOCK_GALLERY.slice(0, 4);
+export function GalleryPreview({ slug, images }: GalleryPreviewProps) {
+  const preview = images.slice(0, 4);
+
+  if (preview.length === 0) return null;
 
   return (
     <section className="py-24 bg-transparent">
@@ -35,9 +42,9 @@ export function GalleryPreview({ slug }: GalleryPreviewProps) {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:h-80">
-          {images.map((img, i) => (
+          {preview.map((img, i) => (
             <motion.div
-              key={i}
+              key={img.id}
               initial={{ opacity: 0, scale: 0.9 }}
               whileInView={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.1 }}
@@ -46,8 +53,8 @@ export function GalleryPreview({ slug }: GalleryPreviewProps) {
             >
               <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors z-10" />
               <Image
-                src={img}
-                alt={`Gallery ${i}`}
+                src={img.url}
+                alt={`Gallery image ${i + 1}`}
                 fill
                 className="object-cover transform group-hover:scale-110 transition-transform duration-700"
               />

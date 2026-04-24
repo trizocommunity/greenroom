@@ -1,13 +1,13 @@
 "use client";
 
+import jsQR from "jsqr";
 import { AlertCircle, Camera, CheckCircle, Loader2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { scanAndReportStudentAction } from "@/server/actions/programme-reporting.actions";
-import jsQR from "jsqr";
+import { scanAndReportStudentAction } from "@/features/programmes/actions/programme-reporting.actions";
 
 interface QrScannerProps {
   festivalId: string;
@@ -331,7 +331,7 @@ export function QrScanner({
     return () => {
       stopCamera();
     };
-  }, []);
+  });
 
   return (
     <Card className="border-primary/20">

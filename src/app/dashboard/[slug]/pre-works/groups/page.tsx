@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { GroupsClient } from "@/components/festival/pre-works/groups/GroupsClient";
-import { findFestivalBySlug } from "@/server/models/festival.model";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 
 export default async function GroupsPage({
   params,

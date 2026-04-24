@@ -5,11 +5,11 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatCountdownHms } from "@/lib/format-countdown-hms";
+import { formatCountdownHms } from "@/core/utils/format-countdown";
 import {
   refreshJudgeOpenLockAction,
   submitProgrammeJudgeSessionAction,
-} from "@/server/actions/programme-judging.actions";
+} from "@/features/programmes/actions/programme-judging.actions";
 
 export function ExternalJudgeClient({
   token,

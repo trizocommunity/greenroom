@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { Download, MapPin, Users } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -9,21 +10,23 @@ import { StudentQrDialogButton } from "@/components/student/StudentQrDialogButto
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_URL } from "@/config/routes";
-import { db } from "@/lib/db";
-import { 
-  student as studentTable, 
-  programmeReportingSession as sessionTable,
+import { db } from "@/core/database/client";
+import {
+  programmeCodeLetterRecipient as codeLetterRecipientTable,
   programmeCodeLetter as codeLetterTable,
-  programmeCodeLetterRecipient as codeLetterRecipientTable
-} from "@/server/db/schema";
-import { eq, and, inArray, sql, desc } from "drizzle-orm";
-import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
+  programmeReportingSession as sessionTable,
+  student as studentTable,
+} from "@/core/database/schema";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import {
+  FeatureService,
+  getTierForFeatureCheck,
+} from "@/features/plan-features/services/features";
+import { findStudentByFestivalAndProfileSlug } from "@/features/students/repositories/student.repository";
 import {
   getQrCodeContent,
   getStudentProfileUrl,
-} from "@/lib/student-profile-url";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import { findStudentByFestivalAndProfileSlug } from "@/server/models/student.model";
+} from "@/features/students/services/student-profile-url";
 
 const RESERVED_SLUGS = new Set([
   "results",
@@ -34,9 +37,7 @@ const RESERVED_SLUGS = new Set([
   "about",
 ]);
 
-function isSessionTimedOut(
-  session: any
-): boolean {
+function isSessionTimedOut(session: any): boolean {
   return Boolean(
     session?.status === "IN_PROGRESS" &&
       session.windowEndsAt &&
@@ -72,7 +73,9 @@ export default async function StudentMainPage({
   const endDate =
     festival.endDate ??
     festival.expiresAt ??
-    new Date(new Date(festival.createdAt).getTime() + 40 * 24 * 60 * 60 * 1000).toISOString();
+    new Date(
+      new Date(festival.createdAt).getTime() + 40 * 24 * 60 * 60 * 1000,
+    ).toISOString();
   const venue = festival.location ?? festival.orgLocation ?? "—";
 
   const group = student.group;
@@ -83,46 +86,55 @@ export default async function StudentMainPage({
         where: and(
           eq(studentTable.festivalId, festival.id),
           eq(studentTable.groupId, group.id),
-          eq(studentTable.isTeamLeader, true)
+          eq(studentTable.isTeamLeader, true),
         ),
         columns: { id: true, name: true, profileSlug: true, chestNumber: true },
       })
     : [];
 
-  const assignmentProgrammeIds = (student.assignments ?? []).map((a: any) => a.programmeId);
+  const assignmentProgrammeIds = (student.assignments ?? []).map(
+    (a: any) => a.programmeId,
+  );
 
-  const ongoingSessions = assignmentProgrammeIds.length > 0 ? await db.query.programmeReportingSession.findMany({
-    where: and(
-      inArray(sessionTable.programmeId, assignmentProgrammeIds),
-      inArray(sessionTable.status, ["IN_PROGRESS", "CLOSED"])
-    ),
-    with: {
-      programme: { columns: { name: true } },
-      stage: { columns: { name: true } },
-      scheduleEntry: { columns: { startTime: true } },
-    },
-    orderBy: [desc(sessionTable.updatedAt)],
-    limit: 5,
-  }) : [];
+  const ongoingSessions =
+    assignmentProgrammeIds.length > 0
+      ? await db.query.programmeReportingSession.findMany({
+          where: and(
+            inArray(sessionTable.programmeId, assignmentProgrammeIds),
+            inArray(sessionTable.status, ["IN_PROGRESS", "CLOSED"]),
+          ),
+          with: {
+            programme: { columns: { name: true } },
+            stage: { columns: { name: true } },
+            scheduleEntry: { columns: { startTime: true } },
+          },
+          orderBy: [desc(sessionTable.updatedAt)],
+          limit: 5,
+        })
+      : [];
 
   // Manual fetching of code letters for each session as Drizzle query builder doesn't support nested where with 'some' easily
-  const sessionsWithCodeLetters = await Promise.all(ongoingSessions.map(async (s) => {
-    const codeLetters = await db.query.programmeCodeLetter.findMany({
-      where: eq(codeLetterTable.reportingSessionId, s.id),
-      with: {
-        programmeCodeLetterRecipients: {
-          where: eq(codeLetterRecipientTable.studentId, student.id)
-        }
-      },
-      orderBy: [desc(codeLetterTable.issuedAt)],
-      limit: 5,
-    });
-    
-    return {
-      ...s,
-      codeLetters: codeLetters.filter(cl => cl.programmeCodeLetterRecipients.length > 0)
-    };
-  }));
+  const sessionsWithCodeLetters = await Promise.all(
+    ongoingSessions.map(async (s) => {
+      const codeLetters = await db.query.programmeCodeLetter.findMany({
+        where: eq(codeLetterTable.reportingSessionId, s.id),
+        with: {
+          programmeCodeLetterRecipients: {
+            where: eq(codeLetterRecipientTable.studentId, student.id),
+          },
+        },
+        orderBy: [desc(codeLetterTable.issuedAt)],
+        limit: 5,
+      });
+
+      return {
+        ...s,
+        codeLetters: codeLetters.filter(
+          (cl) => cl.programmeCodeLetterRecipients.length > 0,
+        ),
+      };
+    }),
+  );
 
   const profileUrl = getStudentProfileUrl(
     APP_URL.replace(/\/$/, ""),

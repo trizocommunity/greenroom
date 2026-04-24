@@ -103,7 +103,8 @@ const allFaqs = [
   },
   {
     id: "plan-diff",
-    question: "What are the differences between Basic, Standard, and Pro plans?",
+    question:
+      "What are the differences between Basic, Standard, and Pro plans?",
     answer:
       "Basic is for small festivals (250 students, 1 member). Standard unlocks bulk uploads, stage management, scheduling, and public landing pages (500 students, 3 members). Pro is for large events with advanced analytics, RBAC, API access, and white-labeling (2000 students, 10 members).",
   },

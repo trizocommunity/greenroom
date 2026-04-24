@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getPublicNewsData } from "@/server/loader/festivalPublicNews";
+import { getPublicNewsData } from "@/features/news/loaders/news-public.loader";
 import { PublicNewsView } from "./PublicNewsView";
 
 type Props = { params: Promise<{ slug: string }> };

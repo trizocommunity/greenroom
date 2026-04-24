@@ -1,8 +1,8 @@
 import { format, parseISO } from "date-fns";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getScheduleEntriesPublic } from "@/server/actions/schedule.actions";
-import { getPublicFestivalData } from "@/server/loader/festivalPublic";
+import { getPublicFestivalData } from "@/features/festivals/loaders/festival-public.loader";
+import { getScheduleEntriesPublic } from "@/features/schedule/actions/schedule.actions";
 import { ProgrammesByDay } from "./ProgrammesByDay";
 
 export async function generateMetadata({

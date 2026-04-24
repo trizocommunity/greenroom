@@ -1,15 +1,15 @@
 import { createHash } from "node:crypto";
+import { and, asc, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { ExternalJudgeClient } from "@/components/judge/ExternalJudgeClient";
-import { db } from "@/lib/db";
-import { 
+import { db } from "@/core/database/client";
+import {
+  programmeCodeLetter as codeLetterTable,
+  festival as festivalTable,
   programmeJudgeSession as judgeSessionTable,
   programme as programmeTable,
-  festival as festivalTable,
-  programmeCodeLetter as codeLetterTable
-} from "@/server/db/schema";
-import { eq, and, asc } from "drizzle-orm";
-import { getEffectiveFeatureTagEnabled } from "@/server/services/plan-features-tags.service";
+} from "@/core/database/schema";
+import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
 
 function hashTokenSHA256(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -74,7 +74,7 @@ export default async function JudgeTokenPage({
     db.query.programmeCodeLetter.findMany({
       where: and(
         eq(codeLetterTable.programmeId, judgeSession.programmeId),
-        eq(codeLetterTable.reportingSessionId, judgeSession.reportingSessionId)
+        eq(codeLetterTable.reportingSessionId, judgeSession.reportingSessionId),
       ),
       columns: { code: true },
       orderBy: [asc(codeLetterTable.issuedAt)],

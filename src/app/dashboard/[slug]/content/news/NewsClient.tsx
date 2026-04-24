@@ -35,17 +35,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 import {
   isCloudinaryConfigured,
   uploadImageToCloudinary,
-} from "@/lib/cloudinary";
-import { cn } from "@/lib/utils";
+} from "@/core/integrations/cloudinary";
+import { cn } from "@/core/utils/cn";
+import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
   createNewsPostAction,
   deleteNewsPostAction,
   updateNewsPostAction,
-} from "@/server/actions/news.actions";
+} from "@/features/news/actions/news.actions";
 
 type NewsPost = {
   id: string;

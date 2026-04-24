@@ -5,11 +5,11 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import type { Festival } from "@/hooks/useFestivals";
+import type { Festival } from "@/features/festivals/hooks/use-festivals";
 import {
   FESTIVAL_STATUS_LABELS,
   getDerivedFestivalStatus,
-} from "@/lib/festival-status";
+} from "@/features/festivals/services/festival-status.service";
 
 interface JoinedFestivalCardProps {
   festival: Festival & { memberRole?: string };

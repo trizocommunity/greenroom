@@ -12,9 +12,8 @@ import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { loginSchema } from "@/lib/validations/auth";
-
-import { loginAction } from "@/server/actions/auth.actions";
+import { loginAction } from "@/features/auth/actions/auth.actions";
+import { loginSchema } from "@/features/auth/schemas/auth.schema";
 
 type FormData = z.infer<typeof loginSchema>;
 

@@ -1,27 +1,31 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { formatApiError } from "@/lib/api-error";
-import { hashPassword } from "@/lib/auth/password";
-import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
-import { resetPasswordSchema } from "@/lib/validations/auth";
+import { hashPassword } from "@/core/auth/password";
+import { formatApiError } from "@/core/http/api-error";
+import { checkRateLimit, getClientIP } from "@/core/http/rate-limit";
 import {
   findValidPasswordResetToken,
   updatePasswordResetToken,
-} from "@/server/models/password-reset-token.model";
-import { updateUser } from "@/server/models/user.model";
-import { createAuditLog } from "@/server/services/audit-log.service";
+} from "@/features/auth/repositories/password-reset-token.repository";
+import { updateUser } from "@/features/auth/repositories/user.repository";
+import { resetPasswordSchema } from "@/features/auth/schemas/auth.schema";
+import { createAuditLog } from "@/features/auth/services/audit-log.service";
 
 export async function POST(request: Request) {
   try {
     // Rate limiting: 3 attempts per 15 minutes per IP
     const clientIP = getClientIP(request);
-    const rateLimit = checkRateLimit(`reset-password:${clientIP}`, 3, 15 * 60 * 1000);
+    const rateLimit = checkRateLimit(
+      `reset-password:${clientIP}`,
+      3,
+      15 * 60 * 1000,
+    );
 
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { error: "Too many attempts. Please try again later." },
-        { status: 429 }
+        { status: 429 },
       );
     }
 
@@ -46,7 +50,7 @@ export async function POST(request: Request) {
     });
 
     await updatePasswordResetToken(resetTokenRecord.id, {
-      usedAt: new Date(),
+      usedAt: new Date().toISOString(),
     });
 
     // Audit log password reset

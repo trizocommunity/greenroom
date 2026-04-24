@@ -14,14 +14,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PLANS } from "@/config/plan-features.config";
-import type { FeatureTag } from "@/lib/features-tags";
+import type { Tier } from "@/core/types/app-enums";
+import { setPlanFeatureTagOverrideAction } from "@/features/plan-features/actions/plan-features.actions";
+import type { FeatureTag } from "@/features/plan-features/services/features-tags";
 import {
   FEATURE_TAGS,
   getFeatureTagLabel,
   getFeatureTagRequirements,
-} from "@/lib/features-tags";
-import type { Tier } from "@/lib/app-enums";
-import { setPlanFeatureTagOverrideAction } from "@/server/actions/plan-features.actions";
+} from "@/features/plan-features/services/features-tags";
 
 type TagMatrix = Record<Tier, Partial<Record<FeatureTag, boolean>>>;
 

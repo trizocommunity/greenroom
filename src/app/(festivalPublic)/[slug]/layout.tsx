@@ -1,14 +1,14 @@
+import { eq, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { FestivalFooter } from "@/components/festival/FestivalFooter";
 import { FestivalNavbar } from "@/components/festival/FestivalNavbar";
 import { ExpiredFestivalView } from "@/components/festival/public/ExpiredFestivalView";
-import { getSession } from "@/lib/auth/session";
-import { db } from "@/lib/db";
-import { expiredFestivalResult as resultTable } from "@/server/db/schema";
-import { eq, sql } from "drizzle-orm";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import { getBrandingFromJson } from "@/types/festival";
+import { getSession } from "@/core/auth/session";
+import { db } from "@/core/database/client";
+import { expiredFestivalResult as resultTable } from "@/core/database/schema";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { getBrandingFromJson } from "@/features/festivals/types/festival.types";
 
 export default async function FestivalLayout({
   children,
@@ -36,7 +36,7 @@ export default async function FestivalLayout({
       .from(resultTable)
       .where(eq(resultTable.festivalId, festival.id));
     const count = Number(countResult.count);
-    
+
     const hasSnapshot = count > 0;
     const hasPdf = !!festival.resultPdfUrl || hasSnapshot;
     const downloadPdfUrl = festival.resultPdfUrl
@@ -91,7 +91,10 @@ export default async function FestivalLayout({
   return (
     <FestivalProvider festival={festivalData as any}>
       <div className="min-h-screen flex flex-col">
-        <FestivalNavbar festival={festivalData as any} isLoggedIn={isLoggedIn} />
+        <FestivalNavbar
+          festival={festivalData as any}
+          isLoggedIn={isLoggedIn}
+        />
         <main className="flex-1 pt-16">{children}</main>
         <FestivalFooter festival={festivalData as any} />
       </div>

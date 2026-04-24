@@ -1,8 +1,8 @@
 "use client";
 
 import { ArrowRight, Check, Loader2, Plus, Sparkles } from "lucide-react";
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,13 +25,13 @@ import {
 import { FestivalCardSkeleton } from "@/components/ui/Skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PRICING_TIERS } from "@/config/pricing";
-import { useFestivalPayment } from "@/hooks/useFestivalPayment";
-import { useMyFestival } from "@/hooks/useFestivals";
-import { useJoinedFestivals } from "@/hooks/useJoinedFestivals";
-import { useUnusedCredit } from "@/hooks/useUnusedCredit";
-import { getDerivedFestivalStatus } from "@/lib/festival-status";
-import type { Tier } from "@/lib/app-enums";
-import { cn } from "@/lib/utils";
+import type { Tier } from "@/core/types/app-enums";
+import { cn } from "@/core/utils/cn";
+import { useFestivalPayment } from "@/features/festivals/hooks/use-festival-payment";
+import { useMyFestival } from "@/features/festivals/hooks/use-festivals";
+import { useJoinedFestivals } from "@/features/festivals/hooks/use-joined-festivals";
+import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
+import { useUnusedCredit } from "@/features/payments/hooks/use-unused-credit";
 import { FestivalCard } from "../FestivalCard";
 import { JoinedFestivalCard } from "../JoinedFestivalCard";
 
@@ -160,7 +160,12 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
                         <div className="space-y-1">
                           <h4 className="text-lg sm:text-xl font-bold text-foreground flex flex-wrap items-center gap-2">
                             {credit.tier} Plan Credit
-                            <Badge variant="secondary" className="bg-primary/15 text-primary hover:bg-primary/20 border-0 text-[10px] sm:text-xs px-1.5 py-0 sm:py-0.5">Available</Badge>
+                            <Badge
+                              variant="secondary"
+                              className="bg-primary/15 text-primary hover:bg-primary/20 border-0 text-[10px] sm:text-xs px-1.5 py-0 sm:py-0.5"
+                            >
+                              Available
+                            </Badge>
                           </h4>
                           <p className="text-xs sm:text-sm font-medium text-muted-foreground w-full">
                             Value: ₹{credit.amount}

@@ -1,14 +1,14 @@
-import type { Tier } from "@/lib/app-enums";
 import { Calendar, Trophy } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
 import { LeaderboardClient } from "@/components/dashboard/leaderboard/LeaderboardClient";
-import { getFestivalLeaderboardDataBySlug } from "@/server/services/leaderboard.service";
-import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
+import type { Tier } from "@/core/types/app-enums";
+import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 import {
   filterProgrammesForEventWorks,
   isProgrammeInEventWorks,
-} from "@/server/services/programme-status.service";
+} from "@/features/programmes/services/programme-status.service";
+import { getFestivalLeaderboardDataBySlug } from "@/features/results/services/leaderboard.service";
 
 export default async function TeamStatusPage({
   params,

@@ -1,11 +1,14 @@
+import { count, eq } from "drizzle-orm";
 import { CalendarRange, Users } from "lucide-react";
 import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
 import { AssignmentsClient } from "@/components/festival/pre-works/assignments/AssignmentsClient";
-import { db } from "@/lib/db";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import { programme as programmeTable, student as studentTable } from "@/server/db/schema";
-import { eq, count } from "drizzle-orm";
+import { db } from "@/core/database/client";
+import {
+  programme as programmeTable,
+  student as studentTable,
+} from "@/core/database/schema";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 
 export default async function AssignmentsPage({
   params,
@@ -56,7 +59,7 @@ export default async function AssignmentsPage({
     <div className="pt-4 sm:pt-6">
       <AssignmentsClient
         festivalId={festival.id}
-        programmeAssignmentDeadline={festival.programmeAssignmentDeadline}
+        programmeAssignmentDeadline={festival.programmeAssignmentDeadline ? new Date(festival.programmeAssignmentDeadline) : null}
       >
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
           Programme Assignments

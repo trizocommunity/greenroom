@@ -1,4 +1,4 @@
-import type { Tier } from "@/lib/app-enums";
+import type { Tier } from "@/core/types/app-enums";
 
 // DEFER-1 & DEFER-2 FIX: Completed features blocks for STANDARD and PRO tiers.
 // Also typed the Record properly to remove `any`.

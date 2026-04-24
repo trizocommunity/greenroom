@@ -1,6 +1,6 @@
 import { Clock, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils/cn";
 
 interface StatusStripProps {
   festivalName: string;

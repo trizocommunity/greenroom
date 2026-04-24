@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
-import * as PaymentController from "@/server/controllers/payment.controller";
+import { getSession } from "@/core/auth/session";
+import { getUserStatusDomain } from "@/features/payments/services/payments-domain.service";
 
 export async function GET() {
   try {
@@ -10,11 +10,7 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Pass role to getUserStatus so it can check festival limit for USER role
-    const status = await PaymentController.getUserStatus(
-      session.userId,
-      session.role,
-    );
+    const status = await getUserStatusDomain(session.userId, session.role);
 
     return NextResponse.json(status);
   } catch (error) {

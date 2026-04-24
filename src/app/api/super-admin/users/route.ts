@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
-import { findAllUsers } from "@/server/models/user.model";
+import { getSession } from "@/core/auth/session";
+import { findAllUsers } from "@/features/auth/repositories/user.repository";
 
 export async function GET() {
   try {

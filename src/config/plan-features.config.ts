@@ -1,5 +1,5 @@
-import type { Tier } from "@/lib/app-enums";
-import type { FeaturePath } from "@/lib/features";
+import type { Tier } from "@/core/types/app-enums";
+import type { FeaturePath } from "@/features/plan-features/services/features";
 
 /** Keys in TierFeatures that are boolean and can be toggled by Super Admin. */
 export const PLAN_FEATURE_TOGGLE_KEYS = [

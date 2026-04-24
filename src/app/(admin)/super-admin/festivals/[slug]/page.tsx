@@ -1,3 +1,4 @@
+import { asc, eq } from "drizzle-orm";
 import { ArrowLeft, FileDown } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -5,14 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { db } from "@/lib/db";
-import { 
-  expiredFestivalResult as resultTable, 
-  festivalLifecycleEvent as lifecycleEventTable 
-} from "@/server/db/schema";
-import { eq, asc } from "drizzle-orm";
-import { getDerivedFestivalStatus } from "@/lib/festival-status";
-import { findFestivalBySlugOrId } from "@/server/models/festival.model";
+import { db } from "@/core/database/client";
+import {
+  festivalLifecycleEvent as lifecycleEventTable,
+  expiredFestivalResult as resultTable,
+} from "@/core/database/schema";
+import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
+import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 
 export default async function AdminFestivalDetailPage({
   params,
@@ -34,14 +34,14 @@ export default async function AdminFestivalDetailPage({
     expiresAt: festival.expiresAt,
   });
   const isExpired = derivedStatus === "EXPIRED";
-  
+
   const expiredResults = isExpired
     ? await db.query.expiredFestivalResult.findMany({
         where: eq(resultTable.festivalId, festivalId),
         orderBy: [asc(resultTable.programmeName), asc(resultTable.position)],
       })
     : [];
-    
+
   const lifecycleEvents = isExpired
     ? await db.query.festivalLifecycleEvent.findMany({
         where: eq(lifecycleEventTable.festivalId, festivalId),

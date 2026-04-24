@@ -1,8 +1,8 @@
 "use client";
 
-import type { ProgrammeStatus } from "@/lib/app-enums";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import type { ProgrammeStatus } from "@/core/types/app-enums";
+import { cn } from "@/core/utils/cn";
 
 const STATUS_LABELS: Record<ProgrammeStatus, string> = {
   READY: "Ready",
@@ -40,7 +40,8 @@ const STATUS_STYLES: Record<ProgrammeStatus, string> = {
   JUDGED: "border-transparent bg-primary/15 text-primary dark:bg-primary/20",
   PUBLISHED:
     "border-transparent bg-green-500/15 text-green-700 dark:text-green-400 dark:bg-green-500/20",
-  RESET: "border-transparent bg-red-500/15 text-red-700 dark:text-red-400 dark:bg-red-500/20",
+  RESET:
+    "border-transparent bg-red-500/15 text-red-700 dark:text-red-400 dark:bg-red-500/20",
 };
 
 interface ProgrammeStatusBadgeProps {

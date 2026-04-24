@@ -1,12 +1,12 @@
-import type { GlobalRole } from "@/lib/app-enums";
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
+import { getSession } from "@/core/auth/session";
+import type { GlobalRole } from "@/core/types/app-enums";
 import {
   deleteUser,
   findUserByEmail,
   findUserById,
   updateUser,
-} from "@/server/models/user.model";
+} from "@/features/auth/repositories/user.repository";
 
 export async function DELETE(
   _request: Request,

@@ -27,13 +27,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useCategories } from "@/hooks/useCategories";
-import { useGroups } from "@/hooks/useGroups";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/core/http/query-keys";
+import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useGroups } from "@/features/groups/hooks/use-groups";
 import {
   bulkCreateStudentsAction,
   validateStudentsAction,
-} from "@/server/actions/student.actions";
+} from "@/features/students/actions/student.actions";
 
 // --- Types & Schema ---
 

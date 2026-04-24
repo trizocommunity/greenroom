@@ -1,8 +1,11 @@
 import { notFound } from "next/navigation";
 import { TeamLeaderLoginClient } from "@/components/student/team-leader/TeamLeaderLoginClient";
-import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import { findStudentByFestivalAndProfileSlug } from "@/server/models/student.model";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import {
+  FeatureService,
+  getTierForFeatureCheck,
+} from "@/features/plan-features/services/features";
+import { findStudentByFestivalAndProfileSlug } from "@/features/students/repositories/student.repository";
 
 export default async function TeamLeaderLoginPage({
   params,

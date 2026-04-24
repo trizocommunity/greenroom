@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { formatApiError } from "@/lib/api-error";
-import { hashPassword } from "@/lib/auth/password";
-import type { GlobalRole } from "@/lib/auth/session";
-import { createSession } from "@/lib/auth/session";
-import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
-import { registerSchema } from "@/lib/validations/auth";
-import { createUser, findUserByEmail } from "@/server/models/user.model";
+import { hashPassword } from "@/core/auth/password";
+import type { GlobalRole } from "@/core/auth/session";
+import { createSession } from "@/core/auth/session";
+import { formatApiError } from "@/core/http/api-error";
+import { checkRateLimit, getClientIP } from "@/core/http/rate-limit";
+import {
+  createUser,
+  findUserByEmail,
+} from "@/features/auth/repositories/user.repository";
+import { registerSchema } from "@/features/auth/schemas/auth.schema";
 
 export async function POST(request: Request) {
   try {
@@ -17,7 +20,7 @@ export async function POST(request: Request) {
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { error: "Too many attempts. Please try again later." },
-        { status: 429 }
+        { status: 429 },
       );
     }
 

@@ -22,9 +22,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useCategories } from "@/hooks/useCategories";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
-import { useStudents } from "@/hooks/useStudents";
+import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
+import { useStudents } from "@/features/students/hooks/use-students";
 import { CategoryDetailsDialog } from "./CategoryDetailsDialog";
 import { CategoryDialog } from "./CategoryDialog";
 

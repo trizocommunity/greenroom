@@ -15,7 +15,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { createStage, updateStage } from "@/server/actions/stage.actions";
+import {
+  createStage,
+  updateStage,
+} from "@/features/stages/actions/stage.actions";
 
 interface StageDialogProps {
   festivalId: string;

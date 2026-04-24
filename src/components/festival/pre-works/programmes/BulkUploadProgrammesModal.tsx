@@ -25,9 +25,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useCategories } from "@/hooks/useCategories";
-import { queryKeys } from "@/lib/query-keys";
-import { bulkCreateProgrammesAction } from "@/server/actions/programme.actions";
+import { queryKeys } from "@/core/http/query-keys";
+import { useCategories } from "@/features/categories/hooks/use-categories";
+import { bulkCreateProgrammesAction } from "@/features/programmes/actions/programme.actions";
 
 // --- Types & Schema ---
 

@@ -69,7 +69,7 @@ import {
   useDeleteUser,
   useUpdateUser,
   useUsers,
-} from "@/hooks/useUsers";
+} from "@/features/auth/hooks/use-users";
 
 export function UsersTable() {
   const [sorting, setSorting] = React.useState<SortingState>([]);

@@ -1,25 +1,23 @@
+import { and, asc, desc, eq, inArray, isNotNull, not, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { AllProgrammesClient } from "@/components/student/team-leader/AllProgrammesClient";
-import { db } from "@/lib/db";
-import { 
-  programme as programmeTable, 
-  group as groupTable, 
+import { requireTeamLeaderSession } from "@/core/auth/team-leader-guard";
+import { db } from "@/core/database/client";
+import {
   programmeAssignment as assignmentTable,
-  programmeReportingSession as sessionTable,
-  programmeCodeLetter as codeLetterTable,
   programmeCodeLetterRecipient as codeLetterRecipientTable,
-  programmeReportedParticipant as reportedParticipantTable
-} from "@/server/db/schema";
-import { eq, and, inArray, sql, asc, desc, not, isNotNull } from "drizzle-orm";
-import { getExpectedAssignmentsTotal } from "@/lib/programme-assignment-progress";
-import { getCodeForStudentFromLetters } from "@/lib/programme-reporting-code";
-import { getProgrammeStatusPriorityRank } from "@/lib/programme-status-priority";
-import { getTeamLeaderMyStudents } from "@/lib/team-leader/my-team";
-import { requireTeamLeaderSession } from "@/lib/team-leader-auth/guard";
+  programmeCodeLetter as codeLetterTable,
+  group as groupTable,
+  programme as programmeTable,
+  programmeReportedParticipant as reportedParticipantTable,
+  programmeReportingSession as sessionTable,
+} from "@/core/database/schema";
+import { getExpectedAssignmentsTotal } from "@/features/programmes/services/programme-assignment-progress";
+import { getCodeForStudentFromLetters } from "@/features/programmes/services/programme-reporting-code";
+import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
+import { getTeamLeaderMyStudents } from "@/features/team-leader/services/my-team";
 
-function isSessionTimedOut(
-  session: any
-): boolean {
+function isSessionTimedOut(session: any): boolean {
   return Boolean(
     session?.status === "IN_PROGRESS" &&
       session.windowEndsAt &&
@@ -53,31 +51,40 @@ export default async function AllProgrammesPage({
       getProgrammeStatusPriorityRank(a.status as any) -
       getProgrammeStatusPriorityRank(b.status as any),
   );
-  
-  const [groupCountResult] = await db.select({ count: sql`count(*)` }).from(groupTable).where(eq(groupTable.festivalId, festival.id));
+
+  const [groupCountResult] = await db
+    .select({ count: sql`count(*)` })
+    .from(groupTable)
+    .where(eq(groupTable.festivalId, festival.id));
   const groupCount = Number(groupCountResult.count);
 
   const assignmentCountsRaw =
     programmes.length > 0
-      ? await db.select({ 
-          programmeId: assignmentTable.programmeId, 
-          count: sql`count(*)` 
-        })
-        .from(assignmentTable)
-        .where(and(
-          eq(assignmentTable.festivalId, festival.id),
-          inArray(assignmentTable.programmeId, programmes.map((p) => p.id))
-        ))
-        .groupBy(assignmentTable.programmeId)
+      ? await db
+          .select({
+            programmeId: assignmentTable.programmeId,
+            count: sql`count(*)`,
+          })
+          .from(assignmentTable)
+          .where(
+            and(
+              eq(assignmentTable.festivalId, festival.id),
+              inArray(
+                assignmentTable.programmeId,
+                programmes.map((p) => p.id),
+              ),
+            ),
+          )
+          .groupBy(assignmentTable.programmeId)
       : [];
-  
+
   const programmeIds = programmes.map((p) => p.id);
   const allReportingSessions =
     programmeIds.length > 0
       ? await db.query.programmeReportingSession.findMany({
           where: and(
             eq(sessionTable.festivalId, festival.id),
-            inArray(sessionTable.programmeId, programmeIds)
+            inArray(sessionTable.programmeId, programmeIds),
           ),
           with: {
             programmeReportedParticipants: { columns: { assignmentId: true } },
@@ -90,11 +97,8 @@ export default async function AllProgrammesPage({
           orderBy: [desc(sessionTable.updatedAt)],
         })
       : [];
-      
-  const latestReportingByProgrammeId = new Map<
-    string,
-    any
-  >();
+
+  const latestReportingByProgrammeId = new Map<string, any>();
   for (const s of allReportingSessions) {
     if (!latestReportingByProgrammeId.has(s.programmeId)) {
       latestReportingByProgrammeId.set(s.programmeId, s);
@@ -108,7 +112,7 @@ export default async function AllProgrammesPage({
     ? await db.query.programmeAssignment.findMany({
         where: and(
           eq(assignmentTable.festivalId, festival.id),
-          inArray(assignmentTable.studentId, myStudentIds)
+          inArray(assignmentTable.studentId, myStudentIds),
         ),
         with: {
           programme: { with: { category: true } },
@@ -123,7 +127,7 @@ export default async function AllProgrammesPage({
   const groupProgrammeIds = programmes
     .filter((p) => p.type === "GROUP")
     .map((p) => p.id);
-    
+
   const groupProgrammeAssignments =
     groupProgrammeIds.length > 0
       ? await db.query.programmeAssignment.findMany({
@@ -131,7 +135,7 @@ export default async function AllProgrammesPage({
             eq(assignmentTable.festivalId, festival.id),
             inArray(assignmentTable.programmeId, groupProgrammeIds),
             eq(assignmentTable.groupId, student.groupId!),
-            isNotNull(assignmentTable.studentId)
+            isNotNull(assignmentTable.studentId),
           ),
           with: {
             student: { columns: { id: true, name: true, chestNumber: true } },
@@ -225,10 +229,13 @@ export default async function AllProgrammesPage({
     );
     const code =
       sess.status === "CLOSED" && memberStudentId
-        ? getCodeForStudentFromLetters(sess.programmeCodeLetters.map((cl: any) => ({
-            code: cl.code,
-            recipients: cl.programmeCodeLetterRecipients
-          })), memberStudentId)
+        ? getCodeForStudentFromLetters(
+            sess.programmeCodeLetters.map((cl: any) => ({
+              code: cl.code,
+              recipients: cl.programmeCodeLetterRecipients,
+            })),
+            memberStudentId,
+          )
         : null;
     if (sess.status === "IN_PROGRESS" && !isSessionTimedOut(sess)) {
       return reported ? "Reported" : "Pending";
@@ -253,7 +260,9 @@ export default async function AllProgrammesPage({
     const entry = participantsByProgramme.get(p.id);
     const latestSession = latestReportingByProgrammeId.get(p.id);
     const reportedAssignmentIds = new Set(
-      latestSession?.programmeReportedParticipants.map((r: any) => r.assignmentId) ?? [],
+      latestSession?.programmeReportedParticipants.map(
+        (r: any) => r.assignmentId,
+      ) ?? [],
     );
 
     const myGroupTeams =

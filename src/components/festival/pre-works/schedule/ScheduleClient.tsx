@@ -60,8 +60,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils/cn";
+import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
   type ConflictParts,
   checkScheduleConflict,
@@ -71,7 +71,7 @@ import {
   reorderScheduleEntries,
   type ScheduleEntryWithRelations,
   updateScheduleEntry,
-} from "@/server/actions/schedule.actions";
+} from "@/features/schedule/actions/schedule.actions";
 
 type ProgrammeOption = {
   id: string;

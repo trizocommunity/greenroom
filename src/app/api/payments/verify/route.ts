@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
-import * as PaymentController from "@/server/controllers/payment.controller";
+import { getSession } from "@/core/auth/session";
+import { verifyPaymentByOrderIdDomain } from "@/features/payments/services/payments-domain.service";
 
 // POST /api/payments/verify - Verify Razorpay payment signature
 export async function POST(request: NextRequest) {
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    await PaymentController.verifyPayment({
+    await verifyPaymentByOrderIdDomain({
       razorpay_order_id: body.razorpay_order_id,
       razorpay_payment_id: body.razorpay_payment_id,
       razorpay_signature: body.razorpay_signature,

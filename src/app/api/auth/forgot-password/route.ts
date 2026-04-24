@@ -2,22 +2,26 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { APP_URL } from "@/config/routes";
-import { formatApiError } from "@/lib/api-error";
-import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
-import { forgotPasswordSchema } from "@/lib/validations/auth";
-import { createPasswordResetToken } from "@/server/models/password-reset-token.model";
-import { findUserByEmail } from "@/server/models/user.model";
+import { formatApiError } from "@/core/http/api-error";
+import { checkRateLimit, getClientIP } from "@/core/http/rate-limit";
+import { createPasswordResetToken } from "@/features/auth/repositories/password-reset-token.repository";
+import { findUserByEmail } from "@/features/auth/repositories/user.repository";
+import { forgotPasswordSchema } from "@/features/auth/schemas/auth.schema";
 
 export async function POST(request: Request) {
   try {
     // Rate limiting: 3 attempts per 15 minutes per IP
     const clientIP = getClientIP(request);
-    const rateLimit = checkRateLimit(`forgot-password:${clientIP}`, 3, 15 * 60 * 1000);
+    const rateLimit = checkRateLimit(
+      `forgot-password:${clientIP}`,
+      3,
+      15 * 60 * 1000,
+    );
 
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { error: "Too many attempts. Please try again later." },
-        { status: 429 }
+        { status: 429 },
       );
     }
 

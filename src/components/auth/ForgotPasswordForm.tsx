@@ -10,12 +10,12 @@ import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { forgotPasswordSchema } from "@/lib/validations/auth";
+import { forgotPasswordSchema } from "@/features/auth/schemas/auth.schema";
 
 type FormData = z.infer<typeof forgotPasswordSchema>;
 
 import { useMutation } from "@tanstack/react-query";
-import { forgotPasswordAction } from "@/server/actions/auth.actions";
+import { forgotPasswordAction } from "@/features/auth/actions/auth.actions";
 
 export function ForgotPasswordForm() {
   const {

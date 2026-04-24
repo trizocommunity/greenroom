@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getAuditLogs } from "@/server/services/audit-log.service";
+import { getAuditLogs } from "@/features/auth/services/audit-log.service";
 
 export default async function AdminAuditLogsPage({
   searchParams,

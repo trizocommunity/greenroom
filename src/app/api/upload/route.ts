@@ -1,9 +1,9 @@
+import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { formatApiError } from "@/lib/api-error";
-import { getSession } from "@/lib/auth/session";
-import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
-import crypto from "crypto";
+import { getSession } from "@/core/auth/session";
+import { formatApiError } from "@/core/http/api-error";
+import { checkRateLimit, getClientIP } from "@/core/http/rate-limit";
 
 // Upload configuration
 const ALLOWED_MIME_TYPES = [
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     if (!session?.userId) {
       return NextResponse.json(
         { error: "Authentication required" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -42,12 +42,12 @@ export async function POST(request: Request) {
     const rateLimit = checkRateLimit(
       `upload:${session.userId}`,
       10,
-      60 * 60 * 1000
+      60 * 60 * 1000,
     );
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { error: "Upload limit exceeded. Please try again later." },
-        { status: 429 }
+        { status: 429 },
       );
     }
 
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     if (buffer.length > MAX_FILE_SIZE) {
       return NextResponse.json(
         { error: "File too large. Maximum size is 5MB." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     if (!cloudName || !apiKey || !apiSecret) {
       return NextResponse.json(
         { error: "Upload service not configured" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -100,16 +100,13 @@ export async function POST(request: Request) {
       {
         method: "POST",
         body: formData,
-      }
+      },
     );
 
     if (!uploadRes.ok) {
       const error = await uploadRes.text();
       console.error("Cloudinary upload failed:", error);
-      return NextResponse.json(
-        { error: "Upload failed" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Upload failed" }, { status: 500 });
     }
 
     const data = await uploadRes.json();

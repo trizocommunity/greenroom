@@ -1,12 +1,21 @@
-import { db } from "@/lib/db";
-import { festival as festivalTable, programmeAssignment as assignmentTable, programme as programmeTable, programmeJudgeSession as pjsTable } from "@/server/db/schema";
-import { eq, asc, desc, inArray, count, and } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 import { Calendar, ClipboardList } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
 import { BasicMarksClient } from "@/components/dashboard/marks/BasicMarksClient";
-import { filterProgrammesForEventWorks, type ProgrammeStatus, type Tier } from "@/server/services/programme-status.service";
+import { db } from "@/core/database/client";
+import {
+  programmeAssignment as assignmentTable,
+  festival as festivalTable,
+  programmeJudgeSession as pjsTable,
+  programme as programmeTable,
+} from "@/core/database/schema";
+import {
+  filterProgrammesForEventWorks,
+  type ProgrammeStatus,
+  type Tier,
+} from "@/features/programmes/services/programme-status.service";
 
 export const metadata: Metadata = {
   title: "Results",
@@ -56,9 +65,7 @@ export default async function MarksRedirectPage({
   }
 
   const judgmentAllowedStatuses: ProgrammeStatus[] =
-    tier === "BASIC"
-      ? []
-      : ["STARTED", "ENDED", "JUDGED", "PUBLISHED"];
+    tier === "BASIC" ? [] : ["STARTED", "ENDED", "JUDGED", "PUBLISHED"];
 
   const eventWorksProgrammes =
     tier === "BASIC"

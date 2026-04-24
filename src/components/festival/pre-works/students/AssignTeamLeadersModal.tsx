@@ -24,9 +24,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useGroups } from "@/hooks/useGroups";
-import { useStudents } from "@/hooks/useStudents";
-import { updateStudentAction } from "@/server/actions/student.actions";
+import { useGroups } from "@/features/groups/hooks/use-groups";
+import { updateStudentAction } from "@/features/students/actions/student.actions";
+import { useStudents } from "@/features/students/hooks/use-students";
 
 interface AssignTeamLeadersModalProps {
   festivalId: string;

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { FestivalExpirationService } from "@/server/services/festival-expiration.service";
+import { FestivalExpirationService } from "@/features/festivals/services/festival-expiration.service";
 
 /**
  * Cron Job: Expire Festivals (fixed 30-day validity; no read-only)
@@ -9,10 +9,7 @@ import { FestivalExpirationService } from "@/server/services/festival-expiration
  */
 export async function GET(request: Request) {
   try {
-    if (
-      process.env.NODE_ENV === "production" &&
-      !process.env.CRON_SECRET
-    ) {
+    if (process.env.NODE_ENV === "production" && !process.env.CRON_SECRET) {
       return NextResponse.json(
         { error: "CRON_SECRET is required in production" },
         { status: 500 },

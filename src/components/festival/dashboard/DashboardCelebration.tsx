@@ -1,8 +1,8 @@
 "use client";
 
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import party from "party-js";
+import { useEffect } from "react";
 
 // ── Main component ─────────────────────────────────────────────
 export function DashboardCelebration() {

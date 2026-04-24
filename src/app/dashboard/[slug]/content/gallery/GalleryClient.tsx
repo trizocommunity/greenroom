@@ -25,17 +25,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 import {
   isCloudinaryConfigured,
   uploadImageToCloudinary,
-} from "@/lib/cloudinary";
-import { cn } from "@/lib/utils";
+} from "@/core/integrations/cloudinary";
+import { cn } from "@/core/utils/cn";
+import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
   addGalleryImagesAction,
   deleteGalleryImageAction,
   deleteGalleryImagesAction,
-} from "@/server/actions/gallery.actions";
+} from "@/features/gallery/actions/gallery.actions";
 
 type ImageRecord = { id: string; url: string; order: number };
 
@@ -70,7 +70,9 @@ export function GalleryClient({
   useEffect(() => {
     return () => {
       if (pendingUpload?.previewUrls) {
-        pendingUpload.previewUrls.forEach((url) => URL.revokeObjectURL(url));
+        pendingUpload.previewUrls.forEach((url) => {
+          URL.revokeObjectURL(url);
+        });
       }
     };
   }, [pendingUpload]);
@@ -101,7 +103,9 @@ export function GalleryClient({
   const closeUploadModal = useCallback(() => {
     if (uploadModalUploading) return;
     if (pendingUpload?.previewUrls) {
-      pendingUpload.previewUrls.forEach((url) => URL.revokeObjectURL(url));
+      pendingUpload.previewUrls.forEach((url) => {
+        URL.revokeObjectURL(url);
+      });
     }
     setPendingUpload(null);
   }, [uploadModalUploading, pendingUpload]);
@@ -150,7 +154,9 @@ export function GalleryClient({
           urls.length === 1 ? "Photo added." : `${urls.length} photos added.`,
         );
         if (pendingUpload?.previewUrls) {
-          pendingUpload.previewUrls.forEach((url) => URL.revokeObjectURL(url));
+          pendingUpload.previewUrls.forEach((url) => {
+            URL.revokeObjectURL(url);
+          });
         }
         setPendingUpload(null);
         setUploadModalUploading(false);
@@ -163,7 +169,7 @@ export function GalleryClient({
       toast.error("Upload failed.");
       setUploadModalUploading(false);
     }
-  }, [festivalId, pendingUpload, closeUploadModal]);
+  }, [festivalId, pendingUpload, closeUploadModal, isReadOnly]);
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -189,7 +195,7 @@ export function GalleryClient({
         toast.error(res.error ?? "Failed to remove.");
       }
     },
-    [festivalId, lightboxIndex, images.length],
+    [festivalId, lightboxIndex, images.length, isReadOnly],
   );
 
   const handleBulkDelete = useCallback(async () => {
@@ -212,7 +218,7 @@ export function GalleryClient({
     } finally {
       setDeletingIds(new Set());
     }
-  }, [festivalId, selectedIds]);
+  }, [festivalId, selectedIds, isReadOnly]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((s) => {

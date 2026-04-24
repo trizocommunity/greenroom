@@ -16,11 +16,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatCountdownHms } from "@/lib/format-countdown-hms";
+import { formatCountdownHms } from "@/core/utils/format-countdown";
 import {
   createProgrammeJudgeLinkAction,
   regenerateProgrammeJudgeLinkAction,
-} from "@/server/actions/programme-judging.actions";
+} from "@/features/programmes/actions/programme-judging.actions";
 
 type ProgrammeType = "INDIVIDUAL" | "GROUP";
 

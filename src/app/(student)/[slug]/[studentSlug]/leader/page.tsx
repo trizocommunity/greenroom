@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { getPublicFestivalStudentOrNotFound } from "@/lib/team-leader-auth/guard";
-import { getTeamLeaderSessionFromCookie } from "@/lib/team-leader-auth/session";
+import { getPublicFestivalStudentOrNotFound } from "@/core/auth/team-leader-guard";
+import { getTeamLeaderSessionFromCookie } from "@/core/auth/team-leader-session";
 
 export default async function TeamLeaderRootPage({
   params,

@@ -1,12 +1,15 @@
-import type { ProgrammeStatus } from "@/lib/app-enums";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { StudentNavbar } from "@/components/student/StudentNavbar";
-import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
-import { getTopPriorityProgrammeStatus } from "@/lib/programme-status-priority";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import { findStudentByFestivalAndProfileSlug } from "@/server/models/student.model";
+import type { ProgrammeStatus } from "@/core/types/app-enums";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import {
+  FeatureService,
+  getTierForFeatureCheck,
+} from "@/features/plan-features/services/features";
+import { getTopPriorityProgrammeStatus } from "@/features/programmes/services/programme-status-priority";
+import { findStudentByFestivalAndProfileSlug } from "@/features/students/repositories/student.repository";
 
 const RESERVED_SLUGS = new Set([
   "results",

@@ -1,12 +1,12 @@
+import { asc, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { ScheduleClient } from "@/components/festival/pre-works/schedule/ScheduleClient";
-import { db } from "@/lib/db";
-import { programme as programmeTable } from "@/server/db/schema";
-import { eq, asc } from "drizzle-orm";
-import { getScheduleEntries } from "@/server/actions/schedule.actions";
-import { getStages } from "@/server/actions/stage.actions";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
+import { db } from "@/core/database/client";
+import { programme as programmeTable } from "@/core/database/schema";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import { getScheduleEntries } from "@/features/schedule/actions/schedule.actions";
+import { getStages } from "@/features/stages/actions/stage.actions";
 
 interface PageProps {
   params: Promise<{ slug: string }>;

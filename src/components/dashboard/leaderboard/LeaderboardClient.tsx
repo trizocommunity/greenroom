@@ -2,7 +2,7 @@
 
 import { CheckCircle2, Crown, Loader2, Medal, Trophy, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { useFestival } from "@/components/festival/FestivalContext";
@@ -24,9 +24,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
-import { cn } from "@/lib/utils";
-import { publishTeamStandings } from "@/server/actions/results";
+import { cn } from "@/core/utils/cn";
+import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
+import { publishTeamStandings } from "@/features/results/actions/results.actions";
 
 // Types matching what's passed from the page
 interface LeaderboardClientProps {
@@ -278,7 +278,10 @@ export function LeaderboardClient({
           </div>
         ) : isBasicTier ? (
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 gap-1 px-3 py-1">
+            <Badge
+              variant="outline"
+              className="bg-primary/5 text-primary border-primary/20 gap-1 px-3 py-1"
+            >
               <Trophy className="w-3.5 h-3.5" />
               Internal Leaderboard
             </Badge>
@@ -291,33 +294,44 @@ export function LeaderboardClient({
         <div
           className={cn(
             "grid grid-cols-1 gap-4",
-            hideLiveStandings || isBasicTier ? "md:grid-cols-1" : "md:grid-cols-2",
+            hideLiveStandings || isBasicTier
+              ? "md:grid-cols-1"
+              : "md:grid-cols-2",
           )}
         >
           {/* Live Standings Column */}
           {!hideLiveStandings ? (
             <Card className="p-0 overflow-hidden border-yellow-500/20">
-            <div className={cn(
-              "p-4 border-b flex items-center justify-between",
-              isBasicTier ? "bg-primary/5 border-primary/10" : "bg-yellow-500/10 border-yellow-500/10"
-            )}>
-              <h3 className={cn(
-                "font-bold flex items-center gap-2",
-                isBasicTier ? "text-foreground" : "text-yellow-600 dark:text-yellow-500"
-              )}>
-                {!isBasicTier && <Loader2 className="w-4 h-4 animate-spin" />}
-                {isBasicTier ? "Team Standings" : "Live Standings"}
-              </h3>
-              <Badge
-                variant="outline"
-                className={isBasicTier 
-                  ? "bg-primary/10 text-primary border-primary/20" 
-                  : "bg-yellow-50 text-yellow-700 border-yellow-200"
-                }
+              <div
+                className={cn(
+                  "p-4 border-b flex items-center justify-between",
+                  isBasicTier
+                    ? "bg-primary/5 border-primary/10"
+                    : "bg-yellow-500/10 border-yellow-500/10",
+                )}
               >
-                {isBasicTier ? "Internal Only" : "Dynamic"}
-              </Badge>
-            </div>
+                <h3
+                  className={cn(
+                    "font-bold flex items-center gap-2",
+                    isBasicTier
+                      ? "text-foreground"
+                      : "text-yellow-600 dark:text-yellow-500",
+                  )}
+                >
+                  {!isBasicTier && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {isBasicTier ? "Team Standings" : "Live Standings"}
+                </h3>
+                <Badge
+                  variant="outline"
+                  className={
+                    isBasicTier
+                      ? "bg-primary/10 text-primary border-primary/20"
+                      : "bg-yellow-50 text-yellow-700 border-yellow-200"
+                  }
+                >
+                  {isBasicTier ? "Internal Only" : "Dynamic"}
+                </Badge>
+              </div>
               <div className="hidden md:block">
                 <Table>
                   <TableHeader>
@@ -332,7 +346,13 @@ export function LeaderboardClient({
                       teamStandings.map((team, idx) => (
                         <TableRow
                           key={team.name}
-                          className={idx < 3 ? (isBasicTier ? "bg-primary/5" : "bg-yellow-50/5") : ""}
+                          className={
+                            idx < 3
+                              ? isBasicTier
+                                ? "bg-primary/5"
+                                : "bg-yellow-50/5"
+                              : ""
+                          }
                         >
                           <TableCell className="text-center font-bold text-muted-foreground">
                             {idx + 1}
@@ -370,7 +390,9 @@ export function LeaderboardClient({
                       className={cn(
                         "flex items-center justify-between gap-3 rounded-lg border px-3 py-2",
                         idx < 3
-                          ? (isBasicTier ? "border-primary/25 bg-primary/5" : "border-yellow-500/25 bg-yellow-500/5")
+                          ? isBasicTier
+                            ? "border-primary/25 bg-primary/5"
+                            : "border-yellow-500/25 bg-yellow-500/5"
                           : "border-border/70 bg-background",
                       )}
                     >
@@ -429,25 +451,27 @@ export function LeaderboardClient({
                   <TableBody>
                     {publishedStandingsFiltered &&
                     publishedStandingsFiltered.length > 0 ? (
-                      publishedStandingsFiltered.map((team: any, idx: number) => (
-                        <TableRow
-                          key={team.name}
-                          className={idx < 3 ? "bg-green-50/5" : ""}
-                        >
-                          <TableCell className="text-center font-bold text-muted-foreground">
-                            {idx + 1}
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {team.name}
-                            {idx === 0 && (
-                              <Crown className="inline w-3 h-3 ml-1 text-yellow-600" />
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right font-bold text-lg">
-                            {team.points}
-                          </TableCell>
-                        </TableRow>
-                      ))
+                      publishedStandingsFiltered.map(
+                        (team: any, idx: number) => (
+                          <TableRow
+                            key={team.name}
+                            className={idx < 3 ? "bg-green-50/5" : ""}
+                          >
+                            <TableCell className="text-center font-bold text-muted-foreground">
+                              {idx + 1}
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {team.name}
+                              {idx === 0 && (
+                                <Crown className="inline w-3 h-3 ml-1 text-yellow-600" />
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-lg">
+                              {team.points}
+                            </TableCell>
+                          </TableRow>
+                        ),
+                      )
                     ) : (
                       <TableRow>
                         <TableCell

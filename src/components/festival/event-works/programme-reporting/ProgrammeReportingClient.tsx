@@ -1,7 +1,6 @@
 "use client";
 
-import { BarChart3, Clock } from "lucide-react";
-import { Loader2 } from "lucide-react";
+import { BarChart3, Clock, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -9,16 +8,16 @@ import { CompactHistoryList } from "@/components/dashboard/event-works/CompactHi
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getCodeForStudentFromLetters } from "@/lib/programme-reporting-code";
 import {
   assignCodeLettersWithSpinAction,
   closeProgrammeReportingAction,
   getReportingStatsAction,
   resetProgrammeReportingAction,
   startProgrammeReportingAction,
-} from "@/server/actions/programme-reporting.actions";
-import { QrScanner } from "./QrScanner";
+} from "@/features/programmes/actions/programme-reporting.actions";
+import { getCodeForStudentFromLetters } from "@/features/programmes/services/programme-reporting-code";
 import { CodeLetterSpinWheel } from "./CodeLetterSpinWheel";
+import { QrScanner } from "./QrScanner";
 
 export type ReportingBoardItem = {
   id: string;
@@ -498,7 +497,7 @@ export function ProgrammeReportingClient({
     fetchStats();
     const interval = setInterval(fetchStats, 30000); // Update every 30 seconds
     return () => clearInterval(interval);
-  }, [session?.id, sessionStatus, festivalId, lastRefreshAt]);
+  }, [session?.id, sessionStatus, festivalId]);
   const canEdit = Boolean(
     session && !session.isLocked && isInProgress && !isTimedOut,
   );
@@ -1081,12 +1080,13 @@ export function ProgrammeReportingClient({
             // Each "team" represents one unit that needs a code
             Array.from({ length: reportingStats.reported }, (_, i) => ({
               teamNumber: i + 1,
-              members: Math.round(
-                (reportingStats.total > 0
-                  ? (session.reportedParticipants?.length || 0) /
-                    reportingStats.total
-                  : 1) * 10
-              ) / 10, // Approximate members per team
+              members:
+                Math.round(
+                  (reportingStats.total > 0
+                    ? (session.reportedParticipants?.length || 0) /
+                      reportingStats.total
+                    : 1) * 10,
+                ) / 10, // Approximate members per team
             }))
           }
           onConfirm={handleSpinWheelConfirm}

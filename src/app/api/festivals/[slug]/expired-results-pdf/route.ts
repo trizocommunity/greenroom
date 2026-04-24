@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { expiredFestivalResult as resultTable } from "@/server/db/schema";
 import { eq, sql } from "drizzle-orm";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import { FestivalExpirationService } from "@/server/services/festival-expiration.service";
+import { NextResponse } from "next/server";
+import { db } from "@/core/database/client";
+import { expiredFestivalResult as resultTable } from "@/core/database/schema";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { FestivalExpirationService } from "@/features/festivals/services/festival-expiration.service";
 
 /**
  * GET: Public download of results PDF for an expired festival (by slug).

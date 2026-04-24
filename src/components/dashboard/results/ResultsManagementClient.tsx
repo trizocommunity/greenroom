@@ -1,6 +1,5 @@
 "use client";
 
-import type { ProgrammeStatus } from "@/lib/app-enums";
 import {
   AlertCircle,
   Award,
@@ -66,21 +65,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useFeature, useFeatureTag } from "@/hooks/useFeature";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
-import { formatCountdownHms } from "@/lib/format-countdown-hms";
+import type { ProgrammeStatus } from "@/core/types/app-enums";
+import { cn } from "@/core/utils/cn";
+import { formatCountdownHms } from "@/core/utils/format-countdown";
+import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
-  calculateGrade,
-  calculatePosition,
-  getGradeBadgeColor,
-} from "@/lib/results-calculator";
-import { cn } from "@/lib/utils";
-import { createProgrammeJudgeLinkAction } from "@/server/actions/programme-judging.actions";
+  useFeature,
+  useFeatureTag,
+} from "@/features/plan-features/hooks/use-feature";
+import { createProgrammeJudgeLinkAction } from "@/features/programmes/actions/programme-judging.actions";
 import {
   bulkPublishProgrammeResults,
   deleteResult,
   saveResult,
-} from "@/server/actions/results";
+} from "@/features/results/actions/results.actions";
+import {
+  calculateGrade,
+  calculatePosition,
+  getGradeBadgeColor,
+} from "@/features/results/services/results-calculator";
 
 type Programme = {
   id: string;

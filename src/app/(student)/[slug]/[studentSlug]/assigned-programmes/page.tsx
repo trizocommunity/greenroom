@@ -1,20 +1,23 @@
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { ReportingEndsInCountdown } from "@/components/programme/ReportingEndsInCountdown";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { db } from "@/lib/db";
-import { 
-  programmeReportingSession as sessionTable,
+import { db } from "@/core/database/client";
+import {
+  programmeCodeLetterRecipient as codeLetterRecipientTable,
   programmeCodeLetter as codeLetterTable,
-  programmeCodeLetterRecipient as codeLetterRecipientTable
-} from "@/server/db/schema";
-import { eq, and, inArray, desc } from "drizzle-orm";
-import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
-import { getCodeForStudentFromLetters } from "@/lib/programme-reporting-code";
-import { getProgrammeStatusPriorityRank } from "@/lib/programme-status-priority";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import { findStudentByFestivalAndProfileSlug } from "@/server/models/student.model";
+  programmeReportingSession as sessionTable,
+} from "@/core/database/schema";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import {
+  FeatureService,
+  getTierForFeatureCheck,
+} from "@/features/plan-features/services/features";
+import { getCodeForStudentFromLetters } from "@/features/programmes/services/programme-reporting-code";
+import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
+import { findStudentByFestivalAndProfileSlug } from "@/features/students/repositories/student.repository";
 
 const RESERVED_SLUGS = new Set([
   "results",
@@ -25,9 +28,7 @@ const RESERVED_SLUGS = new Set([
   "about",
 ]);
 
-function isSessionTimedOut(
-  session: any
-): boolean {
+function isSessionTimedOut(session: any): boolean {
   return Boolean(
     session?.status === "IN_PROGRESS" &&
       session.windowEndsAt &&
@@ -109,8 +110,8 @@ export default async function AssignedProgrammesPage({
             programmeReportedParticipants: { columns: { assignmentId: true } },
             programmeCodeLetters: {
               with: {
-                programmeCodeLetterRecipients: { 
-                  where: eq(codeLetterRecipientTable.studentId, student.id)
+                programmeCodeLetterRecipients: {
+                  where: eq(codeLetterRecipientTable.studentId, student.id),
                 },
               },
             },
@@ -118,11 +119,8 @@ export default async function AssignedProgrammesPage({
           orderBy: [desc(sessionTable.updatedAt)],
         })
       : [];
-      
-  const latestReportingByProgrammeId = new Map<
-    string,
-    any
-  >();
+
+  const latestReportingByProgrammeId = new Map<string, any>();
   for (const s of reportingSessions) {
     if (!latestReportingByProgrammeId.has(s.programmeId)) {
       latestReportingByProgrammeId.set(s.programmeId, s);
@@ -160,10 +158,13 @@ export default async function AssignedProgrammesPage({
               );
             const closedCode =
               sess?.status === "CLOSED"
-                ? getCodeForStudentFromLetters(sess.programmeCodeLetters.map((cl: any) => ({
-                    code: cl.code,
-                    recipients: cl.programmeCodeLetterRecipients
-                  })), student.id)
+                ? getCodeForStudentFromLetters(
+                    sess.programmeCodeLetters.map((cl: any) => ({
+                      code: cl.code,
+                      recipients: cl.programmeCodeLetterRecipients,
+                    })),
+                    student.id,
+                  )
                 : null;
 
             const highlightClass = isSessionTimedOut(sess)

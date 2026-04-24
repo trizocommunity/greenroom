@@ -1,7 +1,10 @@
 import { notFound, redirect } from "next/navigation";
-import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import { findMembersByFestival } from "@/server/models/member.model";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { findMembersByFestival } from "@/features/members/repositories/member.repository";
+import {
+  FeatureService,
+  getTierForFeatureCheck,
+} from "@/features/plan-features/services/features";
 import { MembersClient } from "./_components/MembersClient";
 
 export default async function MembersPage({

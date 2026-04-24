@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
-import * as FestivalController from "@/server/controllers/festival.controller";
-import { findFestivalBySlugOrId } from "@/server/models/festival.model";
+import { getSession } from "@/core/auth/session";
+import {
+  findFestivalBySlugOrId,
+  updateFestival,
+  deleteFestival,
+} from "@/features/festivals/repositories/festival.repository";
+import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 
 export async function GET(
   _request: Request,
@@ -17,19 +21,14 @@ export async function GET(
     if (!festival) {
       return new NextResponse("Festival not found", { status: 404 });
     }
-    const result = await FestivalController.show(
-      festival.id,
-      session.userId,
-      session.role,
-    );
-    return NextResponse.json(result);
+    const isOwner = festival.ownerId === session.userId;
+    const isSuperAdmin = session.role === "SUPER_ADMIN";
+    if (!isOwner && !isSuperAdmin) {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+    return NextResponse.json(festival);
   } catch (error) {
     console.error("[FESTIVAL_GET]", error);
-    const message = error instanceof Error ? error.message : "Internal Error";
-    if (message === "Festival not found")
-      return new NextResponse(message, { status: 404 });
-    if (message === "Forbidden")
-      return new NextResponse(message, { status: 403 });
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
@@ -48,13 +47,13 @@ export async function PATCH(
     if (!festival) {
       return new NextResponse("Festival not found", { status: 404 });
     }
+    const isOwner = festival.ownerId === session.userId;
+    const isSuperAdmin = session.role === "SUPER_ADMIN";
+    if (!isOwner && !isSuperAdmin) {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
     const body = await request.json();
-    const result = await FestivalController.update(
-      festival.id,
-      session.userId,
-      session.role,
-      body,
-    );
+    const result = await updateFestival(festival.id, body);
     return NextResponse.json(result);
   } catch (error) {
     console.error("[FESTIVAL_PATCH]", error);
@@ -81,7 +80,12 @@ export async function DELETE(
     if (!festival) {
       return new NextResponse("Festival not found", { status: 404 });
     }
-    await FestivalController.destroy(festival.id, session.userId, session.role);
+    const isOwner = festival.ownerId === session.userId;
+    const isSuperAdmin = session.role === "SUPER_ADMIN";
+    if (!isOwner && !isSuperAdmin) {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+    await deleteFestival(festival.id);
     return new NextResponse(null, { status: 200 });
   } catch (error) {
     console.error("[FESTIVAL_DELETE]", error);

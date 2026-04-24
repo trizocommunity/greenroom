@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/card";
 import { BillingHistorySkeleton } from "@/components/ui/Skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useBillingHistory } from "@/hooks/useBillingHistory";
+import { useBillingHistory } from "@/features/billing/hooks/use-billing-history";
 import { PaymentDetailsModal } from "../modals/PaymentDetailsModal";
 
 export function BillingTab() {

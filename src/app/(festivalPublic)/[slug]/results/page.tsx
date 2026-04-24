@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ResultsList } from "@/components/festival/landing/ResultsList";
-import { getPublicFestivalData } from "@/server/loader/festivalPublic";
-import { getPublicFestivalResults } from "@/server/loader/festivalResults";
+import { getPublicFestivalData } from "@/features/festivals/loaders/festival-public.loader";
+import { getPublicFestivalResults } from "@/features/festivals/loaders/festival-results.loader";
 
 export async function generateMetadata({
   params,

@@ -21,8 +21,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
-import { useGroups } from "@/hooks/useGroups";
+import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
+import { useGroups } from "@/features/groups/hooks/use-groups";
 import { GroupDetailsDialog } from "./GroupDetailsDialog";
 import { GroupDialog } from "./GroupDialog";
 

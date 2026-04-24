@@ -30,12 +30,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { useAssignments } from "@/hooks/useAssignments";
-import { useCategories } from "@/hooks/useCategories";
-import { useGroups } from "@/hooks/useGroups";
-import { useProgrammes } from "@/hooks/useProgrammes";
-import { useStudents } from "@/hooks/useStudents";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils/cn";
+import { useAssignments } from "@/features/assignments/hooks/use-assignments";
+import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useGroups } from "@/features/groups/hooks/use-groups";
+import { useProgrammes } from "@/features/programmes/hooks/use-programmes";
+import { useStudents } from "@/features/students/hooks/use-students";
 
 interface AssignmentModalProps {
   festivalId: string;

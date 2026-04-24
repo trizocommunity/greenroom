@@ -1,15 +1,18 @@
+import { and, desc, eq } from "drizzle-orm";
 import { Crown } from "lucide-react";
 import { notFound } from "next/navigation";
 import { StudentDetailsDialog } from "@/components/festival/pre-works/students/StudentDetailsDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { db } from "@/lib/db";
-import { student as studentTable } from "@/server/db/schema";
-import { eq, and, desc } from "drizzle-orm";
-import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import { findStudentByFestivalAndProfileSlug } from "@/server/models/student.model";
+import { db } from "@/core/database/client";
+import { student as studentTable } from "@/core/database/schema";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import {
+  FeatureService,
+  getTierForFeatureCheck,
+} from "@/features/plan-features/services/features";
+import { findStudentByFestivalAndProfileSlug } from "@/features/students/repositories/student.repository";
 
 const RESERVED_SLUGS = new Set([
   "results",
@@ -50,7 +53,10 @@ export default async function MyGroupPage({
   if (!groupId) notFound();
 
   const groupStudents = await db.query.student.findMany({
-    where: and(eq(studentTable.festivalId, festival.id), eq(studentTable.groupId, groupId as string)),
+    where: and(
+      eq(studentTable.festivalId, festival.id),
+      eq(studentTable.groupId, groupId as string),
+    ),
     with: {
       group: true,
       category: true,

@@ -1,17 +1,17 @@
 import { createHash } from "node:crypto";
+import { and, asc, desc, eq, isNotNull } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { ExternalJudgeClient } from "@/components/judge/ExternalJudgeClient";
-import { db } from "@/lib/db";
-import { 
-  programmeJudgeSession as judgeSessionTable,
+import { db } from "@/core/database/client";
+import {
+  programmeCodeLetter as codeLetterTable,
   festival as festivalTable,
+  programmeJudgeSession as judgeSessionTable,
   programme as programmeTable,
   scheduleEntry as scheduleEntryTable,
-  programmeCodeLetter as codeLetterTable
-} from "@/server/db/schema";
-import { eq, and, isNotNull, asc, desc } from "drizzle-orm";
-import { acquireJudgeOpenLockAction } from "@/server/actions/programme-judging.actions";
-import { getEffectiveFeatureTagEnabled } from "@/server/services/plan-features-tags.service";
+} from "@/core/database/schema";
+import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
+import { acquireJudgeOpenLockAction } from "@/features/programmes/actions/programme-judging.actions";
 
 function hashTokenSHA256(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -78,7 +78,7 @@ export default async function JudgeTokenPage({
       where: and(
         eq(scheduleEntryTable.festivalId, judgeSession.festivalId),
         eq(scheduleEntryTable.programmeId, judgeSession.programmeId),
-        eq(scheduleEntryTable.type, "PROGRAMME")
+        eq(scheduleEntryTable.type, "PROGRAMME"),
       ),
       orderBy: [asc(scheduleEntryTable.startTime)],
       with: { stage: { columns: { name: true } } },
@@ -86,7 +86,7 @@ export default async function JudgeTokenPage({
     db.query.programmeCodeLetter.findMany({
       where: and(
         eq(codeLetterTable.programmeId, judgeSession.programmeId),
-        eq(codeLetterTable.reportingSessionId, judgeSession.reportingSessionId)
+        eq(codeLetterTable.reportingSessionId, judgeSession.reportingSessionId),
       ),
       columns: { code: true },
       orderBy: [asc(codeLetterTable.issuedAt)],
@@ -99,7 +99,7 @@ export default async function JudgeTokenPage({
     where: and(
       eq(judgeSessionTable.festivalId, judgeSession.festivalId),
       isNotNull(judgeSessionTable.usedAt),
-      isNotNull(judgeSessionTable.submittedByName)
+      isNotNull(judgeSessionTable.submittedByName),
     ),
     orderBy: [desc(judgeSessionTable.usedAt)],
     columns: {

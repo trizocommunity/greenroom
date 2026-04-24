@@ -31,8 +31,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useCategories } from "@/hooks/useCategories";
-import { useProgrammeDetails, useProgrammes } from "@/hooks/useProgrammes";
+import { useCategories } from "@/features/categories/hooks/use-categories";
+import {
+  useProgrammeDetails,
+  useProgrammes,
+} from "@/features/programmes/hooks/use-programmes";
 
 interface ProgrammeDialogProps {
   festivalId: string;

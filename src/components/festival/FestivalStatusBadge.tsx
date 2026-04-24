@@ -13,7 +13,7 @@ import {
   FESTIVAL_STATUS_LABELS,
   formatFestivalDateDDMMYY,
   getFestivalStatusCountdownText,
-} from "@/lib/festival-status";
+} from "@/features/festivals/services/festival-status.service";
 
 interface FestivalStatusBadgeProps {
   status: DerivedFestivalStatus | string;

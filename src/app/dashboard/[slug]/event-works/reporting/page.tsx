@@ -1,21 +1,21 @@
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import {
   ProgrammeReportingClient,
   type ReportingBoardItem,
 } from "@/components/festival/event-works/programme-reporting/ProgrammeReportingClient";
-import { getSession } from "@/lib/auth/session";
-import { db } from "@/lib/db";
-import { 
-  festival as festivalTable, 
-  programmeAssignment as assignmentTable, 
+import { getSession } from "@/core/auth/session";
+import { db } from "@/core/database/client";
+import {
+  programmeAssignment as assignmentTable,
+  festival as festivalTable,
+  programmeReportedParticipant as reportedParticipantTable,
   stage as stageTable,
-  programmeReportedParticipant as reportedParticipantTable
-} from "@/server/db/schema";
-import { eq, and, inArray, asc } from "drizzle-orm";
-import { getProgrammeReportingBoardAction } from "@/server/actions/programme-reporting.actions";
-import { getFestivalContext } from "@/server/services/festival-context.service";
-import { getEffectiveFeatureTagEnabled } from "@/server/services/plan-features-tags.service";
+} from "@/core/database/schema";
+import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
+import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
+import { getProgrammeReportingBoardAction } from "@/features/programmes/actions/programme-reporting.actions";
 
 export default async function ProgrammeReportingPage({
   params,
@@ -28,13 +28,13 @@ export default async function ProgrammeReportingPage({
     columns: { id: true, name: true, tier: true },
   });
   if (!festival) notFound();
-  
+
   const canUseReporting = await getEffectiveFeatureTagEnabled(
     festival.tier as any,
     "eventWorks.reporting",
   );
   if (!canUseReporting) notFound();
-  
+
   const session = await getSession();
   const context = await getFestivalContext({
     slugOrId: slug,
@@ -75,15 +75,26 @@ export default async function ProgrammeReportingPage({
     .map((b: any) => b.reportingSession?.id)
     .filter((id): id is string => Boolean(id));
 
-  const reportedParticipants = sessionIds.length > 0 ? await db.query.programmeReportedParticipant.findMany({
-    where: inArray(reportedParticipantTable.reportingSessionId, sessionIds),
-    columns: {
-      assignmentId: true,
-      reportingSessionId: true,
-      reportedBy: true,
-      reportedAt: true,
-    },
-  }) : [];
+  const reportedParticipantsRaw =
+    sessionIds.length > 0
+      ? await db.query.programmeReportedParticipant.findMany({
+          where: inArray(
+            reportedParticipantTable.reportingSessionId,
+            sessionIds,
+          ),
+          columns: {
+            assignmentId: true,
+            reportingSessionId: true,
+            reportedBy: true,
+            reportedAt: true,
+          },
+        })
+      : [];
+
+  const reportedParticipants = reportedParticipantsRaw.map((p) => ({
+    ...p,
+    reportedAt: new Date(p.reportedAt),
+  }));
 
   const normalizedBoard = board.map((item: any) => ({
     ...item,

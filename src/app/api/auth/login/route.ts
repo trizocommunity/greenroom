@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { formatApiError } from "@/lib/api-error";
-import { verifyPassword } from "@/lib/auth/password";
-import { createSession } from "@/lib/auth/session";
-import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
-import { loginSchema } from "@/lib/validations/auth";
-import { findUserByEmail } from "@/server/models/user.model";
+import { verifyPassword } from "@/core/auth/password";
+import { createSession } from "@/core/auth/session";
+import { formatApiError } from "@/core/http/api-error";
+import { checkRateLimit, getClientIP } from "@/core/http/rate-limit";
+import { findUserByEmail } from "@/features/auth/repositories/user.repository";
+import { loginSchema } from "@/features/auth/schemas/auth.schema";
 
 export async function POST(request: Request) {
   try {
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { error: "Too many attempts. Please try again later." },
-        { status: 429 }
+        { status: 429 },
       );
     }
 

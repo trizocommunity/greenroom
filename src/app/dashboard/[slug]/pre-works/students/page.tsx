@@ -1,15 +1,15 @@
+import { count, eq } from "drizzle-orm";
 import { Tags } from "lucide-react";
 import { revalidatePath } from "next/cache";
 import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
 import { StudentsClient } from "@/components/festival/pre-works/students/StudentsClient";
-import { getSession } from "@/lib/auth/session";
-import { db } from "@/lib/db";
-import { category as categoryTable } from "@/server/db/schema";
-import { eq, count } from "drizzle-orm";
-import { getChestNumberSettings } from "@/server/actions/chest-number.actions";
-import { findFestivalBySlugOrId } from "@/server/models/festival.model";
-import { findMemberByFestivalAndUser } from "@/server/models/member.model";
+import { getSession } from "@/core/auth/session";
+import { db } from "@/core/database/client";
+import { category as categoryTable } from "@/core/database/schema";
+import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
+import { findMemberByFestivalAndUser } from "@/features/members/repositories/member.repository";
+import { getChestNumberSettings } from "@/features/students/actions/chest-number.actions";
 
 export default async function StudentsPage({
   params,

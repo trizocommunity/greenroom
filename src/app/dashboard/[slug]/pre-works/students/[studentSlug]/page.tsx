@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { StudentProfileView } from "@/components/festival/pre-works/students/StudentProfileView";
 import { APP_URL } from "@/config/routes";
-import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
-import { getSession } from "@/lib/auth/session";
-import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import { findStudentByFestivalAndProfileSlug } from "@/server/models/student.model";
+import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
+import { getSession } from "@/core/auth/session";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import {
+  FeatureService,
+  getTierForFeatureCheck,
+} from "@/features/plan-features/services/features";
+import { findStudentByFestivalAndProfileSlug } from "@/features/students/repositories/student.repository";
 
 export async function generateMetadata({
   params,
@@ -59,6 +62,8 @@ async function StudentProfileContent({
     <StudentProfileView
       student={{
         ...student,
+        createdAt: new Date(student.createdAt),
+        updatedAt: new Date(student.updatedAt),
         assignments: student.assignments ?? [],
       }}
       festivalId={festival.id}

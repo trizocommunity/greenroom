@@ -1,14 +1,15 @@
 import "dotenv/config";
+import { hash } from "bcryptjs";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { hash } from "bcryptjs";
-import * as schema from "../src/server/db/schema";
-import * as relations from "../src/server/db/relations";
+import * as relations from "../src/core/database/relations";
+import * as schema from "../src/core/database/schema";
 
 const dbSchema = { ...schema, ...relations };
 
+// Use DATABASE_URL (Supabase pooler connection)
 const connectionString = process.env.DATABASE_URL;
-if (!connectionString) throw new Error("DATABASE_URL is not defined");
+if (!connectionString) throw new Error("DATABASE_URL must be defined in .env");
 
 // Check if local connection to disable SSL (same logic as src/lib/db.ts)
 const isLocalConnection = (() => {
@@ -21,7 +22,10 @@ const isLocalConnection = (() => {
 })();
 
 const hasExplicitSslDisable = /sslmode=disable/i.test(connectionString);
-const sslConfig = isLocalConnection || hasExplicitSslDisable ? false : { rejectUnauthorized: false };
+const sslConfig =
+  isLocalConnection || hasExplicitSslDisable
+    ? false
+    : { rejectUnauthorized: false };
 
 const pool = new Pool({
   connectionString,

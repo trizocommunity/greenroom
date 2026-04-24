@@ -1,15 +1,15 @@
+import { eq, sql } from "drizzle-orm";
 import { Tags, Users } from "lucide-react";
 import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ProgrammesClient } from "@/components/festival/pre-works/programmes/ProgrammesClient";
-import { db } from "@/lib/db";
-import { 
-  category as categoryTable, 
-  student as studentTable, 
-  group as groupTable 
-} from "@/server/db/schema";
-import { eq, sql } from "drizzle-orm";
-import { findFestivalBySlug } from "@/server/models/festival.model";
+import { db } from "@/core/database/client";
+import {
+  category as categoryTable,
+  group as groupTable,
+  student as studentTable,
+} from "@/core/database/schema";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 
 export default async function ProgrammesPage({
   params,

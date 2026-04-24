@@ -2,8 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import { QrCodesClient } from "@/components/festival/pre-works/qr-codes/QrCodesClient";
 import { QrCodesHowItWorks } from "@/components/festival/pre-works/qr-codes/QrCodesHowItWorks";
 import { APP_URL } from "@/config/routes";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 
 interface PageProps {
   params: Promise<{ slug: string }>;

@@ -1,6 +1,5 @@
 "use client";
 
-import type { FestivalStatus } from "@/lib/app-enums";
 import { GalleryVerticalEnd } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -18,6 +17,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { getFestivalDashboardSidebarConfig } from "@/config/sidebar.config";
+import type { FestivalStatus } from "@/core/types/app-enums";
 
 interface FestivalDashboardSidebarProps {
   festival: {
@@ -32,7 +32,10 @@ interface FestivalDashboardSidebarProps {
 }
 
 import { useFestival } from "@/components/festival/FestivalContext";
-import { useFeatures, useFeatureTag } from "@/hooks/useFeature";
+import {
+  useFeatures,
+  useFeatureTag,
+} from "@/features/plan-features/hooks/use-feature";
 
 export function FestivalDashboardSidebar({
   festival,

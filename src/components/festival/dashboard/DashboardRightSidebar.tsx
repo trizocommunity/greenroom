@@ -1,6 +1,5 @@
 "use client";
 
-import type { FestivalStatus } from "@/lib/app-enums";
 import { Settings, User } from "lucide-react";
 import Link from "next/link";
 import { LogoutButton } from "@/components/auth/LogoutButton";
@@ -19,7 +18,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { getAbbreviation } from "@/lib/utils";
+import type { FestivalStatus } from "@/core/types/app-enums";
+import { getAbbreviation } from "@/core/utils/cn";
 
 interface DashboardRightSidebarProps {
   trigger?: React.ReactNode;

@@ -38,9 +38,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getGradeBadgeColor } from "@/lib/results-calculator";
-import { cn } from "@/lib/utils";
-import { bulkPublishProgrammeResults } from "@/server/actions/results";
+import { cn } from "@/core/utils/cn";
+import { bulkPublishProgrammeResults } from "@/features/results/actions/results.actions";
+import { getGradeBadgeColor } from "@/features/results/services/results-calculator";
 
 const getTeamIdentifier = (assignment: any, type: string) => {
   if (type === "GROUP") {

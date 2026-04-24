@@ -15,10 +15,10 @@ import {
 import { DateTimePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
-import { FeatureService } from "@/lib/features";
-import { getResolvedTier } from "@/lib/tier";
-import { updateFestivalSettingsAction } from "@/server/actions/festival.actions";
+import { updateFestivalSettingsAction } from "@/features/festivals/actions/festival-crud.actions";
+import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
+import { FeatureService } from "@/features/plan-features/services/features";
+import { getResolvedTier } from "@/features/plan-features/services/tier";
 
 interface SettingsFormProps {
   festival: any;

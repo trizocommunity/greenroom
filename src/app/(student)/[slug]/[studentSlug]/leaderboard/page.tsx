@@ -1,9 +1,9 @@
-import type { Tier } from "@/lib/app-enums";
 import { notFound } from "next/navigation";
 import { LeaderboardClient } from "@/components/dashboard/leaderboard/LeaderboardClient";
-import { requireTeamLeaderSession } from "@/lib/team-leader-auth/guard";
-import { getFestivalLeaderboardDataBySlug } from "@/server/services/leaderboard.service";
-import { isProgrammeInEventWorks } from "@/server/services/programme-status.service";
+import { requireTeamLeaderSession } from "@/core/auth/team-leader-guard";
+import type { Tier } from "@/core/types/app-enums";
+import { isProgrammeInEventWorks } from "@/features/programmes/services/programme-status.service";
+import { getFestivalLeaderboardDataBySlug } from "@/features/results/services/leaderboard.service";
 
 export default async function StudentLeaderboardPage({
   params,

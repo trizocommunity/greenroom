@@ -34,13 +34,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
-import { useMembers } from "@/hooks/useMembers";
-import type { FestivalRole } from "@/lib/app-enums";
+import type { FestivalRole } from "@/core/types/app-enums";
+import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
+import { useMembers } from "@/features/members/hooks/use-members";
 import {
   createFestivalMember,
   revokeFestivalMember,
-} from "@/server/actions/team.actions";
+} from "@/features/team-leader/actions/team.actions";
 
 interface MembersClientProps {
   festivalId: string;

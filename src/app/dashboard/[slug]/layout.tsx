@@ -1,9 +1,9 @@
 import { Menu } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
-import { DashboardCelebration } from "@/components/festival/dashboard/DashboardCelebration";
 // Removed unused breadcrumb imports
 import { DashboardBreadcrumb } from "@/components/festival/dashboard/DashboardBreadcrumb";
+import { DashboardCelebration } from "@/components/festival/dashboard/DashboardCelebration";
 import { DashboardRightSidebar } from "@/components/festival/dashboard/DashboardRightSidebar";
 import { FestivalDashboardSidebar } from "@/components/festival/dashboard/FestivalDashboardSidebar";
 import { ReadOnlyExpiredBanner } from "@/components/festival/dashboard/ReadOnlyExpiredBanner";
@@ -16,12 +16,12 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { TIER_CONFIG } from "@/config/pricing";
-import { getCurrentUser } from "@/lib/auth/current-user";
-import { getSession } from "@/lib/auth/session";
-import { getDerivedFestivalStatus } from "@/lib/festival-status";
-import { getResolvedTier } from "@/lib/tier";
-import { getFestivalContext } from "@/server/services/festival-context.service";
-import { getEffectiveTierFeatures } from "@/server/services/plan-features.service";
+import { getCurrentUser } from "@/core/auth/current-user";
+import { getSession } from "@/core/auth/session";
+import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
+import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
+import { getEffectiveTierFeatures } from "@/features/plan-features/services/plan-features.service";
+import { getResolvedTier } from "@/features/plan-features/services/tier";
 
 export default async function FestivalDashboardLayout({
   children,

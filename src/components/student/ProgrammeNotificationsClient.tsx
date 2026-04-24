@@ -4,7 +4,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useProgrammeNotifications } from "@/hooks/useProgrammeNotifications";
+import { useProgrammeNotifications } from "@/features/programmes/hooks/use-programme-notifications";
 
 export function ProgrammeNotificationsClient({
   studentId,

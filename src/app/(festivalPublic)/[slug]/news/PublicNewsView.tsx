@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { Newspaper } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils/cn";
 
 type Post = {
   id: string;

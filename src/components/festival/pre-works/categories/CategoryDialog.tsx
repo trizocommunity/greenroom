@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useCategories } from "@/hooks/useCategories";
+import { useCategories } from "@/features/categories/hooks/use-categories";
 
 interface CategoryDialogProps {
   festivalId: string;

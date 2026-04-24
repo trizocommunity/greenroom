@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
+import { getSession } from "@/core/auth/session";
 import {
   getLoginCounts,
   getLoginsByDay,
   getPurchaseSummaries,
   getRevenueByDay,
   getTopCategories,
-} from "@/server/services/analytics.service";
+} from "@/features/admin/services/analytics.service";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;

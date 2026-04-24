@@ -1,5 +1,5 @@
 import { ProgrammeNotificationsClient } from "@/components/student/ProgrammeNotificationsClient";
-import { requireTeamLeaderSession } from "@/lib/team-leader-auth/guard";
+import { requireTeamLeaderSession } from "@/core/auth/team-leader-guard";
 
 export default async function TeamLeaderNotificationsPage({
   params,

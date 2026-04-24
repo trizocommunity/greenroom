@@ -5,11 +5,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowRight,
-  CheckCircle2,
   Building2,
   CalendarDays,
-  Sparkles,
+  CheckCircle2,
   MapPin,
+  Sparkles,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -28,14 +28,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { InstitutionType } from "@/lib/app-enums";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/core/http/query-keys";
+import { InstitutionType } from "@/core/types/app-enums";
+import { cn } from "@/core/utils/cn";
+import { createFestival } from "@/features/festivals/actions/festival-crud.actions";
 import {
-  createFestivalSchema,
   type CreateFestivalInput,
-} from "@/lib/validations/festival";
-import { createFestival } from "@/server/actions/festival.actions";
-import { cn } from "@/lib/utils";
+  createFestivalSchema,
+} from "@/features/festivals/schemas/festival.schema";
 
 type FormData = Omit<CreateFestivalInput, "startDate" | "endDate"> & {
   startDate?: string | Date;

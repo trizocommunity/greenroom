@@ -10,7 +10,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { PRICING_TIERS } from "@/config/pricing";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils/cn";
 
 interface UpgradeTriggerProps {
   /**

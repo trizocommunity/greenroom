@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import DashboardNavbar from "@/components/layout/DashboardNavbar";
-import { getCurrentUser } from "@/lib/auth/current-user";
+import { getCurrentUser } from "@/core/auth/current-user";
 
 export default async function DashboardLayout({
   children,

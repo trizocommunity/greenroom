@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { adminService } from "@/server/services/admin.service";
+import { adminService } from "@/features/admin/services/admin.service";
 
 function getPaymentStatusVariant(
   status: string,

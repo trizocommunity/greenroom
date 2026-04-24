@@ -12,9 +12,8 @@ import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { registerSchema } from "@/lib/validations/auth";
-
-import { registerAction } from "@/server/actions/auth.actions";
+import { registerAction } from "@/features/auth/actions/auth.actions";
+import { registerSchema } from "@/features/auth/schemas/auth.schema";
 
 type FormData = z.infer<typeof registerSchema>;
 

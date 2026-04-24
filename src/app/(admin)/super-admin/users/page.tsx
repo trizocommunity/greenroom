@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { adminService } from "@/server/services/admin.service";
+import { adminService } from "@/features/admin/services/admin.service";
 
 export default async function AdminUsersPage() {
   const users = await adminService.getUsersForAdmin();
@@ -64,7 +64,9 @@ export default async function AdminUsersPage() {
                     <span className="text-muted-foreground">-</span>
                   )}
                 </TableCell>
-                <TableCell>{format(new Date(user.createdAt), "MMM d, yyyy")}</TableCell>
+                <TableCell>
+                  {format(new Date(user.createdAt), "MMM d, yyyy")}
+                </TableCell>
                 <TableCell>
                   <Badge variant={user.isActive ? "default" : "secondary"}>
                     {user.isActive ? "Active" : "Inactive"}

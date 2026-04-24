@@ -1,10 +1,10 @@
 import { eachDayOfInterval, format, startOfDay } from "date-fns";
 import { notFound, redirect } from "next/navigation";
 import { SessionScheduleClient } from "@/components/festival/pre-works/schedule/SessionScheduleClient";
-import { getScheduleEntries } from "@/server/actions/schedule.actions";
-import { getStages } from "@/server/actions/stage.actions";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import { getScheduleEntries } from "@/features/schedule/actions/schedule.actions";
+import { getStages } from "@/features/stages/actions/stage.actions";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -41,10 +41,10 @@ export default async function SessionsPage({ params }: PageProps) {
     getStages(festival.id),
   ]);
 
-  const dateOptions = getFestivalDateOptions(
-    festival.startDate,
-    festival.endDate,
-  );
+  const startDate = festival.startDate ? new Date(festival.startDate) : null;
+  const endDate = festival.endDate ? new Date(festival.endDate) : null;
+
+  const dateOptions = getFestivalDateOptions(startDate, endDate);
 
   return (
     <div className="container pt-4 sm:pt-6">
@@ -56,8 +56,8 @@ export default async function SessionsPage({ params }: PageProps) {
           name: s.name,
           description: s.description ?? null,
         }))}
-        festivalStartDate={festival.startDate?.toISOString() ?? null}
-        festivalEndDate={festival.endDate?.toISOString() ?? null}
+        festivalStartDate={startDate?.toISOString() ?? null}
+        festivalEndDate={endDate?.toISOString() ?? null}
       />
     </div>
   );

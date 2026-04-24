@@ -27,14 +27,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/core/http/query-keys";
+import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
   generateChestNumbers,
   resetChestNumbers,
   saveChestNumberSettings,
   updateAllChestNumbers,
-} from "@/server/actions/chest-number.actions";
+} from "@/features/students/actions/chest-number.actions";
 
 type CategoryItem = { id: string; name: string };
 

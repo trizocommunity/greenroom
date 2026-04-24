@@ -39,12 +39,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { APP_URL } from "@/config/routes";
-import { generateBulkQrPdf, prepareStudentQrData } from "@/lib/qr-pdf-utils";
+import {
+  generateBulkQrPdf,
+  prepareStudentQrData,
+} from "@/features/students/services/qr-pdf-utils";
 import {
   getQrCodeContent,
   getStudentProfilePath,
   getStudentProfileUrl,
-} from "@/lib/student-profile-url";
+} from "@/features/students/services/student-profile-url";
 
 type StudentForMyStudents = {
   id: string;

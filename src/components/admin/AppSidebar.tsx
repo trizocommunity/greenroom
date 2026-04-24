@@ -27,7 +27,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { SUPER_ADMIN_SIDEBAR_ITEMS } from "@/config/sidebar.config";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useCurrentUser } from "@/features/auth/hooks/use-current-user";
 
 // Menu items.
 const items = SUPER_ADMIN_SIDEBAR_ITEMS;

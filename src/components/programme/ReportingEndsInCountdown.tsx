@@ -3,8 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { formatCountdownHms } from "@/lib/format-countdown-hms";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils/cn";
+import { formatCountdownHms } from "@/core/utils/format-countdown";
 
 type Props = {
   endsAt: string | Date | null | undefined;

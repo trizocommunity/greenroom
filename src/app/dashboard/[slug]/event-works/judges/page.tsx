@@ -1,15 +1,18 @@
+import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { ChevronLeft, UserRound } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getSession } from "@/lib/auth/session";
-import { db } from "@/lib/db";
-import { festival as festivalTable, programmeJudgeSession as judgeSessionTable } from "@/server/db/schema";
-import { eq, and, isNotNull, desc } from "drizzle-orm";
-import { getFestivalContext } from "@/server/services/festival-context.service";
-import { getEffectiveFeatureTagEnabled } from "@/server/services/plan-features-tags.service";
+import { getSession } from "@/core/auth/session";
+import { db } from "@/core/database/client";
+import {
+  festival as festivalTable,
+  programmeJudgeSession as judgeSessionTable,
+} from "@/core/database/schema";
+import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
+import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
 
 type JudgeProgrammeItem = {
   programmeId: string;
@@ -62,7 +65,7 @@ export default async function JudgesPage({
   const usedJudgeSessions = await db.query.programmeJudgeSession.findMany({
     where: and(
       eq(judgeSessionTable.festivalId, festival.id),
-      isNotNull(judgeSessionTable.usedAt)
+      isNotNull(judgeSessionTable.usedAt),
     ),
     with: {
       programme: {
@@ -95,7 +98,8 @@ export default async function JudgesPage({
       programmeId: s.programmeId,
       programmeName: s.programme.name,
       categoryName: (s.programme as any).category?.name ?? "—",
-      stageName: (s.programmeReportingSession as any)?.stage?.name ?? "No stage",
+      stageName:
+        (s.programmeReportingSession as any)?.stage?.name ?? "No stage",
       judgedAt: s.usedAt,
     };
 

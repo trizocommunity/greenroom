@@ -21,11 +21,9 @@ greenroom/
 ├── scripts/                   # Deployment scripts
 ├── src/                       # Main source code (440 items)
 ├── .biomeignore               # Biome linter ignore
-├── .dockerignore              # Docker ignore
 ├── .gitignore                 # Git ignore
 ├── biome.json                 # Biome configuration
 ├── components.json            # shadcn/ui components config
-├── docker-compose.yml         # Docker setup
 ├── drizzle.config.ts          # Drizzle ORM config
 ├── next.config.ts             # Next.js config
 ├── package.json               # Dependencies
@@ -422,7 +420,7 @@ src/app/
 ## 🚀 Deployment
 
 - **Platform:** Vercel
-- **Database:** PostgreSQL (via Docker Compose for local)
+- **Database:** PostgreSQL
 - **File Storage:** Cloudinary (signed uploads)
 - **Email:** Resend
 - **Payments:** Razorpay

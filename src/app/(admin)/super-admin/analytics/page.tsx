@@ -5,7 +5,7 @@ import {
   getPurchaseSummaries,
   getRevenueByDay,
   getTopCategories,
-} from "@/server/services/analytics.service";
+} from "@/features/admin/services/analytics.service";
 
 export default async function SuperAdminAnalyticsPage() {
   const [purchases, logins, topCategories, loginsByDay, revenueByDay] =
