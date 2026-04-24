@@ -1,3 +1,5 @@
+import { toast } from "sonner";
+
 /**
  * Secure Cloudinary upload helper.
  * Uses server-side API for signed uploads (not client-side unsigned).
@@ -45,19 +47,19 @@ export async function uploadImageToCloudinary(
 
     if (!res.ok) {
       let errorMessage = "Upload failed";
+      const rawBody = await res.text();
       try {
-        const errorData = await res.json();
+        const errorData = JSON.parse(rawBody);
         errorMessage = errorData.error || errorMessage;
         console.error("Upload failed details:", errorData);
       } catch (e) {
-        const text = await res.text();
-        console.error("Upload failed (raw):", text);
+        console.error("Upload failed (raw):", rawBody);
       }
       toast.error(errorMessage);
       return null;
     }
 
-    const data = (await res.json()) as { url?: string };
+    const data = JSON.parse(await res.text());
     return data.url ?? null;
   } catch (error) {
     console.error("Upload error:", error);

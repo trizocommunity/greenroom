@@ -120,6 +120,7 @@ export async function POST(request: Request) {
   } catch (error) {
     const payload = formatApiError(error);
     const status = error instanceof z.ZodError ? 400 : 500;
+    console.error("Upload API Error:", { status, payload, error });
     return NextResponse.json(payload, { status });
   }
 }
