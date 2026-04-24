@@ -117,10 +117,20 @@ export async function POST(request: Request) {
       url: data.secure_url,
       publicId: data.public_id,
     });
-  } catch (error) {
+  } catch (error: any) {
     const payload = formatApiError(error);
     const status = error instanceof z.ZodError ? 400 : 500;
-    console.error("Upload API Error:", { status, payload, error });
+    
+    // Log detailed error info for debugging
+    console.error("Upload API Error:", { 
+      status, 
+      payload, 
+      errorName: error?.name,
+      errorMessage: error?.message,
+      errorStack: error?.stack,
+      rawError: error
+    });
+    
     return NextResponse.json(payload, { status });
   }
 }

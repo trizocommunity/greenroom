@@ -35,14 +35,21 @@ export function formatZodError(zodError: ZodError): ApiErrorResponse {
  */
 export function formatApiError(error: unknown): ApiErrorResponse {
   if (
-    error instanceof Error &&
+    error &&
+    typeof error === "object" &&
     "issues" in error &&
-    Array.isArray((error as ZodError).issues)
+    Array.isArray((error as any).issues)
   ) {
-    return formatZodError(error as ZodError);
+    return formatZodError(error as any);
   }
-  if (error instanceof Error) {
-    return { error: error.message };
+
+  if (error instanceof Error || (error && typeof error === "object" && "message" in error)) {
+    return { error: String((error as any).message || "An error occurred") };
   }
+
+  if (typeof error === "string") {
+    return { error };
+  }
+
   return { error: "An unexpected error occurred" };
 }
