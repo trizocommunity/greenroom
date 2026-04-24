@@ -33,7 +33,7 @@ export const createFestivalSchema = z
   );
 
 export const updateFestivalSchema = z.object({
-  name: z.string().min(1, "Name is required"),
+  name: z.string().min(1, "Name is required").optional(),
   description: z.string().optional().nullable(),
   startDate: z.coerce.date().optional().nullable(),
   endDate: z.coerce.date().optional().nullable(),
