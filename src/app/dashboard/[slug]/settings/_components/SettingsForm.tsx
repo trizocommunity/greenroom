@@ -43,6 +43,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
   const [isSavingGeneral, setIsSavingGeneral] = useState(false);
   const [isSavingFestival, setIsSavingFestival] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
 
   // State for all settings
   const [formData, setFormData] = useState({
@@ -99,13 +100,31 @@ export function SettingsForm({ festival }: SettingsFormProps) {
   };
 
   const uploadToCloudinary = async (file: File) => {
-    const maxSizeBytes = 1 * 1024 * 1024;
-    if (file.size > maxSizeBytes) {
-      toast.error("Logo must be smaller than 1MB.");
+    setLogoError(null);
+    
+    // Validate File Type
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/svg+xml"];
+    if (!allowedTypes.includes(file.type)) {
+      const msg = "Invalid file type. Please upload a PNG, JPG, or SVG.";
+      setLogoError(msg);
+      toast.error(msg);
       return null;
     }
+
+    // Validate File Size
+    const maxSizeBytes = 1 * 1024 * 1024;
+    if (file.size > maxSizeBytes) {
+      const msg = "Logo is too large. Maximum size is 1MB.";
+      setLogoError(msg);
+      toast.error(msg);
+      return null;
+    }
+
     const url = await uploadImageToCloudinary(file, "logo");
-    if (!url) return null;
+    if (!url) {
+      // Specific error already handled in cloudinary helper, but we set a generic one if needed
+      return null;
+    }
     return url;
   };
 
@@ -278,7 +297,10 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="gap-2 border-primary/20 hover:bg-primary/5"
+                        className={cn(
+                          "gap-2 border-primary/20 hover:bg-primary/5",
+                          logoError && "border-destructive text-destructive"
+                        )}
                         onClick={() => logoInputRef.current?.click()}
                         disabled={uploadingLogo || isReadOnly}
                       >
@@ -294,12 +316,18 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                         onChange={handleLogoChange}
                       />
                       
-                      {formData.logo && (
+                      {formData.logo && !logoError && (
                         <p className="text-xs text-muted-foreground italic truncate max-w-[200px]">
                           Currently using custom logo
                         </p>
                       )}
                     </div>
+
+                    {logoError && (
+                      <p className="text-sm font-medium text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
+                        {logoError}
+                      </p>
+                    )}
                   </div>
                 </div>
               </CardContent>
