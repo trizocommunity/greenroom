@@ -24,7 +24,7 @@ export const FestivalLifecycleService = {
         .delete(festivals)
         .where(
           // expiresAt < now AND expiresAt IS NOT NULL
-          lt(festivals.expiresAt, now),
+          lt(festivals.expiresAt, now.toISOString()),
         )
         .returning();
 

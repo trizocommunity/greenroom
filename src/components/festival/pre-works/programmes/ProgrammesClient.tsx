@@ -71,7 +71,7 @@ interface ProgrammesClientProps {
 
 export function ProgrammesClient({
   festivalId,
-  festivalTier,
+  festivalTier: _festivalTier,
   groupCount,
   children,
 }: ProgrammesClientProps) {

@@ -2,6 +2,8 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import {
@@ -82,6 +84,7 @@ function StudentEditForm({
 }) {
   const form = useForm<StudentFormValues>({
     resolver: zodResolver(StudentSchema),
+    mode: "onChange",
     defaultValues: {
       name: data.name,
       email: data.email,
@@ -93,6 +96,19 @@ function StudentEditForm({
       standard: data.standard,
     },
   });
+
+  useEffect(() => {
+    form.reset({
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      gender: (data.gender as any) || "MALE",
+      groupId: data.groupId || "",
+      categoryId: data.categoryId || "",
+      age: data.age,
+      standard: data.standard,
+    });
+  }, [data, form]);
 
   const onSubmit = (values: StudentFormValues) => {
     const group = groups.find((g) => g.id === values.groupId);
@@ -168,10 +184,7 @@ function StudentEditForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Group</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select Group" />
@@ -196,10 +209,7 @@ function StudentEditForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Category</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select Category" />
@@ -225,7 +235,7 @@ function StudentEditForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Gender</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select Gender" />
@@ -283,7 +293,15 @@ function StudentEditForm({
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="submit">Save Changes</Button>
+          <Button
+            type="submit"
+            disabled={!form.formState.isValid || form.formState.isSubmitting}
+          >
+            {form.formState.isSubmitting && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            Save Changes
+          </Button>
         </div>
       </form>
     </Form>
@@ -388,41 +406,45 @@ export function BulkUploadStudentsModal({
   const validateRows = async (
     items: ParsedItem<StudentData>[],
   ): Promise<ParsedItem<StudentData>[]> => {
-    // Internal (within this upload) duplicate check by student name.
-    // Requirement: never allow duplicate student names in the same festival.
-    const nameCounts = new Map<string, number>();
-    for (const p of items) {
-      const key = p.data.name?.trim().toLowerCase();
-      if (!key) continue;
-      nameCounts.set(key, (nameCounts.get(key) || 0) + 1);
+    // 1. Internal Duplicate Check (within this upload)
+    // Primary check: name + category + group
+    // Secondary check: email
+    const compositeCounts = new Map<string, number>();
+    const emailCounts = new Map<string, number>();
+
+    for (const item of items) {
+      const name = item.data.name?.trim().toLowerCase();
+      const email = item.data.email?.trim().toLowerCase();
+      if (name && item.data.categoryId && item.data.groupId) {
+        const key = `${name}|${item.data.categoryId}|${item.data.groupId}`;
+        compositeCounts.set(key, (compositeCounts.get(key) || 0) + 1);
+      }
+      if (email) {
+        emailCounts.set(email, (emailCounts.get(email) || 0) + 1);
+      }
     }
-    const internalDuplicateKeys = new Set(
-      Array.from(nameCounts.entries())
-        .filter(([, count]) => count > 1)
+
+    const internalCompositeDuplicates = new Set(
+      Array.from(compositeCounts.entries())
+        .filter(([_, count]) => count > 1)
         .map(([key]) => key),
     );
 
-    const applyInternalDuplicates = (
-      current: ParsedItem<StudentData>[],
-    ): ParsedItem<StudentData>[] => {
-      if (internalDuplicateKeys.size === 0) return current;
+    const internalEmailDuplicates = new Set(
+      Array.from(emailCounts.entries())
+        .filter(([_, count]) => count > 1)
+        .map(([email]) => email),
+    );
 
-      const duplicateError = "Student name already exists";
-      return current.map((p) => {
-        const key = p.data.name?.trim().toLowerCase();
-        if (!key || !internalDuplicateKeys.has(key)) return p;
-
-        const newErrors = [...p.errors];
-        if (!newErrors.includes(duplicateError)) newErrors.push(duplicateError);
-        return { ...p, errors: newErrors, isValid: false };
-      });
-    };
-
-    // Server-Side Duplicate Check
-    // Prepare candidates list (only those valid so far or at least having a name)
+    // 2. Server-Side Duplicate Check
     const candidatesToCheck = items
-      .filter((p) => p.data.name)
-      .map((p) => ({ name: p.data.name, email: p.data.email }));
+      .filter((p) => p.data.name && p.data.categoryId && p.data.groupId)
+      .map((p) => ({
+        name: p.data.name,
+        email: p.data.email,
+        categoryId: p.data.categoryId!,
+        groupId: p.data.groupId!,
+      }));
 
     if (candidatesToCheck.length > 0) {
       const conflicts = await validateStudentsAction(
@@ -430,31 +452,51 @@ export function BulkUploadStudentsModal({
         candidatesToCheck,
       );
 
-      // Apply conflicts to parsed data
-      const withServerConflicts = items.map((p) => {
-        const nameKey = `name:${p.data.name.toLowerCase()}`;
-        const emailKey = p.data.email
-          ? `email:${p.data.email.toLowerCase()}`
-          : "";
-
+      return items.map((p) => {
+        const name = p.data.name?.trim().toLowerCase();
+        const email = p.data.email?.trim().toLowerCase();
         const newErrors = [...p.errors];
-        let isValid = p.isValid;
 
-        if (conflicts[nameKey]) {
-          newErrors.push(conflicts[nameKey]);
-          isValid = false;
-        } else if (emailKey && conflicts[emailKey]) {
-          newErrors.push(conflicts[emailKey]);
-          isValid = false;
+        // Check Server Conflicts
+        if (email && conflicts[`email:${email}`]) {
+          if (!newErrors.includes(conflicts[`email:${email}`])) {
+            newErrors.push(conflicts[`email:${email}`]);
+          }
         }
 
-        return { ...p, errors: newErrors, isValid };
-      });
+        if (name && p.data.categoryId && p.data.groupId) {
+          const serverKey = `composite:${name}:${p.data.categoryId}:${p.data.groupId}`;
+          if (conflicts[serverKey]) {
+            if (!newErrors.includes(conflicts[serverKey])) {
+              newErrors.push(conflicts[serverKey]);
+            }
+          }
+        }
 
-      return applyInternalDuplicates(withServerConflicts);
+        // Check Internal Duplicates
+        if (email && internalEmailDuplicates.has(email)) {
+          const error = "Duplicate email in upload";
+          if (!newErrors.includes(error)) newErrors.push(error);
+        }
+
+        if (name && p.data.categoryId && p.data.groupId) {
+          const internalKey = `${name}|${p.data.categoryId}|${p.data.groupId}`;
+          if (internalCompositeDuplicates.has(internalKey)) {
+            const error =
+              "Duplicate student (same name, category, and group) in upload";
+            if (!newErrors.includes(error)) newErrors.push(error);
+          }
+        }
+
+        return {
+          ...p,
+          errors: newErrors,
+          isValid: newErrors.length === 0,
+        };
+      });
     }
 
-    return applyInternalDuplicates(items);
+    return items;
   };
 
   const handleCommit = async (validItems: StudentData[]) => {
@@ -550,8 +592,8 @@ export function BulkUploadStudentsModal({
                 variant="outline"
                 className={
                   !item.groupId
-                    ? "border-red-200 bg-red-50 text-red-700"
-                    : "bg-indigo-50 text-indigo-700 border-indigo-100"
+                    ? "border-red-500/20 bg-red-500/10 text-red-500"
+                    : "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
                 }
               >
                 {item.groupName || "No Group"}
@@ -560,8 +602,8 @@ export function BulkUploadStudentsModal({
                 variant="outline"
                 className={
                   !item.categoryId
-                    ? "border-red-200 bg-red-50 text-red-700"
-                    : "bg-rose-50 text-rose-700 border-rose-100"
+                    ? "border-red-500/20 bg-red-500/10 text-red-500"
+                    : "bg-rose-500/10 text-rose-400 border-rose-500/20"
                 }
               >
                 {item.categoryName || "No Category"}

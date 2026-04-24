@@ -155,15 +155,13 @@ function buildResultRowsForProgramme(
   assignments: Array<any>,
   maxRows: number,
 ): OverviewResultRow[] {
-  const withResult = assignments.filter(
-    (a) => a.results && a.results.length > 0 && a.results[0],
-  );
+  const withResult = assignments.filter((a) => a.result?.isPublished);
   if (withResult.length === 0) return [];
 
   if (programme.type === "GROUP") {
     const teamMap = new Map<string, any>();
     withResult.forEach((assignment) => {
-      const result = assignment.results[0];
+      const result = assignment.result;
       const teamId = getTeamIdentifier(assignment);
       if (!teamMap.has(teamId)) {
         const displayName = `${assignment.student?.name || "Unknown"} and team`;
@@ -195,7 +193,7 @@ function buildResultRowsForProgramme(
   }
 
   const rows = withResult.map((assignment) => {
-    const result = assignment.results[0];
+    const result = assignment.result;
     return {
       displayName: assignment.student?.name || "Unknown",
       subText: "",
@@ -269,9 +267,7 @@ export async function getDashboardOverviewData(festivalId: string) {
           with: {
             student: true,
             group: true,
-            result: {
-              where: eq(results.isPublished, true),
-            },
+            result: true,
           },
         },
       },
@@ -281,9 +277,9 @@ export async function getDashboardOverviewData(festivalId: string) {
   const recentResultsByProgramme: OverviewProgrammeResults[] =
     programmesWithPublishedResults.map((prog) => {
       const resultDates = prog.assignments
-        .flatMap((a) => a.results)
-        .map((r) => r?.createdAt)
-        .filter((d): d is string => d != null)
+        .map((a) => a.result)
+        .filter((r) => r?.isPublished)
+        .map((r) => r!.createdAt)
         .map((d) => new Date(d));
       const latestResultAt =
         resultDates.length > 0

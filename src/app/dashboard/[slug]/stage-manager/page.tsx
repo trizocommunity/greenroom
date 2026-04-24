@@ -11,6 +11,7 @@ import {
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { festival as festivalTable } from "@/core/database/schema";
+import type { Tier } from "@/core/types/app-enums";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 
@@ -35,10 +36,10 @@ export default async function StageManagerOverviewPage({
   });
 
   const canStages = festival
-    ? await getEffectiveFeatureEnabled(festival.tier as any, "stageManagement")
+    ? await getEffectiveFeatureEnabled(festival.tier as Tier, "stageManagement")
     : false;
   const canSchedule = festival
-    ? await getEffectiveFeatureEnabled(festival.tier as any, "schedule")
+    ? await getEffectiveFeatureEnabled(festival.tier as Tier, "schedule")
     : false;
 
   const basePath = `/dashboard/${slug}`;

@@ -35,7 +35,7 @@ export const FestivalExpirationService = {
     const list = await db
       .select({ id: festivals.id, name: festivals.name, slug: festivals.slug })
       .from(festivals)
-      .where(lt(festivals.expiresAt, now));
+      .where(lt(festivals.expiresAt, now.toISOString()));
     return list.filter((f) => f.slug !== null) as {
       id: string;
       name: string;
@@ -47,6 +47,7 @@ export const FestivalExpirationService = {
    * Run expiration for one festival: snapshot results, delete non-retained data, set EXPIRED.
    */
   async expireFestival(festivalId: string): Promise<void> {
+    const { randomUUID } = await import("crypto");
     const festival = await db.query.festival.findFirst({
       where: eq(festivals.id, festivalId),
     });
@@ -58,6 +59,7 @@ export const FestivalExpirationService = {
       // 1. Snapshot to ExpiredFestivalResult
       for (const r of publishedResults) {
         await tx.insert(expiredFestivalResult).values({
+          id: randomUUID(),
           festivalId,
           programmeName: r.programName,
           categoryName: r.category ?? null,
@@ -66,7 +68,7 @@ export const FestivalExpirationService = {
           grade: r.grade ?? null,
           score: null,
           points: r.points ?? null,
-        });
+        } as any);
       }
 
       // 2. Delete in order (respect FKs)
@@ -94,10 +96,11 @@ export const FestivalExpirationService = {
 
       // 3. Lifecycle event
       await tx.insert(festivalLifecycleEvent).values({
+        id: randomUUID(),
         festivalId,
         event: "EXPIRED",
         metadata: { snapshotCount: publishedResults.length },
-      });
+      } as any);
 
       // 4. Update festival
       const now = new Date();
@@ -105,7 +108,7 @@ export const FestivalExpirationService = {
         .update(festivals)
         .set({
           status: "EXPIRED",
-          expiredAt: now,
+          expiredAt: now.toISOString(),
           resultPdfUrl: null,
           studentsCount: 0,
           programmesCount: 0,

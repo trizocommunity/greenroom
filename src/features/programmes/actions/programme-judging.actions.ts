@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { randomUUID } from "crypto";
 import {
   and,
+  asc,
   count,
   desc,
   eq,
@@ -526,7 +527,7 @@ export async function submitProgrammeJudgeSessionAction(
       ),
       orderBy: [asc(codeLetterTable.issuedAt)],
       with: {
-        recipients: { columns: { studentId: true } },
+        programmeCodeLetterRecipients: { columns: { studentId: true } },
       },
     });
 
@@ -569,7 +570,9 @@ export async function submitProgrammeJudgeSessionAction(
 
     const allStudentIds = Array.from(
       new Set(
-        codeLetters.flatMap((cl) => cl.recipients.map((r) => r.studentId)),
+        codeLetters.flatMap((cl) =>
+          cl.programmeCodeLetterRecipients.map((r) => r.studentId),
+        ),
       ),
     );
     if (allStudentIds.length === 0) throw new AppError("Judging closed.");
@@ -645,7 +648,7 @@ export async function submitProgrammeJudgeSessionAction(
         const { grade, remarks } = gradeByCode.get(cl.code)!;
         const position = positionByCode.get(cl.code)!;
 
-        const assignmentIds = cl.recipients
+        const assignmentIds = cl.programmeCodeLetterRecipients
           .map((r) => assignmentByStudentId.get(r.studentId))
           .filter((id): id is string => Boolean(id));
 

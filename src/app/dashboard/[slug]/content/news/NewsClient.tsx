@@ -11,6 +11,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import Image from "next/image";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
@@ -74,7 +75,7 @@ const emptyForm = {
 
 export function NewsClient({
   festivalId,
-  festivalSlug,
+  festivalSlug: _festivalSlug,
   initialPosts,
 }: NewsClientProps) {
   const { isReadOnly } = useFestivalReadOnly();
@@ -224,10 +225,11 @@ export function NewsClient({
             <div className="relative">
               {post.imageUrl ? (
                 <div className="aspect-video w-full bg-muted">
-                  <img
+                  <Image
                     src={post.imageUrl}
-                    alt=""
-                    className="w-full h-full object-cover"
+                    alt={post.title}
+                    fill
+                    className="object-cover"
                   />
                 </div>
               ) : (
@@ -343,11 +345,14 @@ export function NewsClient({
           {viewDetailsPost && (
             <div className="space-y-4 py-2">
               {viewDetailsPost.imageUrl && (
-                <img
-                  src={viewDetailsPost.imageUrl}
-                  alt=""
-                  className="w-full rounded-lg aspect-video object-cover bg-muted"
-                />
+                <div className="relative w-full aspect-video">
+                  <Image
+                    src={viewDetailsPost.imageUrl}
+                    alt={viewDetailsPost.title}
+                    fill
+                    className="rounded-lg object-cover bg-muted"
+                  />
+                </div>
               )}
               {viewDetailsPost.excerpt && (
                 <p className="text-sm text-muted-foreground font-medium">

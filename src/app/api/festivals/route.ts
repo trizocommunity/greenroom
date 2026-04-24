@@ -1,10 +1,10 @@
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { festival as festivalsTable } from "@/core/database/schema";
 import { getSession } from "@/core/auth/session";
+import { festival as festivalsTable } from "@/core/database/schema";
 import {
-  findAllFestivals,
   createFestival,
+  findAllFestivals,
 } from "@/features/festivals/repositories/festival.repository";
 
 export async function GET() {

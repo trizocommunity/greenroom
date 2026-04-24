@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/core/auth/session";
+import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import {
+  deleteFestival,
   findFestivalBySlugOrId,
   updateFestival,
-  deleteFestival,
 } from "@/features/festivals/repositories/festival.repository";
-import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 
 export async function GET(
   _request: Request,

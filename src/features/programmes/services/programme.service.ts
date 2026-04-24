@@ -1,4 +1,4 @@
-import { count, eq } from "drizzle-orm";
+import { and, count, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   programmeAssignment,
@@ -6,6 +6,7 @@ import {
 } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
+import { UsageCounterService } from "@/features/festivals/services/usage-counter.service";
 import {
   createProgramme,
   deleteProgramme,
@@ -14,7 +15,6 @@ import {
   findProgrammeWithAssignments,
   updateProgramme,
 } from "@/features/programmes/repositories/programme.repository";
-import { UsageCounterService } from "@/features/festivals/services/usage-counter.service";
 
 export const ProgrammeService = {
   async getAll(festivalId: string, categoryId?: string) {
@@ -42,6 +42,23 @@ export const ProgrammeService = {
       maxPoints?: number;
     },
   ) {
+    // Enforce duplicate check: name + categoryId + type
+    const existing = await db.query.programme.findFirst({
+      where: and(
+        eq(programmes.festivalId, festivalId),
+        eq(sql`LOWER(${programmes.name})`, data.name.trim().toLowerCase()),
+        eq(programmes.categoryId, data.categoryId),
+        eq(programmes.type, data.type),
+      ),
+      columns: { id: true },
+    });
+
+    if (existing) {
+      throw new AppError(
+        "A programme with this name, category, and type already exists.",
+      );
+    }
+
     await UsageCounterService.incrementUsage(festivalId, "programmes");
 
     try {
@@ -127,7 +144,32 @@ export const ProgrammeService = {
       maxPoints?: number;
     },
   ) {
-    await this.getDetails(id, festivalId);
+    const existingDetails = await this.getDetails(id, festivalId);
+
+    if (data.name || data.categoryId || data.type) {
+      const existingComposite = await db.query.programme.findFirst({
+        where: and(
+          eq(programmes.festivalId, festivalId),
+          eq(
+            sql`LOWER(${programmes.name})`,
+            (data.name || existingDetails.name).trim().toLowerCase(),
+          ),
+          eq(
+            programmes.categoryId,
+            data.categoryId || existingDetails.categoryId,
+          ),
+          eq(programmes.type, (data.type || existingDetails.type) as any),
+          ne(programmes.id, id),
+        ),
+        columns: { id: true },
+      });
+
+      if (existingComposite) {
+        throw new AppError(
+          "A programme with this name, category, and type already exists.",
+        );
+      }
+    }
 
     return updateProgramme(id, {
       name: data.name,

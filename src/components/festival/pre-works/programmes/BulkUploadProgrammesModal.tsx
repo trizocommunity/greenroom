@@ -2,6 +2,8 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import {
@@ -27,7 +29,10 @@ import {
 } from "@/components/ui/select";
 import { queryKeys } from "@/core/http/query-keys";
 import { useCategories } from "@/features/categories/hooks/use-categories";
-import { bulkCreateProgrammesAction } from "@/features/programmes/actions/programme.actions";
+import {
+  bulkCreateProgrammesAction,
+  validateProgrammesAction,
+} from "@/features/programmes/actions/programme.actions";
 
 // --- Types & Schema ---
 
@@ -45,15 +50,42 @@ interface ProgrammeData {
   maxStudentsPerTeam: number;
 }
 
-const ProgrammeSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  categoryId: z.string().min(1, "Category is required"),
-  type: z.enum(["INDIVIDUAL", "GROUP"]),
-  stageType: z.enum(["STAGE", "NON_STAGE"]),
-  maxParticipantsPerGroup: z.coerce.number().min(1, "Must be at least 1"),
-  maxTeamsPerGroup: z.coerce.number().min(1, "Must be at least 1"),
-  maxStudentsPerTeam: z.coerce.number().min(1, "Must be at least 1"),
-});
+const ProgrammeSchema = z
+  .object({
+    name: z.string().min(1, "Name is required"),
+    categoryId: z.string().min(1, "Category is required"),
+    type: z.enum(["INDIVIDUAL", "GROUP"]),
+    stageType: z.enum(["STAGE", "NON_STAGE"]),
+    maxParticipantsPerGroup: z.coerce.number(),
+    maxTeamsPerGroup: z.coerce.number(),
+    maxStudentsPerTeam: z.coerce.number(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.type === "INDIVIDUAL") {
+      if (data.maxParticipantsPerGroup < 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Must be at least 1",
+          path: ["maxParticipantsPerGroup"],
+        });
+      }
+    } else {
+      if (data.maxTeamsPerGroup < 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Must be at least 1",
+          path: ["maxTeamsPerGroup"],
+        });
+      }
+      if (data.maxStudentsPerTeam < 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Must be at least 1",
+          path: ["maxStudentsPerTeam"],
+        });
+      }
+    }
+  });
 
 type ProgrammeFormValues = z.infer<typeof ProgrammeSchema>;
 
@@ -71,7 +103,8 @@ function ProgrammeEditForm({
   onCancel: () => void;
 }) {
   const form = useForm<ProgrammeFormValues>({
-    resolver: zodResolver(ProgrammeSchema) as any, // Cast to any to avoid inference issues with superRefine/coerce
+    resolver: zodResolver(ProgrammeSchema) as any,
+    mode: "onChange",
     defaultValues: {
       name: data.name,
       categoryId: data.categoryId || "",
@@ -82,6 +115,18 @@ function ProgrammeEditForm({
       maxStudentsPerTeam: data.maxStudentsPerTeam,
     },
   });
+
+  useEffect(() => {
+    form.reset({
+      name: data.name,
+      categoryId: data.categoryId || "",
+      type: data.type,
+      stageType: data.stageType,
+      maxParticipantsPerGroup: data.maxParticipantsPerGroup,
+      maxTeamsPerGroup: data.maxTeamsPerGroup,
+      maxStudentsPerTeam: data.maxStudentsPerTeam,
+    });
+  }, [data, form]);
 
   const watchType = form.watch("type");
 
@@ -123,7 +168,7 @@ function ProgrammeEditForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Category</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select Category" />
@@ -153,7 +198,7 @@ function ProgrammeEditForm({
                   onValueChange={(val) => {
                     field.onChange(val);
                   }}
-                  defaultValue={field.value}
+                  value={field.value}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -176,10 +221,7 @@ function ProgrammeEditForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Stage</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select Type" />
@@ -247,7 +289,15 @@ function ProgrammeEditForm({
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="submit">Save Changes</Button>
+          <Button
+            type="submit"
+            disabled={!form.formState.isValid || form.formState.isSubmitting}
+          >
+            {form.formState.isSubmitting && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            Save Changes
+          </Button>
         </div>
       </form>
     </Form>
@@ -277,10 +327,8 @@ export function BulkUploadProgrammesModal({
     const categoryName = row[1]?.toString().trim() || "";
     const typeRaw = row[2]?.toString().trim() || "";
     const stageTypeRaw = row[3]?.toString().trim() || "";
-    const maxEntriesRaw = row[4];
-    const maxTeamSizeRaw = row[5];
 
-    const errors: string[] = [];
+    const errors: string[] = ["Set limits manually"];
 
     // 1. Basic Validation
     if (!name) errors.push("Name is required");
@@ -319,33 +367,10 @@ export function BulkUploadProgrammesModal({
       errors.push(`Invalid Stage Type: ${stageTypeRaw}`);
     }
 
-    // 4. Numeric Validation - Mapping Logic
-    // Col 4: Max Entries (Group Limit)
-    // Col 5: Max Team Size (If Group)
-
-    let maxParticipantsPerGroup = 1;
-    let maxTeamsPerGroup = 1;
-    let maxStudentsPerTeam = 1;
-
-    if (maxEntriesRaw) {
-      const parsedVal = parseInt(maxEntriesRaw.toString(), 10);
-      if (!Number.isNaN(parsedVal) && parsedVal > 0) {
-        if (type === "INDIVIDUAL") maxParticipantsPerGroup = parsedVal;
-        else maxTeamsPerGroup = parsedVal;
-      }
-    }
-
-    if (type === "GROUP") {
-      if (maxTeamSizeRaw) {
-        const parsedSize = parseInt(maxTeamSizeRaw.toString(), 10);
-        if (!Number.isNaN(parsedSize) && parsedSize > 0)
-          maxStudentsPerTeam = parsedSize;
-        else errors.push("Invalid Max Team Size");
-      } else {
-        // Default to 1 or error?
-        maxStudentsPerTeam = 1; // Default
-      }
-    }
+    // 4. Force manual configuration (initialize to 0)
+    const maxParticipantsPerGroup = 0;
+    const maxTeamsPerGroup = 0;
+    const maxStudentsPerTeam = 0;
 
     return {
       id: "",
@@ -360,9 +385,81 @@ export function BulkUploadProgrammesModal({
         maxStudentsPerTeam,
         categoryId: category?.id,
       },
-      isValid: errors.length === 0,
+      isValid: false, // Always false initially to force configuration
       errors,
     };
+  };
+
+  const validateRows = async (
+    items: ParsedItem<ProgrammeData>[],
+  ): Promise<ParsedItem<ProgrammeData>[]> => {
+    // 1. Internal Duplicate Check (within the spreadsheet)
+    // Key: name|categoryId|type
+    const keyCounts = new Map<string, number>();
+    for (const item of items) {
+      const name = item.data.name?.trim().toLowerCase();
+      if (name && item.data.categoryId) {
+        const key = `${name}|${item.data.categoryId}|${item.data.type}`;
+        keyCounts.set(key, (keyCounts.get(key) || 0) + 1);
+      }
+    }
+
+    const internalDuplicates = new Set(
+      Array.from(keyCounts.entries())
+        .filter(([_, count]) => count > 1)
+        .map(([key]) => key),
+    );
+
+    // 2. Server-side Duplicate Check
+    const candidatesToCheck = items
+      .filter((item) => item.data.name && item.data.categoryId)
+      .map((item) => ({
+        name: item.data.name,
+        categoryId: item.data.categoryId!,
+        type: item.data.type,
+      }));
+
+    const conflicts = await validateProgrammesAction(
+      festivalId,
+      candidatesToCheck,
+    );
+
+    return items.map((item) => {
+      const name = item.data.name?.trim().toLowerCase();
+      let newErrors = [...item.errors];
+      const configError = "Set limits manually";
+
+      // Check server conflicts
+      if (name && item.data.categoryId) {
+        const serverKey = `${name}:${item.data.categoryId}:${item.data.type}`;
+        if (conflicts[serverKey]) {
+          // If already exists, clear the config error as it's secondary
+          newErrors = newErrors.filter((e) => e !== configError);
+          if (!newErrors.includes(conflicts[serverKey])) {
+            newErrors.push(conflicts[serverKey]);
+          }
+        }
+      }
+
+      // Check internal duplicates
+      if (name && item.data.categoryId) {
+        const internalKey = `${name}|${item.data.categoryId}|${item.data.type}`;
+        if (internalDuplicates.has(internalKey)) {
+          newErrors = newErrors.filter((e) => e !== configError);
+          const error =
+            "Duplicate programme (same name, category, and type) in upload";
+          if (!newErrors.includes(error)) {
+            newErrors.push(error);
+          }
+        }
+      }
+
+      return {
+        ...item,
+        errors: newErrors,
+        isValid: newErrors.length === 0,
+      };
+    });
   };
 
   const handleCommit = async (validItems: ProgrammeData[]) => {
@@ -407,8 +504,6 @@ export function BulkUploadProgrammesModal({
         "Category",
         "Type (Individual/Group)",
         "Stage Type (Stage/Off-Stage)",
-        "Max Entries (Group Limit)",
-        "Max Team Size (If Group)",
       ]}
       templateData={[
         [
@@ -416,11 +511,10 @@ export function BulkUploadProgrammesModal({
           "(Category Name)",
           "(Individual/Group)",
           "(Stage/Non-Stage)",
-          "(Max Entries/Teams per Group - default 1)",
-          "(Max Students per Team - default 1)",
         ],
       ]}
       parseRow={parseProgrammeRow}
+      validateRows={validateRows}
       onCommit={handleCommit}
       EditComponent={(props) => (
         <ProgrammeEditForm {...props} categories={categories} />
@@ -443,22 +537,22 @@ export function BulkUploadProgrammesModal({
           width: "300px",
           cell: (item) => (
             <div className="flex flex-wrap gap-1 text-xs">
-              <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded border border-indigo-100">
+              <span className="bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded border border-indigo-500/20">
                 {item.type}
               </span>
-              <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100">
+              <span className="bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20">
                 {item.stageType === "STAGE" ? "Stage" : "Non-Stage"}
               </span>
               {item.type === "INDIVIDUAL" ? (
-                <span className="bg-zinc-50 text-zinc-600 px-2 py-0.5 rounded border border-zinc-200">
+                <span className="bg-zinc-500/10 text-zinc-400 px-2 py-0.5 rounded border border-zinc-500/20">
                   Max Entries/Group: {item.maxParticipantsPerGroup}
                 </span>
               ) : (
                 <>
-                  <span className="bg-zinc-50 text-zinc-600 px-2 py-0.5 rounded border border-zinc-200">
+                  <span className="bg-zinc-500/10 text-zinc-400 px-2 py-0.5 rounded border border-zinc-500/20">
                     Max Teams/Group: {item.maxTeamsPerGroup}
                   </span>
-                  <span className="bg-zinc-100 text-zinc-700 px-2 py-0.5 rounded border border-zinc-200">
+                  <span className="bg-zinc-500/20 text-zinc-300 px-2 py-0.5 rounded border border-zinc-500/30">
                     Students/Team: {item.maxStudentsPerTeam}
                   </span>
                 </>

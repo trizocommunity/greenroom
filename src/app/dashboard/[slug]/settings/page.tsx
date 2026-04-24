@@ -1,9 +1,9 @@
 import { and, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/core/auth/session";
-import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { db } from "@/core/database/client";
 import { festivalMember as memberTable } from "@/core/database/schema";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import {
   FeatureService,
   getTierForFeatureCheck,
@@ -35,14 +35,14 @@ export default async function SettingsPage({
   // Access check: Owner or ADMIN member
   const isOwner = festival.ownerId === session.userId;
   const isSuperAdmin = session.role === "SUPER_ADMIN";
-  
+
   if (!isOwner && !isSuperAdmin) {
     const member = await db.query.festivalMember.findFirst({
       where: and(
         eq(memberTable.festivalId, festival.id),
         eq(memberTable.userId, session.userId),
         eq(memberTable.role, "ADMIN"),
-        eq(memberTable.isActive, true)
+        eq(memberTable.isActive, true),
       ),
     });
     if (!member) {

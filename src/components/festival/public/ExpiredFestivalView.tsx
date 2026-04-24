@@ -13,7 +13,7 @@ interface ExpiredFestivalViewProps {
 
 export function ExpiredFestivalView({
   festivalName,
-  festivalSlug,
+  festivalSlug: _festivalSlug,
   hasPdf,
   downloadPdfUrl,
 }: ExpiredFestivalViewProps) {

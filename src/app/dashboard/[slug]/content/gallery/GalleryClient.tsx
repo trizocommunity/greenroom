@@ -11,6 +11,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
@@ -47,7 +48,7 @@ interface GalleryClientProps {
 
 export function GalleryClient({
   festivalId,
-  festivalSlug,
+  festivalSlug: _festivalSlug,
   initialImages,
 }: GalleryClientProps) {
   const { isReadOnly } = useFestivalReadOnly();
@@ -359,10 +360,11 @@ export function GalleryClient({
                   className="absolute inset-0 w-full h-full focus:outline-none focus:ring-2 ring-primary ring-inset"
                   onClick={() => openLightbox(index)}
                 >
-                  <img
+                  <Image
                     src={img.url}
-                    alt=""
-                    className="w-full h-full object-cover transition group-hover:scale-105"
+                    alt="Gallery image"
+                    fill
+                    className="object-cover transition group-hover:scale-105"
                   />
                 </button>
                 {img.id && (
@@ -434,10 +436,11 @@ export function GalleryClient({
                         key={index}
                         className="relative group/item rounded-lg overflow-hidden border bg-muted aspect-square"
                       >
-                        <img
+                        <Image
                           src={pendingUpload.previewUrls[index]}
-                          alt=""
-                          className="w-full h-full object-cover"
+                          alt="Preview"
+                          fill
+                          className="object-cover"
                         />
                         <p className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs px-2 py-1 truncate">
                           {file.name}
@@ -515,11 +518,15 @@ export function GalleryClient({
                 >
                   <ChevronLeft className="h-8 w-8" />
                 </button>
-                <img
-                  src={images[lightboxIndex].url}
-                  alt=""
-                  className="max-h-[70vh] w-auto object-contain"
-                />
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <Image
+                    src={images[lightboxIndex].url}
+                    alt="Lightbox view"
+                    fill
+                    className="object-contain"
+                    quality={90}
+                  />
+                </div>
                 <button
                   type="button"
                   onClick={goNext}

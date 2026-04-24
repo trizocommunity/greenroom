@@ -1,8 +1,21 @@
 "use client";
 
 import { format } from "date-fns";
-import { Loader2, Lock, Building2, Palette, Calendar, Settings2, Globe, Upload, Trash2, Image as ImageIcon } from "lucide-react";
-import { useMemo, useState, useRef } from "react";
+import {
+  Building2,
+  Calendar,
+  Globe,
+  Image as ImageIcon,
+  Loader2,
+  Lock,
+  Palette,
+  Settings2,
+  Trash2,
+  Upload,
+} from "lucide-react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,22 +25,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DateTimePicker, DatePicker } from "@/components/ui/date-picker";
+import { DatePicker, DateTimePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { uploadImageToCloudinary } from "@/core/integrations/cloudinary";
+import { cn } from "@/core/utils/cn";
 import {
-  updateFestivalSettingsAction,
   updateFestivalBrandingAction,
+  updateFestivalSettingsAction,
 } from "@/features/festivals/actions/festival-crud.actions";
 import { updateFestivalAction } from "@/features/festivals/actions/user-festival.actions";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { FeatureService } from "@/features/plan-features/services/features";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
-import { uploadImageToCloudinary } from "@/core/integrations/cloudinary";
-import { useRouter } from "next/navigation";
-import { cn } from "@/core/utils/cn";
 
 interface SettingsFormProps {
   festival: any;
@@ -39,7 +51,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
   const { isReadOnly } = useFestivalReadOnly();
   const resolvedTier = getResolvedTier(festival.tier);
   const isBasic = resolvedTier === "BASIC";
-  
+
   const [isSavingGeneral, setIsSavingGeneral] = useState(false);
   const [isSavingFestival, setIsSavingFestival] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -54,26 +66,30 @@ export function SettingsForm({ festival }: SettingsFormProps) {
     location: festival.location || "",
     startDate: festival.startDate ? new Date(festival.startDate) : null,
     endDate: festival.endDate ? new Date(festival.endDate) : null,
-    
+
     // Organization
     orgName: festival.orgName || "",
     orgDescription: festival.orgDescription || "",
     orgWebsite: festival.orgWebsite || "",
     orgLocation: festival.orgLocation || "",
-    
+
     // Branding
     logo: festival.branding?.logo || "",
-    
+
     // Configuration
     programmeAssignmentDeadline: festival.programmeAssignmentDeadline
-      ? new Date(festival.programmeAssignmentDeadline).toISOString().slice(0, 16)
+      ? new Date(festival.programmeAssignmentDeadline)
+          .toISOString()
+          .slice(0, 16)
       : "",
     teamLeaderLimit: Number(festival.teamLeaderLimit ?? 2),
   });
 
   const durationStart = useMemo(() => {
     const createdAt = festival?.createdAt ? new Date(festival.createdAt) : null;
-    return createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : new Date();
+    return createdAt && !Number.isNaN(createdAt.getTime())
+      ? createdAt
+      : new Date();
   }, [festival?.createdAt]);
 
   const festivalStartDate = useMemo(() => {
@@ -101,9 +117,14 @@ export function SettingsForm({ festival }: SettingsFormProps) {
 
   const uploadToCloudinary = async (file: File) => {
     setLogoError(null);
-    
+
     // Validate File Type
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/svg+xml"];
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/svg+xml",
+    ];
     if (!allowedTypes.includes(file.type)) {
       const msg = "Invalid file type. Please upload a PNG, JPG, or SVG.";
       setLogoError(msg);
@@ -178,7 +199,8 @@ export function SettingsForm({ festival }: SettingsFormProps) {
 
       // 2. Save Configuration (Deadlines, Limits)
       const configRes = await updateFestivalSettingsAction(festival.id, {
-        programmeAssignmentDeadline: formData.programmeAssignmentDeadline || null,
+        programmeAssignmentDeadline:
+          formData.programmeAssignmentDeadline || null,
         teamLeaderLimit: formData.teamLeaderLimit,
       });
 
@@ -198,7 +220,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
   const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     setUploadingLogo(true);
     const url = await uploadToCloudinary(file);
     if (url) {
@@ -243,7 +265,9 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                   </div>
                   <div>
                     <CardTitle className="text-lg">Visual Identity</CardTitle>
-                    <CardDescription>Customise how your festival appears online.</CardDescription>
+                    <CardDescription>
+                      Customise how your festival appears online.
+                    </CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -251,27 +275,32 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                 <div className="flex flex-col md:flex-row items-center gap-8">
                   {/* Logo Preview Section */}
                   <div className="relative group">
-                    <div className={cn(
-                      "w-32 h-32 rounded-2xl border-2 border-dashed flex items-center justify-center overflow-hidden transition-all duration-300",
-                      formData.logo ? "border-primary/20" : "border-muted-foreground/20 bg-muted/50"
-                    )}>
+                    <div
+                      className={cn(
+                        "w-32 h-32 rounded-2xl border-2 border-dashed flex items-center justify-center overflow-hidden transition-all duration-300",
+                        formData.logo
+                          ? "border-primary/20"
+                          : "border-muted-foreground/20 bg-muted/50",
+                      )}
+                    >
                       {formData.logo ? (
-                        <img 
-                          src={formData.logo} 
-                          alt="Festival Logo" 
-                          className="w-full h-full object-cover"
+                        <Image
+                          src={formData.logo}
+                          alt="Festival Logo"
+                          fill
+                          className="object-cover"
                         />
                       ) : (
                         <ImageIcon className="h-10 w-10 text-muted-foreground/40" />
                       )}
-                      
+
                       {uploadingLogo && (
                         <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] flex items-center justify-center">
                           <Loader2 className="h-6 w-6 animate-spin text-primary" />
                         </div>
                       )}
                     </div>
-                    
+
                     {formData.logo && !isReadOnly && (
                       <button
                         type="button"
@@ -286,12 +315,15 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                   {/* Upload Controls Section */}
                   <div className="flex-1 space-y-4 text-center md:text-left w-full">
                     <div className="space-y-1">
-                      <h4 className="font-semibold text-foreground">Festival Logo</h4>
+                      <h4 className="font-semibold text-foreground">
+                        Festival Logo
+                      </h4>
                       <p className="text-sm text-muted-foreground">
-                        Recommended: Square image (512x512px). Supports PNG, JPG, or SVG up to 1MB.
+                        Recommended: Square image (512x512px). Supports PNG,
+                        JPG, or SVG up to 1MB.
                       </p>
                     </div>
-                    
+
                     <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
                       <Button
                         type="button"
@@ -299,7 +331,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                         size="sm"
                         className={cn(
                           "gap-2 border-primary/20 hover:bg-primary/5",
-                          logoError && "border-destructive text-destructive"
+                          logoError && "border-destructive text-destructive",
                         )}
                         onClick={() => logoInputRef.current?.click()}
                         disabled={uploadingLogo || isReadOnly}
@@ -307,15 +339,15 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                         <Upload className="h-4 w-4" />
                         {formData.logo ? "Change Logo" : "Upload Logo"}
                       </Button>
-                      
-                      <input 
+
+                      <input
                         type="file"
                         ref={logoInputRef}
                         className="hidden"
                         accept="image/*"
                         onChange={handleLogoChange}
                       />
-                      
+
                       {formData.logo && !logoError && (
                         <p className="text-xs text-muted-foreground italic truncate max-w-[200px]">
                           Currently using custom logo
@@ -338,9 +370,13 @@ export function SettingsForm({ festival }: SettingsFormProps) {
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Building2 className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-lg">Organization & Online</CardTitle>
+                  <CardTitle className="text-lg">
+                    Organization & Online
+                  </CardTitle>
                 </div>
-                <CardDescription>Public organization info and subdomain.</CardDescription>
+                <CardDescription>
+                  Public organization info and subdomain.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -349,17 +385,26 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                     <Input
                       id="orgName"
                       value={formData.orgName}
-                      onChange={(e) => setFormData({ ...formData, orgName: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, orgName: e.target.value })
+                      }
                       placeholder="Organization Name"
                       disabled={isReadOnly}
                     />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="orgDescription">Organization Description</Label>
+                    <Label htmlFor="orgDescription">
+                      Organization Description
+                    </Label>
                     <Textarea
                       id="orgDescription"
                       value={formData.orgDescription}
-                      onChange={(e) => setFormData({ ...formData, orgDescription: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          orgDescription: e.target.value,
+                        })
+                      }
                       placeholder="Short description..."
                       rows={3}
                       disabled={isReadOnly}
@@ -370,7 +415,9 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                     <Input
                       id="orgWebsite"
                       value={formData.orgWebsite}
-                      onChange={(e) => setFormData({ ...formData, orgWebsite: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, orgWebsite: e.target.value })
+                      }
                       placeholder="https://..."
                       disabled={isReadOnly}
                     />
@@ -380,7 +427,12 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                     <Input
                       id="orgLocation"
                       value={formData.orgLocation}
-                      onChange={(e) => setFormData({ ...formData, orgLocation: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          orgLocation: e.target.value,
+                        })
+                      }
                       placeholder="City, Country"
                       disabled={isReadOnly}
                     />
@@ -391,11 +443,15 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                       <Input
                         id="slug"
                         value={formData.slug}
-                        onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, slug: e.target.value })
+                        }
                         className="font-mono"
                         disabled={isReadOnly}
                       />
-                      <span className="text-sm text-muted-foreground">.greenroom.com</span>
+                      <span className="text-sm text-muted-foreground">
+                        .greenroom.com
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -403,8 +459,14 @@ export function SettingsForm({ festival }: SettingsFormProps) {
             </Card>
 
             <div className="flex justify-end">
-              <Button type="submit" disabled={isSavingGeneral || isReadOnly} className="min-w-[160px]">
-                {isSavingGeneral && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button
+                type="submit"
+                disabled={isSavingGeneral || isReadOnly}
+                className="min-w-[160px]"
+              >
+                {isSavingGeneral && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
                 Save Changes
               </Button>
             </div>
@@ -422,7 +484,9 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                 <Calendar className="h-5 w-5 text-primary" />
                 <CardTitle className="text-lg">Festival Basics</CardTitle>
               </div>
-              <CardDescription>Core identity and timing of your festival.</CardDescription>
+              <CardDescription>
+                Core identity and timing of your festival.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
@@ -431,7 +495,9 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
                     placeholder="E.g. Summer Arts 2025"
                     disabled={isReadOnly}
                   />
@@ -441,7 +507,9 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                   <Textarea
                     id="description"
                     value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
                     placeholder="Briefly describe your festival..."
                     rows={3}
                     disabled={isReadOnly}
@@ -452,7 +520,9 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                   <DatePicker
                     id="startDate"
                     date={formData.startDate || undefined}
-                    onChange={(date) => setFormData({ ...formData, startDate: date ?? null })}
+                    onChange={(date) =>
+                      setFormData({ ...formData, startDate: date ?? null })
+                    }
                     placeholder="Pick start date"
                     from={durationStart}
                     disabled={isReadOnly}
@@ -463,7 +533,9 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                   <DatePicker
                     id="endDate"
                     date={formData.endDate || undefined}
-                    onChange={(date) => setFormData({ ...formData, endDate: date ?? null })}
+                    onChange={(date) =>
+                      setFormData({ ...formData, endDate: date ?? null })
+                    }
                     placeholder="Pick end date"
                     from={formData.startDate || durationStart}
                     disabled={isReadOnly}
@@ -474,23 +546,29 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                   <Input
                     id="location"
                     value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, location: e.target.value })
+                    }
                     placeholder="City, Country"
                     disabled={isReadOnly}
                   />
                 </div>
                 {isBasic && (
-                   <div className="space-y-2 sm:col-span-2">
+                  <div className="space-y-2 sm:col-span-2">
                     <Label htmlFor="slug-basic">Subdomain</Label>
                     <div className="flex items-center gap-2">
                       <Input
                         id="slug-basic"
                         value={formData.slug}
-                        onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, slug: e.target.value })
+                        }
                         className="font-mono"
                         disabled={isReadOnly}
                       />
-                      <span className="text-sm text-muted-foreground">.greenroom.com</span>
+                      <span className="text-sm text-muted-foreground">
+                        .greenroom.com
+                      </span>
                     </div>
                   </div>
                 )}
@@ -504,22 +582,37 @@ export function SettingsForm({ festival }: SettingsFormProps) {
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Settings2 className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-lg">Festival Configuration</CardTitle>
+                  <CardTitle className="text-lg">
+                    Festival Configuration
+                  </CardTitle>
                 </div>
-                <CardDescription>Deadlines and participant limits.</CardDescription>
+                <CardDescription>
+                  Deadlines and participant limits.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {FeatureService.isFeatureEnabled(resolvedTier, "programmeAssignmentDeadline") && (
+                {FeatureService.isFeatureEnabled(
+                  resolvedTier,
+                  "programmeAssignmentDeadline",
+                ) && (
                   <div className="grid gap-2">
-                    <Label htmlFor="programmeAssignment">Programme Assignment Deadline</Label>
+                    <Label htmlFor="programmeAssignment">
+                      Programme Assignment Deadline
+                    </Label>
                     <DateTimePicker
                       id="programmeAssignment"
-                      value={formData.programmeAssignmentDeadline ? new Date(formData.programmeAssignmentDeadline) : null}
+                      value={
+                        formData.programmeAssignmentDeadline
+                          ? new Date(formData.programmeAssignmentDeadline)
+                          : null
+                      }
                       onChange={(value) => {
                         if (festivalHasStarted) return;
                         setFormData({
                           ...formData,
-                          programmeAssignmentDeadline: value ? value.toISOString().slice(0, 16) : "",
+                          programmeAssignmentDeadline: value
+                            ? value.toISOString().slice(0, 16)
+                            : "",
                         });
                       }}
                       placeholder="Pick deadline"
@@ -528,32 +621,47 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                       disabled={festivalHasStarted || isReadOnly}
                     />
                     <p className="text-sm text-muted-foreground">
-                      Team Leaders cannot assign students to programmes after this time.
+                      Team Leaders cannot assign students to programmes after
+                      this time.
                     </p>
                   </div>
                 )}
 
                 <div className="grid gap-2">
-                  <Label htmlFor="teamLeaderLimit">Team Leader Limit Per Group</Label>
+                  <Label htmlFor="teamLeaderLimit">
+                    Team Leader Limit Per Group
+                  </Label>
                   <Input
                     id="teamLeaderLimit"
                     type="number"
                     min={1}
                     max={10}
                     value={formData.teamLeaderLimit}
-                    onChange={(e) => setFormData({ ...formData, teamLeaderLimit: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        teamLeaderLimit: Number(e.target.value),
+                      })
+                    }
                     disabled={isReadOnly}
                   />
-                  <p className="text-sm text-muted-foreground">Max team leaders per group.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Max team leaders per group.
+                  </p>
                 </div>
 
-                {FeatureService.isFeatureEnabled(resolvedTier, "advancedSettings") && (
+                {FeatureService.isFeatureEnabled(
+                  resolvedTier,
+                  "advancedSettings",
+                ) && (
                   <div className="rounded-lg border border-dashed p-4 space-y-2">
                     <h4 className="text-sm font-medium flex items-center gap-2">
                       <Lock className="h-4 w-4 text-muted-foreground" />
                       Advanced Settings
                     </h4>
-                    <p className="text-sm text-muted-foreground">Additional options for your plan.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Additional options for your plan.
+                    </p>
                   </div>
                 )}
               </CardContent>
@@ -561,8 +669,14 @@ export function SettingsForm({ festival }: SettingsFormProps) {
           )}
 
           <div className="flex justify-end">
-            <Button type="submit" disabled={isSavingFestival || isReadOnly} className="min-w-[160px]">
-              {isSavingFestival && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button
+              type="submit"
+              disabled={isSavingFestival || isReadOnly}
+              className="min-w-[160px]"
+            >
+              {isSavingFestival && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Save Festival Settings
             </Button>
           </div>

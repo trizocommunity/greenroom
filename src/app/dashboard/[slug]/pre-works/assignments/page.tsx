@@ -59,7 +59,11 @@ export default async function AssignmentsPage({
     <div className="pt-4 sm:pt-6">
       <AssignmentsClient
         festivalId={festival.id}
-        programmeAssignmentDeadline={festival.programmeAssignmentDeadline ? new Date(festival.programmeAssignmentDeadline) : null}
+        programmeAssignmentDeadline={
+          festival.programmeAssignmentDeadline
+            ? new Date(festival.programmeAssignmentDeadline)
+            : null
+        }
       >
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
           Programme Assignments

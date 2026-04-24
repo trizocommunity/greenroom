@@ -601,11 +601,13 @@ export const programmeAssignment = pgTable(
     createdByName: text(),
   },
   (table) => [
-    uniqueIndex("programme_assignment_programmeId_studentId_key").using(
-      "btree",
-      table.programmeId.asc().nullsLast(),
-      table.studentId.asc().nullsLast(),
-    ).where(sql`${table.studentId} is not null`),
+    uniqueIndex("programme_assignment_programmeId_studentId_key")
+      .using(
+        "btree",
+        table.programmeId.asc().nullsLast(),
+        table.studentId.asc().nullsLast(),
+      )
+      .where(sql`${table.studentId} is not null`),
     foreignKey({
       columns: [table.programmeId],
       foreignColumns: [programme.id],

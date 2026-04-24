@@ -38,15 +38,13 @@ export async function addGalleryImageAction(festivalId: string, url: string) {
   const order = (maxOrder ?? -1) + 1;
 
   const addedMb = await StorageUsageService.getUrlSizeMB(url);
-  await db
-    .insert(festivalGalleryImage)
-    .values({
-      id: randomUUID(),
-      festivalId,
-      url,
-      order,
-      updatedAt: new Date().toISOString(),
-    });
+  await db.insert(festivalGalleryImage).values({
+    id: randomUUID(),
+    festivalId,
+    url,
+    order,
+    updatedAt: new Date().toISOString(),
+  });
   if (addedMb > 0) {
     await UsageCounterService.incrementUsage(festivalId, "storage", addedMb);
   }
@@ -77,17 +75,15 @@ export async function addGalleryImagesAction(
 
   const addedMb = await StorageUsageService.getUrlsSizeMB(urls);
   const now = new Date().toISOString();
-  await db
-    .insert(festivalGalleryImage)
-    .values(
-      urls.map((url) => ({
-        id: randomUUID(),
-        festivalId,
-        url,
-        order: order++,
-        updatedAt: now,
-      })),
-    );
+  await db.insert(festivalGalleryImage).values(
+    urls.map((url) => ({
+      id: randomUUID(),
+      festivalId,
+      url,
+      order: order++,
+      updatedAt: now,
+    })),
+  );
   if (addedMb > 0) {
     await UsageCounterService.incrementUsage(festivalId, "storage", addedMb);
   }

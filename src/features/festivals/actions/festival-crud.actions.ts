@@ -415,7 +415,7 @@ export async function updateFestivalBrandingAction(data: {
         await UsageCounterService.incrementUsage(
           festival.id,
           "storage",
-          deltaMb
+          deltaMb,
         );
       }
     });

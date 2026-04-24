@@ -169,7 +169,7 @@ export function StudentsClient({
         if (!aNum && !bNum) return 0;
         if (!aNum) return 1;
         if (!bNum) return -1;
-        return parseInt(aNum) - parseInt(bNum);
+        return parseInt(aNum, 10) - parseInt(bNum, 10);
       }
       default:
         return 0;

@@ -63,12 +63,12 @@ async function getOrCreateSessionByScheduleEntry(scheduleEntryId: string) {
     stageId: entry.stageId,
     status: "NOT_STARTED",
     updatedAt: new Date().toISOString(),
-  });
+  } as any);
 
   return db.query.programmeReportingSession.findFirst({
     where: eq(prsTable.id, newId),
     with: {
-      scheduleEntry: { include: { programme: true, stage: true } },
+      scheduleEntry: { with: { programme: true, stage: true } },
     },
   });
 }
@@ -96,13 +96,13 @@ export const ProgrammeReportingService = {
           },
         },
         stage: true,
-        reportingSessions: {
+        programmeReportingSessions: {
           with: {
-            reportedParticipants: true,
-            codeLetters: {
+            programmeReportedParticipants: true,
+            programmeCodeLetters: {
               orderBy: [asc(codeLetterTable.issuedAt)],
               with: {
-                recipients: { columns: { studentId: true } },
+                programmeCodeLetterRecipients: { columns: { studentId: true } },
               },
             },
           },
@@ -116,7 +116,7 @@ export const ProgrammeReportingService = {
 
     return entries.map((entry) => ({
       ...entry,
-      reportingSession: entry.reportingSessions ?? null,
+      reportingSession: entry.programmeReportingSessions ?? null,
     }));
   },
 
@@ -367,8 +367,7 @@ export const ProgrammeReportingService = {
                 teamNumber: assignment.teamNumber,
                 reportedBy: actorName,
                 reportedAt: now,
-                updatedAt: now,
-              })
+              } as any)
               .onConflictDoUpdate({
                 target: [
                   reportedParticipantTable.reportingSessionId,
@@ -377,7 +376,6 @@ export const ProgrammeReportingService = {
                 set: {
                   reportedAt: now,
                   reportedBy: actorName,
-                  updatedAt: now,
                 },
               });
           }
@@ -416,8 +414,7 @@ export const ProgrammeReportingService = {
             teamNumber: assignment.teamNumber,
             reportedBy: actorName,
             reportedAt: now,
-            updatedAt: now,
-          })
+          } as any)
           .onConflictDoUpdate({
             target: [
               reportedParticipantTable.reportingSessionId,
@@ -426,7 +423,6 @@ export const ProgrammeReportingService = {
             set: {
               reportedAt: now,
               reportedBy: actorName,
-              updatedAt: now,
             },
           });
 
@@ -520,8 +516,7 @@ export const ProgrammeReportingService = {
               teamNumber: assignment.teamNumber,
               reportedBy: actorName,
               reportedAt: now,
-              updatedAt: now,
-            })
+            } as any)
             .onConflictDoUpdate({
               target: [
                 reportedParticipantTable.reportingSessionId,
@@ -530,7 +525,6 @@ export const ProgrammeReportingService = {
               set: {
                 reportedAt: now,
                 reportedBy: actorName,
-                updatedAt: now,
               },
             });
         } else {
@@ -577,7 +571,7 @@ export const ProgrammeReportingService = {
       with: {
         programme: { columns: { type: true } },
         scheduleEntry: { columns: { startTime: true } },
-        reportedParticipants: true,
+        programmeReportedParticipants: true,
       },
     });
     if (!session) throw new Error("Reporting session not found");
@@ -605,7 +599,7 @@ export const ProgrammeReportingService = {
 
       const studentCodes: { studentId: string; code: string }[] = [];
 
-      const reportedWithStudent = session.reportedParticipants.filter(
+      const reportedWithStudent = session.programmeReportedParticipants.filter(
         (r): r is typeof r & { studentId: string } => Boolean(r.studentId),
       );
 
@@ -644,14 +638,14 @@ export const ProgrammeReportingService = {
             code,
             issuedBy: actorName,
             updatedAt: nowStr,
-          });
+          } as any);
           for (const studentId of bucket.studentIds) {
             await tx.insert(codeLetterRecipientTable).values({
               id: randomUUID(),
               codeLetterId: codeLetterId,
               studentId,
               updatedAt: nowStr,
-            });
+            } as any);
             studentCodes.push({ studentId, code });
           }
         }
@@ -671,13 +665,13 @@ export const ProgrammeReportingService = {
             code,
             issuedBy: actorName,
             updatedAt: nowStr,
-          });
+          } as any);
           await tx.insert(codeLetterRecipientTable).values({
             id: randomUUID(),
             codeLetterId: codeLetterId,
             studentId: row.studentId,
             updatedAt: nowStr,
-          });
+          } as any);
           studentCodes.push({ studentId: row.studentId, code });
         }
       }
@@ -778,7 +772,7 @@ export const ProgrammeReportingService = {
       where: eq(prsTable.id, reportingSessionId),
       with: {
         programme: true,
-        reportedParticipants: true,
+        programmeReportedParticipants: true,
       },
     });
 
@@ -797,7 +791,7 @@ export const ProgrammeReportingService = {
 
     if (isGroupProgramme) {
       const uniqueTeams = new Map<string, { members: number }>();
-      for (const participant of session.reportedParticipants) {
+      for (const participant of session.programmeReportedParticipants) {
         if (participant.groupId && participant.teamNumber !== null) {
           const teamKey = `${participant.groupId}-${participant.teamNumber}`;
           if (!uniqueTeams.has(teamKey)) {
@@ -824,7 +818,7 @@ export const ProgrammeReportingService = {
       }
       totalUnits = totalUniqueTeams.size;
     } else {
-      reportedCount = session.reportedParticipants.length;
+      reportedCount = session.programmeReportedParticipants.length;
       totalUnits = totalParticipants;
     }
 
@@ -869,7 +863,7 @@ export const ProgrammeReportingService = {
       where: eq(prsTable.id, reportingSessionId),
       with: {
         programme: { columns: { type: true } },
-        reportedParticipants: true,
+        programmeReportedParticipants: true,
       },
     });
 
@@ -888,7 +882,7 @@ export const ProgrammeReportingService = {
 
     await db.transaction(async (tx) => {
       for (const assignment of codeAssignments) {
-        const teamParticipants = session.reportedParticipants.filter(
+        const teamParticipants = session.programmeReportedParticipants.filter(
           (p) =>
             p.groupId !== null &&
             p.teamNumber === assignment.teamNumber &&
@@ -910,7 +904,7 @@ export const ProgrammeReportingService = {
           code: assignment.code,
           issuedBy: actorName,
           updatedAt: nowStr,
-        });
+        } as any);
 
         for (const participant of teamParticipants) {
           if (participant.studentId) {
@@ -919,7 +913,7 @@ export const ProgrammeReportingService = {
               codeLetterId: codeLetterId,
               studentId: participant.studentId,
               updatedAt: nowStr,
-            });
+            } as any);
             studentCodes.push({
               studentId: participant.studentId,
               code: assignment.code,

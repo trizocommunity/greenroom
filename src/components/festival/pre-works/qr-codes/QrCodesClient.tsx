@@ -56,7 +56,7 @@ const BOTTOM_BAR_HEIGHT = 50;
 async function drawPosterJpeg(
   chestNumber: string,
   festivalName: string,
-  studentName: string | null | undefined,
+  _studentName: string | null | undefined,
 ): Promise<Blob> {
   const qrCanvas = document.createElement("canvas");
   // Use chest number for QR code encoding (not profile URL)
@@ -153,9 +153,9 @@ type StudentRow = StudentsListItem;
 
 export function QrCodesClient({
   festivalId,
-  festivalSlug,
+  festivalSlug: _festivalSlug,
   festivalName,
-  baseUrl,
+  baseUrl: _baseUrl,
 }: QrCodesClientProps) {
   const { students, isLoading } = useStudents(festivalId);
   const { categories } = useCategories(festivalId);

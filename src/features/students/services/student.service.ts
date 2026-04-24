@@ -6,6 +6,7 @@ import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { generateProfileSlug } from "@/core/utils/slug";
 import { findCategoryById } from "@/features/categories/repositories/category.repository";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
+import { UsageCounterService } from "@/features/festivals/services/usage-counter.service";
 import { findGroupById } from "@/features/groups/repositories/group.repository";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
 import {
@@ -15,7 +16,6 @@ import {
   findStudentsByFestival,
   updateStudent,
 } from "@/features/students/repositories/student.repository";
-import { UsageCounterService } from "@/features/festivals/services/usage-counter.service";
 
 export const StudentService = {
   async getAll(festivalId: string, groupId?: string) {
@@ -35,14 +35,14 @@ export const StudentService = {
       standard?: string;
     },
   ) {
-    const normalizedName = data.name.trim();
     const festival = await findFestivalById(festivalId);
     if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
     if (festival.status === "EXPIRED")
       throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
 
-    // Enforce no duplicate student names in the same festival
-    const existingByName = await db.query.student.findFirst({
+    // Global uniqueness check: Name must be unique within the festival (all groups/categories)
+    const normalizedName = data.name.trim();
+    const existingName = await db.query.student.findFirst({
       where: and(
         eq(students.festivalId, festivalId),
         ilike(students.name, normalizedName),
@@ -50,8 +50,10 @@ export const StudentService = {
       columns: { id: true },
     });
 
-    if (existingByName) {
-      throw new AppError(ERROR_MESSAGES.STUDENT_NAME_DUPLICATE);
+    if (existingName) {
+      throw new AppError(
+        "A student with this name already exists in the festival.",
+      );
     }
 
     // 1. Group Validation
@@ -138,20 +140,21 @@ export const StudentService = {
     if (!existing || existing.festivalId !== festivalId)
       throw new AppError(ERROR_MESSAGES.STUDENT_NOT_FOUND);
 
-    if (data.name) {
-      const normalizedName = data.name.trim();
-      const existingByName = await db.query.student.findFirst({
-        where: and(
-          eq(students.festivalId, festivalId),
-          ilike(students.name, normalizedName),
-          ne(students.id, id),
-        ),
-        columns: { id: true },
-      });
+    const normalizedName = (data.name || existing.name).trim();
 
-      if (existingByName) {
-        throw new AppError(ERROR_MESSAGES.STUDENT_NAME_DUPLICATE);
-      }
+    const existingName = await db.query.student.findFirst({
+      where: and(
+        eq(students.festivalId, festivalId),
+        ilike(students.name, normalizedName),
+        ne(students.id, id),
+      ),
+      columns: { id: true },
+    });
+
+    if (existingName) {
+      throw new AppError(
+        "A student with this name already exists in the festival.",
+      );
     }
 
     if (data.groupId) {

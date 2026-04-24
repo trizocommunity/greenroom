@@ -8,7 +8,9 @@ export default defineConfig({
   // Generate SQL only - no direct DB connection needed
   // Run generated SQL in Supabase SQL Editor manually
   dbCredentials: {
-    url: process.env.DATABASE_URL || "postgresql://placeholder:placeholder@localhost:5432/postgres",
+    url:
+      process.env.DATABASE_URL ||
+      "postgresql://placeholder:placeholder@localhost:5432/postgres",
   },
   verbose: true,
 });

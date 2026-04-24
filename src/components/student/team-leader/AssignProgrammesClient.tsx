@@ -2,7 +2,7 @@
 
 import { format } from "date-fns";
 import { CalendarClock, Mail, Phone, ShieldAlert, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { Badge } from "@/components/ui/badge";
@@ -188,8 +188,7 @@ export function AssignProgrammesClient({
       return;
     }
     setSelectedProgrammeId(eligibleProgrammes[0]?.id ?? null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eligibleProgrammes]);
+  }, [eligibleProgrammes, selectedProgrammeId]);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
 
   const [assignProgrammesTab, setAssignProgrammesTab] = useState<
@@ -211,7 +210,9 @@ export function AssignProgrammesClient({
   // Switching programmes changes capacity + already-assigned set.
   // Clear selection so the UI can't carry invalid picks across programmes.
   useEffect(() => {
-    setSelectedStudentIds([]);
+    if (selectedProgrammeId || !selectedProgrammeId) {
+      setSelectedStudentIds([]);
+    }
   }, [selectedProgrammeId]);
 
   const selectedProgramme = useMemo(() => {
@@ -397,68 +398,71 @@ export function AssignProgrammesClient({
     });
   };
 
-  const allocateTeamsForGroupProgramme = (
-    programme: ProgrammeForAssignment,
-    studentIds: string[],
-  ): { programmeId: string; studentId: string; teamNumber: number }[] => {
-    const maxTeams = programme.maxTeamsPerGroup ?? 1;
-    const maxPerTeam = programme.maxStudentsPerTeam ?? 1;
+  const allocateTeamsForGroupProgramme = useCallback(
+    (
+      programme: ProgrammeForAssignment,
+      studentIds: string[],
+    ): { programmeId: string; studentId: string; teamNumber: number }[] => {
+      const maxTeams = programme.maxTeamsPerGroup ?? 1;
+      const maxPerTeam = programme.maxStudentsPerTeam ?? 1;
 
-    // Existing team sizes for this programme+group.
-    const existingAssignments = (assignments as any[]).filter((a) => {
-      const assignmentProgrammeId = a?.programme?.id ?? a?.programmeId;
-      const assignmentGroupId = a?.group?.id ?? a?.student?.groupId;
-      return (
-        assignmentProgrammeId === programme.id &&
-        assignmentGroupId === leaderGroupId &&
-        a?.teamNumber != null
-      );
-    });
+      // Existing team sizes for this programme+group.
+      const existingAssignments = (assignments as any[]).filter((a) => {
+        const assignmentProgrammeId = a?.programme?.id ?? a?.programmeId;
+        const assignmentGroupId = a?.group?.id ?? a?.student?.groupId;
+        return (
+          assignmentProgrammeId === programme.id &&
+          assignmentGroupId === leaderGroupId &&
+          a?.teamNumber != null
+        );
+      });
 
-    const teamCounts = new Map<number, number>();
-    const existingTeams = new Set<number>();
+      const teamCounts = new Map<number, number>();
+      const existingTeams = new Set<number>();
 
-    for (const a of existingAssignments) {
-      const tn = a.teamNumber ?? 1;
-      existingTeams.add(tn);
-      teamCounts.set(tn, (teamCounts.get(tn) || 0) + 1);
-    }
-
-    const allocateOneStudent = (): number | null => {
-      // Prefer existing teams with free space.
-      const existingOrdered = [...existingTeams].sort((x, y) => x - y);
-      for (const tn of existingOrdered) {
-        const count = teamCounts.get(tn) || 0;
-        if (count < maxPerTeam) return tn;
+      for (const a of existingAssignments) {
+        const tn = a.teamNumber ?? 1;
+        existingTeams.add(tn);
+        teamCounts.set(tn, (teamCounts.get(tn) || 0) + 1);
       }
 
-      // Otherwise, create new teams in ascending order (within maxTeamsPerGroup).
-      if (existingTeams.size >= maxTeams) return null;
-      for (let tn = 1; tn <= maxTeams; tn++) {
-        if (existingTeams.has(tn)) continue;
-        // We can safely create the teamNumber here; bulkCreate will enforce too.
-        return tn;
-      }
-      return null;
-    };
+      const allocateOneStudent = (): number | null => {
+        // Prefer existing teams with free space.
+        const existingOrdered = [...existingTeams].sort((x, y) => x - y);
+        for (const tn of existingOrdered) {
+          const count = teamCounts.get(tn) || 0;
+          if (count < maxPerTeam) return tn;
+        }
 
-    const result: {
-      programmeId: string;
-      studentId: string;
-      teamNumber: number;
-    }[] = [];
-    for (const studentId of studentIds) {
-      const teamNumber = allocateOneStudent();
-      if (!teamNumber) {
-        return [];
-      }
-      existingTeams.add(teamNumber);
-      teamCounts.set(teamNumber, (teamCounts.get(teamNumber) || 0) + 1);
-      result.push({ programmeId: programme.id, studentId, teamNumber });
-    }
+        // Otherwise, create new teams in ascending order (within maxTeamsPerGroup).
+        if (existingTeams.size >= maxTeams) return null;
+        for (let tn = 1; tn <= maxTeams; tn++) {
+          if (existingTeams.has(tn)) continue;
+          // We can safely create the teamNumber here; bulkCreate will enforce too.
+          return tn;
+        }
+        return null;
+      };
 
-    return result;
-  };
+      const result: {
+        programmeId: string;
+        studentId: string;
+        teamNumber: number;
+      }[] = [];
+      for (const studentId of studentIds) {
+        const teamNumber = allocateOneStudent();
+        if (!teamNumber) {
+          return [];
+        }
+        existingTeams.add(teamNumber);
+        teamCounts.set(teamNumber, (teamCounts.get(teamNumber) || 0) + 1);
+        result.push({ programmeId: programme.id, studentId, teamNumber });
+      }
+
+      return result;
+    },
+    [assignments, leaderGroupId],
+  );
 
   const groupTeamPreview = useMemo(() => {
     if (!selectedProgramme || selectedProgramme.type !== "GROUP") return null;

@@ -1,10 +1,13 @@
 "use server";
 
-import { count, eq } from "drizzle-orm";
+import { and, count, eq, inArray, or, sql } from "drizzle-orm";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
-import { category as categoryTable } from "@/core/database/schema";
+import {
+  category as categoryTable,
+  programme as programmeTable,
+} from "@/core/database/schema";
 import {
   AppError,
   ERROR_MESSAGES,
@@ -25,6 +28,42 @@ export async function getProgrammeDetailsAction(
   const session = await getSession();
   await assertFestivalAccess(session, festivalId, { requireWritable: true });
   return ProgrammeService.getDetails(id, festivalId);
+}
+
+export async function validateProgrammesAction(
+  festivalId: string,
+  candidates: { name: string; categoryId: string; type: string }[],
+) {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
+
+  if (candidates.length === 0) return {};
+
+  // Build OR conditions for each candidate
+  const conditions = candidates
+    .filter((c) => c.name) // Ensure name exists
+    .map((c) =>
+      and(
+        eq(sql`LOWER(${programmeTable.name})`, c.name.trim().toLowerCase()),
+        eq(programmeTable.categoryId, c.categoryId),
+        eq(programmeTable.type, (c.type as any) || "INDIVIDUAL"),
+      ),
+    );
+
+  if (conditions.length === 0) return {};
+
+  const existing = await db.query.programme.findMany({
+    where: and(eq(programmeTable.festivalId, festivalId), or(...conditions)),
+    columns: { name: true, categoryId: true, type: true },
+  });
+
+  const conflicts: Record<string, string> = {};
+  existing.forEach((p) => {
+    const key = `${p.name.toLowerCase()}:${p.categoryId}:${p.type}`;
+    conflicts[key] = "Programme already exists with this category and type";
+  });
+
+  return conflicts;
 }
 
 export async function createProgrammeAction(

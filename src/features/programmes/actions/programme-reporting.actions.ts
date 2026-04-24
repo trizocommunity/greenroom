@@ -16,6 +16,7 @@ import {
   user as userTable,
 } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import type { Tier } from "@/core/types/app-enums";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 import { ProgrammeReportingService } from "@/features/programmes/services/programme-reporting.service";
@@ -71,7 +72,7 @@ async function assertStageManagerAccess(festivalId: string): Promise<string> {
   });
   if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
   const canUseReporting = await getEffectiveFeatureEnabled(
-    festival.tier as any,
+    festival.tier as Tier,
     "schedule",
   );
   if (!canUseReporting) {
@@ -285,7 +286,9 @@ export async function getStudentOngoingProgrammesAction(studentId: string) {
         orderBy: [desc(sql`issued_at`)],
         limit: 8,
         with: {
-          programmeCodeLetterRecipients: { where: eq(sql`student_id`, studentId) },
+          programmeCodeLetterRecipients: {
+            where: eq(sql`student_id`, studentId),
+          },
         },
       },
     },

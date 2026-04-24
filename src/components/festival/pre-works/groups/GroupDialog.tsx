@@ -1,7 +1,11 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,9 +16,24 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useGroups } from "@/features/groups/hooks/use-groups";
+
+const GroupSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  color: z.string().min(1, "Color is required"),
+});
+
+type GroupFormValues = z.infer<typeof GroupSchema>;
 
 interface GroupDialogProps {
   festivalId: string;
@@ -24,6 +43,19 @@ interface GroupDialogProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
+
+const COLORS = [
+  "#ef4444", // Red
+  "#f97316", // Orange
+  "#f59e0b", // Amber
+  "#84cc16", // Lime
+  "#10b981", // Emerald
+  "#06b6d4", // Cyan
+  "#3b82f6", // Blue
+  "#6366f1", // Indigo
+  "#8b5cf6", // Violet
+  "#ec4899", // Pink
+];
 
 export function GroupDialog({
   festivalId,
@@ -44,70 +76,51 @@ export function GroupDialog({
   const isEditing = !!group;
   const isLoading = isCreating || isUpdating;
 
-  const [formData, setFormData] = useState<{
-    name: string;
-    seriesStart: number | string;
-    color: string;
-  }>({
-    name: "",
-    seriesStart: 100,
-    color: "#2563eb",
+  const form = useForm({
+    resolver: zodResolver(GroupSchema),
+    mode: "onChange",
+    defaultValues: {
+      name: "",
+      color: "#2563eb",
+    },
   });
-
-  const COLORS = [
-    "#ef4444", // Red
-    "#f97316", // Orange
-    "#f59e0b", // Amber
-    "#84cc16", // Lime
-    "#10b981", // Emerald
-    "#06b6d4", // Cyan
-    "#3b82f6", // Blue
-    "#6366f1", // Indigo
-    "#8b5cf6", // Violet
-    "#ec4899", // Pink
-  ];
 
   useEffect(() => {
     if (open) {
       if (group) {
-        setFormData({
+        form.reset({
           name: group.name || "",
-          seriesStart: group.seriesStart || 100,
           color: group.color || "#2563eb",
         });
       } else {
-        // Pick random default color for new group
         const randomColor = COLORS[Math.floor(Math.random() * COLORS.length)];
-        setFormData({
+        form.reset({
           name: "",
-          seriesStart: 100,
           color: randomColor,
         });
       }
+      form.trigger();
     }
-  }, [open, group]);
+  }, [open, group, form]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: GroupFormValues) => {
     try {
       if (isEditing && group) {
         await updateGroup({
           id: group.id,
-          data: {
-            ...formData,
-            seriesStart: Number(formData.seriesStart),
-          },
+          data,
         });
       } else {
-        await createGroup({
-          name: formData.name,
-          seriesStart: Number(formData.seriesStart),
-          color: formData.color,
-        });
+        await createGroup(data);
       }
       setOpen(false);
-    } catch (error) {
-      // Handled hook
+    } catch (error: any) {
+      const message = error.message || "An error occurred";
+      if (message.toLowerCase().includes("already exists")) {
+        form.setError("name", { message });
+      } else {
+        toast.error(message);
+      }
     }
   };
 
@@ -123,7 +136,7 @@ export function GroupDialog({
           )}
         </DialogTrigger>
       )}
-      <DialogContent className="w-[calc(100%-2rem)] max-w-2xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+      <DialogContent className="w-[calc(100%-2rem)] max-w-md max-h-[85vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>
             {readOnly
@@ -140,59 +153,79 @@ export function GroupDialog({
                 : "Add a new group (School/College)."}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Group Name</Label>
-            <Input
-              id="name"
-              required
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-              placeholder="e.g. Model School"
-              disabled={readOnly}
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Group Name</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g. Model School"
+                      disabled={readOnly || isLoading}
+                      {...field}
+                      value={field.value ?? ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div className="space-y-2">
-            <Label>Group Color</Label>
-            <div className="flex flex-wrap gap-2">
-              {COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  disabled={readOnly}
-                  onClick={() => setFormData({ ...formData, color: c })}
-                  className={`h-8 w-8 rounded-full border-2 transition-all ${
-                    formData.color === c
-                      ? "border-primary scale-110 shadow-sm"
-                      : "border-transparent hover:scale-105"
-                  }`}
-                  style={{ backgroundColor: c }}
-                  aria-label={`Select color ${c}`}
-                />
-              ))}
-            </div>
-          </div>
+            <FormField
+              control={form.control}
+              name="color"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Group Color</FormLabel>
+                  <div className="flex flex-wrap gap-2">
+                    {COLORS.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        disabled={readOnly || isLoading}
+                        onClick={() => field.onChange(c)}
+                        className={`h-8 w-8 rounded-full border-2 transition-all ${
+                          field.value === c
+                            ? "border-primary scale-110 shadow-sm"
+                            : "border-transparent hover:scale-105"
+                        }`}
+                        style={{ backgroundColor: c }}
+                        aria-label={`Select color ${c}`}
+                      />
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={isLoading}
-            >
-              {readOnly ? "Close" : "Cancel"}
-            </Button>
-            {!readOnly && (
-              <Button type="submit" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditing ? "Save Changes" : "Create"}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+                disabled={isLoading}
+              >
+                {readOnly ? "Close" : "Cancel"}
               </Button>
-            )}
-          </DialogFooter>
-        </form>
+              {!readOnly && (
+                <Button
+                  type="submit"
+                  disabled={!form.formState.isValid || isLoading}
+                >
+                  {isLoading && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  {isEditing ? "Save Changes" : "Create"}
+                </Button>
+              )}
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

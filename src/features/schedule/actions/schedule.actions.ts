@@ -13,6 +13,7 @@ import {
   stage as stageTable,
   user as userTable,
 } from "@/core/database/schema";
+import type { Tier } from "@/core/types/app-enums";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 import { ProgrammeReportingService } from "@/features/programmes/services/programme-reporting.service";
@@ -212,7 +213,7 @@ export async function createScheduleEntry(
   if (!festival) return { success: false, error: "Festival not found" };
 
   const canManage = await getEffectiveFeatureEnabled(
-    festival.tier as any,
+    festival.tier as Tier,
     "schedule",
   );
   if (!canManage)
@@ -315,7 +316,7 @@ export async function updateScheduleEntry(
   if (!festival) return { success: false, error: "Festival not found" };
 
   const canManage = await getEffectiveFeatureEnabled(
-    festival.tier as any,
+    festival.tier as Tier,
     "schedule",
   );
   if (!canManage)
@@ -445,7 +446,7 @@ export async function reorderScheduleEntries(
   if (!festival) return { success: false, error: "Festival not found" };
 
   const canManage = await getEffectiveFeatureEnabled(
-    festival.tier as any,
+    festival.tier as Tier,
     "schedule",
   );
   if (!canManage)

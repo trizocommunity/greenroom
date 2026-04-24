@@ -20,9 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/core/utils/cn";
-import {
-  setPublicSiteEnabledAction,
-} from "@/features/festivals/actions/festival-crud.actions";
+import { setPublicSiteEnabledAction } from "@/features/festivals/actions/festival-crud.actions";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 
 interface FestivalLiveClientProps {
@@ -194,14 +192,14 @@ export function FestivalLiveClient({
                     <TooltipContent side="left" className="max-w-xs p-3">
                       <p className="font-medium mb-1">Required to enable:</p>
                       <ul className="text-xs list-disc list-inside space-y-1">
-                         <li>Festival name & description</li>
-                         <li>Organization name & description</li>
-                         {!isBasicTier && (
-                           <>
-                             <li>Gallery (4+ images)</li>
-                             <li>At least 1 news post</li>
-                           </>
-                         )}
+                        <li>Festival name & description</li>
+                        <li>Organization name & description</li>
+                        {!isBasicTier && (
+                          <>
+                            <li>Gallery (4+ images)</li>
+                            <li>At least 1 news post</li>
+                          </>
+                        )}
                       </ul>
                     </TooltipContent>
                   </Tooltip>
@@ -219,7 +217,8 @@ export function FestivalLiveClient({
                     ))}
                   </ul>
                   <p className="text-xs text-amber-600 dark:text-amber-400 mt-3 italic">
-                    Go to Settings to complete your festival and organization profile.
+                    Go to Settings to complete your festival and organization
+                    profile.
                   </p>
                 </div>
               )}

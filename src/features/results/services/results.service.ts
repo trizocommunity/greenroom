@@ -1,12 +1,16 @@
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
-import { festival as festivals } from "@/core/database/schema";
+import {
+  category,
+  festival as festivals,
+  programme,
+} from "@/core/database/schema";
 
 export async function getFestivalResultsDataBySlug(slug: string) {
   const festival = await db.query.festival.findFirst({
     where: eq(festivals.slug, slug),
     with: {
-      categories: { orderBy: [asc(festivals.name)] },
+      categories: { orderBy: [asc(category.name)] },
       programmes: {
         with: {
           category: true,
@@ -18,7 +22,7 @@ export async function getFestivalResultsDataBySlug(slug: string) {
             },
           },
         },
-        orderBy: [asc(festivals.name)],
+        orderBy: [asc(programme.name)],
       },
     },
   });

@@ -43,7 +43,10 @@ export function formatApiError(error: unknown): ApiErrorResponse {
     return formatZodError(error as any);
   }
 
-  if (error instanceof Error || (error && typeof error === "object" && "message" in error)) {
+  if (
+    error instanceof Error ||
+    (error && typeof error === "object" && "message" in error)
+  ) {
     return { error: String((error as any).message || "An error occurred") };
   }
 

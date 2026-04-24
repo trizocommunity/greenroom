@@ -120,17 +120,17 @@ export async function POST(request: Request) {
   } catch (error: any) {
     const payload = formatApiError(error);
     const status = error instanceof z.ZodError ? 400 : 500;
-    
+
     // Log detailed error info for debugging
-    console.error("Upload API Error:", { 
-      status, 
-      payload, 
+    console.error("Upload API Error:", {
+      status,
+      payload,
       errorName: error?.name,
       errorMessage: error?.message,
       errorStack: error?.stack,
-      rawError: error
+      rawError: error,
     });
-    
+
     return NextResponse.json(payload, { status });
   }
 }

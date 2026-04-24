@@ -2,7 +2,7 @@
 
 import jsQR from "jsqr";
 import { AlertCircle, Camera, CheckCircle, Loader2, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -114,7 +114,7 @@ export function QrScanner({
       inversionAttempts: "dontInvert",
     });
 
-    if (code && code.data) {
+    if (code?.data) {
       console.log("QR Code detected:", code.data);
       const chestNumber = code.data.trim().toUpperCase();
 
@@ -136,7 +136,7 @@ export function QrScanner({
   };
 
   // Stop camera
-  const stopCamera = () => {
+  const stopCamera = useCallback(() => {
     scanningRef.current = false;
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
@@ -152,7 +152,7 @@ export function QrScanner({
       videoRef.current.srcObject = null;
     }
     setStatus("idle");
-  };
+  }, []);
 
   // Scan frame from video
   const scanFrame = async () => {
@@ -276,7 +276,7 @@ export function QrScanner({
           // Clean up
           URL.revokeObjectURL(imageUrl);
 
-          if (code && code.data) {
+          if (code?.data) {
             console.log("QR Code detected:", code.data);
 
             // Extract chest number from QR code data
@@ -331,7 +331,7 @@ export function QrScanner({
     return () => {
       stopCamera();
     };
-  });
+  }, [stopCamera]);
 
   return (
     <Card className="border-primary/20">

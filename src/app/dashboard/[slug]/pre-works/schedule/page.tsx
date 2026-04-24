@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ScheduleClient } from "@/components/festival/pre-works/schedule/ScheduleClient";
 import { db } from "@/core/database/client";
 import { programme as programmeTable } from "@/core/database/schema";
+import type { Tier } from "@/core/types/app-enums";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 import { getScheduleEntries } from "@/features/schedule/actions/schedule.actions";
@@ -21,7 +22,7 @@ export default async function SchedulePage({ params }: PageProps) {
   }
 
   const canManageSchedule = await getEffectiveFeatureEnabled(
-    festival.tier as any,
+    festival.tier as Tier,
     "schedule",
   );
   if (!canManageSchedule) {

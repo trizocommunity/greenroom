@@ -2,62 +2,42 @@
 
 import { BarChart3, Clock, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import party from "party-js";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { CompactHistoryList } from "@/components/dashboard/event-works/CompactHistoryList";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/core/utils/cn";
+import {
   assignCodeLettersWithSpinAction,
   closeProgrammeReportingAction,
   getReportingStatsAction,
+  markProgrammeAssignmentsBulkAction,
+  markProgrammeParticipantAction,
   resetProgrammeReportingAction,
   startProgrammeReportingAction,
 } from "@/features/programmes/actions/programme-reporting.actions";
 import { getCodeForStudentFromLetters } from "@/features/programmes/services/programme-reporting-code";
 import { CodeLetterSpinWheel } from "./CodeLetterSpinWheel";
 import { QrScanner } from "./QrScanner";
-
-export type ReportingBoardItem = {
-  id: string;
-  startTime: Date;
-  stage: { id: string; name: string } | null;
-  programme: {
-    id: string;
-    name: string;
-    type: "INDIVIDUAL" | "GROUP";
-    category: { id: string; name: string } | null;
-  } | null;
-  reportingSession: {
-    id: string;
-    status: string;
-    windowEndsAt: Date | null;
-    isLocked: boolean;
-    reportedParticipants: Array<{ assignmentId: string }>;
-    codeLetters: Array<{
-      code: string;
-      recipients: Array<{ studentId: string }>;
-    }>;
-  } | null;
-};
-
-export type ProgrammeReportingAssignmentRow = {
-  id: string;
-  programmeId: string;
-  studentId: string | null;
-  studentName: string | null;
-  groupId: string | null;
-  groupName: string | null;
-  teamNumber: number | null;
-};
-
-export type ReportedParticipantInfo = {
-  assignmentId: string;
-  reportingSessionId: string;
-  reportedBy: string | null;
-  reportedAt: Date;
-};
+import { ReportingBoardList } from "./ReportingBoardList";
+import { ReportingRosterTable } from "./ReportingRosterTable";
+import { ReportingStats } from "./ReportingStats";
+import type {
+  AssignmentWithReported,
+  ProgrammeReportingAssignmentRow,
+  ReportingBoardItem,
+  RosterTableRow,
+} from "./types";
 
 /** User-facing labels: RESET = window stopped without submit; CLOSED = submit & codes issued. */
 function reportingSessionStatusLabel(status: string): string {
@@ -91,47 +71,17 @@ function getUiReportingStatus(
   return status ?? "NOT_STARTED";
 }
 
-type AssignmentWithReported = ProgrammeReportingAssignmentRow & {
-  isReported: boolean;
-};
-
-type RosterTableRow =
-  | {
-      key: string;
-      mode: "individual";
-      assignmentId: string;
-      studentId: string | null;
-      nameColumn: string;
-      groupName: string | null;
-      teamCell: string | number;
-      isReported: boolean;
-      reportedBy?: string | null;
-    }
-  | {
-      key: string;
-      mode: "groupTeam";
-      assignmentIds: string[];
-      studentIds: (string | null)[];
-      nameColumn: string;
-      groupName: string | null;
-      teamCell: number;
-      isReported: boolean;
-      reportedBy?: string | null;
-    };
-
 export function ProgrammeReportingClient({
   festivalId,
   board,
   assignments,
   festivalStages,
-  reportedParticipants = [],
 }: {
   festivalId: string;
   board: ReportingBoardItem[];
   assignments: ProgrammeReportingAssignmentRow[];
   /** All festival stages (filter dropdown); board alone only lists stages that appear on slots. */
   festivalStages: Array<{ id: string; name: string }>;
-  reportedParticipants?: ReportedParticipantInfo[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -143,7 +93,6 @@ export function ProgrammeReportingClient({
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const [isEntrySwitching, setIsEntrySwitching] = useState(false);
   const [activeAction, setActiveAction] = useState<
     null | "start" | "reset" | "close" | "mark"
   >(null);
@@ -159,10 +108,9 @@ export function ProgrammeReportingClient({
     estimatedEnd: Date | null;
   } | null>(null);
   const [spinWheelOpen, setSpinWheelOpen] = useState(false);
-  const [reportedTeams, setReportedTeams] = useState<
-    Map<string, { teamNumber: number; members: number }>
-  >(new Map());
-  const [lastScannedTeam, setLastScannedTeam] = useState<string | null>(null);
+  const [isEntrySwitching, setIsEntrySwitching] = useState(false);
+  const [markingIds, setMarkingIds] = useState<Set<string>>(new Set());
+  const confettiRef = useRef<HTMLDivElement>(null);
 
   // Polling refresh every 10 seconds for updates
   useEffect(() => {
@@ -303,7 +251,9 @@ export function ProgrammeReportingClient({
     const sid = selected?.reportingSession?.id;
     if (!sid || !selected?.reportingSession) return;
     const next = new Set(
-      selected.reportingSession.reportedParticipants.map((r) => r.assignmentId),
+      selected.reportingSession.programmeReportedParticipants.map(
+        (r) => r.assignmentId,
+      ),
     );
     setOptimisticReportedBySession((prev) => ({ ...prev, [sid]: next }));
   }, [selected?.reportingSession]);
@@ -312,7 +262,7 @@ export function ProgrammeReportingClient({
     if (!selected?.programme?.id) return [];
     const programmeId = selected.programme.id;
     const serverReported = new Set(
-      selected.reportingSession?.reportedParticipants.map(
+      selected.reportingSession?.programmeReportedParticipants.map(
         (r) => r.assignmentId,
       ) ?? [],
     );
@@ -404,63 +354,6 @@ export function ProgrammeReportingClient({
     return clusters;
   }, [assignmentsWithReported, selected?.programme]);
 
-  type GroupMatrixRow = {
-    key: string;
-    groupName: string;
-    teamDisplay: string;
-    teamSort: number;
-    assigned: number;
-    reported: number;
-  };
-
-  const groupAssignmentMatrix = useMemo((): GroupMatrixRow[] => {
-    if (!assignmentsWithReported.length || !selected?.programme) return [];
-    const isGroupProgramme = selected.programme.type === "GROUP";
-    const agg = new Map<string, GroupMatrixRow>();
-
-    for (const r of assignmentsWithReported) {
-      const gid = r.groupId ?? "__unassigned__";
-      const gname = r.groupName ?? "—";
-      const teamNum = isGroupProgramme ? (r.teamNumber ?? 1) : null;
-      const key = isGroupProgramme ? `${gid}\0${teamNum}` : gid;
-      const teamDisplay = isGroupProgramme ? String(teamNum ?? 1) : "—";
-      const teamSort = isGroupProgramme ? (teamNum ?? 1) : 0;
-
-      const cur = agg.get(key);
-      if (!cur) {
-        agg.set(key, {
-          key,
-          groupName: gname,
-          teamDisplay,
-          teamSort,
-          assigned: 1,
-          reported: r.isReported ? 1 : 0,
-        });
-      } else {
-        cur.assigned += 1;
-        if (r.isReported) cur.reported += 1;
-      }
-    }
-
-    return Array.from(agg.values()).sort((a, b) => {
-      const g = a.groupName.localeCompare(b.groupName, undefined, {
-        sensitivity: "base",
-      });
-      if (g !== 0) return g;
-      return a.teamSort - b.teamSort;
-    });
-  }, [assignmentsWithReported, selected?.programme]);
-
-  const matrixTotals = useMemo(() => {
-    return groupAssignmentMatrix.reduce(
-      (acc, r) => ({
-        assigned: acc.assigned + r.assigned,
-        reported: acc.reported + r.reported,
-      }),
-      { assigned: 0, reported: 0 },
-    );
-  }, [groupAssignmentMatrix]);
-
   const session = selected?.reportingSession;
   const sessionStatus = getUiReportingStatus(
     session?.status,
@@ -498,16 +391,12 @@ export function ProgrammeReportingClient({
     const interval = setInterval(fetchStats, 30000); // Update every 30 seconds
     return () => clearInterval(interval);
   }, [session?.id, sessionStatus, festivalId]);
-  const canEdit = Boolean(
-    session && !session.isLocked && isInProgress && !isTimedOut,
-  );
-  const hasAssignmentsForSelected = assignmentsWithReported.length > 0;
 
   const getIssuedCodeForRow = (row: RosterTableRow): string | null => {
     if (row.mode === "individual") {
       return row.studentId
         ? getCodeForStudentFromLetters(
-            session?.codeLetters ?? [],
+            session?.programmeCodeLetters ?? [],
             row.studentId,
           )
         : null;
@@ -516,7 +405,10 @@ export function ProgrammeReportingClient({
       row.studentIds
         .map((sid) =>
           sid
-            ? getCodeForStudentFromLetters(session?.codeLetters ?? [], sid)
+            ? getCodeForStudentFromLetters(
+                session?.programmeCodeLetters ?? [],
+                sid,
+              )
             : null,
         )
         .find((c) => c != null) ?? null
@@ -559,6 +451,12 @@ export function ProgrammeReportingClient({
     startTransition(async () => {
       const res = await closeProgrammeReportingAction(festivalId, session.id);
       if (res.success) {
+        if (confettiRef.current) {
+          party.confetti(confettiRef.current, {
+            count: party.variation.range(40, 60),
+            size: party.variation.range(0.8, 1.2),
+          });
+        }
         toast.success(
           programmeType === "GROUP"
             ? "Reporting ended — one code letter per reported team (shared by all members)."
@@ -601,6 +499,56 @@ export function ProgrammeReportingClient({
     }
   };
 
+  const onMarkRow = async (row: RosterTableRow, checked: boolean) => {
+    if (!session?.id) return;
+
+    const ids =
+      row.mode === "individual" ? [row.assignmentId] : row.assignmentIds;
+
+    // Optimistic update
+    setOptimisticReportedBySession((prev) => {
+      const next = new Set(prev[session.id] || []);
+      for (const id of ids) {
+        if (checked) next.add(id);
+        else next.delete(id);
+      }
+      return { ...prev, [session.id]: next };
+    });
+
+    setMarkingIds((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) next.add(id);
+      return next;
+    });
+
+    try {
+      if (row.mode === "individual") {
+        await markProgrammeParticipantAction(
+          festivalId,
+          session.id,
+          row.assignmentId,
+          checked,
+        );
+      } else {
+        await markProgrammeAssignmentsBulkAction(
+          festivalId,
+          session.id,
+          row.assignmentIds,
+          checked,
+        );
+      }
+    } catch (error) {
+      toast.error("Failed to update status");
+      router.refresh();
+    } finally {
+      setMarkingIds((prev) => {
+        const next = new Set(prev);
+        for (const id of ids) next.delete(id);
+        return next;
+      });
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="grid gap-4 lg:grid-cols-3">
@@ -610,117 +558,76 @@ export function ProgrammeReportingClient({
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="grid grid-cols-2 gap-2">
-              <select
-                className="h-8 rounded border bg-background px-2 text-xs"
+              <Select
                 value={filterCategoryId}
-                onChange={(e) => setFilterCategoryId(e.target.value)}
+                onValueChange={setFilterCategoryId}
               >
-                <option value="ALL">All category</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="h-8 rounded border bg-background px-2 text-xs"
-                value={filterStageId}
-                onChange={(e) => setFilterStageId(e.target.value)}
-              >
-                <option value="ALL">All stage</option>
-                {stages.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="h-8 rounded border bg-background px-2 text-xs"
+                <SelectTrigger className="h-8 text-[10px] uppercase font-bold tracking-tight">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Categories</SelectItem>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={filterStageId} onValueChange={setFilterStageId}>
+                <SelectTrigger className="h-8 text-[10px] uppercase font-bold tracking-tight">
+                  <SelectValue placeholder="Stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Stages</SelectItem>
+                  {stages.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
                 value={filterType}
-                onChange={(e) =>
-                  setFilterType(
-                    e.target.value as "ALL" | "INDIVIDUAL" | "GROUP",
-                  )
-                }
+                onValueChange={(val: any) => setFilterType(val)}
               >
-                <option value="ALL">All type</option>
-                <option value="INDIVIDUAL">Individual</option>
-                <option value="GROUP">Group</option>
-              </select>
-              <select
-                className="h-8 rounded border bg-background px-2 text-xs"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-              >
-                <option value="ALL">All status</option>
-                <option value="NOT_STARTED">Not started</option>
-                <option value="IN_PROGRESS">In progress</option>
-                <option value="RESET">Reporting closed</option>
-                <option value="CLOSED">Reporting ended</option>
-              </select>
+                <SelectTrigger className="h-8 text-[10px] uppercase font-bold tracking-tight">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Types</SelectItem>
+                  <SelectItem value="INDIVIDUAL">Individual</SelectItem>
+                  <SelectItem value="GROUP">Group</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="h-8 text-[10px] uppercase font-bold tracking-tight">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Status</SelectItem>
+                  <SelectItem value="NOT_STARTED">Not started</SelectItem>
+                  <SelectItem value="IN_PROGRESS">In progress</SelectItem>
+                  <SelectItem value="RESET">Reporting closed</SelectItem>
+                  <SelectItem value="CLOSED">Reporting ended</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="max-h-[54vh] space-y-2 overflow-y-auto pr-1">
-              {filteredBoard.map((item) =>
-                (() => {
-                  const uiStatus = getUiReportingStatus(
-                    item.reportingSession?.status,
-                    item.reportingSession?.windowEndsAt ?? null,
-                  );
-                  const canRestart =
-                    uiStatus === "TIMED_OUT" || uiStatus === "RESET";
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedEntryId(item.id);
-                        setIsEntrySwitching(true);
-                        window.setTimeout(
-                          () => setIsEntrySwitching(false),
-                          220,
-                        );
-                      }}
-                      className={`w-full rounded-lg border p-3 text-left ${
-                        selectedEntryId === item.id
-                          ? "border-primary bg-primary/5"
-                          : ""
-                      }`}
-                    >
-                      <div className="font-medium">
-                        {item.programme?.name ?? "Unknown programme"}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {item.stage?.name ?? "No stage"} ·{" "}
-                        {new Date(item.startTime).toLocaleTimeString()}
-                      </div>
-                      <div className="mt-1 text-[11px] text-muted-foreground">
-                        {item.programme?.category?.name ?? "No category"} ·{" "}
-                        {item.programme?.type ?? "—"}
-                      </div>
-                      <div className="mt-2">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <Badge variant="outline" className="gap-1">
-                            {uiStatus === "IN_PROGRESS" ? (
-                              <span className="relative inline-flex h-2 w-2">
-                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-70" />
-                                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                              </span>
-                            ) : null}
-                            {reportingSessionStatusLabel(uiStatus)}
-                          </Badge>
-                          {canRestart ? (
-                            <Badge className="border-amber-600/40 bg-amber-500/15 text-amber-800 dark:text-amber-100">
-                              Can restart
-                            </Badge>
-                          ) : null}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })(),
-              )}
-            </div>
+            <ReportingBoardList
+              items={filteredBoard}
+              selectedId={selectedEntryId}
+              onSelect={(id) => {
+                if (id === selectedEntryId) return;
+                setIsEntrySwitching(true);
+                setSelectedEntryId(id);
+                setTimeout(() => setIsEntrySwitching(false), 300);
+              }}
+              getUiReportingStatus={getUiReportingStatus}
+            />
             {!filteredBoard.length ? (
               <p className="text-xs text-muted-foreground">
                 No programmes match filters.
@@ -729,16 +636,35 @@ export function ProgrammeReportingClient({
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2 justify-between">
-              <h3>Live Reporting</h3>
-              <p className="truncate text-sm font-semibold">
-                {selected?.programme?.name ?? "Programme"}
-              </p>
+        <Card
+          className="lg:col-span-2 relative overflow-hidden"
+          ref={confettiRef}
+        >
+          <CardHeader className="pb-3 border-b border-border/40">
+            <CardTitle className="text-lg flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span>{selected?.programme?.name || "Select a programme"}</span>
+                {session?.isLocked && (
+                  <Badge variant="secondary" className="text-[10px] uppercase">
+                    Locked
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {selected?.stage?.name && (
+                  <span className="text-xs text-muted-foreground font-normal">
+                    {selected.stage.name}
+                  </span>
+                )}
+              </div>
             </CardTitle>
           </CardHeader>
-          <CardContent className="max-h-[68vh] space-y-3 overflow-y-auto pr-1">
+          <CardContent
+            className={cn(
+              "pt-6 space-y-6 transition-opacity duration-300",
+              isEntrySwitching ? "opacity-0" : "opacity-100",
+            )}
+          >
             {isInitialLoading ? (
               <div className="space-y-3">
                 <div className="h-8 w-2/3 animate-pulse rounded bg-muted" />
@@ -746,37 +672,22 @@ export function ProgrammeReportingClient({
                 <div className="h-10 w-36 animate-pulse rounded bg-muted" />
               </div>
             ) : !selected ? (
-              <p className="text-sm text-muted-foreground">
-                Select a scheduled programme.
-              </p>
+              <div className="py-20 text-center space-y-3">
+                <div className="p-3 rounded-full bg-muted w-fit mx-auto">
+                  <BarChart3 className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Select a scheduled programme from the board to start
+                  reporting.
+                </p>
+              </div>
             ) : (
               <>
                 <div className="rounded-md border border-border/60 bg-muted/10 px-3 py-2">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    {groupAssignmentMatrix.length > 0 ? (
-                      <div className="w-full lg:w-1/2 grid grid-cols-2 gap-3">
-                        <div className="rounded-md border flex items-center gap-2 bg-muted/10 justify-between px-2.5 py-1 text-center">
-                          <p className="text-[11px] text-muted-foreground">
-                            Assigned
-                          </p>
-                          <p className="text-sm font-semibold tabular-nums">
-                            {matrixTotals.assigned}
-                          </p>
-                        </div>
-                        <div className="rounded-md border bg-emerald-500/10 px-2.5 py-1 justify-between flex items-center gap-2 text-center">
-                          <p className="text-[11px] text-muted-foreground">
-                            Marked
-                          </p>
-                          <p className="text-sm font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
-                            {matrixTotals.reported}
-                          </p>
-                        </div>
-                      </div>
-                    ) : selected.programme ? (
-                      <p className="text-sm text-amber-700 dark:text-amber-300 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
-                        Assignments have not been completed.
-                      </p>
-                    ) : null}
+                    {reportingStats && (
+                      <ReportingStats stats={reportingStats} />
+                    )}
                     <div className="flex lg:flex-wrap justify-between items-center gap-2">
                       {isInProgress ? (
                         <Badge className="gap-1 border-emerald-600/40 bg-emerald-600/15 text-emerald-800 dark:text-emerald-100">
@@ -806,21 +717,9 @@ export function ProgrammeReportingClient({
                           </div>
                           {reportingStats.estimatedRemainingMinutes && (
                             <div className="flex items-center gap-1.5 text-primary">
-                              <BarChart3 className="h-3.5 w-3.5" />
                               <span>
                                 Est. ~{reportingStats.estimatedRemainingMinutes}
                                 m
-                                {reportingStats.estimatedEnd && (
-                                  <span className="text-muted-foreground">
-                                    {" "}
-                                    (
-                                    {reportingStats.estimatedEnd.toLocaleTimeString(
-                                      [],
-                                      { hour: "2-digit", minute: "2-digit" },
-                                    )}
-                                    )
-                                  </span>
-                                )}
                               </span>
                             </div>
                           )}
@@ -858,7 +757,7 @@ export function ProgrammeReportingClient({
                           isPending ||
                           activeAction != null ||
                           session?.isLocked ||
-                          !hasAssignmentsForSelected
+                          assignmentsWithReported.length === 0
                         }
                         className="min-w-44 rounded-xl bg-linear-to-r from-violet-600 via-purple-600 to-fuchsia-600 px-8 py-5 text-base font-semibold text-white shadow-lg shadow-violet-700/30 transition-all hover:brightness-110"
                       >
@@ -925,7 +824,7 @@ export function ProgrammeReportingClient({
                           !session?.id ||
                           session.isLocked ||
                           !isInProgress ||
-                          !hasAssignmentsForSelected
+                          assignmentsWithReported.length === 0
                         }
                       >
                         {activeAction === "close" ? (
@@ -936,6 +835,44 @@ export function ProgrammeReportingClient({
                         ) : (
                           "Submit & Start"
                         )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (!session?.id) return;
+                          setActiveAction("mark");
+                          startTransition(async () => {
+                            const res =
+                              await markProgrammeAssignmentsBulkAction(
+                                festivalId,
+                                session.id,
+                                assignmentsWithReported.map((a) => a.id),
+                                true,
+                              );
+                            if (res.success) {
+                              if (confettiRef.current) {
+                                party.confetti(confettiRef.current, {
+                                  count: party.variation.range(20, 40),
+                                  size: party.variation.range(0.6, 1.0),
+                                });
+                              }
+                              toast.success("All marked present");
+                            } else toast.error("Bulk action failed");
+                            setActiveAction(null);
+                          });
+                        }}
+                        disabled={
+                          isPending ||
+                          activeAction != null ||
+                          !session?.id ||
+                          session.isLocked ||
+                          !isInProgress ||
+                          assignmentsWithReported.every((a) => a.isReported)
+                        }
+                        className="ml-auto text-xs"
+                      >
+                        Mark All Present
                       </Button>
                     </>
                   ) : null}
@@ -960,102 +897,17 @@ export function ProgrammeReportingClient({
                   ) : null}
                 </div>
 
-                {!isPreStart ? (
-                  <div className="rounded-md border">
-                    {/* Desktop roster (column layout) */}
-                    <div className="hidden md:block">
-                      <div className="grid grid-cols-10 border-b bg-muted/40 px-3 py-2 text-xs font-medium">
-                        <div className="col-span-5">
-                          {selected.programme?.type === "GROUP"
-                            ? "Team / members"
-                            : "Student"}
-                        </div>
-                        <div className="col-span-2">Group</div>
-                        <div className="col-span-3">Code letter</div>
-                      </div>
-                      {rosterTableRows.map((row) => {
-                        const issuedCode = getIssuedCodeForRow(row);
-                        const showCode =
-                          isClosed && issuedCode && row.isReported;
-                        return (
-                          <div
-                            key={row.key}
-                            className="grid grid-cols-10 items-center px-3 py-2 text-sm"
-                          >
-                            <div className="col-span-5 wrap-break-word pr-2">
-                              {row.nameColumn}
-                            </div>
-                            <div className="col-span-2 truncate">
-                              {row.groupName ?? "—"}
-                            </div>
-                            <div className="col-span-3 font-mono text-xs">
-                              {showCode ? (
-                                <span className="rounded border border-blue-500/40 bg-blue-500/10 px-1.5 py-0.5 text-blue-800 dark:text-blue-200">
-                                  {issuedCode}
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground">—</span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Mobile roster (simple card/list) */}
-                    <div className="md:hidden space-y-2 p-2">
-                      {rosterTableRows.map((row) => {
-                        const issuedCode = getIssuedCodeForRow(row);
-                        const showCode =
-                          isClosed && issuedCode && row.isReported;
-                        const title =
-                          row.mode === "groupTeam"
-                            ? `Team ${row.teamCell}`
-                            : row.nameColumn;
-                        const subtitle =
-                          row.mode === "groupTeam"
-                            ? `${row.groupName ?? "—"} · Team ${row.teamCell}`
-                            : (row.groupName ?? "—");
-                        return (
-                          <div
-                            key={row.key}
-                            className="rounded-lg border bg-background px-3 py-2"
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0 flex-1">
-                                <div className="text-sm font-medium truncate">
-                                  {title}
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-0.5 truncate">
-                                  {subtitle}
-                                </div>
-                              </div>
-                            </div>
-
-                            {isClosed ? (
-                              <div className="mt-2 flex items-center justify-between">
-                                <div className="text-xs text-muted-foreground">
-                                  {row.isReported ? "Reported" : "Not reported"}
-                                </div>
-                                <div className="font-mono text-xs">
-                                  {showCode ? (
-                                    <span className="rounded border border-blue-500/40 bg-blue-500/10 px-1.5 py-0.5 text-blue-800 dark:text-blue-200">
-                                      {issuedCode}
-                                    </span>
-                                  ) : (
-                                    <span className="text-muted-foreground">
-                                      —
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            ) : null}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : null}
+                {!isPreStart && selected.programme && (
+                  <ReportingRosterTable
+                    rows={rosterTableRows}
+                    isInProgress={isInProgress}
+                    isClosed={isClosed}
+                    onMark={onMarkRow}
+                    markingIds={markingIds}
+                    getIssuedCodeForRow={getIssuedCodeForRow}
+                    programmeType={selected.programme.type}
+                  />
+                )}
               </>
             )}
           </CardContent>
@@ -1083,7 +935,7 @@ export function ProgrammeReportingClient({
               members:
                 Math.round(
                   (reportingStats.total > 0
-                    ? (session.reportedParticipants?.length || 0) /
+                    ? (session.programmeReportedParticipants?.length || 0) /
                       reportingStats.total
                     : 1) * 10,
                 ) / 10, // Approximate members per team

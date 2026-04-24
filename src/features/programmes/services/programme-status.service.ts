@@ -98,7 +98,7 @@ export async function updateProgrammeStatus(
       });
 
   if (latestClosedReportingSession) {
-    const reportedParticipants =
+    const programmeReportedParticipants =
       await db.query.programmeReportedParticipant.findMany({
         where: eq(
           programmeReportedParticipant.reportingSessionId,
@@ -107,7 +107,7 @@ export async function updateProgrammeStatus(
         columns: { assignmentId: true },
       });
 
-    const reportedAssignmentIds = reportedParticipants.map(
+    const reportedAssignmentIds = programmeReportedParticipants.map(
       (r) => r.assignmentId,
     );
     const reportedTotal = reportedAssignmentIds.length;

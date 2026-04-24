@@ -9,12 +9,12 @@ import { StatsSection } from "@/components/festival/landing/StatsSection";
 import { getPublicFestivalData } from "@/features/festivals/loaders/festival-public.loader";
 import { getPublicFestivalResults } from "@/features/festivals/loaders/festival-results.loader";
 import { getPublicGalleryData } from "@/features/gallery/loaders/gallery-public.loader";
-import { findProgrammesByFestival } from "@/features/programmes/repositories/programme.repository";
 import {
   FeatureService,
   getTierForFeatureCheck,
 } from "@/features/plan-features/services/features";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
+import { findProgrammesByFestival } from "@/features/programmes/repositories/programme.repository";
 
 export async function generateMetadata({
   params,
@@ -74,8 +74,12 @@ export default async function FestivalPage({
   // Fetch published results, programmes, and gallery for display
   const [publishedResults, programmes, galleryData] = await Promise.all([
     getPublicFestivalResults(festival.id),
-    fullLandingPage ? findProgrammesByFestival(festival.id) : Promise.resolve([]),
-    fullLandingPage ? getPublicGalleryData(festival.slug) : Promise.resolve(null),
+    fullLandingPage
+      ? findProgrammesByFestival(festival.id)
+      : Promise.resolve([]),
+    fullLandingPage
+      ? getPublicGalleryData(festival.slug)
+      : Promise.resolve(null),
   ]);
 
   // MERGE DATA FOR COMPONENTS

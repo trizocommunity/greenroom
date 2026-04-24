@@ -79,23 +79,32 @@ export async function createStudentWithServiceAction(
 
 export async function validateStudentsAction(
   festivalId: string,
-  candidates: { name: string; email?: string }[],
+  candidates: {
+    name: string;
+    email?: string;
+    categoryId: string;
+    groupId: string;
+  }[],
 ) {
   const session = await getSession();
-  await assertFestivalAccess(session, festivalId, { requireWritable: true });
+  await assertFestivalAccess(session, festivalId);
+
+  if (candidates.length === 0) return {};
 
   const emails = candidates
     .map((c) => c.email?.trim().toLowerCase())
     .filter((e): e is string => !!e);
 
-  const names = candidates.map((c) => c.name.trim().toLowerCase());
-
-  if (emails.length === 0 && names.length === 0) return {};
+  // Build conditions for name checks (global across groups/categories)
+  const nameConditions = candidates
+    .filter((c) => c.name)
+    .map((c) =>
+      eq(sql`LOWER(${studentTable.name})`, c.name.trim().toLowerCase()),
+    );
 
   const conditions = [];
   if (emails.length > 0) conditions.push(inArray(studentTable.email, emails));
-  if (names.length > 0)
-    conditions.push(inArray(sql`LOWER(${studentTable.name})`, names));
+  if (nameConditions.length > 0) conditions.push(or(...nameConditions));
 
   const existingStudents = await db.query.student.findMany({
     where: and(eq(studentTable.festivalId, festivalId), or(...conditions)),
@@ -103,15 +112,20 @@ export async function validateStudentsAction(
   });
 
   const conflicts: Record<string, string> = {};
-
-  existingStudents.forEach((student) => {
-    if (student.name) {
-      conflicts[`name:${student.name.toLowerCase()}`] =
-        "Student name already exists";
+  existingStudents.forEach((s) => {
+    if (s.email) {
+      const emailMatch = emails.find((e) => e === s.email?.toLowerCase());
+      if (emailMatch) {
+        conflicts[`email:${s.email.toLowerCase()}`] = "Email already exists";
+      }
     }
-    if (student.email) {
-      conflicts[`email:${student.email.toLowerCase()}`] =
-        "Student email already exists";
+
+    const nameMatch = candidates.find(
+      (c) => c.name.trim().toLowerCase() === s.name.toLowerCase(),
+    );
+    if (nameMatch) {
+      conflicts[`name:${s.name.toLowerCase()}`] =
+        "A student with this name already exists in the festival";
     }
   });
 

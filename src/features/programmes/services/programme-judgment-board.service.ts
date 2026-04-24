@@ -329,7 +329,7 @@ export async function getProgrammeJudgingBoard(
           ),
           orderBy: [asc(codeLetterTable.issuedAt)],
           with: {
-            recipients: { columns: { studentId: true } },
+            programmeCodeLetterRecipients: { columns: { studentId: true } },
           },
         });
 
@@ -350,7 +350,7 @@ export async function getProgrammeJudgingBoard(
         p.codeLetters = codeLetters.map((cl) => {
           let found: { points: number; grade: string | null } | undefined;
 
-          for (const r of cl.recipients) {
+          for (const r of cl.programmeCodeLetterRecipients) {
             const row = assignmentByStudentId.get(r.studentId);
             if (row) {
               found = row;

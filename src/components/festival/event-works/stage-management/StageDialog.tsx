@@ -1,8 +1,11 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,13 +15,27 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   createStage,
   updateStage,
 } from "@/features/stages/actions/stage.actions";
+
+const StageSchema = z.object({
+  name: z.string().min(1, "Stage name is required"),
+  description: z.string().optional(),
+});
+
+type StageFormValues = z.infer<typeof StageSchema>;
 
 interface StageDialogProps {
   festivalId: string;
@@ -35,42 +52,53 @@ export function StageDialog({
   onOpenChange,
   onSuccess,
 }: StageDialogProps) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  const form = useForm({
+    resolver: zodResolver(StageSchema),
+    mode: "onChange",
+    defaultValues: {
+      name: "",
+      description: "",
+    },
+  });
 
   useEffect(() => {
     if (open) {
       if (stageToEdit) {
-        setName(stageToEdit.name);
-        setDescription(stageToEdit.description || "");
+        form.reset({
+          name: stageToEdit.name,
+          description: stageToEdit.description || "",
+        });
       } else {
-        setName("");
-        setDescription("");
+        form.reset({
+          name: "",
+          description: "",
+        });
       }
+      form.trigger();
     }
-  }, [open, stageToEdit]);
+  }, [open, stageToEdit, form]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) {
-      toast.error("Stage name is required");
-      return;
-    }
-
+  const onSubmit = async (data: StageFormValues) => {
     try {
       setIsLoading(true);
       if (stageToEdit) {
-        await updateStage(stageToEdit.id, { name, description });
+        await updateStage(stageToEdit.id, data);
         toast.success("Stage updated successfully");
       } else {
-        await createStage(festivalId, { name, description });
+        await createStage(festivalId, data);
         toast.success("Stage created successfully");
       }
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
-      toast.error(error.message || "Failed to save stage");
+      const message = error.message || "Failed to save stage";
+      if (message.toLowerCase().includes("already exists")) {
+        form.setError("name", { message });
+      } else {
+        toast.error(message);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -89,41 +117,63 @@ export function StageDialog({
               : "Add a new stage for the festival."}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          <div className="space-y-2">
-            <Label htmlFor="name">
-              Stage Name <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="name"
-              placeholder="e.g. Main Auditorium"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4 py-2"
+          >
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Stage Name <span className="text-destructive">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. Main Auditorium" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="description">Description (Optional)</Label>
-            <Textarea
-              id="description"
-              placeholder="e.g. Located effectively near the entrance..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="e.g. Located effectively near the entrance..."
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {stageToEdit ? "Update Stage" : "Create Stage"}
-            </Button>
-          </DialogFooter>
-        </form>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={!form.formState.isValid || isLoading}
+              >
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {stageToEdit ? "Update Stage" : "Create Stage"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

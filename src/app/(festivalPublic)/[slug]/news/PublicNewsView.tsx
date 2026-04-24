@@ -2,6 +2,7 @@
 
 import { format } from "date-fns";
 import { Newspaper } from "lucide-react";
+import Image from "next/image";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/core/utils/cn";
@@ -21,7 +22,10 @@ interface PublicNewsViewProps {
   festivalSlug: string;
 }
 
-export function PublicNewsView({ posts, festivalSlug }: PublicNewsViewProps) {
+export function PublicNewsView({
+  posts,
+  festivalSlug: _festivalSlug,
+}: PublicNewsViewProps) {
   if (posts.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed bg-muted/20 py-24 text-center">
@@ -40,11 +44,12 @@ export function PublicNewsView({ posts, festivalSlug }: PublicNewsViewProps) {
             className="overflow-hidden border bg-card/80 backdrop-blur hover:shadow-lg transition-shadow"
           >
             {post.imageUrl && (
-              <div className="aspect-video w-full bg-muted">
-                <img
+              <div className="relative aspect-video w-full bg-muted">
+                <Image
                   src={post.imageUrl}
-                  alt=""
-                  className="w-full h-full object-cover"
+                  alt={post.title}
+                  fill
+                  className="object-cover"
                 />
               </div>
             )}

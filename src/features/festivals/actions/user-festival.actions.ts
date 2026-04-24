@@ -113,8 +113,8 @@ export async function updateFestivalAction(
         programmeAssignmentDeadline: validated.programmeAssignmentDeadline
           ? new Date(validated.programmeAssignmentDeadline).toISOString()
           : validated.programmeAssignmentDeadline === null
-          ? null
-          : undefined,
+            ? null
+            : undefined,
         updatedAt: new Date().toISOString(),
       })
       .where(eq(festivalTable.id, festivalId))

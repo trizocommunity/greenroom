@@ -2,7 +2,7 @@
 
 export type CodeLetterWithRecipients = {
   code: string;
-  recipients: Array<{ studentId: string }>;
+  programmeCodeLetterRecipients: Array<{ studentId: string }>;
 };
 
 export function getCodeForStudentFromLetters(
@@ -11,7 +11,11 @@ export function getCodeForStudentFromLetters(
 ): string | null {
   if (!letters?.length || !studentId) return null;
   for (const letter of letters) {
-    if (letter.recipients?.some((r) => r.studentId === studentId)) {
+    if (
+      letter.programmeCodeLetterRecipients?.some(
+        (r) => r.studentId === studentId,
+      )
+    ) {
       return letter.code;
     }
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -47,7 +48,12 @@ export function PublicGalleryView({ images }: PublicGalleryViewProps) {
             )}
             onClick={() => open(index)}
           >
-            <img src={img.url} alt="" className="w-full h-full object-cover" />
+            <Image
+              src={img.url}
+              alt="Gallery image"
+              fill
+              className="object-cover"
+            />
           </button>
         ))}
       </div>
@@ -67,11 +73,15 @@ export function PublicGalleryView({ images }: PublicGalleryViewProps) {
                 >
                   <ChevronLeft className="h-8 w-8" />
                 </Button>
-                <img
-                  src={images[lightboxIndex].url}
-                  alt=""
-                  className="max-h-[70vh] w-auto object-contain"
-                />
+                <div className="relative w-full h-[70vh]">
+                  <Image
+                    src={images[lightboxIndex].url}
+                    alt="Lightbox view"
+                    fill
+                    className="object-contain"
+                    priority
+                  />
+                </div>
                 <Button
                   type="button"
                   variant="ghost"
