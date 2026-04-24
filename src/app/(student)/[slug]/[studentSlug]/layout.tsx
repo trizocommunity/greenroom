@@ -1,4 +1,4 @@
-import type { ProgrammeStatus } from "@prisma/client";
+import type { ProgrammeStatus } from "@/lib/app-enums";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
@@ -63,8 +63,8 @@ export default async function StudentLayout({
     slug: festival.slug,
     description: festival.description ?? null,
     tagline: null,
-    startDate: festival.startDate ? festival.startDate.toISOString() : null,
-    endDate: festival.endDate ? festival.endDate.toISOString() : null,
+    startDate: festival.startDate ?? null,
+    endDate: festival.endDate ?? null,
     location: festival.location ?? null,
     status: festival.status,
     tier: festival.tier,

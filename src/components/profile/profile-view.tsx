@@ -1,16 +1,14 @@
 "use client";
 
-import type { User } from "@prisma/client";
+import type { UserProfile } from "@/lib/app-enums";
 import { useSearchParams } from "next/navigation";
 import { ProfileSidebarContent } from "./ProfileSidebarContent";
 import { BillingTab } from "./tabs/BillingTab";
 import { FestivalsTab } from "./tabs/FestivalsTab";
 import { OverviewTab } from "./tabs/OverviewTab";
 
-interface UserWithProfile extends User {
-  fullName: string | null;
-  displayName: string | null;
-  age: number | null;
+interface UserWithProfile extends UserProfile {
+  id: string;
 }
 
 interface ProfileViewProps {

@@ -5,7 +5,9 @@ import QRCode from "qrcode";
 import { APP_URL } from "@/config/routes";
 import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { student as studentTable } from "@/server/db/schema";
+import { eq, asc, sql } from "drizzle-orm";
 import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 import {
   getQrCodeContent,
@@ -27,7 +29,7 @@ export async function exportStudentsQrPdfAction(
 
   if (
     !FeatureService.isFeatureEnabled(
-      getTierForFeatureCheck(festival.tier),
+      getTierForFeatureCheck(festival.tier as any),
       "qrCodes",
     )
   ) {
@@ -37,10 +39,10 @@ export async function exportStudentsQrPdfAction(
     };
   }
 
-  const students = await prisma.student.findMany({
-    where: { festivalId },
-    include: { group: true, category: true },
-    orderBy: [{ group: { name: "asc" } }, { name: "asc" }],
+  const students = await db.query.student.findMany({
+    where: eq(studentTable.festivalId, festivalId),
+    with: { group: true, category: true },
+    orderBy: [asc(sql`group.name`), asc(studentTable.name)],
   });
 
   if (students.length === 0) {
@@ -64,8 +66,7 @@ export async function exportStudentsQrPdfAction(
 
   for (let i = 0; i < students.length; i++) {
     const student = students[i];
-    // Use chest number for QR code encoding (not profile URL)
-    const qrContent = getQrCodeContent(student);
+    const qrContent = getQrCodeContent(student as any);
 
     const x = margin + col * cellW + (cellW - qrSize) / 2;
     const y = margin + row * cellH + 2;

@@ -4,7 +4,9 @@ import { FestivalFooter } from "@/components/festival/FestivalFooter";
 import { FestivalNavbar } from "@/components/festival/FestivalNavbar";
 import { ExpiredFestivalView } from "@/components/festival/public/ExpiredFestivalView";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { expiredFestivalResult as resultTable } from "@/server/db/schema";
+import { eq, sql } from "drizzle-orm";
 import { findFestivalBySlug } from "@/server/models/festival.model";
 import { getBrandingFromJson } from "@/types/festival";
 
@@ -29,10 +31,13 @@ export default async function FestivalLayout({
 
   // Expired: show locked "festival ended" view (no dashboard, no interactive pages)
   if (isExpired) {
-    const hasSnapshot =
-      (await prisma.expiredFestivalResult.count({
-        where: { festivalId: festival.id },
-      })) > 0;
+    const [countResult] = await db
+      .select({ count: sql`count(*)` })
+      .from(resultTable)
+      .where(eq(resultTable.festivalId, festival.id));
+    const count = Number(countResult.count);
+    
+    const hasSnapshot = count > 0;
     const hasPdf = !!festival.resultPdfUrl || hasSnapshot;
     const downloadPdfUrl = festival.resultPdfUrl
       ? festival.resultPdfUrl
@@ -76,19 +81,19 @@ export default async function FestivalLayout({
     orgWebsite: festival.orgWebsite || "",
     orgLocation: festival.orgLocation || "",
     establishedYear: festival.establishedYear || null,
-    studentsCount: festival.studentsCount || 0,
+    studentsCount: (festival as any).studentsCount || 0,
     limits: null,
     studentCreationDeadline: festival.studentCreationDeadline,
     programmeAssignmentDeadline: festival.programmeAssignmentDeadline,
-    tier: festival.tier,
+    tier: festival.tier as any,
   };
 
   return (
-    <FestivalProvider festival={festivalData}>
+    <FestivalProvider festival={festivalData as any}>
       <div className="min-h-screen flex flex-col">
-        <FestivalNavbar festival={festivalData} isLoggedIn={isLoggedIn} />
+        <FestivalNavbar festival={festivalData as any} isLoggedIn={isLoggedIn} />
         <main className="flex-1 pt-16">{children}</main>
-        <FestivalFooter festival={festivalData} />
+        <FestivalFooter festival={festivalData as any} />
       </div>
     </FestivalProvider>
   );

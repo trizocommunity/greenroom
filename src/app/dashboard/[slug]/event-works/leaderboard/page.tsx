@@ -1,4 +1,4 @@
-import type { Tier } from "@prisma/client";
+import type { Tier } from "@/lib/app-enums";
 import { Calendar, Trophy } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";

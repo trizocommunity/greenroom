@@ -6,18 +6,18 @@
 import { jsPDF } from "jspdf";
 import { db } from "@/lib/db";
 import {
-  festivals,
+  festival as festivals,
   expiredFestivalResult,
-  results,
+  result as results,
   programmeAssignment,
   scheduleEntry,
-  students,
-  programmes,
-  categories,
-  groups,
+  student as students,
+  programme as programmes,
+  category as categories,
+  group as groups,
   festivalGalleryImage,
   festivalNews,
-  stages,
+  stage as stages,
   festivalMember,
   festivalLifecycleEvent,
 } from "../db/schema";

@@ -15,7 +15,7 @@ import {
   PLAN_FEATURE_TOGGLE_KEYS,
 } from "@/config/plan-features.config";
 import type { FeaturePath } from "@/lib/features";
-import type { Tier } from "@/lib/prisma-enums";
+import type { Tier } from "@/lib/app-enums";
 
 export type FeatureToggleKey = (typeof PLAN_FEATURE_TOGGLE_KEYS)[number];
 

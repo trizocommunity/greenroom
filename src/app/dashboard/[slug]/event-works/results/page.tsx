@@ -1,4 +1,4 @@
-import type { Tier } from "@prisma/client";
+import type { Tier } from "@/lib/app-enums";
 import { Calendar } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";

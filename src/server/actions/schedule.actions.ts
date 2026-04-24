@@ -1,22 +1,22 @@
 "use server";
 
-import type { ScheduleEntryType, SessionType } from "@prisma/client";
 import { format } from "date-fns";
 import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { 
+  scheduleEntry as scheduleEntryTable, 
+  user as userTable,
+  programme as programmeTable,
+  stage as stageTable
+} from "@/server/db/schema";
+import { eq, and, asc, sql, ne, inArray } from "drizzle-orm";
 import { findFestivalById } from "@/server/models/festival.model";
 import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
 import { ProgrammeReportingService } from "@/server/services/programme-reporting.service";
 import { updateProgrammeStatus } from "@/server/services/programme-status.service";
-
-const scheduleInclude = {
-  programme: {
-    select: { id: true, name: true, category: { select: { name: true } } },
-  },
-  stage: { select: { id: true, name: true } },
-} as const;
+import { randomUUID } from "crypto";
 
 export type ScheduleEntryWithRelations = Awaited<
   ReturnType<typeof getScheduleEntries>
@@ -29,7 +29,6 @@ function rangesOverlap(
   startB: Date,
   endB: Date | null,
 ): boolean {
-  // Always block exact same start time on the same stage.
   if (startA.getTime() === startB.getTime()) return true;
   const aEnd = endA ?? startA;
   const bEnd = endB ?? startB;
@@ -62,24 +61,22 @@ async function getTimeConflictError(
   stageId: string | null,
   excludeEntryId?: string,
 ): Promise<ConflictParts | null> {
-  const others = await prisma.scheduleEntry.findMany({
-    where: {
-      festivalId,
-      stageId,
-      ...(excludeEntryId ? { id: { not: excludeEntryId } } : {}),
-    },
-    select: {
-      id: true,
-      startTime: true,
-      endTime: true,
-      type: true,
-      title: true,
-      programme: { select: { name: true } },
+  const where = and(
+    eq(scheduleEntryTable.festivalId, festivalId),
+    stageId ? eq(scheduleEntryTable.stageId, stageId) : isNull(scheduleEntryTable.stageId),
+    excludeEntryId ? ne(scheduleEntryTable.id, excludeEntryId) : undefined
+  );
+
+  const others = await db.query.scheduleEntry.findMany({
+    where,
+    with: {
+      programme: { columns: { name: true } },
     },
   });
+
   for (const o of others) {
-    if (rangesOverlap(startTime, endTime, o.startTime, o.endTime)) {
-      const timeStr = format(new Date(startTime), "h:mm a");
+    if (rangesOverlap(startTime, endTime, new Date(o.startTime), o.endTime ? new Date(o.endTime) : null)) {
+      const timeStr = format(startTime, "h:mm a");
       const name = getEntryDisplayName(o);
       return {
         prefix: `${timeStr} overlaps with `,
@@ -91,37 +88,56 @@ async function getTimeConflictError(
   return null;
 }
 
+// Helper for Drizzle isNull since I can't import it easily without checking where it is
+function isNull(column: any) {
+  return sql`${column} IS NULL`;
+}
+
 function conflictPartsToMessage(parts: ConflictParts): string {
   return parts.prefix + parts.highlight + parts.suffix;
 }
 
 export async function getScheduleEntries(
   festivalId: string,
-  typeFilter?: ScheduleEntryType,
+  typeFilter?: "PROGRAMME" | "SESSION",
 ) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
 
-  return prisma.scheduleEntry.findMany({
-    where: { festivalId, ...(typeFilter ? { type: typeFilter } : {}) },
-    include: scheduleInclude,
-    orderBy: [{ startTime: "asc" }, { order: "asc" }],
+  return db.query.scheduleEntry.findMany({
+    where: and(
+      eq(scheduleEntryTable.festivalId, festivalId),
+      typeFilter ? eq(scheduleEntryTable.type, typeFilter) : undefined
+    ),
+    with: {
+      programme: {
+        with: { category: true },
+      },
+      stage: true,
+    },
+    orderBy: [asc(scheduleEntryTable.startTime), asc(scheduleEntryTable.order)],
   });
 }
 
-/** Public read-only: no auth. Filter by type for sessions (SESSION) or programmes (PROGRAMME) page. */
 export async function getScheduleEntriesPublic(
   festivalId: string,
-  typeFilter?: ScheduleEntryType,
+  typeFilter?: "PROGRAMME" | "SESSION",
 ) {
-  return prisma.scheduleEntry.findMany({
-    where: { festivalId, ...(typeFilter ? { type: typeFilter } : {}) },
-    include: scheduleInclude,
-    orderBy: [{ startTime: "asc" }, { order: "asc" }],
+  return db.query.scheduleEntry.findMany({
+    where: and(
+      eq(scheduleEntryTable.festivalId, festivalId),
+      typeFilter ? eq(scheduleEntryTable.type, typeFilter) : undefined
+    ),
+    with: {
+      programme: {
+        with: { category: true },
+      },
+      stage: true,
+    },
+    orderBy: [asc(scheduleEntryTable.startTime), asc(scheduleEntryTable.order)],
   });
 }
 
-/** For UI: check if a proposed time/stage would conflict. Returns error message and optional parts for highlighting. */
 export async function checkScheduleConflict(
   festivalId: string,
   params: {
@@ -155,9 +171,9 @@ export async function checkScheduleConflict(
 }
 
 async function getDisplayName(userId: string): Promise<string> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { displayName: true, fullName: true, email: true },
+  const user = await db.query.user.findFirst({
+    where: eq(userTable.id, userId),
+    columns: { displayName: true, fullName: true, email: true },
   });
   return user?.displayName || user?.fullName || user?.email || "Unknown";
 }
@@ -165,13 +181,13 @@ async function getDisplayName(userId: string): Promise<string> {
 export async function createScheduleEntry(
   festivalId: string,
   data: {
-    type: ScheduleEntryType;
+    type: "PROGRAMME" | "SESSION";
     programmeId?: string | null;
     stageId?: string | null;
     title?: string | null;
     description?: string | null;
     speakers?: string | null;
-    sessionType?: SessionType | null;
+    sessionType?: "GENERAL" | "CEREMONY" | "TALK" | "CONCERT" | null;
     startTime: Date;
     endTime?: Date | null;
     order?: number;
@@ -186,7 +202,7 @@ export async function createScheduleEntry(
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
 
-  const canManage = await getEffectiveFeatureEnabled(festival.tier, "schedule");
+  const canManage = await getEffectiveFeatureEnabled(festival.tier as any, "schedule");
   if (!canManage)
     return { success: false, error: "Schedule is not available on your plan." };
 
@@ -224,22 +240,23 @@ export async function createScheduleEntry(
     ? await getDisplayName(session.userId)
     : null;
 
-  await prisma.scheduleEntry.create({
-    data: {
-      festivalId,
-      type: data.type,
-      programmeId: data.type === "PROGRAMME" ? data.programmeId : null,
-      stageId: data.stageId || null,
-      title: data.type === "SESSION" ? data.title || null : null,
-      description: data.type === "SESSION" ? (data.description ?? null) : null,
-      speakers: data.type === "SESSION" ? (data.speakers ?? null) : null,
-      sessionType: data.type === "SESSION" ? (data.sessionType ?? null) : null,
-      startTime: data.startTime,
-      endTime: data.endTime ?? null,
-      order: data.order ?? 0,
-      createdBy,
-      updatedBy: null,
-    },
+  const now = new Date().toISOString();
+  await db.insert(scheduleEntryTable).values({
+    id: randomUUID(),
+    festivalId,
+    type: data.type,
+    programmeId: data.type === "PROGRAMME" ? data.programmeId : null,
+    stageId: data.stageId || null,
+    title: data.type === "SESSION" ? data.title || null : null,
+    description: data.type === "SESSION" ? (data.description ?? null) : null,
+    speakers: data.type === "SESSION" ? (data.speakers ?? null) : null,
+    sessionType: data.type === "SESSION" ? (data.sessionType ?? null) : null,
+    startTime: data.startTime.toISOString(),
+    endTime: data.endTime?.toISOString() ?? null,
+    order: data.order ?? 0,
+    createdBy,
+    updatedBy: null,
+    updatedAt: now,
   });
 
   if (data.type === "PROGRAMME" && data.programmeId) {
@@ -262,7 +279,7 @@ export async function updateScheduleEntry(
     title?: string | null;
     description?: string | null;
     speakers?: string | null;
-    sessionType?: SessionType | null;
+    sessionType?: "GENERAL" | "CEREMONY" | "TALK" | "CONCERT" | null;
     startTime?: Date;
     endTime?: Date | null;
     order?: number;
@@ -274,15 +291,15 @@ export async function updateScheduleEntry(
   const session = await getSession();
   await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
-  const existing = await prisma.scheduleEntry.findFirst({
-    where: { id, festivalId },
+  const existing = await db.query.scheduleEntry.findFirst({
+    where: and(eq(scheduleEntryTable.id, id), eq(scheduleEntryTable.festivalId, festivalId)),
   });
   if (!existing) return { success: false, error: "Schedule entry not found" };
 
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
 
-  const canManage = await getEffectiveFeatureEnabled(festival.tier, "schedule");
+  const canManage = await getEffectiveFeatureEnabled(festival.tier as any, "schedule");
   if (!canManage)
     return { success: false, error: "Schedule is not available on your plan." };
 
@@ -290,9 +307,9 @@ export async function updateScheduleEntry(
     return { success: false, error: "Session must have a title." };
 
   const newStartTime =
-    data.startTime !== undefined ? data.startTime : existing.startTime;
+    data.startTime !== undefined ? data.startTime : new Date(existing.startTime);
   const newEndTime =
-    data.endTime !== undefined ? data.endTime : existing.endTime;
+    data.endTime !== undefined ? data.endTime : (existing.endTime ? new Date(existing.endTime) : null);
   const newStageId =
     data.stageId !== undefined ? data.stageId : existing.stageId;
 
@@ -317,21 +334,20 @@ export async function updateScheduleEntry(
     ? await getDisplayName(session.userId)
     : null;
 
-  await prisma.scheduleEntry.update({
-    where: { id },
-    data: {
-      ...(data.programmeId !== undefined && { programmeId: data.programmeId }),
-      ...(data.stageId !== undefined && { stageId: data.stageId }),
-      ...(data.title !== undefined && { title: data.title }),
-      ...(data.description !== undefined && { description: data.description }),
-      ...(data.speakers !== undefined && { speakers: data.speakers }),
-      ...(data.sessionType !== undefined && { sessionType: data.sessionType }),
-      ...(data.startTime !== undefined && { startTime: data.startTime }),
-      ...(data.endTime !== undefined && { endTime: data.endTime }),
-      ...(data.order !== undefined && { order: data.order }),
-      updatedBy,
-    },
-  });
+  const now = new Date().toISOString();
+  await db.update(scheduleEntryTable).set({
+    ...(data.programmeId !== undefined && { programmeId: data.programmeId }),
+    ...(data.stageId !== undefined && { stageId: data.stageId }),
+    ...(data.title !== undefined && { title: data.title }),
+    ...(data.description !== undefined && { description: data.description }),
+    ...(data.speakers !== undefined && { speakers: data.speakers }),
+    ...(data.sessionType !== undefined && { sessionType: data.sessionType }),
+    ...(data.startTime !== undefined && { startTime: data.startTime.toISOString() }),
+    ...(data.endTime !== undefined && { endTime: data.endTime?.toISOString() ?? null }),
+    ...(data.order !== undefined && { order: data.order }),
+    updatedBy,
+    updatedAt: now,
+  }).where(eq(scheduleEntryTable.id, id));
 
   if (existing.type === "PROGRAMME") {
     await ProgrammeReportingService.unlockByScheduleEntryChange(existing.id);
@@ -359,16 +375,16 @@ export async function deleteScheduleEntry(
   const session = await getSession();
   await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
-  const entry = await prisma.scheduleEntry.findFirst({
-    where: { id, festivalId },
-    select: { id: true, type: true, programmeId: true },
+  const entry = await db.query.scheduleEntry.findFirst({
+    where: and(eq(scheduleEntryTable.id, id), eq(scheduleEntryTable.festivalId, festivalId)),
+    columns: { id: true, type: true, programmeId: true },
   });
   if (!entry) return { success: false, error: "Schedule entry not found" };
 
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
 
-  await prisma.scheduleEntry.delete({ where: { id } });
+  await db.delete(scheduleEntryTable).where(eq(scheduleEntryTable.id, id));
   if (entry.type === "PROGRAMME") {
     await ProgrammeReportingService.unlockByScheduleEntryChange(entry.id);
   }
@@ -384,14 +400,6 @@ export async function deleteScheduleEntry(
   return { success: true };
 }
 
-/**
- * Reorder schedule entries by reassigning times so the list order matches times.
- * Display order is by startTime then order; so when the user moves an entry up/down,
- * we give the entry that moved to the top the previous top's start/end time, and
- * the previous top gets the moved entry's time (and so on for every position).
- * So: entry at new position i gets startTime/endTime from the entry that was at
- * old position i.
- */
 export async function reorderScheduleEntries(
   festivalId: string,
   entryIds: string[],
@@ -402,7 +410,7 @@ export async function reorderScheduleEntries(
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
 
-  const canManage = await getEffectiveFeatureEnabled(festival.tier, "schedule");
+  const canManage = await getEffectiveFeatureEnabled(festival.tier as any, "schedule");
   if (!canManage)
     return { success: false, error: "Schedule is not available on your plan." };
 
@@ -412,10 +420,10 @@ export async function reorderScheduleEntries(
   if (uniqueIds.length !== entryIds.length)
     return { success: false, error: "Duplicate entries in order." };
 
-  const oldOrder = await prisma.scheduleEntry.findMany({
-    where: { id: { in: entryIds }, festivalId },
-    select: { id: true, startTime: true, endTime: true },
-    orderBy: [{ startTime: "asc" }, { order: "asc" }],
+  const oldOrder = await db.query.scheduleEntry.findMany({
+    where: and(inArray(scheduleEntryTable.id, entryIds), eq(scheduleEntryTable.festivalId, festivalId)),
+    columns: { id: true, startTime: true, endTime: true },
+    orderBy: [asc(scheduleEntryTable.startTime), asc(scheduleEntryTable.order)],
   });
 
   if (oldOrder.length !== entryIds.length)
@@ -424,15 +432,19 @@ export async function reorderScheduleEntries(
       error: "Some entries not found or not in this festival.",
     };
 
-  await prisma.$transaction(
-    entryIds.map((entryId, i) => {
+  await db.transaction(async (tx) => {
+    const now = new Date().toISOString();
+    for (let i = 0; i < entryIds.length; i++) {
+      const entryId = entryIds[i];
       const { startTime, endTime } = oldOrder[i]!;
-      return prisma.scheduleEntry.updateMany({
-        where: { id: entryId, festivalId },
-        data: { startTime, endTime, order: i },
-      });
-    }),
-  );
+      await tx.update(scheduleEntryTable).set({ 
+        startTime, 
+        endTime, 
+        order: i,
+        updatedAt: now,
+      }).where(and(eq(scheduleEntryTable.id, entryId), eq(scheduleEntryTable.festivalId, festivalId)));
+    }
+  });
 
   revalidatePath(`/dashboard/${festival.slug}/pre-works/schedule`);
   revalidatePath(`/dashboard/${festival.slug}/pre-works/sessions`);

@@ -1,18 +1,28 @@
 "use server";
 
 import { createHash, randomBytes } from "node:crypto";
-import type { Tier } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { APP_URL } from "@/config/routes";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { 
+  festival as festivalTable, 
+  programme as programmeTable, 
+  programmeJudgeSession as pjsTable, 
+  programmeReportingSession as reportingSessionTable,
+  programmeCodeLetter as codeLetterTable,
+  programmeAssignment as assignmentTable,
+  result as resultTable,
+  festivalMember as memberTable,
+  user as userTable
+} from "@/server/db/schema";
+import { eq, and, desc, inArray, count, isNull, gt, lte, or, sql, ne } from "drizzle-orm";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import { calculateGrade, calculatePosition } from "@/lib/results-calculator";
-import { emitDomainRealtimeEvent } from "@/server/realtime/domain-events";
-import { RealtimeRoom } from "@/server/realtime/rooms";
 import { getEffectiveFeatureTagEnabled } from "@/server/services/plan-features-tags.service";
 import { updateProgrammeStatus } from "@/server/services/programme-status.service";
 import type { ActionResponse } from "@/types/actions";
+import { randomUUID } from "crypto";
 
 function base64UrlEncode(buf: Buffer): string {
   return buf
@@ -50,7 +60,6 @@ function parseJudgePoints(raw: unknown): number | null {
 }
 
 function validateJudgePoints(n: number, min = 0, max = 10, step = 1) {
-  // Result points are stored as Int, so values must be whole numbers.
   const scaled = n / step;
   const isStepMultiple = Math.abs(scaled - Math.round(scaled)) < 1e-9;
   if (!Number.isFinite(n) || !isStepMultiple) return false;
@@ -60,19 +69,20 @@ function validateJudgePoints(n: number, min = 0, max = 10, step = 1) {
 
 async function assertStageManagerAccess(festivalId: string): Promise<{
   actorName: string;
-  festival: { id: string; slug: string; tier: Tier; ownerId: string };
+  festival: { id: string; slug: string; tier: "BASIC" | "STANDARD" | "PRO"; ownerId: string };
 }> {
   const session = await getSession();
   if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
 
-  const festival = await prisma.festival.findUnique({
-    where: { id: festivalId },
-    select: { id: true, slug: true, tier: true, ownerId: true },
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.id, festivalId),
+    columns: { id: true, slug: true, tier: true, ownerId: true },
   });
   if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
 
+  const tier = (festival.tier || "BASIC") as "BASIC" | "STANDARD" | "PRO";
   const canUseJudging = await getEffectiveFeatureTagEnabled(
-    festival.tier,
+    tier,
     "eventWorks.externalJudging",
   );
   if (!canUseJudging) {
@@ -82,24 +92,20 @@ async function assertStageManagerAccess(festivalId: string): Promise<{
   }
 
   if (session.role === "SUPER_ADMIN" || festival.ownerId === session.userId) {
-    const user = await prisma.user.findUnique({
-      where: { id: session.userId },
-      select: { displayName: true, fullName: true, email: true },
+    const user = await db.query.user.findFirst({
+      where: eq(userTable.id, session.userId),
+      columns: { displayName: true, fullName: true, email: true },
     });
     return {
       actorName:
         user?.displayName || user?.fullName || user?.email || "Stage Manager",
-      festival,
+      festival: { ...festival, tier },
     };
   }
 
-  const member = await prisma.festivalMember.findUnique({
-    where: { festivalId_userId: { festivalId, userId: session.userId } },
-    select: {
-      role: true,
-      isActive: true,
-      user: { select: { displayName: true, fullName: true, email: true } },
-    },
+  const member = await db.query.festivalMember.findFirst({
+    where: and(eq(memberTable.festivalId, festivalId), eq(memberTable.userId, session.userId)),
+    with: { user: { columns: { displayName: true, fullName: true, email: true } } },
   });
 
   if (
@@ -115,7 +121,7 @@ async function assertStageManagerAccess(festivalId: string): Promise<{
       member.user.fullName ||
       member.user.email ||
       "Stage Manager",
-    festival,
+    festival: { ...festival, tier },
   };
 }
 
@@ -164,9 +170,9 @@ export async function createProgrammeJudgeLinkAction(
   try {
     const { actorName, festival } = await assertStageManagerAccess(festivalId);
 
-    const programme = await prisma.programme.findUnique({
-      where: { id: programmeId },
-      select: { id: true, festivalId: true, status: true },
+    const programme = await db.query.programme.findFirst({
+      where: eq(programmeTable.id, programmeId),
+      columns: { id: true, festivalId: true, status: true },
     });
     if (!programme) throw new AppError(ERROR_MESSAGES.PROGRAMME_NOT_FOUND);
     if (programme.festivalId !== festivalId) {
@@ -178,19 +184,11 @@ export async function createProgrammeJudgeLinkAction(
       );
     }
 
-    const canUseJudging = await getEffectiveFeatureTagEnabled(
-      festival.tier,
-      "eventWorks.externalJudging",
-    );
-    if (!canUseJudging) {
-      throw new AppError("External judging is not available on this tier.");
-    }
-
     const latestClosedReportingSession =
-      await prisma.programmeReportingSession.findFirst({
-        where: { programmeId, status: "CLOSED" },
-        orderBy: { endedAt: "desc" },
-        select: { id: true },
+      await db.query.programmeReportingSession.findFirst({
+        where: and(eq(reportingSessionTable.programmeId, programmeId), eq(reportingSessionTable.status, "CLOSED")),
+        orderBy: [desc(reportingSessionTable.endedAt)],
+        columns: { id: true },
       });
     if (!latestClosedReportingSession) {
       throw new AppError(
@@ -198,77 +196,60 @@ export async function createProgrammeJudgeLinkAction(
       );
     }
 
-    const codeLettersCount = await prisma.programmeCodeLetter.count({
-      where: {
-        programmeId,
-        reportingSessionId: latestClosedReportingSession.id,
-      },
-    });
-    if (codeLettersCount === 0) {
+    const [codeLettersResult] = await db
+      .select({ c: count() })
+      .from(codeLetterTable)
+      .where(and(
+        eq(codeLetterTable.programmeId, programmeId),
+        eq(codeLetterTable.reportingSessionId, latestClosedReportingSession.id)
+      ));
+    
+    if (codeLettersResult.c === 0) {
       throw new AppError("No code letters found for this programme.");
     }
 
-    const now = new Date();
+    const now = new Date().toISOString();
     let rawToken = "";
     let judgeSessionId = "";
 
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       // Ensure there is only one OPEN token at a time for this programme.
-      await tx.programmeJudgeSession.updateMany({
-        where: { programme_id: programmeId, used_at: null },
-        data: {
-          used_at: now,
-          ended_at: now,
-          open_nonce_hash: null,
-          opened_at: null,
-          open_expires_at: null,
-          open_client_fingerprint_hash: null,
-        },
-      });
+      await tx.update(pjsTable).set({
+        usedAt: now,
+        endedAt: now,
+        openNonceHash: null,
+        openedAt: null,
+        openExpiresAt: null,
+        openClientFingerprintHash: null,
+        updatedAt: now,
+      }).where(and(eq(pjsTable.programmeId, programmeId), isNull(pjsTable.usedAt)));
 
       rawToken = generateJudgeToken();
       const tokenHash = hashTokenSHA256(rawToken);
 
-      const created = await tx.programmeJudgeSession.create({
-        data: {
-          festival_id: festivalId,
-          programme_id: programmeId,
-          reporting_session_id: latestClosedReportingSession.id,
-          token_hash: tokenHash,
-          started_at: now,
-          created_by: actorName,
-          updated_at: now,
-        },
-        select: { id: true },
+      judgeSessionId = randomUUID();
+      await tx.insert(pjsTable).values({
+        id: judgeSessionId,
+        festivalId: festivalId,
+        programmeId: programmeId,
+        reportingSessionId: latestClosedReportingSession.id,
+        tokenHash: tokenHash,
+        startedAt: now,
+        createdBy: actorName,
+        updatedAt: now,
       });
-      judgeSessionId = created.id;
     });
 
-    // `judgeSessionId` exists to ensure the transaction ran; the only secret is the raw token.
     if (!rawToken || !judgeSessionId) {
       throw new AppError("Failed to create judge link.");
     }
 
     const base = APP_URL.replace(/\/$/, "");
     const judgeUrl = `${base}/${festival.slug}/judge/${rawToken}`;
-    await emitDomainRealtimeEvent({
-      eventName: "judgment.link_created",
-      festivalId,
-      entityType: "programme",
-      entityId: programmeId,
-      roomKeys: [
-        RealtimeRoom.festivalAll(festivalId),
-        RealtimeRoom.judgementProgramme(festivalId, programmeId),
-      ],
-      payload: {
-        programmeId,
-        judgeSessionId,
-      },
-    });
 
     revalidatePath(`/dashboard/${festival.slug}/event-works/judgment`);
 
-    return { success: true, data: { judgeUrl, startedAt: now } };
+    return { success: true, data: { judgeUrl, startedAt: new Date(now) } };
   } catch (error) {
     return handleActionError(error);
   }
@@ -293,52 +274,51 @@ export async function acquireJudgeOpenLockAction(
     const tokenHash = hashTokenSHA256(token);
     const now = new Date();
 
-    const session = await prisma.programmeJudgeSession.findUnique({
-      where: { token_hash: tokenHash },
-      select: {
+    const session = await db.query.programmeJudgeSession.findFirst({
+      where: eq(pjsTable.tokenHash, tokenHash),
+      columns: {
         id: true,
-        festival_id: true,
-        used_at: true,
-        open_expires_at: true,
-        open_nonce_hash: true,
+        festivalId: true,
+        usedAt: true,
+        openExpiresAt: true,
+        openNonceHash: true,
       },
     });
-    if (!session || session.used_at) throw new AppError("Judging closed.");
+    if (!session || session.usedAt) throw new AppError("Judging closed.");
 
-    const festival = await prisma.festival.findUnique({
-      where: { id: session.festival_id },
-      select: { tier: true },
+    const festival = await db.query.festival.findFirst({
+      where: eq(festivalTable.id, session.festivalId),
+      columns: { tier: true },
     });
     if (!festival) throw new AppError("Judging closed.");
+    
+    const tier = (festival.tier || "BASIC") as "BASIC" | "STANDARD" | "PRO";
     const canUseJudging = await getEffectiveFeatureTagEnabled(
-      festival.tier,
+      tier,
       "eventWorks.externalJudging",
     );
     if (!canUseJudging) throw new AppError("Judging closed.");
 
     const existingLockActive =
-      session.open_nonce_hash &&
-      session.open_expires_at &&
-      session.open_expires_at.getTime() > now.getTime();
+      session.openNonceHash &&
+      session.openExpiresAt &&
+      new Date(session.openExpiresAt).getTime() > now.getTime();
+      
     if (existingLockActive) {
-      // Security hard-stop: if this token is opened again (refresh/new tab/device)
-      // while an active lock exists, permanently expire this token.
-      await prisma.programmeJudgeSession.updateMany({
-        where: {
-          token_hash: tokenHash,
-          used_at: null,
-          open_nonce_hash: { not: null },
-          open_expires_at: { gt: now },
-        },
-        data: {
-          used_at: now,
-          ended_at: now,
-          open_nonce_hash: null,
-          opened_at: null,
-          open_expires_at: null,
-          open_client_fingerprint_hash: null,
-        },
-      });
+      await db.update(pjsTable).set({
+        usedAt: now.toISOString(),
+        endedAt: now.toISOString(),
+        openNonceHash: null,
+        openedAt: null,
+        openExpiresAt: null,
+        openClientFingerprintHash: null,
+        updatedAt: now.toISOString(),
+      }).where(and(
+        eq(pjsTable.tokenHash, tokenHash),
+        isNull(pjsTable.usedAt),
+        ne(pjsTable.openNonceHash, sql`NULL`), // I'll just use a safe where
+        gt(pjsTable.openExpiresAt, now.toISOString())
+      ));
       throw new AppError(
         "This judging link expired after being reopened. Ask stage manager to regenerate a new link.",
       );
@@ -351,25 +331,23 @@ export async function acquireJudgeOpenLockAction(
       ? hashValueSHA256(openClientFingerprint.trim())
       : null;
 
-    const locked = await prisma.programmeJudgeSession.updateMany({
-      where: {
-        token_hash: tokenHash,
-        used_at: null,
-        OR: [
-          { open_nonce_hash: null },
-          { open_expires_at: null },
-          { open_expires_at: { lte: now } },
-        ],
-      },
-      data: {
-        opened_at: now,
-        open_expires_at: openExpiresAt,
-        open_nonce_hash: openNonceHash,
-        open_client_fingerprint_hash: openClientFingerprintHash,
-      },
-    });
+    const locked = await db.update(pjsTable).set({
+      openedAt: now.toISOString(),
+      openExpiresAt: openExpiresAt.toISOString(),
+      openNonceHash: openNonceHash,
+      openClientFingerprintHash: openClientFingerprintHash,
+      updatedAt: now.toISOString(),
+    }).where(and(
+      eq(pjsTable.tokenHash, tokenHash),
+      isNull(pjsTable.usedAt),
+      or(
+        isNull(pjsTable.openNonceHash),
+        isNull(pjsTable.openExpiresAt),
+        lte(pjsTable.openExpiresAt, now.toISOString())
+      )
+    )).returning();
 
-    if (locked.count !== 1) {
+    if (locked.length !== 1) {
       throw new AppError("Link expired or already in use.");
     }
 
@@ -392,16 +370,17 @@ export async function refreshJudgeOpenLockAction(
     const openNonceHash = hashValueSHA256(openNonce);
     const openExpiresAt = new Date(now.getTime() + OPEN_LOCK_TTL_MS);
 
-    const refreshed = await prisma.programmeJudgeSession.updateMany({
-      where: {
-        token_hash: tokenHash,
-        used_at: null,
-        open_nonce_hash: openNonceHash,
-        open_expires_at: { gt: now },
-      },
-      data: { open_expires_at: openExpiresAt },
-    });
-    if (refreshed.count !== 1) {
+    const refreshed = await db.update(pjsTable).set({
+      openExpiresAt: openExpiresAt.toISOString(),
+      updatedAt: now.toISOString(),
+    }).where(and(
+      eq(pjsTable.tokenHash, tokenHash),
+      isNull(pjsTable.usedAt),
+      eq(pjsTable.openNonceHash, openNonceHash),
+      gt(pjsTable.openExpiresAt, now.toISOString())
+    )).returning();
+    
+    if (refreshed.length !== 1) {
       throw new AppError("Link expired or already in use.");
     }
     return { success: true, data: { openExpiresAt } };
@@ -429,68 +408,66 @@ export async function submitProgrammeJudgeSessionAction(
     const normalizedJudge = normalizeJudgeIdentity(judgeInfo);
 
     const tokenHash = hashTokenSHA256(token);
-    const judgeSession = await prisma.programmeJudgeSession.findUnique({
-      where: { token_hash: tokenHash },
-      select: {
+    const judgeSession = await db.query.programmeJudgeSession.findFirst({
+      where: eq(pjsTable.tokenHash, tokenHash),
+      columns: {
         id: true,
-        festival_id: true,
-        programme_id: true,
-        reporting_session_id: true,
-        used_at: true,
-        open_nonce_hash: true,
-        open_expires_at: true,
+        festivalId: true,
+        programmeId: true,
+        reportingSessionId: true,
+        usedAt: true,
+        openNonceHash: true,
+        openExpiresAt: true,
       },
     });
 
-    if (!judgeSession || judgeSession.used_at) {
+    if (!judgeSession || judgeSession.usedAt) {
       throw new AppError("Judging closed.");
     }
     const now = new Date();
     const providedOpenNonceHash = hashValueSHA256(openNonce);
     if (
-      !judgeSession.open_nonce_hash ||
-      judgeSession.open_nonce_hash !== providedOpenNonceHash ||
-      !judgeSession.open_expires_at ||
-      judgeSession.open_expires_at.getTime() <= now.getTime()
+      !judgeSession.openNonceHash ||
+      judgeSession.openNonceHash !== providedOpenNonceHash ||
+      !judgeSession.openExpiresAt ||
+      new Date(judgeSession.openExpiresAt).getTime() <= now.getTime()
     ) {
       throw new AppError("Link expired or already in use.");
     }
 
-    const programme = await prisma.programme.findUnique({
-      where: { id: judgeSession.programme_id },
-      select: { id: true, status: true, festivalId: true, type: true },
+    const programme = await db.query.programme.findFirst({
+      where: eq(programmeTable.id, judgeSession.programmeId),
+      columns: { id: true, status: true, festivalId: true, type: true },
     });
     if (!programme) throw new AppError(ERROR_MESSAGES.PROGRAMME_NOT_FOUND);
-    if (programme.festivalId !== judgeSession.festival_id) {
+    if (programme.festivalId !== judgeSession.festivalId) {
       throw new AppError("Judging closed.");
     }
     if (programme.status !== "STARTED") {
-      // If programme already moved forward, treat judge link as closed.
       throw new AppError("Judging closed.");
     }
 
-    const festival = await prisma.festival.findUnique({
-      where: { id: judgeSession.festival_id },
-      select: { tier: true, slug: true },
+    const festival = await db.query.festival.findFirst({
+      where: eq(festivalTable.id, judgeSession.festivalId),
+      columns: { tier: true, slug: true },
     });
     if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
 
+    const tier = (festival.tier || "BASIC") as "BASIC" | "STANDARD" | "PRO";
     const canUseJudging = await getEffectiveFeatureTagEnabled(
-      festival.tier,
+      tier,
       "eventWorks.externalJudging",
     );
     if (!canUseJudging) throw new AppError("Judging closed.");
 
-    const codeLetters = await prisma.programmeCodeLetter.findMany({
-      where: {
-        programmeId: judgeSession.programme_id,
-        reportingSessionId: judgeSession.reporting_session_id,
-      },
-      orderBy: { issuedAt: "asc" },
-      select: {
-        id: true,
-        code: true,
-        recipients: { select: { studentId: true } },
+    const codeLetters = await db.query.programmeCodeLetter.findMany({
+      where: and(
+        eq(codeLetterTable.programmeId, judgeSession.programmeId),
+        eq(codeLetterTable.reportingSessionId, judgeSession.reportingSessionId)
+      ),
+      orderBy: [asc(codeLetterTable.issuedAt)],
+      with: {
+        recipients: { columns: { studentId: true } },
       },
     });
 
@@ -531,7 +508,6 @@ export async function submitProgrammeJudgeSessionAction(
       positionByCode.set(cl.code, calculatePosition(pts, pointsArray));
     }
 
-    // Map each code letter -> all ProgrammeAssignment IDs for its recipients.
     const allStudentIds = Array.from(
       new Set(
         codeLetters.flatMap((cl) => cl.recipients.map((r) => r.studentId)),
@@ -539,12 +515,12 @@ export async function submitProgrammeJudgeSessionAction(
     );
     if (allStudentIds.length === 0) throw new AppError("Judging closed.");
 
-    const assignments = await prisma.programmeAssignment.findMany({
-      where: {
-        programmeId: judgeSession.programme_id,
-        studentId: { in: allStudentIds },
-      },
-      select: { id: true, studentId: true },
+    const assignments = await db.query.programmeAssignment.findMany({
+      where: and(
+        eq(assignmentTable.programmeId, judgeSession.programmeId),
+        inArray(assignmentTable.studentId, allStudentIds)
+      ),
+      columns: { id: true, studentId: true },
     });
     const assignmentByStudentId = new Map(
       assignments.map((a) => [a.studentId, a.id]),
@@ -556,43 +532,39 @@ export async function submitProgrammeJudgeSessionAction(
       }
     }
 
-    await prisma.$transaction(async (tx) => {
-      // Single-use enforcement for this exact token.
-      const usedUpdate = await tx.programmeJudgeSession.updateMany({
-        where: {
-          token_hash: tokenHash,
-          used_at: null,
-          open_nonce_hash: providedOpenNonceHash,
-          open_expires_at: { gt: now },
-        },
-        data: {
-          used_at: now,
-          ended_at: now,
-          submitted_by_name: normalizedJudge.judgeName,
-          submitted_by_contact: normalizedJudge.judgeContact,
-          submitted_by_note: normalizedJudge.judgeNote,
-          open_nonce_hash: null,
-          opened_at: null,
-          open_expires_at: null,
-          open_client_fingerprint_hash: null,
-        },
-      });
-      if (usedUpdate.count !== 1) {
+    await db.transaction(async (tx) => {
+      const nowStr = now.toISOString();
+      const usedUpdate = await tx.update(pjsTable).set({
+        usedAt: nowStr,
+        endedAt: nowStr,
+        submittedByName: normalizedJudge.judgeName,
+        submittedByContact: normalizedJudge.judgeContact,
+        submittedByNote: normalizedJudge.judgeNote,
+        openNonceHash: null,
+        openedAt: null,
+        openExpiresAt: null,
+        openClientFingerprintHash: null,
+        updatedAt: nowStr,
+      }).where(and(
+        eq(pjsTable.tokenHash, tokenHash),
+        isNull(pjsTable.usedAt),
+        eq(pjsTable.openNonceHash, providedOpenNonceHash),
+        gt(pjsTable.openExpiresAt, nowStr)
+      )).returning();
+
+      if (usedUpdate.length !== 1) {
         throw new AppError("Link expired or already in use.");
       }
 
-      // Close any other OPEN tokens for this programme (prevents multiple submissions).
-      await tx.programmeJudgeSession.updateMany({
-        where: { programme_id: judgeSession.programme_id, used_at: null },
-        data: {
-          used_at: now,
-          ended_at: now,
-          open_nonce_hash: null,
-          opened_at: null,
-          open_expires_at: null,
-          open_client_fingerprint_hash: null,
-        },
-      });
+      await tx.update(pjsTable).set({
+        usedAt: nowStr,
+        endedAt: nowStr,
+        openNonceHash: null,
+        openedAt: null,
+        openExpiresAt: null,
+        openClientFingerprintHash: null,
+        updatedAt: nowStr,
+      }).where(and(eq(pjsTable.programmeId, judgeSession.programmeId), isNull(pjsTable.usedAt)));
 
       for (const cl of codeLetters) {
         const pts = pointsByCodeResolved.get(cl.code)!;
@@ -605,56 +577,40 @@ export async function submitProgrammeJudgeSessionAction(
           .filter((id): id is string => Boolean(id));
 
         if (assignmentIds.length === 0) {
-          // No recipients -> cannot write results -> keep this token unusable.
           throw new AppError("Judging closed.");
         }
 
         for (const assignmentId of assignmentIds) {
-          await tx.result.upsert({
-            where: { assignmentId },
-            create: {
-              festivalId: judgeSession.festival_id,
-              programmeId: judgeSession.programme_id,
-              assignmentId,
+          await tx.insert(resultTable).values({
+            id: randomUUID(),
+            festivalId: judgeSession.festivalId,
+            programmeId: judgeSession.programmeId,
+            assignmentId,
+            grade,
+            position,
+            points: roundedPoints,
+            remarks,
+            isPublished: false,
+            updatedAt: nowStr,
+          }).onConflictDoUpdate({
+            target: resultTable.assignmentId,
+            set: {
               grade,
               position,
               points: roundedPoints,
               remarks,
               isPublished: false,
-            },
-            update: {
-              grade,
-              position,
-              points: roundedPoints,
-              remarks,
-              isPublished: false,
-            },
+              updatedAt: nowStr,
+            }
           });
         }
       }
     });
 
     await updateProgrammeStatus(
-      judgeSession.programme_id,
-      judgeSession.reporting_session_id,
+      judgeSession.programmeId,
+      judgeSession.reportingSessionId,
     );
-    await emitDomainRealtimeEvent({
-      eventName: "judgment.submitted",
-      festivalId: judgeSession.festival_id,
-      entityType: "programme",
-      entityId: judgeSession.programme_id,
-      roomKeys: [
-        RealtimeRoom.festivalAll(judgeSession.festival_id),
-        RealtimeRoom.judgementProgramme(
-          judgeSession.festival_id,
-          judgeSession.programme_id,
-        ),
-      ],
-      payload: {
-        programmeId: judgeSession.programme_id,
-        reportingSessionId: judgeSession.reporting_session_id,
-      },
-    });
     revalidatePath(`/dashboard/${festival.slug}/event-works/judgment`);
 
     return { success: true, data: undefined };

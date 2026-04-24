@@ -3,7 +3,7 @@
 import type { FeaturePath } from "@/lib/features";
 import type { FeatureTag } from "@/lib/features-tags";
 import { FEATURE_TAGS, isFeatureTagEnabled } from "@/lib/features-tags";
-import type { Tier } from "@/lib/prisma-enums";
+import type { Tier } from "@/lib/app-enums";
 import { getEffectivePlanFeatureMatrix } from "@/server/services/plan-features.service";
 
 const TIERS: Tier[] = ["BASIC", "STANDARD", "PRO"];

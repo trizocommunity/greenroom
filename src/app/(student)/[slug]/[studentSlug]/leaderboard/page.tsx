@@ -1,4 +1,4 @@
-import type { Tier } from "@prisma/client";
+import type { Tier } from "@/lib/app-enums";
 import { notFound } from "next/navigation";
 import { LeaderboardClient } from "@/components/dashboard/leaderboard/LeaderboardClient";
 import { requireTeamLeaderSession } from "@/lib/team-leader-auth/guard";

@@ -1,4 +1,3 @@
-import type { Tier } from "@prisma/client";
 import { ChevronLeft, UserRound } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -6,7 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { festival as festivalTable, programmeJudgeSession as judgeSessionTable } from "@/server/db/schema";
+import { eq, and, isNotNull, desc } from "drizzle-orm";
 import { getFestivalContext } from "@/server/services/festival-context.service";
 import { getEffectiveFeatureTagEnabled } from "@/server/services/plan-features-tags.service";
 
@@ -15,7 +16,7 @@ type JudgeProgrammeItem = {
   programmeName: string;
   categoryName: string;
   stageName: string;
-  judgedAt: Date;
+  judgedAt: string;
 };
 
 type JudgeGroup = {
@@ -33,13 +34,13 @@ export default async function JudgesPage({
 }) {
   const { slug } = await params;
 
-  const festival = await prisma.festival.findUnique({
-    where: { slug },
-    select: { id: true, slug: true, name: true, tier: true },
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.slug, slug),
+    columns: { id: true, slug: true, name: true, tier: true },
   });
   if (!festival) return notFound();
 
-  const tier = (festival.tier ?? "STANDARD") as Tier;
+  const tier = (festival.tier ?? "STANDARD") as any;
   const canUseJudging = await getEffectiveFeatureTagEnabled(
     tier,
     "eventWorks.judgmentUI",
@@ -58,49 +59,44 @@ export default async function JudgesPage({
   )
     return notFound();
 
-  const usedJudgeSessions = await prisma.programmeJudgeSession.findMany({
-    where: {
-      festival_id: festival.id,
-      used_at: { not: null },
-    },
-    select: {
-      programme_id: true,
-      used_at: true,
-      created_by: true,
-      submitted_by_name: true,
-      submitted_by_contact: true,
+  const usedJudgeSessions = await db.query.programmeJudgeSession.findMany({
+    where: and(
+      eq(judgeSessionTable.festivalId, festival.id),
+      isNotNull(judgeSessionTable.usedAt)
+    ),
+    with: {
       programme: {
-        select: {
-          name: true,
-          category: { select: { name: true } },
+        with: {
+          category: { columns: { name: true } },
         },
+        columns: { name: true },
       },
-      programme_reporting_session: {
-        select: {
-          stage: { select: { name: true } },
+      programmeReportingSession: {
+        with: {
+          stage: { columns: { name: true } },
         },
       },
     },
-    orderBy: [{ used_at: "desc" }],
+    orderBy: [desc(judgeSessionTable.usedAt)],
   });
 
   const grouped = new Map<string, JudgeGroup>();
   for (const s of usedJudgeSessions) {
-    if (!s.used_at) continue;
+    if (!s.usedAt) continue;
     const judgeName =
-      (s.submitted_by_name ?? "").trim() ||
-      (s.created_by ?? "").trim() ||
+      (s.submittedByName ?? "").trim() ||
+      (s.createdBy ?? "").trim() ||
       "External judge";
-    const judgeContact = s.submitted_by_contact ?? null;
+    const judgeContact = s.submittedByContact ?? null;
     const judgeKey = `${judgeName.toLowerCase()}||${(judgeContact ?? "").toLowerCase()}`;
 
     const existing = grouped.get(judgeKey);
     const programme: JudgeProgrammeItem = {
-      programmeId: s.programme_id,
+      programmeId: s.programmeId,
       programmeName: s.programme.name,
-      categoryName: s.programme.category?.name ?? "—",
-      stageName: s.programme_reporting_session.stage?.name ?? "No stage",
-      judgedAt: s.used_at,
+      categoryName: (s.programme as any).category?.name ?? "—",
+      stageName: (s.programmeReportingSession as any)?.stage?.name ?? "No stage",
+      judgedAt: s.usedAt,
     };
 
     if (!existing) {

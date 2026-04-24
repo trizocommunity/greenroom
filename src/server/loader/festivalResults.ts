@@ -1,4 +1,6 @@
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { result as resultTable } from "@/server/db/schema";
+import { eq, and, asc, sql } from "drizzle-orm";
 
 export interface PublicResult {
   id: string;
@@ -20,28 +22,27 @@ export interface PublicResult {
 export async function getPublicFestivalResults(
   festivalId: string,
 ): Promise<PublicResult[]> {
-  const results = await prisma.result.findMany({
-    where: {
-      festivalId,
-      isPublished: true,
-    },
-    include: {
+  const results = await db.query.result.findMany({
+    where: and(
+      eq(resultTable.festivalId, festivalId),
+      eq(resultTable.isPublished, true)
+    ),
+    with: {
       programme: {
-        include: {
+        with: {
           category: true,
         },
       },
       assignment: {
-        include: {
+        with: {
           student: true,
           group: true,
         },
       },
     },
-    orderBy: [{ programme: { name: "asc" } }, { position: "asc" }],
+    orderBy: [asc(sql`programme.name`), asc(resultTable.position)],
   });
 
-  // Group results by programme to handle GROUP type aggregation
   const resultsByProgramme = results.reduce(
     (acc, result) => {
       const progId = result.programme.id;
@@ -56,14 +57,12 @@ export async function getPublicFestivalResults(
 
   const finalResults: PublicResult[] = [];
 
-  // Process each programme
   Object.values(resultsByProgramme).forEach((programmeResults) => {
     if (programmeResults.length === 0) return;
 
     const programme = programmeResults[0].programme;
 
     if (programme.type === "GROUP") {
-      // For GROUP programmes, aggregate by team (group + teamNumber)
       const teamMap = new Map<
         string,
         {
@@ -76,12 +75,12 @@ export async function getPublicFestivalResults(
         }
       >();
 
-      programmeResults.forEach((result) => {
+      programmeResults.forEach((result: any) => {
         const teamId = `${result.assignment.group?.id || "unknown"}-${result.assignment.teamNumber || 1}`;
 
         if (!teamMap.has(teamId)) {
           const teamName =
-            result.assignment.group?.name +
+            (result.assignment.group?.name ?? "") +
             (result.assignment.teamNumber > 1
               ? ` Team ${result.assignment.teamNumber}`
               : "");
@@ -97,7 +96,6 @@ export async function getPublicFestivalResults(
         }
       });
 
-      // Add team results
       teamMap.forEach((teamResult) => {
         finalResults.push({
           id: teamResult.teamId,
@@ -114,8 +112,7 @@ export async function getPublicFestivalResults(
         });
       });
     } else {
-      // For INDIVIDUAL programmes, show each student
-      programmeResults.forEach((result) => {
+      programmeResults.forEach((result: any) => {
         finalResults.push({
           id: result.id,
           programmeId: programme.id,
@@ -134,7 +131,6 @@ export async function getPublicFestivalResults(
   });
 
   return finalResults.sort((a, b) => {
-    // Sort by programme name, then position
     if (a.programName !== b.programName) {
       return a.programName.localeCompare(b.programName);
     }

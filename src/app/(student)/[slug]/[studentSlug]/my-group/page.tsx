@@ -4,7 +4,9 @@ import { StudentDetailsDialog } from "@/components/festival/pre-works/students/S
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { student as studentTable } from "@/server/db/schema";
+import { eq, and, desc } from "drizzle-orm";
 import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 import { findFestivalBySlug } from "@/server/models/festival.model";
 import { findStudentByFestivalAndProfileSlug } from "@/server/models/student.model";
@@ -30,7 +32,7 @@ export default async function MyGroupPage({
   if (!festival) notFound();
 
   const canViewProfile = FeatureService.isFeatureEnabled(
-    getTierForFeatureCheck(festival.tier),
+    getTierForFeatureCheck(festival.tier as any),
     "publicStudentProfile",
   );
   if (!canViewProfile) notFound();
@@ -44,17 +46,16 @@ export default async function MyGroupPage({
   // Non-leader pages are public; leaders use /leader routes.
   if (student.isTeamLeader) notFound();
 
-  if (!student.groupId && !student.group?.id) notFound();
+  const groupId = student.groupId ?? (student as any).group?.id;
+  if (!groupId) notFound();
 
-  const groupId = student.groupId ?? student.group?.id;
-
-  const groupStudents = await prisma.student.findMany({
-    where: { festivalId: festival.id, groupId: groupId as string },
-    include: {
+  const groupStudents = await db.query.student.findMany({
+    where: and(eq(studentTable.festivalId, festival.id), eq(studentTable.groupId, groupId as string)),
+    with: {
       group: true,
       category: true,
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: [desc(studentTable.createdAt)],
   });
 
   return (

@@ -1,6 +1,8 @@
 import crypto from "crypto";
 import { cookies } from "next/headers";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { teamLeaderSession as sessionTable } from "@/server/db/schema";
+import { eq } from "drizzle-orm";
 
 export const TEAM_LEADER_SESSION_COOKIE = "tl_session";
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
@@ -42,11 +44,11 @@ export async function getTeamLeaderSessionFromCookie() {
   if (!rawToken) return null;
 
   const tokenHash = hashToken(rawToken);
-  return prisma.teamLeaderSession.findUnique({
-    where: { tokenHash },
-    include: {
+  return db.query.teamLeaderSession.findFirst({
+    where: eq(sessionTable.tokenHash, tokenHash),
+    with: {
       student: {
-        select: {
+        columns: {
           id: true,
           festivalId: true,
           profileSlug: true,
@@ -56,7 +58,7 @@ export async function getTeamLeaderSessionFromCookie() {
         },
       },
       festival: {
-        select: { id: true, slug: true, tier: true },
+        columns: { id: true, slug: true, tier: true },
       },
     },
   });

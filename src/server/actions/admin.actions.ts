@@ -2,8 +2,20 @@
 
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth/session";
-import { prisma as db } from "@/lib/db";
+import { db } from "@/lib/db";
+import { 
+  festival as festivalTable, 
+  programmeAssignment as assignmentTable,
+  student as studentTable,
+  programme as programmeTable,
+  group as groupTable,
+  category as categoryTable,
+  payment as paymentTable,
+  auditLog as auditLogTable
+} from "@/server/db/schema";
+import { eq } from "drizzle-orm";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
+import { randomUUID } from "crypto";
 
 // Helper to enforce Super Admin role
 async function requireSuperAdmin() {
@@ -19,39 +31,39 @@ async function requireSuperAdmin() {
 export async function deleteFestivalAdmin(festivalId: string, reason: string) {
   const admin = await requireSuperAdmin();
 
-  const festival = await db.festival.findUnique({
-    where: { id: festivalId },
-    select: { name: true },
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.id, festivalId),
+    columns: { name: true },
   });
 
   if (!festival) {
     throw new AppError(ERROR_MESSAGES.NOT_FOUND);
   }
 
-  await db.$transaction(async (tx) => {
-    // 1. Delete related child entities (cascade should handle most, but be explicit)
-    await tx.programmeAssignment.deleteMany({ where: { festivalId } });
-    await tx.student.deleteMany({ where: { festivalId } });
-    await tx.programme.deleteMany({ where: { festivalId } });
-    await tx.group.deleteMany({ where: { festivalId } });
-    await tx.category.deleteMany({ where: { festivalId } });
+  await db.transaction(async (tx) => {
+    // 1. Delete related child entities
+    await tx.delete(assignmentTable).where(eq(assignmentTable.festivalId, festivalId));
+    await tx.delete(studentTable).where(eq(studentTable.festivalId, festivalId));
+    await tx.delete(programmeTable).where(eq(programmeTable.festivalId, festivalId));
+    await tx.delete(groupTable).where(eq(groupTable.festivalId, festivalId));
+    await tx.delete(categoryTable).where(eq(categoryTable.festivalId, festivalId));
 
-    // 2. Delete Payments (set null would be fine too if we want to keep payment history)
-    await tx.payment.deleteMany({ where: { festivalId } });
+    // 2. Delete Payments
+    await tx.delete(paymentTable).where(eq(paymentTable.festivalId, festivalId));
 
     // 3. Delete Festival
-    await tx.festival.delete({ where: { id: festivalId } });
+    await tx.delete(festivalTable).where(eq(festivalTable.id, festivalId));
 
     // 4. Log Audit
-    await tx.auditLog.create({
-      data: {
-        actorId: admin.userId,
-        actorRole: "SUPER_ADMIN",
-        action: "DELETE_FESTIVAL",
-        targetType: "FESTIVAL",
-        targetId: festivalId,
-        metadata: { reason, festivalName: festival.name },
-      },
+    await tx.insert(auditLogTable).values({
+      id: randomUUID(),
+      actorId: admin.userId,
+      actorRole: "SUPER_ADMIN",
+      action: "DELETE_FESTIVAL",
+      targetType: "FESTIVAL",
+      targetId: festivalId,
+      metadata: { reason, festivalName: festival.name },
+      updatedAt: new Date().toISOString(),
     });
   });
 
@@ -61,27 +73,27 @@ export async function deleteFestivalAdmin(festivalId: string, reason: string) {
 
 export async function updateFestivalAdmin(
   festivalId: string,
-  data: Record<string, unknown>,
+  data: any,
 ) {
   const admin = await requireSuperAdmin();
 
-  // Validate data with schema if available; for now trusting caller or add Zod here.
-
   try {
-    const festival = await db.festival.update({
-      where: { id: festivalId },
-      data: data,
-    });
+    const updatedFestivals = await db.update(festivalTable).set({
+      ...data,
+      updatedAt: new Date().toISOString(),
+    }).where(eq(festivalTable.id, festivalId)).returning();
 
-    await db.auditLog.create({
-      data: {
-        actorId: admin.userId,
-        actorRole: "SUPER_ADMIN",
-        action: "UPDATE_FESTIVAL",
-        targetType: "FESTIVAL",
-        targetId: festivalId,
-        metadata: { changes: Object.keys(data) },
-      },
+    const festival = updatedFestivals[0];
+
+    await db.insert(auditLogTable).values({
+      id: randomUUID(),
+      actorId: admin.userId,
+      actorRole: "SUPER_ADMIN",
+      action: "UPDATE_FESTIVAL",
+      targetType: "FESTIVAL",
+      targetId: festivalId,
+      metadata: { changes: Object.keys(data) },
+      updatedAt: new Date().toISOString(),
     });
 
     revalidatePath("/super-admin/festivals");
@@ -94,29 +106,29 @@ export async function updateFestivalAdmin(
 export async function freezeFestivalAdmin(festivalId: string, reason: string) {
   const admin = await requireSuperAdmin();
 
-  const festival = await db.festival.findUnique({
-    where: { id: festivalId },
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.id, festivalId),
   });
 
   if (!festival) {
     throw new AppError(ERROR_MESSAGES.NOT_FOUND);
   }
 
-  await db.$transaction(async (tx) => {
-    await tx.festival.update({
-      where: { id: festivalId },
-      data: { isLocked: true },
-    });
+  await db.transaction(async (tx) => {
+    await tx.update(festivalTable).set({ 
+      isLocked: true,
+      updatedAt: new Date().toISOString(),
+    }).where(eq(festivalTable.id, festivalId));
 
-    await tx.auditLog.create({
-      data: {
-        actorId: admin.userId,
-        actorRole: "SUPER_ADMIN",
-        action: "FREEZE_FESTIVAL",
-        targetType: "FESTIVAL",
-        targetId: festivalId,
-        metadata: { reason, festivalName: festival.name },
-      },
+    await tx.insert(auditLogTable).values({
+      id: randomUUID(),
+      actorId: admin.userId,
+      actorRole: "SUPER_ADMIN",
+      action: "FREEZE_FESTIVAL",
+      targetType: "FESTIVAL",
+      targetId: festivalId,
+      metadata: { reason, festivalName: festival.name },
+      updatedAt: new Date().toISOString(),
     });
   });
 
@@ -128,8 +140,8 @@ export async function freezeFestivalAdmin(festivalId: string, reason: string) {
 
 export async function getFestivalAdmin(festivalId: string) {
   await requireSuperAdmin();
-  const festival = await db.festival.findUnique({
-    where: { id: festivalId },
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.id, festivalId),
   });
   return festival;
 }

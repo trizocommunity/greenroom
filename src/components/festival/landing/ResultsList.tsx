@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronRight, Crown, Medal, Search, Trophy } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useRealtimeChannel } from "@/hooks/useRealtimeChannel";
 import { cn } from "@/lib/utils";
 
 export interface Result {
@@ -64,19 +63,14 @@ export function ResultsList({
   >("ALL");
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
 
-  useRealtimeChannel({
-    roomKeys: festivalId ? [`festival:${festivalId}:public:standings`] : [],
-    enabled: Boolean(festivalId),
-    onEvent: (payload) => {
-      const eventName = String(payload.eventName ?? "");
-      if (
-        eventName === "standings.updated" ||
-        eventName === "results.publish_toggled"
-      ) {
-        router.refresh();
-      }
-    },
-  });
+  // Polling refresh every 15 seconds for updates
+  useEffect(() => {
+    if (!festivalId) return;
+    const id = window.setInterval(() => {
+      router.refresh();
+    }, 15000);
+    return () => window.clearInterval(id);
+  }, [festivalId, router]);
 
   // --- Data Processing ---
 

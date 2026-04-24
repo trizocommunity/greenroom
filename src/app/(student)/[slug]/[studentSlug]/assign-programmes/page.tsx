@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import { DeadlinesCard } from "@/components/festival/pre-works/DeadlinesCard";
 import { AssignProgrammesClient } from "@/components/student/team-leader/AssignProgrammesClient";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { programme as programmeTable, group as groupTable } from "@/server/db/schema";
+import { eq, sql, desc } from "drizzle-orm";
 import { getTeamLeaderGroupStudentsForSelection } from "@/lib/team-leader/my-team";
 import { requireTeamLeaderSession } from "@/lib/team-leader-auth/guard";
 
@@ -19,15 +21,15 @@ export default async function AssignProgrammesPage({
   const deadline = festival.programmeAssignmentDeadline;
   const isReadOnly = deadline ? new Date() > new Date(deadline) : false;
   const managerName =
-    festival.owner?.displayName ||
-    festival.owner?.fullName ||
-    festival.owner?.email ||
+    (festival.user as any)?.displayName ||
+    (festival.user as any)?.fullName ||
+    (festival.user as any)?.email ||
     null;
-  const managerEmail = festival.owner?.email ?? null;
+  const managerEmail = (festival.user as any)?.email ?? null;
   const managerPhone =
     festival.branding &&
     typeof festival.branding === "object" &&
-    ("contactNumber" in festival.branding || "phone" in festival.branding)
+    ("contactNumber" in (festival.branding as any) || "phone" in (festival.branding as any))
       ? ((festival.branding as any).contactNumber ??
         (festival.branding as any).phone ??
         null)
@@ -39,15 +41,14 @@ export default async function AssignProgrammesPage({
     student.id,
   );
 
-  const programmes = await prisma.programme.findMany({
-    where: { festivalId: festival.id },
-    include: { category: true },
-    orderBy: { createdAt: "desc" },
+  const programmes = await db.query.programme.findMany({
+    where: eq(programmeTable.festivalId, festival.id),
+    with: { category: true },
+    orderBy: [desc(programmeTable.createdAt)],
   });
 
-  const groupCount = await prisma.group.count({
-    where: { festivalId: festival.id },
-  });
+  const [groupCountResult] = await db.select({ count: sql`count(*)` }).from(groupTable).where(eq(groupTable.festivalId, festival.id));
+  const groupCount = Number(groupCountResult.count);
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-6 py-6">
@@ -60,10 +61,10 @@ export default async function AssignProgrammesPage({
 
       <AssignProgrammesClient
         festivalId={festival.id}
-        leaderGroupId={student.groupId}
-        leaderCategoryId={student.categoryId}
+        leaderGroupId={student.groupId!}
+        leaderCategoryId={student.categoryId!}
         isReadOnly={isReadOnly}
-        deadline={deadline}
+        deadline={deadline ?? undefined}
         managerName={managerName}
         managerEmail={managerEmail}
         managerPhone={managerPhone}
@@ -71,22 +72,22 @@ export default async function AssignProgrammesPage({
         programmes={programmes.map((p) => ({
           id: p.id,
           name: p.name,
-          type: p.type,
-          status: p.status,
+          type: p.type as any,
+          status: p.status as any,
           maxTeamsPerGroup: p.maxTeamsPerGroup,
           maxStudentsPerTeam: p.maxStudentsPerTeam,
           maxParticipantsPerGroup: p.maxParticipantsPerGroup,
           category: {
-            id: p.category.id,
-            name: p.category.name,
-            type: p.category.type,
+            id: (p as any).category.id,
+            name: (p as any).category.name,
+            type: (p as any).category.type,
           },
         }))}
         myStudents={groupStudents.map((s) => ({
           id: s.id,
           name: s.name,
           chestNumber: s.chestNumber,
-          categoryId: s.category?.id ?? student.categoryId,
+          categoryId: (s as any).category?.id ?? student.categoryId!,
         }))}
       />
     </div>

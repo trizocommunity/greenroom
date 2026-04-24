@@ -1,4 +1,3 @@
-import { Prisma } from "@prisma/client";
 import { ZodError, type ZodIssue } from "zod";
 import type { ActionResponse } from "@/types/actions";
 
@@ -123,7 +122,6 @@ export function handleActionError(error: unknown): ActionResponse<never> {
   // 1. Handle Zod Validation Errors
   if (error instanceof ZodError) {
     const fields: Record<string, string> = {};
-    // Ensure we handle the errors array correctly
     const issues = error.issues;
     issues.forEach((err: ZodIssue) => {
       if (err.path.length > 0) {
@@ -137,20 +135,13 @@ export function handleActionError(error: unknown): ActionResponse<never> {
     };
   }
 
-  // 2. Handle Prisma Errors
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    // Unique constraint violation
-    if (error.code === "P2002") {
-      const target = (error.meta?.target as string[]) || ["field"];
-      const field = target[0] || "field";
-      return {
-        success: false,
-        error: `This ${field} is already taken.`,
-        fields: {
-          [field]: `This ${field} is already taken.`,
-        },
-      };
-    }
+  // 2. Handle Database/Constraint Errors (Generic for now)
+  const err = error as any;
+  if (err?.code === "23505") { // Postgres unique_violation
+    return {
+      success: false,
+      error: "A unique constraint was violated. Please check your data.",
+    };
   }
 
   // 3. Handle App Errors (Custom thrown errors)
@@ -163,11 +154,12 @@ export function handleActionError(error: unknown): ActionResponse<never> {
 
   // 4. Handle Standard Errors
   if (error instanceof Error) {
-    // Only return the message if it's safe (e.g. not a system error)
+    const msg = error.message.toLowerCase();
     if (
-      error.message.includes("database") ||
-      error.message.includes("connect") ||
-      error.message.includes("prisma")
+      msg.includes("database") ||
+      msg.includes("connect") ||
+      msg.includes("pool") ||
+      msg.includes("drizzle")
     ) {
       return {
         success: false,

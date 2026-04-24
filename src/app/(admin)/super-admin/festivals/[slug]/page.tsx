@@ -5,7 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { 
+  expiredFestivalResult as resultTable, 
+  festivalLifecycleEvent as lifecycleEventTable 
+} from "@/server/db/schema";
+import { eq, asc } from "drizzle-orm";
 import { getDerivedFestivalStatus } from "@/lib/festival-status";
 import { findFestivalBySlugOrId } from "@/server/models/festival.model";
 
@@ -23,22 +28,24 @@ export default async function AdminFestivalDetailPage({
 
   const festivalId = festival.id;
   const derivedStatus = getDerivedFestivalStatus({
-    status: festival.status ?? "READY",
+    status: (festival.status ?? "READY") as any,
     startDate: festival.startDate,
     endDate: festival.endDate,
     expiresAt: festival.expiresAt,
   });
   const isExpired = derivedStatus === "EXPIRED";
+  
   const expiredResults = isExpired
-    ? await prisma.expiredFestivalResult.findMany({
-        where: { festivalId },
-        orderBy: [{ programmeName: "asc" }, { position: "asc" }],
+    ? await db.query.expiredFestivalResult.findMany({
+        where: eq(resultTable.festivalId, festivalId),
+        orderBy: [asc(resultTable.programmeName), asc(resultTable.position)],
       })
     : [];
+    
   const lifecycleEvents = isExpired
-    ? await prisma.festivalLifecycleEvent.findMany({
-        where: { festivalId },
-        orderBy: { occurredAt: "asc" },
+    ? await db.query.festivalLifecycleEvent.findMany({
+        where: eq(lifecycleEventTable.festivalId, festivalId),
+        orderBy: [asc(lifecycleEventTable.occurredAt)],
       })
     : [];
 
@@ -94,7 +101,7 @@ export default async function AdminFestivalDetailPage({
             <div className="flex justify-between">
               <span className="text-muted-foreground">Owner</span>
               <span className="font-medium">
-                {festival.owner.fullName || festival.owner.email}
+                {festival.user.fullName || festival.user.email}
               </span>
             </div>
             <div className="flex justify-between">

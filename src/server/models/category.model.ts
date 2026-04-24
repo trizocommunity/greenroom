@@ -2,8 +2,13 @@ import { db } from "@/lib/db";
 import { category as categories } from "../db/schema";
 import { eq, desc, count } from "drizzle-orm";
 
-export async function createCategory(data: typeof categories.$inferInsert) {
-  const result = await db.insert(categories).values(data).returning();
+export async function createCategory(data: Omit<typeof categories.$inferInsert, "id" | "updatedAt"> & { id?: string; updatedAt?: string }) {
+  const { randomUUID } = await import("crypto");
+  const result = await db.insert(categories).values({
+    id: data.id ?? randomUUID(),
+    updatedAt: data.updatedAt ?? new Date().toISOString(),
+    ...data,
+  }).returning();
   return result[0];
 }
 

@@ -1,6 +1,16 @@
 import { notFound } from "next/navigation";
 import { AllProgrammesClient } from "@/components/student/team-leader/AllProgrammesClient";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { 
+  programme as programmeTable, 
+  group as groupTable, 
+  programmeAssignment as assignmentTable,
+  programmeReportingSession as sessionTable,
+  programmeCodeLetter as codeLetterTable,
+  programmeCodeLetterRecipient as codeLetterRecipientTable,
+  programmeReportedParticipant as reportedParticipantTable
+} from "@/server/db/schema";
+import { eq, and, inArray, sql, asc, desc, not, isNotNull } from "drizzle-orm";
 import { getExpectedAssignmentsTotal } from "@/lib/programme-assignment-progress";
 import { getCodeForStudentFromLetters } from "@/lib/programme-reporting-code";
 import { getProgrammeStatusPriorityRank } from "@/lib/programme-status-priority";
@@ -8,18 +18,12 @@ import { getTeamLeaderMyStudents } from "@/lib/team-leader/my-team";
 import { requireTeamLeaderSession } from "@/lib/team-leader-auth/guard";
 
 function isSessionTimedOut(
-  session:
-    | {
-        status: string;
-        windowEndsAt: Date | null;
-      }
-    | null
-    | undefined,
+  session: any
 ): boolean {
   return Boolean(
     session?.status === "IN_PROGRESS" &&
       session.windowEndsAt &&
-      session.windowEndsAt.getTime() <= Date.now(),
+      new Date(session.windowEndsAt).getTime() <= Date.now(),
   );
 }
 
@@ -38,51 +42,58 @@ export default async function AllProgrammesPage({
   const { myStudents } = await getTeamLeaderMyStudents(festival.id, student.id);
   const myStudentIds = myStudents.map((s) => s.id);
 
-  const programmesRaw = await prisma.programme.findMany({
-    where: { festivalId: festival.id },
-    include: { category: true },
-    orderBy: { createdAt: "desc" },
+  const programmesRaw = await db.query.programme.findMany({
+    where: eq(programmeTable.festivalId, festival.id),
+    with: { category: true },
+    orderBy: [desc(programmeTable.createdAt)],
   });
 
   const programmes = [...programmesRaw].sort(
     (a, b) =>
-      getProgrammeStatusPriorityRank(a.status) -
-      getProgrammeStatusPriorityRank(b.status),
+      getProgrammeStatusPriorityRank(a.status as any) -
+      getProgrammeStatusPriorityRank(b.status as any),
   );
-  const groupCount = await prisma.group.count({
-    where: { festivalId: festival.id },
-  });
+  
+  const [groupCountResult] = await db.select({ count: sql`count(*)` }).from(groupTable).where(eq(groupTable.festivalId, festival.id));
+  const groupCount = Number(groupCountResult.count);
 
   const assignmentCountsRaw =
     programmes.length > 0
-      ? await prisma.programmeAssignment.groupBy({
-          by: ["programmeId"],
-          where: {
-            festivalId: festival.id,
-            programmeId: { in: programmes.map((p) => p.id) },
-          },
-          _count: { _all: true },
+      ? await db.select({ 
+          programmeId: assignmentTable.programmeId, 
+          count: sql`count(*)` 
         })
+        .from(assignmentTable)
+        .where(and(
+          eq(assignmentTable.festivalId, festival.id),
+          inArray(assignmentTable.programmeId, programmes.map((p) => p.id))
+        ))
+        .groupBy(assignmentTable.programmeId)
       : [];
+  
   const programmeIds = programmes.map((p) => p.id);
   const allReportingSessions =
     programmeIds.length > 0
-      ? await prisma.programmeReportingSession.findMany({
-          where: { festivalId: festival.id, programmeId: { in: programmeIds } },
-          orderBy: { updatedAt: "desc" },
-          include: {
-            reportedParticipants: { select: { assignmentId: true } },
-            codeLetters: {
-              include: {
-                recipients: { select: { studentId: true } },
+      ? await db.query.programmeReportingSession.findMany({
+          where: and(
+            eq(sessionTable.festivalId, festival.id),
+            inArray(sessionTable.programmeId, programmeIds)
+          ),
+          with: {
+            programmeReportedParticipants: { columns: { assignmentId: true } },
+            programmeCodeLetters: {
+              with: {
+                programmeCodeLetterRecipients: { columns: { studentId: true } },
               },
             },
           },
+          orderBy: [desc(sessionTable.updatedAt)],
         })
       : [];
+      
   const latestReportingByProgrammeId = new Map<
     string,
-    (typeof allReportingSessions)[number]
+    any
   >();
   for (const s of allReportingSessions) {
     if (!latestReportingByProgrammeId.has(s.programmeId)) {
@@ -90,42 +101,45 @@ export default async function AllProgrammesPage({
     }
   }
   const assignmentCountByProgramme = new Map<string, number>(
-    assignmentCountsRaw.map((r) => [r.programmeId, r._count._all]),
+    assignmentCountsRaw.map((r) => [r.programmeId, Number(r.count)]),
   );
 
   const myAssignments = myStudentIds.length
-    ? await prisma.programmeAssignment.findMany({
-        where: { festivalId: festival.id, studentId: { in: myStudentIds } },
-        include: {
-          programme: { include: { category: true } },
-          student: { select: { id: true, name: true, chestNumber: true } },
+    ? await db.query.programmeAssignment.findMany({
+        where: and(
+          eq(assignmentTable.festivalId, festival.id),
+          inArray(assignmentTable.studentId, myStudentIds)
+        ),
+        with: {
+          programme: { with: { category: true } },
+          student: { columns: { id: true, name: true, chestNumber: true } },
           group: true,
           category: true,
         },
-        orderBy: { assignedAt: "desc" },
+        orderBy: [desc(assignmentTable.assignedAt)],
       })
     : [];
 
   const groupProgrammeIds = programmes
     .filter((p) => p.type === "GROUP")
     .map((p) => p.id);
+    
   const groupProgrammeAssignments =
     groupProgrammeIds.length > 0
-      ? await prisma.programmeAssignment.findMany({
-          where: {
-            festivalId: festival.id,
-            programmeId: { in: groupProgrammeIds },
-            groupId: student.groupId ?? undefined,
-            studentId: { not: null },
-          },
-          include: {
-            student: { select: { id: true, name: true, chestNumber: true } },
+      ? await db.query.programmeAssignment.findMany({
+          where: and(
+            eq(assignmentTable.festivalId, festival.id),
+            inArray(assignmentTable.programmeId, groupProgrammeIds),
+            eq(assignmentTable.groupId, student.groupId!),
+            isNotNull(assignmentTable.studentId)
+          ),
+          with: {
+            student: { columns: { id: true, name: true, chestNumber: true } },
             group: true,
           },
         })
       : [];
 
-  // programmeId -> { individual: Student[], group: { key: teamNumber -> Student[] } }
   const participantsByProgramme = new Map<
     string,
     {
@@ -201,17 +215,20 @@ export default async function AllProgrammesPage({
 
   function reportingNoteForMember(
     programmeType: string,
-    sess: (typeof allReportingSessions)[number] | undefined,
+    sess: any | undefined,
     assignmentId: string | undefined,
     memberStudentId: string | undefined,
   ): string | null {
     if (!sess || !assignmentId) return null;
-    const reported = sess.reportedParticipants.some(
-      (r) => r.assignmentId === assignmentId,
+    const reported = sess.programmeReportedParticipants.some(
+      (r: any) => r.assignmentId === assignmentId,
     );
     const code =
       sess.status === "CLOSED" && memberStudentId
-        ? getCodeForStudentFromLetters(sess.codeLetters, memberStudentId)
+        ? getCodeForStudentFromLetters(sess.programmeCodeLetters.map((cl: any) => ({
+            code: cl.code,
+            recipients: cl.programmeCodeLetterRecipients
+          })), memberStudentId)
         : null;
     if (sess.status === "IN_PROGRESS" && !isSessionTimedOut(sess)) {
       return reported ? "Reported" : "Pending";
@@ -236,7 +253,7 @@ export default async function AllProgrammesPage({
     const entry = participantsByProgramme.get(p.id);
     const latestSession = latestReportingByProgrammeId.get(p.id);
     const reportedAssignmentIds = new Set(
-      latestSession?.reportedParticipants.map((r) => r.assignmentId) ?? [],
+      latestSession?.programmeReportedParticipants.map((r: any) => r.assignmentId) ?? [],
     );
 
     const myGroupTeams =
@@ -258,7 +275,7 @@ export default async function AllProgrammesPage({
               }
             >();
 
-            for (const a of groupProgrammeAssignments) {
+            for (const a of groupProgrammeAssignments as any[]) {
               if (a.programmeId !== p.id || !a.student) continue;
               const gid = a.group?.id ?? "__unknown__";
               const teamNum = a.teamNumber ?? 1;
@@ -348,7 +365,7 @@ export default async function AllProgrammesPage({
       latestSession?.status === "IN_PROGRESS" &&
       !isSessionTimedOut(latestSession) &&
       latestSession.windowEndsAt
-        ? latestSession.windowEndsAt.toISOString()
+        ? latestSession.windowEndsAt
         : null;
 
     return {
@@ -376,7 +393,7 @@ export default async function AllProgrammesPage({
           : null,
       assignedCount: assignmentCountByProgramme.get(p.id) ?? 0,
       expectedAssignments: getExpectedAssignmentsTotal({
-        programmeType: p.type,
+        programmeType: p.type as any,
         groupCount,
         maxParticipantsPerGroup: p.maxParticipantsPerGroup,
         maxTeamsPerGroup: p.maxTeamsPerGroup,
@@ -410,11 +427,15 @@ export default async function AllProgrammesPage({
       </div>
 
       <AllProgrammesClient
-        items={programmeCards}
+        items={programmeCards as any[]}
         categoryOptions={categoryOptions.sort((a, b) =>
           a.name.localeCompare(b.name),
         )}
       />
     </div>
   );
+}
+
+function isNotNullValue<T>(value: T | null | undefined): value is T {
+  return value !== null && value !== undefined;
 }

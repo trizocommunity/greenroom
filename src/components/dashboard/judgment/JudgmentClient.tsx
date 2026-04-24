@@ -16,7 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useRealtimeChannel } from "@/hooks/useRealtimeChannel";
 import { formatCountdownHms } from "@/lib/format-countdown-hms";
 import {
   createProgrammeJudgeLinkAction,
@@ -84,7 +83,6 @@ export function JudgmentClient({
     Record<string, { judgeUrl: string; startedAt: Date }>
   >({});
   const [activeStageId, setActiveStageId] = useState<string>("__all__");
-  const [lastRefreshAt, setLastRefreshAt] = useState(0);
 
   useEffect(() => {
     setNowMs(Date.now());
@@ -98,38 +96,7 @@ export function JudgmentClient({
     );
   }, [stages]);
 
-  const judgementRoomKeys = useMemo(() => {
-    const rooms = [`festival:${festival.id}:all`];
-    for (const stage of stages) {
-      for (const programme of stage.programmesToJudge) {
-        rooms.push(
-          `festival:${festival.id}:programme:${programme.programmeId}:judgment`,
-        );
-      }
-    }
-    return rooms;
-  }, [festival.id, stages]);
-
-  useRealtimeChannel({
-    roomKeys: judgementRoomKeys,
-    enabled: hasStartedProgrammes,
-    onEvent: (event) => {
-      const eventName =
-        typeof event.eventName === "string"
-          ? event.eventName
-          : typeof event.type === "string"
-            ? event.type
-            : "";
-      if (!eventName.includes("judgment") && !eventName.includes("results")) {
-        return;
-      }
-      const now = Date.now();
-      if (now - lastRefreshAt < 1500) return;
-      setLastRefreshAt(now);
-      router.refresh();
-    },
-  });
-
+  // Polling refresh every 12 seconds when there are active programmes
   useEffect(() => {
     if (!hasStartedProgrammes) return;
     const id = window.setInterval(() => {

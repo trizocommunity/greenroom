@@ -1,11 +1,12 @@
-import type { ProgrammeStatus, Tier } from "@prisma/client";
+import { db } from "@/lib/db";
+import { festival as festivalTable, programmeAssignment as assignmentTable, programme as programmeTable, programmeJudgeSession as pjsTable } from "@/server/db/schema";
+import { eq, asc, desc, inArray, count, and } from "drizzle-orm";
 import { Calendar, ClipboardList } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
 import { BasicMarksClient } from "@/components/dashboard/marks/BasicMarksClient";
-import { prisma } from "@/lib/db";
-import { filterProgrammesForEventWorks } from "@/server/services/programme-status.service";
+import { filterProgrammesForEventWorks, type ProgrammeStatus, type Tier } from "@/server/services/programme-status.service";
 
 export const metadata: Metadata = {
   title: "Results",
@@ -18,28 +19,27 @@ export default async function MarksRedirectPage({
 }) {
   const { slug } = await params;
 
-  const festival = await prisma.festival.findUnique({
-    where: { slug },
-    include: {
-      categories: { orderBy: { name: "asc" } },
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.slug, slug),
+    with: {
+      categories: { orderBy: [asc(festivalTable.name)] },
       programmes: {
-        include: {
+        with: {
           category: true,
           assignments: {
-            include: {
+            with: {
               student: true,
               group: true,
               result: true,
             },
           },
-          programme_judge_session: {
-            where: { used_at: null },
-            orderBy: { started_at: "desc" },
-            take: 1,
-            select: { id: true, started_at: true, used_at: true, ended_at: true },
+          programmeJudgeSessions: {
+            where: (pjs, { isNull }) => isNull(pjs.usedAt),
+            orderBy: [desc(pjsTable.startedAt)],
+            limit: 1,
           },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: [desc(programmeTable.createdAt)],
       },
     },
   });
@@ -55,19 +55,15 @@ export default async function MarksRedirectPage({
     redirect(`/dashboard/${slug}/event-works/judgment`);
   }
 
-  // Judgment should show only programmes that have finished reporting
-  // (or are in the end-of-reporting judging window), not scheduled/reporting ones.
-  // We still allow JUDGED/PUBLISHED so editing/unpublishing can work.
   const judgmentAllowedStatuses: ProgrammeStatus[] =
     tier === "BASIC"
-      ? // BASIC has no programme reporting; keep old gating behavior.
-        []
+      ? []
       : ["STARTED", "ENDED", "JUDGED", "PUBLISHED"];
 
   const eventWorksProgrammes =
     tier === "BASIC"
-      ? filterProgrammesForEventWorks(festival.programmes, tier)
-      : festival.programmes.filter((p) =>
+      ? filterProgrammesForEventWorks(festival.programmes as any, tier)
+      : (festival.programmes as any[]).filter((p) =>
           judgmentAllowedStatuses.includes(p.status),
         );
 
@@ -94,13 +90,13 @@ export default async function MarksRedirectPage({
     );
   }
 
-  const assignmentCount = await prisma.programmeAssignment.count({
-    where: {
-      programmeId: { in: eventWorksProgrammes.map((p) => p.id) },
-    },
-  });
+  const progIds = eventWorksProgrammes.map((p: any) => p.id);
+  const [assignmentCountResult] = await db
+    .select({ c: count() })
+    .from(assignmentTable)
+    .where(inArray(assignmentTable.programmeId, progIds));
 
-  if (assignmentCount === 0) {
+  if (assignmentCountResult.c === 0) {
     return (
       <EmptyState
         title="No Assignments Found"
@@ -115,7 +111,7 @@ export default async function MarksRedirectPage({
   return (
     <div className="pt-4 sm:pt-6">
       <BasicMarksClient
-        festival={festival}
+        festival={festival as any}
         programmes={eventWorksProgrammes}
         categories={festival.categories}
       >

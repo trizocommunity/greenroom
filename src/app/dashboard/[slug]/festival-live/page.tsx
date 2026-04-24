@@ -1,7 +1,13 @@
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { 
+  festivalGalleryImage as galleryImageTable, 
+  festivalNews as newsTable,
+  festivalMember as memberTable
+} from "@/server/db/schema";
+import { eq, and, asc, desc } from "drizzle-orm";
 import { validatePublicSiteRequirements } from "@/lib/festival-public-validation";
 import { isBasicTier } from "@/lib/tier";
 import { findFestivalBySlug } from "@/server/models/festival.model";
@@ -21,24 +27,25 @@ export default async function FestivalLivePage({
   if (!festival) notFound();
 
   const [galleryImages, newsPosts] = await Promise.all([
-    prisma.festivalGalleryImage.findMany({
-      where: { festivalId: festival.id },
-      orderBy: { order: "asc" },
-      select: { id: true, url: true, order: true },
+    db.query.festivalGalleryImage.findMany({
+      where: eq(galleryImageTable.festivalId, festival.id),
+      orderBy: [asc(galleryImageTable.order)],
+      columns: { id: true, url: true, order: true },
     }),
-    prisma.festivalNews.findMany({
-      where: { festivalId: festival.id },
-      orderBy: { createdAt: "desc" },
-      select: { id: true, title: true, content: true, imageUrl: true },
+    db.query.festivalNews.findMany({
+      where: eq(newsTable.festivalId, festival.id),
+      orderBy: [desc(newsTable.createdAt)],
+      columns: { id: true, title: true, content: true, imageUrl: true },
     }),
   ]);
   const galleryCount = galleryImages.length;
 
   const isOwner = festival.ownerId === session.userId;
-  const member = await prisma.festivalMember.findUnique({
-    where: {
-      festivalId_userId: { festivalId: festival.id, userId: session.userId },
-    },
+  const member = await db.query.festivalMember.findFirst({
+    where: and(
+      eq(memberTable.festivalId, festival.id),
+      eq(memberTable.userId, session.userId)
+    ),
   });
   const isAdmin = member?.isActive && member.role === "ADMIN";
   const isSuperAdmin = session.role === "SUPER_ADMIN";
@@ -51,7 +58,7 @@ export default async function FestivalLivePage({
     orgDescription: festival.orgDescription,
     orgWebsite: festival.orgWebsite,
     orgLocation: festival.orgLocation,
-    tier: festival.tier,
+    tier: festival.tier as any,
     galleryImageCount: galleryCount,
     newsPosts: newsPosts.map((p) => ({
       title: p.title,
@@ -82,7 +89,7 @@ export default async function FestivalLivePage({
           orgWebsite: festival.orgWebsite || "",
           orgLocation: festival.orgLocation || "",
           establishedYear: festival.establishedYear,
-          institutionType: festival.institutionType,
+          institutionType: festival.institutionType as any,
           institutionName: festival.institutionName || "",
           location: festival.location || "",
           founderName: festival.founderName || "",
@@ -96,7 +103,7 @@ export default async function FestivalLivePage({
         canEnable={validation.canEnable}
         validationErrors={validation.errors}
         publicUrl={baseUrl ? `${baseUrl}/${festival.slug}` : ""}
-        isBasicTier={isBasicTier(festival.tier)}
+        isBasicTier={isBasicTier(festival.tier as any)}
       />
     </div>
   );

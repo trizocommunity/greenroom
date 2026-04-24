@@ -80,8 +80,8 @@ export default async function FestivalDashboardLayout({
     description: festival.description || "",
     // Legacy fields or unused
     tagline: "",
-    startDate: festival.startDate ? festival.startDate.toISOString() : null,
-    endDate: festival.endDate ? festival.endDate.toISOString() : null,
+    startDate: festival.startDate || null,
+    endDate: festival.endDate || null,
     location: festival.location || "Virtual",
     logo: null,
     heroImage: null,
@@ -171,7 +171,7 @@ export default async function FestivalDashboardLayout({
                   studentsCount: festival._count?.students || 0,
                   programmesCount: festival._count?.programmes || 0,
                   stagesCount: festival.stagesCount || 0,
-                  storageUsedMB: festival.storageUsedMB ?? 0,
+                  storageUsedMB: festival.storageUsedMb ?? 0,
                 }}
                 limits={festivalData.limits}
                 tierLabel={TIER_CONFIG[getResolvedTier(festival.tier)].label}

@@ -1,10 +1,11 @@
 "use server";
 
-import type { PaymentPurpose, Tier } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { TIER_CONFIG } from "@/config/pricing";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { payment as paymentTable } from "@/server/db/schema";
+import { eq, and, gte, desc } from "drizzle-orm";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import { getUnusedPayment } from "@/server/services/billing.service";
 import {
@@ -12,10 +13,11 @@ import {
   RazorpayService,
 } from "@/server/services/razorpay.service";
 import type { ActionResponse } from "@/types/actions";
+import { randomUUID } from "crypto";
 
 export async function initiatePayment(
-  purpose: PaymentPurpose,
-  tier: Tier,
+  purpose: "FESTIVAL_CREATION",
+  tier: "BASIC" | "STANDARD" | "PRO",
 ): Promise<
   ActionResponse<{
     paymentId: string;
@@ -37,17 +39,16 @@ export async function initiatePayment(
     }
 
     // Check for existing pending payment
-    const existingPayment = await prisma.payment.findFirst({
-      where: {
-        userId: session.userId,
-        tier,
-        purpose,
-        status: "PENDING",
-        used: false,
-        createdAt: {
-          gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Created within last 24 hours
-        },
-      },
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const existingPayment = await db.query.payment.findFirst({
+      where: and(
+        eq(paymentTable.userId, session.userId),
+        eq(paymentTable.tier, tier),
+        eq(paymentTable.purpose, purpose),
+        eq(paymentTable.status, "PENDING"),
+        eq(paymentTable.used, false),
+        gte(paymentTable.createdAt, yesterday)
+      ),
     });
 
     if (existingPayment?.providerId) {
@@ -63,7 +64,7 @@ export async function initiatePayment(
       };
     }
 
-    // Create Razorpay Order (single place for Razorpay init: razorpay.service)
+    // Create Razorpay Order
     const order = await RazorpayService.createOrder(
       config.price * 100,
       "INR",
@@ -75,30 +76,31 @@ export async function initiatePayment(
       },
     );
 
-    // Create Payment Record (Pending) with plan validity window
+    // Create Payment Record (Pending)
     const now = new Date();
     const validUntil = new Date(
       now.getTime() + config.durationDays * 24 * 60 * 60 * 1000,
-    );
+    ).toISOString();
 
-    const payment = await prisma.payment.create({
-      data: {
-        amount: config.price,
-        currency: "INR",
-        status: "PENDING",
-        providerId: order.id,
-        userId: session.userId,
-        purpose,
-        tier,
-        used: false,
-        validUntil,
-      },
+    const paymentId = randomUUID();
+    await db.insert(paymentTable).values({
+      id: paymentId,
+      amount: config.price,
+      currency: "INR",
+      status: "PENDING",
+      providerId: order.id,
+      userId: session.userId,
+      purpose,
+      tier,
+      used: false,
+      validUntil,
+      updatedAt: now.toISOString(),
     });
 
     return {
       success: true,
       data: {
-        paymentId: payment.id,
+        paymentId,
         orderId: order.id,
         amount: config.price * 100,
         currency: "INR",
@@ -116,8 +118,8 @@ export async function verifyPayment(
   razorpaySignature: string,
 ): Promise<ActionResponse<null>> {
   try {
-    const payment = await prisma.payment.findUnique({
-      where: { id: paymentId },
+    const payment = await db.query.payment.findFirst({
+      where: eq(paymentTable.id, paymentId),
     });
 
     if (!payment) {
@@ -125,7 +127,7 @@ export async function verifyPayment(
     }
 
     if (payment.status === "PAID") {
-      return { success: true, data: null }; // already processed, idempotent
+      return { success: true, data: null };
     }
 
     const isValid = RazorpayService.verifyPaymentSignature(
@@ -133,22 +135,21 @@ export async function verifyPayment(
       razorpayPaymentId,
       razorpaySignature,
     );
+    
     if (!isValid) {
-      await prisma.payment.update({
-        where: { id: paymentId },
-        data: { status: "FAILED" },
-      });
+      await db.update(paymentTable).set({ 
+        status: "FAILED",
+        updatedAt: new Date().toISOString(),
+      }).where(eq(paymentTable.id, paymentId));
       throw new AppError(ERROR_MESSAGES.PAYMENT_SIGNATURE_INVALID);
     }
 
     // Update to PAID
-    await prisma.payment.update({
-      where: { id: paymentId },
-      data: {
-        status: "PAID",
-        referenceId: razorpayPaymentId,
-      },
-    });
+    await db.update(paymentTable).set({
+      status: "PAID",
+      referenceId: razorpayPaymentId,
+      updatedAt: new Date().toISOString(),
+    }).where(eq(paymentTable.id, paymentId));
 
     revalidatePath("/profile");
     return { success: true, data: null };
@@ -162,11 +163,11 @@ export async function getBillingHistory() {
   const session = await getSession();
   if (!session?.userId) return [];
 
-  return prisma.payment.findMany({
-    where: { userId: session.userId },
-    orderBy: { createdAt: "desc" },
-    include: {
-      festival: { select: { name: true } },
+  return db.query.payment.findMany({
+    where: eq(paymentTable.userId, session.userId),
+    orderBy: [desc(paymentTable.createdAt)],
+    with: {
+      festival: { columns: { name: true } },
     },
   });
 }

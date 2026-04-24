@@ -1,12 +1,18 @@
-import { randomInt } from "node:crypto";
-import type { ProgrammeReportingStatus } from "@prisma/client";
-import { prisma } from "@/lib/db";
-import { emitDomainRealtimeEvent } from "@/server/realtime/domain-events";
-import { RealtimeRoom } from "@/server/realtime/rooms";
+import { randomInt, randomUUID } from "node:crypto";
+import { db } from "@/lib/db";
+import { 
+  programmeReportingSession as prsTable, 
+  scheduleEntry as scheduleEntryTable,
+  programme as programmeTable,
+  programmeCodeLetter as codeLetterTable,
+  programmeCodeLetterRecipient as codeLetterRecipientTable,
+  programmeReportedParticipant as reportedParticipantTable,
+  programmeAssignment as assignmentTable,
+  stage as stageTable,
+  category as categoryTable
+} from "@/server/db/schema";
+import { eq, and, desc, inArray, count, asc, sql } from "drizzle-orm";
 import { NotificationService } from "@/server/services/notification.service";
-
-// Note: No hard time limit - reporting stays open until manually closed
-// Estimated time is calculated dynamically based on reporting rate
 
 /** 1 → A, 2 → B, … 26 → Z, 27 → AA (same as spreadsheet column letters). */
 function sequentialAlphabetCode(indexOneBased: number): string {
@@ -30,81 +36,81 @@ function shuffleInPlace<T>(arr: T[]): void {
 }
 
 async function getOrCreateSessionByScheduleEntry(scheduleEntryId: string) {
-  const existing = await prisma.programmeReportingSession.findUnique({
-    where: { scheduleEntryId },
-    include: {
+  const existing = await db.query.programmeReportingSession.findFirst({
+    where: eq(prsTable.scheduleEntryId, scheduleEntryId),
+    with: {
       scheduleEntry: {
-        include: { programme: true, stage: true },
+        with: { programme: true, stage: true },
       },
     },
   });
   if (existing) return existing;
 
-  const entry = await prisma.scheduleEntry.findUnique({
-    where: { id: scheduleEntryId },
-    include: { programme: true, stage: true },
+  const entry = await db.query.scheduleEntry.findFirst({
+    where: eq(scheduleEntryTable.id, scheduleEntryId),
+    with: { programme: true, stage: true },
   });
   if (!entry || !entry.programmeId || !entry.programme) {
     throw new Error("Scheduled programme entry not found");
   }
 
-  return prisma.programmeReportingSession.create({
-    data: {
-      festivalId: entry.festivalId,
-      scheduleEntryId: entry.id,
-      programmeId: entry.programmeId,
-      stageId: entry.stageId,
-      status: "NOT_STARTED",
-    },
-    include: {
+  const newId = randomUUID();
+  await db.insert(prsTable).values({
+    id: newId,
+    festivalId: entry.festivalId,
+    scheduleEntryId: entry.id,
+    programmeId: entry.programmeId,
+    stageId: entry.stageId,
+    status: "NOT_STARTED",
+    updatedAt: new Date().toISOString(),
+  });
+
+  return db.query.programmeReportingSession.findFirst({
+    where: eq(prsTable.id, newId),
+    with: {
       scheduleEntry: { include: { programme: true, stage: true } },
     },
   });
 }
 
 async function getAssignedRecipientsForSession(reportingSessionId: string) {
-  const session = await prisma.programmeReportingSession.findUnique({
-    where: { id: reportingSessionId },
-    select: { festivalId: true, programmeId: true },
+  const session = await db.query.programmeReportingSession.findFirst({
+    where: eq(prsTable.id, reportingSessionId),
+    columns: { festivalId: true, programmeId: true },
   });
   if (!session) return null;
   return session;
 }
 
 export const ProgrammeReportingService = {
-  // Removed: REPORTING_WINDOW_MINUTES - no hard time limit
-
   async listByFestival(festivalId: string) {
-    const entries = await prisma.scheduleEntry.findMany({
-      where: {
-        festivalId,
-        type: "PROGRAMME",
-      },
-      include: {
+    const entries = await db.query.scheduleEntry.findMany({
+      where: and(
+        eq(scheduleEntryTable.festivalId, festivalId),
+        eq(scheduleEntryTable.type, "PROGRAMME")
+      ),
+      with: {
         programme: {
-          select: {
-            id: true,
-            name: true,
-            status: true,
-            type: true,
-            category: { select: { id: true, name: true } },
+          with: {
+            category: true,
           },
         },
-        stage: { select: { id: true, name: true } },
+        stage: true,
         reportingSessions: {
-          include: {
+          with: {
             reportedParticipants: true,
             codeLetters: {
-              orderBy: { issuedAt: "asc" },
-              include: {
-                recipients: { select: { studentId: true } },
+              orderBy: [asc(codeLetterTable.issuedAt)],
+              with: {
+                recipients: { columns: { studentId: true } },
               },
             },
           },
         },
       },
-      orderBy: [{ startTime: "asc" }, { order: "asc" }],
+      orderBy: [asc(scheduleEntryTable.startTime), asc(scheduleEntryTable.order)],
     });
+    
     return entries.map((entry) => ({
       ...entry,
       reportingSession: entry.reportingSessions ?? null,
@@ -113,28 +119,26 @@ export const ProgrammeReportingService = {
 
   async start(scheduleEntryId: string, actorName: string) {
     const session = await getOrCreateSessionByScheduleEntry(scheduleEntryId);
+    if (!session) throw new Error("Reporting session not found");
     if (session.isLocked)
       throw new Error("Reporting is locked for this programme");
     if (session.status === "CLOSED")
       throw new Error("Reporting already closed");
 
-    const now = new Date();
-    // No hard time limit - windowEndsAt is null, reporting stays open until manually closed
+    const now = new Date().toISOString();
     const windowEndsAt = null;
 
-    const updated = await prisma.programmeReportingSession.update({
-      where: { id: session.id },
-      data: {
-        status: "IN_PROGRESS",
-        startedAt: now,
-        startedBy: actorName,
-        endedAt: null,
-        endedBy: null,
-        windowEndsAt,
-      },
-    });
+    const updated = await db.update(prsTable).set({
+      status: "IN_PROGRESS",
+      startedAt: now,
+      startedBy: actorName,
+      endedAt: null,
+      endedBy: null,
+      windowEndsAt,
+      updatedAt: now,
+    }).where(eq(prsTable.id, session.id)).returning();
 
-    const targets = await getAssignedRecipientsForSession(updated.id);
+    const targets = await getAssignedRecipientsForSession(session.id);
     if (targets) {
       await NotificationService.dispatch({
         eventType: "REPORTING_STARTED",
@@ -147,18 +151,19 @@ export const ProgrammeReportingService = {
           title: "Programme reporting started",
           body: "Stage reporting has started. Please report to the stage manager.",
           payload: {
-            reportingSessionId: updated.id,
+            reportingSessionId: session.id,
             programmeId: targets.programmeId,
           },
         },
-        channels: ["IN_APP", "REALTIME", "EMAIL"],
+        channels: ["IN_APP", "EMAIL"],
       });
     }
 
-    await prisma.programme.update({
-      where: { id: session.programmeId },
-      data: { status: "REPORTING" },
-    });
+    await db.update(programmeTable).set({ 
+      status: "REPORTING",
+      updatedAt: now,
+    }).where(eq(programmeTable.id, session.programmeId));
+    
     await NotificationService.dispatch({
       eventType: "PROGRAMME_STATUS_CHANGED",
       festivalId: session.festivalId,
@@ -171,83 +176,55 @@ export const ProgrammeReportingService = {
         body: "Programme is now in Reporting status.",
         payload: { programmeId: session.programmeId, status: "REPORTING" },
       },
-      channels: ["IN_APP", "REALTIME"],
+        channels: ["IN_APP"],
     });
-    await emitDomainRealtimeEvent({
-      eventName: "reporting.updated",
-      festivalId: session.festivalId,
-      entityType: "reportingSession",
-      entityId: updated.id,
-      roomKeys: [
-        RealtimeRoom.festivalAll(session.festivalId),
-        RealtimeRoom.reportingSession(session.festivalId, updated.id),
-      ],
-      payload: {
-        reportingSessionId: updated.id,
-        programmeId: session.programmeId,
-        status: "IN_PROGRESS",
-      },
-    });
-
-    return updated;
+    
+    
+    return updated[0];
   },
 
   async reset(reportingSessionId: string, actorName: string) {
-    const session = await prisma.programmeReportingSession.findUnique({
-      where: { id: reportingSessionId },
-      include: {
-        programme: { select: { type: true } },
+    const session = await db.query.programmeReportingSession.findFirst({
+      where: eq(prsTable.id, reportingSessionId),
+      with: {
+        programme: { columns: { type: true } },
       },
     });
     if (!session) throw new Error("Reporting session not found");
     if (session.isLocked) throw new Error("Reporting is locked");
 
-    // Clear all reporting data in a transaction
-    await prisma.$transaction(async (tx) => {
-      // 1. Delete all code letter recipients
-      const codeLetters = await tx.programmeCodeLetter.findMany({
-        where: { reportingSessionId },
-        select: { id: true },
+    const now = new Date().toISOString();
+
+    await db.transaction(async (tx) => {
+      const codeLetters = await tx.query.programmeCodeLetter.findMany({
+        where: eq(codeLetterTable.reportingSessionId, reportingSessionId),
+        columns: { id: true },
       });
 
       if (codeLetters.length > 0) {
         const codeLetterIds = codeLetters.map((cl) => cl.id);
-        await tx.programmeCodeLetterRecipient.deleteMany({
-          where: { codeLetterId: { in: codeLetterIds } },
-        });
+        await tx.delete(codeLetterRecipientTable).where(inArray(codeLetterRecipientTable.codeLetterId, codeLetterIds));
       }
 
-      // 2. Delete all code letters
-      await tx.programmeCodeLetter.deleteMany({
-        where: { reportingSessionId },
-      });
+      await tx.delete(codeLetterTable).where(eq(codeLetterTable.reportingSessionId, reportingSessionId));
+      await tx.delete(reportedParticipantTable).where(eq(reportedParticipantTable.reportingSessionId, reportingSessionId));
 
-      // 3. Delete all reported participants
-      await tx.programmeReportedParticipant.deleteMany({
-        where: { reportingSessionId },
-      });
+      await tx.update(prsTable).set({
+        status: "RESET",
+        startedAt: null,
+        startedBy: null,
+        endedAt: now,
+        endedBy: actorName,
+        windowEndsAt: null,
+        updatedAt: now,
+      }).where(eq(prsTable.id, reportingSessionId));
 
-      // 4. Reset the reporting session
-      await tx.programmeReportingSession.update({
-        where: { id: reportingSessionId },
-        data: {
-          status: "RESET",
-          startedAt: null,
-          startedBy: null,
-          endedAt: new Date(),
-          endedBy: actorName,
-          windowEndsAt: null,
-        },
-      });
-
-      // 5. Reset programme status
-      await tx.programme.update({
-        where: { id: session.programmeId },
-        data: { status: "RESET" },
-      });
+      await tx.update(programmeTable).set({ 
+        status: "RESET",
+        updatedAt: now,
+      }).where(eq(programmeTable.id, session.programmeId));
     });
 
-    // Send notifications
     await NotificationService.dispatch({
       eventType: "PROGRAMME_STATUS_CHANGED",
       festivalId: session.festivalId,
@@ -260,7 +237,7 @@ export const ProgrammeReportingService = {
         body: `Programme has been reset. All reporting data cleared. Status: RESET`,
         payload: { programmeId: session.programmeId, status: "RESET" },
       },
-      channels: ["IN_APP", "REALTIME"],
+        channels: ["IN_APP"],
     });
 
     await NotificationService.dispatch({
@@ -275,26 +252,10 @@ export const ProgrammeReportingService = {
         body: "All reporting data has been cleared. You can start fresh.",
         payload: { reportingSessionId, programmeId: session.programmeId },
       },
-      channels: ["IN_APP", "REALTIME", "EMAIL"],
+        channels: ["IN_APP", "EMAIL"],
     });
 
-    await emitDomainRealtimeEvent({
-      eventName: "reporting.updated",
-      festivalId: session.festivalId,
-      entityType: "reportingSession",
-      entityId: reportingSessionId,
-      roomKeys: [
-        RealtimeRoom.festivalAll(session.festivalId),
-        RealtimeRoom.reportingSession(session.festivalId, reportingSessionId),
-      ],
-      payload: {
-        reportingSessionId,
-        programmeId: session.programmeId,
-        status: "RESET",
-        cleared: true,
-      },
-    });
-
+    
     return {
       success: true,
       message: `Reporting reset successfully. All ${session.programme.type === "GROUP" ? "team" : "student"} data cleared.`,
@@ -307,16 +268,10 @@ export const ProgrammeReportingService = {
     isReported: boolean,
     actorName: string,
   ) {
-    const session = await prisma.programmeReportingSession.findUnique({
-      where: { id: reportingSessionId },
-      select: {
-        id: true,
-        status: true,
-        isLocked: true,
-        windowEndsAt: true,
-        festivalId: true,
-        programmeId: true,
-        programme: { select: { type: true } },
+    const session = await db.query.programmeReportingSession.findFirst({
+      where: eq(prsTable.id, reportingSessionId),
+      with: {
+        programme: { columns: { type: true } },
       },
     });
     if (!session) throw new Error("Reporting session not found");
@@ -324,11 +279,10 @@ export const ProgrammeReportingService = {
     if (session.status !== "IN_PROGRESS") {
       throw new Error("Reporting must be in progress to mark participants");
     }
-    // No time check - reporting stays open until manually closed
 
-    const assignment = await prisma.programmeAssignment.findUnique({
-      where: { id: assignmentId },
-      select: {
+    const assignment = await db.query.programmeAssignment.findFirst({
+      where: eq(assignmentTable.id, assignmentId),
+      columns: {
         id: true,
         programmeId: true,
         studentId: true,
@@ -342,37 +296,22 @@ export const ProgrammeReportingService = {
         "Assignment does not belong to this programme reporting session",
       );
     }
-    if (
-      session.programme.type === "INDIVIDUAL" &&
-      (assignment.teamNumber ?? 1) > 1
-    ) {
-      throw new Error(
-        "Invalid team assignment for individual programme reporting",
-      );
-    }
-    if (
-      session.programme.type === "GROUP" &&
-      (assignment.teamNumber ?? 0) < 1
-    ) {
-      throw new Error("Invalid team assignment for group programme reporting");
-    }
+    
+    const now = new Date().toISOString();
 
     if (isReported) {
-      // For GROUP programmes, mark entire team when one member is scanned
       if (
         session.programme.type === "GROUP" &&
         assignment.groupId &&
         assignment.teamNumber
       ) {
-        // Check if team already reported
-        const existingTeamReport =
-          await prisma.programmeReportedParticipant.findFirst({
-            where: {
-              reportingSessionId,
-              groupId: assignment.groupId,
-              teamNumber: assignment.teamNumber,
-            },
-          });
+        const existingTeamReport = await db.query.programmeReportedParticipant.findFirst({
+          where: and(
+            eq(reportedParticipantTable.reportingSessionId, reportingSessionId),
+            eq(reportedParticipantTable.groupId, assignment.groupId),
+            eq(reportedParticipantTable.teamNumber, assignment.teamNumber)
+          ),
+        });
 
         if (existingTeamReport) {
           throw new Error(
@@ -380,44 +319,38 @@ export const ProgrammeReportingService = {
           );
         }
 
-        // Find all team assignments
-        const teamAssignments = await prisma.programmeAssignment.findMany({
-          where: {
-            programmeId: session.programmeId,
-            groupId: assignment.groupId,
-            teamNumber: assignment.teamNumber,
-          },
-          select: {
-            id: true,
-            studentId: true,
-          },
+        const teamAssignments = await db.query.programmeAssignment.findMany({
+          where: and(
+            eq(assignmentTable.programmeId, session.programmeId),
+            eq(assignmentTable.groupId, assignment.groupId),
+            eq(assignmentTable.teamNumber, assignment.teamNumber)
+          ),
+          columns: { id: true, studentId: true },
         });
 
-        // Mark all team members as reported
-        for (const teamAssignment of teamAssignments) {
-          await prisma.programmeReportedParticipant.upsert({
-            where: {
-              reportingSessionId_assignmentId: {
-                reportingSessionId,
-                assignmentId: teamAssignment.id,
-              },
-            },
-            update: {
-              reportedAt: new Date(),
-              reportedBy: actorName,
-            },
-            create: {
+        await db.transaction(async (tx) => {
+          for (const ta of teamAssignments) {
+            await tx.insert(reportedParticipantTable).values({
+              id: randomUUID(),
               reportingSessionId,
-              assignmentId: teamAssignment.id,
-              studentId: teamAssignment.studentId ?? null,
+              assignmentId: ta.id,
+              studentId: ta.studentId,
               groupId: assignment.groupId,
               teamNumber: assignment.teamNumber,
               reportedBy: actorName,
-            },
-          });
-        }
+              reportedAt: now,
+              updatedAt: now,
+            }).onConflictDoUpdate({
+              target: [reportedParticipantTable.reportingSessionId, reportedParticipantTable.assignmentId],
+              set: {
+                reportedAt: now,
+                reportedBy: actorName,
+                updatedAt: now,
+              }
+            });
+          }
+        });
 
-        // Send notifications to all team members
         const teamStudentIds = teamAssignments
           .map((a) => a.studentId)
           .filter((id): id is string => id !== null);
@@ -436,51 +369,28 @@ export const ProgrammeReportingService = {
                 isReported: true,
               },
             },
-            channels: ["IN_APP", "REALTIME"],
+            channels: ["IN_APP"],
           });
         }
 
-        // Emit realtime event for team
-        await emitDomainRealtimeEvent({
-          eventName: "reporting.participant_marked",
-          festivalId: session.festivalId,
-          entityType: "reportingSession",
-          entityId: reportingSessionId,
-          roomKeys: [
-            RealtimeRoom.festivalAll(session.festivalId),
-            RealtimeRoom.reportingSession(
-              session.festivalId,
-              reportingSessionId,
-            ),
-          ],
-          payload: {
-            reportingSessionId,
-            teamNumber: assignment.teamNumber,
-            membersCount: teamAssignments.length,
-            isReported: true,
-          },
-        });
-      } else {
-        // INDIVIDUAL programme or team not specified - mark single participant
-        await prisma.programmeReportedParticipant.upsert({
-          where: {
-            reportingSessionId_assignmentId: {
-              reportingSessionId,
-              assignmentId,
-            },
-          },
-          update: {
-            reportedAt: new Date(),
+              } else {
+        await db.insert(reportedParticipantTable).values({
+          id: randomUUID(),
+          reportingSessionId,
+          assignmentId,
+          studentId: assignment.studentId,
+          groupId: assignment.groupId,
+          teamNumber: assignment.teamNumber,
+          reportedBy: actorName,
+          reportedAt: now,
+          updatedAt: now,
+        }).onConflictDoUpdate({
+          target: [reportedParticipantTable.reportingSessionId, reportedParticipantTable.assignmentId],
+          set: {
+            reportedAt: now,
             reportedBy: actorName,
-          },
-          create: {
-            reportingSessionId,
-            assignmentId,
-            studentId: assignment.studentId ?? null,
-            groupId: assignment.groupId ?? null,
-            teamNumber: assignment.teamNumber ?? null,
-            reportedBy: actorName,
-          },
+            updatedAt: now,
+          }
         });
 
         if (assignment.studentId) {
@@ -490,74 +400,35 @@ export const ProgrammeReportingService = {
             targets: { studentIds: [assignment.studentId] },
             context: {
               title: "Reporting attendance updated",
-              body: isReported
-                ? "You have been marked as reported by stage manager."
-                : "Your reporting mark was removed by stage manager.",
-              payload: { reportingSessionId, assignmentId, isReported },
+              body: "You have been marked as reported by stage manager.",
+              payload: { reportingSessionId, assignmentId, isReported: true },
             },
-            channels: ["IN_APP", "REALTIME"],
+            channels: ["IN_APP"],
           });
         }
-        await emitDomainRealtimeEvent({
-          eventName: "reporting.participant_marked",
+              }
+    } else {
+      await db.delete(reportedParticipantTable).where(and(
+        eq(reportedParticipantTable.reportingSessionId, reportingSessionId),
+        eq(reportedParticipantTable.assignmentId, assignmentId)
+      ));
+      
+      if (assignment.studentId) {
+        await NotificationService.dispatch({
+          eventType: "REPORTING_PARTICIPANT_MARKED",
           festivalId: session.festivalId,
-          entityType: "reportingSession",
-          entityId: reportingSessionId,
-          roomKeys: [
-            RealtimeRoom.festivalAll(session.festivalId),
-            RealtimeRoom.reportingSession(
-              session.festivalId,
-              reportingSessionId,
-            ),
-          ],
-          payload: {
-            reportingSessionId,
-            assignmentId,
-            isReported,
+          targets: { studentIds: [assignment.studentId] },
+          context: {
+            title: "Reporting attendance updated",
+            body: "Your reporting mark was removed by stage manager.",
+            payload: { reportingSessionId, assignmentId, isReported: false },
           },
+          channels: ["IN_APP"],
         });
       }
-    } else {
-      await prisma.programmeReportedParticipant.deleteMany({
-        where: { reportingSessionId, assignmentId },
-      });
-    }
-
-    if (assignment.studentId) {
-      await NotificationService.dispatch({
-        eventType: "REPORTING_PARTICIPANT_MARKED",
-        festivalId: session.festivalId,
-        targets: { studentIds: [assignment.studentId] },
-        context: {
-          title: "Reporting attendance updated",
-          body: isReported
-            ? "You have been marked as reported by stage manager."
-            : "Your reporting mark was removed by stage manager.",
-          payload: { reportingSessionId, assignmentId, isReported },
-        },
-        channels: ["IN_APP", "REALTIME"],
-      });
-    }
-    await emitDomainRealtimeEvent({
-      eventName: "reporting.participant_marked",
-      festivalId: session.festivalId,
-      entityType: "reportingSession",
-      entityId: reportingSessionId,
-      roomKeys: [
-        RealtimeRoom.festivalAll(session.festivalId),
-        RealtimeRoom.reportingSession(session.festivalId, reportingSessionId),
-      ],
-      payload: {
-        reportingSessionId,
-        assignmentId,
-        isReported,
-      },
-    });
+          }
   },
 
-  /**
-   * Mark many assignments in one transaction (e.g. whole group team checked at once).
-   */
   async markParticipantsBulk(
     reportingSessionId: string,
     assignmentIds: string[],
@@ -566,16 +437,10 @@ export const ProgrammeReportingService = {
   ) {
     if (assignmentIds.length === 0) return;
 
-    const session = await prisma.programmeReportingSession.findUnique({
-      where: { id: reportingSessionId },
-      select: {
-        id: true,
-        status: true,
-        isLocked: true,
-        windowEndsAt: true,
-        festivalId: true,
-        programmeId: true,
-        programme: { select: { type: true } },
+    const session = await db.query.programmeReportingSession.findFirst({
+      where: eq(prsTable.id, reportingSessionId),
+      with: {
+        programme: { columns: { type: true } },
       },
     });
     if (!session) throw new Error("Reporting session not found");
@@ -583,11 +448,10 @@ export const ProgrammeReportingService = {
     if (session.status !== "IN_PROGRESS") {
       throw new Error("Reporting must be in progress to mark participants");
     }
-    // No time check - reporting stays open until manually closed
 
-    const assignments = await prisma.programmeAssignment.findMany({
-      where: { id: { in: assignmentIds } },
-      select: {
+    const assignments = await db.query.programmeAssignment.findMany({
+      where: inArray(assignmentTable.id, assignmentIds),
+      columns: {
         id: true,
         programmeId: true,
         studentId: true,
@@ -599,60 +463,34 @@ export const ProgrammeReportingService = {
       throw new Error("One or more assignments not found");
     }
 
-    for (const assignment of assignments) {
-      if (assignment.programmeId !== session.programmeId) {
-        throw new Error(
-          "Assignment does not belong to this programme reporting session",
-        );
-      }
-      if (
-        session.programme.type === "INDIVIDUAL" &&
-        (assignment.teamNumber ?? 1) > 1
-      ) {
-        throw new Error(
-          "Invalid team assignment for individual programme reporting",
-        );
-      }
-      if (
-        session.programme.type === "GROUP" &&
-        (assignment.teamNumber ?? 0) < 1
-      ) {
-        throw new Error(
-          "Invalid team assignment for group programme reporting",
-        );
-      }
-    }
+    const now = new Date().toISOString();
 
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       for (const assignment of assignments) {
         if (isReported) {
-          await tx.programmeReportedParticipant.upsert({
-            where: {
-              reportingSessionId_assignmentId: {
-                reportingSessionId,
-                assignmentId: assignment.id,
-              },
-            },
-            update: {
-              reportedAt: new Date(),
+          await tx.insert(reportedParticipantTable).values({
+            id: randomUUID(),
+            reportingSessionId,
+            assignmentId: assignment.id,
+            studentId: assignment.studentId,
+            groupId: assignment.groupId,
+            teamNumber: assignment.teamNumber,
+            reportedBy: actorName,
+            reportedAt: now,
+            updatedAt: now,
+          }).onConflictDoUpdate({
+            target: [reportedParticipantTable.reportingSessionId, reportedParticipantTable.assignmentId],
+            set: {
+              reportedAt: now,
               reportedBy: actorName,
-            },
-            create: {
-              reportingSessionId,
-              assignmentId: assignment.id,
-              studentId: assignment.studentId ?? null,
-              groupId: assignment.groupId ?? null,
-              teamNumber: assignment.teamNumber ?? null,
-              reportedBy: actorName,
-            },
+              updatedAt: now,
+            }
           });
         } else {
-          await tx.programmeReportedParticipant.deleteMany({
-            where: {
-              reportingSessionId,
-              assignmentId: assignment.id,
-            },
-          });
+          await tx.delete(reportedParticipantTable).where(and(
+            eq(reportedParticipantTable.reportingSessionId, reportingSessionId),
+            eq(reportedParticipantTable.assignmentId, assignment.id)
+          ));
         }
       }
     });
@@ -674,40 +512,18 @@ export const ProgrammeReportingService = {
             isReported,
           },
         },
-        channels: ["IN_APP", "REALTIME"],
+        channels: ["IN_APP"],
       });
     }
-    await emitDomainRealtimeEvent({
-      eventName: "reporting.participant_marked",
-      festivalId: session.festivalId,
-      entityType: "reportingSession",
-      entityId: reportingSessionId,
-      roomKeys: [
-        RealtimeRoom.festivalAll(session.festivalId),
-        RealtimeRoom.reportingSession(session.festivalId, reportingSessionId),
-      ],
-      payload: {
-        reportingSessionId,
-        assignmentIds,
-        isReported,
       },
-    });
-  },
 
   async close(reportingSessionId: string, actorName: string) {
-    const session = await prisma.programmeReportingSession.findUnique({
-      where: { id: reportingSessionId },
-      include: {
-        programme: { select: { type: true } },
-        scheduleEntry: { select: { startTime: true } },
-        reportedParticipants: {
-          select: {
-            assignmentId: true,
-            studentId: true,
-            groupId: true,
-            teamNumber: true,
-          },
-        },
+    const session = await db.query.programmeReportingSession.findFirst({
+      where: eq(prsTable.id, reportingSessionId),
+      with: {
+        programme: { columns: { type: true } },
+        scheduleEntry: { columns: { startTime: true } },
+        reportedParticipants: true,
       },
     });
     if (!session) throw new Error("Reporting session not found");
@@ -716,19 +532,18 @@ export const ProgrammeReportingService = {
       throw new Error("Only in-progress reporting can be submitted");
     }
 
-    const effectiveEndedAt = session.scheduleEntry.startTime ?? new Date();
+    const effectiveEndedAt = session.scheduleEntry?.startTime || new Date().toISOString();
 
-    const closed = await prisma.$transaction(async (tx) => {
-      const updatedSession = await tx.programmeReportingSession.update({
-        where: { id: reportingSessionId },
-        data: {
-          status: "CLOSED",
-          endedAt: effectiveEndedAt,
-          endedBy: actorName,
-          isLocked: true,
-          windowEndsAt: null,
-        },
-      });
+    const closed = await db.transaction(async (tx) => {
+      const nowStr = new Date().toISOString();
+      await tx.update(prsTable).set({
+        status: "CLOSED",
+        endedAt: effectiveEndedAt,
+        endedBy: actorName,
+        isLocked: true,
+        windowEndsAt: null,
+        updatedAt: nowStr,
+      }).where(eq(prsTable.id, reportingSessionId));
 
       const studentCodes: { studentId: string; code: string }[] = [];
 
@@ -762,21 +577,22 @@ export const ProgrammeReportingService = {
         for (const bucket of teamBuckets) {
           ordinal += 1;
           const code = sequentialAlphabetCode(ordinal);
-          const letter = await tx.programmeCodeLetter.create({
-            data: {
-              festivalId: session.festivalId,
-              reportingSessionId,
-              programmeId: session.programmeId,
-              code,
-              issuedBy: actorName,
-            },
+          const codeLetterId = randomUUID();
+          await tx.insert(codeLetterTable).values({
+            id: codeLetterId,
+            festivalId: session.festivalId,
+            reportingSessionId,
+            programmeId: session.programmeId,
+            code,
+            issuedBy: actorName,
+            updatedAt: nowStr,
           });
           for (const studentId of bucket.studentIds) {
-            await tx.programmeCodeLetterRecipient.create({
-              data: {
-                codeLetterId: letter.id,
-                studentId,
-              },
+            await tx.insert(codeLetterRecipientTable).values({
+              id: randomUUID(),
+              codeLetterId: codeLetterId,
+              studentId,
+              updatedAt: nowStr,
             });
             studentCodes.push({ studentId, code });
           }
@@ -788,32 +604,32 @@ export const ProgrammeReportingService = {
         for (const row of reportedWithStudent) {
           ordinal += 1;
           const code = sequentialAlphabetCode(ordinal);
-          const letter = await tx.programmeCodeLetter.create({
-            data: {
-              festivalId: session.festivalId,
-              reportingSessionId,
-              programmeId: session.programmeId,
-              code,
-              issuedBy: actorName,
-            },
+          const codeLetterId = randomUUID();
+          await tx.insert(codeLetterTable).values({
+            id: codeLetterId,
+            festivalId: session.festivalId,
+            reportingSessionId,
+            programmeId: session.programmeId,
+            code,
+            issuedBy: actorName,
+            updatedAt: nowStr,
           });
-          await tx.programmeCodeLetterRecipient.create({
-            data: {
-              codeLetterId: letter.id,
-              studentId: row.studentId,
-            },
+          await tx.insert(codeLetterRecipientTable).values({
+            id: randomUUID(),
+            codeLetterId: codeLetterId,
+            studentId: row.studentId,
+            updatedAt: nowStr,
           });
           studentCodes.push({ studentId: row.studentId, code });
         }
       }
 
-      await tx.programme.update({
-        where: { id: session.programmeId },
-        // After reporting submit, judges can start working. Programme becomes STARTED.
-        data: { status: "STARTED" },
-      });
+      await tx.update(programmeTable).set({ 
+        status: "STARTED",
+        updatedAt: nowStr,
+      }).where(eq(programmeTable.id, session.programmeId));
 
-      return { updatedSession, studentCodes };
+      return { studentCodes };
     });
 
     await NotificationService.dispatch({
@@ -834,8 +650,9 @@ export const ProgrammeReportingService = {
           programmeId: session.programmeId,
         },
       },
-      channels: ["IN_APP", "REALTIME", "EMAIL"],
+        channels: ["IN_APP", "EMAIL"],
     });
+    
     await NotificationService.dispatch({
       eventType: "PROGRAMME_STATUS_CHANGED",
       festivalId: session.festivalId,
@@ -852,7 +669,7 @@ export const ProgrammeReportingService = {
           status: "STARTED",
         },
       },
-      channels: ["IN_APP", "REALTIME"],
+        channels: ["IN_APP"],
     });
 
     const isGroup = session.programme.type === "GROUP";
@@ -872,68 +689,49 @@ export const ProgrammeReportingService = {
             codeLetter: code,
           },
         },
-        channels: ["IN_APP", "REALTIME"],
+        channels: ["IN_APP"],
       });
     }
-    await emitDomainRealtimeEvent({
-      eventName: "reporting.updated",
-      festivalId: session.festivalId,
-      entityType: "reportingSession",
-      entityId: reportingSessionId,
-      roomKeys: [
-        RealtimeRoom.festivalAll(session.festivalId),
-        RealtimeRoom.reportingSession(session.festivalId, reportingSessionId),
-      ],
-      payload: {
-        reportingSessionId,
-        programmeId: session.programmeId,
-        status: "CLOSED",
-      },
-    });
-
+    
     return closed;
   },
 
   async unlockByScheduleEntryChange(scheduleEntryId: string) {
-    const session = await prisma.programmeReportingSession.findUnique({
-      where: { scheduleEntryId },
-      select: { id: true },
+    const session = await db.query.programmeReportingSession.findFirst({
+      where: eq(prsTable.scheduleEntryId, scheduleEntryId),
+      columns: { id: true },
     });
     if (!session) return;
-    await prisma.programmeReportingSession.update({
-      where: { id: session.id },
-      data: { isLocked: false, status: "RESET" as ProgrammeReportingStatus },
-    });
+    await db.update(prsTable).set({ 
+      isLocked: false, 
+      status: "RESET",
+      updatedAt: new Date().toISOString(),
+    }).where(eq(prsTable.id, session.id));
   },
 
-  /**
-   * Get reporting statistics including estimated completion time
-   * Used to display progress and time estimates to stage managers
-   */
   async getReportingStats(reportingSessionId: string) {
-    const session = await prisma.programmeReportingSession.findUnique({
-      where: { id: reportingSessionId },
-      include: {
-        programme: {
-          include: {
-            _count: { select: { assignments: true } },
-          },
-        },
+    const session = await db.query.programmeReportingSession.findFirst({
+      where: eq(prsTable.id, reportingSessionId),
+      with: {
+        programme: true,
         reportedParticipants: true,
       },
     });
 
     if (!session) throw new Error("Reporting session not found");
 
-    const totalParticipants = session.programme._count.assignments;
+    const [assignmentCountResult] = await db
+      .select({ c: count() })
+      .from(assignmentTable)
+      .where(eq(assignmentTable.programmeId, session.programmeId));
+      
+    const totalParticipants = assignmentCountResult.c;
     const isGroupProgramme = session.programme.type === "GROUP";
 
-    // For GROUP programmes, count unique teams, not individual participants
     let reportedCount: number;
-    let totalUnits: number; // Teams for GROUP, Students for INDIVIDUAL
+    let totalUnits: number;
 
     if (isGroupProgramme) {
-      // Count unique teams (groupBy groupId + teamNumber)
       const uniqueTeams = new Map<string, { members: number }>();
       for (const participant of session.reportedParticipants) {
         if (participant.groupId && participant.teamNumber !== null) {
@@ -946,10 +744,9 @@ export const ProgrammeReportingService = {
       }
       reportedCount = uniqueTeams.size;
 
-      // Count total unique teams in assignments
-      const allAssignments = await prisma.programmeAssignment.findMany({
-        where: { programmeId: session.programmeId },
-        select: { groupId: true, teamNumber: true },
+      const allAssignments = await db.query.programmeAssignment.findMany({
+        where: eq(assignmentTable.programmeId, session.programmeId),
+        columns: { groupId: true, teamNumber: true },
       });
       const totalUniqueTeams = new Map<string, number>();
       for (const assignment of allAssignments) {
@@ -960,21 +757,19 @@ export const ProgrammeReportingService = {
       }
       totalUnits = totalUniqueTeams.size;
     } else {
-      // INDIVIDUAL: count students directly
       reportedCount = session.reportedParticipants.length;
       totalUnits = totalParticipants;
     }
 
     const remaining = totalUnits - reportedCount;
-    const startTime = session.startedAt;
+    const startTime = session.startedAt ? new Date(session.startedAt) : null;
 
     let estimatedEnd: Date | null = null;
     let estimatedRemainingMinutes: number | null = null;
 
-    // Calculate estimated time only if reporting has started and we have data
     if (startTime && reportedCount > 0 && remaining > 0) {
       const elapsed = Date.now() - startTime.getTime();
-      const rate = elapsed / reportedCount; // milliseconds per unit
+      const rate = elapsed / reportedCount;
       const remainingMs = rate * remaining;
       estimatedRemainingMinutes = Math.ceil(remainingMs / 60000);
       estimatedEnd = new Date(Date.now() + remainingMs);
@@ -997,10 +792,6 @@ export const ProgrammeReportingService = {
     };
   },
 
-  /**
-   * Assign code letters to teams based on spin wheel selection
-   * Creates code letters and assigns recipients
-   */
   async assignCodesWithSpin(
     reportingSessionId: string,
     codeAssignments: Array<{
@@ -1009,18 +800,11 @@ export const ProgrammeReportingService = {
     }>,
     actorName: string,
   ) {
-    const session = await prisma.programmeReportingSession.findUnique({
-      where: { id: reportingSessionId },
-      include: {
-        programme: { select: { type: true } },
-        reportedParticipants: {
-          select: {
-            assignmentId: true,
-            studentId: true,
-            groupId: true,
-            teamNumber: true,
-          },
-        },
+    const session = await db.query.programmeReportingSession.findFirst({
+      where: eq(prsTable.id, reportingSessionId),
+      with: {
+        programme: { columns: { type: true } },
+        reportedParticipants: true,
       },
     });
 
@@ -1035,11 +819,10 @@ export const ProgrammeReportingService = {
     }
 
     const studentCodes: { studentId: string; code: string }[] = [];
+    const nowStr = new Date().toISOString();
 
-    // Process each code assignment
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       for (const assignment of codeAssignments) {
-        // Find all reported participants for this team
         const teamParticipants = session.reportedParticipants.filter(
           (p) =>
             p.groupId !== null &&
@@ -1053,25 +836,24 @@ export const ProgrammeReportingService = {
           );
         }
 
-        // Create code letter
-        const codeLetter = await tx.programmeCodeLetter.create({
-          data: {
-            festivalId: session.festivalId,
-            reportingSessionId,
-            programmeId: session.programmeId,
-            code: assignment.code,
-            issuedBy: actorName,
-          },
+        const codeLetterId = randomUUID();
+        await tx.insert(codeLetterTable).values({
+          id: codeLetterId,
+          festivalId: session.festivalId,
+          reportingSessionId,
+          programmeId: session.programmeId,
+          code: assignment.code,
+          issuedBy: actorName,
+          updatedAt: nowStr,
         });
 
-        // Assign code to all team members
         for (const participant of teamParticipants) {
           if (participant.studentId) {
-            await tx.programmeCodeLetterRecipient.create({
-              data: {
-                codeLetterId: codeLetter.id,
-                studentId: participant.studentId,
-              },
+            await tx.insert(codeLetterRecipientTable).values({
+              id: randomUUID(),
+              codeLetterId: codeLetterId,
+              studentId: participant.studentId,
+              updatedAt: nowStr,
             });
             studentCodes.push({
               studentId: participant.studentId,
@@ -1081,20 +863,21 @@ export const ProgrammeReportingService = {
         }
       }
 
-      // Close the reporting session
-      await tx.programmeReportingSession.update({
-        where: { id: reportingSessionId },
-        data: {
-          status: "CLOSED",
-          endedAt: new Date(),
-          endedBy: actorName,
-          isLocked: true,
-          windowEndsAt: null,
-        },
-      });
+      await tx.update(prsTable).set({
+        status: "CLOSED",
+        endedAt: nowStr,
+        endedBy: actorName,
+        isLocked: true,
+        windowEndsAt: null,
+        updatedAt: nowStr,
+      }).where(eq(prsTable.id, reportingSessionId));
+      
+      await tx.update(programmeTable).set({ 
+        status: "STARTED",
+        updatedAt: nowStr,
+      }).where(eq(programmeTable.id, session.programmeId));
     });
 
-    // Send notifications to all students with their codes
     for (const { studentId, code } of studentCodes) {
       await NotificationService.dispatch({
         eventType: "REPORTING_CLOSED",
@@ -1109,33 +892,11 @@ export const ProgrammeReportingService = {
             programmeId: session.programmeId,
           },
         },
-        channels: ["IN_APP", "REALTIME", "EMAIL"],
+        channels: ["IN_APP", "EMAIL"],
       });
     }
 
-    // Emit realtime event
-    await emitDomainRealtimeEvent({
-      eventName: "reporting.updated",
-      festivalId: session.festivalId,
-      entityType: "reportingSession",
-      entityId: reportingSessionId,
-      roomKeys: [
-        RealtimeRoom.festivalAll(session.festivalId),
-        RealtimeRoom.reportingSession(session.festivalId, reportingSessionId),
-      ],
-      payload: {
-        reportingSessionId,
-        codesCount: codeAssignments.length,
-        studentsCount: studentCodes.length,
-      },
-    });
-
-    // Update programme status
-    await prisma.programme.update({
-      where: { id: session.programmeId },
-      data: { status: "STARTED" },
-    });
-
+    
     await NotificationService.dispatch({
       eventType: "PROGRAMME_STATUS_CHANGED",
       festivalId: session.festivalId,
@@ -1152,7 +913,7 @@ export const ProgrammeReportingService = {
           status: "STARTED",
         },
       },
-      channels: ["IN_APP", "REALTIME"],
+        channels: ["IN_APP"],
     });
 
     return {

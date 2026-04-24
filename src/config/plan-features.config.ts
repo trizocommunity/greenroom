@@ -1,4 +1,4 @@
-import type { Tier } from "@prisma/client";
+import type { Tier } from "@/lib/app-enums";
 import type { FeaturePath } from "@/lib/features";
 
 /** Keys in TierFeatures that are boolean and can be toggled by Super Admin. */

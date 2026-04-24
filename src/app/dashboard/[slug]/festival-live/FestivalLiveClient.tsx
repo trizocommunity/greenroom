@@ -25,8 +25,9 @@ import {
 } from "@/components/ui/tooltip";
 import { useFeatures } from "@/hooks/useFeature";
 import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
-import type { InstitutionType } from "@/lib/prisma-enums";
+import type { InstitutionType } from "@/lib/app-enums";
 import { cn } from "@/lib/utils";
+import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import {
   setPublicSiteEnabledAction,
   updateFestivalBrandingAction,
@@ -249,38 +250,13 @@ export function FestivalLiveClient({
       URL.revokeObjectURL(objectUrl);
     }
 
-    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "demo";
-    const preset =
-      process.env.NEXT_PUBLIC_CLOUDINARY_FESTIVAL_PRESET ||
-      "greenroom_festival_unsigned";
-
-    if (!cloudName || !preset) {
-      toast.error("Cloudinary is not fully configured yet.");
-      return null;
-    }
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", preset);
-    formData.append("folder", `greenroom/festivals/${kind}`);
-
-    const res = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-      {
-        method: "POST",
-        body: formData,
-      },
-    );
-    if (!res.ok) {
+    // Use secure server-side upload (signed, rate-limited, authenticated)
+    const url = await uploadImageToCloudinary(file, kind);
+    if (!url) {
       toast.error("Upload failed. Please try again.");
       return null;
     }
-    const data = (await res.json()) as { secure_url?: string };
-    if (!data.secure_url) {
-      toast.error("Upload response missing URL.");
-      return null;
-    }
-    return data.secure_url;
+    return url;
   };
 
   const handleSaveAll = async () => {

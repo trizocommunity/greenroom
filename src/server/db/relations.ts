@@ -40,7 +40,7 @@ export const festivalRelations = relations(festival, ({one, many}) => ({
 	students: many(student),
 	festivalNews: many(festivalNews),
 	festivalGalleryImages: many(festivalGalleryImage),
-	programmeAssignments: many(programmeAssignment),
+	assignments: many(programmeAssignment),
 	user: one(user, {
 		fields: [festival.ownerId],
 		references: [user.id]
@@ -67,7 +67,7 @@ export const programmeRelations = relations(programme, ({one, many}) => ({
 		fields: [programme.categoryId],
 		references: [category.id]
 	}),
-	programmeAssignments: many(programmeAssignment),
+	assignments: many(programmeAssignment),
 	results: many(result),
 	scheduleEntries: many(scheduleEntry),
 	programmeReportingSessions: many(programmeReportingSession),
@@ -82,7 +82,7 @@ export const categoryRelations = relations(category, ({one, many}) => ({
 		references: [festival.id]
 	}),
 	students: many(student),
-	programmeAssignments: many(programmeAssignment),
+	assignments: many(programmeAssignment),
 }));
 
 export const groupRelations = relations(group, ({one, many}) => ({
@@ -91,7 +91,7 @@ export const groupRelations = relations(group, ({one, many}) => ({
 		references: [festival.id]
 	}),
 	students: many(student),
-	programmeAssignments: many(programmeAssignment),
+	assignments: many(programmeAssignment),
 	programmeReportedParticipants: many(programmeReportedParticipant),
 }));
 
@@ -119,7 +119,7 @@ export const studentRelations = relations(student, ({one, many}) => ({
 		fields: [student.categoryId],
 		references: [category.id]
 	}),
-	programmeAssignments: many(programmeAssignment),
+	assignments: many(programmeAssignment),
 	teamLeaderOtps: many(teamLeaderOtp),
 	teamLeaderSessions: many(teamLeaderSession),
 	programmeReportedParticipants: many(programmeReportedParticipant),
@@ -162,7 +162,10 @@ export const programmeAssignmentRelations = relations(programmeAssignment, ({one
 		fields: [programmeAssignment.categoryId],
 		references: [category.id]
 	}),
-	results: many(result),
+	result: one(result, {
+		fields: [programmeAssignment.id],
+		references: [result.assignmentId]
+	}),
 	programmeReportedParticipants: many(programmeReportedParticipant),
 }));
 

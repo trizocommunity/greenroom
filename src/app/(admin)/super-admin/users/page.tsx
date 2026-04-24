@@ -58,13 +58,13 @@ export default async function AdminUsersPage() {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  {user.festival ? (
-                    user.festival.name
+                  {user.festivals && user.festivals.length > 0 ? (
+                    user.festivals[0].name
                   ) : (
                     <span className="text-muted-foreground">-</span>
                   )}
                 </TableCell>
-                <TableCell>{format(user.createdAt, "MMM d, yyyy")}</TableCell>
+                <TableCell>{format(new Date(user.createdAt), "MMM d, yyyy")}</TableCell>
                 <TableCell>
                   <Badge variant={user.isActive ? "default" : "secondary"}>
                     {user.isActive ? "Active" : "Inactive"}

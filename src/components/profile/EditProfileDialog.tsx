@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { User } from "@prisma/client";
+import type { UserProfile } from "@/lib/app-enums";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -39,7 +39,7 @@ const profileSchema = z.object({
 });
 
 interface EditProfileDialogProps {
-  user: Pick<User, "fullName" | "displayName" | "age" | "email">;
+  user: UserProfile;
   trigger?: React.ReactNode;
 }
 

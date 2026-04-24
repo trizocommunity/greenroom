@@ -20,7 +20,7 @@ import {
   getFeatureTagLabel,
   getFeatureTagRequirements,
 } from "@/lib/features-tags";
-import type { Tier } from "@/lib/prisma-enums";
+import type { Tier } from "@/lib/app-enums";
 import { setPlanFeatureTagOverrideAction } from "@/server/actions/plan-features.actions";
 
 type TagMatrix = Record<Tier, Partial<Record<FeatureTag, boolean>>>;

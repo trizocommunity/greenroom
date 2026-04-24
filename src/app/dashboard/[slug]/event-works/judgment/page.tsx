@@ -1,11 +1,12 @@
-import type { Tier } from "@prisma/client";
 import { Calendar } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
 import { JudgmentClient } from "@/components/dashboard/judgment/JudgmentClient";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { festival as festivalTable, stage as stageTable } from "@/server/db/schema";
+import { eq, asc } from "drizzle-orm";
 import { getFestivalContext } from "@/server/services/festival-context.service";
 import { getEffectiveFeatureTagEnabled } from "@/server/services/plan-features-tags.service";
 import { getProgrammeJudgingBoard } from "@/server/services/programme-judgment-board.service";
@@ -21,24 +22,22 @@ export default async function JudgmentPage({
 }) {
   const { slug } = await params;
 
-  const festival = await prisma.festival.findUnique({
-    where: { slug },
-    select: { id: true, name: true, slug: true, tier: true },
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.slug, slug),
+    columns: { id: true, name: true, slug: true, tier: true },
   });
 
   if (!festival) {
     return notFound();
   }
 
-  const tier = (festival.tier ?? "STANDARD") as Tier;
+  const tier = (festival.tier ?? "STANDARD") as any;
 
-  // Standard/Pro judging is tied to external judging UI capability.
   const canUseJudging = await getEffectiveFeatureTagEnabled(
     tier,
     "eventWorks.judgmentUI",
   );
   if (!canUseJudging) {
-    // BASIC must not access this plan-based page.
     return notFound();
   }
 
@@ -56,10 +55,10 @@ export default async function JudgmentPage({
 
   const [board, festivalStages] = await Promise.all([
     getProgrammeJudgingBoard(festival.id),
-    prisma.stage.findMany({
-      where: { festivalId: festival.id },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
+    db.query.stage.findMany({
+      where: eq(stageTable.festivalId, festival.id),
+      columns: { id: true, name: true },
+      orderBy: [asc(stageTable.name)],
     }),
   ]);
 
@@ -77,10 +76,10 @@ export default async function JudgmentPage({
 
   return (
     <JudgmentClient
-      festival={{ id: festival.id, slug: festival.slug, tier: festival.tier }}
-      stages={board.stages}
+      festival={{ id: festival.id, slug: festival.slug, tier: festival.tier as any }}
+      stages={board.stages as any}
       festivalStages={festivalStages}
-      judgedProgrammes={board.judgedProgrammes}
+      judgedProgrammes={board.judgedProgrammes as any}
     />
   );
 }

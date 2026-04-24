@@ -1,7 +1,15 @@
 import { createHash } from "node:crypto";
 import { notFound } from "next/navigation";
 import { ExternalJudgeClient } from "@/components/judge/ExternalJudgeClient";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { 
+  programmeJudgeSession as judgeSessionTable,
+  festival as festivalTable,
+  programme as programmeTable,
+  scheduleEntry as scheduleEntryTable,
+  programmeCodeLetter as codeLetterTable
+} from "@/server/db/schema";
+import { eq, and, isNotNull, asc, desc } from "drizzle-orm";
 import { acquireJudgeOpenLockAction } from "@/server/actions/programme-judging.actions";
 import { getEffectiveFeatureTagEnabled } from "@/server/services/plan-features-tags.service";
 
@@ -19,19 +27,19 @@ export default async function JudgeTokenPage({
   const tokenHash = hashTokenSHA256(token);
 
   const [judgeSession, festival] = await Promise.all([
-    prisma.programmeJudgeSession.findUnique({
-      where: { token_hash: tokenHash },
-      select: {
-        programme_id: true,
-        festival_id: true,
-        reporting_session_id: true,
-        started_at: true,
-        used_at: true,
+    db.query.programmeJudgeSession.findFirst({
+      where: eq(judgeSessionTable.tokenHash, tokenHash),
+      columns: {
+        programmeId: true,
+        festivalId: true,
+        reportingSessionId: true,
+        startedAt: true,
+        usedAt: true,
       },
     }),
-    prisma.festival.findUnique({
-      where: { slug: festivalSlug },
-      select: {
+    db.query.festival.findFirst({
+      where: eq(festivalTable.slug, festivalSlug),
+      columns: {
         id: true,
         tier: true,
         name: true,
@@ -45,69 +53,71 @@ export default async function JudgeTokenPage({
 
   if (!judgeSession) return notFound();
 
-  if (!festival || festival.id !== judgeSession.festival_id) {
+  if (!festival || festival.id !== judgeSession.festivalId) {
     return notFound();
   }
 
   const canUseJudging = await getEffectiveFeatureTagEnabled(
-    festival.tier,
+    festival.tier as any,
     "eventWorks.externalJudging",
   );
   if (!canUseJudging) return notFound();
 
   const [programme, scheduleEntry, codeLettersRows] = await Promise.all([
-    prisma.programme.findUnique({
-      where: { id: judgeSession.programme_id },
-      select: {
+    db.query.programme.findFirst({
+      where: eq(programmeTable.id, judgeSession.programmeId),
+      with: {
+        category: { columns: { name: true } },
+      },
+      columns: {
         name: true,
         type: true,
-        category: { select: { name: true } },
       },
     }),
-    prisma.scheduleEntry.findFirst({
-      where: {
-        festivalId: judgeSession.festival_id,
-        programmeId: judgeSession.programme_id,
-        type: "PROGRAMME",
-      },
-      orderBy: { startTime: "asc" },
-      select: { stage: { select: { name: true } } },
+    db.query.scheduleEntry.findFirst({
+      where: and(
+        eq(scheduleEntryTable.festivalId, judgeSession.festivalId),
+        eq(scheduleEntryTable.programmeId, judgeSession.programmeId),
+        eq(scheduleEntryTable.type, "PROGRAMME")
+      ),
+      orderBy: [asc(scheduleEntryTable.startTime)],
+      with: { stage: { columns: { name: true } } },
     }),
-    prisma.programmeCodeLetter.findMany({
-      where: {
-        programmeId: judgeSession.programme_id,
-        reportingSessionId: judgeSession.reporting_session_id,
-      },
-      select: { code: true },
-      orderBy: { issuedAt: "asc" },
+    db.query.programmeCodeLetter.findMany({
+      where: and(
+        eq(codeLetterTable.programmeId, judgeSession.programmeId),
+        eq(codeLetterTable.reportingSessionId, judgeSession.reportingSessionId)
+      ),
+      columns: { code: true },
+      orderBy: [asc(codeLetterTable.issuedAt)],
     }),
   ]);
 
   if (!programme) return notFound();
 
-  const recentJudgeSessions = await prisma.programmeJudgeSession.findMany({
-    where: {
-      festival_id: judgeSession.festival_id,
-      used_at: { not: null },
-      submitted_by_name: { not: null },
+  const recentJudgeSessions = await db.query.programmeJudgeSession.findMany({
+    where: and(
+      eq(judgeSessionTable.festivalId, judgeSession.festivalId),
+      isNotNull(judgeSessionTable.usedAt),
+      isNotNull(judgeSessionTable.submittedByName)
+    ),
+    orderBy: [desc(judgeSessionTable.usedAt)],
+    columns: {
+      submittedByName: true,
+      submittedByContact: true,
+      submittedByNote: true,
+      usedAt: true,
     },
-    orderBy: { used_at: "desc" },
-    select: {
-      submitted_by_name: true,
-      submitted_by_contact: true,
-      submitted_by_note: true,
-      used_at: true,
-    },
-    take: 20,
+    limit: 20,
   });
 
   const seen = new Set<string>();
   const recentJudges = recentJudgeSessions
     .map((s) => ({
-      judgeName: s.submitted_by_name?.trim() ?? "",
-      judgeContact: s.submitted_by_contact?.trim() || "",
-      judgeNote: s.submitted_by_note?.trim() || "",
-      judgedAt: s.used_at?.toISOString() ?? "",
+      judgeName: s.submittedByName?.trim() ?? "",
+      judgeContact: s.submittedByContact?.trim() || "",
+      judgeNote: s.submittedByNote?.trim() || "",
+      judgedAt: s.usedAt ?? "",
     }))
     .filter((j) => {
       if (!j.judgeName) return false;
@@ -118,8 +128,7 @@ export default async function JudgeTokenPage({
     })
     .slice(0, 8);
 
-  // Judge GET should never reveal any student/team info; only code letters.
-  const isClosed = Boolean(judgeSession.used_at);
+  const isClosed = Boolean(judgeSession.usedAt);
   let openNonce: string | null = null;
   let lockState: "open" | "in_use" | "closed" = isClosed ? "closed" : "open";
 
@@ -140,16 +149,16 @@ export default async function JudgeTokenPage({
         name: festival.name,
         slug: festival.slug,
         location: festival.location,
-        startDate: festival.startDate?.toISOString() ?? null,
-        endDate: festival.endDate?.toISOString() ?? null,
+        startDate: festival.startDate ?? null,
+        endDate: festival.endDate ?? null,
       }}
       programmeDetails={{
-        stageName: scheduleEntry?.stage?.name ?? null,
-        categoryName: programme.category?.name ?? null,
-        programmeType: programme.type,
+        stageName: (scheduleEntry as any)?.stage?.name ?? null,
+        categoryName: (programme as any).category?.name ?? null,
+        programmeType: programme.type as any,
       }}
       codeLetters={codeLettersRows.map((r) => r.code)}
-      startedAt={judgeSession.started_at}
+      startedAt={new Date(judgeSession.startedAt)}
       isClosed={isClosed || lockState === "in_use"}
       openNonce={openNonce}
       lockState={lockState}

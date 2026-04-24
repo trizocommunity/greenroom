@@ -15,7 +15,7 @@ export async function getUnusedPayment(
       eq(payment.status, "PAID"),
       eq(payment.used, false),
       purpose ? eq(payment.purpose, purpose) : undefined,
-      gt(payment.validUntil, now)
+      gt(payment.validUntil, new Date().toISOString())
     ),
     orderBy: [asc(payment.createdAt)],
   });

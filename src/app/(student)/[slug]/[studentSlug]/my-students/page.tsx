@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { MyStudentsClient } from "@/components/student/team-leader/MyStudentsClient";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { student as studentTable } from "@/server/db/schema";
+import { eq, and, desc } from "drizzle-orm";
 import { requireTeamLeaderSession } from "@/lib/team-leader-auth/guard";
 
 export default async function MyStudentsPage({
@@ -15,10 +17,10 @@ export default async function MyStudentsPage({
     studentSlug,
   });
 
-  const groupStudents = await prisma.student.findMany({
-    where: { festivalId: festival.id, groupId: student.groupId },
-    include: { group: true, category: true },
-    orderBy: { createdAt: "desc" },
+  const groupStudents = await db.query.student.findMany({
+    where: and(eq(studentTable.festivalId, festival.id), eq(studentTable.groupId, student.groupId!)),
+    with: { group: true, category: true },
+    orderBy: [desc(studentTable.createdAt)],
   });
 
   return (
@@ -32,7 +34,7 @@ export default async function MyStudentsPage({
       <MyStudentsClient
         festivalId={festival.id}
         festivalSlug={festival.slug}
-        students={groupStudents}
+        students={groupStudents as any[]}
       />
     </div>
   );

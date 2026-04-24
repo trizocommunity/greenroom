@@ -4,11 +4,23 @@ import { formatApiError } from "@/lib/api-error";
 import { hashPassword } from "@/lib/auth/password";
 import type { GlobalRole } from "@/lib/auth/session";
 import { createSession } from "@/lib/auth/session";
+import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
 import { registerSchema } from "@/lib/validations/auth";
 import { createUser, findUserByEmail } from "@/server/models/user.model";
 
 export async function POST(request: Request) {
   try {
+    // Rate limiting: 3 attempts per 15 minutes per IP (stricter for registration)
+    const clientIP = getClientIP(request);
+    const rateLimit = checkRateLimit(`register:${clientIP}`, 3, 15 * 60 * 1000);
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many attempts. Please try again later." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { email, password } = registerSchema.parse(body);
 

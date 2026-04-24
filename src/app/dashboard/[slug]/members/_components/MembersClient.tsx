@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/table";
 import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
 import { useMembers } from "@/hooks/useMembers";
-import type { FestivalRole } from "@/lib/prisma-enums";
+import type { FestivalRole } from "@/lib/app-enums";
 import {
   createFestivalMember,
   revokeFestivalMember,

@@ -2,8 +2,13 @@ import { db } from "@/lib/db";
 import { group as groups, student as students } from "../db/schema";
 import { eq, desc } from "drizzle-orm";
 
-export async function createGroup(data: typeof groups.$inferInsert) {
-  const result = await db.insert(groups).values(data).returning();
+export async function createGroup(data: Omit<typeof groups.$inferInsert, "id" | "updatedAt"> & { id?: string; updatedAt?: string }) {
+  const { randomUUID } = await import("crypto");
+  const result = await db.insert(groups).values({
+    id: data.id ?? randomUUID(),
+    updatedAt: data.updatedAt ?? new Date().toISOString(),
+    ...data,
+  }).returning();
   return result[0];
 }
 

@@ -5,7 +5,7 @@
  * - Non-BASIC only: also requires gallery (min 4 images) and news (min 1 post with title, description, image).
  */
 
-import type { Tier } from "@prisma/client";
+import type { Tier } from "@/lib/app-enums";
 import { getResolvedTier } from "@/lib/tier";
 
 export interface ValidationInput {

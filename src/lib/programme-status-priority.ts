@@ -1,4 +1,4 @@
-import type { ProgrammeStatus } from "@prisma/client";
+import type { ProgrammeStatus } from "@/lib/app-enums";
 
 /**
  * Priority order for showing programme "live status" in student UI.

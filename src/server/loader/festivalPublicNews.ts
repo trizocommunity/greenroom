@@ -1,4 +1,6 @@
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { festival as festivalTable, festivalNews as newsTable } from "@/server/db/schema";
+import { eq, and, isNotNull, desc } from "drizzle-orm";
 
 export type PublicNewsPost = {
   id: string;
@@ -6,8 +8,8 @@ export type PublicNewsPost = {
   excerpt: string | null;
   content: string;
   imageUrl: string | null;
-  publishedAt: Date | null;
-  createdAt: Date;
+  publishedAt: string | null;
+  createdAt: string;
 };
 
 export type PublicNewsData = {
@@ -18,19 +20,19 @@ export type PublicNewsData = {
 export async function getPublicNewsData(
   festivalSlug: string,
 ): Promise<PublicNewsData | null> {
-  const festival = await prisma.festival.findUnique({
-    where: { slug: festivalSlug },
-    select: { id: true, name: true, slug: true },
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.slug, festivalSlug),
+    columns: { id: true, name: true, slug: true },
   });
   if (!festival) return null;
 
-  const posts = await prisma.festivalNews.findMany({
-    where: {
-      festivalId: festival.id,
-      publishedAt: { not: null },
-    },
-    orderBy: { publishedAt: "desc" },
-    select: {
+  const posts = await db.query.festivalNews.findMany({
+    where: and(
+      eq(newsTable.festivalId, festival.id),
+      isNotNull(newsTable.publishedAt)
+    ),
+    orderBy: [desc(newsTable.publishedAt)],
+    columns: {
       id: true,
       title: true,
       excerpt: true,
@@ -51,19 +53,19 @@ export async function getPublicNewsPostBySlug(
   festival: { name: string; slug: string };
   post: PublicNewsPost;
 } | null> {
-  const festival = await prisma.festival.findUnique({
-    where: { slug: festivalSlug },
-    select: { id: true, name: true, slug: true },
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.slug, festivalSlug),
+    columns: { id: true, name: true, slug: true },
   });
   if (!festival) return null;
 
-  const post = await prisma.festivalNews.findFirst({
-    where: {
-      festivalId: festival.id,
-      id: postId,
-      publishedAt: { not: null },
-    },
-    select: {
+  const post = await db.query.festivalNews.findFirst({
+    where: and(
+      eq(newsTable.festivalId, festival.id),
+      eq(newsTable.id, postId),
+      isNotNull(newsTable.publishedAt)
+    ),
+    columns: {
       id: true,
       title: true,
       excerpt: true,

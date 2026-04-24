@@ -2,8 +2,13 @@ import { db } from "@/lib/db";
 import { programme as programmes } from "../db/schema";
 import { eq, and, desc, count } from "drizzle-orm";
 
-export async function createProgramme(data: typeof programmes.$inferInsert) {
-  const result = await db.insert(programmes).values(data).returning();
+export async function createProgramme(data: Omit<typeof programmes.$inferInsert, "id" | "updatedAt"> & { id?: string; updatedAt?: string }) {
+  const { randomUUID } = await import("crypto");
+  const result = await db.insert(programmes).values({
+    id: data.id ?? randomUUID(),
+    updatedAt: data.updatedAt ?? new Date().toISOString(),
+    ...data,
+  }).returning();
   return result[0];
 }
 
@@ -22,12 +27,12 @@ export async function findProgrammeById(id: string) {
     where: eq(programmes.id, id),
     with: {
       category: true,
-      programmeAssignments: { columns: { id: true } }
+      assignments: { columns: { id: true } }
     },
   });
 
   if (!programme) return null;
-  const { programmeAssignments: pa, ...rest } = programme;
+  const { assignments: pa, ...rest } = programme;
   return { ...rest, _count: { assignments: pa.length } };
 }
 
@@ -37,12 +42,12 @@ export async function findProgrammesByFestival(festivalId: string, categoryId?: 
     orderBy: [desc(programmes.createdAt)],
     with: {
       category: true,
-      programmeAssignments: { columns: { id: true } }
+      assignments: { columns: { id: true } }
     },
   });
 
   return results.map(p => {
-    const { programmeAssignments: pa, ...rest } = p;
+    const { assignments: pa, ...rest } = p;
     return { ...rest, _count: { assignments: pa.length } };
   });
 }
@@ -57,7 +62,7 @@ export async function findProgrammeWithAssignments(id: string) {
     where: eq(programmes.id, id),
     with: {
       category: true,
-      programmeAssignments: {
+      assignments: {
         with: {
           student: {
             columns: { id: true, name: true, groupId: true },

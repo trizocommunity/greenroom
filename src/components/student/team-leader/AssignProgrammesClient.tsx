@@ -4,7 +4,7 @@ import type {
   CategoryType,
   ProgrammeStatus,
   ProgrammeType,
-} from "@prisma/client";
+} from "@/lib/app-enums";
 import { format } from "date-fns";
 import { CalendarClock, Mail, Phone, ShieldAlert, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -131,7 +131,7 @@ export function AssignProgrammesClient({
     "ALL" | "GROUP" | "INDIVIDUAL"
   >("ALL");
 
-  // Realtime-ish UX: keep assignments fresh while admins assign in another session.
+  // Polling: keep assignments fresh while admins assign in another session.
   useEffect(() => {
     if (!festivalId) return;
     const intervalId = window.setInterval(() => {

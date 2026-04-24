@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSession } from "@/lib/auth/session";
 import { findFestivalBySlug } from "@/server/models/festival.model";
+import { db } from "@/lib/db";
+import { expiredFestivalResult as expiredTable } from "@/server/db/schema";
+import { eq, sql } from "drizzle-orm";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -36,13 +39,11 @@ export default async function ExpiredFestivalPage({ params }: Props) {
   if (!isExpired || (!isOwner && !isSuperAdmin)) notFound();
 
   const hasPdf = !!festival.resultPdfUrl;
-  const hasSnapshot = await (async () => {
-    const { prisma } = await import("@/lib/db");
-    const c = await prisma.expiredFestivalResult.count({
-      where: { festivalId: festival.id },
-    });
-    return c > 0;
-  })();
+  const [snapshotCount] = await db
+    .select({ count: sql`count(*)` })
+    .from(expiredTable)
+    .where(eq(expiredTable.festivalId, festival.id));
+  const hasSnapshot = Number(snapshotCount.count) > 0;
 
   return (
     <div className="container max-w-2xl py-8 space-y-6">

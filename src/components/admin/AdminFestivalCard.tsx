@@ -27,11 +27,12 @@ import {
 interface AdminFestivalCardProps {
   festival: {
     id: string;
+    ownerId: string;
     name: string;
     slug: string;
     status: string;
     createdAt: string | Date;
-    owner: { email: string };
+    user: { email: string };
     studentsCount?: number;
     programmesCount?: number;
     stagesCount?: number;
@@ -81,7 +82,7 @@ export function AdminFestivalCard({ festival }: AdminFestivalCardProps) {
           </CardTitle>
           <div className="text-xs font-medium text-muted-foreground/80 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-primary/40" />
-            {festival.owner.email}
+            {festival.user.email}
           </div>
         </div>
 

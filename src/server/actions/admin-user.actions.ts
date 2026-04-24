@@ -3,17 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { hashPassword } from "@/lib/auth/password";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { user as userTable } from "@/server/db/schema";
+import { eq } from "drizzle-orm";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
-import { adminService } from "@/server/services/admin.service";
 
 export async function resetUserPassword(userId: string, newPassword: string) {
-  // 1. Authorization Check: Ensure the caller is a Super Admin
-  // Ideally this would reuse a session check, but for now we'll assume the route protection
-  // or add a secondary check if `adminService` doesn't enforce it implicitly or if we can get session here.
-  // Given the context, we'll proceed assuming this action is only reachable by admins,
-  // but strictly we should check the current user's role.
-
   const session = await getSession();
   if (!session || session.role !== "SUPER_ADMIN") {
     throw new AppError(ERROR_MESSAGES.FORBIDDEN);
@@ -22,12 +17,10 @@ export async function resetUserPassword(userId: string, newPassword: string) {
   try {
     const hashedPassword = await hashPassword(newPassword);
 
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        password: hashedPassword,
-      },
-    });
+    await db.update(userTable).set({
+      password: hashedPassword,
+      updatedAt: new Date().toISOString(),
+    }).where(eq(userTable.id, userId));
 
     revalidatePath("/super-admin/users");
     return { success: true };

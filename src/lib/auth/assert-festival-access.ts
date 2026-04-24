@@ -1,5 +1,7 @@
 import type { SessionPayload } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { festival as festivalTable, festivalMember as festivalMemberTable } from "@/server/db/schema";
+import { eq, and } from "drizzle-orm";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { assertFestivalMutationAllowed } from "@/server/services/festival-lifecycle-policy.service";
 
@@ -19,8 +21,8 @@ export async function assertFestivalAccess(
 
   const isSuperAdmin = session.role === "SUPER_ADMIN";
 
-  const festival = await prisma.festival.findUnique({
-    where: { id: festivalId },
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.id, festivalId),
   });
 
   if (!festival) {
@@ -31,13 +33,11 @@ export async function assertFestivalAccess(
 
   let isMember = false;
   if (!isSuperAdmin && !isOwner) {
-    const member = await prisma.festivalMember.findUnique({
-      where: {
-        festivalId_userId: {
-          festivalId,
-          userId: session.userId,
-        },
-      },
+    const member = await db.query.festivalMember.findFirst({
+      where: and(
+        eq(festivalMemberTable.festivalId, festivalId),
+        eq(festivalMemberTable.userId, session.userId)
+      ),
     });
     isMember = Boolean(member?.isActive);
   }

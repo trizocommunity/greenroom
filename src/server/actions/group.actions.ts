@@ -2,7 +2,9 @@
 
 import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { festival as festivalTable } from "@/server/db/schema";
+import { eq } from "drizzle-orm";
 import { ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 import { GroupService } from "@/server/services/group.service";
@@ -46,14 +48,13 @@ export async function updateGroupAction(
     const session = await getSession();
     await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
-    // BASIC plan must not be able to modify team leader assignments.
     if (data.teamLeaderIds !== undefined) {
-      const festival = await prisma.festival.findUnique({
-        where: { id: festivalId },
-        select: { tier: true },
+      const festival = await db.query.festival.findFirst({
+        where: eq(festivalTable.id, festivalId),
+        columns: { tier: true },
       });
 
-      const tier = getTierForFeatureCheck(festival?.tier);
+      const tier = getTierForFeatureCheck(festival?.tier as any);
       if (!FeatureService.isFeatureEnabled(tier, "members")) {
         return { success: false, error: ERROR_MESSAGES.FORBIDDEN };
       }

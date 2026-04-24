@@ -2,8 +2,13 @@ import { db } from "@/lib/db";
 import { student as students } from "../db/schema";
 import { eq, and, desc, count } from "drizzle-orm";
 
-export async function createStudent(data: typeof students.$inferInsert) {
-  const result = await db.insert(students).values(data).returning();
+export async function createStudent(data: Omit<typeof students.$inferInsert, "id" | "updatedAt"> & { id?: string; updatedAt?: string }) {
+  const { randomUUID } = await import("crypto");
+  const result = await db.insert(students).values({
+    id: data.id ?? randomUUID(),
+    updatedAt: data.updatedAt ?? new Date().toISOString(),
+    ...data,
+  }).returning();
   return result[0];
 }
 
@@ -33,7 +38,7 @@ export async function findStudentByFestivalAndProfileSlug(
     with: {
       category: true,
       group: true,
-      programmeAssignments: {
+      assignments: {
         with: {
           programme: { with: { category: true } },
         },

@@ -116,7 +116,7 @@ export async function forgotPasswordAction(
     await createPasswordResetToken({
       userId: user.id,
       token: tokenHash,
-      expires: expiresAt,
+      expires: expiresAt.toISOString(),
     });
 
     // BUG-2 FIX: Actually send the password reset email via Resend.
@@ -150,7 +150,7 @@ export async function resetPasswordAction(
     });
 
     await updatePasswordResetToken(resetTokenRecord.id, {
-      usedAt: new Date(),
+      usedAt: new Date().toISOString(),
     });
 
     return { success: true, data: null };

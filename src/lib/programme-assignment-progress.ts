@@ -1,4 +1,4 @@
-import type { ProgrammeType } from "@prisma/client";
+import type { ProgrammeType } from "@/lib/app-enums";
 
 export function getExpectedAssignmentsTotal(params: {
   programmeType: ProgrammeType | string;

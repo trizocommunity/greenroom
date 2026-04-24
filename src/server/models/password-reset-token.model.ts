@@ -12,16 +12,21 @@ export async function findValidPasswordResetToken(token: string) {
   return db.query.passwordResetToken.findFirst({
     where: and(
       eq(passwordResetTokens.token, token),
-      gt(passwordResetTokens.expires, new Date()),
+      gt(passwordResetTokens.expires, new Date().toISOString()),
       isNull(passwordResetTokens.usedAt)
     ),
   });
 }
 
 export async function createPasswordResetToken(
-  data: typeof passwordResetTokens.$inferInsert
+  data: Omit<typeof passwordResetTokens.$inferInsert, "id" | "updatedAt"> & { id?: string; updatedAt?: string }
 ) {
-  const result = await db.insert(passwordResetTokens).values(data).returning();
+  const { randomUUID } = await import("crypto");
+  const result = await db.insert(passwordResetTokens).values({
+    id: data.id ?? randomUUID(),
+    updatedAt: data.updatedAt ?? new Date().toISOString(),
+    ...data,
+  }).returning();
   return result[0];
 }
 

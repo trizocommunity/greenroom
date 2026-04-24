@@ -1,6 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { ScheduleClient } from "@/components/festival/pre-works/schedule/ScheduleClient";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { programme as programmeTable } from "@/server/db/schema";
+import { eq, asc } from "drizzle-orm";
 import { getScheduleEntries } from "@/server/actions/schedule.actions";
 import { getStages } from "@/server/actions/stage.actions";
 import { findFestivalBySlug } from "@/server/models/festival.model";
@@ -19,7 +21,7 @@ export default async function SchedulePage({ params }: PageProps) {
   }
 
   const canManageSchedule = await getEffectiveFeatureEnabled(
-    festival.tier,
+    festival.tier as any,
     "schedule",
   );
   if (!canManageSchedule) {
@@ -29,16 +31,15 @@ export default async function SchedulePage({ params }: PageProps) {
   const [entries, stages, allProgrammes] = await Promise.all([
     getScheduleEntries(festival.id),
     getStages(festival.id),
-    prisma.programme.findMany({
-      where: { festivalId: festival.id },
-      select: {
-        id: true,
-        name: true,
+    db.query.programme.findMany({
+      where: eq(programmeTable.festivalId, festival.id),
+      with: {
         category: {
-          select: { id: true, name: true },
+          columns: { id: true, name: true },
         },
       },
-      orderBy: { name: "asc" },
+      columns: { id: true, name: true },
+      orderBy: [asc(programmeTable.name)],
     }),
   ]);
 
@@ -60,15 +61,15 @@ export default async function SchedulePage({ params }: PageProps) {
     <div className="container pt-4 sm:pt-6">
       <ScheduleClient
         festivalId={festival.id}
-        initialEntries={entries}
+        initialEntries={entries as any}
         programmes={programmes}
         stages={stages.map((s) => ({
           id: s.id,
           name: s.name,
           description: s.description ?? null,
         }))}
-        festivalStartDate={festival.startDate?.toISOString() ?? null}
-        festivalEndDate={festival.endDate?.toISOString() ?? null}
+        festivalStartDate={festival.startDate}
+        festivalEndDate={festival.endDate}
       />
     </div>
   );

@@ -2,9 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getSession, updateSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { getSession } from "@/lib/auth/session";
+import { db } from "@/lib/db";
+import { user as userTable } from "@/server/db/schema";
+import { eq } from "drizzle-orm";
 import { createAuditLog } from "@/server/services/audit-log.service";
+import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
+import type { ActionResponse } from "@/types/actions";
 
 const profileSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
@@ -14,9 +18,6 @@ const profileSchema = z.object({
     .min(13, "You must be at least 13 years old")
     .max(120, "Invalid age"),
 });
-
-import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
-import type { ActionResponse } from "@/types/actions";
 
 export async function updateProfile(
   data: z.infer<typeof profileSchema>,
@@ -30,14 +31,12 @@ export async function updateProfile(
 
     const parsedData = profileSchema.parse(data);
 
-    await prisma.user.update({
-      where: { id: session.userId },
-      data: {
-        fullName: parsedData.fullName,
-        displayName: parsedData.displayName,
-        age: parsedData.age,
-      },
-    });
+    await db.update(userTable).set({
+      fullName: parsedData.fullName,
+      displayName: parsedData.displayName,
+      age: parsedData.age,
+      updatedAt: new Date().toISOString(),
+    }).where(eq(userTable.id, session.userId));
 
     await createAuditLog({
       action: "UPDATE_PROFILE",

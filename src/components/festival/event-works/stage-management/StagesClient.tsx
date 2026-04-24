@@ -1,7 +1,13 @@
 "use client";
 
-import type { Stage } from "@prisma/client";
 import { Edit, Megaphone, Plus, Trash2 } from "lucide-react";
+
+interface Stage {
+  id: string;
+  name: string;
+  description: string | null;
+  createdBy: string | null;
+}
 import { useState } from "react";
 import { toast } from "sonner";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";

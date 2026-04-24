@@ -32,8 +32,13 @@ export async function findMemberById(id: string) {
   });
 }
 
-export async function createMember(data: typeof festivalMember.$inferInsert) {
-  const result = await db.insert(festivalMember).values(data).returning();
+export async function createMember(data: Omit<typeof festivalMember.$inferInsert, "id" | "updatedAt"> & { id?: string; updatedAt?: string }) {
+  const { randomUUID } = await import("crypto");
+  const result = await db.insert(festivalMember).values({
+    id: data.id ?? randomUUID(),
+    updatedAt: data.updatedAt ?? new Date().toISOString(),
+    ...data,
+  }).returning();
   return db.query.festivalMember.findFirst({
     where: eq(festivalMember.id, result[0].id),
     with: { user: true }

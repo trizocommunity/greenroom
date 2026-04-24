@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { expiredFestivalResult as resultTable } from "@/server/db/schema";
+import { eq, sql } from "drizzle-orm";
 import { findFestivalBySlugOrId } from "@/server/models/festival.model";
 import { FestivalExpirationService } from "@/server/services/festival-expiration.service";
 
@@ -42,9 +44,12 @@ export async function GET(
     return NextResponse.redirect(festival.resultPdfUrl);
   }
 
-  const count = await prisma.expiredFestivalResult.count({
-    where: { festivalId: festival.id },
-  });
+  const [countResult] = await db
+    .select({ count: sql`count(*)` })
+    .from(resultTable)
+    .where(eq(resultTable.festivalId, festival.id));
+  const count = Number(countResult.count);
+
   if (count === 0) {
     return NextResponse.json(
       { error: "No results snapshot available" },

@@ -48,7 +48,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
-import type { SessionType } from "@/lib/prisma-enums";
+import type { SessionType } from "@/lib/app-enums";
 import { cn } from "@/lib/utils";
 import {
   type ConflictParts,

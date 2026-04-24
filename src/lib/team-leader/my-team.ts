@@ -1,4 +1,10 @@
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { 
+  student as studentTable, 
+  programmeAssignment as assignmentTable,
+  programme as programmeTable
+} from "@/server/db/schema";
+import { eq, and, gte, isNotNull, ne, inArray, desc, sql } from "drizzle-orm";
 
 export type StudentSummaryForStudentPage = {
   id: string;
@@ -21,12 +27,14 @@ export async function getTeamLeaderMyStudents(
   festivalId: string,
   leaderStudentId: string,
 ) {
-  const leader = await prisma.student.findFirst({
-    where: { id: leaderStudentId, festivalId },
-    select: {
+  const leader = await db.query.student.findFirst({
+    where: and(eq(studentTable.id, leaderStudentId), eq(studentTable.festivalId, festivalId)),
+    with: {
+      group: { columns: { id: true, name: true, color: true } },
+    },
+    columns: {
       id: true,
       groupId: true,
-      group: { select: { id: true, name: true, color: true } },
       profileSlug: true,
     },
   });
@@ -38,20 +46,24 @@ export async function getTeamLeaderMyStudents(
     };
   }
 
-  // Derived team contexts: teams where the leader already participates for GROUP programmes.
-  const derivedContextsRows = await prisma.programmeAssignment.findMany({
-    where: {
-      festivalId,
-      studentId: leaderStudentId,
-      teamNumber: { gte: 1 },
-      groupId: { not: null },
-      programme: { type: "GROUP" },
+  const derivedContextsRows = await db.query.programmeAssignment.findMany({
+    where: and(
+      eq(assignmentTable.festivalId, festivalId),
+      eq(assignmentTable.studentId, leaderStudentId),
+      gte(assignmentTable.teamNumber, 1),
+      isNotNull(assignmentTable.groupId)
+    ),
+    with: {
+      programme: { columns: { type: true } },
     },
-    select: { programmeId: true, groupId: true, teamNumber: true },
+    columns: { programmeId: true, groupId: true, teamNumber: true },
   });
+  
+  // Filter for GROUP type programmes manually if not using a complex join
+  const filteredDerived = derivedContextsRows.filter(row => row.programme?.type === "GROUP");
 
   const contextsMap = new Map<string, DerivedTeamContextKey>();
-  for (const row of derivedContextsRows) {
+  for (const row of filteredDerived) {
     if (!row.groupId) continue;
     const key = `${row.programmeId}:${row.groupId}:${row.teamNumber}`;
     contextsMap.set(key, {
@@ -65,28 +77,20 @@ export async function getTeamLeaderMyStudents(
   const myStudentsMap = new Map<string, StudentSummaryForStudentPage>();
 
   if (derivedTeamContexts.length > 0) {
-    // Union of participants across all derived team contexts.
     for (const ctx of derivedTeamContexts) {
-      const participants = await prisma.programmeAssignment.findMany({
-        where: {
-          festivalId,
-          programmeId: ctx.programmeId,
-          groupId: ctx.groupId,
-          teamNumber: ctx.teamNumber,
-          studentId: { not: null },
-        },
-        select: {
-          studentId: true,
+      const participants = await db.query.programmeAssignment.findMany({
+        where: and(
+          eq(assignmentTable.festivalId, festivalId),
+          eq(assignmentTable.programmeId, ctx.programmeId),
+          eq(assignmentTable.groupId, ctx.groupId),
+          eq(assignmentTable.teamNumber, ctx.teamNumber),
+          isNotNull(assignmentTable.studentId)
+        ),
+        with: {
           student: {
-            select: {
-              id: true,
-              name: true,
-              profileSlug: true,
-              chestNumber: true,
-              isTeamLeader: true,
-              groupId: true,
-              group: { select: { id: true, name: true, color: true } },
-              category: { select: { id: true, name: true, type: true } },
+            with: {
+              group: { columns: { id: true, name: true, color: true } },
+              category: { columns: { id: true, name: true, type: true } },
             },
           },
         },
@@ -94,29 +98,22 @@ export async function getTeamLeaderMyStudents(
 
       for (const p of participants) {
         if (!p.student) continue;
-        myStudentsMap.set(p.student.id, p.student);
+        myStudentsMap.set(p.student.id, p.student as any);
       }
     }
   }
 
-  // Fallback: if no derived contexts, show all group students.
   if (myStudentsMap.size === 0) {
-    const groupStudents = await prisma.student.findMany({
-      where: { festivalId, groupId: leader.groupId },
-      select: {
-        id: true,
-        name: true,
-        profileSlug: true,
-        chestNumber: true,
-        isTeamLeader: true,
-        groupId: true,
-        group: { select: { id: true, name: true, color: true } },
-        category: { select: { id: true, name: true, type: true } },
+    const groupStudents = await db.query.student.findMany({
+      where: and(eq(studentTable.festivalId, festivalId), eq(studentTable.groupId, leader.groupId)),
+      with: {
+        group: { columns: { id: true, name: true, color: true } },
+        category: { columns: { id: true, name: true, type: true } },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: [desc(studentTable.createdAt)],
     });
 
-    for (const s of groupStudents) myStudentsMap.set(s.id, s);
+    for (const s of groupStudents) myStudentsMap.set(s.id, s as any);
   }
 
   return {
@@ -129,29 +126,23 @@ export async function getTeamLeaderGroupStudentsForSelection(
   festivalId: string,
   leaderStudentId: string,
 ) {
-  const leader = await prisma.student.findFirst({
-    where: { id: leaderStudentId, festivalId },
-    select: { groupId: true },
+  const leader = await db.query.student.findFirst({
+    where: and(eq(studentTable.id, leaderStudentId), eq(studentTable.festivalId, festivalId)),
+    columns: { groupId: true },
   });
 
   if (!leader?.groupId) {
     return { groupStudents: [] as StudentSummaryForStudentPage[] };
   }
 
-  const groupStudents = await prisma.student.findMany({
-    where: { festivalId, groupId: leader.groupId },
-    select: {
-      id: true,
-      name: true,
-      profileSlug: true,
-      chestNumber: true,
-      isTeamLeader: true,
-      groupId: true,
-      group: { select: { id: true, name: true, color: true } },
-      category: { select: { id: true, name: true, type: true } },
+  const groupStudents = await db.query.student.findMany({
+    where: and(eq(studentTable.festivalId, festivalId), eq(studentTable.groupId, leader.groupId)),
+    with: {
+      group: { columns: { id: true, name: true, color: true } },
+      category: { columns: { id: true, name: true, type: true } },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: [desc(studentTable.createdAt)],
   });
 
-  return { groupStudents };
+  return { groupStudents: groupStudents as any[] };
 }

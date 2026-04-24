@@ -1,18 +1,26 @@
-import type { ProgrammeStatus, Tier } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { 
+  programme as programmeTable, 
+  programmeAssignment, 
+  result as resultTable, 
+  group as groupTable, 
+  programmeReportingSession as reportingSessionTable, 
+  programmeReportedParticipant,
+  scheduleEntry as scheduleEntryTable
+} from "../db/schema";
+import { eq, and, desc, count, inArray } from "drizzle-orm";
+
+export type ProgrammeStatus = "READY" | "RESET" | "ASSIGNED" | "SCHEDULED" | "REPORTING" | "STARTED" | "ENDED" | "JUDGED" | "PUBLISHED";
+export type Tier = "BASIC" | "STANDARD" | "PRO";
 
 /**
  * Minimum programme status for a programme to appear in Event-works (Marks, Results, Leaderboard).
- *
- * Kept for backwards compatibility with any older code that might display a "minimum" step.
- * Actual gating uses explicit allowed status sets (so BASIC does NOT allow SCHEDULED).
  */
 export function getEventWorksMinimumStatus(tier: Tier): ProgrammeStatus {
   return tier === "BASIC" ? "ASSIGNED" : "SCHEDULED";
 }
 
 function getAllowedEventWorksStatuses(tier: Tier): Set<ProgrammeStatus> {
-  // Explicit sets prevent BASIC from accidentally including SCHEDULED because of ordering.
   return tier === "BASIC"
     ? new Set<ProgrammeStatus>(["ASSIGNED", "JUDGED", "PUBLISHED"])
     : new Set<ProgrammeStatus>([
@@ -53,64 +61,65 @@ export async function updateProgrammeStatus(
   programmeId: string,
   reportingSessionId?: string,
 ): Promise<ProgrammeStatus> {
-  const programme = await prisma.programme.findUnique({
-    where: { id: programmeId },
-    select: {
-      id: true,
-      status: true,
-      festivalId: true,
-      type: true,
-      maxParticipantsPerGroup: true,
-      maxTeamsPerGroup: true,
-      maxStudentsPerTeam: true,
+  const programme = await db.query.programme.findFirst({
+    where: eq(programmeTable.id, programmeId),
+    with: {
       festival: {
-        select: { tier: true },
+        columns: { tier: true },
       },
     },
   });
 
   if (!programme) return "READY";
 
-  // If reporting has been submitted and the session is CLOSED, programme
-  // status should be driven by judging progress (results on reported participants),
-  // not by schedule/assignment presence. This prevents downgrades back to SCHEDULED.
   const latestClosedReportingSession = reportingSessionId
-    ? await prisma.programmeReportingSession.findFirst({
-        where: { id: reportingSessionId, programmeId, status: "CLOSED" },
-        select: { id: true, endedAt: true },
+    ? await db.query.programmeReportingSession.findFirst({
+        where: and(
+          eq(reportingSessionTable.id, reportingSessionId),
+          eq(reportingSessionTable.programmeId, programmeId),
+          eq(reportingSessionTable.status, "CLOSED")
+        ),
       })
-    : await prisma.programmeReportingSession.findFirst({
-        where: { programmeId, status: "CLOSED" },
-        select: { id: true, endedAt: true },
-        orderBy: { endedAt: "desc" },
+    : await db.query.programmeReportingSession.findFirst({
+        where: and(
+          eq(reportingSessionTable.programmeId, programmeId),
+          eq(reportingSessionTable.status, "CLOSED")
+        ),
+        orderBy: [desc(reportingSessionTable.endedAt)],
       });
 
   if (latestClosedReportingSession) {
-    const reportedParticipants =
-      await prisma.programmeReportedParticipant.findMany({
-        where: { reportingSessionId: latestClosedReportingSession.id },
-        select: { assignmentId: true },
-      });
+    const reportedParticipants = await db.query.programmeReportedParticipant.findMany({
+      where: eq(programmeReportedParticipant.reportingSessionId, latestClosedReportingSession.id),
+      columns: { assignmentId: true },
+    });
 
-    const reportedAssignmentIds = reportedParticipants.map(
-      (r) => r.assignmentId,
-    );
+    const reportedAssignmentIds = reportedParticipants.map((r) => r.assignmentId);
     const reportedTotal = reportedAssignmentIds.length;
 
-    const reportedScored = await prisma.result.count({
-      where: {
-        programmeId,
-        assignmentId: { in: reportedAssignmentIds },
-      },
-    });
+    let reportedScored = 0;
+    let reportedPublished = 0;
 
-    const reportedPublished = await prisma.result.count({
-      where: {
-        programmeId,
-        assignmentId: { in: reportedAssignmentIds },
-        isPublished: true,
-      },
-    });
+    if (reportedTotal > 0) {
+      const scoredCount = await db
+        .select({ c: count() })
+        .from(resultTable)
+        .where(and(
+          eq(resultTable.programmeId, programmeId),
+          inArray(resultTable.assignmentId, reportedAssignmentIds)
+        ));
+      reportedScored = scoredCount[0].c;
+
+      const publishedCount = await db
+        .select({ c: count() })
+        .from(resultTable)
+        .where(and(
+          eq(resultTable.programmeId, programmeId),
+          inArray(resultTable.assignmentId, reportedAssignmentIds),
+          eq(resultTable.isPublished, true)
+        ));
+      reportedPublished = publishedCount[0].c;
+    }
 
     let status: ProgrammeStatus = "STARTED";
     if (reportedTotal > 0 && reportedPublished === reportedTotal) {
@@ -119,13 +128,11 @@ export async function updateProgrammeStatus(
       status = "ENDED";
     }
 
-    await prisma.programme.update({
-      where: { id: programmeId },
-      data: {
-        status,
-        publishedAt: status === "PUBLISHED" ? new Date() : null,
-      },
-    });
+    await db.update(programmeTable).set({
+      status,
+      publishedAt: status === "PUBLISHED" ? new Date().toISOString() : null,
+      updatedAt: new Date().toISOString(),
+    }).where(eq(programmeTable.id, programmeId));
 
     return status;
   }
@@ -135,41 +142,34 @@ export async function updateProgrammeStatus(
     scheduleEntryCount,
     resultCount,
     publishedResultCount,
-    groupCount,
+    groupCountResult,
   ] = await Promise.all([
-    prisma.programmeAssignment.count({ where: { programmeId } }),
-    prisma.scheduleEntry.count({
-      where: { programmeId, type: "PROGRAMME" },
-    }),
-    prisma.result.count({ where: { programmeId } }),
-    prisma.result.count({
-      where: { programmeId, isPublished: true },
-    }),
-    prisma.group.count({
-      where: { festivalId: programme.festivalId },
-    }),
+    db.select({ c: count() }).from(programmeAssignment).where(eq(programmeAssignment.programmeId, programmeId)),
+    db.select({ c: count() }).from(scheduleEntryTable).where(and(eq(scheduleEntryTable.programmeId, programmeId), eq(scheduleEntryTable.type, 'PROGRAMME'))),
+    db.select({ c: count() }).from(resultTable).where(eq(resultTable.programmeId, programmeId)),
+    db.select({ c: count() }).from(resultTable).where(and(eq(resultTable.programmeId, programmeId), eq(resultTable.isPublished, true))),
+    db.select({ c: count() }).from(groupTable).where(eq(groupTable.festivalId, programme.festivalId)),
   ]);
 
-  const hasAssignments = assignmentCount > 0;
-  const hasScheduleEntry = scheduleEntryCount > 0;
-  const assignmentCountForProgramme = assignmentCount;
+  const hasAssignments = assignmentCount[0].c > 0;
+  const hasScheduleEntry = scheduleEntryCount[0].c > 0;
 
   const expectedAssignmentsTotal =
     programme.type === "INDIVIDUAL"
-      ? groupCount * (programme.maxParticipantsPerGroup ?? 1)
-      : groupCount *
+      ? groupCountResult[0].c * (programme.maxParticipantsPerGroup ?? 1)
+      : groupCountResult[0].c *
         (programme.maxTeamsPerGroup ?? 1) *
         (programme.maxStudentsPerTeam ?? 1);
 
   const isFullyAssignedAcrossAllGroups =
-    expectedAssignmentsTotal > 0 && assignmentCount >= expectedAssignmentsTotal;
+    expectedAssignmentsTotal > 0 && assignmentCount[0].c >= expectedAssignmentsTotal;
   const allAssignmentsHaveResult =
-    assignmentCountForProgramme > 0 &&
-    resultCount >= assignmentCountForProgramme;
+    assignmentCount[0].c > 0 &&
+    resultCount[0].c >= assignmentCount[0].c;
   const allResultsPublished =
-    resultCount > 0 && publishedResultCount >= resultCount;
+    resultCount[0].c > 0 && publishedResultCount[0].c >= resultCount[0].c;
 
-  const isBasic = programme.festival.tier === "BASIC";
+  const isBasic = (programme.festival.tier ?? 'STANDARD') === "BASIC";
 
   let status: ProgrammeStatus = "READY";
   if (allResultsPublished) {
@@ -184,45 +184,38 @@ export async function updateProgrammeStatus(
     status = "ASSIGNED";
   }
 
-  await prisma.programme.update({
-    where: { id: programmeId },
-    data: {
-      status,
-      publishedAt: status === "PUBLISHED" ? new Date() : null,
-    },
-  });
+  await db.update(programmeTable).set({
+    status,
+    publishedAt: status === "PUBLISHED" ? new Date().toISOString() : null,
+    updatedAt: new Date().toISOString(),
+  }).where(eq(programmeTable.id, programmeId));
 
   return status;
 }
 
-/**
- * Set programme to PUBLISHED and set publishedAt (e.g. when bulk publishing results).
- */
 export async function setProgrammePublished(
   programmeId: string,
   published: boolean,
 ): Promise<void> {
   if (!published) {
-    const hasClosedReporting = await prisma.programmeReportingSession.findFirst(
-      {
-        where: { programmeId, status: "CLOSED" },
-        select: { id: true },
-        orderBy: { endedAt: "desc" },
-      },
-    );
-    await prisma.programme.update({
-      where: { id: programmeId },
-      data: {
-        status: hasClosedReporting ? "ENDED" : "JUDGED",
-        publishedAt: null,
-      },
+    const hasClosedReporting = await db.query.programmeReportingSession.findFirst({
+      where: and(
+        eq(reportingSessionTable.programmeId, programmeId),
+        eq(reportingSessionTable.status, "CLOSED")
+      ),
+      orderBy: [desc(reportingSessionTable.endedAt)],
     });
+    
+    await db.update(programmeTable).set({
+      status: hasClosedReporting ? "ENDED" : "JUDGED",
+      publishedAt: null,
+      updatedAt: new Date().toISOString(),
+    }).where(eq(programmeTable.id, programmeId));
     return;
   }
-  await prisma.programme.update({
-    where: { id: programmeId },
-    data: { status: "PUBLISHED", publishedAt: new Date() },
-  });
+  await db.update(programmeTable).set({
+    status: "PUBLISHED",
+    publishedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }).where(eq(programmeTable.id, programmeId));
 }
-
-// Backfill intentionally removed: statuses are expected to be correct via update flows.

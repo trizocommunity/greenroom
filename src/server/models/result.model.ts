@@ -72,7 +72,12 @@ async function bulkPublishByFestival(festivalId: string, isPublished: boolean) {
 }
 
 async function upsert(assignmentId: string, data: ResultInput) {
+  const { randomUUID } = await import("crypto");
+  const now = new Date().toISOString();
+  
   const result = await db.insert(results).values({
+    id: data.id ?? randomUUID(),
+    updatedAt: now,
     ...data,
     points: data.points ?? 0,
     isPublished: data.isPublished ?? false,

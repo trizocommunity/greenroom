@@ -1,7 +1,7 @@
 import { getSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
-import { auditLog, users } from "../db/schema";
+import { auditLog, user as users } from "../db/schema";
 import { desc, eq, ilike, inArray, or } from "drizzle-orm";
 
 type AuditAction =
@@ -16,7 +16,8 @@ type AuditAction =
   | "UPDATE_PROFILE"
   | "CREATE_MEMBER"
   | "REVOKE_MEMBER"
-  | "COMPLETE_ONBOARDING";
+  | "COMPLETE_ONBOARDING"
+  | "PASSWORD_RESET";
 
 type TargetType = "FESTIVAL" | "USER" | "PAYMENT";
 
@@ -34,7 +35,9 @@ export async function createAuditLog(params: CreateAuditLogParams) {
     throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
   }
 
+  const { randomUUID } = await import("crypto");
   const result = await db.insert(auditLog).values({
+    id: randomUUID(),
     actorId: session.userId,
     actorRole: session.role,
     action: params.action,

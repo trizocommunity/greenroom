@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { realtimeConfig } from "@/lib/realtime-config";
 import { FestivalExpirationService } from "@/server/services/festival-expiration.service";
 
 /**
@@ -12,7 +11,6 @@ export async function GET(request: Request) {
   try {
     if (
       process.env.NODE_ENV === "production" &&
-      realtimeConfig.requireCronSecretInProduction &&
       !process.env.CRON_SECRET
     ) {
       return NextResponse.json(

@@ -8,7 +8,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { festival as festivalTable } from "@/server/db/schema";
+import { eq } from "drizzle-orm";
 import { getFestivalContext } from "@/server/services/festival-context.service";
 import { getEffectiveFeatureEnabled } from "@/server/services/plan-features.service";
 
@@ -27,15 +29,16 @@ export default async function StageManagerOverviewPage({
 
   if (!context || context.role !== "STAGE_MANAGER") notFound();
 
-  const festival = await prisma.festival.findUnique({
-    where: { slug },
-    select: { tier: true },
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.slug, slug),
+    columns: { tier: true },
   });
+  
   const canStages = festival
-    ? await getEffectiveFeatureEnabled(festival.tier, "stageManagement")
+    ? await getEffectiveFeatureEnabled(festival.tier as any, "stageManagement")
     : false;
   const canSchedule = festival
-    ? await getEffectiveFeatureEnabled(festival.tier, "schedule")
+    ? await getEffectiveFeatureEnabled(festival.tier as any, "schedule")
     : false;
 
   const basePath = `/dashboard/${slug}`;

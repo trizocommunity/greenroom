@@ -8,7 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_URL } from "@/config/routes";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { 
+  result as resultTable, 
+  student as studentTable, 
+  programmeReportingSession as sessionTable,
+  programmeAssignment as assignmentTable
+} from "@/server/db/schema";
+import { eq, and, inArray, sql, desc } from "drizzle-orm";
 import {
   getQrCodeContent,
   getStudentProfileUrl,
@@ -32,69 +39,60 @@ export default async function TeamLeaderDashboardPage({
   const endDate =
     festival.endDate ??
     festival.expiresAt ??
-    new Date(festival.createdAt.getTime() + 40 * 24 * 60 * 60 * 1000);
+    new Date(new Date(festival.createdAt).getTime() + 40 * 24 * 60 * 60 * 1000).toISOString();
   const venue = festival.location ?? festival.orgLocation ?? "—";
 
   const { myStudents } = await getTeamLeaderMyStudents(festival.id, student.id);
   const myStudentIds = myStudents.map((s) => s.id);
 
-  const publishedResultsCount = myStudentIds.length
-    ? await prisma.result.count({
-        where: {
-          festivalId: festival.id,
-          isPublished: true,
-          assignment: {
-            studentId: { in: myStudentIds },
-          },
-        },
-      })
-    : 0;
+  let publishedResultsCount = 0;
+  if (myStudentIds.length > 0) {
+    const results = await db.select({ count: sql`count(*)` }).from(resultTable).innerJoin(assignmentTable, eq(resultTable.assignmentId, assignmentTable.id)).where(and(
+      eq(resultTable.festivalId, festival.id),
+      eq(resultTable.isPublished, true),
+      inArray(assignmentTable.studentId, myStudentIds)
+    ));
+    publishedResultsCount = Number(results[0]?.count ?? 0);
+  }
 
-  const teamLeadersInGroup = await prisma.student.findMany({
-    where: {
-      festivalId: festival.id,
-      groupId: student.groupId,
-      isTeamLeader: true,
-    },
-    select: { id: true, name: true },
+  const teamLeadersInGroup = await db.query.student.findMany({
+    where: and(
+      eq(studentTable.festivalId, festival.id),
+      eq(studentTable.groupId, student.groupId!),
+      eq(studentTable.isTeamLeader, true)
+    ),
+    columns: { id: true, name: true },
   });
 
   const profileUrl = getStudentProfileUrl(
     APP_URL.replace(/\/$/, ""),
     festival.slug,
-    student,
+    student as any,
   );
 
-  const ongoingSessions = await prisma.programmeReportingSession.findMany({
-    where: {
-      programmeId: {
-        in: await prisma.programmeAssignment
-          .findMany({
-            where: {
-              festivalId: festival.id,
-              groupId: student.groupId ?? undefined,
-            },
-            select: { programmeId: true },
-          })
-          .then((rows) => rows.map((r) => r.programmeId)),
-      },
-      status: { in: ["IN_PROGRESS", "CLOSED"] },
-    },
-    include: {
-      programme: { select: { name: true } },
-      stage: { select: { name: true } },
-    },
-    orderBy: { updatedAt: "desc" },
-    take: 5,
-  });
+  const groupProgrammeIdsRows = await db.select({ programmeId: assignmentTable.programmeId }).from(assignmentTable).where(and(
+    eq(assignmentTable.festivalId, festival.id),
+    eq(assignmentTable.groupId, student.groupId!)
+  ));
+  const groupProgrammeIds = groupProgrammeIdsRows.map(r => r.programmeId);
 
-  const isSessionTimedOut = (session: {
-    status: string;
-    windowEndsAt: Date | null;
-  }) =>
+  const ongoingSessions = groupProgrammeIds.length > 0 ? await db.query.programmeReportingSession.findMany({
+    where: and(
+      inArray(sessionTable.programmeId, groupProgrammeIds),
+      inArray(sessionTable.status, ["IN_PROGRESS", "CLOSED"])
+    ),
+    with: {
+      programme: { columns: { name: true } },
+      stage: { columns: { name: true } },
+    },
+    orderBy: [desc(sessionTable.updatedAt)],
+    limit: 5,
+  }) : [];
+
+  const isSessionTimedOut = (session: any) =>
     session.status === "IN_PROGRESS" &&
     Boolean(
-      session.windowEndsAt && session.windowEndsAt.getTime() <= Date.now(),
+      session.windowEndsAt && new Date(session.windowEndsAt).getTime() <= Date.now(),
     );
 
   const liveSessions = ongoingSessions.filter(
@@ -115,7 +113,7 @@ export default async function TeamLeaderDashboardPage({
             </Badge>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
-            {liveSessions.slice(0, 4).map((session) => (
+            {liveSessions.slice(0, 4).map((session: any) => (
               <div
                 key={session.id}
                 className="rounded-md border border-emerald-700/20 bg-background/50 px-2.5 py-2"
@@ -129,7 +127,7 @@ export default async function TeamLeaderDashboardPage({
                 {session.windowEndsAt ? (
                   <div className="mt-1">
                     <ReportingEndsInCountdown
-                      endsAt={session.windowEndsAt.toISOString()}
+                      endsAt={session.windowEndsAt}
                       autoRefreshOnExpire
                     />
                   </div>
@@ -167,7 +165,7 @@ export default async function TeamLeaderDashboardPage({
             {topLiveSession?.windowEndsAt ? (
               <div className="mt-2">
                 <ReportingEndsInCountdown
-                  endsAt={topLiveSession.windowEndsAt.toISOString()}
+                  endsAt={topLiveSession.windowEndsAt}
                   autoRefreshOnExpire
                 />
               </div>
@@ -188,7 +186,7 @@ export default async function TeamLeaderDashboardPage({
         </p>
         <div className="flex items-center gap-2">
           <QrViewButton
-            qrContent={getQrCodeContent(student)}
+            qrContent={getQrCodeContent(student as any)}
             studentName={student.name}
           />
           <TeamLeaderLogoutButton

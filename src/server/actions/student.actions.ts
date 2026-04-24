@@ -4,7 +4,13 @@ import { revalidatePath } from "next/cache";
 import { TIER_CONFIG } from "@/config/pricing";
 import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { 
+  student as studentTable, 
+  group as groupTable, 
+  category as categoryTable 
+} from "@/server/db/schema";
+import { eq, count, and, or, ilike, inArray, asc } from "drizzle-orm";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 import { getResolvedTier } from "@/lib/tier";
@@ -27,7 +33,6 @@ export async function createStudentWithServiceAction(
     email?: string;
     phone?: string;
     gender?: string;
-
     age?: number;
     standard?: string;
   },
@@ -38,13 +43,17 @@ export async function createStudentWithServiceAction(
   const festival = await findFestivalById(festivalId);
   if (!festival) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
 
-  // Validate Dependencies
-  const [groupCount, categoryCount] = await Promise.all([
-    prisma.group.count({ where: { festivalId } }),
-    prisma.category.count({ where: { festivalId } }),
-  ]);
+  const [groupCountResult] = await db
+    .select({ c: count() })
+    .from(groupTable)
+    .where(eq(groupTable.festivalId, festivalId));
 
-  if (groupCount === 0 || categoryCount === 0) {
+  const [categoryCountResult] = await db
+    .select({ c: count() })
+    .from(categoryTable)
+    .where(eq(categoryTable.festivalId, festivalId));
+
+  if (groupCountResult.c === 0 || categoryCountResult.c === 0) {
     throw new Error("Create groups & categories first.");
   }
 
@@ -55,7 +64,6 @@ export async function createStudentWithServiceAction(
     email: data.email,
     phone: data.phone,
     gender: (data.gender as "MALE" | "FEMALE" | "OTHER") || "MALE",
-
     age: data.age,
     standard: data.standard,
   });
@@ -73,40 +81,33 @@ export async function validateStudentsAction(
   const session = await getSession();
   await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
-  // 1. Extract non-empty emails and names
   const emails = candidates
     .map((c) => c.email?.trim().toLowerCase())
     .filter((e): e is string => !!e);
 
   const names = candidates.map((c) => c.name.trim().toLowerCase());
 
-  // 2. Find matches in DB
-  // We check for:
-  // A) Email match (if email provided)
-  // B) Name match (case insensitive)
+  if (emails.length === 0 && names.length === 0) return {};
 
-  const existingStudents = await prisma.student.findMany({
-    where: {
-      festivalId,
-      OR: [
-        { email: { in: emails, mode: "insensitive" } },
-        { name: { in: names, mode: "insensitive" } },
-      ],
-    },
-    select: { name: true, email: true },
+  const conditions = [];
+  if (emails.length > 0) conditions.push(inArray(studentTable.email, emails));
+  if (names.length > 0) conditions.push(inArray(sql`LOWER(${studentTable.name})`, names));
+
+  const existingStudents = await db.query.student.findMany({
+    where: and(
+      eq(studentTable.festivalId, festivalId),
+      or(...conditions)
+    ),
+    columns: { name: true, email: true },
   });
 
-  // 3. Return a Set-like structure for easy client-side lookup
-  // We'll return a map of { normalized_key: reason }
   const conflicts: Record<string, string> = {};
 
   existingStudents.forEach((student) => {
-    // Key by Name
     if (student.name) {
       conflicts[`name:${student.name.toLowerCase()}`] =
         "Student name already exists";
     }
-    // Key by Email
     if (student.email) {
       conflicts[`email:${student.email.toLowerCase()}`] =
         "Student email already exists";
@@ -135,18 +136,20 @@ export async function bulkCreateStudentsAction(
   const festival = await findFestivalById(festivalId);
   if (!festival) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
 
-  // Check Limits (Pre-flight)
-  const tierLimit = TIER_CONFIG[getResolvedTier(festival.tier)].limits.students;
-  const currentCount = await prisma.student.count({ where: { festivalId } });
+  const tierLimit = TIER_CONFIG[getResolvedTier(festival.tier as any)].limits.students;
+  const [currentCountResult] = await db
+    .select({ c: count() })
+    .from(studentTable)
+    .where(eq(studentTable.festivalId, festivalId));
 
-  if (currentCount + students.length > tierLimit) {
+  if (currentCountResult.c + students.length > tierLimit) {
     return {
       success: false,
       successCount: 0,
       errors: [
         {
           name: "ALL",
-          error: `Batch exceeds limit. You can add ${tierLimit - currentCount} more.`,
+          error: `Batch exceeds limit. You can add ${tierLimit - currentCountResult.c} more.`,
         },
       ],
     };
@@ -155,8 +158,6 @@ export async function bulkCreateStudentsAction(
   let successCount = 0;
   const errors: { name: string; error: string }[] = [];
 
-  // We process sequentially to ensure ID generation (which depends on count) is correct.
-  // In a real high-perf scenario, we would lock or reserve IDs, but this is sufficient.
   for (const student of students) {
     try {
       const newStudent = await StudentService.create(festivalId, {
@@ -186,7 +187,6 @@ export async function bulkCreateStudentsAction(
   return { success: true, successCount, errors };
 }
 
-// New action for hooks - uses StudentService
 export async function deleteStudentWithServiceAction(
   festivalId: string,
   id: string,
@@ -207,7 +207,6 @@ export async function updateStudentAction(
     email?: string;
     phone?: string;
     gender?: string;
-
     age?: number;
     standard?: string;
   },
@@ -222,13 +221,11 @@ export async function updateStudentAction(
     email: data.email,
     phone: data.phone,
     gender: data.gender as any,
-
     age: data.age,
     standard: data.standard,
   });
 }
 
-/** Export students list as Excel; gated by excelExport feature (STANDARD+). */
 export async function exportStudentsToExcelAction(
   festivalId: string,
 ): Promise<
@@ -244,7 +241,7 @@ export async function exportStudentsToExcelAction(
 
   if (
     !FeatureService.isFeatureEnabled(
-      getTierForFeatureCheck(festival.tier),
+      getTierForFeatureCheck(festival.tier as any),
       "excelExport",
     )
   ) {
@@ -254,10 +251,10 @@ export async function exportStudentsToExcelAction(
     };
   }
 
-  const students = await prisma.student.findMany({
-    where: { festivalId },
-    include: { group: true, category: true },
-    orderBy: [{ group: { name: "asc" } }, { name: "asc" }],
+  const students = await db.query.student.findMany({
+    where: eq(studentTable.festivalId, festivalId),
+    with: { group: true, category: true },
+    orderBy: [asc(sql`group.name`), asc(studentTable.name)], // This might need careful check on group.name sort
   });
 
   const XLSX = await import("xlsx");

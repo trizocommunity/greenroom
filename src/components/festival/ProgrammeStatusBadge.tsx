@@ -1,6 +1,6 @@
 "use client";
 
-import type { ProgrammeStatus } from "@prisma/client";
+import type { ProgrammeStatus } from "@/lib/app-enums";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 

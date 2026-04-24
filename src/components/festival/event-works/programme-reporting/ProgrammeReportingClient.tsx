@@ -9,7 +9,6 @@ import { CompactHistoryList } from "@/components/dashboard/event-works/CompactHi
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useRealtimeChannel } from "@/hooks/useRealtimeChannel";
 import { getCodeForStudentFromLetters } from "@/lib/programme-reporting-code";
 import {
   assignCodeLettersWithSpinAction,
@@ -151,7 +150,6 @@ export function ProgrammeReportingClient({
   >(null);
   const [optimisticReportedBySession, setOptimisticReportedBySession] =
     useState<Record<string, Set<string>>>({});
-  const [lastRefreshAt, setLastRefreshAt] = useState(0);
   const [reportingStats, setReportingStats] = useState<{
     total: number;
     reported: number;
@@ -167,36 +165,7 @@ export function ProgrammeReportingClient({
   >(new Map());
   const [lastScannedTeam, setLastScannedTeam] = useState<string | null>(null);
 
-  const reportingRoomKeys = useMemo(() => {
-    const base = [`festival:${festivalId}:all`];
-    const sessionId = selectedEntryId
-      ? board.find((entry) => entry.id === selectedEntryId)?.reportingSession
-          ?.id
-      : null;
-    if (sessionId) {
-      base.push(`festival:${festivalId}:reporting:${sessionId}`);
-    }
-    return base;
-  }, [board, festivalId, selectedEntryId]);
-
-  useRealtimeChannel({
-    roomKeys: reportingRoomKeys,
-    enabled: true,
-    onEvent: (event) => {
-      const eventName =
-        typeof event.eventName === "string"
-          ? event.eventName
-          : typeof event.type === "string"
-            ? event.type
-            : "";
-      if (!eventName.includes("reporting")) return;
-      const now = Date.now();
-      if (now - lastRefreshAt < 1500) return;
-      setLastRefreshAt(now);
-      router.refresh();
-    },
-  });
-
+  // Polling refresh every 10 seconds for updates
   useEffect(() => {
     const id = window.setInterval(() => {
       router.refresh();

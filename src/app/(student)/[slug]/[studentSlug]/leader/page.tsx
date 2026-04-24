@@ -18,7 +18,7 @@ export default async function TeamLeaderRootPage({
     Boolean(session) &&
     !session?.revokedAt &&
     session?.expiresAt &&
-    session.expiresAt > new Date() &&
+    new Date(session.expiresAt) > new Date() &&
     session?.studentId === student.id &&
     session?.festivalId === festival.id &&
     session?.student?.isTeamLeader;

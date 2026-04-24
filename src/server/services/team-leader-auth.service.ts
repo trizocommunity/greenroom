@@ -1,5 +1,10 @@
 import crypto from "crypto";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { 
+  teamLeaderOtp as otpTable, 
+  teamLeaderSession as sessionTable 
+} from "@/server/db/schema";
+import { eq, and, isNull, gt, gte, desc, sql } from "drizzle-orm";
 import { sendTeamLeaderOtpEmail } from "@/lib/email";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import {
@@ -9,6 +14,7 @@ import {
 } from "@/lib/team-leader-auth/session";
 import { findFestivalBySlug } from "@/server/models/festival.model";
 import { findStudentByFestivalAndProfileSlug } from "@/server/models/student.model";
+import { randomUUID } from "crypto";
 
 const OTP_TTL_MS = 10 * 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
@@ -55,26 +61,29 @@ export const TeamLeaderAuthService = {
       );
     }
 
-    const since = new Date(Date.now() - 10 * 60 * 1000);
-    const recentCount = await prisma.teamLeaderOtp.count({
-      where: {
-        studentId: student.id,
-        createdAt: { gte: since },
-      },
+    const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const result = await db.query.teamLeaderOtp.findMany({
+      where: and(
+        eq(otpTable.studentId, student.id),
+        gte(otpTable.createdAt, since)
+      ),
+      columns: { id: true },
     });
-    if (recentCount >= OTP_MAX_REQUESTS_PER_10_MIN) {
+    
+    if (result.length >= OTP_MAX_REQUESTS_PER_10_MIN) {
       throw new AppError(
         "Too many OTP requests. Please try again in 10 minutes.",
       );
     }
 
     const otpCode = generateOtpCode();
-    await prisma.teamLeaderOtp.create({
-      data: {
-        studentId: student.id,
-        codeHash: hashOtp(otpCode),
-        expiresAt: new Date(Date.now() + OTP_TTL_MS),
-      },
+    const now = new Date().toISOString();
+    await db.insert(otpTable).values({
+      id: randomUUID(),
+      studentId: student.id,
+      codeHash: hashOtp(otpCode),
+      expiresAt: new Date(Date.now() + OTP_TTL_MS).toISOString(),
+      updatedAt: now,
     });
 
     await sendTeamLeaderOtpEmail(String(student.email), otpCode, festival.name);
@@ -96,14 +105,16 @@ export const TeamLeaderAuthService = {
       input.studentSlug,
     );
 
-    const otpRecord = await prisma.teamLeaderOtp.findFirst({
-      where: {
-        studentId: student.id,
-        consumedAt: null,
-        expiresAt: { gt: new Date() },
-      },
-      orderBy: { createdAt: "desc" },
+    const nowStr = new Date().toISOString();
+    const otpRecord = await db.query.teamLeaderOtp.findFirst({
+      where: and(
+        eq(otpTable.studentId, student.id),
+        isNull(otpTable.consumedAt),
+        gt(otpTable.expiresAt, nowStr)
+      ),
+      orderBy: [desc(otpTable.createdAt)],
     });
+    
     if (!otpRecord) {
       throw new AppError("OTP is invalid or expired.");
     }
@@ -114,42 +125,44 @@ export const TeamLeaderAuthService = {
 
     const ok = hashOtp(input.otp) === otpRecord.codeHash;
     if (!ok) {
-      await prisma.teamLeaderOtp.update({
-        where: { id: otpRecord.id },
-        data: { attempts: { increment: 1 } },
-      });
+      await db.update(otpTable).set({ 
+        attempts: sql`${otpTable.attempts} + 1`,
+        updatedAt: nowStr,
+      }).where(eq(otpTable.id, otpRecord.id));
       throw new AppError("OTP is invalid.");
     }
 
-    await prisma.teamLeaderOtp.update({
-      where: { id: otpRecord.id },
-      data: { consumedAt: new Date() },
-    });
+    await db.update(otpTable).set({ 
+      consumedAt: nowStr,
+      updatedAt: nowStr,
+    }).where(eq(otpTable.id, otpRecord.id));
 
     const rawToken = createRawSessionToken();
     const expiresAt = getSessionExpiryDate();
     const tokenHash = getTokenHash(rawToken);
-    await prisma.teamLeaderSession.create({
-      data: {
-        studentId: student.id,
-        festivalId: festival.id,
-        tokenHash,
-        expiresAt,
-        ipAddress: input.ipAddress ?? null,
-        userAgent: input.userAgent ?? null,
-      },
+    
+    await db.insert(sessionTable).values({
+      id: randomUUID(),
+      studentId: student.id,
+      festivalId: festival.id,
+      tokenHash,
+      expiresAt: expiresAt.toISOString(),
+      ipAddress: input.ipAddress ?? null,
+      userAgent: input.userAgent ?? null,
+      updatedAt: nowStr,
     });
 
     return { rawToken, expiresAt };
   },
 
   async revokeSessionByRawToken(rawToken: string) {
-    await prisma.teamLeaderSession.updateMany({
-      where: {
-        tokenHash: getTokenHash(rawToken),
-        revokedAt: null,
-      },
-      data: { revokedAt: new Date() },
-    });
+    const nowStr = new Date().toISOString();
+    await db.update(sessionTable).set({ 
+      revokedAt: nowStr,
+      updatedAt: nowStr,
+    }).where(and(
+      eq(sessionTable.tokenHash, getTokenHash(rawToken)),
+      isNull(sessionTable.revokedAt)
+    ));
   },
 };

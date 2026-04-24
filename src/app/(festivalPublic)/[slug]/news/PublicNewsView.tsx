@@ -12,8 +12,8 @@ type Post = {
   excerpt: string | null;
   content: string;
   imageUrl: string | null;
-  publishedAt: Date | null;
-  createdAt: Date;
+  publishedAt: string | null;
+  createdAt: string;
 };
 
 interface PublicNewsViewProps {

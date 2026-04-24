@@ -30,7 +30,7 @@ import { useMyFestival } from "@/hooks/useFestivals";
 import { useJoinedFestivals } from "@/hooks/useJoinedFestivals";
 import { useUnusedCredit } from "@/hooks/useUnusedCredit";
 import { getDerivedFestivalStatus } from "@/lib/festival-status";
-import type { Tier } from "@/lib/prisma-enums";
+import type { Tier } from "@/lib/app-enums";
 import { cn } from "@/lib/utils";
 import { FestivalCard } from "../FestivalCard";
 import { JoinedFestivalCard } from "../JoinedFestivalCard";

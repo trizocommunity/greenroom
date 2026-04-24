@@ -2,8 +2,10 @@ import { CalendarRange, Users } from "lucide-react";
 import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
 import { AssignmentsClient } from "@/components/festival/pre-works/assignments/AssignmentsClient";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
 import { findFestivalBySlug } from "@/server/models/festival.model";
+import { programme as programmeTable, student as studentTable } from "@/server/db/schema";
+import { eq, count } from "drizzle-orm";
 
 export default async function AssignmentsPage({
   params,
@@ -15,11 +17,12 @@ export default async function AssignmentsPage({
   if (!festival) return notFound();
 
   // Check for programmes
-  const programmeCount = await prisma.programme.count({
-    where: { festivalId: festival.id },
-  });
+  const [programmeCountResult] = await db
+    .select({ c: count() })
+    .from(programmeTable)
+    .where(eq(programmeTable.festivalId, festival.id));
 
-  if (programmeCount === 0) {
+  if (programmeCountResult.c === 0) {
     return (
       <EmptyState
         title="No Programmes Found"
@@ -32,11 +35,12 @@ export default async function AssignmentsPage({
   }
 
   // Check for students
-  const studentCount = await prisma.student.count({
-    where: { festivalId: festival.id },
-  });
+  const [studentCountResult] = await db
+    .select({ c: count() })
+    .from(studentTable)
+    .where(eq(studentTable.festivalId, festival.id));
 
-  if (studentCount === 0) {
+  if (studentCountResult.c === 0) {
     return (
       <EmptyState
         title="No Students Found"

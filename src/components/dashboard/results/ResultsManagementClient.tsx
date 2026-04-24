@@ -1,6 +1,6 @@
 "use client";
 
-import type { ProgrammeStatus } from "@prisma/client";
+import type { ProgrammeStatus } from "@/lib/app-enums";
 import {
   AlertCircle,
   Award,

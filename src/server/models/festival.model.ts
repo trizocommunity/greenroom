@@ -36,8 +36,13 @@ export async function findFestivalBySlug(slug: string) {
   });
 }
 
-export async function createFestival(data: typeof festivals.$inferInsert) {
-  const result = await db.insert(festivals).values(data).returning();
+export async function createFestival(data: Omit<typeof festivals.$inferInsert, "id" | "updatedAt"> & { id?: string; updatedAt?: string }) {
+  const { randomUUID } = await import("crypto");
+  const result = await db.insert(festivals).values({
+    id: data.id ?? randomUUID(),
+    updatedAt: data.updatedAt ?? new Date().toISOString(),
+    ...data,
+  }).returning();
   return result[0];
 }
 
@@ -241,7 +246,8 @@ export async function getDashboardOverviewData(festivalId: string) {
       const resultDates = prog.programmeAssignments
         .flatMap((a) => a.results)
         .map((r) => r?.createdAt)
-        .filter((d): d is Date => d != null);
+        .filter((d): d is string => d != null)
+        .map((d) => new Date(d));
       const latestResultAt =
         resultDates.length > 0
           ? new Date(Math.max(...resultDates.map((d) => d.getTime())))

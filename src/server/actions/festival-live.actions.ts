@@ -2,7 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { 
+  festival as festivalTable,
+  festivalMember as memberTable,
+  festivalGalleryImage as galleryTable,
+  festivalNews as newsTable
+} from "@/server/db/schema";
+import { eq, and, sql, desc } from "drizzle-orm";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import { assertFestivalMutationAllowed } from "@/server/services/festival-lifecycle-policy.service";
 
@@ -10,17 +17,22 @@ async function assertFestivalAdmin(festivalId: string) {
   const session = await getSession();
   if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
 
-  const festival = await prisma.festival.findUnique({
-    where: { id: festivalId },
-    include: {
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.id, festivalId),
+    with: {
       members: {
-        where: { userId: session.userId, isActive: true },
+        where: and(
+          eq(memberTable.userId, session.userId),
+          eq(memberTable.isActive, true)
+        ),
       },
     },
   });
+
   const isOwner = festival?.ownerId === session.userId;
   const isAdmin = festival?.members.some((m) => m.role === "ADMIN");
   const isSuperAdmin = session.role === "SUPER_ADMIN";
+  
   if (!festival || (!isOwner && !isAdmin && !isSuperAdmin)) {
     throw new AppError(ERROR_MESSAGES.FORBIDDEN);
   }
@@ -31,17 +43,21 @@ export async function addGalleryImageAction(festivalId: string, url: string) {
   try {
     const { slug } = await assertFestivalAdmin(festivalId);
     await assertFestivalMutationAllowed(festivalId);
-    const maxOrder = await prisma.festivalGalleryImage.aggregate({
-      where: { festivalId },
-      _max: { order: true },
+    
+    const [maxOrderResult] = await db
+      .select({ maxOrder: sql<number>`max(${galleryTable.order})` })
+      .from(galleryTable)
+      .where(eq(galleryTable.festivalId, festivalId));
+      
+    const { randomUUID } = await import("crypto");
+    await db.insert(galleryTable).values({
+      id: randomUUID(),
+      festivalId,
+      url: url.trim(),
+      order: (maxOrderResult.maxOrder ?? -1) + 1,
+      updatedAt: new Date().toISOString(),
     });
-    await prisma.festivalGalleryImage.create({
-      data: {
-        festivalId,
-        url: url.trim(),
-        order: (maxOrder._max.order ?? -1) + 1,
-      },
-    });
+    
     revalidatePath(`/dashboard/${slug}/festival-live`);
     return { success: true };
   } catch (e) {
@@ -51,14 +67,16 @@ export async function addGalleryImageAction(festivalId: string, url: string) {
 
 export async function removeGalleryImageAction(imageId: string) {
   try {
-    const image = await prisma.festivalGalleryImage.findUnique({
-      where: { id: imageId },
-      select: { festivalId: true, festival: { select: { slug: true } } },
+    const image = await db.query.festivalGalleryImage.findFirst({
+      where: eq(galleryTable.id, imageId),
+      with: { festival: { columns: { slug: true } } },
     });
+    
     if (!image) return { success: false, error: "Not found" };
     await assertFestivalAdmin(image.festivalId);
     await assertFestivalMutationAllowed(image.festivalId);
-    await prisma.festivalGalleryImage.delete({ where: { id: imageId } });
+    
+    await db.delete(galleryTable).where(eq(galleryTable.id, imageId));
     revalidatePath(`/dashboard/${image.festival.slug}/festival-live`);
     return { success: true };
   } catch (e) {
@@ -73,14 +91,17 @@ export async function addNewsPostAction(
   try {
     const { slug } = await assertFestivalAdmin(festivalId);
     await assertFestivalMutationAllowed(festivalId);
-    await prisma.festivalNews.create({
-      data: {
-        festivalId,
-        title: data.title.trim(),
-        content: data.content.trim(),
-        imageUrl: data.imageUrl?.trim() || null,
-      },
+    
+    const { randomUUID } = await import("crypto");
+    await db.insert(newsTable).values({
+      id: randomUUID(),
+      festivalId,
+      title: data.title.trim(),
+      content: data.content.trim(),
+      imageUrl: data.imageUrl?.trim() || null,
+      updatedAt: new Date().toISOString(),
     });
+    
     revalidatePath(`/dashboard/${slug}/festival-live`);
     return { success: true };
   } catch (e) {
@@ -90,14 +111,16 @@ export async function addNewsPostAction(
 
 export async function removeNewsPostAction(postId: string) {
   try {
-    const post = await prisma.festivalNews.findUnique({
-      where: { id: postId },
-      select: { festivalId: true, festival: { select: { slug: true } } },
+    const post = await db.query.festivalNews.findFirst({
+      where: eq(newsTable.id, postId),
+      with: { festival: { columns: { slug: true } } },
     });
+    
     if (!post) return { success: false, error: "Not found" };
     await assertFestivalAdmin(post.festivalId);
     await assertFestivalMutationAllowed(post.festivalId);
-    await prisma.festivalNews.delete({ where: { id: postId } });
+    
+    await db.delete(newsTable).where(eq(newsTable.id, postId));
     revalidatePath(`/dashboard/${post.festival.slug}/festival-live`);
     return { success: true };
   } catch (e) {

@@ -1,3 +1,6 @@
+import { db } from "@/lib/db";
+import { payment as paymentTable } from "@/server/db/schema";
+import { desc } from "drizzle-orm";
 import {
   getUserPaymentsDomain,
   getUserStatusDomain,
@@ -22,12 +25,11 @@ export const getUserStatus = async (userId: string, role: string = "USER") => {
 };
 
 export const getAllPayments = async () => {
-  const { prisma } = await import("@/lib/db");
-  return prisma.payment.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
+  return db.query.payment.findMany({
+    orderBy: [desc(paymentTable.createdAt)],
+    with: {
       user: {
-        select: {
+        columns: {
           id: true,
           fullName: true,
           email: true,

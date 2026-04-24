@@ -10,11 +10,11 @@ export async function getFestivalResultsDataBySlug(slug: string) {
       programmes: {
         with: {
           category: true,
-          programmeAssignments: {
+          assignments: {
             with: {
               student: true,
               group: true,
-              results: true,
+              result: true,
             },
           },
         },

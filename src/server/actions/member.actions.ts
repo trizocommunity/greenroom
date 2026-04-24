@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { festival as festivalTable } from "@/server/db/schema";
+import { eq } from "drizzle-orm";
 import { handleActionError } from "@/lib/errors";
 import { MemberService } from "@/server/services/member.service";
 import type { ActionResponse } from "@/types/actions";
@@ -28,9 +30,9 @@ export async function addMemberAction(
     const session = await getSession();
     await assertFestivalAccess(session, festivalId, { requireWritable: true });
     const result = await MemberService.addMember(festivalId, data);
-    const festival = await prisma.festival.findUnique({
-      where: { id: festivalId },
-      select: { slug: true },
+    const festival = await db.query.festival.findFirst({
+      where: eq(festivalTable.id, festivalId),
+      columns: { slug: true },
     });
     if (festival) revalidatePath(`/dashboard/${festival.slug}/members`);
     return { success: true, data: result };
@@ -47,9 +49,9 @@ export async function removeMemberAction(
     const session = await getSession();
     await assertFestivalAccess(session, festivalId, { requireWritable: true });
     await MemberService.removeMember(festivalId, memberId);
-    const festival = await prisma.festival.findUnique({
-      where: { id: festivalId },
-      select: { slug: true },
+    const festival = await db.query.festival.findFirst({
+      where: eq(festivalTable.id, festivalId),
+      columns: { slug: true },
     });
     if (festival) revalidatePath(`/dashboard/${festival.slug}/members`);
     return { success: true, data: null };

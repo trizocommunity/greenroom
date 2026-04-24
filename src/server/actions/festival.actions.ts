@@ -1,10 +1,11 @@
 "use server";
 
-import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { TIER_CONFIG } from "@/config/pricing";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { festival as festivalTable, payment as paymentTable, festivalMember as memberTable, auditLog as auditLogTable } from "@/server/db/schema";
+import { eq, and, sql } from "drizzle-orm";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import { validatePublicSiteRequirements } from "@/lib/festival-public-validation";
 import {
@@ -15,6 +16,7 @@ import { createAuditLog } from "@/server/services/audit-log.service";
 import { assertFestivalMutationAllowed } from "@/server/services/festival-lifecycle-policy.service";
 import { StorageUsageService } from "@/server/services/storage-usage.service";
 import { UsageCounterService } from "@/server/services/usage-counter.service";
+import { randomUUID } from "crypto";
 
 export async function createFestival(input: CreateFestivalInput) {
   try {
@@ -27,8 +29,8 @@ export async function createFestival(input: CreateFestivalInput) {
     const data = createFestivalSchema.parse(input);
 
     // 2. Validate Payment
-    const payment = await prisma.payment.findUnique({
-      where: { id: data.paymentId, userId: session.userId },
+    const payment = await db.query.payment.findFirst({
+      where: and(eq(paymentTable.id, data.paymentId), eq(paymentTable.userId, session.userId)),
     });
 
     if (!payment || payment.status !== "PAID" || payment.used) {
@@ -41,7 +43,7 @@ export async function createFestival(input: CreateFestivalInput) {
     }
 
     // Resolve Tier (Default to BASIC if missing)
-    const tier = payment.tier || "BASIC";
+    const tier = (payment.tier || "BASIC") as "BASIC" | "STANDARD" | "PRO";
     const tierConfig = TIER_CONFIG[tier];
 
     // Validate date range doesn't exceed plan duration
@@ -61,14 +63,14 @@ export async function createFestival(input: CreateFestivalInput) {
     const expiresAt =
       payment.validUntil ??
       (() => {
-        const base = payment.createdAt ?? new Date();
+        const base = payment.createdAt ? new Date(payment.createdAt) : new Date();
         const days = tierConfig.durationDays || 40;
         const d = new Date(base);
         d.setDate(d.getDate() + days);
-        return d;
+        return d.toISOString();
       })();
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       // Create Festival
       const finalSlug = (
         data.festivalSlug ||
@@ -78,42 +80,45 @@ export async function createFestival(input: CreateFestivalInput) {
           .replace(/^-+|-+$/g, "")
       ).slice(0, 50);
 
-      const festival = await tx.festival.create({
-        data: {
-          name: data.festivalName,
-          slug: finalSlug,
-          institutionType: data.institutionType || "OTHER",
-          institutionName: data.institutionName,
-          location: data.location,
-          startDate: data.startDate,
-          endDate: data.endDate,
-          ownerId: session.userId,
-          status: "ONGOING",
-          expiresAt: expiresAt,
-          isLocked: false,
+      const festivalId = randomUUID();
+      const now = new Date().toISOString();
+      
+      const [festival] = await tx.insert(festivalTable).values({
+        id: festivalId,
+        name: data.festivalName,
+        slug: finalSlug,
+        institutionType: (data.institutionType as any) || "OTHER",
+        institutionName: data.institutionName,
+        location: data.location,
+        startDate: data.startDate?.toISOString(),
+        endDate: data.endDate?.toISOString(),
+        ownerId: session.userId,
+        status: "ONGOING",
+        expiresAt: typeof expiresAt === 'string' ? expiresAt : expiresAt.toISOString(),
+        isLocked: false,
+        tier: tier,
+        tierLabel: tierConfig?.label || "Standard",
+        createdAt: now,
+        updatedAt: now,
+      }).returning();
 
-          // Create Admin Member
-          members: {
-            create: {
-              userId: session.userId,
-              role: "ADMIN",
-            },
-          },
-
-          // Tier Info
-          tier: tier,
-          tierLabel: tierConfig?.label || "Standard",
-        },
+      // Create Admin Member
+      await tx.insert(memberTable).values({
+        id: randomUUID(),
+        festivalId: festival.id,
+        userId: session.userId,
+        role: "ADMIN",
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
       });
 
       // Mark Payment Used
-      await tx.payment.update({
-        where: { id: payment.id },
-        data: {
-          used: true,
-          festivalId: festival.id,
-        },
-      });
+      await tx.update(paymentTable).set({
+        used: true,
+        festivalId: festival.id,
+        updatedAt: now,
+      }).where(eq(paymentTable.id, payment.id));
 
       return festival;
     });
@@ -150,19 +155,19 @@ export async function updateFestivalSettingsAction(
     }
 
     // Check ADMIN
-    const festival = await prisma.festival.findUnique({
-      where: { id: festivalId },
-      include: {
-        members: {
-          where: {
-            userId: session.userId,
-            role: "ADMIN",
-          },
+    const festival = await db.query.festival.findFirst({
+      where: eq(festivalTable.id, festivalId),
+      with: {
+        festivalMembers: {
+          where: and(
+            eq(memberTable.userId, session.userId),
+            eq(memberTable.role, "ADMIN")
+          ),
         },
       },
     });
 
-    const isAdmin = festival?.members.length && festival.members.length > 0;
+    const isAdmin = festival?.festivalMembers && festival.festivalMembers.length > 0;
     const isOwner = festival?.ownerId === session.userId;
     const isSuperAdmin = session.role === "SUPER_ADMIN";
 
@@ -201,29 +206,26 @@ export async function updateFestivalSettingsAction(
       throw new AppError("End date must be on/before plan expiry date");
     }
 
-    const updated = await prisma.festival.update({
-      where: { id: festivalId },
-      data: {
-        // CLN-1 FIX: Removed duplicate first assignment — spread below is the active one.
-        ...(data.programmeAssignmentDeadline !== undefined && {
-          programmeAssignmentDeadline: data.programmeAssignmentDeadline
-            ? new Date(data.programmeAssignmentDeadline)
-            : null,
-        }),
-        ...(data.teamLeaderLimit !== undefined && {
-          teamLeaderLimit: Math.max(
-            1,
-            Math.min(10, Number(data.teamLeaderLimit) || 2),
-          ),
-        }),
-        ...(data.startDate !== undefined && {
-          startDate: data.startDate ? new Date(data.startDate) : null,
-        }),
-        ...(data.endDate !== undefined && {
-          endDate: data.endDate ? new Date(data.endDate) : null,
-        }),
-      },
-    });
+    const [updated] = await db.update(festivalTable).set({
+      ...(data.programmeAssignmentDeadline !== undefined && {
+        programmeAssignmentDeadline: data.programmeAssignmentDeadline
+          ? new Date(data.programmeAssignmentDeadline).toISOString()
+          : null,
+      }),
+      ...(data.teamLeaderLimit !== undefined && {
+        teamLeaderLimit: Math.max(
+          1,
+          Math.min(10, Number(data.teamLeaderLimit) || 2),
+        ),
+      }),
+      ...(data.startDate !== undefined && {
+        startDate: data.startDate ? new Date(data.startDate).toISOString() : null,
+      }),
+      ...(data.endDate !== undefined && {
+        endDate: data.endDate ? new Date(data.endDate).toISOString() : null,
+      }),
+      updatedAt: new Date().toISOString(),
+    }).where(eq(festivalTable.id, festivalId)).returning();
 
     revalidatePath(`/dashboard/${festival.slug}/settings`);
     return { success: true, data: updated };
@@ -242,21 +244,23 @@ export async function setPublicSiteEnabledAction(
       throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
     }
 
-    const festival = await prisma.festival.findUnique({
-      where: { id: festivalId },
-      include: {
-        members: {
-          where: { userId: session.userId, isActive: true },
+    const festival = await db.query.festival.findFirst({
+      where: eq(festivalTable.id, festivalId),
+      with: {
+        festivalMembers: {
+          where: and(eq(memberTable.userId, session.userId), eq(memberTable.isActive, true)),
         },
-        _count: { select: { galleryImages: true } },
-        newsPosts: {
-          select: { title: true, content: true, imageUrl: true },
+        festivalNews: {
+          columns: { title: true, content: true, imageUrl: true },
         },
+        festivalGalleryImages: {
+          columns: { id: true },
+        }
       },
     });
 
     const isOwner = festival?.ownerId === session.userId;
-    const isAdmin = festival?.members.some((m) => m.role === "ADMIN");
+    const isAdmin = festival?.festivalMembers.some((m) => m.role === "ADMIN");
     const isSuperAdmin = session.role === "SUPER_ADMIN";
 
     if (!festival || (!isOwner && !isAdmin && !isSuperAdmin)) {
@@ -273,9 +277,9 @@ export async function setPublicSiteEnabledAction(
         orgDescription: festival.orgDescription,
         orgWebsite: festival.orgWebsite,
         orgLocation: festival.orgLocation,
-        tier: festival.tier,
-        galleryImageCount: festival._count?.galleryImages ?? 0,
-        newsPosts: (festival.newsPosts ?? []).map((p) => ({
+        tier: festival.tier as any,
+        galleryImageCount: festival.festivalGalleryImages.length ?? 0,
+        newsPosts: (festival.festivalNews ?? []).map((p) => ({
           title: p.title,
           content: p.content,
           imageUrl: p.imageUrl,
@@ -289,10 +293,10 @@ export async function setPublicSiteEnabledAction(
       }
     }
 
-    await prisma.festival.update({
-      where: { id: festivalId },
-      data: { publicSiteEnabled: enabled },
-    });
+    await db.update(festivalTable).set({
+      publicSiteEnabled: enabled,
+      updatedAt: new Date().toISOString(),
+    }).where(eq(festivalTable.id, festivalId));
 
     revalidatePath(`/dashboard/${festival.slug}/festival-live`);
     revalidatePath(`/dashboard/${festival.slug}`);
@@ -312,9 +316,9 @@ export async function updateFestivalBrandingAction(data: {
       throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
     }
 
-    const festival = await prisma.festival.findUnique({
-      where: { ownerId: session.userId },
-      select: { id: true, slug: true, branding: true },
+    const festival = await db.query.festival.findFirst({
+      where: eq(festivalTable.ownerId, session.userId),
+      columns: { id: true, slug: true, branding: true },
     });
 
     if (!festival) {
@@ -327,16 +331,12 @@ export async function updateFestivalBrandingAction(data: {
       festival.branding && typeof festival.branding === "object"
         ? (festival.branding as Record<string, unknown>)
         : {};
-    const currentColors =
-      current.colors && typeof current.colors === "object"
-        ? (current.colors as Record<string, unknown>)
-        : {};
 
     const nextBranding = {
       ...current,
       logo: data.logo ?? current.logo ?? null,
       heroImage: data.heroImage ?? current.heroImage ?? null,
-    } as Prisma.InputJsonValue;
+    };
 
     const previousLogo = typeof current.logo === "string" ? current.logo : null;
     const previousHero =
@@ -366,17 +366,18 @@ export async function updateFestivalBrandingAction(data: {
     ]);
     const deltaMb = addMb - removeMb;
 
-    await prisma.$transaction(async (tx) => {
-      await tx.festival.update({
-        where: { id: festival.id },
-        data: { branding: nextBranding },
-      });
+    await db.transaction(async (tx) => {
+      await tx.update(festivalTable).set({
+        branding: nextBranding,
+        updatedAt: new Date().toISOString(),
+      }).where(eq(festivalTable.id, festival.id));
+      
       if (deltaMb !== 0) {
         await UsageCounterService.incrementUsage(
           festival.id,
           "storage",
           deltaMb,
-          tx,
+          tx as any,
         );
       }
     });

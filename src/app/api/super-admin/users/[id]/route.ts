@@ -1,4 +1,4 @@
-import type { GlobalRole } from "@prisma/client";
+import type { GlobalRole } from "@/lib/app-enums";
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import {

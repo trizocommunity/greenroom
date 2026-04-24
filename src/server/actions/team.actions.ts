@@ -1,13 +1,19 @@
 "use server";
 
-import type { FestivalRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { hashPassword } from "@/lib/auth/password";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { 
+  festival as festivalTable, 
+  festivalMember as festivalMemberTable, 
+  user as userTable 
+} from "@/server/db/schema";
+import { eq, and, count, desc, sql } from "drizzle-orm";
 import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 import { createAuditLog } from "@/server/services/audit-log.service";
 import { ensureFestivalWritable } from "@/server/services/festival-context.service";
+import { randomUUID } from "crypto";
 
 const createMemberSchema = z.object({
   festivalId: z.string(),
@@ -30,21 +36,23 @@ export async function createFestivalMember(input: CreateMemberInput) {
   try {
     await ensureFestivalWritable(festivalId);
 
-    // 0. Enforce maxTeamMembers (owner + FestivalMembers)
-    const festivalForLimit = await prisma.festival.findUnique({
-      where: { id: festivalId },
-      select: { tier: true, slug: true },
+    const festivalForLimit = await db.query.festival.findFirst({
+      where: eq(festivalTable.id, festivalId),
+      columns: { tier: true, slug: true },
     });
+    
     if (festivalForLimit) {
       const maxTeamMembers =
         FeatureService.getFeatureValue<number>(
-          getTierForFeatureCheck(festivalForLimit.tier),
+          getTierForFeatureCheck(festivalForLimit.tier as any),
           "maxTeamMembers",
         ) ?? 1;
-      const existingCount = await prisma.festivalMember.count({
-        where: { festivalId },
-      });
-      const totalSlots = 1 + existingCount;
+      const [existingCountResult] = await db
+        .select({ c: count() })
+        .from(festivalMemberTable)
+        .where(eq(festivalMemberTable.festivalId, festivalId));
+        
+      const totalSlots = 1 + existingCountResult.c;
       if (totalSlots >= maxTeamMembers) {
         return {
           success: false,
@@ -54,32 +62,33 @@ export async function createFestivalMember(input: CreateMemberInput) {
       }
     }
 
-    // 1. Check if user already exists
-    let user = await prisma.user.findUnique({
-      where: { email },
+    let user = await db.query.user.findFirst({
+      where: eq(userTable.email, email),
     });
 
+    const now = new Date().toISOString();
+
     if (!user) {
-      // Create new user
       const hashedPassword = await hashPassword(password);
-      user = await prisma.user.create({
-        data: {
-          email,
-          password: hashedPassword,
-          fullName,
-          globalRole: "USER",
-        },
+      const newUserId = randomUUID();
+      await db.insert(userTable).values({
+        id: newUserId,
+        email,
+        password: hashedPassword,
+        fullName,
+        globalRole: "USER",
+        updatedAt: now,
       });
+      user = await db.query.user.findFirst({ where: eq(userTable.id, newUserId) });
     }
 
-    // 2. Check if already a member of this festival
-    const existingMember = await prisma.festivalMember.findUnique({
-      where: {
-        festivalId_userId: {
-          festivalId,
-          userId: user.id,
-        },
-      },
+    if (!user) throw new Error("Failed to resolve user");
+
+    const existingMember = await db.query.festivalMember.findFirst({
+      where: and(
+        eq(festivalMemberTable.festivalId, festivalId),
+        eq(festivalMemberTable.userId, user.id)
+      ),
     });
 
     if (existingMember) {
@@ -89,16 +98,15 @@ export async function createFestivalMember(input: CreateMemberInput) {
       };
     }
 
-    // 3. Create FestivalMember
-    await prisma.festivalMember.create({
-      data: {
-        festivalId,
-        userId: user.id,
-        role: role as FestivalRole,
-        metadata: {
-          initialPassword: password, // Storing per user request, strictly for admin initial view
-        },
+    await db.insert(festivalMemberTable).values({
+      id: randomUUID(),
+      festivalId,
+      userId: user.id,
+      role: role as any,
+      metadata: {
+        initialPassword: password,
       },
+      updatedAt: now,
     });
 
     await createAuditLog({
@@ -122,32 +130,26 @@ export async function createFestivalMember(input: CreateMemberInput) {
 
 export async function getFestivalMembers(
   festivalId: string,
-  role?: FestivalRole,
+  role?: "ADMIN" | "ANNOUNCER" | "STAGE_MANAGER",
 ) {
   try {
-    const whereClause: import("@prisma/client").Prisma.FestivalMemberWhereInput =
-      { festivalId };
-    if (role) {
-      whereClause.role = role;
-    }
-
-    const members = await prisma.festivalMember.findMany({
-      where: whereClause,
-      include: {
+    const members = await db.query.festivalMember.findMany({
+      where: and(
+        eq(festivalMemberTable.festivalId, festivalId),
+        role ? eq(festivalMemberTable.role, role) : undefined
+      ),
+      with: {
         user: {
-          select: {
+          columns: {
             id: true,
             fullName: true,
             email: true,
           },
         },
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: [desc(festivalMemberTable.createdAt)],
     });
 
-    // Map to flat structure
     return members.map((m) => ({
       id: m.id,
       userId: m.userId,
@@ -169,17 +171,15 @@ export async function getFestivalMembers(
 
 export async function getJoinedFestivals(userId: string) {
   try {
-    const memberships = await prisma.festivalMember.findMany({
-      where: {
-        userId,
-        isActive: true,
-      },
-      include: {
+    const memberships = await db.query.festivalMember.findMany({
+      where: and(
+        eq(festivalMemberTable.userId, userId),
+        eq(festivalMemberTable.isActive, true)
+      ),
+      with: {
         festival: true,
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: [desc(festivalMemberTable.createdAt)],
     });
 
     return memberships.map((m) => ({
@@ -195,20 +195,18 @@ export async function getJoinedFestivals(userId: string) {
 
 export async function revokeFestivalMember(memberId: string) {
   try {
-    const member = await prisma.festivalMember.findUnique({
-      where: { id: memberId },
-      select: { festivalId: true, userId: true },
+    const member = await db.query.festivalMember.findFirst({
+      where: eq(festivalMemberTable.id, memberId),
+      columns: { festivalId: true, userId: true },
     });
     if (!member) return { success: false, error: "Member not found" };
     await ensureFestivalWritable(member.festivalId);
 
-    await prisma.festivalMember.delete({
-      where: { id: memberId },
-    });
+    await db.delete(festivalMemberTable).where(eq(festivalMemberTable.id, memberId));
 
-    const festival = await prisma.festival.findUnique({
-      where: { id: member.festivalId },
-      select: { slug: true },
+    const festival = await db.query.festival.findFirst({
+      where: eq(festivalTable.id, member.festivalId),
+      columns: { slug: true },
     });
     if (festival) revalidatePath(`/dashboard/${festival.slug}/members`);
 

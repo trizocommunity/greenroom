@@ -11,7 +11,7 @@ export function isFestivalActive(
 ) {
   const now = new Date();
   if (festival.status === "EXPIRED") return false;
-  if (festival.expiresAt && festival.expiresAt < now) return false;
+  if (festival.expiresAt && festival.expiresAt < new Date().toISOString()) return false;
   return true;
 }
 

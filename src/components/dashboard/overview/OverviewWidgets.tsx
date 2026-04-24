@@ -1,4 +1,4 @@
-import type { Festival } from "@prisma/client";
+import { festival as festivalSchema } from "@/server/db/schema";
 import { format } from "date-fns";
 import {
   ArrowRight,
@@ -42,7 +42,7 @@ import { getDashboardOverviewData } from "@/server/models/festival.model";
 import { getEffectivePlanFeatureMatrix } from "@/server/services/plan-features.service";
 
 interface OverviewWidgetsProps {
-  festival: Festival;
+  festival: typeof festivalSchema.$inferSelect;
 }
 
 function planFeature(

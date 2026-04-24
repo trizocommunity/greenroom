@@ -1,18 +1,15 @@
-import type { Prisma, ProgrammeNotificationEventType } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { 
+  programmeNotification as notificationTable,
+  programmeAssignment as assignmentTable,
+  student as studentTable,
+  festival as festivalTable
+} from "@/server/db/schema";
+import { eq, and, inArray, sql } from "drizzle-orm";
 import { sendPlainFestivalEmail } from "@/lib/email";
-import { realtimeConfig } from "@/lib/realtime-config";
-import { dispatchRealtimeOutboxBatch } from "@/server/realtime/dispatcher.worker";
-import {
-  createEventId,
-  createIdempotencyKey,
-  type RealtimeEventName,
-} from "@/server/realtime/events";
-import { enqueueRealtimeOutboxEvent } from "@/server/realtime/outbox.service";
-import { RealtimeRoom } from "@/server/realtime/rooms";
-import { RealtimeNotificationBus } from "@/server/services/realtime-notification-bus.service";
+import { randomUUID } from "crypto";
 
-type DeliveryChannel = "IN_APP" | "REALTIME" | "EMAIL";
+type DeliveryChannel = "IN_APP" | "EMAIL";
 
 type NotificationActor = {
   id?: string | null;
@@ -26,7 +23,7 @@ type NotificationTargetsInput = {
 };
 
 type NotificationInput = {
-  eventType: ProgrammeNotificationEventType;
+  eventType: "REPORTING_STARTED" | "REPORTING_RESET" | "REPORTING_PARTICIPANT_MARKED" | "REPORTING_CLOSED" | "CODE_LETTER_ISSUED" | "PROGRAMME_STATUS_CHANGED";
   festivalId: string;
   actor?: NotificationActor;
   targets: NotificationTargetsInput;
@@ -46,32 +43,6 @@ type ResolvedRecipients = {
   }>;
 };
 
-export function notificationEventSequenceFromId(eventId: string): number {
-  const compact = eventId.replace(/-/g, "");
-  const suffix = compact.slice(-8);
-  const parsed = Number.parseInt(suffix, 16);
-  return Number.isFinite(parsed) ? parsed : Date.now();
-}
-
-function mapNotificationEventToRealtimeEventName(
-  eventType: ProgrammeNotificationEventType,
-): RealtimeEventName {
-  switch (eventType) {
-    case "PROGRAMME_STATUS_CHANGED":
-      return "programme.status_changed";
-    case "REPORTING_PARTICIPANT_MARKED":
-      return "reporting.participant_marked";
-    case "REPORTING_CLOSED":
-    case "REPORTING_RESET":
-    case "REPORTING_STARTED":
-      return "reporting.updated";
-    case "CODE_LETTER_ISSUED":
-      return "notification.created";
-    default:
-      return "notification.created";
-  }
-}
-
 async function resolveRecipients(
   festivalId: string,
   targets: NotificationTargetsInput,
@@ -79,10 +50,16 @@ async function resolveRecipients(
   const studentIds = new Set<string>(targets.studentIds ?? []);
 
   if (targets.programmeId) {
-    const assignments = await prisma.programmeAssignment.findMany({
-      where: { festivalId, programmeId: targets.programmeId },
-      select: { studentId: true, student: { select: { groupId: true } } },
+    const assignments = await db.query.programmeAssignment.findMany({
+      where: and(
+        eq(assignmentTable.festivalId, festivalId),
+        eq(assignmentTable.programmeId, targets.programmeId)
+      ),
+      with: {
+        student: { columns: { groupId: true } },
+      },
     });
+    
     const groupIds = new Set<string>();
     for (const row of assignments) {
       if (row.studentId) studentIds.add(row.studentId);
@@ -90,13 +67,13 @@ async function resolveRecipients(
     }
 
     if (targets.includeTeamLeadersForProgramme && groupIds.size > 0) {
-      const leaders = await prisma.student.findMany({
-        where: {
-          festivalId,
-          groupId: { in: Array.from(groupIds) },
-          isTeamLeader: true,
-        },
-        select: { id: true },
+      const leaders = await db.query.student.findMany({
+        where: and(
+          eq(studentTable.festivalId, festivalId),
+          inArray(studentTable.groupId, Array.from(groupIds)),
+          eq(studentTable.isTeamLeader, true)
+        ),
+        columns: { id: true },
       });
       for (const leader of leaders) studentIds.add(leader.id);
     }
@@ -104,9 +81,12 @@ async function resolveRecipients(
 
   if (studentIds.size === 0) return { studentRecipients: [] };
 
-  const students = await prisma.student.findMany({
-    where: { id: { in: Array.from(studentIds) }, festivalId },
-    select: { id: true, email: true, isTeamLeader: true },
+  const students = await db.query.student.findMany({
+    where: and(
+      inArray(studentTable.id, Array.from(studentIds)),
+      eq(studentTable.festivalId, festivalId)
+    ),
+    columns: { id: true, email: true, isTeamLeader: true },
   });
 
   return {
@@ -123,81 +103,29 @@ export const NotificationService = {
     const recipients = await resolveRecipients(input.festivalId, input.targets);
     if (!recipients.studentRecipients.length) return { created: 0 };
 
-    const notificationRows: Prisma.ProgrammeNotificationCreateManyInput[] =
-      recipients.studentRecipients.map((recipient) => ({
-        festivalId: input.festivalId,
-        eventType: input.eventType,
-        recipientStudentId: recipient.studentId,
-        title: input.context.title,
-        body: input.context.body,
-        payload: (input.context.payload ?? {}) as Prisma.InputJsonValue,
-        channels: input.channels as unknown as Prisma.InputJsonValue,
-        isRead: false,
-      }));
+    const now = new Date().toISOString();
+    const notificationRows = recipients.studentRecipients.map((recipient) => ({
+      id: randomUUID(),
+      festivalId: input.festivalId,
+      eventType: input.eventType,
+      recipientStudentId: recipient.studentId,
+      title: input.context.title,
+      body: input.context.body,
+      payload: input.context.payload ?? {},
+      channels: input.channels,
+      isRead: false,
+      updatedAt: now,
+    }));
 
     if (input.channels.includes("IN_APP")) {
-      await prisma.programmeNotification.createMany({
-        data: notificationRows,
-      });
-    }
-
-    if (input.channels.includes("REALTIME")) {
-      const createdAt = new Date().toISOString();
-      for (const recipient of recipients.studentRecipients) {
-        const eventName = mapNotificationEventToRealtimeEventName(
-          input.eventType,
-        );
-        const eventId = createEventId();
-        const roomKeys = [
-          RealtimeRoom.festivalStudent(input.festivalId, recipient.studentId),
-        ];
-        if (realtimeConfig.enableDualPublish) {
-          await enqueueRealtimeOutboxEvent({
-            envelope: {
-              eventId,
-              eventName,
-              eventVersion: 1,
-              occurredAt: createdAt,
-              festivalId: input.festivalId,
-              entityType: "programmeNotification",
-              entityId: recipient.studentId,
-              idempotencyKey: createIdempotencyKey({
-                eventName,
-                entityId: recipient.studentId,
-                sequence: notificationEventSequenceFromId(eventId),
-              }),
-              payload: {
-                ...input.context.payload,
-                title: input.context.title,
-                body: input.context.body,
-                notificationType: input.eventType,
-              },
-            },
-            roomKeys,
-          });
-        }
-        RealtimeNotificationBus.publish({
-          eventId,
-          festivalId: input.festivalId,
-          recipientStudentId: recipient.studentId,
-          type: input.eventType,
-          payload: input.context.payload ?? {},
-          createdAt,
-          rooms: roomKeys,
-        });
-      }
-      if (
-        realtimeConfig.enableDualPublish &&
-        realtimeConfig.outboxDispatcherEnabled
-      ) {
-        void dispatchRealtimeOutboxBatch();
-      }
+      // Chunking if necessary, but for small batches it's fine
+      await db.insert(notificationTable).values(notificationRows as any);
     }
 
     if (input.channels.includes("EMAIL")) {
-      const festival = await prisma.festival.findUnique({
-        where: { id: input.festivalId },
-        select: { name: true },
+      const festival = await db.query.festival.findFirst({
+        where: eq(festivalTable.id, input.festivalId),
+        columns: { name: true },
       });
       for (const recipient of recipients.studentRecipients) {
         if (!recipient.isTeamLeader || !recipient.email) continue;
@@ -208,7 +136,7 @@ export const NotificationService = {
             input.context.body,
           );
         } catch {
-          // Keep dispatch resilient; failures are captured in DB channels metadata in future iterations.
+          // Keep dispatch resilient
         }
       }
     }

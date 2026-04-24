@@ -1,14 +1,13 @@
 "use server";
 
-import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { festival as festivalTable, result as resultTable, programme as programmeTable } from "@/server/db/schema";
+import { eq } from "drizzle-orm";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import { ResultModel } from "@/server/models/result.model";
-import { emitDomainRealtimeEvent } from "@/server/realtime/domain-events";
-import { RealtimeRoom } from "@/server/realtime/rooms";
 import {
   setProgrammePublished,
   updateProgrammeStatus,
@@ -30,9 +29,6 @@ function revalidateResultsPaths(
   slug: string,
   options?: { includeTeamStatus?: boolean },
 ) {
-  // Keep both routes in sync:
-  // - BASIC uses legacy `/event-works/marks`
-  // - STANDARD/PRO redirect to `/event-works/judgment`
   revalidatePath(`/dashboard/${slug}/event-works/marks`);
   revalidatePath(`/dashboard/${slug}/event-works/judgment`);
   revalidatePath(`/dashboard/${slug}/event-works/leaderboard`);
@@ -56,9 +52,9 @@ export async function saveResult(
 
     const result = await ResultModel.upsert(data.assignmentId, data);
     await updateProgrammeStatus(data.programmeId);
-    const festival = await prisma.festival.findUnique({
-      where: { id: data.festivalId },
-      select: { slug: true },
+    const festival = await db.query.festival.findFirst({
+      where: eq(festivalTable.id, data.festivalId),
+      columns: { slug: true },
     });
     if (festival) {
       revalidateResultsPaths(festival.slug, { includeTeamStatus: true });
@@ -78,9 +74,9 @@ export async function deleteResult(
 ): Promise<ActionResponse<void>> {
   try {
     const session = await getSession();
-    const result = await prisma.result.findUnique({
-      where: { id: resultId },
-      select: { festivalId: true, programmeId: true },
+    const result = await db.query.result.findFirst({
+      where: eq(resultTable.id, resultId),
+      columns: { festivalId: true, programmeId: true },
     });
     if (!result) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
     await assertFestivalAccess(session, result.festivalId, {
@@ -106,9 +102,9 @@ export async function bulkPublishProgrammeResults(
 ): Promise<ActionResponse<void>> {
   try {
     const session = await getSession();
-    const programme = await prisma.programme.findUnique({
-      where: { id: programmeId },
-      select: { festivalId: true },
+    const programme = await db.query.programme.findFirst({
+      where: eq(programmeTable.id, programmeId),
+      columns: { festivalId: true },
     });
     if (!programme) throw new AppError(ERROR_MESSAGES.PROGRAMME_NOT_FOUND);
     await assertFestivalAccess(session, programme.festivalId, {
@@ -117,19 +113,7 @@ export async function bulkPublishProgrammeResults(
 
     await ResultModel.bulkPublishByProgramme(programmeId, isPublished);
     await setProgrammePublished(programmeId, isPublished);
-    // Recompute derived status from current data for consistent lifecycle.
     await updateProgrammeStatus(programmeId);
-    await emitDomainRealtimeEvent({
-      eventName: "results.publish_toggled",
-      festivalId: programme.festivalId,
-      entityType: "programme",
-      entityId: programmeId,
-      roomKeys: [
-        RealtimeRoom.festivalAll(programme.festivalId),
-        RealtimeRoom.judgementProgramme(programme.festivalId, programmeId),
-      ],
-      payload: { programmeId, isPublished, festivalSlug },
-    });
     revalidateResultsPaths(festivalSlug);
     return { success: true, data: undefined };
   } catch (error) {
@@ -152,24 +136,8 @@ export async function publishTeamStandings(
     const { updateTeamStandings } = await import(
       "@/server/models/festival.model"
     );
-    const standingsJson = JSON.parse(
-      JSON.stringify(standings),
-    ) as Prisma.InputJsonValue;
-    await updateTeamStandings(festivalId, standingsJson);
-    await emitDomainRealtimeEvent({
-      eventName: "standings.updated",
-      festivalId,
-      entityType: "festival",
-      entityId: festivalId,
-      roomKeys: [
-        RealtimeRoom.festivalAll(festivalId),
-        RealtimeRoom.publicStandings(festivalId),
-      ],
-      payload: {
-        festivalId,
-        standings,
-      },
-    });
+    
+    await updateTeamStandings(festivalId, standings);
 
     revalidatePath(`/${festivalSlug}`);
     revalidatePath(`/${festivalSlug}/results`);

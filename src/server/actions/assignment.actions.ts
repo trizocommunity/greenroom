@@ -2,7 +2,16 @@
 
 import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { 
+  user as userTable, 
+  student as studentTable, 
+  category as categoryTable, 
+  group as groupTable, 
+  programme as programmeTable,
+  programmeAssignment as assignmentTable
+} from "@/server/db/schema";
+import { eq, count, and, inArray } from "drizzle-orm";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { getTeamLeaderSessionFromCookie } from "@/lib/team-leader-auth/session";
 import { findFestivalById } from "@/server/models/festival.model";
@@ -10,9 +19,9 @@ import { AssignmentService } from "@/server/services/assignment.service";
 import { assertFestivalMutationAllowed } from "@/server/services/festival-lifecycle-policy.service";
 
 async function getActorForCreatedBy(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { email: true, fullName: true, displayName: true },
+  const user = await db.query.user.findFirst({
+    where: eq(userTable.id, userId),
+    columns: { email: true, fullName: true, displayName: true },
   });
 
   if (!user) return {};
@@ -24,11 +33,11 @@ async function getActorForCreatedBy(userId: string) {
 }
 
 function assertAssignmentWindowOpen(
-  festival: { programmeAssignmentDeadline?: Date | null } | null,
+  festival: { programmeAssignmentDeadline?: string | null } | null,
 ) {
   if (
     festival?.programmeAssignmentDeadline &&
-    new Date() > festival.programmeAssignmentDeadline
+    new Date() > new Date(festival.programmeAssignmentDeadline)
   ) {
     throw new AppError(ERROR_MESSAGES.ASSIGNMENT_DEADLINE_PASSED);
   }
@@ -54,7 +63,7 @@ async function resolveAssignmentActorContext(
   if (
     !tlSession ||
     tlSession.revokedAt ||
-    tlSession.expiresAt <= new Date() ||
+    new Date(tlSession.expiresAt) <= new Date() ||
     !tlSession.student?.isTeamLeader ||
     tlSession.festivalId !== festivalId ||
     !tlSession.student.groupId
@@ -112,25 +121,25 @@ export async function createAssignmentAction(
   // Validate Dependencies
   const [categoryCount, groupCount, programmeCount, studentCount] =
     await Promise.all([
-      prisma.category.count({ where: { festivalId } }),
-      prisma.group.count({ where: { festivalId } }),
-      prisma.programme.count({ where: { festivalId } }),
-      prisma.student.count({ where: { festivalId } }),
+      db.select({ c: count() }).from(categoryTable).where(eq(categoryTable.festivalId, festivalId)),
+      db.select({ c: count() }).from(groupTable).where(eq(groupTable.festivalId, festivalId)),
+      db.select({ c: count() }).from(programmeTable).where(eq(programmeTable.festivalId, festivalId)),
+      db.select({ c: count() }).from(studentTable).where(eq(studentTable.festivalId, festivalId)),
     ]);
 
   if (
-    categoryCount === 0 ||
-    groupCount === 0 ||
-    programmeCount === 0 ||
-    studentCount === 0
+    categoryCount[0].c === 0 ||
+    groupCount[0].c === 0 ||
+    programmeCount[0].c === 0 ||
+    studentCount[0].c === 0
   ) {
     throw new AppError(ERROR_MESSAGES.ASSIGNMENT_DEPENDENCIES_MISSING);
   }
 
   if (actorContext.type === "teamLeader" && data.studentId) {
-    const student = await prisma.student.findUnique({
-      where: { id: data.studentId },
-      select: { id: true, festivalId: true, groupId: true },
+    const student = await db.query.student.findFirst({
+      where: eq(studentTable.id, data.studentId),
+      columns: { id: true, festivalId: true, groupId: true },
     });
     if (
       !student ||
@@ -173,9 +182,9 @@ export async function bulkCreateAssignmentAction(
 
   if (actorContext.type === "teamLeader") {
     const studentIds = Array.from(new Set(assignments.map((a) => a.studentId)));
-    const students = await prisma.student.findMany({
-      where: { id: { in: studentIds } },
-      select: { id: true, festivalId: true, groupId: true },
+    const students = await db.query.student.findMany({
+      where: and(eq(studentTable.festivalId, festivalId), inArray(studentTable.id, studentIds)),
+      columns: { id: true, festivalId: true, groupId: true },
     });
     if (
       students.length !== studentIds.length ||
@@ -187,11 +196,6 @@ export async function bulkCreateAssignmentAction(
       throw new AppError(ERROR_MESSAGES.FORBIDDEN);
     }
   }
-
-  // Dependencies check not strictly needed per item if we assume bulk flow comes from a valid state,
-  // but good to keep safe. The Service handles detail validation.
-  // We can do a quick count check here if we want to fail fast for empty festival,
-  // but let's rely on service validation for simplicity and robustness.
 
   return AssignmentService.bulkCreate(festivalId, assignments, actor);
 }
@@ -208,9 +212,9 @@ export async function deleteAssignmentAction(festivalId: string, id: string) {
   assertAssignmentWindowOpen(festival);
 
   if (actorContext.type === "teamLeader") {
-    const assignment = await prisma.programmeAssignment.findUnique({
-      where: { id },
-      include: { student: true, group: true },
+    const assignment = await db.query.programmeAssignment.findFirst({
+      where: eq(assignmentTable.id, id),
+      with: { student: true, group: true },
     });
     const assignmentGroupId =
       assignment?.groupId ??
@@ -275,9 +279,9 @@ export async function updateAssignmentAction(
   assertAssignmentWindowOpen(festival);
 
   if (actorContext.type === "teamLeader") {
-    const existing = await prisma.programmeAssignment.findUnique({
-      where: { id },
-      include: { student: true, group: true },
+    const existing = await db.query.programmeAssignment.findFirst({
+      where: eq(assignmentTable.id, id),
+      with: { student: true, group: true },
     });
     const existingGroupId =
       existing?.groupId ?? existing?.student?.groupId ?? existing?.group?.id;
@@ -290,9 +294,9 @@ export async function updateAssignmentAction(
     }
 
     if (data.studentId) {
-      const student = await prisma.student.findUnique({
-        where: { id: data.studentId },
-        select: { festivalId: true, groupId: true },
+      const student = await db.query.student.findFirst({
+        where: eq(studentTable.id, data.studentId),
+        columns: { festivalId: true, groupId: true },
       });
       if (
         !student ||
@@ -335,7 +339,7 @@ export async function getProgrammeTeamMembersAction(
   if (
     !tlSession ||
     tlSession.revokedAt ||
-    tlSession.expiresAt <= new Date() ||
+    new Date(tlSession.expiresAt) <= new Date() ||
     !tlSession.student?.isTeamLeader ||
     tlSession.festivalId !== festivalId ||
     tlSession.student.groupId !== groupId

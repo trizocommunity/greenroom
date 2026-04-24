@@ -47,7 +47,7 @@ export async function getPurchaseSummaries(): Promise<PurchaseSummaryDto[]> {
     name: row.user.displayName || row.user.fullName || row.user.email,
     totalSpend: row.totalSpend,
     festivalsCount: row.festivalsCount,
-    lastPurchaseAt: row.lastPurchaseAt ?? null,
+    lastPurchaseAt: row.lastPurchaseAt ? new Date(row.lastPurchaseAt) : null,
     planCountsByTier:
       (row.planCountsByTier as Record<string, number> | null) ?? {},
   }));
@@ -127,11 +127,11 @@ export async function getLoginsByDay(days = 14): Promise<TimeSeriesPoint[]> {
   const events = await db
     .select({ loggedAt: userLoginEvents.loggedAt })
     .from(userLoginEvents)
-    .where(gte(userLoginEvents.loggedAt, start));
+    .where(gte(userLoginEvents.loggedAt, start.toISOString()));
 
   const byDay = new Map<string, number>();
   for (const e of events) {
-    const key = e.loggedAt.toISOString().slice(0, 10);
+    const key = new Date(e.loggedAt).toISOString().slice(0, 10);
     byDay.set(key, (byDay.get(key) ?? 0) + 1);
   }
 

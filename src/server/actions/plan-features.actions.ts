@@ -1,6 +1,6 @@
 "use server";
 
-import type { Tier } from "@prisma/client";
+import type { Tier } from "@/lib/app-enums";
 import { getSession } from "@/lib/auth/session";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import type { FeaturePath } from "@/lib/features";

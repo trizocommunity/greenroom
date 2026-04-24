@@ -1,6 +1,6 @@
 "use server";
 
-import type { Tier } from "@prisma/client";
+import type { Tier } from "@/lib/app-enums";
 import { revalidatePath } from "next/cache";
 import { TIER_CONFIG } from "@/config/pricing";
 import { getSession } from "@/lib/auth/session";

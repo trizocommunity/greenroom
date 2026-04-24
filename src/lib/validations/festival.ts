@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { InstitutionType } from "@/lib/prisma-enums";
+import { InstitutionType } from "@/lib/app-enums";
 
 export const createFestivalSchema = z
   .object({

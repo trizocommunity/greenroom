@@ -5,7 +5,14 @@ import {
   type ReportingBoardItem,
 } from "@/components/festival/event-works/programme-reporting/ProgrammeReportingClient";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { 
+  festival as festivalTable, 
+  programmeAssignment as assignmentTable, 
+  stage as stageTable,
+  programmeReportedParticipant as reportedParticipantTable
+} from "@/server/db/schema";
+import { eq, and, inArray, asc } from "drizzle-orm";
 import { getProgrammeReportingBoardAction } from "@/server/actions/programme-reporting.actions";
 import { getFestivalContext } from "@/server/services/festival-context.service";
 import { getEffectiveFeatureTagEnabled } from "@/server/services/plan-features-tags.service";
@@ -16,16 +23,18 @@ export default async function ProgrammeReportingPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const festival = await prisma.festival.findUnique({
-    where: { slug },
-    select: { id: true, name: true, tier: true },
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.slug, slug),
+    columns: { id: true, name: true, tier: true },
   });
   if (!festival) notFound();
+  
   const canUseReporting = await getEffectiveFeatureTagEnabled(
-    festival.tier,
+    festival.tier as any,
     "eventWorks.reporting",
   );
   if (!canUseReporting) notFound();
+  
   const session = await getSession();
   const context = await getFestivalContext({
     slugOrId: slug,
@@ -41,43 +50,42 @@ export default async function ProgrammeReportingPage({
 
   const [board, assignmentRows, festivalStages] = await Promise.all([
     getProgrammeReportingBoardAction(festival.id),
-    prisma.programmeAssignment.findMany({
-      where: { festivalId: festival.id },
-      select: {
+    db.query.programmeAssignment.findMany({
+      where: eq(assignmentTable.festivalId, festival.id),
+      with: {
+        student: { columns: { name: true } },
+        group: { columns: { name: true, id: true } },
+      },
+      columns: {
         id: true,
         programmeId: true,
         teamNumber: true,
         studentId: true,
         groupId: true,
-        student: { select: { name: true } },
-        group: { select: { name: true, id: true } },
       },
     }),
-    prisma.stage.findMany({
-      where: { festivalId: festival.id },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
+    db.query.stage.findMany({
+      where: eq(stageTable.festivalId, festival.id),
+      columns: { id: true, name: true },
+      orderBy: [asc(stageTable.name)],
     }),
   ]);
 
-  // Fetch reported participants with reportedBy info
-  const reportedParticipants = await prisma.programmeReportedParticipant.findMany({
-    where: {
-      reportingSessionId: {
-        in: board
-          .map((b) => b.reportingSession?.id)
-          .filter((id): id is string => Boolean(id)),
-      },
-    },
-    select: {
+  const sessionIds = board
+    .map((b: any) => b.reportingSession?.id)
+    .filter((id): id is string => Boolean(id));
+
+  const reportedParticipants = sessionIds.length > 0 ? await db.query.programmeReportedParticipant.findMany({
+    where: inArray(reportedParticipantTable.reportingSessionId, sessionIds),
+    columns: {
       assignmentId: true,
       reportingSessionId: true,
       reportedBy: true,
       reportedAt: true,
     },
-  });
+  }) : [];
 
-  const normalizedBoard = board.map((item) => ({
+  const normalizedBoard = board.map((item: any) => ({
     ...item,
     startTime: item.startTime,
     reportingSession: item.reportingSession
@@ -92,9 +100,9 @@ export default async function ProgrammeReportingPage({
     id: row.id,
     programmeId: row.programmeId,
     studentId: row.studentId ?? null,
-    studentName: row.student?.name ?? null,
-    groupId: row.groupId ?? row.group?.id ?? null,
-    groupName: row.group?.name ?? null,
+    studentName: (row as any).student?.name ?? null,
+    groupId: row.groupId ?? (row as any).group?.id ?? null,
+    groupName: (row as any).group?.name ?? null,
     teamNumber: row.teamNumber ?? null,
   }));
 

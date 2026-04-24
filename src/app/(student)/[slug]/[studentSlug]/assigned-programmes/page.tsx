@@ -1,10 +1,15 @@
-import type { ProgrammeStatus, ProgrammeType } from "@prisma/client";
 import { notFound } from "next/navigation";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { ReportingEndsInCountdown } from "@/components/programme/ReportingEndsInCountdown";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { 
+  programmeReportingSession as sessionTable,
+  programmeCodeLetter as codeLetterTable,
+  programmeCodeLetterRecipient as codeLetterRecipientTable
+} from "@/server/db/schema";
+import { eq, and, inArray, desc } from "drizzle-orm";
 import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 import { getCodeForStudentFromLetters } from "@/lib/programme-reporting-code";
 import { getProgrammeStatusPriorityRank } from "@/lib/programme-status-priority";
@@ -21,18 +26,12 @@ const RESERVED_SLUGS = new Set([
 ]);
 
 function isSessionTimedOut(
-  session:
-    | {
-        status: string;
-        windowEndsAt: Date | null;
-      }
-    | null
-    | undefined,
+  session: any
 ): boolean {
   return Boolean(
     session?.status === "IN_PROGRESS" &&
       session.windowEndsAt &&
-      session.windowEndsAt.getTime() <= Date.now(),
+      new Date(session.windowEndsAt).getTime() <= Date.now(),
   );
 }
 
@@ -48,7 +47,7 @@ export default async function AssignedProgrammesPage({
   if (!festival) notFound();
 
   const canViewProfile = FeatureService.isFeatureEnabled(
-    getTierForFeatureCheck(festival.tier),
+    getTierForFeatureCheck(festival.tier as any),
     "publicStudentProfile",
   );
   if (!canViewProfile) notFound();
@@ -67,8 +66,8 @@ export default async function AssignedProgrammesPage({
       programmeId: string;
       name: string;
       categoryName: string | null;
-      status: ProgrammeStatus;
-      programmeType: ProgrammeType;
+      status: string;
+      programmeType: string;
     }
   >();
 
@@ -80,7 +79,7 @@ export default async function AssignedProgrammesPage({
     programmeById.set(p.id, {
       programmeId: p.id,
       name: p.name,
-      categoryName: p.category?.name ?? null,
+      categoryName: (p as any).category?.name ?? null,
       status: p.status,
       programmeType: p.type,
     });
@@ -88,8 +87,8 @@ export default async function AssignedProgrammesPage({
 
   const programmes = Array.from(programmeById.values()).sort((a, b) => {
     return (
-      getProgrammeStatusPriorityRank(a.status) -
-      getProgrammeStatusPriorityRank(b.status)
+      getProgrammeStatusPriorityRank(a.status as any) -
+      getProgrammeStatusPriorityRank(b.status as any)
     );
   });
 
@@ -104,22 +103,25 @@ export default async function AssignedProgrammesPage({
   const programmeIds = assignedProgrammes.map((p) => p.programmeId);
   const reportingSessions =
     programmeIds.length > 0
-      ? await prisma.programmeReportingSession.findMany({
-          where: { programmeId: { in: programmeIds } },
-          orderBy: { updatedAt: "desc" },
-          include: {
-            reportedParticipants: { select: { assignmentId: true } },
-            codeLetters: {
-              include: {
-                recipients: { where: { studentId: student.id } },
+      ? await db.query.programmeReportingSession.findMany({
+          where: inArray(sessionTable.programmeId, programmeIds),
+          with: {
+            programmeReportedParticipants: { columns: { assignmentId: true } },
+            programmeCodeLetters: {
+              with: {
+                programmeCodeLetterRecipients: { 
+                  where: eq(codeLetterRecipientTable.studentId, student.id)
+                },
               },
             },
           },
+          orderBy: [desc(sessionTable.updatedAt)],
         })
       : [];
+      
   const latestReportingByProgrammeId = new Map<
     string,
-    (typeof reportingSessions)[number]
+    any
   >();
   for (const s of reportingSessions) {
     if (!latestReportingByProgrammeId.has(s.programmeId)) {
@@ -152,13 +154,16 @@ export default async function AssignedProgrammesPage({
             const iWasReported =
               Boolean(myAssignmentId) &&
               Boolean(
-                sess?.reportedParticipants.some(
-                  (r) => r.assignmentId === myAssignmentId,
+                sess?.programmeReportedParticipants.some(
+                  (r: any) => r.assignmentId === myAssignmentId,
                 ),
               );
             const closedCode =
               sess?.status === "CLOSED"
-                ? getCodeForStudentFromLetters(sess.codeLetters, student.id)
+                ? getCodeForStudentFromLetters(sess.programmeCodeLetters.map((cl: any) => ({
+                    code: cl.code,
+                    recipients: cl.programmeCodeLetterRecipients
+                  })), student.id)
                 : null;
 
             const highlightClass = isSessionTimedOut(sess)
@@ -185,7 +190,7 @@ export default async function AssignedProgrammesPage({
                           </Badge>
                           {sess.windowEndsAt ? (
                             <ReportingEndsInCountdown
-                              endsAt={sess.windowEndsAt.toISOString()}
+                              endsAt={sess.windowEndsAt}
                             />
                           ) : null}
                         </>
@@ -205,7 +210,7 @@ export default async function AssignedProgrammesPage({
                           Reporting closed
                         </Badge>
                       ) : null}
-                      <ProgrammeStatusBadge status={p.status} />
+                      <ProgrammeStatusBadge status={p.status as any} />
                     </div>
                   </CardTitle>
                 </CardHeader>

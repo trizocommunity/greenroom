@@ -102,12 +102,19 @@ export async function setPlanFeatureOverride(
   overrides[tier] = tierOverrides;
 
   try {
+    const { randomUUID } = await import("crypto");
+    const now = new Date().toISOString();
     await db
       .insert(systemConfig)
-      .values({ key: CONFIG_KEY, value: overrides })
+      .values({
+        id: randomUUID(),
+        key: CONFIG_KEY,
+        value: overrides,
+        updatedAt: now,
+      })
       .onConflictDoUpdate({
         target: systemConfig.key,
-        set: { value: overrides },
+        set: { value: overrides, updatedAt: now },
       });
   } catch (err) {
     throw new Error(

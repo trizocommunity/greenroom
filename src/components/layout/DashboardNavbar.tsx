@@ -1,6 +1,6 @@
 "use client";
 
-import type { User } from "@prisma/client";
+import type { UserProfile } from "@/lib/app-enums";
 import { Menu } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 interface DashboardNavbarProps {
-  user: Pick<User, "fullName" | "displayName" | "age" | "email">;
+  user: UserProfile;
 }
 
 export default function DashboardNavbar({ user }: DashboardNavbarProps) {

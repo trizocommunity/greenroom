@@ -1,7 +1,14 @@
 import { createHash } from "node:crypto";
 import { notFound, redirect } from "next/navigation";
 import { ExternalJudgeClient } from "@/components/judge/ExternalJudgeClient";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { 
+  programmeJudgeSession as judgeSessionTable,
+  programme as programmeTable,
+  festival as festivalTable,
+  programmeCodeLetter as codeLetterTable
+} from "@/server/db/schema";
+import { eq, and, asc } from "drizzle-orm";
 import { getEffectiveFeatureTagEnabled } from "@/server/services/plan-features-tags.service";
 
 function hashTokenSHA256(token: string): string {
@@ -17,14 +24,14 @@ export default async function JudgeTokenPage({
 
   const tokenHash = hashTokenSHA256(token);
 
-  const judgeSession = await prisma.programmeJudgeSession.findUnique({
-    where: { token_hash: tokenHash },
-    select: {
-      programme_id: true,
-      festival_id: true,
-      reporting_session_id: true,
-      started_at: true,
-      used_at: true,
+  const judgeSession = await db.query.programmeJudgeSession.findFirst({
+    where: eq(judgeSessionTable.tokenHash, tokenHash),
+    columns: {
+      programmeId: true,
+      festivalId: true,
+      reportingSessionId: true,
+      startedAt: true,
+      usedAt: true,
     },
   });
 
@@ -56,28 +63,28 @@ export default async function JudgeTokenPage({
   }
 
   const [programme, festival, codeLettersRows] = await Promise.all([
-    prisma.programme.findUnique({
-      where: { id: judgeSession.programme_id },
-      select: { name: true },
+    db.query.programme.findFirst({
+      where: eq(programmeTable.id, judgeSession.programmeId),
+      columns: { name: true },
     }),
-    prisma.festival.findUnique({
-      where: { id: judgeSession.festival_id },
-      select: { tier: true, slug: true },
+    db.query.festival.findFirst({
+      where: eq(festivalTable.id, judgeSession.festivalId),
+      columns: { tier: true, slug: true },
     }),
-    prisma.programmeCodeLetter.findMany({
-      where: {
-        programmeId: judgeSession.programme_id,
-        reportingSessionId: judgeSession.reporting_session_id,
-      },
-      select: { code: true },
-      orderBy: { issuedAt: "asc" },
+    db.query.programmeCodeLetter.findMany({
+      where: and(
+        eq(codeLetterTable.programmeId, judgeSession.programmeId),
+        eq(codeLetterTable.reportingSessionId, judgeSession.reportingSessionId)
+      ),
+      columns: { code: true },
+      orderBy: [asc(codeLetterTable.issuedAt)],
     }),
   ]);
 
   if (!programme || !festival) return notFound();
 
   const canUseJudging = await getEffectiveFeatureTagEnabled(
-    festival.tier,
+    festival.tier as any,
     "eventWorks.externalJudging",
   );
 
@@ -85,9 +92,5 @@ export default async function JudgeTokenPage({
     return notFound();
   }
 
-  // Maintain the new URL format: `/{festivalSlug}/judge/{token}`
-  // so external shares are consistent.
   return redirect(`/${festival.slug}/judge/${token}`);
-
-  // (Unreachable: redirect always returns.)
 }

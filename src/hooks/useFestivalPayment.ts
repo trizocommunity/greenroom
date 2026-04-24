@@ -1,6 +1,6 @@
 "use client";
 
-import type { Tier } from "@prisma/client";
+import type { Tier } from "@/lib/app-enums";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";

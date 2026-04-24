@@ -25,7 +25,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useFestivalReadOnly } from "@/hooks/useFestivalReadOnly";
-import { useRealtimeChannel } from "@/hooks/useRealtimeChannel";
 import { cn } from "@/lib/utils";
 import { publishTeamStandings } from "@/server/actions/results";
 
@@ -203,22 +202,13 @@ export function LeaderboardClient({
     null,
   );
 
-  useRealtimeChannel({
-    roomKeys: [
-      `festival:${festival.id}:all`,
-      `festival:${festival.id}:public:standings`,
-    ],
-    enabled: true,
-    onEvent: (payload) => {
-      const eventName = String(payload.eventName ?? "");
-      if (
-        eventName === "results.publish_toggled" ||
-        eventName === "standings.updated"
-      ) {
-        router.refresh();
-      }
-    },
-  });
+  // Polling refresh every 15 seconds for updates
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      router.refresh();
+    }, 15000);
+    return () => window.clearInterval(id);
+  }, [router]);
 
   return (
     <div className="space-y-4">

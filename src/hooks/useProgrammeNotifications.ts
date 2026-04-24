@@ -1,6 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
-import { useRealtimeChannel } from "@/hooks/useRealtimeChannel";
 import {
   getStudentProgrammeNotificationsAction,
   markAllStudentProgrammeNotificationsReadAction,
@@ -25,50 +23,6 @@ export function useProgrammeNotifications(
     enabled: Boolean(studentId),
     refetchInterval: REFETCH_INTERVAL_MS,
   });
-
-  const roomKey =
-    studentId && festivalId
-      ? `festival:${festivalId}:student:${studentId}`
-      : null;
-
-  const { status: realtimeStatus } = useRealtimeChannel({
-    roomKeys: roomKey ? [roomKey] : [],
-    enabled: Boolean(studentId && roomKey),
-    onEvent: () => {
-      void queryClient.invalidateQueries({
-        queryKey: [
-          "programme-notifications",
-          festivalId ?? "no-festival",
-          studentId,
-        ],
-      });
-    },
-  });
-
-  useEffect(() => {
-    if (!studentId || roomKey) return;
-    // Require festival-scoped room streaming to avoid unscoped student query streams.
-    void queryClient.invalidateQueries({
-      queryKey: [
-        "programme-notifications",
-        festivalId ?? "no-festival",
-        studentId,
-      ],
-    });
-  }, [festivalId, queryClient, roomKey, studentId]);
-
-  useEffect(() => {
-    if (!studentId) return;
-    if (realtimeStatus === "degraded") {
-      void queryClient.invalidateQueries({
-        queryKey: [
-          "programme-notifications",
-          festivalId ?? "no-festival",
-          studentId,
-        ],
-      });
-    }
-  }, [festivalId, queryClient, realtimeStatus, studentId]);
 
   const markOne = useMutation({
     mutationFn: (notificationId: string) =>
@@ -104,7 +58,6 @@ export function useProgrammeNotifications(
     notifications,
     unreadCount,
     isLoading: query.isLoading,
-    realtimeStatus,
     markOneRead: (id: string) => markOne.mutate(id),
     markAllRead: () => markAll.mutate(),
   };

@@ -3,7 +3,7 @@
  * Use getResolvedTier() whenever reading festival.tier so fallback behavior is consistent.
  */
 
-import type { Tier } from "@prisma/client";
+import type { Tier } from "@/lib/app-enums";
 
 /** Default tier when festival.tier is null/undefined (e.g. legacy data). Conservative: BASIC. */
 export const DEFAULT_TIER: Tier = "BASIC";

@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { InstitutionType } from "@/lib/prisma-enums";
+import { InstitutionType } from "@/lib/app-enums";
 import { queryKeys } from "@/lib/query-keys";
 import {
   createFestivalSchema,

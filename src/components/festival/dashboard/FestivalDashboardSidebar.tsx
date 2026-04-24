@@ -1,6 +1,6 @@
 "use client";
 
-import type { FestivalStatus } from "@prisma/client";
+import type { FestivalStatus } from "@/lib/app-enums";
 import { GalleryVerticalEnd } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";

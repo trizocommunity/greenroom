@@ -1,9 +1,10 @@
 "use server";
 
-import { InstitutionType } from "@prisma/client";
 import { z } from "zod";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { festival as festivalTable } from "@/server/db/schema";
+import { eq } from "drizzle-orm";
 
 import {
   type UpdateFestivalInput,
@@ -11,24 +12,23 @@ import {
 } from "@/lib/validations/festival";
 import { createAuditLog } from "@/server/services/audit-log.service";
 import { assertFestivalMutationAllowed } from "@/server/services/festival-lifecycle-policy.service";
+import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
+import type { ActionResponse } from "@/types/actions";
 
 export async function getMyFestival() {
   const session = await getSession();
   if (!session?.userId) return null;
 
-  const festival = await prisma.festival.findUnique({
-    where: { ownerId: session.userId },
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.ownerId, session.userId),
   });
 
   return festival;
 }
 
-import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
-import type { ActionResponse } from "@/types/actions";
-
 export async function updateFestivalAction(
   data: UpdateFestivalInput,
-): Promise<ActionResponse<import("@prisma/client").Festival>> {
+): Promise<ActionResponse<any>> { // Changed to any to avoid Prisma dependency in type
   try {
     const session = await getSession();
     if (!session?.userId) {
@@ -37,9 +37,9 @@ export async function updateFestivalAction(
 
     const validated = updateFestivalSchema.parse(data);
 
-    const ownedFestival = await prisma.festival.findUnique({
-      where: { ownerId: session.userId },
-      select: { id: true, createdAt: true, expiresAt: true },
+    const ownedFestival = await db.query.festival.findFirst({
+      where: eq(festivalTable.ownerId, session.userId),
+      columns: { id: true, createdAt: true, expiresAt: true },
     });
     if (!ownedFestival) {
       throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
@@ -82,15 +82,12 @@ export async function updateFestivalAction(
       throw new AppError("End date must be on/before plan expiry date");
     }
 
-    // If slug is being updated, we might want to sanitize it or check availability overtly,
-    // but Prisma unique constraint will handle the final check.
-    // However, basic sanitization similar to creation is good practice if not fully handled by schema.
-    // Assuming schema handles basic regex.
+    const updatedFestivals = await db.update(festivalTable).set({
+      ...validated,
+      updatedAt: new Date().toISOString(),
+    }).where(eq(festivalTable.ownerId, session.userId)).returning();
 
-    const festival = await prisma.festival.update({
-      where: { ownerId: session.userId },
-      data: validated,
-    });
+    const festival = updatedFestivals[0];
 
     await createAuditLog({
       action: "UPDATE_FESTIVAL",

@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { festivals, festivalMember } from "../db/schema";
+import { festival as festivals, festivalMember } from "../db/schema";
 import { AppError, ERROR_MESSAGES } from "@/lib/errors";
 import { getDerivedFestivalStatus } from "@/lib/festival-status";
 import { findFestivalBySlugOrId } from "@/server/models/festival.model";

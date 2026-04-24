@@ -1,16 +1,26 @@
 /**
- * Client-side Cloudinary upload helper.
- * Uses NEXT_PUBLIC_CLOUDINARY_* env and unsigned preset.
+ * Secure Cloudinary upload helper.
+ * Uses server-side API for signed uploads (not client-side unsigned).
  */
 const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "demo";
-const UPLOAD_PRESET =
-  process.env.NEXT_PUBLIC_CLOUDINARY_FESTIVAL_PRESET ||
-  "greenroom_festival_unsigned";
 
 export function isCloudinaryConfigured(): boolean {
-  return Boolean(CLOUD_NAME && UPLOAD_PRESET && CLOUD_NAME !== "demo");
+  return Boolean(CLOUD_NAME && CLOUD_NAME !== "demo");
 }
 
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Upload image to Cloudinary via secure server-side API.
+ * This uses signed uploads with API secret (not exposed to client).
+ */
 export async function uploadImageToCloudinary(
   file: File,
   folder: string,
@@ -19,23 +29,30 @@ export async function uploadImageToCloudinary(
     return null;
   }
 
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", UPLOAD_PRESET);
-  formData.append("folder", `greenroom/festivals/${folder}`);
+  try {
+    // Convert file to base64
+    const base64Data = await fileToBase64(file);
 
-  const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-    {
+    // Send to server-side API for secure signed upload
+    const res = await fetch("/api/upload", {
       method: "POST",
-      body: formData,
-    },
-  );
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        file: base64Data,
+        folder,
+      }),
+    });
 
-  if (!res.ok) {
+    if (!res.ok) {
+      const error = await res.json();
+      console.error("Upload failed:", error);
+      return null;
+    }
+
+    const data = (await res.json()) as { url?: string };
+    return data.url ?? null;
+  } catch (error) {
+    console.error("Upload error:", error);
     return null;
   }
-
-  const data = (await res.json()) as { secure_url?: string };
-  return data.secure_url ?? null;
 }

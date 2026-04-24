@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
 import { StudentsClient } from "@/components/festival/pre-works/students/StudentsClient";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { category as categoryTable } from "@/server/db/schema";
+import { eq, count } from "drizzle-orm";
 import { getChestNumberSettings } from "@/server/actions/chest-number.actions";
 import { findFestivalBySlugOrId } from "@/server/models/festival.model";
 import { findMemberByFestivalAndUser } from "@/server/models/member.model";
@@ -15,9 +17,7 @@ export default async function StudentsPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug: festivalSlug } = await params;
-  const festival = await findFestivalBySlugOrId(festivalSlug); // This uses findFestivalBySlugOrId which might not be prisma directly but returns limited fields?
-  // Actually findFestivalBySlugOrId calls prisma.festival.findFirst.
-  // It returns a Festival object.
+  const festival = await findFestivalBySlugOrId(festivalSlug);
 
   if (!festival) {
     notFound();
@@ -26,11 +26,12 @@ export default async function StudentsPage({
   const slug = festival.slug;
 
   // Check for categories
-  const categoryCount = await prisma.category.count({
-    where: { festivalId: festival.id },
-  });
+  const [categoryCountResult] = await db
+    .select({ c: count() })
+    .from(categoryTable)
+    .where(eq(categoryTable.festivalId, festival.id));
 
-  if (categoryCount === 0) {
+  if (categoryCountResult.c === 0) {
     return (
       <EmptyState
         title="No Categories Found"

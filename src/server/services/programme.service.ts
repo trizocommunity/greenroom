@@ -9,7 +9,7 @@ import {
   findProgrammeWithAssignments,
   updateProgramme,
 } from "@/server/models/programme.model";
-import { programmes, programmeAssignment } from "../db/schema";
+import { programme as programmes, programmeAssignment } from "../db/schema";
 import { eq, count } from "drizzle-orm";
 import { UsageCounterService } from "./usage-counter.service";
 
@@ -84,7 +84,11 @@ export const ProgrammeService = {
     );
 
     try {
+      const { randomUUID } = await import("crypto");
+      const now = new Date().toISOString();
       const data = programmeList.map((p) => ({
+        id: randomUUID(),
+        updatedAt: now,
         festivalId,
         name: p.name,
         categoryId: p.categoryId,

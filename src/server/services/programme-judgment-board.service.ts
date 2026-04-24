@@ -1,6 +1,15 @@
 "use server";
 
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { 
+  programmeAssignment as assignmentTable,
+  scheduleEntry as scheduleEntryTable,
+  programme as programmeTable,
+  programmeJudgeSession as judgeSessionTable,
+  programmeCodeLetter as codeLetterTable,
+  programmeCodeLetterRecipient as codeLetterRecipientTable
+} from "@/server/db/schema";
+import { eq, and, inArray, isNull, asc, desc, sql, notInArray, isNotNull } from "drizzle-orm";
 
 export type JudgingAssignmentRow = {
   assignmentId: string;
@@ -23,24 +32,16 @@ export type JudgingProgrammeRow = {
   programmeType: "INDIVIDUAL" | "GROUP";
   category: { id: string; name: string } | null;
   status: string;
-
-  // When a judge link exists and is still unused.
-  openJudgeSession: { startedAt: Date } | null;
+  openJudgeSession: { startedAt: string } | null;
   latestUsedJudgeSession: {
-    startedAt: Date;
-    usedAt: Date | null;
+    startedAt: string;
+    usedAt: string | null;
     createdBy: string | null;
     submittedByName: string | null;
     submittedByContact: string | null;
     submittedByNote: string | null;
   } | null;
-
-  /**
-   * Populated for judged programmes (ENDED/PUBLISHED).
-   * Used to render a compact "code letter -> points + grade" list.
-   */
   codeLetters?: { code: string; points: number; grade: string | null }[];
-
   assignments: JudgingAssignmentRow[];
 };
 
@@ -54,37 +55,30 @@ export type ProgrammeJudgingBoard = {
   judgedProgrammes: JudgingProgrammeRow[];
 };
 
-/**
- * Build a stage-based judging board:
- * - Top: reporting ended programmes (STARTED) grouped by stage.
- * - Bottom: judged programmes (ENDED/PUBLISHED) across all stages.
- */
 export async function getProgrammeJudgingBoard(
   festivalId: string,
 ): Promise<ProgrammeJudgingBoard> {
-  const assignedRows = await prisma.programmeAssignment.groupBy({
-    by: ["programmeId"],
-    where: { festivalId },
-  });
+  const assignedRows = await db
+    .select({ programmeId: assignmentTable.programmeId })
+    .from(assignmentTable)
+    .where(eq(assignmentTable.festivalId, festivalId))
+    .groupBy(assignmentTable.programmeId);
 
   const programmeIds = assignedRows.map((r) => r.programmeId);
   if (programmeIds.length === 0) {
     return { stages: [], judgedProgrammes: [] };
   }
 
-  // Determine stage per programme using the earliest schedule entry.
-  const scheduleEntries = await prisma.scheduleEntry.findMany({
-    where: {
-      festivalId,
-      type: "PROGRAMME",
-      programmeId: { in: programmeIds },
+  const scheduleEntries = await db.query.scheduleEntry.findMany({
+    where: and(
+      eq(scheduleEntryTable.festivalId, festivalId),
+      eq(scheduleEntryTable.type, "PROGRAMME"),
+      inArray(scheduleEntryTable.programmeId, programmeIds)
+    ),
+    with: {
+      stage: { columns: { id: true, name: true } },
     },
-    select: {
-      programmeId: true,
-      startTime: true,
-      stage: { select: { id: true, name: true } },
-    },
-    orderBy: [{ startTime: "asc" }],
+    orderBy: [asc(scheduleEntryTable.startTime)],
   });
 
   const stageByProgrammeId = new Map<
@@ -92,28 +86,22 @@ export async function getProgrammeJudgingBoard(
     { id: string; name: string } | null
   >();
   for (const entry of scheduleEntries) {
-    if (!entry.programmeId) continue; // Schedule entries may be null-linked.
+    if (!entry.programmeId) continue;
     if (!stageByProgrammeId.has(entry.programmeId)) {
       stageByProgrammeId.set(entry.programmeId, entry.stage);
     }
   }
 
-  const programmes = await prisma.programme.findMany({
-    where: { id: { in: programmeIds } },
-    select: {
-      id: true,
-      name: true,
-      status: true,
-      type: true,
-      category: { select: { id: true, name: true } },
+  const programmes = await db.query.programme.findMany({
+    where: inArray(programmeTable.id, programmeIds),
+    with: {
+      category: { columns: { id: true, name: true } },
       assignments: {
-        select: {
-          id: true,
-          teamNumber: true,
-          student: { select: { id: true, name: true, chestNumber: true } },
-          group: { select: { id: true, name: true } },
+        with: {
+          student: { columns: { id: true, name: true, chestNumber: true } },
+          group: { columns: { id: true, name: true } },
           result: {
-            select: {
+            columns: {
               id: true,
               points: true,
               grade: true,
@@ -127,36 +115,44 @@ export async function getProgrammeJudgingBoard(
     },
   });
 
-  const openSessions = await prisma.programmeJudgeSession.findMany({
-    where: { programme_id: { in: programmeIds }, used_at: null },
-    orderBy: [{ programme_id: "asc" }, { started_at: "desc" }],
-    select: { programme_id: true, started_at: true },
+  const openSessions = await db.query.programmeJudgeSession.findMany({
+    where: and(
+      inArray(judgeSessionTable.programmeId, programmeIds),
+      isNull(judgeSessionTable.usedAt)
+    ),
+    orderBy: [asc(judgeSessionTable.programmeId), desc(judgeSessionTable.startedAt)],
+    columns: { programmeId: true, startedAt: true },
   });
-  const latestOpenByProgrammeId = new Map<string, { startedAt: Date }>();
+  
+  const latestOpenByProgrammeId = new Map<string, { startedAt: string }>();
   for (const s of openSessions) {
-    if (!latestOpenByProgrammeId.has(s.programme_id)) {
-      latestOpenByProgrammeId.set(s.programme_id, { startedAt: s.started_at });
+    if (!latestOpenByProgrammeId.has(s.programmeId)) {
+      latestOpenByProgrammeId.set(s.programmeId, { startedAt: s.startedAt });
     }
   }
 
-  const usedSessions = await prisma.programmeJudgeSession.findMany({
-    where: { programme_id: { in: programmeIds }, used_at: { not: null } },
-    orderBy: [{ programme_id: "asc" }, { used_at: "desc" }],
-    select: {
-      programme_id: true,
-      started_at: true,
-      used_at: true,
-      created_by: true,
-      submitted_by_name: true,
-      submitted_by_contact: true,
-      submitted_by_note: true,
+  const usedSessions = await db.query.programmeJudgeSession.findMany({
+    where: and(
+      inArray(judgeSessionTable.programmeId, programmeIds),
+      isNotNull(judgeSessionTable.usedAt)
+    ),
+    orderBy: [asc(judgeSessionTable.programmeId), desc(judgeSessionTable.usedAt)],
+    columns: {
+      programmeId: true,
+      startedAt: true,
+      usedAt: true,
+      createdBy: true,
+      submittedByName: true,
+      submittedByContact: true,
+      submittedByNote: true,
     },
   });
+  
   const latestUsedByProgrammeId = new Map<
     string,
     {
-      startedAt: Date;
-      usedAt: Date | null;
+      startedAt: string;
+      usedAt: string | null;
       createdBy: string | null;
       submittedByName: string | null;
       submittedByContact: string | null;
@@ -164,14 +160,14 @@ export async function getProgrammeJudgingBoard(
     }
   >();
   for (const s of usedSessions) {
-    if (!latestUsedByProgrammeId.has(s.programme_id)) {
-      latestUsedByProgrammeId.set(s.programme_id, {
-        startedAt: s.started_at,
-        usedAt: s.used_at,
-        createdBy: s.created_by ?? null,
-        submittedByName: s.submitted_by_name ?? null,
-        submittedByContact: s.submitted_by_contact ?? null,
-        submittedByNote: s.submitted_by_note ?? null,
+    if (!latestUsedByProgrammeId.has(s.programmeId)) {
+      latestUsedByProgrammeId.set(s.programmeId, {
+        startedAt: s.startedAt,
+        usedAt: s.usedAt,
+        createdBy: s.createdBy ?? null,
+        submittedByName: s.submittedByName ?? null,
+        submittedByContact: s.submittedByContact ?? null,
+        submittedByNote: s.submittedByNote ?? null,
       });
     }
   }
@@ -181,9 +177,9 @@ export async function getProgrammeJudgingBoard(
     .map((p) => ({
       programmeId: p.id,
       programmeName: p.name,
-      programmeType: p.type,
+      programmeType: p.type as any,
       category: p.category,
-      status: p.status,
+      status: p.status as any,
       openJudgeSession: latestOpenByProgrammeId.get(p.id) ?? null,
       latestUsedJudgeSession: latestUsedByProgrammeId.get(p.id) ?? null,
       assignments: p.assignments.map((a) => ({
@@ -215,9 +211,9 @@ export async function getProgrammeJudgingBoard(
     .map((p) => ({
       programmeId: p.id,
       programmeName: p.name,
-      programmeType: p.type,
+      programmeType: p.type as any,
       category: p.category,
-      status: p.status,
+      status: p.status as any,
       openJudgeSession: latestOpenByProgrammeId.get(p.id) ?? null,
       latestUsedJudgeSession: latestUsedByProgrammeId.get(p.id) ?? null,
       assignments: p.assignments.map((a) => ({
@@ -245,8 +241,6 @@ export async function getProgrammeJudgingBoard(
     }));
 
   const stageNames = new Map<string, { id: string; name: string } | null>();
-  // Include stages even if they currently have 0 STARTED programmes.
-  // This keeps tabs consistent (min height / stable layout).
   for (const [, stage] of stageByProgrammeId.entries()) {
     const key = stage?.id ?? "__none__";
     if (!stageNames.has(key)) {
@@ -265,7 +259,6 @@ export async function getProgrammeJudgingBoard(
     stages.push({ stage, programmesToJudge: programmesInStage });
   }
 
-  // Sort stages by name (null stage last).
   stages.sort((a, b) => {
     const an = a.stage?.name ?? "";
     const bn = b.stage?.name ?? "";
@@ -274,7 +267,6 @@ export async function getProgrammeJudgingBoard(
     return an.localeCompare(bn, undefined, { sensitivity: "base" });
   });
 
-  // Keep programmes stable order (name).
   for (const s of stages) {
     s.programmesToJudge.sort((a, b) =>
       a.programmeName.localeCompare(b.programmeName, undefined, {
@@ -282,37 +274,35 @@ export async function getProgrammeJudgingBoard(
       }),
     );
   }
+  
   judgedProgrammes.sort((a, b) => {
-    const at = a.latestUsedJudgeSession?.usedAt?.getTime() ?? 0;
-    const bt = b.latestUsedJudgeSession?.usedAt?.getTime() ?? 0;
+    const at = a.latestUsedJudgeSession?.usedAt ? new Date(a.latestUsedJudgeSession.usedAt).getTime() : 0;
+    const bt = b.latestUsedJudgeSession?.usedAt ? new Date(b.latestUsedJudgeSession.usedAt).getTime() : 0;
     if (bt !== at) return bt - at;
     return a.programmeName.localeCompare(b.programmeName, undefined, {
       sensitivity: "base",
     });
   });
 
-  // Attach code letters (and resolve points/grade per code letter) for judged programmes.
   if (judgedProgrammes.length > 0) {
     await Promise.all(
       judgedProgrammes.map(async (p) => {
-        const latestUsedJudgeSession =
-          await prisma.programmeJudgeSession.findFirst({
-            where: { programme_id: p.programmeId, used_at: { not: null } },
-            orderBy: { started_at: "desc" },
-            select: { reporting_session_id: true },
-          });
+        const latestUsedJudgeSession = await db.query.programmeJudgeSession.findFirst({
+          where: and(eq(judgeSessionTable.programmeId, p.programmeId), isNotNull(judgeSessionTable.usedAt)),
+          orderBy: [desc(judgeSessionTable.startedAt)],
+          columns: { reportingSessionId: true },
+        });
 
-        if (!latestUsedJudgeSession?.reporting_session_id) return;
+        if (!latestUsedJudgeSession?.reportingSessionId) return;
 
-        const codeLetters = await prisma.programmeCodeLetter.findMany({
-          where: {
-            programmeId: p.programmeId,
-            reportingSessionId: latestUsedJudgeSession.reporting_session_id,
-          },
-          orderBy: { issuedAt: "asc" },
-          select: {
-            code: true,
-            recipients: { select: { studentId: true } },
+        const codeLetters = await db.query.programmeCodeLetter.findMany({
+          where: and(
+            eq(codeLetterTable.programmeId, p.programmeId),
+            eq(codeLetterTable.reportingSessionId, latestUsedJudgeSession.reportingSessionId)
+          ),
+          orderBy: [asc(codeLetterTable.issuedAt)],
+          with: {
+            recipients: { columns: { studentId: true } },
           },
         });
 

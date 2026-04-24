@@ -9,7 +9,14 @@ import { StudentQrDialogButton } from "@/components/student/StudentQrDialogButto
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_URL } from "@/config/routes";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { 
+  student as studentTable, 
+  programmeReportingSession as sessionTable,
+  programmeCodeLetter as codeLetterTable,
+  programmeCodeLetterRecipient as codeLetterRecipientTable
+} from "@/server/db/schema";
+import { eq, and, inArray, sql, desc } from "drizzle-orm";
 import { FeatureService, getTierForFeatureCheck } from "@/lib/features";
 import {
   getQrCodeContent,
@@ -28,18 +35,12 @@ const RESERVED_SLUGS = new Set([
 ]);
 
 function isSessionTimedOut(
-  session:
-    | {
-        status: string;
-        windowEndsAt: Date | null;
-      }
-    | null
-    | undefined,
+  session: any
 ): boolean {
   return Boolean(
     session?.status === "IN_PROGRESS" &&
       session.windowEndsAt &&
-      session.windowEndsAt.getTime() <= Date.now(),
+      new Date(session.windowEndsAt).getTime() <= Date.now(),
   );
 }
 
@@ -55,7 +56,7 @@ export default async function StudentMainPage({
   if (!festival) notFound();
 
   const canViewProfile = FeatureService.isFeatureEnabled(
-    getTierForFeatureCheck(festival.tier),
+    getTierForFeatureCheck(festival.tier as any),
     "publicStudentProfile",
   );
   if (!canViewProfile) notFound();
@@ -71,55 +72,65 @@ export default async function StudentMainPage({
   const endDate =
     festival.endDate ??
     festival.expiresAt ??
-    new Date(festival.createdAt.getTime() + 40 * 24 * 60 * 60 * 1000);
+    new Date(new Date(festival.createdAt).getTime() + 40 * 24 * 60 * 60 * 1000).toISOString();
   const venue = festival.location ?? festival.orgLocation ?? "—";
 
   const group = student.group;
   const category = student.category;
 
-  // Team leaders within the student's group.
   const teamLeaders = group
-    ? await prisma.student.findMany({
-        where: {
-          festivalId: festival.id,
-          groupId: group.id,
-          isTeamLeader: true,
-        },
-        select: { id: true, name: true, profileSlug: true, chestNumber: true },
+    ? await db.query.student.findMany({
+        where: and(
+          eq(studentTable.festivalId, festival.id),
+          eq(studentTable.groupId, group.id),
+          eq(studentTable.isTeamLeader, true)
+        ),
+        columns: { id: true, name: true, profileSlug: true, chestNumber: true },
       })
     : [];
 
-  const ongoingSessions = await prisma.programmeReportingSession.findMany({
-    where: {
-      programmeId: {
-        in: (student.assignments ?? []).map((a: any) => a.programmeId),
-      },
-      status: { in: ["IN_PROGRESS", "CLOSED"] },
+  const assignmentProgrammeIds = (student.assignments ?? []).map((a: any) => a.programmeId);
+
+  const ongoingSessions = assignmentProgrammeIds.length > 0 ? await db.query.programmeReportingSession.findMany({
+    where: and(
+      inArray(sessionTable.programmeId, assignmentProgrammeIds),
+      inArray(sessionTable.status, ["IN_PROGRESS", "CLOSED"])
+    ),
+    with: {
+      programme: { columns: { name: true } },
+      stage: { columns: { name: true } },
+      scheduleEntry: { columns: { startTime: true } },
     },
-    include: {
-      programme: { select: { name: true } },
-      stage: { select: { name: true } },
-      codeLetters: {
-        where: { recipients: { some: { studentId: student.id } } },
-        orderBy: { issuedAt: "desc" },
-        take: 5,
-        include: {
-          recipients: { where: { studentId: student.id } },
-        },
+    orderBy: [desc(sessionTable.updatedAt)],
+    limit: 5,
+  }) : [];
+
+  // Manual fetching of code letters for each session as Drizzle query builder doesn't support nested where with 'some' easily
+  const sessionsWithCodeLetters = await Promise.all(ongoingSessions.map(async (s) => {
+    const codeLetters = await db.query.programmeCodeLetter.findMany({
+      where: eq(codeLetterTable.reportingSessionId, s.id),
+      with: {
+        programmeCodeLetterRecipients: {
+          where: eq(codeLetterRecipientTable.studentId, student.id)
+        }
       },
-      scheduleEntry: { select: { startTime: true } },
-    },
-    orderBy: { updatedAt: "desc" },
-    take: 5,
-  });
+      orderBy: [desc(codeLetterTable.issuedAt)],
+      limit: 5,
+    });
+    
+    return {
+      ...s,
+      codeLetters: codeLetters.filter(cl => cl.programmeCodeLetterRecipients.length > 0)
+    };
+  }));
 
   const profileUrl = getStudentProfileUrl(
     APP_URL.replace(/\/$/, ""),
     festival.slug,
-    student,
+    student as any,
   );
 
-  const liveSessions = ongoingSessions.filter(
+  const liveSessions = sessionsWithCodeLetters.filter(
     (s) => s.status === "IN_PROGRESS" && !isSessionTimedOut(s),
   );
   const topLiveSession = liveSessions[0];
@@ -137,7 +148,7 @@ export default async function StudentMainPage({
             </Badge>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
-            {liveSessions.slice(0, 4).map((session) => (
+            {liveSessions.slice(0, 4).map((session: any) => (
               <div
                 key={session.id}
                 className="rounded-md border border-emerald-700/20 bg-background/50 px-2.5 py-2"
@@ -151,7 +162,7 @@ export default async function StudentMainPage({
                 {session.windowEndsAt ? (
                   <div className="mt-1">
                     <ReportingEndsInCountdown
-                      endsAt={session.windowEndsAt.toISOString()}
+                      endsAt={session.windowEndsAt}
                       autoRefreshOnExpire
                     />
                   </div>
@@ -189,7 +200,7 @@ export default async function StudentMainPage({
             {topLiveSession?.windowEndsAt ? (
               <div className="mt-2">
                 <ReportingEndsInCountdown
-                  endsAt={topLiveSession.windowEndsAt.toISOString()}
+                  endsAt={topLiveSession.windowEndsAt}
                   autoRefreshOnExpire
                 />
               </div>
@@ -209,12 +220,11 @@ export default async function StudentMainPage({
           {student.name}
         </h1>
         <StudentQrDialogButton
-          qrContent={getQrCodeContent(student)}
+          qrContent={getQrCodeContent(student as any)}
           studentName={student.name}
         />
       </div>
 
-      {/* QR Code Section - Prominent Display */}
       <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
         <CardHeader className="pb-3 text-center">
           <CardTitle className="text-lg flex items-center justify-center gap-2">
@@ -228,18 +238,17 @@ export default async function StudentMainPage({
         <CardContent className="flex justify-center pb-4">
           <QrCodeWithActions
             url={student.chestNumber || student.name || student.id}
-            qrContent={getQrCodeContent(student)}
+            qrContent={getQrCodeContent(student as any)}
             size={220}
             downloadLabel="Download"
             shareLabel="WhatsApp"
             fileName={`${student.name.replace(/\s+/g, "-").toLowerCase()}-chest-${student.chestNumber || "unknown"}.png`}
-            shareMessage={`My chest number: ${student.chestNumber || getQrCodeContent(student)} - ${festival.name}`}
+            shareMessage={`My chest number: ${student.chestNumber || getQrCodeContent(student as any)} - ${festival.name}`}
             sizeVariant="lg"
           />
         </CardContent>
       </Card>
 
-      {/* Festival summary */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
@@ -268,7 +277,6 @@ export default async function StudentMainPage({
         </CardContent>
       </Card>
 
-      {/* Student details */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="md:col-span-1">
           <CardHeader className="pb-3">
@@ -288,7 +296,6 @@ export default async function StudentMainPage({
               <span className="font-mono">{student.chestNumber ?? "—"}</span>
             </div>
 
-            {/* Profile Link */}
             <div className="pt-3 mt-3 border-t">
               <p className="text-xs font-medium mb-2">Your Profile Link</p>
               <div className="flex items-center gap-1">

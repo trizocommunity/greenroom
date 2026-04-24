@@ -3,9 +3,14 @@ import { programmeAssignment } from "../db/schema";
 import { eq, and, desc } from "drizzle-orm";
 
 export async function createAssignment(
-  data: typeof programmeAssignment.$inferInsert
+  data: Omit<typeof programmeAssignment.$inferInsert, "id" | "updatedAt"> & { id?: string; updatedAt?: string }
 ) {
-  const result = await db.insert(programmeAssignment).values(data).returning();
+  const { randomUUID } = await import("crypto");
+  const result = await db.insert(programmeAssignment).values({
+    id: data.id ?? randomUUID(),
+    updatedAt: data.updatedAt ?? new Date().toISOString(),
+    ...data,
+  }).returning();
   return result[0];
 }
 

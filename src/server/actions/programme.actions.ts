@@ -2,7 +2,9 @@
 
 import { assertFestivalAccess } from "@/lib/auth/assert-festival-access";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { category as categoryTable } from "@/server/db/schema";
+import { eq, count } from "drizzle-orm";
 import { AppError, ERROR_MESSAGES, handleActionError } from "@/lib/errors";
 import { ProgrammeService } from "@/server/services/programme.service";
 
@@ -37,12 +39,12 @@ export async function createProgrammeAction(
   const session = await getSession();
   await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
-  // Validate Dependencies
-  const categoryCount = await prisma.category.count({
-    where: { festivalId },
-  });
+  const [categoryCountResult] = await db
+    .select({ c: count() })
+    .from(categoryTable)
+    .where(eq(categoryTable.festivalId, festivalId));
 
-  if (categoryCount === 0) {
+  if (categoryCountResult.c === 0) {
     throw new AppError(ERROR_MESSAGES.CATEGORY_REQUIRED);
   }
 
@@ -61,12 +63,6 @@ export async function bulkCreateProgrammesAction(
   festivalId: string,
   programmes: {
     name: string;
-    // We expect resolved IDs here, validation should happen before calling this action
-    // But for safety, we can re-validate category existence if needed,
-    // though for bulk performance we trust the caller's mapping if they provide IDs.
-    // However, the prompt suggests the ACTION should do the mapping.
-    // Let's refine: The UI will likely resolve names to IDs.
-    // So the Input here is expected to be "Ready for DB".
     categoryId: string;
     type: string;
     stageType: string;
@@ -78,8 +74,6 @@ export async function bulkCreateProgrammesAction(
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
 
-  // Service handles final limit check & DB insertion
-  // We just map the string enums to strict types
   const formatted = programmes.map((p) => ({
     name: p.name,
     categoryId: p.categoryId,
@@ -92,7 +86,7 @@ export async function bulkCreateProgrammesAction(
 
   try {
     const result = await ProgrammeService.bulkCreate(festivalId, formatted);
-    return { success: true, count: result.count };
+    return { success: true, count: result.length };
   } catch (error: unknown) {
     return handleActionError(error);
   }

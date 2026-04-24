@@ -1,5 +1,6 @@
-import type { FestivalStatus } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { db } from "@/lib/db";
+import { festival as festivalTable } from "@/server/db/schema";
+import { eq } from "drizzle-orm";
 
 export type PublicFestivalData = {
   festival: {
@@ -15,29 +16,28 @@ export type PublicFestivalData = {
     category: string | null;
     founderName: string | null;
     founderMessage: string | null;
-    branding: import("@prisma/client").Prisma.JsonValue;
-    status: FestivalStatus;
-    tier: string | null;
-    studentCreationDeadline: Date | null;
-    programmeAssignmentDeadline: Date | null;
+    branding: any;
+    status: "READY" | "ONGOING" | "PAST" | "EXPIRED";
+    tier: "BASIC" | "STANDARD" | "PRO" | null;
+    studentCreationDeadline: string | null;
+    programmeAssignmentDeadline: string | null;
     scoringSystem: "POSITION_BASED" | "SCORE_BASED";
-    teamStandings: import("@prisma/client").Prisma.JsonValue; // Using JSON type flexibility
+    teamStandings: any;
   };
-  // Simplified "Event" data (mapped from Festival)
   event: {
-    startDate: Date;
-    endDate: Date;
+    startDate: string;
+    endDate: string;
     location: string | null;
-    status: FestivalStatus;
+    status: "READY" | "ONGOING" | "PAST" | "EXPIRED";
   } | null;
 };
 
 export async function getPublicFestivalData(
   festivalSlug: string,
 ): Promise<PublicFestivalData | null> {
-  const festival = await prisma.festival.findUnique({
-    where: { slug: festivalSlug },
-    select: {
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.slug, festivalSlug),
+    columns: {
       id: true,
       name: true,
       slug: true,
@@ -68,20 +68,16 @@ export async function getPublicFestivalData(
     return null;
   }
 
-  // If DRAFT, perhaps hiding logic? Assuming logic handled upstream or allowed for preview.
-
-  // Construct "Event" data from Festival
-  const eventData = {
-    startDate: festival.createdAt,
-    endDate:
-      festival.expiresAt ||
-      new Date(festival.createdAt.getTime() + 40 * 24 * 60 * 60 * 1000), // Fallback if expiresAt missing
-    location: festival.location || festival.orgLocation || null,
-    status: festival.status,
-  };
+  const startDate = festival.createdAt;
+  const endDate = festival.expiresAt || new Date(new Date(festival.createdAt).getTime() + 40 * 24 * 60 * 60 * 1000).toISOString();
 
   return {
-    festival,
-    event: eventData,
+    festival: festival as any,
+    event: {
+      startDate,
+      endDate,
+      location: festival.location || festival.orgLocation || null,
+      status: festival.status,
+    },
   };
 }

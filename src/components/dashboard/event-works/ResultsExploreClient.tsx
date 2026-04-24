@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useRealtimeChannel } from "@/hooks/useRealtimeChannel";
 import { getGradeBadgeColor } from "@/lib/results-calculator";
 import { cn } from "@/lib/utils";
 import { bulkPublishProgrammeResults } from "@/server/actions/results";
@@ -83,19 +82,13 @@ export function ResultsExploreClient({
   const [searchQuery, setSearchQuery] = useState("");
   const [viewProgramme, setViewProgramme] = useState<Programme | null>(null);
 
-  useRealtimeChannel({
-    roomKeys: [`festival:${festival.id}:all`],
-    enabled: true,
-    onEvent: (payload) => {
-      const eventName = String(payload.eventName ?? "");
-      if (
-        eventName === "results.publish_toggled" ||
-        eventName === "standings.updated"
-      ) {
-        router.refresh();
-      }
-    },
-  });
+  // Polling refresh every 15 seconds for updates
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      router.refresh();
+    }, 15000);
+    return () => window.clearInterval(id);
+  }, [router]);
 
   const programmesWithResults = useMemo(() => {
     return programmes
