@@ -1,6 +1,6 @@
 "use server";
 
-import { and, desc, eq, gt, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/core/auth/session";
 import { getTeamLeaderSessionFromCookie } from "@/core/auth/team-leader-session";
@@ -13,6 +13,7 @@ import {
   programmeReportingSession as prsTable,
   programmeReportedParticipant as reportedParticipantTable,
   student as studentTable,
+  user as userTable,
 } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
@@ -79,17 +80,8 @@ async function assertStageManagerAccess(festivalId: string): Promise<string> {
     );
   }
 
-  if (session.role === "SUPER_ADMIN" || festival.ownerId === session.userId) {
-    const user = await db.query.user.findFirst({
-      where: eq(sql`id`, session.userId), // Using sql because I don't have userTable imported with correct name if I'm not careful, but I should import it.
-      // Wait, let me import user table too.
-    });
-    // Let's use a better way.
-  }
-
-  // Re-importing userTable properly if needed, but I'll use raw query if easier for this small check
   const user = await db.query.user.findFirst({
-    where: eq(sql`id`, session.userId),
+    where: eq(userTable.id, session.userId),
     columns: { displayName: true, fullName: true, email: true },
   });
 
@@ -241,7 +233,6 @@ export async function markStudentProgrammeNotificationReadAction(
     .update(notificationTable)
     .set({
       isRead: true,
-      updatedAt: new Date().toISOString(),
     })
     .where(
       and(
@@ -260,7 +251,6 @@ export async function markAllStudentProgrammeNotificationsReadAction(
     .update(notificationTable)
     .set({
       isRead: true,
-      updatedAt: new Date().toISOString(),
     })
     .where(
       and(
@@ -290,12 +280,12 @@ export async function getStudentOngoingProgrammesAction(studentId: string) {
     with: {
       programme: { columns: { id: true, name: true, status: true } },
       stage: { columns: { id: true, name: true } },
-      codeLetters: {
+      programmeCodeLetters: {
         where: sql`EXISTS (SELECT 1 FROM programme_code_letter_recipient WHERE code_letter_id = programme_code_letter.id AND student_id = ${studentId})`,
         orderBy: [desc(sql`issued_at`)],
         limit: 8,
         with: {
-          recipients: { where: eq(sql`student_id`, studentId) },
+          programmeCodeLetterRecipients: { where: eq(sql`student_id`, studentId) },
         },
       },
     },
