@@ -25,17 +25,6 @@ export function FestivalHero({ festival }: FestivalHeroProps) {
         }}
       />
 
-      {/* Hero Background Image */}
-      {festival.heroImage && (
-        <div
-          className="absolute inset-0 opacity-20"
-          style={{
-            backgroundImage: `url(${festival.heroImage})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
-      )}
 
       {/* Content */}
       <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">

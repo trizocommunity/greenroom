@@ -1,6 +1,9 @@
+import { and, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/core/auth/session";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { db } from "@/core/database/client";
+import { festivalMember as memberTable } from "@/core/database/schema";
 import {
   FeatureService,
   getTierForFeatureCheck,
@@ -29,13 +32,22 @@ export default async function SettingsPage({
     redirect(`/dashboard/${slug}?error=upgrade_required&feature=settings`);
   }
 
-  // Basic ownership check for Settings page access
-  if (festival.ownerId !== session.userId) {
-    // Check if user is an ADMIN member?
-    // For now strict owner or check roles if needed.
-    // Assuming ADMIN logic:
-    // const member = await findMember...
-    // if (!member || member.role !== 'ADMIN') redirect(...)
+  // Access check: Owner or ADMIN member
+  const isOwner = festival.ownerId === session.userId;
+  const isSuperAdmin = session.role === "SUPER_ADMIN";
+  
+  if (!isOwner && !isSuperAdmin) {
+    const member = await db.query.festivalMember.findFirst({
+      where: and(
+        eq(memberTable.festivalId, festival.id),
+        eq(memberTable.userId, session.userId),
+        eq(memberTable.role, "ADMIN"),
+        eq(memberTable.isActive, true)
+      ),
+    });
+    if (!member) {
+      redirect(`/dashboard/${slug}?error=forbidden`);
+    }
   }
 
   return (

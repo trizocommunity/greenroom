@@ -341,8 +341,8 @@ export async function setPublicSiteEnabledAction(
 }
 
 export async function updateFestivalBrandingAction(data: {
+  festivalId: string;
   logo?: string | null;
-  heroImage?: string | null;
 }) {
   try {
     const session = await getSession();
@@ -351,11 +351,23 @@ export async function updateFestivalBrandingAction(data: {
     }
 
     const festival = await db.query.festival.findFirst({
-      where: eq(festivalTable.ownerId, session.userId),
-      columns: { id: true, slug: true, branding: true },
+      where: eq(festivalTable.id, data.festivalId),
+      with: {
+        festivalMembers: {
+          where: and(
+            eq(memberTable.userId, session.userId),
+            eq(memberTable.role, "ADMIN"),
+          ),
+        },
+      },
     });
 
-    if (!festival) {
+    const isAdmin =
+      festival?.festivalMembers && festival.festivalMembers.length > 0;
+    const isOwner = festival?.ownerId === session.userId;
+    const isSuperAdmin = session.role === "SUPER_ADMIN";
+
+    if (!festival || (!isAdmin && !isOwner && !isSuperAdmin)) {
       throw new AppError(ERROR_MESSAGES.FORBIDDEN);
     }
 
@@ -369,19 +381,12 @@ export async function updateFestivalBrandingAction(data: {
     const nextBranding = {
       ...current,
       logo: data.logo ?? current.logo ?? null,
-      heroImage: data.heroImage ?? current.heroImage ?? null,
     };
 
     const previousLogo = typeof current.logo === "string" ? current.logo : null;
-    const previousHero =
-      typeof current.heroImage === "string" ? current.heroImage : null;
     const nextLogo =
       typeof (data.logo ?? current.logo) === "string"
         ? String(data.logo ?? current.logo)
-        : null;
-    const nextHero =
-      typeof (data.heroImage ?? current.heroImage) === "string"
-        ? String(data.heroImage ?? current.heroImage)
         : null;
 
     const urlsToAdd: string[] = [];
@@ -389,10 +394,7 @@ export async function updateFestivalBrandingAction(data: {
 
     if (previousLogo && previousLogo !== nextLogo)
       urlsToRemove.push(previousLogo);
-    if (previousHero && previousHero !== nextHero)
-      urlsToRemove.push(previousHero);
     if (nextLogo && nextLogo !== previousLogo) urlsToAdd.push(nextLogo);
-    if (nextHero && nextHero !== previousHero) urlsToAdd.push(nextHero);
 
     const [addMb, removeMb] = await Promise.all([
       StorageUsageService.getUrlsSizeMB(urlsToAdd),

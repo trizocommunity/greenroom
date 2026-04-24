@@ -1,6 +1,6 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
@@ -25,6 +25,11 @@ export default async function FestivalLivePage({
   const { slug } = await params;
   const festival = await findFestivalBySlug(slug);
   if (!festival) notFound();
+
+  // Basic tier users cannot access the live page.
+  if (isBasicTier(festival.tier as any)) {
+    redirect(`/dashboard/${slug}?error=upgrade_required&feature=festivalLive`);
+  }
 
   const [galleryImages, newsPosts] = await Promise.all([
     db.query.festivalGalleryImage.findMany({
@@ -79,26 +84,6 @@ export default async function FestivalLivePage({
       <FestivalLiveClient
         festivalId={festival.id}
         festivalSlug={festival.slug}
-        festivalDetails={{
-          name: festival.name || "",
-          description: festival.description || "",
-          startDate: festival.startDate,
-          endDate: festival.endDate,
-          orgName: festival.orgName || "",
-          orgDescription: festival.orgDescription || "",
-          orgWebsite: festival.orgWebsite || "",
-          orgLocation: festival.orgLocation || "",
-          establishedYear: festival.establishedYear,
-          institutionType: festival.institutionType as any,
-          institutionName: festival.institutionName || "",
-          location: festival.location || "",
-          founderName: festival.founderName || "",
-          founderMessage: festival.founderMessage || "",
-          slug: festival.slug,
-          createdAt: festival.createdAt,
-          expiresAt: festival.expiresAt,
-        }}
-        branding={getBrandingFromJson(festival.branding)}
         publicSiteEnabled={festival.publicSiteEnabled ?? false}
         canEnable={validation.canEnable}
         validationErrors={validation.errors}

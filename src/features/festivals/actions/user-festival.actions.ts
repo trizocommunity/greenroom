@@ -1,10 +1,13 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
-import { festival as festivalTable } from "@/core/database/schema";
+import {
+  festival as festivalTable,
+  festivalMember as memberTable,
+} from "@/core/database/schema";
 import {
   AppError,
   ERROR_MESSAGES,
@@ -30,9 +33,9 @@ export async function getMyFestival() {
 }
 
 export async function updateFestivalAction(
+  festivalId: string,
   data: UpdateFestivalInput,
 ): Promise<ActionResponse<any>> {
-  // Changed to any to avoid Prisma dependency in type
   try {
     const session = await getSession();
     if (!session?.userId) {
@@ -41,19 +44,32 @@ export async function updateFestivalAction(
 
     const validated = updateFestivalSchema.parse(data);
 
-    const ownedFestival = await db.query.festival.findFirst({
-      where: eq(festivalTable.ownerId, session.userId),
-      columns: { id: true, createdAt: true, expiresAt: true },
+    const festival = await db.query.festival.findFirst({
+      where: eq(festivalTable.id, festivalId),
+      with: {
+        festivalMembers: {
+          where: and(
+            eq(memberTable.userId, session.userId),
+            eq(memberTable.role, "ADMIN"),
+          ),
+        },
+      },
     });
-    if (!ownedFestival) {
-      throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
+
+    const isAdmin =
+      festival?.festivalMembers && festival.festivalMembers.length > 0;
+    const isOwner = festival?.ownerId === session.userId;
+    const isSuperAdmin = session.role === "SUPER_ADMIN";
+
+    if (!festival || (!isAdmin && !isOwner && !isSuperAdmin)) {
+      throw new AppError(ERROR_MESSAGES.FORBIDDEN);
     }
 
     const keys = Object.keys(validated);
     const isDateOnlyUpdate =
       keys.length > 0 &&
       keys.every((key) => key === "startDate" || key === "endDate");
-    await assertFestivalMutationAllowed(ownedFestival.id, {
+    await assertFestivalMutationAllowed(festival.id, {
       allowPast: isDateOnlyUpdate,
     });
 
@@ -65,10 +81,8 @@ export async function updateFestivalAction(
       validated.endDate !== undefined && validated.endDate !== null
         ? new Date(validated.endDate)
         : null;
-    const planStart = new Date(ownedFestival.createdAt);
-    const planEnd = ownedFestival.expiresAt
-      ? new Date(ownedFestival.expiresAt)
-      : null;
+    const planStart = new Date(festival.createdAt);
+    const planEnd = festival.expiresAt ? new Date(festival.expiresAt) : null;
 
     if (incomingStart && Number.isNaN(incomingStart.getTime())) {
       throw new AppError("Invalid start date");
@@ -98,19 +112,19 @@ export async function updateFestivalAction(
           : undefined,
         updatedAt: new Date().toISOString(),
       })
-      .where(eq(festivalTable.ownerId, session.userId))
+      .where(eq(festivalTable.id, festivalId))
       .returning();
 
-    const festival = updatedFestivals[0];
+    const updated = updatedFestivals[0];
 
     await createAuditLog({
       action: "UPDATE_FESTIVAL",
       targetType: "FESTIVAL",
-      targetId: festival.id,
+      targetId: updated.id,
       metadata: { changes: Object.keys(validated) },
     });
 
-    return { success: true, data: festival };
+    return { success: true, data: updated };
   } catch (error: unknown) {
     return handleActionError(error);
   }

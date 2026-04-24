@@ -84,7 +84,6 @@ export default async function FestivalDashboardLayout({
     endDate: festival.endDate || null,
     location: festival.location || "Virtual",
     logo: null,
-    heroImage: null,
     orgName: festival.institutionName || "Organization",
     orgDescription: null,
     orgWebsite: null,

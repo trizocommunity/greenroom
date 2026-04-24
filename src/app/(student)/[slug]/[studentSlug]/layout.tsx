@@ -53,13 +53,6 @@ export default async function StudentLayout({
       ? (festival.branding as any).logo
       : null;
 
-  const heroImage =
-    festival.branding &&
-    typeof festival.branding === "object" &&
-    "heroImage" in festival.branding
-      ? (festival.branding as any).heroImage
-      : null;
-
   const festivalProviderValue = {
     id: festival.id,
     name: festival.name,
@@ -72,7 +65,6 @@ export default async function StudentLayout({
     status: festival.status,
     tier: festival.tier,
     logo,
-    heroImage,
     orgName: festival.orgName ?? null,
     orgDescription: festival.orgDescription ?? null,
     orgWebsite: festival.orgWebsite ?? null,

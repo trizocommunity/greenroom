@@ -2,7 +2,6 @@
 export interface FestivalBranding {
   colors?: { primary?: string };
   logo?: string | null;
-  heroImage?: string | null;
 }
 
 export function getBrandingFromJson(
@@ -17,12 +16,6 @@ export function getBrandingFromJson(
         : undefined,
     logo:
       typeof b.logo === "string" ? b.logo : b.logo === null ? null : undefined,
-    heroImage:
-      typeof b.heroImage === "string"
-        ? b.heroImage
-        : b.heroImage === null
-          ? null
-          : undefined,
   };
 }
 

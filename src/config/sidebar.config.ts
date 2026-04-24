@@ -129,7 +129,6 @@ export const getFestivalDashboardSidebarConfig = (
           href: `${basePath}/settings`,
           icon: Settings,
           allowedRoles: ["ADMIN", "OWNER"],
-          disabled: plan.isBasic,
         },
         {
           title: "Members",
@@ -139,10 +138,11 @@ export const getFestivalDashboardSidebarConfig = (
           disabled: plan.isBasic,
         },
         {
-          title: plan.isBasic ? "Festival" : "Festival Live",
+          title: "Festival Live",
           href: `${basePath}/festival-live`,
           icon: Radio,
           allowedRoles: ["ADMIN", "OWNER"],
+          disabled: plan.isBasic,
         },
       ],
     },

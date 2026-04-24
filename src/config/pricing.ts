@@ -178,7 +178,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       multiFestivalManagement: false,
 
       // Settings — BASIC has no settings page (sidebar/route already gate on this)
-      festivalSettings: false,
+      festivalSettings: true,
       advancedSettings: false,
       programmeAssignmentDeadline: false,
 

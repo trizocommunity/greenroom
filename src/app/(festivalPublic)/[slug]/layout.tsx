@@ -75,7 +75,6 @@ export default async function FestivalLayout({
     location: festival.orgLocation || "",
     status: festival.status,
     logo: branding?.logo ?? null,
-    heroImage: branding?.heroImage ?? null,
     orgName: festival.orgName || "",
     orgDescription: festival.orgDescription || "",
     orgWebsite: festival.orgWebsite || "",

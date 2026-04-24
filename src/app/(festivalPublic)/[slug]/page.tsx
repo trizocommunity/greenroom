@@ -35,9 +35,7 @@ export async function generateMetadata({
     openGraph: {
       title: title,
       description: festival.description || undefined,
-      images: (festival.branding as any)?.heroImage
-        ? [(festival.branding as any).heroImage]
-        : [],
+      images: [],
     },
   };
 }
@@ -104,12 +102,6 @@ export default async function FestivalPage({
       typeof festival.branding === "object" &&
       "logo" in festival.branding
         ? (festival.branding as any).logo
-        : null,
-    heroImage:
-      festival.branding &&
-      typeof festival.branding === "object" &&
-      "heroImage" in festival.branding
-        ? (festival.branding as any).heroImage
         : null,
     orgName: festival.orgName || "",
     orgDescription: festival.orgDescription || "",
