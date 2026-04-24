@@ -44,8 +44,16 @@ export async function uploadImageToCloudinary(
     });
 
     if (!res.ok) {
-      const error = await res.json();
-      console.error("Upload failed:", error);
+      let errorMessage = "Upload failed";
+      try {
+        const errorData = await res.json();
+        errorMessage = errorData.error || errorMessage;
+        console.error("Upload failed details:", errorData);
+      } catch (e) {
+        const text = await res.text();
+        console.error("Upload failed (raw):", text);
+      }
+      toast.error(errorMessage);
       return null;
     }
 

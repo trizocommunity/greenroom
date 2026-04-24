@@ -11,12 +11,13 @@ const ALLOWED_MIME_TYPES = [
   "image/png",
   "image/gif",
   "image/webp",
+  "image/svg+xml",
 ];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 // Schema for upload request
 const uploadSchema = z.object({
-  file: z.string().regex(/^data:image\/(jpeg|png|gif|webp);base64,/),
+  file: z.string().regex(/^data:image\/(jpeg|png|gif|webp|svg\+xml);base64,/),
   folder: z.enum(["logo", "hero", "news", "gallery"]),
 });
 

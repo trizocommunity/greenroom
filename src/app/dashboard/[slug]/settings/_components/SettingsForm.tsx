@@ -105,10 +105,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
       return null;
     }
     const url = await uploadImageToCloudinary(file, "logo");
-    if (!url) {
-      toast.error("Upload failed. Please try again.");
-      return null;
-    }
+    if (!url) return null;
     return url;
   };
 
