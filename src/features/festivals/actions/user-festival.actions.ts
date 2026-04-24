@@ -110,6 +110,11 @@ export async function updateFestivalAction(
         endDate: validated.endDate
           ? validated.endDate.toISOString()
           : undefined,
+        programmeAssignmentDeadline: validated.programmeAssignmentDeadline
+          ? new Date(validated.programmeAssignmentDeadline).toISOString()
+          : validated.programmeAssignmentDeadline === null
+          ? null
+          : undefined,
         updatedAt: new Date().toISOString(),
       })
       .where(eq(festivalTable.id, festivalId))
