@@ -13,8 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { usePaymentHistory } from "@/hooks/usePaymentHistory";
-import { usePaymentStatus } from "@/hooks/usePaymentStatus";
+import { usePaymentHistory } from "@/features/payments/hooks/use-payment-history";
+import { usePaymentStatus } from "@/features/payments/hooks/use-payment-status";
 import { Skeleton } from "../ui/skeleton";
 
 export function BillingTab() {

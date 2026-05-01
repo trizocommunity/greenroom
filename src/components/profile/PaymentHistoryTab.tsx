@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { usePaymentHistory } from "@/hooks/usePaymentHistory";
+import { usePaymentHistory } from "@/features/payments/hooks/use-payment-history";
 
 export function PaymentHistoryTab() {
   const { data: payments, isLoading } = usePaymentHistory();

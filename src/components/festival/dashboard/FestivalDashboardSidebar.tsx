@@ -1,6 +1,5 @@
 "use client";
 
-import type { FestivalStatus } from "@prisma/client";
 import { GalleryVerticalEnd } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -18,6 +17,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { getFestivalDashboardSidebarConfig } from "@/config/sidebar.config";
+import type { FestivalStatus } from "@/core/types/app-enums";
 
 interface FestivalDashboardSidebarProps {
   festival: {
@@ -31,7 +31,11 @@ interface FestivalDashboardSidebarProps {
   role: string;
 }
 
-import { useFeatures } from "@/hooks/useFeature";
+import { useFestival } from "@/components/festival/FestivalContext";
+import {
+  useFeatures,
+  useFeatureTag,
+} from "@/features/plan-features/hooks/use-feature";
 
 export function FestivalDashboardSidebar({
   festival,
@@ -39,11 +43,20 @@ export function FestivalDashboardSidebar({
 }: FestivalDashboardSidebarProps) {
   const pathname = usePathname();
   const features = useFeatures();
+  const canUseExternalJudging = useFeatureTag("eventWorks.externalJudging");
+  const canUseMarksUI = useFeatureTag("eventWorks.marksUI");
+  const canUseReporting = useFeatureTag("eventWorks.reporting");
 
   const basePath = `/dashboard/${festival.slug}`;
   const dashboardPath = basePath;
 
-  const rawMenuGroups = getFestivalDashboardSidebarConfig(dashboardPath, role);
+  const festivalContext = useFestival();
+  const isBasic = festivalContext.tier === "BASIC";
+
+  const rawMenuGroups = getFestivalDashboardSidebarConfig(dashboardPath, role, {
+    useExternalJudging: canUseExternalJudging,
+    isBasic,
+  });
 
   // Filter menu items based on features
   const menuGroups = rawMenuGroups
@@ -77,6 +90,36 @@ export function FestivalDashboardSidebar({
         // Analytics
         if (item.title === "Analytics" && !features.hasAdvancedAnalytics)
           return false;
+
+        // Leaderboard (live scoreboard)
+        if (item.title === "Leaderboard" && !features.hasLiveScoreboard)
+          return false;
+
+        // Content
+        if (item.title === "Gallery" && !features.canManageGallery)
+          return false;
+        if (item.title === "News" && !features.canManageNews) return false;
+        if (item.title === "Sessions" && !features.canManageSchedule)
+          return false;
+
+        // Reporting is stage-driven (mark / reporting sessions). Schedule is
+        // required for external judge links, but reporting itself should follow
+        // the stage-management capability.
+        if (item.title === "Reporting" && !canUseReporting) return false;
+
+        // "Judgment/Marks" is business-capability routed:
+        // - BASIC: Marks UI
+        // - STANDARD/PRO: Judgment UI (external judging)
+        // If Super Admin disables the underlying capability(s), hide the link to
+        // avoid unreachable redirects.
+        if (
+          (item.href.endsWith("/event-works/judgment") ||
+            item.href.endsWith("/event-works/marks")) &&
+          !canUseExternalJudging &&
+          !canUseMarksUI
+        ) {
+          return false;
+        }
 
         return true;
       }),

@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { resetUserPassword } from "@/server/actions/admin-user.actions";
+import { resetUserPassword } from "@/features/admin/actions/admin-user.actions";
 
 interface ViewDetailsDialogProps {
   title: string;

@@ -1,16 +1,34 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { hashPassword } from "@/lib/auth/password";
-import { resetPasswordSchema } from "@/lib/validations/auth";
+import { hashPassword } from "@/core/auth/password";
+import { formatApiError } from "@/core/http/api-error";
+import { checkRateLimit, getClientIP } from "@/core/http/rate-limit";
 import {
   findValidPasswordResetToken,
   updatePasswordResetToken,
-} from "@/server/models/password-reset-token.model";
-import { updateUser } from "@/server/models/user.model";
+} from "@/features/auth/repositories/password-reset-token.repository";
+import { updateUser } from "@/features/auth/repositories/user.repository";
+import { resetPasswordSchema } from "@/features/auth/schemas/auth.schema";
+import { createAuditLog } from "@/features/auth/services/audit-log.service";
 
 export async function POST(request: Request) {
   try {
+    // Rate limiting: 3 attempts per 15 minutes per IP
+    const clientIP = getClientIP(request);
+    const rateLimit = checkRateLimit(
+      `reset-password:${clientIP}`,
+      3,
+      15 * 60 * 1000,
+    );
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many attempts. Please try again later." },
+        { status: 429 },
+      );
+    }
+
     const body = await request.json();
     const { token, password } = resetPasswordSchema.parse(body);
 
@@ -32,20 +50,21 @@ export async function POST(request: Request) {
     });
 
     await updatePasswordResetToken(resetTokenRecord.id, {
-      usedAt: new Date(),
+      usedAt: new Date().toISOString(),
+    });
+
+    // Audit log password reset
+    await createAuditLog({
+      action: "PASSWORD_RESET",
+      targetType: "USER",
+      targetId: resetTokenRecord.userId,
+      metadata: { ipAddress: clientIP },
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: (error as any).errors },
-        { status: 400 },
-      );
-    }
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    const payload = formatApiError(error);
+    const status = error instanceof z.ZodError ? 400 : 500;
+    return NextResponse.json(payload, { status });
   }
 }

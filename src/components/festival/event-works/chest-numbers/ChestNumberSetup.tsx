@@ -1,32 +1,9 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
+import { Loader2, Settings2 } from "lucide-react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Settings2, Pencil } from "lucide-react";
-import {
-  generateChestNumbers,
-  saveChestNumberSettings,
-  updateAllChestNumbers,
-  resetChestNumbers,
-} from "@/server/actions/chest-number.actions";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,16 +15,38 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { queryKeys } from "@/core/http/query-keys";
+import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
+import {
+  generateChestNumbers,
+  resetChestNumbers,
+  saveChestNumberSettings,
+  updateAllChestNumbers,
+} from "@/features/students/actions/chest-number.actions";
+
+type CategoryItem = { id: string; name: string };
 
 interface ChestNumberSetupProps {
   festivalId: string;
-  categories: any[];
+  categories: CategoryItem[];
   initialSettings: {
     prefix: string;
     nextSequence?: number;
     categories?: Record<string, number>;
     categoryCodes?: Record<string, string>;
+    numberingStyle?: "ALPHANUMERIC" | "NUMERIC";
   } | null;
   onGenerated: () => void;
   pendingCount?: number;
@@ -60,11 +59,21 @@ export function ChestNumberSetup({
   onGenerated,
   pendingCount = 0,
 }: ChestNumberSetupProps) {
+  const { isReadOnly } = useFestivalReadOnly();
+  const queryClient = useQueryClient();
+
+  const invalidateStudentsAndNotify = () => {
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.students.list(festivalId),
+    });
+    onGenerated();
+  };
+
   const [prefix, setPrefix] = useState(initialSettings?.prefix || "");
   const [categoryStarts, setCategoryStarts] = useState<Record<string, string>>(
     () => {
       const starts: Record<string, string> = {};
-      categories.forEach((c: any, index: number) => {
+      categories.forEach((c: CategoryItem, index: number) => {
         // Default to 100, 200, 300... if not configured
         const defaultStart = ((index + 1) * 100).toString();
         starts[c.id] =
@@ -77,7 +86,7 @@ export function ChestNumberSetup({
   const [categoryCodes, setCategoryCodes] = useState<Record<string, string>>(
     () => {
       const codes: Record<string, string> = {};
-      categories.forEach((c: any) => {
+      categories.forEach((c: CategoryItem) => {
         codes[c.id] =
           initialSettings?.categoryCodes?.[c.id] ||
           c.name.charAt(0).toUpperCase();
@@ -105,7 +114,7 @@ export function ChestNumberSetup({
 
   const [numberingStyle, setNumberingStyle] = useState<
     "ALPHANUMERIC" | "NUMERIC"
-  >("ALPHANUMERIC");
+  >(initialSettings?.numberingStyle || "ALPHANUMERIC");
 
   // Determine if configured based on categories being present in settings, not just prefix
   const isConfigured =
@@ -114,6 +123,7 @@ export function ChestNumberSetup({
 
   // Initialize edit state
   const handleOpenEdit = () => {
+    if (isReadOnly) return;
     setEditPrefix(prefix);
     // Detect style from current settings
     if (!prefix && Object.keys(categoryCodes).every((k) => !categoryCodes[k])) {
@@ -126,41 +136,6 @@ export function ChestNumberSetup({
     setIsEditOpen(true);
   };
 
-  const handleStartChange = (catId: string, val: string) => {
-    setCategoryStarts((prev) => ({ ...prev, [catId]: val }));
-  };
-
-  const handleCodeChange = (catId: string, val: string) => {
-    setCategoryCodes((prev) => ({ ...prev, [catId]: val.toUpperCase() }));
-  };
-
-  const getPreview = (currentPrefix: string) => {
-    if (!categories.length) return "No Categories";
-    const demoCat = categories[0];
-    const start = parseInt(categoryStarts[demoCat.id] || "1");
-    const formattedStart = String(start).padStart(2, "0");
-
-    // Numeric Mode Preview
-    if (
-      !currentPrefix &&
-      Object.keys(categoryCodes).every((k) => !categoryCodes[k])
-    ) {
-      return `${formattedStart}`;
-    }
-
-    // Alphanumeric Preview
-    const code =
-      categoryCodes[demoCat.id] || demoCat.name.charAt(0).toUpperCase();
-    const safePrefix =
-      currentPrefix && currentPrefix.endsWith("-")
-        ? currentPrefix
-        : currentPrefix
-          ? `${currentPrefix}-`
-          : ""; // No prefix logic if empty, though alphanumeric usually has one.
-
-    return `${safePrefix}${code}${formattedStart}`;
-  };
-
   // Helper to get preview for EDIT state
   const handleEditCodeChange = (catId: string, val: string) => {
     setEditCategoryCodes((prev) => ({ ...prev, [catId]: val.toUpperCase() }));
@@ -169,7 +144,7 @@ export function ChestNumberSetup({
   const getEditPreview = (currentPrefix: string) => {
     if (!categories.length) return "No Categories";
     const demoCat = categories[0];
-    const start = parseInt(editCategoryStarts[demoCat.id] || "1");
+    const start = parseInt(editCategoryStarts[demoCat.id] || "1", 10);
     const formattedStart = String(start).padStart(2, "0");
 
     if (numberingStyle === "NUMERIC") {
@@ -179,47 +154,55 @@ export function ChestNumberSetup({
     const code =
       editCategoryCodes[demoCat.id] || demoCat.name.charAt(0).toUpperCase();
 
-    const safePrefix =
-      currentPrefix && currentPrefix.endsWith("-")
-        ? currentPrefix
-        : currentPrefix
-          ? `${currentPrefix}-`
-          : "";
+    const safePrefix = currentPrefix?.endsWith("-")
+      ? currentPrefix
+      : currentPrefix
+        ? `${currentPrefix}-`
+        : "";
 
     return `${safePrefix}${code}${formattedStart}`;
   };
 
   const handleSaveAndGenerate = async () => {
-    if (!prefix) {
-      toast.error("Prefix is required");
-      return;
+    if (isReadOnly) return;
+    const isNumeric = numberingStyle === "NUMERIC";
+
+    if (!isNumeric) {
+      if (!prefix || !prefix.trim()) {
+        toast.error("Prefix is required for Alphanumeric style");
+        return;
+      }
     }
 
     const categoryConfig: Record<string, number> = {};
     const codeConfig: Record<string, string> = {};
 
     for (const cat of categories) {
-      const val = parseInt(categoryStarts[cat.id]);
+      const startVal = categoryStarts[cat.id];
+      const val = parseInt(startVal ?? "", 10);
       if (Number.isNaN(val)) {
         toast.error(`Invalid start number for ${cat.name}`);
         return;
       }
       categoryConfig[cat.id] = val;
 
-      const code = categoryCodes[cat.id];
-      if (!code) {
-        toast.error(`Code is required for ${cat.name}`);
-        return;
+      if (!isNumeric) {
+        const code = categoryCodes[cat.id];
+        if (!code || !code.trim()) {
+          toast.error(`Code is required for ${cat.name} (Alphanumeric)`);
+          return;
+        }
+        codeConfig[cat.id] = code;
       }
-      codeConfig[cat.id] = code;
     }
 
     try {
       setIsSaving(true);
       await saveChestNumberSettings(festivalId, {
-        prefix,
+        prefix: isNumeric ? "" : (prefix ?? ""),
         categories: categoryConfig,
-        categoryCodes: codeConfig,
+        categoryCodes: isNumeric ? {} : codeConfig,
+        numberingStyle: numberingStyle,
       });
 
       setIsSaving(false);
@@ -227,9 +210,9 @@ export function ChestNumberSetup({
       const result = await generateChestNumbers(festivalId);
 
       toast.success(result.message);
-      onGenerated();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to process");
+      invalidateStudentsAndNotify();
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to process");
     } finally {
       setIsSaving(false);
       setIsGenerating(false);
@@ -237,6 +220,7 @@ export function ChestNumberSetup({
   };
 
   const handleUpdateConfiguration = async () => {
+    if (isReadOnly) return;
     if (numberingStyle === "ALPHANUMERIC" && !editPrefix) {
       return toast.error("Prefix is required for Alphanumeric style");
     }
@@ -248,7 +232,7 @@ export function ChestNumberSetup({
         return toast.error(`Code is required for ${cat.name}`);
       }
 
-      const val = parseInt(editCategoryStarts[cat.id]);
+      const val = parseInt(editCategoryStarts[cat.id], 10);
       if (Number.isNaN(val)) {
         return toast.error(`Invalid start number for ${cat.name}`);
       }
@@ -293,15 +277,20 @@ export function ChestNumberSetup({
       setCategoryCodes(codesToSave);
       setCategoryStarts(editCategoryStarts);
 
-      onGenerated();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update configuration");
+      invalidateStudentsAndNotify();
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to update configuration",
+      );
     } finally {
       setIsUpdatingPrefix(false);
     }
   };
 
   const handleReset = async () => {
+    if (isReadOnly) return;
     try {
       setIsResetting(true);
       await resetChestNumbers(festivalId);
@@ -312,109 +301,113 @@ export function ChestNumberSetup({
 
       const defaultStarts: Record<string, string> = {};
       const defaultCodes: Record<string, string> = {};
-      categories.forEach((c: any, index: number) => {
-        defaultStarts[c.id] = ((index + 1) * 100).toString(); // Default to 100, 200, 300...
+      categories.forEach((c: CategoryItem, index: number) => {
+        defaultStarts[c.id] = ((index + 1) * 100).toString();
         defaultCodes[c.id] = c.name.charAt(0).toUpperCase();
       });
       setCategoryStarts(defaultStarts);
       setCategoryCodes(defaultCodes);
 
-      onGenerated();
-    } catch (error: any) {
-      toast.error("Failed to reset chest numbers");
+      invalidateStudentsAndNotify();
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to reset chest numbers",
+      );
     } finally {
       setIsResetting(false);
     }
   };
 
-  // Remove Card logic, always return header view
   return (
-    <div className="flex flex-col gap-4 p-4 border rounded-lg bg-muted/20">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="p-2 bg-primary/10 rounded-full">
-            <Settings2 className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-sm">
-              Chest Number Configuration
-            </h3>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              {isConfigured ? (
-                <div className="text-xs text-muted-foreground">
-                  Configured for {categories.length} categories.
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <div className="px-2 py-0.5 rounded-full bg-destructive/10 text-destructive text-xs font-medium border border-destructive/20">
-                    Not Configured
-                  </div>
-                </div>
-              )}
-            </div>
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3 sm:px-4 py-3 border rounded-xl bg-muted/20 border-border/80">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg shrink-0">
+          <Settings2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="font-semibold text-xs sm:text-sm truncate">
+            Chest numbers
+          </h3>
+          <div className="text-[11px] sm:text-xs text-muted-foreground">
+            {isConfigured ? (
+              <span>
+                {categories.length} categories ·{" "}
+                {pendingCount > 0 ? `${pendingCount} pending` : "All set"}
+              </span>
+            ) : (
+              <span className="text-destructive font-medium">
+                Not configured
+              </span>
+            )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {!isConfigured && (
-            <Button size="sm" onClick={handleOpenEdit} className="gap-2">
-              <Settings2 className="h-4 w-4" />
-              Configure Now
-            </Button>
-          )}
-
-          {isConfigured && (
-            <>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+      </div>
+      <div className="flex flex-wrap items-center gap-2 shrink-0">
+        {!isConfigured && (
+          <Button
+            size="sm"
+            onClick={handleOpenEdit}
+            className="h-8 gap-1.5 text-xs"
+            disabled={isReadOnly}
+          >
+            <Settings2 className="h-3.5 w-3.5" />
+            Configure
+          </Button>
+        )}
+        {isConfigured && (
+          <>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                  disabled={isReadOnly}
+                >
+                  {isResetting ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    "Reset"
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reset all chest numbers?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will remove chest numbers from ALL students and reset
+                    the generation logic. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleReset}
+                    className="bg-destructive hover:bg-destructive/90"
                   >
-                    {isResetting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      "Reset All"
-                    )}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      Reset all chest numbers?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will remove chest numbers from ALL students and reset
-                      the generation logic. This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleReset}
-                      className="bg-destructive hover:bg-destructive/90"
-                    >
-                      Reset All
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-
+                    Reset All
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            {pendingCount > 0 && (
               <Button
                 onClick={handleSaveAndGenerate}
-                disabled={isGenerating || pendingCount === 0}
-                variant={pendingCount === 0 ? "outline" : "default"}
+                disabled={isReadOnly || isGenerating || pendingCount === 0}
+                variant="default"
+                size="sm"
+                className="h-8 text-xs"
               >
                 {isGenerating ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
                 ) : null}
-                {pendingCount > 0
-                  ? `Generate for ${pendingCount} New Students`
-                  : "No New Students"}
+                Generate {pendingCount} new
               </Button>
-            </>
-          )}
-        </div>
+            )}
+          </>
+        )}
       </div>
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
@@ -428,14 +421,16 @@ export function ChestNumberSetup({
           <div className="py-2 space-y-6">
             <Tabs
               value={numberingStyle}
-              onValueChange={(v) => setNumberingStyle(v as any)}
+              onValueChange={(v) =>
+                setNumberingStyle(v as "ALPHANUMERIC" | "NUMERIC")
+              }
               className="w-full"
             >
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="ALPHANUMERIC">
+                <TabsTrigger value="ALPHANUMERIC" disabled={isReadOnly}>
                   Alphanumeric (e.g. FEST-A-01)
                 </TabsTrigger>
-                <TabsTrigger value="NUMERIC">
+                <TabsTrigger value="NUMERIC" disabled={isReadOnly}>
                   Numeric Only (e.g. 101)
                 </TabsTrigger>
               </TabsList>
@@ -454,6 +449,7 @@ export function ChestNumberSetup({
                   value={editPrefix}
                   onChange={(e) => setEditPrefix(e.target.value.toUpperCase())}
                   placeholder="Enter prefix"
+                  disabled={isReadOnly}
                 />
               </div>
             )}
@@ -468,7 +464,7 @@ export function ChestNumberSetup({
             <div className="space-y-3">
               <Label>Category Sequences</Label>
               <div className="border rounded-md divide-y max-h-[400px] overflow-y-auto">
-                {categories.map((cat: any) => (
+                {categories.map((cat: CategoryItem) => (
                   <div
                     key={cat.id}
                     className="flex items-center justify-between p-3 text-sm"
@@ -482,12 +478,13 @@ export function ChestNumberSetup({
                           </span>
                           <Input
                             className="w-16 h-8 font-mono uppercase"
-                            value={editCategoryCodes[cat.id]}
+                            value={editCategoryCodes[cat.id] ?? ""}
                             onChange={(e) =>
                               handleEditCodeChange(cat.id, e.target.value)
                             }
                             placeholder={cat.name.charAt(0)}
                             maxLength={3}
+                            disabled={isReadOnly}
                           />
                         </div>
                       )}
@@ -498,13 +495,14 @@ export function ChestNumberSetup({
                         <Input
                           className="w-20 h-8"
                           type="number"
-                          value={editCategoryStarts[cat.id]}
+                          value={editCategoryStarts[cat.id] ?? ""}
                           onChange={(e) =>
                             setEditCategoryStarts((prev) => ({
                               ...prev,
                               [cat.id]: e.target.value,
                             }))
                           }
+                          disabled={isReadOnly}
                         />
                       </div>
                     </div>
@@ -519,7 +517,7 @@ export function ChestNumberSetup({
             </Button>
             <Button
               onClick={handleUpdateConfiguration}
-              disabled={isUpdatingPrefix}
+              disabled={isReadOnly || isUpdatingPrefix}
             >
               {isUpdatingPrefix && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

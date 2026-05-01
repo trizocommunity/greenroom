@@ -2,13 +2,15 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import {
   BulkUploadFlow,
   type ParsedItem,
 } from "@/components/common/bulk-upload/BulkUploadFlow";
+import { useFestival } from "@/components/festival/FestivalContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,16 +29,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useCategories } from "@/hooks/useCategories";
-import { useGroups } from "@/hooks/useGroups";
+import { queryKeys } from "@/core/http/query-keys";
+import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useGroups } from "@/features/groups/hooks/use-groups";
 import {
   bulkCreateStudentsAction,
   validateStudentsAction,
-} from "@/server/actions/student.actions";
+} from "@/features/students/actions/student.actions";
 
 // --- Types & Schema ---
 
-interface ParticipantData {
+interface StudentData {
   name: string;
   email: string;
   phone: string;
@@ -49,7 +52,7 @@ interface ParticipantData {
   standard?: string;
 }
 
-const ParticipantSchema = z.object({
+const StudentSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email().optional().or(z.literal("")),
   phone: z.string().optional(),
@@ -60,25 +63,28 @@ const ParticipantSchema = z.object({
   standard: z.string().optional(),
 });
 
-type ParticipantFormValues = z.infer<typeof ParticipantSchema>;
+type StudentFormValues = z.infer<typeof StudentSchema>;
 
 // --- Edit Component ---
 
-function ParticipantEditForm({
+function StudentEditForm({
   data,
   groups,
   categories,
   onSave,
   onCancel,
+  isBasic,
 }: {
-  data: ParticipantData;
+  data: StudentData;
   groups: any[];
   categories: any[];
-  onSave: (updated: ParticipantData) => void;
+  onSave: (updated: StudentData) => void;
   onCancel: () => void;
+  isBasic?: boolean;
 }) {
-  const form = useForm<ParticipantFormValues>({
-    resolver: zodResolver(ParticipantSchema),
+  const form = useForm<StudentFormValues>({
+    resolver: zodResolver(StudentSchema),
+    mode: "onChange",
     defaultValues: {
       name: data.name,
       email: data.email,
@@ -91,7 +97,20 @@ function ParticipantEditForm({
     },
   });
 
-  const onSubmit = (values: ParticipantFormValues) => {
+  useEffect(() => {
+    form.reset({
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      gender: (data.gender as any) || "MALE",
+      groupId: data.groupId || "",
+      categoryId: data.categoryId || "",
+      age: data.age,
+      standard: data.standard,
+    });
+  }, [data, form]);
+
+  const onSubmit = (values: StudentFormValues) => {
     const group = groups.find((g) => g.id === values.groupId);
     const category = categories.find((c) => c.id === values.categoryId);
 
@@ -127,34 +146,36 @@ function ParticipantEditForm({
           )}
         />
 
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input {...field} placeholder="Optional" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="phone"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Phone</FormLabel>
-                <FormControl>
-                  <Input {...field} placeholder="Optional" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        {!isBasic && (
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Optional" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Optional" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <FormField
@@ -163,10 +184,7 @@ function ParticipantEditForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Group</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select Group" />
@@ -191,10 +209,7 @@ function ParticipantEditForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Category</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select Category" />
@@ -220,7 +235,7 @@ function ParticipantEditForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Gender</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select Gender" />
@@ -278,7 +293,15 @@ function ParticipantEditForm({
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="submit">Save Changes</Button>
+          <Button
+            type="submit"
+            disabled={!form.formState.isValid || form.formState.isSubmitting}
+          >
+            {form.formState.isSubmitting && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            Save Changes
+          </Button>
         </div>
       </form>
     </Form>
@@ -296,18 +319,19 @@ export function BulkUploadStudentsModal({
   festivalId,
   trigger,
 }: BulkUploadStudentsModalProps) {
+  const festivalContext = useFestival();
+  const isBasicTier = festivalContext.tier === "BASIC";
   const queryClient = useQueryClient();
-  const router = useRouter();
 
   const { groups, isLoading: loadingGroups } = useGroups(festivalId);
   const { categories, isLoading: loadingCategories } =
     useCategories(festivalId);
 
   // Parsing Logic defined inside to access hooks
-  const parseParticipantRow = (
+  const parseStudentRow = (
     row: any[],
     index: number,
-  ): ParsedItem<ParticipantData> => {
+  ): ParsedItem<StudentData> => {
     const name = row[0]?.toString().trim() || "";
     const groupName = row[1]?.toString().trim() || "";
     const categoryName = row[2]?.toString().trim() || "";
@@ -380,13 +404,47 @@ export function BulkUploadStudentsModal({
   };
 
   const validateRows = async (
-    items: ParsedItem<ParticipantData>[],
-  ): Promise<ParsedItem<ParticipantData>[]> => {
-    // Server-Side Duplicate Check
-    // Prepare candidates list (only those valid so far or at least having a name)
+    items: ParsedItem<StudentData>[],
+  ): Promise<ParsedItem<StudentData>[]> => {
+    // 1. Internal Duplicate Check (within this upload)
+    // Primary check: name + category + group
+    // Secondary check: email
+    const compositeCounts = new Map<string, number>();
+    const emailCounts = new Map<string, number>();
+
+    for (const item of items) {
+      const name = item.data.name?.trim().toLowerCase();
+      const email = item.data.email?.trim().toLowerCase();
+      if (name && item.data.categoryId && item.data.groupId) {
+        const key = `${name}|${item.data.categoryId}|${item.data.groupId}`;
+        compositeCounts.set(key, (compositeCounts.get(key) || 0) + 1);
+      }
+      if (email) {
+        emailCounts.set(email, (emailCounts.get(email) || 0) + 1);
+      }
+    }
+
+    const internalCompositeDuplicates = new Set(
+      Array.from(compositeCounts.entries())
+        .filter(([_, count]) => count > 1)
+        .map(([key]) => key),
+    );
+
+    const internalEmailDuplicates = new Set(
+      Array.from(emailCounts.entries())
+        .filter(([_, count]) => count > 1)
+        .map(([email]) => email),
+    );
+
+    // 2. Server-Side Duplicate Check
     const candidatesToCheck = items
-      .filter((p) => p.data.name)
-      .map((p) => ({ name: p.data.name, email: p.data.email }));
+      .filter((p) => p.data.name && p.data.categoryId && p.data.groupId)
+      .map((p) => ({
+        name: p.data.name,
+        email: p.data.email,
+        categoryId: p.data.categoryId!,
+        groupId: p.data.groupId!,
+      }));
 
     if (candidatesToCheck.length > 0) {
       const conflicts = await validateStudentsAction(
@@ -394,32 +452,54 @@ export function BulkUploadStudentsModal({
         candidatesToCheck,
       );
 
-      // Apply conflicts to parsed data
       return items.map((p) => {
-        const nameKey = `name:${p.data.name.toLowerCase()}`;
-        const emailKey = p.data.email
-          ? `email:${p.data.email.toLowerCase()}`
-          : "";
-
+        const name = p.data.name?.trim().toLowerCase();
+        const email = p.data.email?.trim().toLowerCase();
         const newErrors = [...p.errors];
-        let isValid = p.isValid;
 
-        if (conflicts[nameKey]) {
-          newErrors.push(conflicts[nameKey]);
-          isValid = false;
-        } else if (emailKey && conflicts[emailKey]) {
-          newErrors.push(conflicts[emailKey]);
-          isValid = false;
+        // Check Server Conflicts
+        if (email && conflicts[`email:${email}`]) {
+          if (!newErrors.includes(conflicts[`email:${email}`])) {
+            newErrors.push(conflicts[`email:${email}`]);
+          }
         }
 
-        return { ...p, errors: newErrors, isValid };
+        if (name && p.data.categoryId && p.data.groupId) {
+          const serverKey = `composite:${name}:${p.data.categoryId}:${p.data.groupId}`;
+          if (conflicts[serverKey]) {
+            if (!newErrors.includes(conflicts[serverKey])) {
+              newErrors.push(conflicts[serverKey]);
+            }
+          }
+        }
+
+        // Check Internal Duplicates
+        if (email && internalEmailDuplicates.has(email)) {
+          const error = "Duplicate email in upload";
+          if (!newErrors.includes(error)) newErrors.push(error);
+        }
+
+        if (name && p.data.categoryId && p.data.groupId) {
+          const internalKey = `${name}|${p.data.categoryId}|${p.data.groupId}`;
+          if (internalCompositeDuplicates.has(internalKey)) {
+            const error =
+              "Duplicate student (same name, category, and group) in upload";
+            if (!newErrors.includes(error)) newErrors.push(error);
+          }
+        }
+
+        return {
+          ...p,
+          errors: newErrors,
+          isValid: newErrors.length === 0,
+        };
       });
     }
 
     return items;
   };
 
-  const handleCommit = async (validItems: ParticipantData[]) => {
+  const handleCommit = async (validItems: StudentData[]) => {
     const studentsToCreate = validItems.map((s) => ({
       name: s.name,
       groupId: s.groupId!,
@@ -434,8 +514,9 @@ export function BulkUploadStudentsModal({
     const result = await bulkCreateStudentsAction(festivalId, studentsToCreate);
 
     if (result.successCount > 0) {
-      queryClient.invalidateQueries({ queryKey: ["students", festivalId] });
-      router.refresh();
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.students.list(festivalId),
+      });
     }
 
     const success = result.errors.length === 0;
@@ -452,7 +533,7 @@ export function BulkUploadStudentsModal({
   }
 
   return (
-    <BulkUploadFlow<ParticipantData>
+    <BulkUploadFlow<StudentData>
       trigger={trigger}
       title="Bulk Upload Students"
       templateName="students_template.xlsx"
@@ -461,8 +542,7 @@ export function BulkUploadStudentsModal({
         "Group",
         "Category",
         "Gender",
-        "Email",
-        "Phone",
+        ...(isBasicTier ? [] : ["Email", "Phone"]),
         "Age",
         "Class/Standard",
       ]}
@@ -472,20 +552,20 @@ export function BulkUploadStudentsModal({
           "(Group Name)",
           "(Category Name)",
           "(Male/Female/Other)",
-          "(Email - Optional)",
-          "(Phone - Optional)",
+          ...(isBasicTier ? [] : ["(Email - Optional)", "(Phone - Optional)"]),
           "(Age - Optional)",
           "(Class/Standard - Optional)",
         ],
       ]}
-      parseRow={parseParticipantRow}
+      parseRow={parseStudentRow}
       validateRows={validateRows}
       onCommit={handleCommit}
       EditComponent={(props) => (
-        <ParticipantEditForm
+        <StudentEditForm
           {...props}
           groups={groups}
           categories={categories}
+          isBasic={isBasicTier}
         />
       )}
       columns={[
@@ -495,9 +575,11 @@ export function BulkUploadStudentsModal({
           cell: (item) => (
             <div className="flex flex-col">
               <span className="font-semibold text-sm">{item.name}</span>
-              <span className="text-[11px] text-muted-foreground">
-                {item.email}
-              </span>
+              {!isBasicTier && (
+                <span className="text-[11px] text-muted-foreground">
+                  {item.email}
+                </span>
+              )}
             </div>
           ),
         },
@@ -510,8 +592,8 @@ export function BulkUploadStudentsModal({
                 variant="outline"
                 className={
                   !item.groupId
-                    ? "border-red-200 bg-red-50 text-red-700"
-                    : "bg-indigo-50 text-indigo-700 border-indigo-100"
+                    ? "border-red-500/20 bg-red-500/10 text-red-500"
+                    : "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
                 }
               >
                 {item.groupName || "No Group"}
@@ -520,8 +602,8 @@ export function BulkUploadStudentsModal({
                 variant="outline"
                 className={
                   !item.categoryId
-                    ? "border-red-200 bg-red-50 text-red-700"
-                    : "bg-rose-50 text-rose-700 border-rose-100"
+                    ? "border-red-500/20 bg-red-500/10 text-red-500"
+                    : "bg-rose-500/10 text-rose-400 border-rose-500/20"
                 }
               >
                 {item.categoryName || "No Category"}

@@ -2,7 +2,7 @@
 
 import { CalendarOff } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useJoinedFestivals } from "@/hooks/useJoinedFestivals";
+import { useJoinedFestivals } from "@/features/festivals/hooks/use-joined-festivals";
 import { JoinedFestivalCard } from "../JoinedFestivalCard";
 
 interface FestivalsTabProps {

@@ -1,14 +1,16 @@
 "use client";
 
-import type { User } from "@prisma/client";
 import { CreditCard, LayoutDashboard, Tent } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import type { UserProfile } from "@/core/types/app-enums";
+import { cn } from "@/core/utils/cn";
 import { EditProfileDialog } from "./EditProfileDialog";
 
 interface ProfileSidebarContentProps {
-  user: Pick<User, "fullName" | "displayName" | "age" | "email">;
+  user: UserProfile;
+  planLabel?: string | null;
   className?: string;
   onLinkClick?: () => void;
 }
@@ -80,26 +82,28 @@ export function ProfileSidebarContent({
       </div>
 
       {/* Navigation */}
-      <nav className="flex flex-col space-y-1 flex-1">
-        <div className="mb-4 px-4 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+      <nav className="flex flex-col md:space-y-1 flex-1">
+        <div className="hidden md:block mb-4 px-4 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
           Account
         </div>
-        {items.map((item) => (
-          <button
-            type="button"
-            key={item.value}
-            onClick={() => navigate(item.value)}
-            className={cn(
-              "flex items-center gap-3 rounded-md px-4 py-2 text-sm font-medium transition-colors w-full text-left",
-              activeTab === item.value
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground",
-            )}
-          >
-            <item.icon className="h-4 w-4" />
-            {item.label}
-          </button>
-        ))}
+        <div className="flex overflow-x-auto md:flex-col gap-2 pb-2 md:pb-0 px-4 md:px-0 snap-x scrollbar-none hide-scrollbar">
+          {items.map((item) => (
+            <button
+              type="button"
+              key={item.value}
+              onClick={() => navigate(item.value)}
+              className={cn(
+                "flex items-center gap-2 md:gap-3 rounded-full md:rounded-md px-4 py-2 text-sm font-medium transition-colors md:w-full text-left whitespace-nowrap snap-start shrink-0",
+                activeTab === item.value
+                  ? "bg-primary text-primary-foreground md:bg-primary/10 md:text-primary"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground md:bg-transparent",
+              )}
+            >
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </button>
+          ))}
+        </div>
       </nav>
     </div>
   );

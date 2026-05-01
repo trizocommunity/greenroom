@@ -1,12 +1,15 @@
+import { Calendar } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ResultsManagementClient } from "@/components/dashboard/results/ResultsManagementClient";
-import { prisma } from "@/lib/db";
 import { EmptyState } from "@/components/common/EmptyState";
-import { ClipboardList } from "lucide-react";
+import { ResultsExploreClient } from "@/components/dashboard/event-works/ResultsExploreClient";
+import type { Tier } from "@/core/types/app-enums";
+import { filterProgrammesForEventWorks } from "@/features/programmes/services/programme-status.service";
+import { getFestivalResultsDataBySlug } from "@/features/results/services/results.service";
 
 export const metadata: Metadata = {
-  title: "Results Management",
+  title: "Results",
+  description: "Explore results of all programmes",
 };
 
 export default async function ResultsPage({
@@ -16,72 +19,56 @@ export default async function ResultsPage({
 }) {
   const { slug } = await params;
 
-  // Fetch festival with programmes, assignments, and categories
-  const festival = await prisma.festival.findUnique({
-    where: { slug },
-    include: {
-      categories: {
-        orderBy: { name: "asc" },
-      },
-      programmes: {
-        include: {
-          category: true,
-          assignments: {
-            include: {
-              student: true,
-              group: true,
-              result: true,
-            },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      },
-    },
-  });
+  const { festival } = await getFestivalResultsDataBySlug(slug);
 
   if (!festival) {
     return notFound();
   }
 
-  // Check for assignments
-  const assignmentCount = await prisma.programmeAssignment.count({
-    where: {
-      programme: {
-        festivalId: festival.id,
-      },
-    },
-  });
+  const tier = (festival.tier ?? "STANDARD") as Tier;
 
-  if (assignmentCount === 0) {
+  // BASIC excludes the dedicated Results page feature.
+  if (tier === "BASIC") {
+    return notFound();
+  }
+
+  const eventWorksProgrammes = filterProgrammesForEventWorks(
+    festival.programmes,
+    tier,
+  );
+
+  if (eventWorksProgrammes.length === 0) {
     return (
       <EmptyState
-        title="No Assignments Found"
-        description="Results can only be managed after students are assigned to programmes."
-        actionLabel="Go to Assignments"
-        actionLink={`/dashboard/${slug}/pre-works/assignments`}
-        icon={ClipboardList}
+        title="No programmes in Event Works yet"
+        description="On Standard and Pro plans, programmes appear here only after they are added to the schedule. Add your programmes to the schedule in Pre-Works to see them in Marks, Results, and Leaderboard."
+        actionLabel="Go to Schedule"
+        actionLink={`/dashboard/${slug}/pre-works/schedule`}
+        icon={Calendar}
       />
     );
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
+    <div className="pt-4 sm:pt-6">
+      <ResultsExploreClient
+        festival={{
+          id: festival.id,
+          name: festival.name,
+          slug: festival.slug,
+        }}
+        programmes={eventWorksProgrammes}
+        categories={festival.categories}
+      >
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Results Management
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            Results
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Enter scores and auto-calculate grades, positions & points
+          <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
+            Explore published results by programme.
           </p>
         </div>
-      </div>
-
-      <ResultsManagementClient
-        festival={festival}
-        programmes={festival.programmes}
-        categories={festival.categories}
-      />
+      </ResultsExploreClient>
     </div>
   );
 }

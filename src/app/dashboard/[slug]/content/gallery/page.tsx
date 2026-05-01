@@ -1,0 +1,32 @@
+import { notFound, redirect } from "next/navigation";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { getGalleryImagesAction } from "@/features/gallery/actions/gallery.actions";
+import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import { GalleryClient } from "./GalleryClient";
+
+interface PageProps {
+  params: Promise<{ slug: string }>;
+}
+
+export default async function GalleryPage({ params }: PageProps) {
+  const { slug } = await params;
+  const festival = await findFestivalBySlug(slug);
+  if (!festival) notFound();
+
+  const canManage = await getEffectiveFeatureEnabled(festival.tier, "gallery");
+  if (!canManage) {
+    redirect(`/dashboard/${slug}?error=upgrade_required&feature=gallery`);
+  }
+
+  const images = await getGalleryImagesAction(festival.id);
+
+  return (
+    <div className="pt-4 sm:pt-6">
+      <GalleryClient
+        festivalId={festival.id}
+        festivalSlug={festival.slug}
+        initialImages={images}
+      />
+    </div>
+  );
+}

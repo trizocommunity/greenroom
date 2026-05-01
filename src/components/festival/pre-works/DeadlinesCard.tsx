@@ -5,7 +5,11 @@ import { CalendarClock } from "lucide-react";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { Badge } from "@/components/ui/badge";
 
-export function DeadlinesCard() {
+export function DeadlinesCard({
+  isLockedOverride,
+}: {
+  isLockedOverride?: boolean;
+} = {}) {
   const festival = useFestival();
 
   const deadline = festival.programmeAssignmentDeadline;
@@ -13,11 +17,11 @@ export function DeadlinesCard() {
   if (!deadline) return null;
 
   const deadlineDate = new Date(deadline);
-  const isExpired = isPast(deadlineDate);
+  const isExpired = isLockedOverride ?? isPast(deadlineDate);
 
   return (
     <div
-      className={`flex items-center gap-3 rounded-lg border px-3 py-1.5 text-sm ${
+      className={`flex  flex-row items-center gap-2 rounded-lg border px-3 py-1.5 text-sm ${
         isExpired
           ? "bg-destructive/10 border-destructive/20 text-destructive"
           : "bg-muted/50 border-border text-muted-foreground"
@@ -25,11 +29,15 @@ export function DeadlinesCard() {
     >
       <div className="flex items-center gap-1.5">
         <CalendarClock className="h-4 w-4" />
-        <span className="font-medium text-foreground">Assignments close:</span>
+        <span className="font-medium text-foreground flex  items-center">
+          Assignments<span className="hidden lg:block">Close</span>:
+        </span>
       </div>
 
-      <div className="flex items-center gap-2">
-        <span>{format(deadlineDate, "MMM d, h:mm a")}</span>
+      <div className="flex items-center gap-2 justify-between sm:justify-normal">
+        <span className="whitespace-nowrap">
+          {format(deadlineDate, "MMM d, h:mm a")}
+        </span>
         {isExpired ? (
           <Badge
             variant="destructive"

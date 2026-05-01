@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { GroupsClient } from "@/components/festival/pre-works/groups/GroupsClient";
-import { findFestivalBySlug } from "@/server/models/festival.model";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 
 export default async function GroupsPage({
   params,
@@ -12,16 +12,10 @@ export default async function GroupsPage({
   if (!festival) return notFound();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Groups</h1>
-          <p className="text-muted-foreground">
-            Manage groups (Schools, Colleges, etc.) and their Team Leaders.
-          </p>
-        </div>
-      </div>
-      <GroupsClient festivalId={festival.id} />
+    <div className="pt-4 sm:pt-6">
+      <GroupsClient festivalId={festival.id}>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Groups</h1>
+      </GroupsClient>
     </div>
   );
 }

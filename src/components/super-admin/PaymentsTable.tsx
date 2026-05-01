@@ -29,7 +29,7 @@ import {
 import {
   type Payment,
   useSuperAdminPayments,
-} from "@/hooks/useSuperAdminPayments";
+} from "@/features/payments/hooks/use-super-admin-payments";
 
 const columns: ColumnDef<Payment>[] = [
   {

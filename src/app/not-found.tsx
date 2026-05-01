@@ -42,7 +42,8 @@ export default function GlobalNotFound() {
         <h1
           className="text-[9rem] font-bold leading-none tracking-tight"
           style={{
-            background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%)",
+            background:
+              "linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             backgroundClip: "text",

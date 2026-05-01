@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
-import { findFestivalByOwnerId } from "@/server/models/festival.model";
+import { getSession } from "@/core/auth/session";
+import { findFestivalByOwnerId } from "@/features/festivals/repositories/festival.repository";
 
 export async function GET(_request: Request) {
   try {

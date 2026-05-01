@@ -1,6 +1,10 @@
 import { notFound, redirect } from "next/navigation";
-import { FeatureService } from "@/lib/features";
-import { findFestivalBySlug } from "@/server/models/festival.model";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { findMembersByFestival } from "@/features/members/repositories/member.repository";
+import {
+  FeatureService,
+  getTierForFeatureCheck,
+} from "@/features/plan-features/services/features";
 import { MembersClient } from "./_components/MembersClient";
 
 export default async function MembersPage({
@@ -13,9 +17,23 @@ export default async function MembersPage({
   if (!festival) return notFound();
 
   // Feature Access Check
-  if (!FeatureService.isFeatureEnabled(festival.tier as any, "members")) {
+  if (
+    !FeatureService.isFeatureEnabled(
+      getTierForFeatureCheck(festival.tier),
+      "members",
+    )
+  ) {
     redirect(`/dashboard/${slug}?error=upgrade_required&feature=members`);
   }
+
+  const maxTeamMembers =
+    FeatureService.getFeatureValue<number>(
+      getTierForFeatureCheck(festival.tier),
+      "maxTeamMembers",
+    ) ?? 1;
+  const members = await findMembersByFestival(festival.id);
+  const totalMemberCount = 1 + members.length; // owner + FestivalMembers
+  const atMemberCap = totalMemberCount >= maxTeamMembers;
 
   return (
     <div className="space-y-6">
@@ -25,7 +43,12 @@ export default async function MembersPage({
           View all Admins and Team Leaders associated with this festival.
         </p>
       </div>
-      <MembersClient festivalId={festival.id} />
+      <MembersClient
+        festivalId={festival.id}
+        maxTeamMembers={maxTeamMembers}
+        totalMemberCount={totalMemberCount}
+        atMemberCap={atMemberCap}
+      />
     </div>
   );
 }

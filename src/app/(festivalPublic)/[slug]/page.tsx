@@ -6,9 +6,15 @@ import { HeroSection } from "@/components/festival/landing/HeroSection";
 import { ResultsList } from "@/components/festival/landing/ResultsList";
 import { ResultsTeaser } from "@/components/festival/landing/ResultsTeaser";
 import { StatsSection } from "@/components/festival/landing/StatsSection";
-import { getPublicFestivalData } from "@/server/loader/festivalPublic";
-import { getPublicFestivalResults } from "@/server/loader/festivalResults";
-import { FeatureService } from "@/lib/features";
+import { getPublicFestivalData } from "@/features/festivals/loaders/festival-public.loader";
+import { getPublicFestivalResults } from "@/features/festivals/loaders/festival-results.loader";
+import { getPublicGalleryData } from "@/features/gallery/loaders/gallery-public.loader";
+import {
+  FeatureService,
+  getTierForFeatureCheck,
+} from "@/features/plan-features/services/features";
+import { getResolvedTier } from "@/features/plan-features/services/tier";
+import { findProgrammesByFestival } from "@/features/programmes/repositories/programme.repository";
 
 export async function generateMetadata({
   params,
@@ -29,9 +35,7 @@ export async function generateMetadata({
     openGraph: {
       title: title,
       description: festival.description || undefined,
-      images: (festival.branding as any)?.heroImage
-        ? [(festival.branding as any).heroImage]
-        : [],
+      images: [],
     },
   };
 }
@@ -54,7 +58,7 @@ export default async function FestivalPage({
 
   // Check Feature Access
   const fullLandingPage = FeatureService.isFeatureEnabled(
-    festival.tier as any,
+    getTierForFeatureCheck(festival.tier),
     "fullLandingPage",
   );
 
@@ -67,8 +71,16 @@ export default async function FestivalPage({
     );
   }
 
-  // Fetch published results for display
-  const publishedResults = await getPublicFestivalResults(festival.id);
+  // Fetch published results, programmes, and gallery for display
+  const [publishedResults, programmes, galleryData] = await Promise.all([
+    getPublicFestivalResults(festival.id),
+    fullLandingPage
+      ? findProgrammesByFestival(festival.id)
+      : Promise.resolve([]),
+    fullLandingPage
+      ? getPublicGalleryData(festival.slug)
+      : Promise.resolve(null),
+  ]);
 
   // MERGE DATA FOR COMPONENTS
   const displayData = {
@@ -77,11 +89,11 @@ export default async function FestivalPage({
     slug: festival.slug,
     description: festival.description || "",
     tagline: "",
-    startDate: event.startDate.toISOString(),
-    endDate: event.endDate.toISOString(),
+    startDate: event.startDate,
+    endDate: event.endDate,
     location: event.location || festival.orgLocation || "",
     status: festival.status,
-    tier: festival.tier || "STANDARD",
+    tier: getResolvedTier(festival.tier),
     accentColor:
       festival.branding &&
       typeof festival.branding === "object" &&
@@ -94,12 +106,6 @@ export default async function FestivalPage({
       typeof festival.branding === "object" &&
       "logo" in festival.branding
         ? (festival.branding as any).logo
-        : null,
-    heroImage:
-      festival.branding &&
-      typeof festival.branding === "object" &&
-      "heroImage" in festival.branding
-        ? (festival.branding as any).heroImage
         : null,
     orgName: festival.orgName || "",
     orgDescription: festival.orgDescription || "",
@@ -135,29 +141,34 @@ export default async function FestivalPage({
         </section>
       )}
 
-      {fullLandingPage && (
+      {fullLandingPage && programmes.length > 0 && (
         <FeaturedPrograms
           accentColor={displayData.accentColor}
           slug={displayData.slug}
+          programmes={programmes}
         />
       )}
 
-      {fullLandingPage ? (
-        <ResultsTeaser
-          accentColor={displayData.accentColor}
-          slug={displayData.slug}
-          results={publishedResults as any}
-        />
-      ) : (
-        <ResultsList
-          festivalName={displayData.name}
-          accentColor={displayData.accentColor}
-          results={publishedResults}
-          teamStandings={festival.teamStandings as any}
-        />
-      )}
+      <section id="results">
+        {fullLandingPage ? (
+          <ResultsTeaser
+            accentColor={displayData.accentColor}
+            slug={displayData.slug}
+            results={publishedResults as any}
+          />
+        ) : (
+          <ResultsList
+            festivalName={displayData.name}
+            accentColor={displayData.accentColor}
+            results={publishedResults}
+            teamStandings={festival.teamStandings as any}
+          />
+        )}
+      </section>
 
-      {fullLandingPage && <GalleryPreview slug={displayData.slug} />}
+      {fullLandingPage && galleryData && galleryData.images.length > 0 && (
+        <GalleryPreview slug={displayData.slug} images={galleryData.images} />
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { ProfileView } from "@/components/profile/profile-view";
-import { getCurrentUser } from "@/lib/auth/current-user";
+import { getCurrentUser } from "@/core/auth/current-user";
 
 export const metadata: Metadata = {
   title: "Profile | Greenroom",

@@ -5,16 +5,28 @@ import { ArrowRight, Clock, MapPin } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MOCK_SESSIONS } from "@/data/mockFestivalData";
+
+interface Programme {
+  id: string;
+  name: string;
+  category?: { name: string } | null;
+  stageType?: string | null;
+}
 
 interface FeaturedProgramsProps {
   accentColor: string;
   slug: string;
+  programmes: Programme[];
 }
 
-export function FeaturedPrograms({ accentColor, slug }: FeaturedProgramsProps) {
-  // Take top 3 upcoming/live sessions
-  const featured = MOCK_SESSIONS.slice(0, 3);
+export function FeaturedPrograms({
+  accentColor,
+  slug,
+  programmes,
+}: FeaturedProgramsProps) {
+  const featured = programmes.slice(0, 3);
+
+  if (featured.length === 0) return null;
 
   return (
     <section className="py-24 bg-transparent">
@@ -25,7 +37,7 @@ export function FeaturedPrograms({ accentColor, slug }: FeaturedProgramsProps) {
               Featured Programs
             </h2>
             <p className="text-muted-foreground">
-              Don&apos;t miss the flagship events curated for this event.
+              Flagship events curated for this festival.
             </p>
           </div>
           <Link href={`/${slug}/sessions`} className="hidden md:block">
@@ -37,9 +49,9 @@ export function FeaturedPrograms({ accentColor, slug }: FeaturedProgramsProps) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {featured.map((session, i) => (
+          {featured.map((programme, i) => (
             <motion.div
-              key={session.id}
+              key={programme.id}
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
@@ -47,37 +59,30 @@ export function FeaturedPrograms({ accentColor, slug }: FeaturedProgramsProps) {
               className="p-6 rounded-3xl border border-white/10 hover:border-primary/50 hover:shadow-[0_10px_30px_rgba(124,58,237,0.1)] transition-all bg-card/40 backdrop-blur-sm group"
             >
               <div className="flex justify-between items-start mb-4">
-                <Badge variant="secondary" className="font-normal">
-                  {session.category}
-                </Badge>
-                <Badge
-                  className={
-                    session.status === "LIVE"
-                      ? "bg-red-500 hover:bg-red-600 animate-pulse"
-                      : "bg-blue-500 hover:bg-blue-600"
-                  }
-                >
-                  {session.status}
-                </Badge>
+                {programme.category && (
+                  <Badge variant="secondary" className="font-normal">
+                    {programme.category.name}
+                  </Badge>
+                )}
+                {programme.stageType && (
+                  <Badge
+                    className={
+                      programme.stageType === "STAGE"
+                        ? "bg-blue-500 hover:bg-blue-600"
+                        : "bg-muted"
+                    }
+                  >
+                    {programme.stageType === "STAGE" ? "On Stage" : "Off Stage"}
+                  </Badge>
+                )}
               </div>
 
               <h3
                 className="text-xl font-semibold mb-3 group-hover:text-(--accent) transition-colors"
-                style={{ "--accent": accentColor } as any}
+                style={{ "--accent": accentColor } as React.CSSProperties}
               >
-                {session.title}
+                {programme.name}
               </h3>
-
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  {session.time}
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  {session.venue}
-                </div>
-              </div>
             </motion.div>
           ))}
         </div>

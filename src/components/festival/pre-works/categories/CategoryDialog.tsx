@@ -1,7 +1,11 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,8 +16,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -21,7 +32,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useCategories } from "@/hooks/useCategories";
+import { useCategories } from "@/features/categories/hooks/use-categories";
+
+const CategorySchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  description: z.string().optional(),
+  type: z.enum(["SINGLE", "GENERAL"]),
+});
+
+type CategoryFormValues = z.infer<typeof CategorySchema>;
 
 interface CategoryDialogProps {
   festivalId: string;
@@ -33,6 +52,8 @@ interface CategoryDialogProps {
   };
   trigger?: React.ReactNode;
   readOnly?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function CategoryDialog({
@@ -40,62 +61,76 @@ export function CategoryDialog({
   category,
   trigger,
   readOnly,
+  open: controlledOpen,
+  onOpenChange: setControlledOpen,
 }: CategoryDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen =
+    isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
+
   const { createCategory, isCreating, updateCategory, isUpdating } =
     useCategories(festivalId);
   const isEditing = !!category;
   const isLoading = isCreating || isUpdating;
 
-  const [formData, setFormData] = useState<{
-    name: string;
-    description: string;
-    type: "SINGLE" | "GENERAL";
-  }>({
-    name: "",
-    description: "",
-    type: "SINGLE",
+  const form = useForm({
+    resolver: zodResolver(CategorySchema),
+    mode: "onChange",
+    defaultValues: {
+      name: "",
+      description: "",
+      type: "SINGLE",
+    },
   });
 
   useEffect(() => {
-    if (open && category) {
-      setFormData({
-        name: category.name || "",
-        description: category.description || "",
-        type: (category.type as "SINGLE" | "GENERAL") || "SINGLE",
-      });
-    } else if (open && !category) {
-      setFormData({ name: "", description: "", type: "SINGLE" });
+    if (open) {
+      if (category) {
+        form.reset({
+          name: category.name || "",
+          description: category.description || "",
+          type: (category.type as "SINGLE" | "GENERAL") || "SINGLE",
+        });
+      } else {
+        form.reset({ name: "", description: "", type: "SINGLE" });
+      }
+      form.trigger();
     }
-  }, [open, category]);
+  }, [open, category, form]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: CategoryFormValues) => {
     try {
       if (isEditing && category) {
-        await updateCategory({ id: category.id, data: formData });
+        await updateCategory({ id: category.id, data });
       } else {
-        await createCategory(formData);
+        await createCategory(data);
       }
       setOpen(false);
-      if (!isEditing)
-        setFormData({ name: "", description: "", type: "SINGLE" });
-    } catch (error) {
-      // Handled by hook
+    } catch (error: any) {
+      const message = error.message || "An error occurred";
+      if (message.toLowerCase().includes("already exists")) {
+        form.setError("name", { message });
+      } else {
+        toast.error(message);
+      }
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Category
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Category
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
+      <DialogContent className="w-[calc(100%-2rem)] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>
             {readOnly
@@ -112,67 +147,94 @@ export function CategoryDialog({
                 : "Add a new category."}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Category Name</Label>
-            <Input
-              id="name"
-              required
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-              placeholder="e.g. Juniors"
-              disabled={readOnly}
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category Name</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g. Juniors"
+                      disabled={readOnly || isLoading}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          <div className="space-y-2">
-            <Label>Type</Label>
-            <Select
-              value={formData.type}
-              onValueChange={(value: "SINGLE" | "GENERAL") =>
-                setFormData({ ...formData, type: value })
-              }
-              disabled={readOnly}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="SINGLE">Single</SelectItem>
-                <SelectItem value="GENERAL">General</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="description">Description (Optional)</Label>
-            <Input
-              id="description"
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              placeholder="e.g. For students below 12 years"
-              disabled={readOnly}
+
+            <FormField
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Type</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={readOnly || isLoading}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="SINGLE">Single</SelectItem>
+                      <SelectItem value="GENERAL">General</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={isLoading}
-            >
-              {readOnly ? "Close" : "Cancel"}
-            </Button>
-            {!readOnly && (
-              <Button type="submit" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditing ? "Save Changes" : "Create"}
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description (Optional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g. For students below 12 years"
+                      disabled={readOnly || isLoading}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+                disabled={isLoading}
+              >
+                {readOnly ? "Close" : "Cancel"}
               </Button>
-            )}
-          </DialogFooter>
-        </form>
+              {!readOnly && (
+                <Button
+                  type="submit"
+                  disabled={!form.formState.isValid || isLoading}
+                >
+                  {isLoading && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  {isEditing ? "Save Changes" : "Create"}
+                </Button>
+              )}
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

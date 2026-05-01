@@ -2,7 +2,7 @@ import { Building2, Calendar, Globe, MapPin } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getPublicFestivalData } from "@/server/loader/festivalPublic";
+import { getPublicFestivalData } from "@/features/festivals/loaders/festival-public.loader";
 
 export async function generateMetadata({
   params,
@@ -55,6 +55,7 @@ export default async function AboutPage({
   const orgLocation = festival.orgLocation || "";
   const establishedYear = festival.establishedYear || null;
   const orgWebsite = festival.orgWebsite || "";
+  const isNonBasic = festival.tier && festival.tier !== "BASIC";
 
   return (
     <div className="py-12 px-4">
@@ -76,7 +77,7 @@ export default async function AboutPage({
           </Card>
         </section>
 
-        {/* Organization Info */}
+        {/* Organization Info: full block for STANDARD/PRO, minimal for BASIC */}
         <section>
           <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
             <Building2 className="h-6 w-6" style={{ color: accentColor }} />
@@ -87,9 +88,9 @@ export default async function AboutPage({
               <CardTitle>{orgName}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {orgDescription && (
+              {isNonBasic && orgDescription ? (
                 <p className="text-muted-foreground">{orgDescription}</p>
-              )}
+              ) : null}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
                 {orgLocation && (

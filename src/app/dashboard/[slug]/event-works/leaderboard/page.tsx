@@ -1,8 +1,14 @@
-import { notFound } from "next/navigation";
-import { prisma } from "@/lib/db";
-import { LeaderboardClient } from "@/components/dashboard/leaderboard/LeaderboardClient";
+import { Calendar, Trophy } from "lucide-react";
+import { notFound, redirect } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
-import { Trophy } from "lucide-react";
+import { LeaderboardClient } from "@/components/dashboard/leaderboard/LeaderboardClient";
+import type { Tier } from "@/core/types/app-enums";
+import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import {
+  filterProgrammesForEventWorks,
+  isProgrammeInEventWorks,
+} from "@/features/programmes/services/programme-status.service";
+import { getFestivalLeaderboardDataBySlug } from "@/features/results/services/leaderboard.service";
 
 export default async function TeamStatusPage({
   params,
@@ -11,48 +17,46 @@ export default async function TeamStatusPage({
 }) {
   const { slug } = await params;
 
-  // Fetch festival and related data
-  const festival = await prisma.festival.findUnique({
-    where: { slug },
-    include: {
-      programmes: {
-        include: {
-          category: true,
-          assignments: {
-            include: {
-              result: true,
-              group: true,
-              student: true,
-            },
-          },
-        },
-        orderBy: { name: "asc" },
-      },
-      results: {
-        include: {
-          assignment: {
-            include: {
-              student: true,
-              group: true,
-            },
-          },
-        },
-      },
-    },
-  });
+  const { festival, assignmentCount } =
+    await getFestivalLeaderboardDataBySlug(slug);
 
   if (!festival) {
     return notFound();
   }
 
-  // Check for assignments
-  const assignmentCount = await prisma.programmeAssignment.count({
-    where: {
-      programme: {
-        festivalId: festival.id,
-      },
-    },
+  const tier = (festival.tier ?? "STANDARD") as Tier;
+  const canViewLeaderboard =
+    tier === "BASIC"
+      ? true
+      : await getEffectiveFeatureEnabled(festival.tier, "liveScoreboard");
+  if (!canViewLeaderboard) {
+    redirect(
+      `/dashboard/${slug}?error=upgrade_required&feature=liveScoreboard`,
+    );
+  }
+  const eventWorksProgrammes = filterProgrammesForEventWorks(
+    festival.programmes,
+    tier,
+  );
+  const resultsInEventWorks = festival.results.filter((r) => {
+    if (!r.programme) return false;
+    // BASIC can have valid judged/published marks before programme status
+    // transitions are fully aligned with Event Works gating.
+    if (tier === "BASIC") return true;
+    return isProgrammeInEventWorks(r.programme.status, tier);
   });
+
+  if (tier !== "BASIC" && eventWorksProgrammes.length === 0) {
+    return (
+      <EmptyState
+        title="No programmes in Event Works yet"
+        description="On Standard and Pro plans, programmes appear here only after they are added to the schedule. Add your programmes to the schedule in Pre-Works to see them in Marks, Results, and Leaderboard."
+        actionLabel="Go to Schedule"
+        actionLink={`/dashboard/${slug}/pre-works/schedule`}
+        icon={Calendar}
+      />
+    );
+  }
 
   if (assignmentCount === 0) {
     return (
@@ -67,13 +71,18 @@ export default async function TeamStatusPage({
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="pt-4 sm:pt-6">
       <LeaderboardClient
         festival={festival}
-        programmes={festival.programmes}
-        results={festival.results}
+        results={resultsInEventWorks}
         publishedStandings={festival.teamStandings as any[]}
-      />
+        categories={festival.categories}
+        groups={festival.groups}
+      >
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+          Leaderboard
+        </h1>
+      </LeaderboardClient>
     </div>
   );
 }

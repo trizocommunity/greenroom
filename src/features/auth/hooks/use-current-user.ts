@@ -1,0 +1,23 @@
+import { useQuery } from "@tanstack/react-query";
+import api from "@/core/http/api-client";
+import { queryKeys } from "@/core/http/query-keys";
+
+export type CurrentUser = {
+  id: string;
+  email: string;
+  fullName: string | null;
+  displayName: string | null;
+  globalRole: "USER" | "SUPER_ADMIN";
+};
+
+export const useCurrentUser = () => {
+  return useQuery({
+    queryKey: queryKeys.auth.currentUser(),
+    queryFn: async (): Promise<CurrentUser> => {
+      const { data } = await api.get<CurrentUser>("/auth/me");
+      return data;
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 1,
+  });
+};

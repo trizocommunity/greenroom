@@ -1,26 +1,32 @@
 import { format } from "date-fns";
 import {
-  Building2,
-  LayoutList,
-  Users,
   ArrowRight,
-  LayoutDashboard,
-  UserPlus,
-  List,
+  BarChart2,
+  BookOpen,
+  Building2,
+  Calendar,
+  ClipboardCheck,
   FileText,
-  Settings,
-  Settings2,
+  Gavel,
+  LayoutDashboard,
+  LayoutList,
+  LifeBuoy,
+  List,
   Mic,
+  QrCode,
+  Settings,
   Trophy,
-  ClipboardList,
+  UserPlus,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
+import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import {
   Tooltip,
@@ -28,29 +34,43 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { getDashboardOverviewData } from "@/server/models/festival.model";
-import { FeatureService } from "@/lib/features";
-import type { Tier, Festival } from "@prisma/client";
+import type { festival as festivalSchema } from "@/core/database/schema";
+import { getDashboardOverviewData } from "@/features/festivals/repositories/festival.repository";
+import type { FeaturePath } from "@/features/plan-features/services/features";
+import { isFeatureTagEnabled } from "@/features/plan-features/services/features-tags";
+import { getEffectivePlanFeatureMatrix } from "@/features/plan-features/services/plan-features.service";
+import { getResolvedTier } from "@/features/plan-features/services/tier";
 
 interface OverviewWidgetsProps {
-  festival: Festival;
+  festival: typeof festivalSchema.$inferSelect;
+}
+
+function planFeature(
+  features: Partial<Record<FeaturePath, boolean>>,
+  key: FeaturePath,
+): boolean {
+  return Boolean(features[key]);
 }
 
 export default async function OverviewWidgets({
   festival,
 }: OverviewWidgetsProps) {
   const overviewData = await getDashboardOverviewData(festival.id);
-  const tier = (festival.tier as Tier) || "BASIC";
+  const tier = getResolvedTier(festival.tier);
   const slug = festival.slug;
 
-  const canAccessSettings = FeatureService.isFeatureEnabled(
+  const matrix = await getEffectivePlanFeatureMatrix();
+  const features = matrix[tier] ?? {};
+  const canUseExternalJudging = isFeatureTagEnabled({
     tier,
-    "festivalSettings",
-  );
-  const canManageStages = FeatureService.isFeatureEnabled(
+    tag: "eventWorks.externalJudging",
+    effectiveFeatureMatrix: features,
+  });
+  const canUseMarksUI = isFeatureTagEnabled({
     tier,
-    "stageManagement",
-  );
+    tag: "eventWorks.marksUI",
+    effectiveFeatureMatrix: features,
+  });
 
   const fmt = (n: number | undefined) => n?.toLocaleString() || "0";
 
@@ -65,66 +85,98 @@ export default async function OverviewWidgets({
       label: "Settings",
       icon: Settings,
       href: `/dashboard/${slug}/settings`,
-      condition: canAccessSettings,
+      condition: planFeature(features, "festivalSettings"),
     },
     {
       label: "Groups",
       icon: Users,
       href: `/dashboard/${slug}/pre-works/groups`,
-      condition: true,
+      condition: planFeature(features, "groups"),
     },
     {
       label: "Students",
       icon: UserPlus,
       href: `/dashboard/${slug}/pre-works/students`,
-      condition: true,
+      condition: planFeature(features, "students"),
     },
     {
       label: "Categories",
       icon: List,
       href: `/dashboard/${slug}/pre-works/categories`,
-      condition: true,
+      condition: planFeature(features, "categories"),
     },
     {
       label: "Programs",
       icon: FileText,
       href: `/dashboard/${slug}/pre-works/programmes`,
-      condition: true,
+      condition: planFeature(features, "programmes"),
     },
     {
-      label: "Program Control",
-      icon: Settings2,
-      href: `/dashboard/${slug}/event-works/results`,
-      condition: true,
+      label: "Assignment",
+      icon: ClipboardCheck,
+      href: `/dashboard/${slug}/pre-works/assignments`,
+      condition: planFeature(features, "assignments"),
+    },
+    {
+      label: "QR Codes",
+      icon: QrCode,
+      href: `/dashboard/${slug}/pre-works/qr-codes`,
+      condition: planFeature(features, "qrCodes"),
+    },
+    {
+      label: "Schedule",
+      icon: Calendar,
+      href: `/dashboard/${slug}/pre-works/schedule`,
+      condition: planFeature(features, "schedule"),
     },
     {
       label: "Stages",
       icon: Mic,
       href: `/dashboard/${slug}/pre-works/stage-management`,
-      condition: canManageStages,
+      condition: planFeature(features, "stageManagement"),
     },
     {
-      label: "Marks",
-      icon: ClipboardList,
+      label: canUseExternalJudging
+        ? "Judgment"
+        : canUseMarksUI
+          ? "Marks"
+          : "Judgment",
+      icon: Gavel,
+      href: canUseExternalJudging
+        ? `/dashboard/${slug}/event-works/judgment`
+        : `/dashboard/${slug}/event-works/marks`,
+      condition:
+        (canUseExternalJudging || canUseMarksUI) &&
+        planFeature(features, "results"),
+    },
+    {
+      label: "Results",
+      icon: BarChart2,
       href: `/dashboard/${slug}/event-works/results`,
-      condition: true,
+      condition: planFeature(features, "results"),
     },
     {
       label: "Leaderboard",
       icon: Trophy,
       href: `/dashboard/${slug}/event-works/leaderboard`,
+      condition: tier === "BASIC" || planFeature(features, "liveScoreboard"),
+    },
+    {
+      label: "Documentation",
+      icon: BookOpen,
+      href: `/dashboard/${slug}/support/docs`,
+      condition: true,
+    },
+    {
+      label: "My Tickets",
+      icon: LifeBuoy,
+      href: `/dashboard/${slug}/support/tickets`,
       condition: true,
     },
   ];
 
   return (
     <div className="flex flex-col gap-5">
-      {festival.expiresAt && (
-        <div className="bg-muted/50 p-2 text-xs text-center text-muted-foreground border-b mb-4">
-          Expires on {new Date(festival.expiresAt).toLocaleDateString()}
-        </div>
-      )}
-
       {/* Top: 3 Stat Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -177,11 +229,11 @@ export default async function OverviewWidgets({
               <CardDescription>Latest added programmes</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col flex-1">
-              <div className="space-y-4 pr-2">
+              <div className="space-y-4">
                 {overviewData.recentProgrammes.map((prog) => (
                   <div
                     key={prog.id}
-                    className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0"
+                    className="flex items-center justify-between border-b pb-2 last:border-0 "
                   >
                     <div>
                       <Tooltip>
@@ -194,13 +246,21 @@ export default async function OverviewWidgets({
                           <p>{prog.name}</p>
                         </TooltipContent>
                       </Tooltip>
-                      <p className="text-xs text-muted-foreground mt-1 truncate max-w-[200px]">
+                      <p className="text-xs text-muted-foreground truncate max-w-[160px]">
                         {prog.category.name}
                       </p>
                     </div>
-                    <p className="text-xs text-muted-foreground shrink-0 ml-4">
-                      {format(new Date(prog.createdAt), "dd/MM/yyyy")}
-                    </p>
+                    <div className="flex items-center flex-col">
+                      {prog.status && (
+                        <ProgrammeStatusBadge
+                          status={prog.status}
+                          className="text-[10px]"
+                        />
+                      )}
+                      <p className="text-[12px] text-muted-foreground shrink-0">
+                        {format(new Date(prog.createdAt), "dd/MM/yyyy")}
+                      </p>
+                    </div>
                   </div>
                 ))}
                 {overviewData.recentProgrammes.length === 0 && (
@@ -274,54 +334,48 @@ export default async function OverviewWidgets({
           <Card className="flex flex-col">
             <CardHeader>
               <CardTitle>Recent Results</CardTitle>
-              <CardDescription>Latest published scores</CardDescription>
+              <CardDescription>Programme, category and date</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col flex-1">
-              <div className="space-y-4 pr-2">
-                {overviewData.recentResults.map((result) => {
-                  const assigneeName =
-                    result.assignment.student?.name ||
-                    result.assignment.group?.name ||
-                    "Unknown";
-                  return (
-                    <div
-                      key={result.id}
-                      className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0"
-                    >
-                      <div>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <p className="text-sm font-medium leading-none truncate max-w-[150px]">
-                              {assigneeName}
-                            </p>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{assigneeName}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                        <p className="text-xs text-muted-foreground mt-1 truncate max-w-[150px]">
-                          {result.programme.name}
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0 ml-4">
-                        <p className="text-sm font-medium">
-                          {result.grade
-                            ? result.grade
-                            : result.position
-                              ? `Rank: ${result.position}`
-                              : `${result.score} pts`}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(result.createdAt), "dd/MM/yyyy")}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-                {overviewData.recentResults.length === 0 && (
+              <div className="space-y-3 pr-2">
+                {overviewData.recentResultsByProgramme.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     No results found.
                   </p>
+                ) : (
+                  overviewData.recentResultsByProgramme.map(({ programme }) => (
+                    <div
+                      key={programme.id}
+                      className="flex items-center justify-between gap-2 border-b pb-2 last:border-0 last:pb-0 text-sm"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <p className="font-medium truncate">
+                              {programme.name}
+                            </p>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{programme.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {programme.category.name}
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {programme.category.name}
+                        </p>
+                      </div>
+                      <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
+                        {programme.latestResultAt
+                          ? format(
+                              new Date(programme.latestResultAt),
+                              "dd/MM/yyyy",
+                            )
+                          : "—"}
+                      </span>
+                    </div>
+                  ))
                 )}
               </div>
               <div className="pt-4 border-t mt-auto">

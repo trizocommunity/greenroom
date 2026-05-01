@@ -1,18 +1,13 @@
+import { eq } from "drizzle-orm";
 import { Shield, UserCheck, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { countUsers } from "@/server/models/user.model";
+import { user } from "@/core/database/schema";
+import { countUsers } from "@/features/auth/repositories/user.repository";
 
 export default async function SuperAdminDashboard() {
-  // Fetch real analytics
   const totalUsers = await countUsers();
-
-  const activeUsers = await countUsers({
-    isActive: true,
-  });
-
-  const superAdmins = await countUsers({
-    globalRole: "SUPER_ADMIN",
-  });
+  const activeUsers = await countUsers(eq(user.isActive, true));
+  const superAdmins = await countUsers(eq(user.globalRole, "SUPER_ADMIN"));
 
   return (
     <div className="space-y-4">

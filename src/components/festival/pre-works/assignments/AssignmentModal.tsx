@@ -30,17 +30,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { useAssignments } from "@/hooks/useAssignments";
-import { useCategories } from "@/hooks/useCategories";
-import { useGroups } from "@/hooks/useGroups";
-import { useProgrammes } from "@/hooks/useProgrammes";
-import { useStudents } from "@/hooks/useStudents";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils/cn";
+import { useAssignments } from "@/features/assignments/hooks/use-assignments";
+import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useGroups } from "@/features/groups/hooks/use-groups";
+import { useProgrammes } from "@/features/programmes/hooks/use-programmes";
+import { useStudents } from "@/features/students/hooks/use-students";
 
 interface AssignmentModalProps {
   festivalId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  isReadOnly?: boolean;
 }
 
 interface QueueItem {
@@ -62,6 +63,7 @@ export function AssignmentModal({
   festivalId,
   open,
   onOpenChange,
+  isReadOnly = false,
 }: AssignmentModalProps) {
   // Data Hooks
   const { categories } = useCategories(festivalId);
@@ -318,6 +320,7 @@ export function AssignmentModal({
 
   // Handler for adding to queue - MUST USE AUTO-ASSIGN
   const handleAddToQueue = () => {
+    if (isReadOnly) return;
     if (!selectedProgramme || selectedStudentIds.size === 0) return;
     if (
       !assignmentState.canAssign &&
@@ -420,6 +423,7 @@ export function AssignmentModal({
   };
 
   const handleSave = async () => {
+    if (isReadOnly) return;
     if (queue.length === 0) return;
     setIsSubmitting(true);
     try {
@@ -445,6 +449,7 @@ export function AssignmentModal({
   };
 
   const toggleStudent = (studentId: string) => {
+    if (isReadOnly) return;
     const next = new Set(selectedStudentIds);
     if (next.has(studentId)) {
       next.delete(studentId);
@@ -469,9 +474,9 @@ export function AssignmentModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-none w-[95vw] h-[95vh] flex flex-col p-0 gap-0 border-none rounded-xl mx-auto my-auto ring-0 outline-none overflow-hidden">
+      <DialogContent className="max-w-none w-[calc(100%-1rem)] sm:w-[95vw] h-[95vh] max-h-dvh flex flex-col p-0 gap-0 border rounded-lg sm:rounded-xl mx-auto my-auto ring-0 outline-none overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b flex items-center justify-between bg-card z-10">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-card z-10">
           <div>
             <DialogTitle className="text-xl">New Assignment</DialogTitle>
             <DialogDescription>
@@ -531,6 +536,7 @@ export function AssignmentModal({
                       setSelectedGroupId(val);
                       resetFilters(); // Reset everything when group changes naturally
                     }}
+                    disabled={isReadOnly}
                   >
                     <SelectTrigger className="w-full bg-background">
                       <SelectValue placeholder="Select Group" />
@@ -562,7 +568,7 @@ export function AssignmentModal({
                       setSelectedProgrammeId("");
                       setSelectedStudentIds(new Set());
                     }}
-                    disabled={!selectedGroupId}
+                    disabled={isReadOnly || !selectedGroupId}
                   >
                     <SelectTrigger className="w-full bg-background">
                       <SelectValue placeholder="Select Category" />
@@ -592,7 +598,7 @@ export function AssignmentModal({
                       className="w-full text-xs"
                       size="sm"
                       onClick={() => setView("REVIEW")}
-                      disabled={queue.length === 0}
+                      disabled={isReadOnly || queue.length === 0}
                     >
                       Review & Submit <ArrowRight className="ml-1 h-3 w-3" />
                     </Button>
@@ -627,7 +633,9 @@ export function AssignmentModal({
                         <button
                           type="button"
                           key={p.id}
+                          disabled={isReadOnly}
                           onClick={() => {
+                            if (isReadOnly) return;
                             setSelectedProgrammeId(p.id);
                             setSelectedStudentIds(new Set());
                           }}
@@ -636,6 +644,9 @@ export function AssignmentModal({
                             selectedProgrammeId === p.id
                               ? "border-primary bg-primary/5 ring-1 ring-primary/50"
                               : "bg-card hover:bg-accent/50",
+                            isReadOnly
+                              ? "cursor-not-allowed opacity-60 hover:shadow-none"
+                              : "",
                           )}
                         >
                           <div className="font-semibold text-sm mb-1">
@@ -684,11 +695,24 @@ export function AssignmentModal({
               {/* Right Bar: Students */}
               <div className="h-full flex flex-col min-h-0 border-t lg:border-t-0">
                 <div className="px-6 py-3 gap-3 border-l-0 lg:border-l border-b flex bg-muted/5 flex-col xl:flex-row items-start xl:items-center justify-between w-full">
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
-                      4
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
+                        4
+                      </div>
+                      <h3 className="text-sm font-semibold">
+                        {selectedProgramme?.type === "GROUP"
+                          ? "Select members"
+                          : "Select students"}
+                      </h3>
                     </div>
-                    <h3 className="text-sm font-semibold">Select Students</h3>
+                    {selectedProgramme?.type === "GROUP" &&
+                      limitInfo &&
+                      limitInfo.type === "GROUP" && (
+                        <p className="text-xs text-muted-foreground pl-7">
+                          Max {limitInfo.maxPerTeam} per team.
+                        </p>
+                      )}
                   </div>
 
                   {/* Controls */}
@@ -712,7 +736,9 @@ export function AssignmentModal({
                     <Button
                       size="sm"
                       disabled={
-                        !selectedProgramme || selectedStudentIds.size === 0
+                        isReadOnly ||
+                        !selectedProgramme ||
+                        selectedStudentIds.size === 0
                       }
                       onClick={handleAddToQueue}
                       className="h-8"
@@ -743,7 +769,9 @@ export function AssignmentModal({
                         // Disabled if: (Limit reached AND not selected) OR (Already Assigned)
                         // Disabled if: (Limit reached AND not selected) OR (Already Assigned)
                         const isDisabled =
-                          isAssigned || (isLimitReached && !isSelected);
+                          isReadOnly ||
+                          isAssigned ||
+                          (isLimitReached && !isSelected);
 
                         return (
                           <button
@@ -755,11 +783,13 @@ export function AssignmentModal({
                               "relative group p-3 rounded-md border text-sm transition-all cursor-pointer flex items-center justify-between gap-2 overflow-hidden w-full text-left",
                               isAssigned
                                 ? "bg-destructive/5 border-destructive/20 text-muted-foreground opacity-60 cursor-not-allowed" // Assigned State (Red & Disabled)
-                                : isSelected
-                                  ? "bg-primary/10 border-primary text-primary font-medium ring-1 ring-primary" // Selected State
-                                  : isDisabled
-                                    ? "bg-muted opacity-50 cursor-not-allowed" // Limit Reached Disabled
-                                    : "bg-card hover:border-primary/50 hover:shadow-sm", // Default
+                                : isReadOnly
+                                  ? "bg-muted opacity-50 cursor-not-allowed"
+                                  : isSelected
+                                    ? "bg-primary/10 border-primary text-primary font-medium ring-1 ring-primary" // Selected State
+                                    : isDisabled
+                                      ? "bg-muted opacity-50 cursor-not-allowed" // Limit Reached Disabled
+                                      : "bg-card hover:border-primary/50 hover:shadow-sm", // Default
                             )}
                           >
                             <span className="truncate">{s.name}</span>
@@ -857,12 +887,15 @@ export function AssignmentModal({
                     <Button
                       variant="outline"
                       onClick={() => setView("SELECTION")}
+                      disabled={isReadOnly}
                     >
                       Add More
                     </Button>
                     <Button
                       onClick={handleSave}
-                      disabled={isSubmitting || queue.length === 0}
+                      disabled={
+                        isReadOnly || isSubmitting || queue.length === 0
+                      }
                     >
                       {isSubmitting && (
                         <AlertCircle className="mr-2 h-4 w-4 animate-spin" />

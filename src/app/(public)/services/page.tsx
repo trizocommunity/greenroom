@@ -24,7 +24,7 @@ const services = [
   },
   {
     title: "Live Dashboards",
-    description: "Dedicated interfaces for judges and admins.",
+    description: "Dedicated interfaces for admins and staff.",
     icon: Laptop,
   },
   {

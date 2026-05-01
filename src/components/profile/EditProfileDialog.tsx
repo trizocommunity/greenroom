@@ -1,14 +1,12 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { User } from "@prisma/client";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -27,7 +25,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { updateProfile } from "@/server/actions/profile";
+import type { UserProfile } from "@/core/types/app-enums";
+import { updateProfile } from "@/features/auth/actions/profile.actions";
 
 const profileSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
@@ -39,7 +38,7 @@ const profileSchema = z.object({
 });
 
 interface EditProfileDialogProps {
-  user: Pick<User, "fullName" | "displayName" | "age" | "email">;
+  user: UserProfile;
   trigger?: React.ReactNode;
 }
 
@@ -149,10 +148,21 @@ export function EditProfileDialog({ user, trigger }: EditProfileDialogProps) {
                 </FormItem>
               )}
             />
-            <div className="flex justify-end pt-4">
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsOpen(false)}
+              >
+                Cancel
+              </Button>
               <Button
                 type="submit"
-                disabled={!form.formState.isValid || isPending}
+                disabled={
+                  !form.formState.isDirty ||
+                  !form.formState.isValid ||
+                  isPending
+                }
               >
                 {isPending ? "Saving..." : "Save Changes"}
               </Button>

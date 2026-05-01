@@ -63,9 +63,8 @@ export default function FestivalPublicNotFound() {
             Page Not Found
           </h1>
           <p className="max-w-md text-[#94a3b8] leading-relaxed">
-            This festival page couldn&apos;t be found. The event may have
-            ended, or the link might be incorrect. Please check the URL and try
-            again.
+            This festival page couldn&apos;t be found. The event may have ended,
+            or the link might be incorrect. Please check the URL and try again.
           </p>
         </div>
 

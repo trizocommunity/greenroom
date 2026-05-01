@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
-import { findUserById } from "@/server/models/user.model";
+import { getSession } from "@/core/auth/session";
+import { findUserById } from "@/features/auth/repositories/user.repository";
 
 export async function GET() {
   try {
@@ -16,7 +16,8 @@ export async function GET() {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json(user);
+    const { password: _, ...userWithoutPassword } = user;
+    return NextResponse.json(userWithoutPassword);
   } catch (error) {
     console.error("Error fetching current user:", error);
     return NextResponse.json(

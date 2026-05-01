@@ -7,7 +7,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils/cn";
+import {
+  getResolvedTier,
+  isBasicTier,
+} from "@/features/plan-features/services/tier";
 import type { FestivalPublicData } from "./FestivalContext";
 
 const navItems = [
@@ -16,6 +20,7 @@ const navItems = [
   { name: "News", href: "/news" },
   { name: "Gallery", href: "/gallery" },
   { name: "Sessions", href: "/sessions" },
+  { name: "Programmes", href: "/programmes" },
   { name: "Results", href: "/results" },
 ];
 
@@ -39,7 +44,7 @@ export function FestivalNavbar({
   // Current page extraction
   const currentPage = pathname.replace(linkBase, "") || "/";
 
-  const isBasic = festival.tier === "BASIC";
+  const isBasic = isBasicTier(festival.tier);
   const activeNavItems = isBasic
     ? [
         { name: "Home", href: "/" },
@@ -63,11 +68,6 @@ export function FestivalNavbar({
           ? "bg-background/95 backdrop-blur-xl border-b border-border shadow-sm h-16"
           : "bg-transparent h-20",
       )}
-      style={
-        {
-          "--festival-accent": festival.accentColor,
-        } as React.CSSProperties
-      }
     >
       <div className="mx-auto max-w-7xl px-4 md:px-6 h-16 flex items-center justify-between">
         {/* Festival Logo / Name */}
@@ -81,10 +81,7 @@ export function FestivalNavbar({
               className="h-10 w-10 object-contain rounded"
             />
           ) : (
-            <div
-              className="w-10 h-10 rounded flex items-center justify-center font-bold text-lg text-white"
-              style={{ backgroundColor: festival.accentColor }}
-            >
+            <div className="w-10 h-10 rounded flex items-center justify-center font-bold text-lg text-primary-foreground bg-primary">
               {festival.name.charAt(0)}
             </div>
           )}
@@ -116,8 +113,7 @@ export function FestivalNavbar({
                 {isActive && (
                   <motion.div
                     layoutId="festival-navbar-indicator"
-                    className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{ backgroundColor: festival.accentColor }}
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                   />
                 )}
@@ -132,8 +128,7 @@ export function FestivalNavbar({
             <Link href={`/dashboard/${festival.slug}`}>
               <Button
                 size="sm"
-                className="gap-2"
-                style={{ backgroundColor: festival.accentColor }}
+                className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 <LayoutDashboard size={16} />
                 Dashboard
@@ -152,9 +147,8 @@ export function FestivalNavbar({
         {/* Mobile Toggle */}
         <button
           type="button"
-          className="md:hidden p-2"
+          className="md:hidden p-2 text-primary hover:bg-muted rounded-md"
           onClick={() => setIsOpen(!isOpen)}
-          style={{ color: festival.accentColor }}
         >
           {isOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
@@ -182,14 +176,9 @@ export function FestivalNavbar({
                     className={cn(
                       "px-4 py-3 rounded-lg font-medium transition-colors",
                       isActive
-                        ? "text-white"
+                        ? "text-primary-foreground bg-primary"
                         : "text-muted-foreground hover:bg-muted",
                     )}
-                    style={
-                      isActive
-                        ? { backgroundColor: festival.accentColor }
-                        : undefined
-                    }
                   >
                     {item.name}
                   </Link>
@@ -198,8 +187,7 @@ export function FestivalNavbar({
               <div className="border-t pt-4 mt-2">
                 {isLoggedIn ? (
                   <Button
-                    className="w-full gap-2"
-                    style={{ backgroundColor: festival.accentColor }}
+                    className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
                     onClick={() => {
                       setIsOpen(false);
                       window.location.href = `/dashboard/${festival.slug}`;

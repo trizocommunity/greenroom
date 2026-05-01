@@ -1,6 +1,17 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { FileText, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -9,16 +20,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { X, User, FileText, Filter } from "lucide-react";
 
 interface ChestNumberTableProps {
   students: any[];
@@ -60,25 +61,16 @@ export function ChestNumberTable({ students }: ChestNumberTableProps) {
   const hasActiveFilters = categoryFilter !== "all" || groupFilter !== "all";
 
   return (
-    <div className="space-y-6">
-      {/* Header & Filters */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-muted/40 p-4 rounded-lg border">
-        <div className="w-full md:w-1/2 xl:w-auto flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <User className="h-5 w-5 text-muted-foreground" />
-            <span className="font-medium text-sm">
-              Total: {filteredStudents.length}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            View generated chest numbers below.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+    <Card>
+      <CardHeader className="p-3 border-b bg-muted/5">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground mr-auto">
+            {filteredStudents.length} row
+            {filteredStudents.length !== 1 ? "s" : ""}
+          </span>
           <Select value={groupFilter} onValueChange={setGroupFilter}>
-            <SelectTrigger className="w-full md:w-[180px] h-9 text-xs">
-              <SelectValue placeholder="All Groups" />
+            <SelectTrigger className="h-8 w-[130px] text-xs">
+              <SelectValue placeholder="Group" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Groups</SelectItem>
@@ -89,10 +81,9 @@ export function ChestNumberTable({ students }: ChestNumberTableProps) {
               ))}
             </SelectContent>
           </Select>
-
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-full md:w-[180px] h-9 text-xs">
-              <SelectValue placeholder="All Categories" />
+            <SelectTrigger className="h-8 w-[130px] text-xs">
+              <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
@@ -103,23 +94,20 @@ export function ChestNumberTable({ students }: ChestNumberTableProps) {
               ))}
             </SelectContent>
           </Select>
-
           {hasActiveFilters && (
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9"
+              className="h-8 w-8"
               onClick={clearFilters}
-              title="Clear Filters"
+              title="Clear filters"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </Button>
           )}
         </div>
-      </div>
-
-      {/* Table */}
-      <div className="rounded-md border">
+      </CardHeader>
+      <CardContent className="p-0">
         <Table>
           <TableHeader>
             <TableRow>
@@ -176,7 +164,7 @@ export function ChestNumberTable({ students }: ChestNumberTableProps) {
             )}
           </TableBody>
         </Table>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

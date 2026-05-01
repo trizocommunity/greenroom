@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { freezeFestivalAdmin } from "@/server/actions/admin.actions";
+import { freezeFestivalAdmin } from "@/features/admin/actions/admin.actions";
 
 interface FreezeFestivalModalProps {
   festivalId: string;

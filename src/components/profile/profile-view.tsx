@@ -1,16 +1,14 @@
 "use client";
 
-import type { User } from "@prisma/client";
 import { useSearchParams } from "next/navigation";
+import type { UserProfile } from "@/core/types/app-enums";
 import { ProfileSidebarContent } from "./ProfileSidebarContent";
 import { BillingTab } from "./tabs/BillingTab";
 import { FestivalsTab } from "./tabs/FestivalsTab";
 import { OverviewTab } from "./tabs/OverviewTab";
 
-interface UserWithProfile extends User {
-  fullName: string | null;
-  displayName: string | null;
-  age: number | null;
+interface UserWithProfile extends UserProfile {
+  id: string;
 }
 
 interface ProfileViewProps {
@@ -25,9 +23,9 @@ export function ProfileView({ user }: ProfileViewProps) {
     user.displayName || user.fullName || user.email.split("@")[0];
 
   return (
-    <div className="flex flex-col md:flex-row gap-8">
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:block w-full md:w-64 shrink-0">
+    <div className="flex flex-col md:flex-row gap-6 md:gap-8">
+      {/* Sidebar */}
+      <aside className="w-full md:w-64 shrink-0">
         <ProfileSidebarContent user={user} />
       </aside>
 

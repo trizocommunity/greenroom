@@ -1,9 +1,15 @@
-import { notFound } from "next/navigation";
-import { ProgrammesClient } from "@/components/festival/pre-works/programmes/ProgrammesClient";
-import { findFestivalBySlug } from "@/server/models/festival.model";
-import { prisma } from "@/lib/db";
-import { EmptyState } from "@/components/common/EmptyState";
+import { eq, sql } from "drizzle-orm";
 import { Tags, Users } from "lucide-react";
+import { notFound } from "next/navigation";
+import { EmptyState } from "@/components/common/EmptyState";
+import { ProgrammesClient } from "@/components/festival/pre-works/programmes/ProgrammesClient";
+import { db } from "@/core/database/client";
+import {
+  category as categoryTable,
+  group as groupTable,
+  student as studentTable,
+} from "@/core/database/schema";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 
 export default async function ProgrammesPage({
   params,
@@ -18,9 +24,11 @@ export default async function ProgrammesPage({
   }
 
   // Check for categories
-  const categoryCount = await prisma.category.count({
-    where: { festivalId: festival.id },
-  });
+  const [categoryCountResult] = await db
+    .select({ count: sql`count(*)` })
+    .from(categoryTable)
+    .where(eq(categoryTable.festivalId, festival.id));
+  const categoryCount = Number(categoryCountResult.count);
 
   if (categoryCount === 0) {
     return (
@@ -35,9 +43,17 @@ export default async function ProgrammesPage({
   }
 
   // Check for students
-  const studentCount = await prisma.student.count({
-    where: { festivalId: festival.id },
-  });
+  const [studentCountResult] = await db
+    .select({ count: sql`count(*)` })
+    .from(studentTable)
+    .where(eq(studentTable.festivalId, festival.id));
+  const studentCount = Number(studentCountResult.count);
+
+  const [groupCountResult] = await db
+    .select({ count: sql`count(*)` })
+    .from(groupTable)
+    .where(eq(groupTable.festivalId, festival.id));
+  const groupCount = Number(groupCountResult.count);
 
   if (studentCount === 0) {
     return (
@@ -52,16 +68,16 @@ export default async function ProgrammesPage({
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Programmes</h2>
-        <p className="text-muted-foreground">
-          Manage programmes for{" "}
-          <span className="font-semibold text-foreground">{festival.name}</span>
-        </p>
-      </div>
-
-      <ProgrammesClient festivalId={festival.id} />
+    <div className="pt-4 sm:pt-6">
+      <ProgrammesClient
+        festivalId={festival.id}
+        festivalTier={festival.tier as any}
+        groupCount={groupCount}
+      >
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+          Programmes
+        </h1>
+      </ProgrammesClient>
     </div>
   );
 }

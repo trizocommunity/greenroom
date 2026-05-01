@@ -47,7 +47,7 @@ export default function AboutPage() {
         <div className="container max-w-7xl px-4 md:px-6 mx-auto text-center">
           <p className="text-2xl md:text-4xl font-bold uppercase leading-tight tracking-tight text-foreground max-w-4xl mx-auto">
             &quot;To simplify festival operations so organizers can focus on the
-            art, and judges can focus on the talent.&quot;
+            art, and staff can focus on the talent.&quot;
           </p>
         </div>
       </section>

@@ -1,17 +1,16 @@
 "use client";
 
-import type { User } from "@prisma/client";
 import { Menu } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { ProfileSidebarContent } from "@/components/profile/ProfileSidebarContent";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import type { UserProfile } from "@/core/types/app-enums";
 
 interface DashboardNavbarProps {
-  user: Pick<User, "fullName" | "displayName" | "age" | "email">;
+  user: UserProfile;
 }
 
 export default function DashboardNavbar({ user }: DashboardNavbarProps) {

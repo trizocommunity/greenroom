@@ -40,7 +40,7 @@ export default function FeaturesPage() {
         features={[
           {
             name: "Role Access",
-            desc: "Granular permissions for Admins, Judges, and Mangers.",
+            desc: "Granular permissions for Admins and Managers.",
             icon: Users,
           },
           {
@@ -89,7 +89,7 @@ export default function FeaturesPage() {
           },
           {
             name: "Averaging",
-            desc: "Multi-judge score averaging.",
+            desc: "Score averaging and ranking.",
             icon: ListRestart,
           },
           {

@@ -1,6 +1,8 @@
+import { desc } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
-import * as PaymentController from "@/server/controllers/payment.controller";
+import { getSession } from "@/core/auth/session";
+import { db } from "@/core/database/client";
+import { payment } from "@/core/database/schema";
 
 export async function GET() {
   try {
@@ -9,7 +11,10 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const payments = await PaymentController.getAllPayments();
+    const payments = await db.query.payment.findMany({
+      orderBy: [desc(payment.createdAt)],
+      with: { user: true },
+    });
     return NextResponse.json(payments);
   } catch (error) {
     console.error("Failed to fetch payments:", error);

@@ -28,9 +28,9 @@
 
 "use client";
 
-import { useFeature } from "@/hooks/useFeature";
 import { UpgradeTrigger } from "@/components/common/UpgradeTrigger";
-import type { FeaturePath } from "@/lib/features";
+import { useFeature } from "@/features/plan-features/hooks/use-feature";
+import type { FeaturePath } from "@/features/plan-features/services/features";
 
 interface FeatureGateProps {
   /**
@@ -109,6 +109,8 @@ function getFeatureLabel(feature: FeaturePath): string {
     categories: "Categories",
     groups: "Groups",
     students: "Students",
+    viewStudentProfile: "Student Profile",
+    publicStudentProfile: "Public Student Profile",
     programmes: "Programmes",
     assignments: "Assignments",
 
@@ -150,6 +152,8 @@ function getFeatureLabel(feature: FeaturePath): string {
     publicLandingPage: "Public Landing Page",
     fullLandingPage: "Full Landing Page",
     landingPageBuilder: "Landing Page Builder",
+    gallery: "Gallery",
+    news: "News",
 
     // Branding
     customUrl: "Custom URL",
@@ -168,6 +172,7 @@ function getFeatureLabel(feature: FeaturePath): string {
     // Settings
     festivalSettings: "Festival Settings",
     advancedSettings: "Advanced Settings",
+    programmeAssignmentDeadline: "Programme Assignment Deadline",
 
     // Support
     supportLevel: "Support Level",

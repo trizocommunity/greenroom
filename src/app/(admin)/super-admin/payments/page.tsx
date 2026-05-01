@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { adminService } from "@/server/services/admin.service";
+import { adminService } from "@/features/admin/services/admin.service";
 
 function getPaymentStatusVariant(
   status: string,
@@ -188,7 +188,7 @@ export default async function AdminPaymentsPage() {
                     </TableCell>
                     <TableCell className="py-4 text-right">
                       <span className="text-xs font-bold text-muted-foreground">
-                        {format(payment.createdAt, "MMM d, yyyy")}
+                        {format(new Date(payment.createdAt), "MMM d, yyyy")}
                       </span>
                     </TableCell>
                     <TableCell className="py-4">

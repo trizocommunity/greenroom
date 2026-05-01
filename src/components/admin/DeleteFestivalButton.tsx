@@ -18,7 +18,7 @@ import {
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { deleteFestivalAdmin } from "@/server/actions/admin.actions";
+import { deleteFestivalAdmin } from "@/features/admin/actions/admin.actions";
 
 interface DeleteFestivalButtonProps {
   festivalId: string;

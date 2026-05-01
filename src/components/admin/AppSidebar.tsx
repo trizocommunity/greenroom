@@ -3,6 +3,7 @@
 import { ChevronsUpDown, GalleryVerticalEnd, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -26,7 +27,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { SUPER_ADMIN_SIDEBAR_ITEMS } from "@/config/sidebar.config";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useCurrentUser } from "@/features/auth/hooks/use-current-user";
 
 // Menu items.
 const items = SUPER_ADMIN_SIDEBAR_ITEMS;
@@ -50,6 +51,8 @@ export function AppSidebar() {
   const displayName = user?.displayName || user?.fullName || "Super Admin";
   const email = user?.email || "";
   const initials = getInitials(user?.fullName);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   return (
     <Sidebar collapsible="icon" className="bg-transparent">
@@ -103,58 +106,81 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton
-                  size="lg"
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-                >
-                  <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarFallback className="rounded-lg">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold text-base">
-                      {displayName}
-                    </span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {email}
-                    </span>
-                  </div>
-                  <ChevronsUpDown className="ml-auto size-4" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-                side={isMobile ? "bottom" : "right"}
-                align="end"
-                sideOffset={4}
-              >
-                <DropdownMenuLabel className="p-0 font-normal">
-                  <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+            {mounted ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuButton
+                    size="lg"
+                    className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                  >
                     <Avatar className="h-8 w-8 rounded-lg">
                       <AvatarFallback className="rounded-lg">
                         {initials}
                       </AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-medium">
+                      <span className="truncate font-semibold text-base">
                         {displayName}
                       </span>
-                      <span className="truncate text-xs">{email}</span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {email}
+                      </span>
                     </div>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <LogoutButton>
-                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Log out
-                  </DropdownMenuItem>
-                </LogoutButton>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    <ChevronsUpDown className="ml-auto size-4" />
+                  </SidebarMenuButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+                  side={isMobile ? "bottom" : "right"}
+                  align="end"
+                  sideOffset={4}
+                >
+                  <DropdownMenuLabel className="p-0 font-normal">
+                    <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+                      <Avatar className="h-8 w-8 rounded-lg">
+                        <AvatarFallback className="rounded-lg">
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="grid flex-1 text-left text-sm leading-tight">
+                        <span className="truncate font-medium">
+                          {displayName}
+                        </span>
+                        <span className="truncate text-xs">{email}</span>
+                      </div>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <LogoutButton>
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Log out
+                    </DropdownMenuItem>
+                  </LogoutButton>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <SidebarMenuButton
+                size="lg"
+                className="pointer-events-none"
+                aria-hidden
+              >
+                <Avatar className="h-8 w-8 rounded-lg">
+                  <AvatarFallback className="rounded-lg">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold text-base">
+                    {displayName}
+                  </span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {email}
+                  </span>
+                </div>
+                <ChevronsUpDown className="ml-auto size-4" />
+              </SidebarMenuButton>
+            )}
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

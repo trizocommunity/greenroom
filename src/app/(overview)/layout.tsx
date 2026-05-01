@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import DashboardNavbar from "@/components/layout/DashboardNavbar";
-import { getCurrentUser } from "@/lib/auth/current-user";
+import { getCurrentUser } from "@/core/auth/current-user";
 
 export default async function DashboardLayout({
   children,
@@ -11,6 +11,11 @@ export default async function DashboardLayout({
 
   if (!user) {
     redirect("/login");
+  }
+
+  // FORCE ONBOARDING: If the user hasn't set their full name, they MUST go through onboarding
+  if (!user.fullName) {
+    redirect("/onboarding");
   }
 
   return (

@@ -11,6 +11,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { getFestivalDashboardSidebarConfig } from "@/config/sidebar.config";
+import { useFeatureTag } from "@/features/plan-features/hooks/use-feature";
 
 interface DashboardBreadcrumbProps {
   festivalName: string;
@@ -22,6 +23,7 @@ export function DashboardBreadcrumb({
 }: Omit<DashboardBreadcrumbProps, "festivalName">) {
   const pathname = usePathname();
   const basePath = `/dashboard/${slug}`;
+  const canUseExternalJudging = useFeatureTag("eventWorks.externalJudging");
 
   // 1. Get path relative to dashboard root
   // e.g. /dashboard/my-fest/pre-works/categories -> pre-works/categories
@@ -30,7 +32,10 @@ export function DashboardBreadcrumb({
 
   // 2. Helper to find title from sidebar config
   // We'll flatten the config to look up titles by href or partial match logic
-  const sidebarConfig = getFestivalDashboardSidebarConfig(basePath, "OWNER"); // Role doesn't matter for titles
+  const sidebarConfig = getFestivalDashboardSidebarConfig(basePath, "OWNER", {
+    useExternalJudging: canUseExternalJudging,
+  }); // Role doesn't matter for titles
+
   const allItems = sidebarConfig.flatMap((g) => g.items);
 
   // Helper map for known segments that might not perfectly match sidebar URLs (if any)
@@ -52,7 +57,7 @@ export function DashboardBreadcrumb({
   const isRoot = segments.length === 0;
 
   return (
-    <Breadcrumb>
+    <Breadcrumb className="hidden lg:block">
       <BreadcrumbList>
         {/* Root Item: Overview (Only shown if at root) */}
         {isRoot && (

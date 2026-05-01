@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getAuditLogs } from "@/server/services/audit-log.service";
+import { getAuditLogs } from "@/features/auth/services/audit-log.service";
 
 export default async function AdminAuditLogsPage({
   searchParams,
@@ -142,15 +142,22 @@ export default async function AdminAuditLogsPage({
                           <>
                             <span
                               className="text-xs font-bold text-foreground truncate w-32"
-                              title={log.actor.fullName || ""}
+                              title={
+                                (log.actor as { fullName?: string | null })
+                                  .fullName || ""
+                              }
                             >
-                              {log.actor.fullName || "Unnamed User"}
+                              {(log.actor as { fullName?: string | null })
+                                .fullName || "Unnamed User"}
                             </span>
                             <span
                               className="text-[10px] font-medium text-muted-foreground font-mono opacity-60 truncate w-32"
-                              title={log.actor.email}
+                              title={
+                                (log.actor as { email?: string | null })
+                                  .email || ""
+                              }
                             >
-                              {log.actor.email}
+                              {(log.actor as { email?: string | null }).email}
                             </span>
                           </>
                         ) : (

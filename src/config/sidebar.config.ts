@@ -1,28 +1,34 @@
 import {
   BarChart3,
+  BookOpen,
   Building2,
   Calendar,
+  CalendarDays,
   CheckCircle,
   ClipboardList,
   CreditCard,
   Edit,
   FileText,
+  Gavel,
+  Image,
+  Layers,
   LayoutDashboard,
+  LifeBuoy,
+  ListChecks,
   Megaphone,
+  Newspaper,
   QrCode,
+  Radio,
   Settings,
   Shield,
   Trophy,
   Users,
   UsersRound,
-  BookOpen,
-  LifeBuoy,
 } from "lucide-react";
 
 export type FestivalRole =
   | "SUPER_ADMIN"
   | "ADMIN"
-  | "JUDGE"
   | "STAGE_MANAGER"
   | "ANNOUNCER"
   | "OWNER";
@@ -32,6 +38,11 @@ export const SUPER_ADMIN_SIDEBAR_ITEMS = [
     title: "Dashboard",
     url: "/super-admin",
     icon: LayoutDashboard,
+  },
+  {
+    title: "Analytics",
+    url: "/super-admin/analytics",
+    icon: BarChart3,
   },
   {
     title: "Users",
@@ -54,9 +65,9 @@ export const SUPER_ADMIN_SIDEBAR_ITEMS = [
     icon: Shield,
   },
   {
-    title: "Support",
-    url: "/super-admin/support",
-    icon: LifeBuoy,
+    title: "Plan Features",
+    url: "/super-admin/plan-features",
+    icon: Layers,
   },
   {
     title: "Settings",
@@ -82,9 +93,17 @@ interface SidebarGroup {
 export const getFestivalDashboardSidebarConfig = (
   basePath: string,
   role: string = "OWNER",
+  plan: { useExternalJudging?: boolean; isBasic?: boolean } = {},
 ): SidebarGroup[] => {
   const isSuperAdmin = role === "SUPER_ADMIN";
   const normalizedRole = role as FestivalRole;
+  const useExternalJudging = plan.useExternalJudging ?? false;
+  // Results page is excluded for BASIC; available only when external judging plan path is enabled.
+  const canUseResultsPage = useExternalJudging;
+  const judgmentTitle = useExternalJudging ? "Judgment" : "Results";
+  const judgmentHref = useExternalJudging
+    ? `${basePath}/event-works/judgment`
+    : `${basePath}/event-works/marks`;
 
   const hasAccess = (allowedRoles?: FestivalRole[]) => {
     if (isSuperAdmin) return true;
@@ -99,7 +118,10 @@ export const getFestivalDashboardSidebarConfig = (
       items: [
         {
           title: "Overview",
-          href: basePath,
+          href:
+            normalizedRole === "STAGE_MANAGER"
+              ? `${basePath}/stage-manager`
+              : basePath,
           icon: LayoutDashboard,
         },
         {
@@ -113,6 +135,14 @@ export const getFestivalDashboardSidebarConfig = (
           href: `${basePath}/members`,
           icon: Users,
           allowedRoles: ["ADMIN", "OWNER"],
+          disabled: plan.isBasic,
+        },
+        {
+          title: "Festival Live",
+          href: `${basePath}/festival-live`,
+          icon: Radio,
+          allowedRoles: ["ADMIN", "OWNER"],
+          disabled: plan.isBasic,
         },
       ],
     },
@@ -149,18 +179,11 @@ export const getFestivalDashboardSidebarConfig = (
           icon: Edit,
           allowedRoles: ["ADMIN", "OWNER"],
         },
-        // Merged items from old "Event Works"
-        {
-          title: "Chest Numbers",
-          href: `${basePath}/pre-works/chest-numbers`,
-          icon: CreditCard,
-          allowedRoles: ["ADMIN", "OWNER"],
-        },
         {
           title: "QR Codes",
           href: `${basePath}/pre-works/qr-codes`,
           icon: QrCode,
-          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"] as FestivalRole[],
+          allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
         },
         {
           title: "Stage Management",
@@ -174,6 +197,24 @@ export const getFestivalDashboardSidebarConfig = (
           icon: Calendar,
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
         },
+        {
+          title: "Sessions",
+          href: `${basePath}/pre-works/sessions`,
+          icon: CalendarDays,
+          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
+        },
+        {
+          title: "Gallery",
+          href: `${basePath}/content/gallery`,
+          icon: Image,
+          allowedRoles: ["ADMIN", "OWNER"],
+        },
+        {
+          title: "News",
+          href: `${basePath}/content/news`,
+          icon: Newspaper,
+          allowedRoles: ["ADMIN", "OWNER"],
+        },
       ],
     },
 
@@ -181,26 +222,29 @@ export const getFestivalDashboardSidebarConfig = (
       title: "Event Works", // Renamed from "On-Event Works"
       items: [
         {
+          title: "Reporting",
+          href: `${basePath}/event-works/reporting`,
+          icon: CheckCircle,
+          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"] as FestivalRole[],
+        },
+        {
+          title: judgmentTitle,
+          href: judgmentHref,
+          icon: Gavel,
+          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"] as FestivalRole[],
+        },
+        {
           title: "Results",
           href: `${basePath}/event-works/results`,
-          icon: ClipboardList,
-          allowedRoles: [
-            "ADMIN",
-            "OWNER",
-            "JUDGE",
-            "ANNOUNCER",
-          ] as FestivalRole[],
+          icon: ListChecks,
+          allowedRoles: ["ADMIN", "OWNER", "ANNOUNCER"] as FestivalRole[],
+          disabled: !canUseResultsPage,
         },
         {
           title: "Leaderboard",
           href: `${basePath}/event-works/leaderboard`,
           icon: Trophy,
-          allowedRoles: [
-            "ADMIN",
-            "OWNER",
-            "JUDGE",
-            "ANNOUNCER",
-          ] as FestivalRole[],
+          allowedRoles: ["ADMIN", "OWNER", "ANNOUNCER"] as FestivalRole[],
         },
         {
           title: "Analytics",
@@ -218,11 +262,6 @@ export const getFestivalDashboardSidebarConfig = (
           href: `${basePath}/support/docs`,
           icon: BookOpen,
         },
-        {
-          title: "My Tickets",
-          href: `${basePath}/support/tickets`,
-          icon: LifeBuoy,
-        },
       ],
     },
   ];
@@ -231,7 +270,9 @@ export const getFestivalDashboardSidebarConfig = (
   return groups
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => hasAccess(item.allowedRoles)),
+      items: group.items.filter(
+        (item) => hasAccess(item.allowedRoles) && !item.disabled,
+      ),
     }))
     .filter((group) => group.items.length > 0);
 };

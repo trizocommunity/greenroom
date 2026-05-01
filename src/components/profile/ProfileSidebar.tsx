@@ -2,7 +2,7 @@
 
 import { Calendar, CreditCard, LayoutDashboard, LogOut } from "lucide-react";
 import { LogoutButton } from "@/components/auth/LogoutButton";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils/cn";
 
 interface ProfileSidebarProps {
   activeTab: string;

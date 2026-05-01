@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
-import { findAllUsers } from "@/server/models/user.model";
+import { getSession } from "@/core/auth/session";
+import { findAllUsers } from "@/features/auth/repositories/user.repository";
 
 export async function GET() {
   try {
@@ -10,7 +10,8 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const users = await findAllUsers({}, { createdAt: "desc" });
+    // TODO: implement search filtering for Drizzle if needed
+    const users = await findAllUsers(undefined, "desc");
 
     return NextResponse.json(users);
   } catch (error) {

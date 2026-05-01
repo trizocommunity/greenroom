@@ -38,8 +38,8 @@ export default function AdminNotFound() {
             Admin Page Not Found
           </h1>
           <p className="max-w-sm text-[#94a3b8] text-sm leading-relaxed">
-            This admin route doesn&apos;t exist. It may have been removed or
-            the URL is incorrect.
+            This admin route doesn&apos;t exist. It may have been removed or the
+            URL is incorrect.
           </p>
         </div>
 

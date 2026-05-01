@@ -14,7 +14,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 import * as XLSX from "xlsx";
@@ -37,7 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils/cn";
 
 // --- Types ---
 
@@ -192,6 +192,8 @@ export function BulkUploadFlow<T>({
   };
 
   const handleUpdateItem = async (id: string, updatedData: T) => {
+    // Add a small artificial delay for better UX/feedback
+    await new Promise((resolve) => setTimeout(resolve, 500));
     setParsedData((prev) =>
       prev.map((item) => {
         if (item.id === id) {
@@ -245,7 +247,7 @@ export function BulkUploadFlow<T>({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button variant="outline">
+          <Button size="sm" variant="outline">
             <Upload className="mr-2 h-4 w-4" />
             Bulk Upload
           </Button>
@@ -321,8 +323,9 @@ export function BulkUploadFlow<T>({
                   <h3 className="text-xl font-bold text-foreground mb-4">
                     2. Upload your file
                   </h3>
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
                     className="w-full aspect-4/3 max-h-[300px] border-2 border-dashed border-primary/20 rounded-3xl bg-primary/5 hover:bg-primary/10 transition-all cursor-pointer group flex flex-col items-center justify-center shadow-inner"
                     onClick={() => fileInputRef.current?.click()}
                   >
@@ -335,7 +338,7 @@ export function BulkUploadFlow<T>({
                     <p className="text-sm text-muted-foreground mt-2">
                       .xlsx or .csv files supported
                     </p>
-                  </button>
+                  </Button>
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -354,14 +357,14 @@ export function BulkUploadFlow<T>({
                 <div className="flex gap-4">
                   <Badge
                     variant="outline"
-                    className="px-3 py-1.5 text-sm gap-2 border-emerald-200 bg-emerald-50 text-emerald-700"
+                    className="px-3 py-1.5 text-sm gap-2 border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
                   >
                     <Check className="h-4 w-4" /> {validCount} Valid
                   </Badge>
                   {errorCount > 0 && (
                     <Badge
                       variant="outline"
-                      className="px-3 py-1.5 text-sm gap-2 border-red-200 bg-red-50 text-red-700"
+                      className="px-3 py-1.5 text-sm gap-2 border-red-500/20 bg-red-500/10 text-red-500"
                     >
                       <AlertCircle className="h-4 w-4" /> {errorCount} Errors
                     </Badge>
@@ -418,8 +421,8 @@ export function BulkUploadFlow<T>({
                               className={cn(
                                 "group transition-colors",
                                 !row.isValid
-                                  ? "bg-red-50/30 hover:bg-red-50/60"
-                                  : "hover:bg-muted/30",
+                                  ? "bg-red-500/5 hover:bg-red-500/10"
+                                  : "hover:bg-muted/50",
                               )}
                             >
                               <TableCell className="text-center font-mono text-xs text-muted-foreground w-[80px]">
@@ -433,20 +436,38 @@ export function BulkUploadFlow<T>({
 
                               <TableCell className="w-[150px]">
                                 {row.isValid ? (
-                                  <div className="text-xs text-emerald-600 font-medium flex items-center gap-1.5 bg-emerald-50/10 w-fit px-2 py-1 rounded-full border border-emerald-100">
-                                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />{" "}
+                                  <div className="text-xs text-emerald-500 font-medium flex items-center gap-1.5 bg-emerald-500/10 w-fit px-2 py-1 rounded-full border border-emerald-500/20">
+                                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />{" "}
                                     Ready
                                   </div>
                                 ) : (
                                   <div className="flex flex-col gap-1.5">
-                                    {row.errors.map((err, i) => (
-                                      <span
-                                        key={i}
-                                        className="text-[11px] text-red-600 font-medium flex items-center gap-1.5 bg-red-50/80 px-2 py-0.5 rounded-md border border-red-100 w-fit"
-                                      >
-                                        <X className="h-3 w-3 shrink-0" /> {err}
-                                      </span>
-                                    ))}
+                                    {row.errors.map((err, i) => {
+                                      const isLimitError = err
+                                        .toLowerCase()
+                                        .includes("limit");
+                                      return (
+                                        <span
+                                          key={i}
+                                          className={cn(
+                                            "text-[10px] font-bold flex items-center gap-1.5 px-2 py-1 rounded-md border shadow-sm uppercase tracking-tight leading-none",
+                                            isLimitError
+                                              ? "text-amber-600 bg-amber-500/10 border-amber-500/30"
+                                              : "text-red-600 bg-red-500/10 border-red-500/30",
+                                          )}
+                                        >
+                                          <AlertCircle
+                                            className={cn(
+                                              "h-3 w-3 shrink-0",
+                                              isLimitError
+                                                ? "text-amber-600"
+                                                : "text-red-600",
+                                            )}
+                                          />{" "}
+                                          {err}
+                                        </span>
+                                      );
+                                    })}
                                   </div>
                                 )}
                               </TableCell>
@@ -481,7 +502,19 @@ export function BulkUploadFlow<T>({
           )}
 
           {step === "COMPLETION" && (
-            <div className="flex flex-col items-center justify-center space-y-10 p-12 text-center h-full animate-in fade-in zoom-in-95 duration-500">
+            <div
+              ref={(el) => {
+                if (el) {
+                  import("party-js").then((party) => {
+                    party.default.confetti(el, {
+                      count: party.default.variation.range(40, 60),
+                      spread: party.default.variation.range(40, 50),
+                    });
+                  });
+                }
+              }}
+              className="flex flex-col items-center justify-center space-y-10 p-12 text-center h-full animate-in fade-in zoom-in-95 duration-500"
+            >
               <div className="relative">
                 <div className="absolute inset-0 bg-emerald-100 blur-lg rounded-full opacity-50 animate-pulse" />
                 <div className="h-32 w-32 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center relative shadow-sm border border-emerald-100">
@@ -543,6 +576,7 @@ export function BulkUploadFlow<T>({
                     if (!item) return null;
                     return (
                       <EditComponent
+                        key={item.id}
                         data={item.data}
                         onSave={(updated) => handleUpdateItem(item.id, updated)}
                         onCancel={() => setEditingItemId(null)}

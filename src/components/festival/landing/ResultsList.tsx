@@ -1,21 +1,22 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Search, Trophy, Medal, Crown, ChevronRight } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ChevronRight, Crown, Medal, Search, Trophy } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils/cn";
 
 export interface Result {
   id: string;
@@ -27,8 +28,8 @@ export interface Result {
   team: string; // This is the group name
   position: number;
   points: number;
-  score?: number;
   grade?: string | null;
+  codeLetter?: string | null;
 }
 
 export interface TeamStanding {
@@ -39,6 +40,7 @@ export interface TeamStanding {
 }
 
 interface ResultsListProps {
+  festivalId?: string;
   festivalName: string;
   accentColor: string; // We'll essentially use this as the primary active color
   results: Result[];
@@ -47,17 +49,28 @@ interface ResultsListProps {
 }
 
 export function ResultsList({
+  festivalId,
   festivalName,
   accentColor,
   results,
   teamStandings: initialTeamStandings,
 }: ResultsListProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"program" | "team">("program");
   const [searchQuery, setSearchQuery] = useState("");
   const [programTypeFilter, setProgramTypeFilter] = useState<
     "ALL" | "INDIVIDUAL" | "GROUP"
   >("ALL");
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
+
+  // Polling refresh every 15 seconds for updates
+  useEffect(() => {
+    if (!festivalId) return;
+    const id = window.setInterval(() => {
+      router.refresh();
+    }, 15000);
+    return () => window.clearInterval(id);
+  }, [festivalId, router]);
 
   // --- Data Processing ---
 
@@ -148,23 +161,27 @@ export function ResultsList({
   };
 
   return (
-    <section className="min-h-[60vh] space-y-8">
-      <div className="mx-auto max-w-7xl px-4 md:px-6 py-12 lg:py-24">
+    <section className="min-h-[60vh] space-y-6 sm:space-y-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-6 py-8 sm:py-12 lg:py-24">
         {/* Header Section */}
         <div className="space-y-4">
-          <h1 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
             {activeTab === "program" ? `Program Results` : `Team Status`}
           </h1>
           <p className="text-muted-foreground font-medium">
             {activeTab === "program" ? (
               <>
                 Published results for{" "}
-                <span className="font-bold text-foreground">{festivalName}</span>
+                <span className="font-bold text-foreground">
+                  {festivalName}
+                </span>
               </>
             ) : (
               <>
                 Team points status for{" "}
-                <span className="font-bold text-foreground">{festivalName}</span>
+                <span className="font-bold text-foreground">
+                  {festivalName}
+                </span>
               </>
             )}
           </p>
@@ -263,7 +280,8 @@ export function ResultsList({
                       onClick={() => setSelectedProgram(program.id)}
                       className="group relative bg-card hover:bg-accent/5 cursor-pointer border rounded-xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-all duration-300 border-l-4"
                       style={{
-                        borderLeftColor: idx % 2 === 0 ? accentColor : undefined,
+                        borderLeftColor:
+                          idx % 2 === 0 ? accentColor : undefined,
                       }} // Optional: alternate border colors or keep distinct
                     >
                       {/* Number Circle */}
@@ -273,9 +291,19 @@ export function ResultsList({
 
                       {/* Text Content */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-base truncate uppercase tracking-tight text-foreground/90 group-hover:text-foreground">
-                          {program.name}
-                        </h3>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-bold text-base truncate uppercase tracking-tight text-foreground/90 group-hover:text-foreground">
+                            {program.name}
+                          </h3>
+                          <Badge
+                            variant={
+                              program.type === "GROUP" ? "secondary" : "outline"
+                            }
+                            className="text-[10px] uppercase"
+                          >
+                            {program.type === "GROUP" ? "Team" : "Individual"}
+                          </Badge>
+                        </div>
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                           {program.category}
                         </p>
@@ -408,7 +436,7 @@ export function ResultsList({
           )}
         </AnimatePresence>
         {/* Program Details Modal */}
-        <Dialog 
+        <Dialog
           open={!!selectedProgram}
           onOpenChange={(open) => !open && setSelectedProgram(null)}
         >
@@ -420,19 +448,29 @@ export function ResultsList({
               return (
                 <>
                   <DialogHeader className="p-6 pb-2 border-b bg-muted/10">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <Badge
                         variant="outline"
                         className="uppercase text-[10px] tracking-widest"
                       >
                         {program.category}
                       </Badge>
+                      <Badge
+                        variant={
+                          program.type === "GROUP" ? "secondary" : "outline"
+                        }
+                        className="uppercase text-[10px]"
+                      >
+                        {program.type === "GROUP" ? "Team" : "Individual"}
+                      </Badge>
                     </div>
                     <DialogTitle className="text-xl md:text-2xl font-bold uppercase">
                       {program.name}
                     </DialogTitle>
                     <DialogDescription>
-                      Full results list (Top performes & Grades)
+                      {program.type === "GROUP"
+                        ? "Team results (rank & grades)"
+                        : "Student results (rank & grades)"}
                     </DialogDescription>
                   </DialogHeader>
 
@@ -466,8 +504,21 @@ export function ResultsList({
                                 {result.position}
                               </div>
                               <div>
+                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                  {program.type === "GROUP"
+                                    ? "Team"
+                                    : "Student"}
+                                </p>
                                 <p className="font-bold text-sm">
                                   {result.winner}
+                                </p>
+                                {result.codeLetter ? (
+                                  <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                                    Code {result.codeLetter}
+                                  </p>
+                                ) : null}
+                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">
+                                  Group / School
                                 </p>
                                 <p className="text-xs text-muted-foreground">
                                   {result.team}
@@ -481,11 +532,6 @@ export function ResultsList({
                               >
                                 {result.points} pts
                               </div>
-                              {result.score !== undefined && (
-                                <div className="text-xs text-muted-foreground font-medium mb-1">
-                                  Score: {result.score}
-                                </div>
-                              )}
                               <div className="flex items-center justify-end gap-2 mt-1">
                                 {result.grade && (
                                   <span className="text-[10px] font-bold px-1.5 py-0.5 bg-green-100 text-green-700 rounded border border-green-200">

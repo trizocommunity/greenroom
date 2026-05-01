@@ -1,10 +1,17 @@
 "use client";
 
-import { deleteStage } from "@/server/actions/stage.actions";
-import { Stage } from "@prisma/client";
 import { Edit, Megaphone, Plus, Trash2 } from "lucide-react";
+
+interface Stage {
+  id: string;
+  name: string;
+  description: string | null;
+  createdBy: string | null;
+}
+
 import { useState } from "react";
 import { toast } from "sonner";
+import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +29,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
+import { deleteStage } from "@/features/stages/actions/stage.actions";
 import { StageDialog } from "./StageDialog";
 
 interface StagesClientProps {
@@ -30,6 +39,7 @@ interface StagesClientProps {
 }
 
 export function StagesClient({ festivalId, stages }: StagesClientProps) {
+  const { isReadOnly } = useFestivalReadOnly();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedStage, setSelectedStage] = useState<Stage | undefined>(
     undefined,
@@ -38,17 +48,20 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleCreate = () => {
+    if (isReadOnly) return;
     setSelectedStage(undefined);
     setIsDialogOpen(true);
   };
 
   const handleEdit = (stage: Stage) => {
+    if (isReadOnly) return;
     setSelectedStage(stage);
     setIsDialogOpen(true);
   };
 
   const handleDelete = async () => {
     if (!stageToDelete) return;
+    if (isReadOnly) return;
     try {
       setIsDeleting(true);
       await deleteStage(stageToDelete);
@@ -63,19 +76,34 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">
-            Stage Management
-          </h2>
-          <p className="text-muted-foreground">
-            Create and manage stages for your festival events.
-          </p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h2 className="text-2xl font-bold tracking-tight">Stage Management</h2>
+        <div className="flex items-center gap-2">
+          <HowItWorksButton
+            title="How Stage Management works"
+            description="Stages are venues or slots where programmes and sessions run."
+          >
+            <p className="text-sm text-muted-foreground">
+              Create stages (e.g. Main Stage, Room A) and set the type to
+              <strong> Stage</strong> or <strong>Non-Stage</strong>. Programmes
+              and sessions are then assigned to a stage when you build the
+              Schedule and Sessions.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              You can reorder stages and edit or delete them. Create at least
+              one stage before adding entries to the schedule.
+            </p>
+          </HowItWorksButton>
+          <Button
+            onClick={handleCreate}
+            size="sm"
+            className="gap-2"
+            disabled={isReadOnly}
+          >
+            <Plus className="h-4 w-4" />
+            Create Stage
+          </Button>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Create Stage
-        </Button>
       </div>
 
       {stages.length === 0 ? (
@@ -88,7 +116,9 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
             Get started by creating your first stage. Stages are where your
             programmes will be conducted.
           </p>
-          <Button onClick={handleCreate}>Create Stage</Button>
+          <Button onClick={handleCreate} disabled={isReadOnly}>
+            Create Stage
+          </Button>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -100,6 +130,7 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
                   variant="ghost"
                   className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
                   onClick={() => handleEdit(stage)}
+                  disabled={isReadOnly}
                 >
                   <Edit className="h-4 w-4" />
                 </Button>
@@ -108,6 +139,7 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
                   variant="ghost"
                   className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
                   onClick={() => setStageToDelete(stage.id)}
+                  disabled={isReadOnly}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -136,40 +168,44 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
         </div>
       )}
 
-      <StageDialog
-        festivalId={festivalId}
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        stageToEdit={selectedStage}
-        onSuccess={() => {
-          // Revalidation handled by server action
-        }}
-      />
+      {!isReadOnly && (
+        <StageDialog
+          festivalId={festivalId}
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          stageToEdit={selectedStage}
+          onSuccess={() => {
+            // Revalidation handled by server action
+          }}
+        />
+      )}
 
-      <AlertDialog
-        open={!!stageToDelete}
-        onOpenChange={(open) => !open && setStageToDelete(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this stage?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              stage.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive hover:bg-destructive/90"
-              onClick={handleDelete}
-              disabled={isDeleting}
-            >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {!isReadOnly && (
+        <AlertDialog
+          open={!!stageToDelete}
+          onOpenChange={(open) => !open && setStageToDelete(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this stage?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the
+                stage.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive hover:bg-destructive/90"
+                onClick={handleDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }

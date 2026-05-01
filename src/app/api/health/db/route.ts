@@ -1,5 +1,6 @@
+import { sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { pool, prisma } from "@/lib/db";
+import { db, pool } from "@/core/database/client";
 
 /**
  * Database health check endpoint
@@ -9,8 +10,8 @@ export async function GET() {
   const startTime = Date.now();
 
   try {
-    // Test Prisma connection with a simple query
-    await prisma.$queryRaw`SELECT 1`;
+    // Test Drizzle connection with a simple query
+    await db.execute(sql`SELECT 1`);
 
     // Get pool stats
     const poolStats = {

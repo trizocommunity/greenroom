@@ -1,13 +1,14 @@
 "use client";
 
-import type { FestivalStatus } from "@prisma/client";
-import { ExternalLink, Settings, User } from "lucide-react";
+import { Settings, User } from "lucide-react";
 import Link from "next/link";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { LimitationCard } from "@/components/festival/dashboard/LimitationCard";
 import { StatusStrip } from "@/components/festival/dashboard/StatusStrip";
 import type { FestivalRole } from "@/components/festival/FestivalRoleBadge";
+import { FestivalStatusBadge } from "@/components/festival/FestivalStatusBadge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -17,7 +18,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { getAbbreviation } from "@/lib/utils";
+import type { FestivalStatus } from "@/core/types/app-enums";
+import { getAbbreviation } from "@/core/utils/cn";
 
 interface DashboardRightSidebarProps {
   trigger?: React.ReactNode;
@@ -27,38 +29,50 @@ interface DashboardRightSidebarProps {
     image?: string | null;
   };
   festivalSlug?: string;
+  /** When false, Status and Usage & Limits sections are hidden (e.g. for non-owner / non–super-admin). */
+  showStatusAndUsage?: boolean;
   // Panel Props
   festivalName?: string;
   festivalStatus?: FestivalStatus | string;
+  festivalCreatedAt?: Date | string | null;
+  festivalStartDate?: Date | string | null;
+  festivalEndDate?: Date | string | null;
+  festivalExpiresAt?: Date | string | null;
   daysRemaining?: number | null;
   userRole?: FestivalRole | string;
   usage?: {
     studentsCount: number;
     programmesCount: number;
-    eventsCount?: number;
     stagesCount?: number;
     storageUsedMB: number;
   };
   limits?: {
     maxStudents: number;
     maxProgrammes: number;
-    maxEvents?: number;
     maxStages?: number;
     maxStorageMB: number;
   };
   tierLabel?: string;
+  canAccessSettings?: boolean;
 }
 
 export function DashboardRightSidebar({
   festivalSlug,
   trigger,
   user,
+  showStatusAndUsage = true,
   festivalName,
+  festivalStatus,
+  festivalCreatedAt,
+  festivalStartDate,
+  festivalEndDate,
+  festivalExpiresAt,
   daysRemaining,
   userRole,
   usage,
   limits,
   tierLabel,
+  canAccessSettings = true,
 }: DashboardRightSidebarProps) {
   const safeUser = {
     name: user?.name || "User",
@@ -105,31 +119,40 @@ export function DashboardRightSidebar({
                 <User className="h-4 w-4" />
                 <span>My Profile</span>
               </Link>
-              <Link
-                href={`/dashboard/${festivalSlug}/settings`}
-                className="flex items-center gap-2 text-sm p-2 hover:bg-accent rounded-md transition-colors"
-              >
-                <Settings className="h-4 w-4" />
-                <span>Settings</span>
-              </Link>
-              <Link
-                href={`/${festivalSlug}`}
-                className="flex items-center gap-2 text-sm p-2 hover:bg-accent rounded-md transition-colors"
-                target="_blank"
-              >
-                <ExternalLink className="h-4 w-4" />
-                <span>Public View</span>
-              </Link>
+              {canAccessSettings && (
+                <Link
+                  href={`/dashboard/${festivalSlug}/settings`}
+                  className="flex items-center gap-2 text-sm p-2 hover:bg-accent rounded-md transition-colors"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span>Settings</span>
+                </Link>
+              )}
             </div>
 
-            <Separator />
+            {showStatusAndUsage && <Separator />}
 
-            {/* Status Section */}
-            {festivalName && (
+            {/* Status Section — only for owner or super admin */}
+            {showStatusAndUsage && festivalName && (
               <div className="space-y-4">
                 <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Status
                 </h4>
+                <div className="flex items-center justify-between gap-3">
+                  <FestivalStatusBadge
+                    status={festivalStatus || "READY"}
+                    createdAt={festivalCreatedAt}
+                    startDate={festivalStartDate}
+                    endDate={festivalEndDate}
+                    expiresAt={festivalExpiresAt}
+                    size="sm"
+                  />
+                  {tierLabel ? (
+                    <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                      Plan: {tierLabel}
+                    </Badge>
+                  ) : null}
+                </div>
                 <StatusStrip
                   festivalName={festivalName}
                   daysRemaining={daysRemaining}
@@ -140,10 +163,12 @@ export function DashboardRightSidebar({
               </div>
             )}
 
-            {festivalName && usage && limits && <Separator />}
+            {showStatusAndUsage && festivalName && usage && limits && (
+              <Separator />
+            )}
 
-            {/* Usage Section */}
-            {usage && limits && (
+            {/* Usage & Limits — only for owner or super admin */}
+            {showStatusAndUsage && usage && limits && (
               <div className="space-y-4">
                 <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Usage & Limits
@@ -153,14 +178,12 @@ export function DashboardRightSidebar({
                   limits={{
                     maxStudents: limits.maxStudents,
                     maxProgrammes: limits.maxProgrammes,
-                    maxEvents: limits.maxEvents,
                     maxStages: limits.maxStages,
                     maxStorageMB: limits.maxStorageMB,
                   }}
                   usage={{
                     studentsCount: usage.studentsCount,
                     programmesCount: usage.programmesCount,
-                    eventsCount: usage.eventsCount,
                     stagesCount: usage.stagesCount,
                     storageUsedMB: usage.storageUsedMB,
                   }}

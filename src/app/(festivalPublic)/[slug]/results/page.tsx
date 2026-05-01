@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ResultsList } from "@/components/festival/landing/ResultsList";
-import { getPublicFestivalData } from "@/server/loader/festivalPublic";
-import { getPublicFestivalResults } from "@/server/loader/festivalResults";
+import { getPublicFestivalData } from "@/features/festivals/loaders/festival-public.loader";
+import { getPublicFestivalResults } from "@/features/festivals/loaders/festival-results.loader";
 
 export async function generateMetadata({
   params,
@@ -52,6 +52,7 @@ export default async function ResultsPage({
   return (
     <div className="bg-background min-h-screen pt-20">
       <ResultsList
+        festivalId={festival.id}
         festivalName={festival.name}
         accentColor={accentColor}
         results={results}

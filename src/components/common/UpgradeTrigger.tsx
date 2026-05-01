@@ -1,16 +1,16 @@
 "use client";
 
-import { PRICING_TIERS } from "@/config/pricing";
 import { Info, Lock, Zap } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { PRICING_TIERS } from "@/config/pricing";
+import { cn } from "@/core/utils/cn";
 
 interface UpgradeTriggerProps {
   /**

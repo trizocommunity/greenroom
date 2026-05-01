@@ -1,12 +1,25 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { verifyPassword } from "@/lib/auth/password";
-import { createSession } from "@/lib/auth/session";
-import { loginSchema } from "@/lib/validations/auth";
-import { findUserByEmail } from "@/server/models/user.model";
+import { verifyPassword } from "@/core/auth/password";
+import { createSession } from "@/core/auth/session";
+import { formatApiError } from "@/core/http/api-error";
+import { checkRateLimit, getClientIP } from "@/core/http/rate-limit";
+import { findUserByEmail } from "@/features/auth/repositories/user.repository";
+import { loginSchema } from "@/features/auth/schemas/auth.schema";
 
 export async function POST(request: Request) {
   try {
+    // Rate limiting: 5 attempts per 15 minutes per IP
+    const clientIP = getClientIP(request);
+    const rateLimit = checkRateLimit(`login:${clientIP}`, 5, 15 * 60 * 1000);
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many attempts. Please try again later." },
+        { status: 429 },
+      );
+    }
+
     const body = await request.json();
     const { email, password } = loginSchema.parse(body);
 
@@ -32,15 +45,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, role: user.globalRole });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: (error as any).errors },
-        { status: 400 },
-      );
-    }
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    const payload = formatApiError(error);
+    const status = error instanceof z.ZodError ? 400 : 500;
+    return NextResponse.json(payload, { status });
   }
 }

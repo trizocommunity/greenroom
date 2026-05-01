@@ -1,4 +1,4 @@
-import type { Tier } from "@prisma/client";
+import type { Tier } from "@/core/types/app-enums";
 
 // DEFER-1 & DEFER-2 FIX: Completed features blocks for STANDARD and PRO tiers.
 // Also typed the Record properly to remove `any`.
@@ -8,6 +8,8 @@ export interface TierFeatures {
   categories: boolean;
   groups: boolean;
   students: boolean;
+  viewStudentProfile: boolean; // View student profile page (STANDARD+)
+  publicStudentProfile: boolean; // Public URL /{festival}/{studentSlug} (STANDARD+)
   programmes: boolean;
   assignments: boolean;
 
@@ -45,10 +47,12 @@ export interface TierFeatures {
   customCertificateTemplates: boolean;
   bulkCertificateGeneration: boolean;
 
-  // Landing Page
+  // Landing Page & Content
   publicLandingPage: boolean;
   fullLandingPage: boolean;
   landingPageBuilder: boolean;
+  gallery: boolean;
+  news: boolean;
 
   // Branding
   customUrl: boolean;
@@ -67,6 +71,7 @@ export interface TierFeatures {
   // Settings
   festivalSettings: boolean;
   advancedSettings: boolean;
+  programmeAssignmentDeadline: boolean;
 
   // Support
   supportLevel: "whatsapp" | "email" | "priority" | "dedicated";
@@ -103,7 +108,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       students: 250,
       programmes: 100,
       events: 10,
-      stages: 2,
+      stages: 10,
       storageMB: 512, // 0.5 GB
       categories: 5,
     },
@@ -112,6 +117,8 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       categories: true,
       groups: true,
       students: true,
+      viewStudentProfile: false, // BASIC: no view student profile
+      publicStudentProfile: false, // BASIC: no public student profile page
       programmes: true,
       assignments: true,
 
@@ -149,10 +156,12 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       customCertificateTemplates: false,
       bulkCertificateGeneration: false,
 
-      // Landing Page
+      // Landing Page & Content
       publicLandingPage: true, // Basic version (title + results)
       fullLandingPage: false,
       landingPageBuilder: false,
+      gallery: false,
+      news: false,
 
       // Branding
       customUrl: false,
@@ -164,13 +173,14 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       // Advanced Features
       apiAccess: false,
       webhooks: false,
-      liveScoreboard: false,
-      liveResults: false,
+      liveScoreboard: true,
+      liveResults: true,
       multiFestivalManagement: false,
 
-      // Settings
+      // Settings — BASIC has no settings page (sidebar/route already gate on this)
       festivalSettings: true,
       advancedSettings: false,
+      programmeAssignmentDeadline: false,
 
       // Support
       supportLevel: "whatsapp",
@@ -185,7 +195,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
   STANDARD: {
     price: 3000,
     label: "Standard",
-    durationDays: 90,
+    durationDays: 30, // Fixed 30 days for all plans; no read-only after expiry
     limits: {
       students: 500,
       programmes: 250,
@@ -199,6 +209,8 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       categories: true,
       groups: true,
       students: true,
+      viewStudentProfile: true, // STANDARD: view student profile
+      publicStudentProfile: true, // STANDARD: public student profile at /{slug}/{studentSlug}
       programmes: true,
       assignments: true,
 
@@ -236,10 +248,12 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       customCertificateTemplates: false,
       bulkCertificateGeneration: false,
 
-      // Landing Page — full landing page unlocked
+      // Landing Page & Content — full landing + gallery & news
       publicLandingPage: true,
       fullLandingPage: true,
       landingPageBuilder: false,
+      gallery: true,
+      news: true,
 
       // Branding — custom URL and colors
       customUrl: true,
@@ -258,21 +272,22 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       // Settings
       festivalSettings: true,
       advancedSettings: true,
+      programmeAssignmentDeadline: true,
 
       // Support — email support with faster response
       supportLevel: "email",
       supportResponseTime: 12,
 
-      // Post-Expiry Behavior — read-only access retained for 30 days
-      postExpiryAccess: "readonly",
-      dataRetentionDays: 30,
+      // Post-Expiry Behavior — no read-only; expired = full lock
+      postExpiryAccess: "delete",
+      dataRetentionDays: 0,
     },
   },
 
   PRO: {
     price: 6000,
     label: "Pro",
-    durationDays: 180,
+    durationDays: 30, // Fixed 30 days for all plans
     limits: {
       students: 2000,
       programmes: 1000,
@@ -286,6 +301,8 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       categories: true,
       groups: true,
       students: true,
+      viewStudentProfile: true, // PRO: view student profile
+      publicStudentProfile: true, // PRO: public student profile
       programmes: true,
       assignments: true,
 
@@ -323,10 +340,12 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       customCertificateTemplates: true,
       bulkCertificateGeneration: true,
 
-      // Landing Page — drag-and-drop builder
+      // Landing Page & Content — builder + gallery & news
       publicLandingPage: true,
       fullLandingPage: true,
       landingPageBuilder: true,
+      gallery: true,
+      news: true,
 
       // Branding — white-label + custom domain
       customUrl: true,
@@ -345,20 +364,21 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       // Settings
       festivalSettings: true,
       advancedSettings: true,
+      programmeAssignmentDeadline: true,
 
       // Support — priority support with 4h SLA
       supportLevel: "priority",
       supportResponseTime: 4,
 
-      // Post-Expiry Behavior — full access retained for 90 days
-      postExpiryAccess: "full",
-      dataRetentionDays: 90,
+      // Post-Expiry Behavior — no read-only; expired = full lock
+      postExpiryAccess: "delete",
+      dataRetentionDays: 0,
     },
   },
 };
 
 export type PricingTier = {
-  id: string;
+  id: Tier;
   name: string;
   price: number;
   description: string;
@@ -400,7 +420,6 @@ export const PRICING_TIERS: PricingTier[] = [
       "Bulk Upload (Students & Programmes)",
       "QR Codes & Auto Certificates",
       "Full Landing Page",
-      "30-day read-only access after expiry",
     ],
     isPopular: true,
   },
@@ -422,7 +441,6 @@ export const PRICING_TIERS: PricingTier[] = [
       "White-label + Custom Domain",
       "API Access & Webhooks",
       "Up to 10 Team Members with RBAC",
-      "90-day full access after expiry",
     ],
     isPopular: false,
   },

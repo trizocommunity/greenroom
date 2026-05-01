@@ -12,8 +12,8 @@ import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { resetPasswordSchema } from "@/lib/validations/auth";
-import { resetPasswordAction } from "@/server/actions/auth.actions";
+import { resetPasswordAction } from "@/features/auth/actions/auth.actions";
+import { resetPasswordSchema } from "@/features/auth/schemas/auth.schema";
 
 type FormData = z.infer<typeof resetPasswordSchema>;
 

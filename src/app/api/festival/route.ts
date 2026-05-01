@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getSession } from "@/lib/auth/session";
+import { getSession } from "@/core/auth/session";
+import { formatApiError } from "@/core/http/api-error";
+import { systemConfig } from "@/core/utils/config";
 import {
   createFestival,
   findFestivalByOwnerId,
   findFestivalBySlug,
-} from "@/server/models/festival.model";
+} from "@/features/festivals/repositories/festival.repository";
 
 const createFestivalSchema = z.object({
   name: z.string().min(3).max(50),
@@ -54,12 +56,11 @@ export async function POST(request: Request) {
     }
 
     // [New Phase 2] Payment Enforcement
-    const { systemConfig } = await import("@/lib/config");
     let paymentIdToConsume: string | null = null;
 
     if (systemConfig.paymentFirstFlowEnabled) {
       const { getUnusedPayment, consumePayment } = await import(
-        "@/server/services/billing.service"
+        "@/features/billing/services/billing.service"
       );
       const payment = await getUnusedPayment(userId);
 
@@ -76,30 +77,23 @@ export async function POST(request: Request) {
     const festival = await createFestival({
       name,
       slug,
-      owner: { connect: { id: userId } },
-      status: "DRAFT",
+      ownerId: userId,
+      status: "READY",
       isLocked: true,
     });
 
     // [New Phase 2] Consume Payment
     if (paymentIdToConsume) {
       const { consumePayment } = await import(
-        "@/server/services/billing.service"
+        "@/features/billing/services/billing.service"
       );
       await consumePayment(paymentIdToConsume, { festivalId: festival.id });
     }
 
     return NextResponse.json(festival, { status: 201 });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: (error as any).errors },
-        { status: 400 },
-      );
-    }
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    const payload = formatApiError(error);
+    const status = error instanceof z.ZodError ? 400 : 500;
+    return NextResponse.json(payload, { status });
   }
 }

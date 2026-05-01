@@ -1,18 +1,10 @@
 "use client";
 
-import {
-  ExternalLink,
-  Eye,
-  MoreHorizontal,
-  Pencil,
-  Settings,
-  Trash2,
-} from "lucide-react";
+import { MoreHorizontal, Settings, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { EditFestivalModal } from "@/components/profile/EditFestivalModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,24 +29,17 @@ import {
   type Festival,
   useDeleteFestival,
   useFestivals,
-} from "@/hooks/useFestivals";
+} from "@/features/festivals/hooks/use-festivals";
+import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 
 export function FestivalsTable() {
   const { data: festivals = [], isLoading } = useFestivals();
   const deleteMutation = useDeleteFestival();
-  const [editingFestival, setEditingFestival] = useState<Festival | null>(null);
   const [festivalToDelete, setFestivalToDelete] = useState<Festival | null>(
     null,
   );
 
   const router = useRouter();
-
-  const handleView = (festival: Festival) => {
-    if (!festival.slug) return;
-    // Public Site: /festival-slug
-    const url = `${window.location.origin}/${festival.slug}`;
-    window.open(url, "_blank");
-  };
 
   const handleManage = (festival: Festival) => {
     // Navigate directly to festival dashboard
@@ -93,6 +78,12 @@ export function FestivalsTable() {
     <>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {festivals.map((festival) => {
+          const status = getDerivedFestivalStatus({
+            status: festival.status,
+            startDate: festival.startDate,
+            endDate: festival.endDate,
+            expiresAt: festival.expiresAt,
+          });
           return (
             <Card
               key={festival.id}
@@ -102,7 +93,7 @@ export function FestivalsTable() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <Link
-                      href={`/super-admin/festivals/${festival.id}`}
+                      href={`/super-admin/festivals/${festival.slug}`}
                       className="hover:underline"
                     >
                       <CardTitle className="text-lg">{festival.name}</CardTitle>
@@ -121,21 +112,13 @@ export function FestivalsTable() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
                         onClick={() =>
-                          router.push(`/super-admin/festivals/${festival.id}`)
+                          router.push(`/super-admin/festivals/${festival.slug}`)
                         }
                       >
                         <Settings className="mr-2 h-4 w-4" /> Manage in Admin
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleView(festival)}>
-                        <Eye className="mr-2 h-4 w-4" /> View Site
-                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleManage(festival)}>
                         <Settings className="mr-2 h-4 w-4" /> Dashboard
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setEditingFestival(festival)}
-                      >
-                        <Pencil className="mr-2 h-4 w-4" /> Edit Details
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-red-600 focus:text-red-600 bg-red-50 focus:bg-red-100"
@@ -150,12 +133,20 @@ export function FestivalsTable() {
                   <Badge
                     variant="outline"
                     className={
-                      festival.status === "ACTIVE"
-                        ? "bg-green-100 text-green-700 border-green-300"
-                        : "bg-gray-100 text-gray-600 border-gray-300"
+                      status === "EXPIRED"
+                        ? "bg-red-100 text-red-700 border-red-300"
+                        : status === "ONGOING"
+                          ? "bg-green-100 text-green-700 border-green-300"
+                          : "bg-gray-100 text-gray-600 border-gray-300"
                     }
                   >
-                    {festival.status}
+                    {status === "EXPIRED"
+                      ? "Expired"
+                      : status === "ONGOING"
+                        ? "Ongoing"
+                        : status === "PAST"
+                          ? "Past"
+                          : "Ready"}
                   </Badge>
                   <Badge variant="secondary" className="bg-muted">
                     {festival.tierLabel || "Standard"}
@@ -166,12 +157,6 @@ export function FestivalsTable() {
           );
         })}
       </div>
-
-      <EditFestivalModal
-        festival={editingFestival}
-        open={!!editingFestival}
-        onOpenChange={(open) => !open && setEditingFestival(null)}
-      />
 
       <AlertDialog
         open={!!festivalToDelete}

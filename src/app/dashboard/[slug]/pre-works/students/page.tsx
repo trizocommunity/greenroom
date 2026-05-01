@@ -1,11 +1,15 @@
-import { notFound } from "next/navigation";
-import { StudentsClient } from "@/components/festival/pre-works/students/StudentsClient";
-import { getSession } from "@/lib/auth/session";
-import { findFestivalBySlugOrId } from "@/server/models/festival.model";
-import { findMemberByFestivalAndUser } from "@/server/models/member.model";
-import { prisma } from "@/lib/db"; // Ensure prisma is imported
-import { EmptyState } from "@/components/common/EmptyState";
+import { count, eq } from "drizzle-orm";
 import { Tags } from "lucide-react";
+import { revalidatePath } from "next/cache";
+import { notFound } from "next/navigation";
+import { EmptyState } from "@/components/common/EmptyState";
+import { StudentsClient } from "@/components/festival/pre-works/students/StudentsClient";
+import { getSession } from "@/core/auth/session";
+import { db } from "@/core/database/client";
+import { category as categoryTable } from "@/core/database/schema";
+import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
+import { findMemberByFestivalAndUser } from "@/features/members/repositories/member.repository";
+import { getChestNumberSettings } from "@/features/students/actions/chest-number.actions";
 
 export default async function StudentsPage({
   params,
@@ -13,20 +17,21 @@ export default async function StudentsPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug: festivalSlug } = await params;
-  const festival = await findFestivalBySlugOrId(festivalSlug); // This uses findFestivalBySlugOrId which might not be prisma directly but returns limited fields?
-  // Actually findFestivalBySlugOrId calls prisma.festival.findFirst.
-  // It returns a Festival object.
+  const festival = await findFestivalBySlugOrId(festivalSlug);
 
   if (!festival) {
     notFound();
   }
 
-  // Check for categories
-  const categoryCount = await prisma.category.count({
-    where: { festivalId: festival.id },
-  });
+  const slug = festival.slug;
 
-  if (categoryCount === 0) {
+  // Check for categories
+  const [categoryCountResult] = await db
+    .select({ c: count() })
+    .from(categoryTable)
+    .where(eq(categoryTable.festivalId, festival.id));
+
+  if (categoryCountResult.c === 0) {
     return (
       <EmptyState
         title="No Categories Found"
@@ -38,23 +43,32 @@ export default async function StudentsPage({
     );
   }
 
-  // Fetch current user member role
   const session = await getSession();
   const member = session?.userId
     ? await findMemberByFestivalAndUser(festival.id, session.userId)
     : null;
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Students</h2>
-        <p className="text-muted-foreground">
-          Manage students for{" "}
-          <span className="font-semibold text-foreground">{festival.name}</span>
-        </p>
-      </div>
+  const initialChestSettings = await getChestNumberSettings(festival.id);
 
-      <StudentsClient festivalId={festival.id} />
+  const studentsPath = `/dashboard/${slug}/pre-works/students` as const;
+  async function handleChestRevalidate() {
+    "use server";
+    revalidatePath(studentsPath);
+  }
+
+  return (
+    <div className="pt-4 sm:pt-6">
+      <StudentsClient
+        festivalId={festival.id}
+        festivalSlug={festival.slug}
+        teamLeaderLimit={(festival as any).teamLeaderLimit ?? 2}
+        initialChestSettings={initialChestSettings}
+        onChestRevalidate={handleChestRevalidate}
+      >
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+          Students
+        </h1>
+      </StudentsClient>
     </div>
   );
 }

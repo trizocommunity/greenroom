@@ -62,8 +62,7 @@ export function ResultsTeaser({
             </h2>
             <p className="text-lg text-muted-foreground mb-8 text-pretty">
               Follow every placement as it happens. Greenroom keeps scores,
-              tiebreakers, and rankings in sync for organizers, judges, and
-              teams.
+              tiebreakers, and rankings in sync for organizers and teams.
             </p>
             <Link href={`/${slug}/results`}>
               <Button

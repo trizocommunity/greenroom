@@ -1,21 +1,19 @@
-import { Calendar, Database, LayoutList, Users, MapPin } from "lucide-react";
+import { Database, LayoutList, MapPin, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils/cn";
 
 interface LimitationCardProps {
   tierLabel: string;
   limits: {
     maxStudents: number;
     maxProgrammes: number;
-    maxEvents?: number;
     maxStages?: number;
     maxStorageMB: number;
   };
   usage?: {
     studentsCount: number;
     programmesCount: number;
-    eventsCount?: number;
     stagesCount?: number;
     storageUsedMB: number;
   };
@@ -29,7 +27,6 @@ export function LimitationCard({
   usage = {
     studentsCount: 0,
     programmesCount: 0,
-    eventsCount: 0,
     stagesCount: 0,
     storageUsedMB: 0,
   },
@@ -50,13 +47,6 @@ export function LimitationCard({
       limit: limits.maxProgrammes,
       used: usage.programmesCount,
       color: "text-green-500",
-    },
-    {
-      label: "Events",
-      icon: Calendar,
-      limit: limits.maxEvents || 0,
-      used: usage.eventsCount || 0,
-      color: "text-purple-500",
     },
     {
       label: "Stages",
