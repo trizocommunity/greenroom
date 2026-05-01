@@ -137,5 +137,6 @@ export function useAssignments(festivalId: string) {
     isDeleting: deleteMutation.isPending,
     isDeletingTeam: deleteTeamMutation.isPending,
     bulkCreateAssignment: bulkCreateMutation.mutateAsync,
+    isBulkCreating: bulkCreateMutation.isPending,
   };
 }

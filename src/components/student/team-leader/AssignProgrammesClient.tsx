@@ -1,7 +1,14 @@
 "use client";
 
 import { format } from "date-fns";
-import { CalendarClock, Mail, Phone, ShieldAlert, Trash2 } from "lucide-react";
+import {
+  CalendarClock,
+  Loader2,
+  Mail,
+  Phone,
+  ShieldAlert,
+  Trash2,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
@@ -81,6 +88,7 @@ export function AssignProgrammesClient({
   const {
     assignments,
     bulkCreateAssignment,
+    isBulkCreating,
     refetch,
     deleteAssignment,
     deleteTeamAssignment,
@@ -1015,7 +1023,8 @@ export function AssignProgrammesClient({
                               disabled={
                                 runtimeIsReadOnly ||
                                 selectedNewCount === 0 ||
-                                isOverLimit
+                                isOverLimit ||
+                                isBulkCreating
                               }
                               className={
                                 runtimeIsReadOnly
@@ -1023,6 +1032,9 @@ export function AssignProgrammesClient({
                                   : ""
                               }
                             >
+                              {isBulkCreating && (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              )}
                               Assign
                             </Button>
                           </div>
@@ -1362,9 +1374,13 @@ export function AssignProgrammesClient({
                             disabled={
                               runtimeIsReadOnly ||
                               selectedNewCount === 0 ||
-                              isOverLimit
+                              isOverLimit ||
+                              isBulkCreating
                             }
                           >
+                            {isBulkCreating && (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            )}
                             Assign ({selectedNewCount})
                           </Button>
                         </div>

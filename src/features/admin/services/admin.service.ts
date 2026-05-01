@@ -1,4 +1,4 @@
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   festival as festivals,
@@ -8,13 +8,20 @@ import {
 
 export const adminService = {
   getFestivalsForAdmin: async () => {
-    return db.query.festival.findMany({
-      with: {
-        user: { columns: { email: true } },
-      },
-      orderBy: [desc(festivals.createdAt)],
-      limit: 50,
-    });
+    const rows = await db
+      .select({
+        festival: festivals,
+        userEmail: users.email,
+      })
+      .from(festivals)
+      .leftJoin(users, eq(festivals.ownerId, users.id))
+      .orderBy(desc(festivals.createdAt))
+      .limit(50);
+
+    return rows.map((r) => ({
+      ...r.festival,
+      user: { email: r.userEmail ?? "No User" },
+    }));
   },
 
   getUsersForAdmin: async () => {
