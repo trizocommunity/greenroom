@@ -55,7 +55,6 @@ export const paymentStatus = pgEnum("PaymentStatus", [
   "PENDING",
   "PAID",
   "FAILED",
-  "REFUNDED",
 ]);
 export const programmeNotificationEventType = pgEnum(
   "ProgrammeNotificationEventType",

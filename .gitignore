@@ -42,3 +42,16 @@ next-env.d.ts
 
 /src/app/generated
 /generated
+
+# AI Agents & IDEs
+.agents/
+.agent/
+.claude/
+.continue/
+.qoder/
+.windsurf/
+.gemini/
+
+# local env files
+.env*.local
+

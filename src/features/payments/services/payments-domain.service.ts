@@ -15,7 +15,7 @@ import {
 } from "@/features/payments/services/razorpay.service";
 
 type PaymentPurpose = "FESTIVAL_CREATION";
-type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "REFUNDED";
+type PaymentStatus = "PENDING" | "PAID" | "FAILED";
 type Tier = "BASIC" | "STANDARD" | "PRO";
 
 type InitiatePaymentParams = {
