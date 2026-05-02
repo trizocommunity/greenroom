@@ -1,94 +1,116 @@
-# Judgment workflow — plan (aligned with codebase)
+# Judgment workflow — aligned with codebase
 
-Simple notes for setting up **judgment** after **programme reporting**: what exists today, what you described for tomorrow, and where to change code.
+How **judgment** works **after programme reporting**: lifecycle statuses, status recompute, external judge links, and where to change code.
 
 ---
 
-## Words you used (target story)
+## Product story (target)
 
 1. **Reporting finished** — attendance closed; code letters issued; programme is **ready for judgment** (marks / scores).
-2. **Judgment in progress** — use programme status **`STARTED`** for “we are judging this programme now” (or equivalent).
-3. **Judgment finished** — **end** the programme (status **`ENDED`**) as the step *after* judgment, not the same moment as reporting.
-4. **Leaderboard** — ended programmes should **show up soon** on the leaderboard (product decision: with unpublished marks, with placeholders, or only after some publish rule).
-5. **Public festival** — when you **publish marks** (`isPublished` on results / programme **`PUBLISHED`**), visitors see them on the public site.
+2. **Judgment in progress** — programme status `**STARTED`**: stage manager can create judge links; external judge may submit scores.
+3. **Judgment complete (scores in, not necessarily public)** — programme status `**ENDED`** when every **reported** participant has a **result** (typically draft / unpublished).
+4. **Leaderboard / public** — standings that respect `**isPublished`**; bulk publish moves programme to `**PUBLISHED**` when appropriate.
 
 ---
 
-## What the code does today
+## Programme statuses (`ProgrammeStatus`)
 
-### Programme statuses (`ProgrammeStatus` in Prisma)
+Rough lifecycle:
 
-`READY` → `ASSIGNED` → `SCHEDULED` → `REPORTING` → `STARTED` → `ENDED` → `JUDGED` → `PUBLISHED`
+`READY` → `ASSIGNED` → `SCHEDULED` → `REPORTING` → `STARTED` → `ENDED` → `PUBLISHED`
 
-- **`REPORTING`** — set when stage manager **starts** reporting (`programme-reporting.service.ts` → `start`).
-- **`ENDED`** — set when stage manager **Submit & Close** reporting (`close()`). So today, **“reporting ended” and “programme ENDED” happen together.**
-- **`STARTED`** — exists on the enum and is allowed in **Event Works** (`programme-status.service.ts` → `getAllowedEventWorksStatuses`), but **nothing automatically sets it** in the reporting flow.
-- **`JUDGED` / `PUBLISHED`** — driven by **results**: when every assignment has a result → `JUDGED`; when all results are published → `PUBLISHED` (`updateProgrammeStatus` + `setProgrammePublished`).
+(`RESET` and `**JUDGED**` still exist on the enum and in Event Works filters; see below.)
 
-### `updateProgrammeStatus` (important gap)
 
-`updateProgrammeStatus` **only** looks at assignments, schedule, and results. It **does not** read reporting sessions. It computes:
+| Status          | How it is reached (high level)                                                                                                                                                                                                                                           |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `**REPORTING**` | Stage manager **starts** reporting — `[programme-reporting.service.ts](../../src/features/programmes/services/programme-reporting.service.ts)` `start`.                                                                                                                  |
+| `**STARTED`**   | Stage manager **Submit & Close** reporting — same file `close()`: locks session, requires code letters for every **reported** participant, sets programme `**STARTED`**, notifies (“ready for judgment”).                                                                |
+| `**ENDED**`     | After external (or internal) scoring: when `**updateProgrammeStatus**` runs and there is a **closed** reporting session, and **every reported participant** has a **result**, but not all of those results are **published** yet.                                        |
+| `**PUBLISHED`** | All results for **reported** participants are published (closed-session path), or bulk publish / `setProgrammePublished` as applicable.                                                                                                                                  |
+| `**JUDGED`**    | **Not** set on the “closed reporting + external judge” path. It comes from `**updateProgrammeStatus`** when there is **no** closed reporting session and **every assignment** has a result (fallback branch), and from some unpublish paths via `setProgrammePublished`. |
 
-- `PUBLISHED` / `JUDGED` from results, else  
-- **`SCHEDULED`** if there is a schedule entry, else `ASSIGNED` / `READY`.
-
-So if this runs while the programme is **`REPORTING`**, **`STARTED`**, or **`ENDED`**, it can **overwrite** those with **`SCHEDULED`** (or another lower step). It is called from **schedule** and **assignment** actions and **results** actions.
-
-**For the judgment workflow you need either:**
-
-- extend `updateProgrammeStatus` to **preserve** or **respect** reporting + post-reporting phases (e.g. read `ProgrammeReportingSession.status === CLOSED`, or never downgrade from `ENDED`/`STARTED` without an explicit rule), **or**
-- stop calling `updateProgrammeStatus` in paths that would clobber manual / phase-driven statuses (usually the weaker option).
-
-### Leaderboard and public
-
-- **Dashboard / student leaderboard** filter programmes with `isProgrammeInEventWorks` (includes `ENDED`, `JUDGED`, `PUBLISHED`, etc. for Standard).
-- **Standing / points** in `LeaderboardClient` use results where **`isPublished`** is true — so **unpublished marks do not affect the public-style numbers** until publish.
-- **Bulk publish** (`results` actions) sets results published and calls **`setProgrammePublished`** → programme **`PUBLISHED`** — this is what ties **“publish marks”** to **public** visibility (plus revalidation paths).
 
 ---
 
-## Suggested direction for tomorrow (implementation sketch)
+## `updateProgrammeStatus` (two branches)
 
-Decide the **exact** state machine, then wire it in three places: **reporting close**, **judgment UI / actions**, **status recompute**.
+`[programme-status.service.ts](../../src/features/programmes/services/programme-status.service.ts)` `updateProgrammeStatus(programmeId, reportingSessionId?)`:
 
-### Option A — Minimal change to your wording
+### A. Closed reporting session exists
 
-| Step | Programme status | Notes |
-|------|------------------|--------|
-| Reporting live | `REPORTING` | unchanged |
-| Reporting closed (submit) | **`STARTED`** instead of `ENDED` | “Ready for / in judgment” — you can still use `STARTED` only while someone is actively judging if you add a second action |
-| Judgment complete | **`ENDED`** | explicit action or rule (e.g. all marks saved as draft) |
-| All results entered | **`JUDGED`** | existing `updateProgrammeStatus` |
-| Publish | **`PUBLISHED`** | existing publish flow |
+Uses the **latest closed** `ProgrammeReportingSession` for the programme (or the one passed as `reportingSessionId` if it matches).
 
-### Option B — Extra clarity
+Status is derived only from **participants recorded on that session** (`programmeReportedParticipant`) and **results** tied to those assignments:
 
-Introduce an explicit **“reporting closed, not judged”** state if you need it in the UI. That would require a **new enum value** (e.g. `READY_TO_JUDGE`) unless you overload `STARTED` for both “queued” and “live judging”.
+- Default: `**STARTED`**.
+- If `reportedTotal > 0` and every reported assignment has a published result → `**PUBLISHED**` (sets `publishedAt`).
+- Else if `reportedTotal > 0` and every reported assignment has a result → `**ENDED**`.
+- If `**reportedTotal === 0**`, the `> 0` guards prevent jumping to `**ENDED**` / `**PUBLISHED**`; status stays `**STARTED**`.
 
-### Leaderboard “soon”
+`**JUDGED` is not used here.** “All scores in for reported rows” maps to `**ENDED`**, not `**JUDGED**`.
 
-Clarify product rule, then implement in **`leaderboard.service.ts` / `LeaderboardClient`**:
+### B. No closed reporting session
 
-- Show programme rows for **`ENDED`** with **no scores** yet (message: “Awaiting publish”), or  
-- Only show after first **published** result, or  
-- Show **draft** standings only to staff (separate query).
+Legacy / non-reporting flow: derives `**SCHEDULED**`, `**ASSIGNED**`, `**JUDGED**`, `**PUBLISHED**` from assignments, schedule entries, and results (see file for full conditions).
+
+So: `**STARTED**` / `**ENDED**` are **not** overwritten by `**SCHEDULED`** when a closed session exists and this function is invoked with that programme state—**provided** the closed-session branch runs (it runs first whenever a closed session exists).
 
 ---
 
-## Files to touch (checklist)
+## External judgment flow
 
-| Area | Files / services |
-|------|------------------|
-| Reporting → next status | `src/server/services/programme-reporting.service.ts` (`close`, maybe `reset` / `start`) |
-| Status recompute safety | `src/server/services/programme-status.service.ts` (`updateProgrammeStatus`) |
-| Judgment / marks UI | `src/app/dashboard/[slug]/event-works/marks/page.tsx`, `ResultsManagementClient.tsx`, related actions |
-| Results & publish | `src/server/actions/results.ts`, `Result` model / `isPublished` |
-| Event Works eligibility | `programme-status.service.ts` (`getAllowedEventWorksStatuses`) if new statuses appear |
-| Badges / copy | `ProgrammeStatusBadge.tsx`, any programme lists |
-| Docs | `docs/architecture/programme-reporting-complete.md` (update if close no longer means `ENDED`) |
+
+| Step                     | Code                                                                                                                                                                                                                                                                                                                                |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Judgment dashboard       | `[src/app/dashboard/[slug]/event-works/judgment/page.tsx](../../src/app/dashboard/[slug]/event-works/judgment/page.tsx)` — feature `**eventWorks.judgmentUI`**.                                                                                                                                                                     |
+| Board data               | `[programme-judgment-board.service.ts](../../src/features/programmes/services/programme-judgment-board.service.ts)`: `**STARTED**` → “programmes to judge” (by stage); `**ENDED**` or `**PUBLISHED**` → “judged” history.                                                                                                           |
+| Create judge link        | `[programme-judging.actions.ts](../../src/features/programmes/actions/programme-judging.actions.ts)` `createProgrammeJudgeLinkAction` — requires `**STARTED**`, closed reporting session, code letters; feature `**eventWorks.externalJudging**`. Revokes any other **open** judge session for that programme (single active link). |
+| Judge opens / submits    | Same file: open lock + `submitProgrammeJudgeSessionAction` — writes `**result`** rows with `**isPublished: false**`, then `**updateProgrammeStatus(programmeId, reportingSessionId)**`.                                                                                                                                             |
+| Standard/Pro marks route | Redirects to judgment — `[marks/page.tsx](../../src/app/dashboard/[slug]/event-works/marks/page.tsx)`.                                                                                                                                                                                                                              |
+
+
+**Two feature flags:** `**eventWorks.judgmentUI`** (page) vs `**eventWorks.externalJudging**` (server actions). They can diverge; keep them aligned per product.
+
+### Results data after judge submit
+
+- **Code letters in Results / Marks** come from **`enrichProgrammesAssignmentsResultCodeLetters`** (latest closed reporting session → `programme_code_letter` + recipients), not a column on `result`, so the DB stays aligned even when migrations are out of sync.
+- Immediately after upserting scores for all code-letter recipients, the server **deletes every other `result` row for that programme** (assignments not touched by that submission). That removes stale manual or old marks on non-reported rows so the programme cannot show a mix of “judged” and “not judged” scores.
+
+---
+
+## Leaderboard and public
+
+- Event Works / leaderboard programme lists use `**isProgrammeInEventWorks**` (Standard includes `**STARTED**`, `**ENDED**`, `**JUDGED**`, `**PUBLISHED**`, etc.).
+- **Standing / points** that should mirror “public” behaviour use results where `**isPublished`** is true — draft judge submissions do not move public standings until publish.
+- **Bulk publish** (`results` actions) sets results published and can drive programme `**PUBLISHED`** via `**setProgrammePublished**` (plus revalidation, including judgment paths).
+
+---
+
+## Optional product follow-ups
+
+- **Leaderboard “soon”** — decide whether `**ENDED`** programmes with unpublished marks show placeholders, hide until publish, or staff-only draft views (`leaderboard` services / `LeaderboardClient`).
+- **Naming** — if `**JUDGED`** vs `**ENDED**` confuses operators, consider documentation-only clarification or a future enum/UI cleanup (larger change).
+
+---
+
+## Files checklist
+
+
+| Area                            | Files                                                                                                                                                                                                                                                                                    |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reporting close → `**STARTED**` | `[src/features/programmes/services/programme-reporting.service.ts](../../src/features/programmes/services/programme-reporting.service.ts)` (`close`)                                                                                                                                     |
+| Status recompute                | `[src/features/programmes/services/programme-status.service.ts](../../src/features/programmes/services/programme-status.service.ts)` (`updateProgrammeStatus`, `setProgrammePublished`)                                                                                                  |
+| Judgment UI / board             | `[judgment/page.tsx](../../src/app/dashboard/[slug]/event-works/judgment/page.tsx)`, `[programme-judgment-board.service.ts](../../src/features/programmes/services/programme-judgment-board.service.ts)`, `[JudgmentClient](../../src/components/dashboard/judgment/JudgmentClient.tsx)` |
+| Judge actions                   | `[programme-judging.actions.ts](../../src/features/programmes/actions/programme-judging.actions.ts)`                                                                                                                                                                                     |
+| Results & publish               | `[src/features/results/actions/results.actions.ts](../../src/features/results/actions/results.actions.ts)`, `Result` / `isPublished`                                                                                                                                                     |
+| Event Works eligibility         | `[programme-status.service.ts](../../src/features/programmes/services/programme-status.service.ts)` (`getAllowedEventWorksStatuses`, etc.)                                                                                                                                               |
+| Sidebar / plan features         | `[sidebar.config.ts](../../src/config/sidebar.config.ts)`, `[features-tags.ts](../../src/features/plan-features/services/features-tags.ts)`                                                                                                                                              |
+| Related docs                    | `[programme-reporting-complete.md](./programme-reporting-complete.md)` if reporting close semantics are described there                                                                                                                                                                  |
+
 
 ---
 
 ## One-line summary
 
-**Today:** closing reporting sets **`ENDED`** immediately; **`STARTED`** is unused in automation; **`updateProgrammeStatus`** can **reset** lifecycle statuses back to **`SCHEDULED`**. **Tomorrow:** decide the exact chain **`REPORTING` → `STARTED` → `ENDED` → `JUDGED` → `PUBLISHED`**, then align **reporting close**, **judgment actions**, **status recompute**, and **leaderboard / public** rules with that chain.
+**Reporting close** sets `**STARTED`**; **external judge** submits draft **results**; `**updateProgrammeStatus`** (closed-session path) moves to `**ENDED**` when every **reported** participant is scored, then `**PUBLISHED`** when all those results are published — `**JUDGED**` is for other flows, not this path.

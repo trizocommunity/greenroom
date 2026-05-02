@@ -11,10 +11,7 @@ import {
   programmeReportedParticipant as reportedParticipantTable,
   scheduleEntry as scheduleEntryTable,
 } from "@/core/database/schema";
-import {
-  CodeLetterGeneratorService,
-  shuffleInPlace,
-} from "./code-letter-generator.service";
+import { CodeLetterGeneratorService } from "./code-letter-generator.service";
 import { NotificationService } from "@/features/notifications/services/notification.service";
 
 async function getOrCreateSessionByScheduleEntry(scheduleEntryId: string) {
@@ -555,6 +552,29 @@ export const ProgrammeReportingService = {
       throw new Error("Only in-progress reporting can be submitted");
     }
 
+    const reportedWithStudent = session.programmeReportedParticipants.filter(
+      (p): p is (typeof p & { studentId: string }) => Boolean(p.studentId),
+    );
+    if (reportedWithStudent.length > 0) {
+      const letters = await db.query.programmeCodeLetter.findMany({
+        where: eq(codeLetterTable.reportingSessionId, reportingSessionId),
+        with: { programmeCodeLetterRecipients: true },
+      });
+      const studentIdsWithCode = new Set<string>();
+      for (const letter of letters) {
+        for (const r of letter.programmeCodeLetterRecipients) {
+          studentIdsWithCode.add(r.studentId);
+        }
+      }
+      for (const p of reportedWithStudent) {
+        if (!studentIdsWithCode.has(p.studentId)) {
+          throw new Error(
+            "Assign a code letter to every reported participant (spin for each present row) before submitting.",
+          );
+        }
+      }
+    }
+
     const effectiveEndedAt =
       session.scheduleEntry?.startTime || new Date().toISOString();
 
@@ -805,8 +825,6 @@ export const ProgrammeReportingService = {
 
     // Restriction removed to allow INDIVIDUAL programmes to use spin wheel
 
-    const nowStr = new Date().toISOString();
-
     const studentCodes = await CodeLetterGeneratorService.generateFromSpinWheel(
       {
         id: session.id,
@@ -817,7 +835,6 @@ export const ProgrammeReportingService = {
       session.programmeReportedParticipants,
       actorName,
     );
-
     // Session remains IN_PROGRESS to allow more participants to report and spin
     // Session status and programme status will be updated via a separate close action
 

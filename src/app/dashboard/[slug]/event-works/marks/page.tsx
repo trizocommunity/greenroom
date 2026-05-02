@@ -11,11 +11,13 @@ import {
   programmeJudgeSession as pjsTable,
   programme as programmeTable,
 } from "@/core/database/schema";
+import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
 import {
   filterProgrammesForEventWorks,
   type ProgrammeStatus,
   type Tier,
 } from "@/features/programmes/services/programme-status.service";
+import { enrichProgrammesAssignmentsResultCodeLetters } from "@/features/results/services/results.service";
 
 export const metadata: Metadata = {
   title: "Results",
@@ -62,6 +64,14 @@ export default async function MarksRedirectPage({
   // For Standard/Pro, redirect to the dedicated judgment route.
   if (tier !== "BASIC") {
     redirect(`/dashboard/${slug}/event-works/judgment`);
+  }
+
+  const canUseMarks = await getEffectiveFeatureTagEnabled(
+    tier,
+    "eventWorks.marksUI",
+  );
+  if (!canUseMarks) {
+    return notFound();
   }
 
   const judgmentAllowedStatuses: ProgrammeStatus[] =
@@ -114,6 +124,8 @@ export default async function MarksRedirectPage({
       />
     );
   }
+
+  await enrichProgrammesAssignmentsResultCodeLetters(eventWorksProgrammes as any);
 
   return (
     <div className="pt-4 sm:pt-6">

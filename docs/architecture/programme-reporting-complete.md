@@ -48,7 +48,7 @@ Statuses: `NOT_STARTED` → `IN_PROGRESS` → `RESET` **or** `CLOSED`. See `Prog
 2. **Start** — Creates session if missing; sets `IN_PROGRESS`, `windowEndsAt` = now + **5 minutes**, sets programme status to **`REPORTING`**, notifies assigned students + team leaders (`REPORTING_STARTED`, `PROGRAMME_STATUS_CHANGED`).
 3. **Mark** — Stage manager toggles assignments (single or bulk). Rows go into `ProgrammeReportedParticipant` with `groupId` / `teamNumber` copied from the assignment. Affected students get `REPORTING_PARTICIPANT_MARKED`.
 4. **Stop / Reset** — Sets session to **`RESET`**, clears the window, programme back to **`SCHEDULED`**. User-facing copy: **“Reporting closed”** — no codes (`REPORTING_RESET`).
-5. **Submit / Close** — Only from **`IN_PROGRESS`**. Session becomes **`CLOSED`**, **locked**, codes created, programme status **`ENDED`**. User-facing: **“Reporting ended”**. Broad notifications + per-student `CODE_LETTER_ISSUED`.
+5. **Submit / Close** — Only from **`IN_PROGRESS`**. Session becomes **`CLOSED`**, **locked**, codes created, programme status **`STARTED`** (ready for judgment / external marks). User-facing: **“Reporting ended”**. Broad notifications + `PROGRAMME_STATUS_CHANGED` (“ready for judgment”) + per-student `CODE_LETTER_ISSUED`.
 6. **Schedule change** — `unlockByScheduleEntryChange` sets locked sessions back to **unlocked** + status **`RESET`** when the schedule entry is edited (see `schedule.actions.ts`).
 
 ---
@@ -84,7 +84,7 @@ Validation: GROUP assignments must have `teamNumber >= 1`; INDIVIDUAL must not u
 |--------|---------------------|
 | Start | `REPORTING` |
 | Reset | `SCHEDULED` |
-| Close | `ENDED` |
+| Close | `STARTED` |
 
 ---
 
@@ -102,9 +102,9 @@ Validation: GROUP assignments must have `teamNumber >= 1`; INDIVIDUAL must not u
 
 | Path | Purpose |
 |------|---------|
-| `src/server/services/programme-reporting.service.ts` | Core logic: list, start, reset, mark, bulk mark, close, unlock. |
-| `src/server/actions/programme-reporting.actions.ts` | Server actions, auth, `revalidatePath` after mutations. |
-| `src/server/services/notification.service.ts` | Recipient resolution and dispatch. |
+| `src/features/programmes/services/programme-reporting.service.ts` | Core logic: list, start, reset, mark, bulk mark, close, unlock. |
+| `src/features/programmes/actions/programme-reporting.actions.ts` | Server actions, auth, `revalidatePath` after mutations. |
+| `src/features/notifications/services/notification.service.ts` | Recipient resolution and dispatch. |
 | `src/server/services/realtime-notification-bus.service.ts` | Realtime fan-out. |
 | `src/app/api/realtime/notifications/route.ts` | SSE stream. |
 | `src/hooks/useProgrammeNotifications.ts` | Student notification hook. |
@@ -114,6 +114,6 @@ Validation: GROUP assignments must have `teamNumber >= 1`; INDIVIDUAL must not u
 
 ---
 
-## Related doc
+## Related docs
 
-For a shorter note focused on notifications and the old workflow naming, see `programme-reporting-notifications-workflow.md` in this folder. **This file** is the fuller **code-aligned** picture (GROUP teams, plan gating, and file map).
+For a shorter note focused on notifications and the old workflow naming, see `programme-reporting-notifications-workflow.md` in this folder. For **programme status after close** (`STARTED`) through external judgment, **`ENDED`**, and **`PUBLISHED`**, see `judgment-workflow-plan.md`. **This file** is the fuller **code-aligned** picture (GROUP teams, plan gating, and file map).

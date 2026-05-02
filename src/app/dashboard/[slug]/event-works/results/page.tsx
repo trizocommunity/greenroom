@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ResultsExploreClient } from "@/components/dashboard/event-works/ResultsExploreClient";
 import type { Tier } from "@/core/types/app-enums";
+import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
 import { filterProgrammesForEventWorks } from "@/features/programmes/services/programme-status.service";
 import { getFestivalResultsDataBySlug } from "@/features/results/services/results.service";
 
@@ -27,8 +28,16 @@ export default async function ResultsPage({
 
   const tier = (festival.tier ?? "STANDARD") as Tier;
 
-  // BASIC excludes the dedicated Results page feature.
+  // BASIC excludes the dedicated Results explore page; Standard/Pro require schedule-driven judging.
   if (tier === "BASIC") {
+    return notFound();
+  }
+
+  const canUseDedicatedResults = await getEffectiveFeatureTagEnabled(
+    tier,
+    "eventWorks.externalJudging",
+  );
+  if (!canUseDedicatedResults) {
     return notFound();
   }
 

@@ -153,13 +153,14 @@ export default async function OverviewWidgets({
       label: "Results",
       icon: BarChart2,
       href: `/dashboard/${slug}/event-works/results`,
-      condition: planFeature(features, "results"),
+      condition:
+        canUseExternalJudging && planFeature(features, "results"),
     },
     {
       label: "Leaderboard",
       icon: Trophy,
       href: `/dashboard/${slug}/event-works/leaderboard`,
-      condition: tier === "BASIC" || planFeature(features, "liveScoreboard"),
+      condition: planFeature(features, "liveScoreboard"),
     },
     {
       label: "Documentation",
@@ -379,12 +380,21 @@ export default async function OverviewWidgets({
                 )}
               </div>
               <div className="pt-4 border-t mt-auto">
-                <Link
-                  href={`/dashboard/${slug}/event-works/results`}
-                  className="w-full flex items-center justify-center py-2 text-sm border rounded-md hover:bg-muted/50 transition-colors"
-                >
-                  View All Results <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
+                {canUseExternalJudging ? (
+                  <Link
+                    href={`/dashboard/${slug}/event-works/results`}
+                    className="w-full flex items-center justify-center py-2 text-sm border rounded-md hover:bg-muted/50 transition-colors"
+                  >
+                    View All Results <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                ) : canUseMarksUI ? (
+                  <Link
+                    href={`/dashboard/${slug}/event-works/marks`}
+                    className="w-full flex items-center justify-center py-2 text-sm border rounded-md hover:bg-muted/50 transition-colors"
+                  >
+                    View Marks <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                ) : null}
               </div>
             </CardContent>
           </Card>

@@ -11,6 +11,7 @@ import {
   gt,
   inArray,
   isNull,
+  notInArray,
   lte,
   ne,
   or,
@@ -642,6 +643,8 @@ export async function submitProgrammeJudgeSessionAction(
           ),
         );
 
+      const judgedAssignmentIds: string[] = [];
+
       for (const cl of codeLetters) {
         const pts = pointsByCodeResolved.get(cl.code)!;
         const roundedPoints = Math.round(pts);
@@ -657,6 +660,7 @@ export async function submitProgrammeJudgeSessionAction(
         }
 
         for (const assignmentId of assignmentIds) {
+          judgedAssignmentIds.push(assignmentId);
           await tx
             .insert(resultTable)
             .values({
@@ -684,6 +688,18 @@ export async function submitProgrammeJudgeSessionAction(
             });
         }
       }
+
+      const uniqueJudged = [...new Set(judgedAssignmentIds)];
+      if (uniqueJudged.length > 0) {
+        await tx
+          .delete(resultTable)
+          .where(
+            and(
+              eq(resultTable.programmeId, judgeSession.programmeId),
+              notInArray(resultTable.assignmentId, uniqueJudged),
+            ),
+          );
+      }
     });
 
     await updateProgrammeStatus(
@@ -691,6 +707,8 @@ export async function submitProgrammeJudgeSessionAction(
       judgeSession.reportingSessionId,
     );
     revalidatePath(`/dashboard/${festival.slug}/event-works/judgment`);
+    revalidatePath(`/dashboard/${festival.slug}/event-works/results`);
+    revalidatePath(`/dashboard/${festival.slug}/event-works/marks`);
 
     return { success: true, data: undefined };
   } catch (error) {

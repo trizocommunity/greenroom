@@ -58,33 +58,36 @@ export async function middleware(request: NextRequest) {
   const nonce = generateNonce();
   const signature = await signNonce(nonce, CSRF_SECRET);
 
-response.cookies.set("_csrf_nonce", nonce, {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/",
-      maxAge: 60 * 60,
-    });
+  response.cookies.set("_csrf_nonce", nonce, {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/",
+    maxAge: 60 * 60,
+  });
 
-    response.cookies.set("_csrf_sig", signature, {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/",
-      maxAge: 60 * 60,
-    });
+  response.cookies.set("_csrf_sig", signature, {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/",
+    maxAge: 60 * 60,
+  });
 
-    response.headers.set("x-csrf-nonce", nonce);
-    response.headers.set("x-csrf-signature", signature);
+  response.headers.set("x-csrf-nonce", nonce);
+  response.headers.set("x-csrf-signature", signature);
 
   const cspNonce = `'nonce-${nonce}'`;
 
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+
+  // Permissions policy (restrict browser features).
+  // camera=(self) allows getUserMedia on this origin (e.g. programme QR scan). camera=() blocks all camera access.
   response.headers.set(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()",
+    "camera=(self), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()",
   );
   response.headers.set(
     "Content-Security-Policy",

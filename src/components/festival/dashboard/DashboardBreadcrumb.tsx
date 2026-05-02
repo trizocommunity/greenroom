@@ -47,8 +47,8 @@ export function DashboardBreadcrumb({
 
     // Fallback: Sidebar groups or formatted string
     if (segment === "pre-event-works" || segment === "Pre Event Works") return "Pre Event Works";
-    if (segment === "event-works") return "Event Works";
-    if (segment === "on-event-works") return "On-Event Works";
+    if (segment === "event-works" || segment === "on-event-works")
+      return "Event Works";
 
     // Fallback: Capitalize
     return segment.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());

@@ -98,9 +98,9 @@ export const getFestivalDashboardSidebarConfig = (
   const isSuperAdmin = role === "SUPER_ADMIN";
   const normalizedRole = role as FestivalRole;
   const useExternalJudging = plan.useExternalJudging ?? false;
-  // Results page is excluded for BASIC; available only when external judging plan path is enabled.
+  // Dedicated /event-works/results is excluded for BASIC; available when external judging is enabled.
   const canUseResultsPage = useExternalJudging;
-  const judgmentTitle = useExternalJudging ? "Judgment" : "Results";
+  const judgmentTitle = useExternalJudging ? "Judgment" : "Marks";
   const judgmentHref = useExternalJudging
     ? `${basePath}/event-works/judgment`
     : `${basePath}/event-works/marks`;

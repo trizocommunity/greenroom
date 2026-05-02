@@ -1,6 +1,6 @@
 "use client";
 
-import { Settings, User } from "lucide-react";
+import { Menu, Settings, User } from "lucide-react";
 import Link from "next/link";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { LimitationCard } from "@/components/festival/dashboard/LimitationCard";
@@ -9,6 +9,7 @@ import type { FestivalRole } from "@/components/festival/FestivalRoleBadge";
 import { FestivalStatusBadge } from "@/components/festival/FestivalStatusBadge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -19,10 +20,9 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import type { FestivalStatus } from "@/core/types/app-enums";
-import { getAbbreviation } from "@/core/utils/cn";
+import { cn, getAbbreviation } from "@/core/utils/cn";
 
 interface DashboardRightSidebarProps {
-  trigger?: React.ReactNode;
   user?: {
     name?: string | null;
     email?: string | null;
@@ -58,7 +58,6 @@ interface DashboardRightSidebarProps {
 
 export function DashboardRightSidebar({
   festivalSlug,
-  trigger,
   user,
   showStatusAndUsage = true,
   festivalName,
@@ -83,7 +82,12 @@ export function DashboardRightSidebar({
 
   return (
     <Sheet>
-      {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
+      <SheetTrigger
+        className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
+        aria-label="Open account and festival menu"
+      >
+        <Menu className="h-5 w-5" />
+      </SheetTrigger>
       <SheetContent
         side="right"
         className="w-full sm:w-[350px] p-0 flex flex-col"

@@ -15,6 +15,20 @@
       "when": 1777029803828,
       "tag": "0001_tranquil_ogun",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777745158615,
+      "tag": "0002_clean_sunspot",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1777745865713,
+      "tag": "0003_lame_trauma",
+      "breakpoints": true
     }
   ]
 }

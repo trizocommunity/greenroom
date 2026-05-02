@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
@@ -8,6 +8,7 @@ import { db } from "@/core/database/client";
 import {
   festival as festivalTable,
   programme as programmeTable,
+  programmeReportingSession as reportingSessionTable,
   result as resultTable,
 } from "@/core/database/schema";
 import {
@@ -33,17 +34,26 @@ export interface SaveResultInput {
   isPublished?: boolean;
 }
 
-function revalidateResultsPaths(
-  slug: string,
-  options?: { includeTeamStatus?: boolean },
-) {
+function revalidateResultsPaths(slug: string) {
   revalidatePath(`/dashboard/${slug}/event-works/marks`);
   revalidatePath(`/dashboard/${slug}/event-works/judgment`);
+  revalidatePath(`/dashboard/${slug}/event-works/results`);
   revalidatePath(`/dashboard/${slug}/event-works/leaderboard`);
-  if (options?.includeTeamStatus) {
-    revalidatePath(`/dashboard/${slug}/event-works/team-status`);
-  }
   revalidatePath(`/${slug}/results`);
+}
+
+async function latestClosedReportingSessionId(
+  programmeId: string,
+): Promise<string | undefined> {
+  const row = await db.query.programmeReportingSession.findFirst({
+    where: and(
+      eq(reportingSessionTable.programmeId, programmeId),
+      eq(reportingSessionTable.status, "CLOSED"),
+    ),
+    orderBy: [desc(reportingSessionTable.endedAt)],
+    columns: { id: true },
+  });
+  return row?.id;
 }
 
 /**
@@ -59,13 +69,16 @@ export async function saveResult(
     });
 
     const result = await ResultModel.upsert(data.assignmentId, data);
-    await updateProgrammeStatus(data.programmeId);
+    const reportingSessionId = await latestClosedReportingSessionId(
+      data.programmeId,
+    );
+    await updateProgrammeStatus(data.programmeId, reportingSessionId);
     const festival = await db.query.festival.findFirst({
       where: eq(festivalTable.id, data.festivalId),
       columns: { slug: true },
     });
     if (festival) {
-      revalidateResultsPaths(festival.slug, { includeTeamStatus: true });
+      revalidateResultsPaths(festival.slug);
     }
     return { success: true, data: result };
   } catch (error) {
@@ -92,7 +105,10 @@ export async function deleteResult(
     });
 
     await ResultModel.delete(resultId);
-    await updateProgrammeStatus(result.programmeId);
+    const reportingSessionId = await latestClosedReportingSessionId(
+      result.programmeId,
+    );
+    await updateProgrammeStatus(result.programmeId, reportingSessionId);
     revalidateResultsPaths(festivalSlug);
     return { success: true, data: undefined };
   } catch (error) {
@@ -121,7 +137,8 @@ export async function bulkPublishProgrammeResults(
 
     await ResultModel.bulkPublishByProgramme(programmeId, isPublished);
     await setProgrammePublished(programmeId, isPublished);
-    await updateProgrammeStatus(programmeId);
+    const reportingSessionId = await latestClosedReportingSessionId(programmeId);
+    await updateProgrammeStatus(programmeId, reportingSessionId);
     revalidateResultsPaths(festivalSlug);
     return { success: true, data: undefined };
   } catch (error) {

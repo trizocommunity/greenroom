@@ -3,7 +3,7 @@
  * All plans use fixed 30-day duration; no read-only after expiry.
  *
  * Lifecycle:
- *   READY/ONGOING/PAST → pre-archival (5 days before expiresAt)
+ *   READY/ONGOING/PAST → pre-archival (7 days before expiresAt)
  *   pre-archival → EXPIRED → deleted (via cron at/after expiresAt)
  */
 
@@ -28,8 +28,8 @@ import {
 } from "@/core/database/schema";
 import { getPublicFestivalResults } from "@/features/festivals/loaders/festival-results.loader";
 
-const PRE_ARCHIVAL_DAYS = 5;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const PRE_ARCHIVAL_DAYS = 7;
 
 export const FestivalExpirationService = {
   /**

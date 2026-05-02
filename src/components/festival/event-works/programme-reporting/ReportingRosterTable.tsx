@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { Dices, Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/core/utils/cn";
 import type { RosterTableRow } from "./types";
@@ -31,12 +31,12 @@ export function ReportingRosterTable({
       {/* Desktop roster (column layout) */}
       <div className="hidden md:block">
         <div className="grid grid-cols-12 border-b bg-muted/40 px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          <div className="col-span-1 flex justify-center">Status</div>
+          <div className="col-span-1 flex justify-center">Present</div>
           <div className="col-span-6">
             {programmeType === "GROUP" ? "Team / members" : "Student"}
           </div>
           <div className="col-span-2">Group</div>
-          <div className="col-span-3 text-right">Code letter</div>
+          <div className="col-span-3 text-right">Code (spin)</div>
         </div>
         <div className="divide-y divide-border/40">
           {rows.map((row) => {
@@ -103,8 +103,8 @@ export function ReportingRosterTable({
                       onClick={() => onSpin(row)}
                       className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold transition-all shadow-sm active:scale-95"
                     >
-                      <Loader2 className="h-3 w-3" />
-                      SPIN
+                      <Dices className="h-3 w-3" />
+                      Spin
                     </button>
                   ) : (
                     <span className="text-muted-foreground/40">—</span>
@@ -186,8 +186,8 @@ export function ReportingRosterTable({
                     onClick={() => onSpin(row)}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold transition-all shadow-sm active:scale-95"
                   >
-                    <Loader2 className="h-3 w-3" />
-                    SPIN
+                    <Dices className="h-3 w-3" />
+                    Spin
                   </button>
                 ) : (
                   <span className="text-muted-foreground/30">—</span>

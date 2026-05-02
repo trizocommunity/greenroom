@@ -10,7 +10,7 @@ import {
 } from "@/features/programmes/services/programme-status.service";
 import { getFestivalLeaderboardDataBySlug } from "@/features/results/services/leaderboard.service";
 
-export default async function TeamStatusPage({
+export default async function LeaderboardPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
@@ -25,10 +25,10 @@ export default async function TeamStatusPage({
   }
 
   const tier = (festival.tier ?? "STANDARD") as Tier;
-  const canViewLeaderboard =
-    tier === "BASIC"
-      ? true
-      : await getEffectiveFeatureEnabled(festival.tier, "liveScoreboard");
+  const canViewLeaderboard = await getEffectiveFeatureEnabled(
+    tier,
+    "liveScoreboard",
+  );
   if (!canViewLeaderboard) {
     redirect(
       `/dashboard/${slug}?error=upgrade_required&feature=liveScoreboard`,

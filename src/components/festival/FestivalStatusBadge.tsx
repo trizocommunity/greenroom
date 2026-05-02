@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 import { AlertTriangle, Calendar, CheckCircle, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { cn } from "@/core/utils/cn";
 import {
   type DerivedFestivalStatus,
   FESTIVAL_STATUS_LABELS,
@@ -115,14 +116,13 @@ export function FestivalStatusBadge({
 
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-auto p-0 hover:bg-transparent"
-        >
-          {renderBadge()}
-        </Button>
+      <PopoverTrigger
+        className={cn(
+          buttonVariants({ variant: "ghost", size: "sm" }),
+          "h-auto border-0 bg-transparent p-0 shadow-none hover:bg-transparent",
+        )}
+      >
+        {renderBadge()}
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 p-3">
         <div className="space-y-3">

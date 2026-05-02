@@ -1,20 +1,33 @@
 "use client";
 
 import jsQR from "jsqr";
-import { AlertCircle, Camera, CheckCircle, Loader2, X } from "lucide-react";
+import {
+  AlertCircle,
+  Camera,
+  CheckCircle,
+  Loader2,
+  Maximize2,
+  Upload,
+  X,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/core/utils/cn";
 import { scanAndReportStudentAction } from "@/features/programmes/actions/programme-reporting.actions";
+import { QuickAddScanForm } from "./QuickAddScanForm";
 
 interface QrScannerProps {
   festivalId: string;
   reportingSessionId: string;
   programmeName: string;
-  onScanSuccess?: (result: any) => void;
-  onScanError?: (error: any) => void;
+  onScanSuccess?: (result: unknown) => void;
+  onScanError?: (error: unknown) => void;
+  /** Tighter layout, no footer help — use inside reporting panel */
+  variant?: "default" | "embedded";
 }
 
 type ScanStatus = "idle" | "scanning" | "processing" | "success" | "error";
@@ -37,12 +50,80 @@ interface ScanResult {
   };
 }
 
+function isSecureCameraContext(): boolean {
+  if (typeof window === "undefined") return false;
+  if (window.isSecureContext) return true;
+  const host = window.location.hostname;
+  return host === "localhost" || host === "127.0.0.1";
+}
+
+type CameraGateReason =
+  | "denied"
+  | "insecure"
+  | "unsupported"
+  | "nodevice"
+  | "busy"
+  | "constraint"
+  | "other";
+
+function mapGetUserMediaError(error: unknown): CameraGateReason {
+  const name = error instanceof DOMException ? error.name : "";
+  if (name === "NotAllowedError" || name === "PermissionDeniedError")
+    return "denied";
+  if (name === "NotFoundError" || name === "DevicesNotFoundError")
+    return "nodevice";
+  if (name === "NotReadableError" || name === "TrackStartError") return "busy";
+  if (
+    name === "OverconstrainedError" ||
+    name === "ConstraintNotSatisfiedError"
+  )
+    return "constraint";
+  return "other";
+}
+
+function cameraGateCopy(reason: CameraGateReason): string {
+  switch (reason) {
+    case "denied":
+      return "Camera is blocked for this page. Use chest number or photo upload, or allow camera in your browser settings for this site.";
+    case "insecure":
+      return "Camera needs a secure (HTTPS) connection. Use chest number or photo upload.";
+    case "unsupported":
+      return "This browser does not expose the camera here. Use chest number or photo upload.";
+    case "nodevice":
+      return "No usable camera was found. Use chest number or photo upload.";
+    case "busy":
+      return "The camera may be in use elsewhere. Close other tabs or apps, or use upload / manual entry.";
+    case "constraint":
+      return "This device could not open the camera with the requested settings. Use upload or manual entry.";
+    default:
+      return "Camera could not start. Use chest number or photo upload.";
+  }
+}
+
+function isPermissionDenied(e: unknown): boolean {
+  return (
+    e instanceof DOMException &&
+    (e.name === "NotAllowedError" || e.name === "PermissionDeniedError")
+  );
+}
+
+/**
+ * Single getUserMedia call: a second call after await often loses user activation
+ * and Chrome may reject with NotAllowedError even when the user would allow.
+ */
+async function getVideoStream(): Promise<MediaStream> {
+  return navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { ideal: "environment" } },
+  });
+}
+
 export function QrScanner({
   festivalId,
   reportingSessionId,
   programmeName,
   onScanSuccess,
   onScanError,
+  variant = "default",
 }: QrScannerProps) {
   const [status, setStatus] = useState<ScanStatus>("idle");
   const [lastResult, setLastResult] = useState<ScanResult | null>(null);
@@ -52,39 +133,147 @@ export function QrScanner({
   const streamRef = useRef<MediaStream | null>(null);
   const scanningRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const animationFrameRef = useRef<number>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const scannerSurfaceRef = useRef<HTMLDivElement | null>(null);
+  const cameraSessionRef = useRef(0);
+  const [cameraGate, setCameraGate] = useState<CameraGateReason | null>(null);
+  const [fullscreenAvailable, setFullscreenAvailable] = useState(false);
+  const [simpleCameraHint, setSimpleCameraHint] = useState(false);
 
-  // Start camera
-  const startCamera = async () => {
-    try {
-      setStatus("scanning");
-      setLastResult(null);
+  useEffect(() => {
+    let perm: PermissionStatus | undefined;
+    let onChange: (() => void) | undefined;
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-      });
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        streamRef.current = stream;
-        scanningRef.current = true;
-
-        // Wait for video to load, then start scanning
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play();
-          scanVideoFrame();
+    void (async () => {
+      try {
+        perm = await navigator.permissions.query({
+          name: "camera" as PermissionName,
+        });
+        onChange = () => {
+          if (perm?.state === "denied") setCameraGate("denied");
+          if (perm?.state === "granted") setCameraGate(null);
         };
+        perm.addEventListener("change", onChange);
+        if (perm.state === "denied") setCameraGate("denied");
+      } catch {
+        /* Permissions API may not support camera (e.g. some Safari) */
       }
+    })();
+
+    return () => {
+      if (perm && onChange) perm.removeEventListener("change", onChange);
+    };
+  }, []);
+
+  const startCamera = async (constraints: "default" | "any" = "default") => {
+    setCameraGate(null);
+    setSimpleCameraHint(false);
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraGate("unsupported");
+      return;
+    }
+
+    if (!isSecureCameraContext()) {
+      setCameraGate("insecure");
+      return;
+    }
+
+    const session = ++cameraSessionRef.current;
+
+    // Commit the <video> mount synchronously so videoRef is set after await
+    // getUserMedia() (fast grant paths used to leave ref null).
+    try {
+      flushSync(() => {
+        setLastResult(null);
+        setStatus("scanning");
+      });
+    } catch {
+      /* flushSync can throw if nested in another update; fall back */
+      setLastResult(null);
+      setStatus("scanning");
+    }
+
+    try {
+      const stream =
+        constraints === "any"
+          ? await navigator.mediaDevices.getUserMedia({ video: true })
+          : await getVideoStream();
+
+      if (session !== cameraSessionRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+
+      setCameraGate(null);
+
+      const video = videoRef.current;
+      if (!video) {
+        stream.getTracks().forEach((t) => t.stop());
+        console.error("QrScanner: video element missing after mount");
+        setStatus("idle");
+        setCameraGate("other");
+        return;
+      }
+
+      video.srcObject = stream;
+      streamRef.current = stream;
+      scanningRef.current = true;
+
+      video.onloadedmetadata = () => {
+        void video
+          .play()
+          .then(() => {
+            scanVideoFrame();
+          })
+          .catch((playErr) => {
+            if (!isPermissionDenied(playErr)) {
+              console.error("Video play failed:", playErr);
+            }
+            scanningRef.current = false;
+            stream.getTracks().forEach((t) => t.stop());
+            streamRef.current = null;
+            video.onloadedmetadata = null;
+            video.srcObject = null;
+            setStatus("idle");
+            setCameraGate("other");
+          });
+      };
     } catch (error) {
-      console.error("Camera access failed:", error);
-      toast.error(
-        "Camera access denied. Please use file upload or manual entry.",
-      );
-      setStatus("error");
+      if (session !== cameraSessionRef.current) return;
+      const mapped = mapGetUserMediaError(error);
+      const denied = isPermissionDenied(error);
+      const canRetrySimple =
+        !denied &&
+        constraints === "default" &&
+        (mapped === "constraint" || mapped === "nodevice");
+
+      if (canRetrySimple) {
+        setSimpleCameraHint(true);
+      }
+
+      if (!denied) {
+        console.error("Camera access failed:", error);
+      }
+
+      setLastResult(null);
+      setStatus("idle");
+      setCameraGate(denied || !canRetrySimple ? mapped : null);
     }
   };
 
-  // Scan video frame for QR code
+  const enterScannerFullscreen = useCallback(() => {
+    const surface = scannerSurfaceRef.current;
+    if (
+      !surface ||
+      !document.fullscreenEnabled ||
+      document.fullscreenElement
+    ) {
+      return;
+    }
+    void surface.requestFullscreen().catch(() => {});
+  }, []);
+
   const scanVideoFrame = () => {
     if (!videoRef.current || !canvasRef.current) return;
 
@@ -99,46 +288,45 @@ export function QrScanner({
       return;
     }
 
-    // Set canvas size to match video
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
-    // Draw current frame
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Get frame data
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-    // Decode QR code
     const code = jsQR(imageData.data, imageData.width, imageData.height, {
       inversionAttempts: "dontInvert",
     });
 
     if (code?.data) {
-      console.log("QR Code detected:", code.data);
       const chestNumber = code.data.trim().toUpperCase();
 
       if (chestNumber) {
-        // Stop scanning
         scanningRef.current = false;
         stopCamera();
-
-        // Process the chest number
-        processChestNumber(chestNumber);
+        void processChestNumber(chestNumber);
         return;
       }
     }
 
-    // Continue scanning
     if (scanningRef.current) {
       animationFrameRef.current = requestAnimationFrame(scanVideoFrame);
     }
   };
 
-  // Stop camera
   const stopCamera = useCallback(() => {
+    cameraSessionRef.current += 1;
     scanningRef.current = false;
-    if (animationFrameRef.current) {
+    const surface = scannerSurfaceRef.current;
+    if (
+      surface &&
+      document.fullscreenElement &&
+      document.fullscreenElement === surface
+    ) {
+      void document.exitFullscreen().catch(() => {});
+    }
+    if (animationFrameRef.current != null) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
     }
@@ -149,40 +337,12 @@ export function QrScanner({
       streamRef.current = null;
     }
     if (videoRef.current) {
+      videoRef.current.onloadedmetadata = null;
       videoRef.current.srcObject = null;
     }
     setStatus("idle");
   }, []);
 
-  // Scan frame from video
-  const scanFrame = async () => {
-    if (!scanningRef.current || !videoRef.current || !canvasRef.current) return;
-
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-
-    if (!ctx || video.readyState !== video.HAVE_ENOUGH_DATA) {
-      if (scanningRef.current) {
-        requestAnimationFrame(scanFrame);
-      }
-      return;
-    }
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // Note: In production, you'd use a QR code library like jsQR or html5-qrcode
-    // For now, we'll rely on manual input as primary method
-    // The camera is shown for visual feedback
-
-    if (scanningRef.current) {
-      requestAnimationFrame(scanFrame);
-    }
-  };
-
-  // Process chest number
   const processChestNumber = async (chestNumber: string) => {
     if (!chestNumber.trim()) {
       toast.error("Please enter a chest number");
@@ -205,7 +365,6 @@ export function QrScanner({
         toast.success(result.message || "Student reported successfully!");
         onScanSuccess?.(result);
 
-        // Reset after 3 seconds for next scan
         setTimeout(() => {
           setStatus("idle");
           setLastResult(null);
@@ -224,18 +383,15 @@ export function QrScanner({
     }
   };
 
-  // Handle manual submit
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    processChestNumber(manualInput);
+    void processChestNumber(manualInput.trim().toUpperCase());
   };
 
-  // Handle QR code image file upload
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith("image/")) {
       toast.error("Please upload an image file");
       return;
@@ -244,13 +400,11 @@ export function QrScanner({
     setStatus("processing");
 
     try {
-      // Create image element from uploaded file
       const img = new Image();
       const imageUrl = URL.createObjectURL(file);
 
       img.onload = async () => {
         try {
-          // Create canvas to get image data
           const canvas = document.createElement("canvas");
           const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
@@ -258,34 +412,24 @@ export function QrScanner({
             throw new Error("Could not get canvas context");
           }
 
-          // Set canvas size to match image
           canvas.width = img.width;
           canvas.height = img.height;
 
-          // Draw image on canvas
           ctx.drawImage(img, 0, 0);
 
-          // Get image data
           const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-          // Decode QR code
           const code = jsQR(imageData.data, imageData.width, imageData.height, {
             inversionAttempts: "dontInvert",
           });
 
-          // Clean up
           URL.revokeObjectURL(imageUrl);
 
           if (code?.data) {
-            console.log("QR Code detected:", code.data);
-
-            // Extract chest number from QR code data
             const chestNumber = code.data.trim().toUpperCase();
 
             if (chestNumber) {
               toast.success(`QR code detected: ${chestNumber}`);
-
-              // Auto-process the chest number
               await processChestNumber(chestNumber);
             } else {
               toast.error("QR code is empty");
@@ -293,19 +437,18 @@ export function QrScanner({
             }
           } else {
             toast.error(
-              "No QR code found in image. Please try again or enter manually.",
+              "No QR code found in image. Try another photo or enter the chest number.",
             );
             setStatus("error");
           }
 
-          // Reset file input
           if (fileInputRef.current) {
             fileInputRef.current.value = "";
           }
-        } catch (error) {
-          console.error("QR decoding error:", error);
+        } catch (err) {
+          console.error("QR decoding error:", err);
           toast.error(
-            "Failed to decode QR code. Please enter chest number manually.",
+            "Failed to decode QR code. Enter the chest number manually.",
           );
           setStatus("error");
           URL.revokeObjectURL(imageUrl);
@@ -326,197 +469,383 @@ export function QrScanner({
     }
   };
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopCamera();
     };
   }, [stopCamera]);
 
+  const embedded = variant === "embedded";
+  const sectionGap = embedded ? "gap-3" : "gap-5";
+  const labelClass =
+    "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
+
+  const fieldStatus =
+    status === "scanning"
+      ? "scanning"
+      : status === "processing"
+        ? "processing"
+        : "idle";
+
   return (
-    <Card className="border-primary/20">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex flex-col lg:flex-row items-start gap-1 lg:items-center justify-between">
-          <div className="text-lg flex items-center gap-2">
-            <Camera className="h-5 w-5 text-primary" />
-            QR Code Scanner
+    <div className={cn(embedded ? "space-y-2" : "space-y-5")}>
+      <canvas ref={canvasRef} className="hidden" aria-hidden />
+
+      {embedded ? (
+        <QuickAddScanForm
+          manualInput={manualInput}
+          onManualInputChange={setManualInput}
+          onManualSubmit={handleManualSubmit}
+          fileInputRef={fileInputRef}
+          onFileChange={handleFileUpload}
+          onOpenCamera={() => void startCamera()}
+          onOpenCameraFallback={() => void startCamera("any")}
+          showCameraFallback={simpleCameraHint}
+          fieldStatus={fieldStatus}
+        />
+      ) : (
+        <div className={cn("grid", sectionGap)}>
+          <div className="space-y-2">
+            <p className={labelClass}>Chest number</p>
+            <form
+              onSubmit={handleManualSubmit}
+              className="flex flex-col gap-2 min-[400px]:flex-row min-[400px]:items-stretch"
+            >
+              <Input
+                value={manualInput}
+                onChange={(e) => setManualInput(e.target.value.toUpperCase())}
+                placeholder="e.g. A12"
+                autoComplete="off"
+                disabled={status === "processing" || status === "scanning"}
+                className="h-10 min-w-0 flex-1 font-mono text-base sm:text-sm"
+              />
+              <Button
+                type="submit"
+                disabled={
+                  status === "processing" ||
+                  status === "scanning" ||
+                  !manualInput.trim()
+                }
+                className="h-10 shrink-0 px-5 font-semibold min-[400px]:w-auto w-full"
+              >
+                Add to roster
+              </Button>
+            </form>
           </div>
-          <form
-            onSubmit={handleManualSubmit}
-            className="flex items-center gap-2"
-          >
-            {/* {uploadMode === "file" && ( */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileUpload}
-              disabled={status === "processing"}
-              className="lg:w-1/2 w-full border rounded-lg text-sm file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-            />
-            {/* )} */}
-            {status !== "scanning" && (
+
+          <div className="h-px bg-border/80" aria-hidden />
+
+          <div className="space-y-2">
+            <p className={labelClass}>QR in a photo</p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+              <label
+                className={cn(
+                  buttonVariants({ variant: "secondary" }),
+                  "h-10 cursor-pointer gap-2 px-4",
+                  status === "processing" && "pointer-events-none opacity-50",
+                )}
+              >
+                <Upload className="h-4 w-4 shrink-0" />
+                <span>Upload image</span>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  disabled={status === "processing"}
+                  className="sr-only"
+                />
+              </label>
+              <p className="text-xs text-muted-foreground leading-snug">
+                PNG or JPG — we read the QR code from the picture.
+              </p>
+            </div>
+          </div>
+
+          <div className="h-px bg-border/80" aria-hidden />
+
+          <div className="space-y-2">
+            <p className={labelClass}>Live camera</p>
+            {status !== "scanning" ? (
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void startCamera()}
+                  disabled={status === "processing"}
+                  className="h-10 w-full gap-2 border-2 font-medium sm:w-auto sm:min-w-[10rem]"
+                >
+                  <Camera className="h-4 w-4" />
+                  Open camera
+                </Button>
+                {simpleCameraHint ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => void startCamera("any")}
+                    disabled={status === "processing"}
+                    className="h-10 w-full font-medium sm:w-auto"
+                  >
+                    Use any camera (fallback)
+                  </Button>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Camera active below.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {cameraGate ? (
+        <div
+          role="status"
+          className={cn(
+            "flex rounded-md border border-amber-400/90 bg-amber-50 text-amber-950 shadow-sm dark:border-amber-500/70 dark:bg-amber-950/95 dark:text-amber-50",
+            embedded
+              ? "gap-2 px-2.5 py-2 text-xs"
+              : "gap-3 rounded-lg px-3 py-3 text-sm",
+          )}
+        >
+          <AlertCircle
+            className={cn(
+              "shrink-0 text-amber-700 dark:text-amber-300",
+              embedded ? "h-4 w-4 mt-0.5" : "h-5 w-5",
+            )}
+            aria-hidden
+          />
+          <p className="min-w-0 leading-snug">{cameraGateCopy(cameraGate)}</p>
+        </div>
+      ) : null}
+
+      {status === "scanning" && (
+        <div
+          ref={scannerSurfaceRef}
+          className={cn(
+            "relative aspect-video rounded-lg bg-black",
+            embedded ? "max-h-[min(32vh,220px)]" : "max-h-[min(50vh,360px)]",
+            "[&:fullscreen]:aspect-auto [&:fullscreen]:h-full [&:fullscreen]:max-h-none [&:fullscreen]:min-h-[100dvh] [&:fullscreen]:w-full",
+          )}
+        >
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            controls={false}
+            className="h-full w-full object-cover"
+          />
+
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div
+              className={cn(
+                "rounded-lg border-2 border-white/50",
+                embedded
+                  ? "h-36 w-36 sm:h-44 sm:w-44"
+                  : "h-48 w-48 sm:h-64 sm:w-64",
+              )}
+            >
+              <div className="h-full w-full animate-pulse rounded-lg border-2 border-primary" />
+            </div>
+          </div>
+
+          <div className="pointer-events-none absolute bottom-3 left-0 right-0 text-center">
+            <Badge variant="secondary" className="bg-black/70 text-white">
+              Point at QR code
+            </Badge>
+          </div>
+
+          <div className="absolute right-2 top-2 flex gap-1">
+            {fullscreenAvailable ? (
               <Button
                 type="button"
-                variant="outline"
                 size="sm"
-                onClick={startCamera}
-                disabled={status === "processing"}
-                className="lg:w-1/2"
+                variant="secondary"
+                className="bg-black/70 text-white hover:bg-black/85"
+                onClick={enterScannerFullscreen}
               >
-                <Camera className="h-4 w-4 mr-2" />
-                <span className="hidden lg:inline-block">Start Camera</span>
+                <Maximize2 className="h-4 w-4" />
+                <span className="sr-only">Full screen</span>
               </Button>
-            )}
-          </form>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Hidden canvas for QR processing */}
-        <canvas ref={canvasRef} className="hidden" />
-
-        {/* Camera View */}
-        {status === "scanning" && (
-          <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover"
-            />
-            <canvas ref={canvasRef} className="hidden" />
-
-            {/* Scanning overlay */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-64 h-64 border-2 border-white/50 rounded-lg">
-                <div className="w-full h-full border-2 border-primary animate-pulse rounded-lg" />
-              </div>
-            </div>
-
-            <div className="absolute bottom-4 left-0 right-0 text-center">
-              <Badge variant="secondary" className="bg-black/70 text-white">
-                Point camera at QR code
-              </Badge>
-            </div>
-
+            ) : null}
             <Button
+              type="button"
               size="sm"
               variant="destructive"
-              className="absolute top-2 right-2"
               onClick={stopCamera}
             >
               <X className="h-4 w-4" />
+              <span className="sr-only">Close camera</span>
             </Button>
           </div>
-        )}
-
-        {/* Success State */}
-        {status === "success" && lastResult?.student && (
-          <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-4 space-y-3">
-            <div className="flex items-start gap-3">
-              <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-green-900 dark:text-green-100">
-                  {lastResult.message}
-                </p>
-                <div className="mt-2 space-y-1 text-sm">
-                  <p className="text-muted-foreground">
-                    <span className="font-medium">Student:</span>{" "}
-                    {lastResult.student.name}
-                  </p>
-                  <p className="text-muted-foreground">
-                    <span className="font-medium">Chest #:</span>{" "}
-                    {lastResult.student.chestNumber}
-                  </p>
-                  {lastResult.student.groupName && (
-                    <p className="text-muted-foreground">
-                      <span className="font-medium">Group:</span>{" "}
-                      {lastResult.student.groupName}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Error State */}
-        {status === "error" && lastResult && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 space-y-3">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-red-900 dark:text-red-100">
-                  {lastResult.error}
-                </p>
-
-                {lastResult.reason === "NOT_ASSIGNED_TO_PROGRAMME" &&
-                  lastResult.student && (
-                    <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                      <p>
-                        <span className="font-medium">Student:</span>{" "}
-                        {lastResult.student.name}
-                      </p>
-                      <p>
-                        <span className="font-medium">Chest #:</span>{" "}
-                        {lastResult.student.chestNumber}
-                      </p>
-                      {lastResult.student.groupName && (
-                        <p>
-                          <span className="font-medium">Group:</span>{" "}
-                          {lastResult.student.groupName}
-                        </p>
-                      )}
-                      <p className="text-red-600 dark:text-red-400 font-medium mt-2">
-                        Not assigned to: {programmeName}
-                      </p>
-                    </div>
-                  )}
-
-                {lastResult.reason === "STUDENT_NOT_FOUND" && (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Please verify the chest number and try again.
-                  </p>
-                )}
-
-                {lastResult.reason === "ALREADY_REPORTED" && (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    This student has already been marked as present.
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Processing State */}
-        {status === "processing" && (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="ml-3 text-muted-foreground">Processing...</span>
-          </div>
-        )}
-
-        {/* Manual Entry Form */}
-        {status === "scanning" && (
-          <p className="text-xs text-muted-foreground text-center">
-            Point camera at QR code - auto-detecting...
-          </p>
-        )}
-
-        {/* Instructions */}
-        <div className="text-xs text-muted-foreground space-y-1 pt-2 border-t">
-          <p className="font-medium">How it works:</p>
-          <ol className="list-decimal list-inside space-y-1 ml-1">
-            <li>Student shows their QR code (contains chest number)</li>
-            <li>Upload QR image, scan with camera, or enter manually</li>
-            <li>System auto-detects chest number from QR code</li>
-            <li>Validates student assignment to this programme</li>
-            <li>If valid, marks student as present</li>
-          </ol>
         </div>
-      </CardContent>
-    </Card>
+      )}
+
+      {status === "scanning" && (
+        <p
+          className={cn(
+            "text-center text-muted-foreground",
+            embedded ? "text-[11px] leading-tight" : "text-xs",
+          )}
+        >
+          {embedded
+            ? "Hold QR steady — or close and use Photo / #."
+            : "Scanning… hold the QR steady, or close the camera and use upload / manual entry."}
+        </p>
+      )}
+
+      {status === "success" && lastResult?.student && (
+        <div
+          className={cn(
+            "space-y-2 rounded-md border border-green-500/30 bg-green-500/10",
+            embedded ? "p-2.5" : "space-y-3 rounded-lg p-4",
+          )}
+        >
+          <div className={cn("flex items-start", embedded ? "gap-2" : "gap-3")}>
+            <CheckCircle
+              className={cn(
+                "mt-0.5 shrink-0 text-green-600",
+                embedded ? "h-4 w-4" : "h-5 w-5",
+              )}
+            />
+            <div className="min-w-0 flex-1">
+              <p
+                className={cn(
+                  "font-medium text-green-900 dark:text-green-100",
+                  embedded && "text-sm",
+                )}
+              >
+                {lastResult.message}
+              </p>
+              <div
+                className={cn(
+                  "space-y-1 text-muted-foreground",
+                  embedded ? "mt-1.5 text-xs" : "mt-2 text-sm",
+                )}
+              >
+                <p className="text-muted-foreground">
+                  <span className="font-medium">Student:</span>{" "}
+                  {lastResult.student.name}
+                </p>
+                <p className="text-muted-foreground">
+                  <span className="font-medium">Chest #:</span>{" "}
+                  {lastResult.student.chestNumber}
+                </p>
+                {lastResult.student.groupName && (
+                  <p className="text-muted-foreground">
+                    <span className="font-medium">Group:</span>{" "}
+                    {lastResult.student.groupName}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {status === "error" && lastResult && (
+        <div
+          className={cn(
+            "space-y-2 rounded-md border border-red-500/30 bg-red-500/10",
+            embedded ? "p-2.5" : "space-y-3 rounded-lg p-4",
+          )}
+        >
+          <div className={cn("flex items-start", embedded ? "gap-2" : "gap-3")}>
+            <AlertCircle
+              className={cn(
+                "mt-0.5 shrink-0 text-red-600",
+                embedded ? "h-4 w-4" : "h-5 w-5",
+              )}
+            />
+            <div className="min-w-0 flex-1">
+              <p
+                className={cn(
+                  "font-medium text-red-900 dark:text-red-100",
+                  embedded && "text-sm",
+                )}
+              >
+                {lastResult.error}
+              </p>
+
+              {lastResult.reason === "NOT_ASSIGNED_TO_PROGRAMME" &&
+                lastResult.student && (
+                  <div
+                    className={cn(
+                      "space-y-1 text-muted-foreground",
+                      embedded ? "mt-1.5 text-xs" : "mt-2 text-sm",
+                    )}
+                  >
+                    <p>
+                      <span className="font-medium">Student:</span>{" "}
+                      {lastResult.student.name}
+                    </p>
+                    <p>
+                      <span className="font-medium">Chest #:</span>{" "}
+                      {lastResult.student.chestNumber}
+                    </p>
+                    {lastResult.student.groupName && (
+                      <p>
+                        <span className="font-medium">Group:</span>{" "}
+                        {lastResult.student.groupName}
+                      </p>
+                    )}
+                    <p className="mt-2 font-medium text-red-600 dark:text-red-400">
+                      Not assigned to: {programmeName}
+                    </p>
+                  </div>
+                )}
+
+              {lastResult.reason === "STUDENT_NOT_FOUND" && (
+                <p
+                  className={cn(
+                    "mt-2 text-muted-foreground",
+                    embedded ? "text-xs" : "text-sm",
+                  )}
+                >
+                  Verify the chest number and try again.
+                </p>
+              )}
+
+              {lastResult.reason === "ALREADY_REPORTED" && (
+                <p
+                  className={cn(
+                    "mt-2 text-muted-foreground",
+                    embedded ? "text-xs" : "text-sm",
+                  )}
+                >
+                  This student is already marked present.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {status === "processing" && (
+        <div
+          className={cn(
+            "flex items-center justify-center",
+            embedded ? "py-2" : "py-6",
+          )}
+        >
+          <Loader2
+            className={cn(
+              "animate-spin text-primary",
+              embedded ? "h-6 w-6" : "h-8 w-8",
+            )}
+          />
+          <span
+            className={cn(
+              "ml-2 text-muted-foreground",
+              embedded ? "text-xs" : "ml-3",
+            )}
+          >
+            Processing…
+          </span>
+        </div>
+      )}
+    </div>
   );
 }

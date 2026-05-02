@@ -23,7 +23,7 @@ export type ProgrammeStatus =
 export type Tier = "BASIC" | "STANDARD" | "PRO";
 
 /**
- * Minimum programme status for a programme to appear in Event-works (Marks, Results, Leaderboard).
+ * Minimum programme status for a programme to appear in Event Works (Marks, Results, Leaderboard).
  */
 export function getEventWorksMinimumStatus(tier: Tier): ProgrammeStatus {
   return tier === "BASIC" ? "ASSIGNED" : "SCHEDULED";
@@ -43,7 +43,7 @@ function getAllowedEventWorksStatuses(tier: Tier): Set<ProgrammeStatus> {
 }
 
 /**
- * Returns true if the given programme status is allowed in Event-works for the tier.
+ * Returns true if the given programme status is allowed in Event Works for the tier.
  */
 export function isProgrammeInEventWorks(
   status: ProgrammeStatus,
@@ -53,7 +53,7 @@ export function isProgrammeInEventWorks(
 }
 
 /**
- * Filter programmes to those that should appear in Event-works (Marks, Results, Leaderboard) for the given tier.
+ * Filter programmes to those that should appear in Event Works (Marks, Results, Leaderboard) for the given tier.
  */
 export function filterProgrammesForEventWorks<
   T extends { status: ProgrammeStatus },

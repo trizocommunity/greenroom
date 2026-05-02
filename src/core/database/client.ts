@@ -42,9 +42,15 @@ const sslConfig: PoolConfig["ssl"] =
 
 const poolConfig: PoolConfig = {
   connectionString: effectiveConnectionString,
-  max: process.env.NODE_ENV === "production" ? 10 : 5, // Increased max connections slightly
+  max: process.env.NODE_ENV === "production" ? 10 : 5,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
+  // Hosted Postgres (Neon, Supabase, etc.) often drops idle TCP; allow longer cold starts.
+  connectionTimeoutMillis: 30000,
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000,
+  // Recycle clients before the server terminates them ("Connection terminated unexpectedly").
+  maxLifetimeSeconds: 300,
+  maxUses: 750,
   ssl: sslConfig,
 };
 
