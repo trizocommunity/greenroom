@@ -1,6 +1,10 @@
 /**
  * Festival expiration: snapshot results, delete non-retained data, set EXPIRED.
  * All plans use fixed 30-day duration; no read-only after expiry.
+ *
+ * Lifecycle:
+ *   READY/ONGOING/PAST → pre-archival (5 days before expiresAt)
+ *   pre-archival → EXPIRED → deleted (via cron at/after expiresAt)
  */
 
 import { eq, lt, ne } from "drizzle-orm";
@@ -24,7 +28,81 @@ import {
 } from "@/core/database/schema";
 import { getPublicFestivalResults } from "@/features/festivals/loaders/festival-results.loader";
 
+const PRE_ARCHIVAL_DAYS = 5;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 export const FestivalExpirationService = {
+  /**
+   * Find festivals within the pre-archival window (expiring within PRE_ARCHIVAL_DAYS).
+   * These are ONGOING/PAST festivals not yet EXPIRED that are approaching expiry.
+   */
+  async getFestivalsApproachingExpiry(): Promise<
+    { id: string; name: string; slug: string; expiresAt: string }[]
+  > {
+    const now = new Date();
+    const windowEnd = new Date(
+      now.getTime() + PRE_ARCHIVAL_DAYS * MS_PER_DAY,
+    ).toISOString();
+    const list = await db
+      .select({
+        id: festivals.id,
+        name: festivals.name,
+        slug: festivals.slug,
+        expiresAt: festivals.expiresAt,
+      })
+      .from(festivals)
+      .where(ne(festivals.status, "EXPIRED"))
+      .orderBy(festivals.expiresAt);
+
+    return list.filter((f) => {
+      if (!f.expiresAt || !f.slug) return false;
+      const expiryDate = new Date(f.expiresAt);
+      return expiryDate > now && expiryDate <= windowEnd;
+    });
+  },
+
+  /**
+   * Pre-archive a festival before it expires.
+   * Snapshots results and emits a warning lifecycle event — festival remains active.
+   * Called proactively so data is preserved even if the expiry cron fails.
+   */
+  async preArchiveFestival(festivalId: string): Promise<void> {
+    const { randomUUID } = await import("crypto");
+    const festival = await db.query.festival.findFirst({
+      where: eq(festivals.id, festivalId),
+    });
+    if (!festival || festival.status === "EXPIRED") return;
+
+    const publishedResults = await getPublicFestivalResults(festivalId);
+
+    await db.transaction(async (tx) => {
+      for (const r of publishedResults) {
+        await tx.insert(expiredFestivalResult).values({
+          id: randomUUID(),
+          festivalId,
+          programmeName: r.programName,
+          categoryName: r.category ?? null,
+          participantName: r.winner ?? r.team ?? "—",
+          position: r.position ?? null,
+          grade: r.grade ?? null,
+          score: null,
+          points: r.points ?? null,
+        } as any);
+      }
+
+      await tx.insert(festivalLifecycleEvent).values({
+        id: randomUUID(),
+        festivalId,
+        event: "ACTIVATED",
+        metadata: {
+          type: "PRE_ARCHIVAL",
+          snapshotCount: publishedResults.length,
+          archivedAt: new Date().toISOString(),
+        },
+      } as any);
+    });
+  },
+
   /**
    * Find festivals that have passed expiresAt and are not yet EXPIRED.
    */
@@ -102,14 +180,14 @@ export const FestivalExpirationService = {
         metadata: { snapshotCount: publishedResults.length },
       } as any);
 
-      // 4. Update festival
+      // 4. Update festival — resultPdfUrl intentionally left null so
+      // on-demand PDF generation is used (avoids stale stored PDFs)
       const now = new Date();
       await tx
         .update(festivals)
         .set({
           status: "EXPIRED",
           expiredAt: now.toISOString(),
-          resultPdfUrl: null,
           studentsCount: 0,
           programmesCount: 0,
           stagesCount: 0,
@@ -177,6 +255,21 @@ export const FestivalExpirationService = {
     }
 
     return Buffer.from(doc.output("arraybuffer"));
+  },
+
+  /**
+   * Process all festivals that are within the pre-archival window. Idempotent.
+   */
+  async runPreArchivalCycle(): Promise<{ processed: number }> {
+    const approaching = await this.getFestivalsApproachingExpiry();
+    for (const f of approaching) {
+      try {
+        await this.preArchiveFestival(f.id);
+      } catch (err) {
+        console.error(`[Pre-Archival] Failed for festival ${f.slug}:`, err);
+      }
+    }
+    return { processed: approaching.length };
   },
 
   /**

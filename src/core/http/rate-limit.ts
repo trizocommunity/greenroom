@@ -1,11 +1,11 @@
 /**
- * Simple in-memory rate limiting utility
- * For production with multiple servers, use Redis-based rate limiting instead
+ * Simple in-memory rate limiting utility.
+ * Uses LRU cache with automatic expiry.
+ * For production with multiple servers, replace with Redis-based rate limiting.
  */
 
 import { LRUCache } from "lru-cache";
 
-// Rate limit cache: key -> request count
 type RateLimitEntry = {
   count: number;
   resetTime: number;
@@ -13,16 +13,9 @@ type RateLimitEntry = {
 
 const rateLimitCache = new LRUCache<string, RateLimitEntry>({
   max: 500,
-  ttl: 1000 * 60 * 15, // 15 minutes cleanup
+  ttl: 1000 * 60 * 15,
 });
 
-/**
- * Check if request should be rate limited
- * @param identifier - IP address or user ID
- * @param maxRequests - Max requests allowed in window (default: 5)
- * @param windowMs - Time window in milliseconds (default: 15 minutes)
- * @returns {object} - { allowed: boolean, remaining: number, resetTime: number }
- */
 export function checkRateLimit(
   identifier: string,
   maxRequests: number = 5,
@@ -34,7 +27,6 @@ export function checkRateLimit(
   const entry = rateLimitCache.get(key);
 
   if (!entry || now > entry.resetTime) {
-    // First request or window expired
     const resetTime = now + windowMs;
     rateLimitCache.set(key, { count: 1, resetTime });
     return {
@@ -44,7 +36,6 @@ export function checkRateLimit(
     };
   }
 
-  // Within window
   if (entry.count >= maxRequests) {
     return {
       allowed: false,
@@ -61,12 +52,7 @@ export function checkRateLimit(
   };
 }
 
-/**
- * Get client IP from request
- * Handles Vercel's x-forwarded-for header
- */
 export function getClientIP(request: Request): string {
-  // Try to get IP from headers (Vercel/Cloudflare compatible)
   const forwardedFor = request.headers.get("x-forwarded-for");
   if (forwardedFor) {
     return forwardedFor.split(",")[0].trim();
@@ -77,6 +63,5 @@ export function getClientIP(request: Request): string {
     return realIP;
   }
 
-  // Fallback to a default (for local dev)
   return "unknown";
 }

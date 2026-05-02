@@ -20,17 +20,16 @@ export function middleware(_request: NextRequest) {
     "camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()",
   );
 
-  // Content Security Policy - strict but allows necessary resources
-  // TODO: Adjust based on your specific needs (analytics, fonts, etc.)
+  // Content Security Policy — strict but allows necessary resources
   response.headers.set(
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://cdn.razorpay.com https://va.vercel-scripts.com", // jsPDF requires unsafe-eval
+      "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://cdn.razorpay.com",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' https://res.cloudinary.com data: blob:",
       "font-src 'self'",
-      "connect-src 'self' https://api.cloudinary.com https://api.razorpay.com https://lumberjack.razorpay.com https://*.socket.io wss://*.socket.io",
+      "connect-src 'self' https://api.cloudinary.com https://api.razorpay.com https://lumberjack.razorpay.com wss://*.socket.io",
       "frame-src 'self' https://checkout.razorpay.com https://api.razorpay.com",
       "object-src 'none'",
       "base-uri 'self'",

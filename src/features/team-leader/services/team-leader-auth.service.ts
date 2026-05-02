@@ -119,6 +119,13 @@ export const TeamLeaderAuthService = {
     }
 
     if (otpRecord.attempts >= OTP_MAX_ATTEMPTS) {
+      await db
+        .update(otpTable)
+        .set({
+          consumedAt: nowStr,
+          updatedAt: nowStr,
+        })
+        .where(eq(otpTable.id, otpRecord.id));
       throw new AppError("Too many invalid OTP attempts. Request a new OTP.");
     }
 
