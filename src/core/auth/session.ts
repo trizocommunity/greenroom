@@ -43,7 +43,7 @@ export async function createSession(userId: string, role: GlobalRole) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     expires,
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
   });
 }
@@ -64,7 +64,7 @@ export async function updateSession(data: Partial<SessionPayload>) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     expires: newPayload.expires,
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
   });
 }

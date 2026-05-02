@@ -141,8 +141,12 @@ export async function verifyPaymentDomain(
       status: "PAID",
       referenceId: razorpayPaymentId,
     })
-    .where(eq(payment.id, paymentId))
+    .where(and(eq(payment.id, paymentId), eq(payment.status, "PENDING")))
     .returning();
+
+  if (updated.length === 0) {
+    throw new Error("Payment already processed");
+  }
 
   const updatedPayment = updated[0];
 

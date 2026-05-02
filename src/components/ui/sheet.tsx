@@ -9,7 +9,18 @@ import { cn } from "@/core/utils/cn";
 
 const Sheet = SheetPrimitive.Root;
 
-const SheetTrigger = SheetPrimitive.Trigger;
+const SheetTrigger = React.forwardRef<
+  React.ElementRef<typeof SheetPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Trigger>
+>(({ className, ...props }, ref) => (
+  <SheetPrimitive.Trigger
+    ref={ref}
+    className={cn("inline-flex items-center justify-center", className)}
+    suppressHydrationWarning
+    {...props}
+  />
+));
+SheetTrigger.displayName = SheetPrimitive.Trigger.displayName;
 
 const SheetClose = SheetPrimitive.Close;
 

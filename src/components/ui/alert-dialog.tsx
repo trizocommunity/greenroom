@@ -7,7 +7,18 @@ import { cn } from "@/core/utils/cn";
 
 const AlertDialog = AlertDialogPrimitive.Root;
 
-const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
+const AlertDialogTrigger = React.forwardRef<
+  React.ElementRef<typeof AlertDialogPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Trigger>
+>(({ className, ...props }, ref) => (
+  <AlertDialogPrimitive.Trigger
+    ref={ref}
+    className={cn(buttonVariants(), className)}
+    suppressHydrationWarning
+    {...props}
+  />
+));
+AlertDialogTrigger.displayName = AlertDialogPrimitive.Trigger.displayName;
 
 const AlertDialogPortal = AlertDialogPrimitive.Portal;
 

@@ -27,7 +27,7 @@ export async function setTeamLeaderSessionCookie(
   cookieStore.set(TEAM_LEADER_SESSION_COOKIE, rawToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
     expires: expiresAt,
   });

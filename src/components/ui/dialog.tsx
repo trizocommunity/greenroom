@@ -8,7 +8,18 @@ import { cn } from "@/core/utils/cn";
 
 const Dialog = DialogPrimitive.Root;
 
-const DialogTrigger = DialogPrimitive.Trigger;
+const DialogTrigger = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Trigger>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Trigger
+    ref={ref}
+    className={cn("inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50", className)}
+    suppressHydrationWarning
+    {...props}
+  />
+));
+DialogTrigger.displayName = DialogPrimitive.Trigger.displayName;
 
 const DialogPortal = DialogPrimitive.Portal;
 

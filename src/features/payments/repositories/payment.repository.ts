@@ -104,7 +104,7 @@ export async function updatePaymentStatus(
       status,
       ...(razorpayId && { referenceId: razorpayId }),
     })
-    .where(eq(payment.id, id))
+    .where(and(eq(payment.id, id), eq(payment.status, "PENDING")))
     .returning();
   return result[0];
 }

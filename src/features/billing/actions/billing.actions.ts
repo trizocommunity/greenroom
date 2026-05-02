@@ -151,15 +151,20 @@ export async function verifyPayment(
       throw new AppError(ERROR_MESSAGES.PAYMENT_SIGNATURE_INVALID);
     }
 
-    // Update to PAID
-    await db
+    // Update to PAID — atomic update prevents TOCTOU race
+    const updated = await db
       .update(paymentTable)
       .set({
         status: "PAID",
         referenceId: razorpayPaymentId,
         updatedAt: new Date().toISOString(),
       })
-      .where(eq(paymentTable.id, paymentId));
+      .where(and(eq(paymentTable.id, paymentId), eq(paymentTable.status, "PENDING")))
+      .returning();
+
+    if (updated.length === 0) {
+      throw new AppError("Payment already processed or invalid state");
+    }
 
     revalidatePath("/profile");
     return { success: true, data: null };
