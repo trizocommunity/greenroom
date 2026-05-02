@@ -89,11 +89,15 @@ export function FestivalStatusBadge({
       <Badge
         variant={config.variant}
         className={`${badgeSizeClass} ${config.className}`}
+        suppressHydrationWarning
       >
         <Icon className={`${iconSizeClass} mr-1`} />
         <span>{label}</span>
         {countdown ? (
-          <span className="ml-1.5 border-l border-current/20 pl-1.5 opacity-90">
+          <span
+            className="ml-1.5 border-l border-current/20 pl-1.5 opacity-90"
+            suppressHydrationWarning
+          >
             {countdown}
           </span>
         ) : null}
