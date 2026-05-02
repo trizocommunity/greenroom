@@ -276,8 +276,8 @@ export async function createScheduleEntry(
     await updateProgrammeStatus(data.programmeId);
   }
 
-  revalidatePath(`/dashboard/${festival.slug}/pre-works/schedule`);
-  revalidatePath(`/dashboard/${festival.slug}/pre-works/sessions`);
+  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/schedule`);
+  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/sessions`);
   revalidatePath(`/${festival.slug}/sessions`);
   revalidatePath(`/${festival.slug}/programmes`);
   return { success: true };
@@ -393,8 +393,8 @@ export async function updateScheduleEntry(
     }
   }
 
-  revalidatePath(`/dashboard/${festival.slug}/pre-works/schedule`);
-  revalidatePath(`/dashboard/${festival.slug}/pre-works/sessions`);
+  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/schedule`);
+  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/sessions`);
   revalidatePath(`/${festival.slug}/sessions`);
   revalidatePath(`/${festival.slug}/programmes`);
   return { success: true };
@@ -428,8 +428,8 @@ export async function deleteScheduleEntry(
     await updateProgrammeStatus(entry.programmeId);
   }
 
-  revalidatePath(`/dashboard/${festival.slug}/pre-works/schedule`);
-  revalidatePath(`/dashboard/${festival.slug}/pre-works/sessions`);
+  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/schedule`);
+  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/sessions`);
   revalidatePath(`/${festival.slug}/sessions`);
   revalidatePath(`/${festival.slug}/programmes`);
   return { success: true };
@@ -495,8 +495,8 @@ export async function reorderScheduleEntries(
     }
   });
 
-  revalidatePath(`/dashboard/${festival.slug}/pre-works/schedule`);
-  revalidatePath(`/dashboard/${festival.slug}/pre-works/sessions`);
+  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/schedule`);
+  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/sessions`);
   revalidatePath(`/${festival.slug}/sessions`);
   revalidatePath(`/${festival.slug}/programmes`);
   return { success: true };

@@ -38,25 +38,25 @@ const allFaqs = [
     id: "stage-manage",
     question: "How do I manage stages and programme flow?",
     answer:
-      "Go to 'Pre-Works' -> 'Stage Management'. Create stages (e.g. Main Stage, Room A), set type (Stage or Non-Stage), and optionally reorder them. Programmes are then assigned to stages when you build the schedule.",
+      "Go to 'Pre Event Works' -> 'Stage Management'. Create stages (e.g. Main Stage, Room A), set type (Stage or Non-Stage), and optionally reorder them. Programmes are then assigned to stages when you build the schedule.",
   },
   {
     id: "schedule-view",
     question: "How do I view or edit the festival schedule?",
     answer:
-      "The schedule is under 'Pre-Works' -> 'Schedule'. Add programme entries by day, time, and stage. You can reorder entries, edit times, and assign programmes to stages. Create stages first in Stage Management.",
+      "The schedule is under 'Pre Event Works' -> 'Schedule'. Add programme entries by day, time, and stage. You can reorder entries, edit times, and assign programmes to stages. Create stages first in Stage Management.",
   },
   {
     id: "sessions-view",
     question: "What are Sessions and how do I add them?",
     answer:
-      "Sessions are non-programme items on the schedule (e.g. opening ceremony, break, talk). Go to 'Pre-Works' -> 'Sessions'. Add a session with title, date, time, and optional stage. Create at least one stage first.",
+      "Sessions are non-programme items on the schedule (e.g. opening ceremony, break, talk). Go to 'Pre Event Works' -> 'Sessions'. Add a session with title, date, time, and optional stage. Create at least one stage first.",
   },
   {
     id: "qr-codes",
     question: "How do QR codes work?",
     answer:
-      "Under 'Pre-Works' -> 'QR Codes' each student gets a unique QR code that links to their public profile. You can download a single code as JPEG, share it, or download all filtered codes as a PDF for printing.",
+      "Under 'Pre Event Works' -> 'QR Codes' each student gets a unique QR code that links to their public profile. You can download a single code as JPEG, share it, or download all filtered codes as a PDF for printing.",
   },
   {
     id: "news",
@@ -74,13 +74,13 @@ const allFaqs = [
     id: "programme-create",
     question: "How do I create a new programme?",
     answer:
-      "Navigate to 'Pre-Works' -> 'Programmes' and click on the 'Add Programme' button. Fill in the required details such as name, category, and type.",
+      "Navigate to 'Pre Event Works' -> 'Programmes' and click on the 'Add Programme' button. Fill in the required details such as name, category, and type.",
   },
   {
     id: "assign-students",
     question: "How do I assign students to a programme?",
     answer:
-      "Go to 'Pre-Works' -> 'Assignment'. You can either assign students individually or use the bulk assignment feature.",
+      "Go to 'Pre Event Works' -> 'Assignment'. You can either assign students individually or use the bulk assignment feature.",
   },
   {
     id: "leaderboard",
@@ -93,13 +93,13 @@ const allFaqs = [
     question:
       "Why don't my programmes appear in Event Works (Marks, Results, Leaderboard)?",
     answer:
-      "Programmes have a status (Ready, Assigned, Scheduled, Judged, Published). On Standard and Pro plans, a programme appears in Event Works only after it is added to the schedule (Scheduled or later). Add your programmes in Pre-Works -> Schedule to see them in Marks, Results, and Leaderboard. On the Basic plan, programmes appear once they have at least one assignment.",
+      "Programmes have a status (Ready, Assigned, Scheduled, Judged, Published). On Standard and Pro plans, a programme appears in Event Works only after it is added to the schedule (Scheduled or later). Add your programmes in Pre Event Works -> Schedule to see them in Marks, Results, and Leaderboard. On the Basic plan, programmes appear once they have at least one assignment.",
   },
   {
     id: "chest-numbers",
     question: "How do I manage chest numbers?",
     answer:
-      "You can generate and manage chest numbers in the 'Pre-Works' -> 'Chest Numbers' section. Ensure students are assigned to groups first.",
+      "You can generate and manage chest numbers in the 'Pre Event Works' -> 'Chest Numbers' section. Ensure students are assigned to groups first.",
   },
   {
     id: "plan-diff",

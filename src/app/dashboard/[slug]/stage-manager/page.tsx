@@ -72,7 +72,7 @@ export default async function StageManagerOverviewPage({
           </Card>
         ) : null}
         {canStages ? (
-          <Link href={`${basePath}/pre-works/stage-management`}>
+          <Link href={`${basePath}/pre-event-works/stage-management`}>
             <Card className="h-full transition-colors hover:bg-muted/50">
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -92,7 +92,7 @@ export default async function StageManagerOverviewPage({
         ) : null}
 
         {canSchedule ? (
-          <Link href={`${basePath}/pre-works/schedule`}>
+          <Link href={`${basePath}/pre-event-works/schedule`}>
             <Card className="h-full transition-colors hover:bg-muted/50">
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -112,7 +112,7 @@ export default async function StageManagerOverviewPage({
         ) : null}
 
         {canSchedule ? (
-          <Link href={`${basePath}/pre-works/sessions`}>
+          <Link href={`${basePath}/pre-event-works/sessions`}>
             <Card className="h-full transition-colors hover:bg-muted/50">
               <CardHeader>
                 <div className="flex items-center gap-3">

@@ -32,13 +32,24 @@ export async function uploadImageToCloudinary(
   }
 
   try {
-    // Convert file to base64
     const base64Data = await fileToBase64(file);
 
-    // Send to server-side API for secure signed upload
+    const getCsrfHeaders = async (): Promise<Record<string, string>> => {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (typeof document !== "undefined") {
+        const nonceMatch = document.cookie.match(/_csrf_nonce=([^;]+)/);
+        const sigMatch = document.cookie.match(/_csrf_sig=([^;]+)/);
+        if (nonceMatch) headers["x-csrf-nonce"] = nonceMatch[1];
+        if (sigMatch) headers["x-csrf-signature"] = sigMatch[1];
+      }
+      return headers;
+    };
+
+    const headers = await getCsrfHeaders();
+
     const res = await fetch("/api/upload", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         file: base64Data,
         folder,

@@ -1,4 +1,3 @@
-import { Menu } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 // Removed unused breadcrumb imports
@@ -9,7 +8,6 @@ import { FestivalDashboardSidebar } from "@/components/festival/dashboard/Festiv
 import { ReadOnlyExpiredBanner } from "@/components/festival/dashboard/ReadOnlyExpiredBanner";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { FestivalStatusBadge } from "@/components/festival/FestivalStatusBadge";
-import { Button } from "@/components/ui/button";
 import {
   SidebarInset,
   SidebarProvider,
@@ -140,12 +138,6 @@ export default async function FestivalDashboardLayout({
                 interactive={true}
               />
               <DashboardRightSidebar
-                trigger={
-                  <Button variant="ghost" size="icon" className="">
-                    <Menu className="h-5 w-5" />
-                    <span className="sr-only">Toggle user menu</span>
-                  </Button>
-                }
                 user={userData}
                 festivalSlug={slug}
                 showStatusAndUsage={

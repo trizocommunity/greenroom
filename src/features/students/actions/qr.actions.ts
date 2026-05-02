@@ -45,7 +45,7 @@ export async function exportStudentsQrPdfAction(
   const students = await db.query.student.findMany({
     where: eq(studentTable.festivalId, festivalId),
     with: { group: true, category: true },
-    orderBy: [asc(sql`group.name`), asc(studentTable.name)],
+    orderBy: [asc(studentTable.name)],
   });
 
   if (students.length === 0) {
@@ -113,7 +113,12 @@ export async function exportStudentsQrPdfAction(
   }
 
   const buf = doc.output("arraybuffer");
-  const base64 = Buffer.from(buf).toString("base64");
+  const base64 = btoa(
+    new Uint8Array(buf).reduce(
+      (data, byte) => data + String.fromCharCode(byte),
+      "",
+    ),
+  );
   const filename = `qr-codes-${festival.slug}-${new Date().toISOString().slice(0, 10)}.pdf`;
   return { success: true, data: base64, filename };
 }

@@ -1,13 +1,15 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { AlertTriangle, Calendar, CheckCircle, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { cn } from "@/core/utils/cn";
 import {
   type DerivedFestivalStatus,
   FESTIVAL_STATUS_LABELS,
@@ -67,15 +69,24 @@ export function FestivalStatusBadge({
   size = "default",
   interactive = false,
 }: FestivalStatusBadgeProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const normalized = status as DerivedFestivalStatus;
-  const isExpiredByTime = expiresAt ? new Date(expiresAt) < new Date() : false;
+  
+  // Use a stable value for SSR, only check live time on client
+  const isExpiredByTime = (mounted && expiresAt) ? new Date(expiresAt) < new Date() : false;
+  
   const effectiveStatus: DerivedFestivalStatus =
     normalized === "EXPIRED" || isExpiredByTime ? "EXPIRED" : normalized;
-  const countdown = getFestivalStatusCountdownText(effectiveStatus, {
+    
+  const countdown = mounted ? getFestivalStatusCountdownText(effectiveStatus, {
     startDate,
     endDate,
     expiresAt,
-  });
+  }) : null;
 
   const badgeSizeClass = size === "sm" ? "text-xs px-1.5 py-0" : "";
   const iconSizeClass = size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3";
@@ -105,14 +116,13 @@ export function FestivalStatusBadge({
 
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-auto p-0 hover:bg-transparent"
-        >
-          {renderBadge()}
-        </Button>
+      <PopoverTrigger
+        className={cn(
+          buttonVariants({ variant: "ghost", size: "sm" }),
+          "h-auto border-0 bg-transparent p-0 shadow-none hover:bg-transparent",
+        )}
+      >
+        {renderBadge()}
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 p-3">
         <div className="space-y-3">

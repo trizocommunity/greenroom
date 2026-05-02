@@ -1,13 +1,11 @@
 import { randomUUID } from "crypto";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
-  festival as festivalTable,
   programmeNotification as notificationTable,
   student as studentTable,
 } from "@/core/database/schema";
-import { sendPlainFestivalEmail } from "@/core/integrations/email";
 
 type DeliveryChannel = "IN_APP" | "EMAIL";
 
@@ -126,25 +124,6 @@ export const NotificationService = {
     if (input.channels.includes("IN_APP")) {
       // Chunking if necessary, but for small batches it's fine
       await db.insert(notificationTable).values(notificationRows as any);
-    }
-
-    if (input.channels.includes("EMAIL")) {
-      const festival = await db.query.festival.findFirst({
-        where: eq(festivalTable.id, input.festivalId),
-        columns: { name: true },
-      });
-      for (const recipient of recipients.studentRecipients) {
-        if (!recipient.isTeamLeader || !recipient.email) continue;
-        try {
-          await sendPlainFestivalEmail(
-            recipient.email,
-            `${festival?.name ?? "Festival"}: ${input.context.title}`,
-            input.context.body,
-          );
-        } catch {
-          // Keep dispatch resilient
-        }
-      }
     }
 
     return { created: recipients.studentRecipients.length };

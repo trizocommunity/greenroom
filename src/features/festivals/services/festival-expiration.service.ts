@@ -24,7 +24,81 @@ import {
 } from "@/core/database/schema";
 import { getPublicFestivalResults } from "@/features/festivals/loaders/festival-results.loader";
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const PRE_ARCHIVAL_DAYS = 7;
+
 export const FestivalExpirationService = {
+  /**
+   * Find festivals within the pre-archival window (expiring within PRE_ARCHIVAL_DAYS).
+   * These are ONGOING/PAST festivals not yet EXPIRED that are approaching expiry.
+   */
+  async getFestivalsApproachingExpiry(): Promise<
+    { id: string; name: string; slug: string; expiresAt: string | null }[]
+  > {
+    const now = new Date();
+    const windowEnd = new Date(
+      now.getTime() + PRE_ARCHIVAL_DAYS * MS_PER_DAY,
+    );
+    const list = await db
+      .select({
+        id: festivals.id,
+        name: festivals.name,
+        slug: festivals.slug,
+        expiresAt: festivals.expiresAt,
+      })
+      .from(festivals)
+      .where(ne(festivals.status, "EXPIRED"))
+      .orderBy(festivals.expiresAt);
+
+    return list.filter((f) => {
+      if (!f.expiresAt || !f.slug) return false;
+      const expiryDate = new Date(f.expiresAt);
+      return expiryDate > now && expiryDate <= windowEnd;
+    });
+  },
+
+  /**
+   * Pre-archive a festival before it expires.
+   * Snapshots results and emits a warning lifecycle event — festival remains active.
+   * Called proactively so data is preserved even if the expiry cron fails.
+   */
+  async preArchiveFestival(festivalId: string): Promise<void> {
+    const { randomUUID } = await import("crypto");
+    const festival = await db.query.festival.findFirst({
+      where: eq(festivals.id, festivalId),
+    });
+    if (!festival || festival.status === "EXPIRED") return;
+
+    const publishedResults = await getPublicFestivalResults(festivalId);
+
+    await db.transaction(async (tx) => {
+      for (const r of publishedResults) {
+        await tx.insert(expiredFestivalResult).values({
+          id: randomUUID(),
+          festivalId,
+          programmeName: r.programName,
+          categoryName: r.category ?? null,
+          participantName: r.winner ?? r.team ?? "—",
+          position: r.position ?? null,
+          grade: r.grade ?? null,
+          score: null,
+          points: r.points ?? null,
+        } as any);
+      }
+
+      await tx.insert(festivalLifecycleEvent).values({
+        id: randomUUID(),
+        festivalId,
+        event: "ACTIVATED",
+        metadata: {
+          type: "PRE_ARCHIVAL",
+          snapshotCount: publishedResults.length,
+          archivedAt: new Date().toISOString(),
+        },
+      } as any);
+    });
+  },
+
   /**
    * Find festivals that have passed expiresAt and are not yet EXPIRED.
    */

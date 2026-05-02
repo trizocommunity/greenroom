@@ -11,11 +11,13 @@ import {
   programmeJudgeSession as pjsTable,
   programme as programmeTable,
 } from "@/core/database/schema";
+import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
 import {
   filterProgrammesForEventWorks,
   type ProgrammeStatus,
   type Tier,
 } from "@/features/programmes/services/programme-status.service";
+import { enrichProgrammesAssignmentsResultCodeLetters } from "@/features/results/services/results.service";
 
 export const metadata: Metadata = {
   title: "Results",
@@ -64,6 +66,14 @@ export default async function MarksRedirectPage({
     redirect(`/dashboard/${slug}/event-works/judgment`);
   }
 
+  const canUseMarks = await getEffectiveFeatureTagEnabled(
+    tier,
+    "eventWorks.marksUI",
+  );
+  if (!canUseMarks) {
+    return notFound();
+  }
+
   const judgmentAllowedStatuses: ProgrammeStatus[] =
     tier === "BASIC" ? [] : ["STARTED", "ENDED", "JUDGED", "PUBLISHED"];
 
@@ -81,7 +91,7 @@ export default async function MarksRedirectPage({
           title="No Assignments Found"
           description="Judgment can only be recorded after students are assigned to programmes."
           actionLabel="Go to Assignments"
-          actionLink={`/dashboard/${slug}/pre-works/assignments`}
+          actionLink={`/dashboard/${slug}/pre-event-works/assignments`}
           icon={ClipboardList}
         />
       );
@@ -89,9 +99,9 @@ export default async function MarksRedirectPage({
     return (
       <EmptyState
         title="No programmes in Event Works yet"
-        description="On Standard and Pro plans, programmes appear here only after they are added to the schedule. Add your programmes to the schedule in Pre-Works to see them in Judgment, Results, and Leaderboard."
+        description="On Standard and Pro plans, programmes appear here only after they are added to the schedule. Add your programmes to the schedule in Pre Event Works to see them in Judgment, Results, and Leaderboard."
         actionLabel="Go to Schedule"
-        actionLink={`/dashboard/${slug}/pre-works/schedule`}
+        actionLink={`/dashboard/${slug}/pre-event-works/schedule`}
         icon={Calendar}
       />
     );
@@ -109,11 +119,13 @@ export default async function MarksRedirectPage({
         title="No Assignments Found"
         description="Judgment can only be recorded after students are assigned to programmes."
         actionLabel="Go to Assignments"
-        actionLink={`/dashboard/${slug}/pre-works/assignments`}
+        actionLink={`/dashboard/${slug}/pre-event-works/assignments`}
         icon={ClipboardList}
       />
     );
   }
+
+  await enrichProgrammesAssignmentsResultCodeLetters(eventWorksProgrammes as any);
 
   return (
     <div className="pt-4 sm:pt-6">

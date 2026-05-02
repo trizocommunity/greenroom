@@ -1,7 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { Crown } from "lucide-react";
 import { notFound } from "next/navigation";
-import { StudentDetailsDialog } from "@/components/festival/pre-works/students/StudentDetailsDialog";
+import { StudentDetailsDialog } from "@/components/festival/pre-event-works/students/StudentDetailsDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

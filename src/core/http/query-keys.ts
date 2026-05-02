@@ -31,7 +31,7 @@ export const queryKeys = {
   },
 
   /**
-   * Festival Pre-works Data (Categories, Groups, Programmes, Students, Assignments)
+   * Festival Pre Event Works Data (Categories, Groups, Programmes, Students, Assignments)
    */
   categories: {
     all: () => ["categories"] as const,

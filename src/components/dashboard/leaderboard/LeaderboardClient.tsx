@@ -28,6 +28,11 @@ import { cn } from "@/core/utils/cn";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { publishTeamStandings } from "@/features/results/actions/results.actions";
 
+/** Drizzle returns `programmeAssignment`; older code used `assignment`. */
+function assignmentOf(r: any) {
+  return r.programmeAssignment ?? r.assignment;
+}
+
 // Types matching what's passed from the page
 interface LeaderboardClientProps {
   festival: {
@@ -80,9 +85,10 @@ export function LeaderboardClient({
     const scopedResults =
       studentFilterGroup === "all"
         ? results
-        : results.filter(
-            (r: any) => r?.assignment?.group?.id === studentFilterGroup,
-          );
+        : results.filter((r: any) => {
+            const a = assignmentOf(r);
+            return a?.group?.id === studentFilterGroup;
+          });
 
     const standings: Record<
       string,
@@ -93,21 +99,19 @@ export function LeaderboardClient({
       let teamName = "Unknown";
       let isGroup = false;
 
-      // Check if result has direct team info (from previous implementations) or through assignment
       // ONLY count published results for the leaderboard snapshot
       if (!r.isPublished) return;
 
-      if (r.assignment?.group) {
-        teamName = r.assignment.group.name;
+      const a = assignmentOf(r);
+      if (!a) return;
+
+      if (a.group) {
+        teamName = a.group.name;
         isGroup = true;
-      } else if (r.assignment?.student) {
-        // Fallback to group name if available, otherwise skip for team leaderboard
-        if (r.assignment?.group) {
-          teamName = r.assignment.group.name;
-          isGroup = true;
-        } else {
-          return;
-        }
+      } else if (a.student) {
+        // Individual assignment without a school group: bucket by student for team-style totals
+        teamName = a.student.name ?? "Unknown";
+        isGroup = false;
       } else {
         return;
       }
@@ -140,29 +144,30 @@ export function LeaderboardClient({
     > = {};
 
     results.forEach((r) => {
-      if (!r.isPublished || !r.assignment?.student) return;
+      const a = assignmentOf(r);
+      if (!r.isPublished || !a?.student) return;
       if (r.programme?.type !== "INDIVIDUAL") return;
 
       // Filter by student's category (the category the student belongs to)
       if (
         studentFilterCategory !== "all" &&
-        r.assignment.student?.categoryId !== studentFilterCategory
+        a.student?.categoryId !== studentFilterCategory
       )
         return;
       // Filter by student's group
       if (
         studentFilterGroup !== "all" &&
-        r.assignment?.groupId !== studentFilterGroup
+        a.groupId !== studentFilterGroup
       )
         return;
 
-      const sid = r.assignment.student.id;
-      const name = r.assignment.student.name ?? "Unknown";
-      const chestNumber = r.assignment.student.chestNumber ?? null;
-      const groupName = r.assignment.group?.name ?? null;
-      const groupColor = r.assignment.group?.color ?? null;
+      const sid = a.student.id;
+      const name = a.student.name ?? "Unknown";
+      const chestNumber = a.student.chestNumber ?? null;
+      const groupName = a.group?.name ?? null;
+      const groupColor = a.group?.color ?? null;
       // Each student has one category (from their profile)
-      const categoryName = r.assignment.student?.category?.name ?? null;
+      const categoryName = a.student?.category?.name ?? null;
 
       if (!byStudent[sid]) {
         byStudent[sid] = {

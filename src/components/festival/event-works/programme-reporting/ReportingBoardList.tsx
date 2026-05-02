@@ -13,6 +13,8 @@ interface ReportingBoardListProps {
     status: string | undefined,
     windowEndsAt: Date | null,
   ) => string;
+  /** Optional: assignment count per programme for list context */
+  assignmentCountByProgrammeId?: Map<string, number>;
 }
 
 export function ReportingBoardList({
@@ -20,6 +22,7 @@ export function ReportingBoardList({
   selectedId,
   onSelect,
   getUiReportingStatus,
+  assignmentCountByProgrammeId,
 }: ReportingBoardListProps) {
   return (
     <div className="flex flex-col gap-2 p-1 overflow-y-auto max-h-[calc(100vh-250px)] sm:max-h-[calc(100vh-320px)]">
@@ -34,6 +37,11 @@ export function ReportingBoardList({
             item.reportingSession?.windowEndsAt ?? null,
           );
           const isSelected = selectedId === item.id;
+          const progId = item.programme?.id;
+          const assignCount =
+            progId && assignmentCountByProgrammeId
+              ? assignmentCountByProgrammeId.get(progId)
+              : undefined;
 
           return (
             <button
@@ -79,6 +87,11 @@ export function ReportingBoardList({
                     · {item.stage.name}
                   </span>
                 )}
+                {assignCount != null && assignCount > 0 ? (
+                  <span className="text-[11px] text-muted-foreground">
+                    · {assignCount} assigned
+                  </span>
+                ) : null}
               </div>
             </button>
           );

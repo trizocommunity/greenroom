@@ -101,21 +101,23 @@ export default async function ProgrammeReportingPage({
         <HowItWorksButton title="How programme reporting works">
           <ul className="space-y-2 pl-5 text-muted-foreground leading-relaxed [&>li]:list-disc">
             <li>
-              Pick a <strong>scheduled programme</strong> from the left list.
-              Use filters for stage, category, type, and status.
+              Under <strong>Up next</strong>, pick a slot that is not started or
+              already live. Use <strong>Full list</strong> to include finished
+              sessions and filter by status.
             </li>
             <li>
-              Press <strong>Start</strong> to open the live window. Mark who has
-              reported. Group programmes can mark a full team together.
+              <strong>Start reporting</strong> opens check-in. Mark who is present
+              via QR or the roster. For each present row, use <strong>Spin</strong>{" "}
+              to draw a code letter.
             </li>
             <li>
-              <strong>Stop / Reset</strong> closes reporting with no code
-              letters and moves the programme back to scheduled.
+              <strong>Stop without codes</strong> ends the session without issuing
+              letters (programme returns to a schedulable state).
             </li>
             <li>
-              <strong>Submit &amp; Start</strong> locks reporting and issues
-              code letters: one shared code per reported team (GROUP) or one
-              code per reported student (INDIVIDUAL).
+              <strong>Submit &amp; notify</strong> finalizes reporting, issues
+              codes (one per team for GROUP, one per student for INDIVIDUAL), and
+              notifies students and team leaders.
             </li>
           </ul>
         </HowItWorksButton>

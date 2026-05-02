@@ -98,9 +98,9 @@ export const getFestivalDashboardSidebarConfig = (
   const isSuperAdmin = role === "SUPER_ADMIN";
   const normalizedRole = role as FestivalRole;
   const useExternalJudging = plan.useExternalJudging ?? false;
-  // Results page is excluded for BASIC; available only when external judging plan path is enabled.
+  // Dedicated /event-works/results is excluded for BASIC; available when external judging is enabled.
   const canUseResultsPage = useExternalJudging;
-  const judgmentTitle = useExternalJudging ? "Judgment" : "Results";
+  const judgmentTitle = useExternalJudging ? "Judgment" : "Marks";
   const judgmentHref = useExternalJudging
     ? `${basePath}/event-works/judgment`
     : `${basePath}/event-works/marks`;
@@ -147,59 +147,59 @@ export const getFestivalDashboardSidebarConfig = (
       ],
     },
     {
-      title: "Pre-Works",
+      title: "Pre Event Works",
       items: [
         {
           title: "Groups",
-          href: `${basePath}/pre-works/groups`,
+          href: `${basePath}/pre-event-works/groups`,
           icon: Building2,
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {
           title: "Categories",
-          href: `${basePath}/pre-works/categories`,
+          href: `${basePath}/pre-event-works/categories`,
           icon: ClipboardList,
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {
           title: "Students",
-          href: `${basePath}/pre-works/students`,
+          href: `${basePath}/pre-event-works/students`,
           icon: UsersRound,
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {
           title: "Programmes",
-          href: `${basePath}/pre-works/programmes`,
+          href: `${basePath}/pre-event-works/programmes`,
           icon: FileText,
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {
           title: "Assignment",
-          href: `${basePath}/pre-works/assignments`,
+          href: `${basePath}/pre-event-works/assignments`,
           icon: Edit,
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {
           title: "QR Codes",
-          href: `${basePath}/pre-works/qr-codes`,
+          href: `${basePath}/pre-event-works/qr-codes`,
           icon: QrCode,
           allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
         },
         {
           title: "Stage Management",
-          href: `${basePath}/pre-works/stage-management`,
+          href: `${basePath}/pre-event-works/stage-management`,
           icon: Megaphone,
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
         },
         {
           title: "Schedule",
-          href: `${basePath}/pre-works/schedule`,
+          href: `${basePath}/pre-event-works/schedule`,
           icon: Calendar,
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
         },
         {
           title: "Sessions",
-          href: `${basePath}/pre-works/sessions`,
+          href: `${basePath}/pre-event-works/sessions`,
           icon: CalendarDays,
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
         },

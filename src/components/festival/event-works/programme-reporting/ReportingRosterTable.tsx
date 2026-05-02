@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { Dices, Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/core/utils/cn";
 import type { RosterTableRow } from "./types";
@@ -10,6 +10,7 @@ interface ReportingRosterTableProps {
   isInProgress: boolean;
   isClosed: boolean;
   onMark: (row: RosterTableRow, checked: boolean) => Promise<void>;
+  onSpin: (row: RosterTableRow) => void;
   markingIds: Set<string>;
   getIssuedCodeForRow: (row: RosterTableRow) => string | null;
   programmeType: "INDIVIDUAL" | "GROUP";
@@ -20,6 +21,7 @@ export function ReportingRosterTable({
   isInProgress,
   isClosed,
   onMark,
+  onSpin,
   markingIds,
   getIssuedCodeForRow,
   programmeType,
@@ -29,17 +31,17 @@ export function ReportingRosterTable({
       {/* Desktop roster (column layout) */}
       <div className="hidden md:block">
         <div className="grid grid-cols-12 border-b bg-muted/40 px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          <div className="col-span-1 flex justify-center">Status</div>
+          <div className="col-span-1 flex justify-center">Present</div>
           <div className="col-span-6">
             {programmeType === "GROUP" ? "Team / members" : "Student"}
           </div>
           <div className="col-span-2">Group</div>
-          <div className="col-span-3 text-right">Code letter</div>
+          <div className="col-span-3 text-right">Code (spin)</div>
         </div>
         <div className="divide-y divide-border/40">
           {rows.map((row) => {
             const issuedCode = getIssuedCodeForRow(row);
-            const showCode = isClosed && issuedCode && row.isReported;
+            const showCode = (isClosed || !!issuedCode) && row.isReported;
             const isMarking =
               row.mode === "individual"
                 ? markingIds.has(row.assignmentId)
@@ -95,6 +97,15 @@ export function ReportingRosterTable({
                     <span className="inline-flex items-center rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-blue-700 dark:text-blue-300 font-bold">
                       {issuedCode}
                     </span>
+                  ) : row.isReported && isInProgress ? (
+                    <button
+                      type="button"
+                      onClick={() => onSpin(row)}
+                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold transition-all shadow-sm active:scale-95"
+                    >
+                      <Dices className="h-3 w-3" />
+                      Spin
+                    </button>
                   ) : (
                     <span className="text-muted-foreground/40">—</span>
                   )}
@@ -109,7 +120,7 @@ export function ReportingRosterTable({
       <div className="md:hidden space-y-px bg-border/40">
         {rows.map((row) => {
           const issuedCode = getIssuedCodeForRow(row);
-          const showCode = isClosed && issuedCode && row.isReported;
+          const showCode = (isClosed || !!issuedCode) && row.isReported;
           const title =
             row.mode === "groupTeam" ? `Team ${row.teamCell}` : row.nameColumn;
           const subtitle =
@@ -164,17 +175,24 @@ export function ReportingRosterTable({
                   {subtitle}
                 </p>
               </div>
-              {isClosed && (
-                <div className="shrink-0 font-mono text-xs">
-                  {showCode ? (
-                    <span className="inline-flex items-center rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-blue-700 dark:text-blue-300 font-bold">
-                      {issuedCode}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground/30">—</span>
-                  )}
-                </div>
-              )}
+              <div className="shrink-0 font-mono text-xs">
+                {showCode ? (
+                  <span className="inline-flex items-center rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-blue-700 dark:text-blue-300 font-bold">
+                    {issuedCode}
+                  </span>
+                ) : row.isReported && isInProgress ? (
+                  <button
+                    type="button"
+                    onClick={() => onSpin(row)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold transition-all shadow-sm active:scale-95"
+                  >
+                    <Dices className="h-3 w-3" />
+                    Spin
+                  </button>
+                ) : (
+                  <span className="text-muted-foreground/30">—</span>
+                )}
+              </div>
             </div>
           );
         })}

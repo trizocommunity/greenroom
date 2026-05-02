@@ -1,13 +1,18 @@
-import { and, asc, desc, eq, gte, ne } from "drizzle-orm";
+import { asc, count, eq, inArray } from "drizzle-orm";
 import { db } from "@/core/database/client";
-import { festival as festivals } from "@/core/database/schema";
+import {
+  category,
+  festival as festivals,
+  group as groupTable,
+  programmeAssignment as assignmentTable,
+} from "@/core/database/schema";
 
 export async function getFestivalLeaderboardDataBySlug(slug: string) {
   const festival = await db.query.festival.findFirst({
     where: eq(festivals.slug, slug),
     with: {
-      categories: { orderBy: [asc(festivals.name)] },
-      groups: { orderBy: [asc(festivals.name)] },
+      categories: { orderBy: [asc(category.name)] },
+      groups: { orderBy: [asc(groupTable.name)] },
       programmes: { columns: { id: true, status: true } },
       results: {
         with: {
@@ -18,6 +23,7 @@ export async function getFestivalLeaderboardDataBySlug(slug: string) {
             },
           },
           programme: {
+            columns: { id: true, type: true, status: true },
             with: { category: true },
           },
         },
@@ -29,8 +35,15 @@ export async function getFestivalLeaderboardDataBySlug(slug: string) {
     return { festival: null, assignmentCount: 0 };
   }
 
-  // Count assignments for this festival's programmes
-  const assignmentCount = festival.programmes.reduce((acc, _) => acc, 0);
+  const programmeIds = festival.programmes.map((p) => p.id);
+  let assignmentCount = 0;
+  if (programmeIds.length > 0) {
+    const [row] = await db
+      .select({ c: count() })
+      .from(assignmentTable)
+      .where(inArray(assignmentTable.programmeId, programmeIds));
+    assignmentCount = row?.c ?? 0;
+  }
 
   return {
     festival,

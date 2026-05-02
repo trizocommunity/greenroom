@@ -94,7 +94,7 @@ export default async function FestivalLayout({
           festival={festivalData as any}
           isLoggedIn={isLoggedIn}
         />
-        <main className="flex-1 pt-16">{children}</main>
+        <main className="flex-1 pt-14">{children}</main>
         <FestivalFooter festival={festivalData as any} />
       </div>
     </FestivalProvider>

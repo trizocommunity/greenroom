@@ -22,6 +22,19 @@ import {
   regenerateProgrammeJudgeLinkAction,
 } from "@/features/programmes/actions/programme-judging.actions";
 
+/** Fixed locale + options so SSR (Node) and the browser produce the same string (avoids hydration mismatch). */
+function formatJudgedAtLabel(value: string | Date): string {
+  return new Date(value).toLocaleString("en-US", {
+    month: "numeric",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
+}
+
 type ProgrammeType = "INDIVIDUAL" | "GROUP";
 
 type JudgingAssignmentRow = {
@@ -394,7 +407,7 @@ export function JudgmentClient({
         emptyText="History appears here after judges submit points."
         items={filteredJudgedProgrammes.map((p) => {
           const judgedAt = p.latestUsedJudgeSession?.usedAt
-            ? new Date(p.latestUsedJudgeSession.usedAt).toLocaleString()
+            ? formatJudgedAtLabel(p.latestUsedJudgeSession.usedAt)
             : "Judged time unavailable";
           const judgeLabel =
             p.latestUsedJudgeSession?.submittedByName ??

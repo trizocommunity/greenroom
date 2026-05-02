@@ -71,7 +71,7 @@ export default async function JudgmentPage({
         title="No programmes ready for judging"
         description="Once reporting ends and programmes become STARTED, you can create judge links here. After judges submit, programme history will appear below."
         actionLabel="Go to Schedule"
-        actionLink={`/dashboard/${slug}/pre-works/schedule`}
+        actionLink={`/dashboard/${slug}/pre-event-works/schedule`}
         icon={Calendar}
       />
     );

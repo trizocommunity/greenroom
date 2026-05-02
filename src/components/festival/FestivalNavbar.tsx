@@ -65,11 +65,11 @@ export function FestivalNavbar({
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
         isScrolled
-          ? "bg-background/95 backdrop-blur-xl border-b border-border shadow-sm h-16"
-          : "bg-transparent h-20",
+          ? "bg-background/95 backdrop-blur-xl border-b border-border shadow-sm h-12"
+          : "bg-transparent h-14",
       )}
     >
-      <div className="mx-auto max-w-7xl px-4 md:px-6 h-16 flex items-center justify-between">
+      <div className="mx-auto max-w-7xl px-4 md:px-6 h-12 flex items-center justify-between">
         {/* Festival Logo / Name */}
         <Link href={linkBase} className="flex items-center gap-3 group">
           {festival.logo ? (

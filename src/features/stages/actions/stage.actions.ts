@@ -50,7 +50,7 @@ export async function createStage(festivalId: string, data: StageData) {
 
   if (festivalRecord) {
     revalidatePath(
-      `/dashboard/${festivalRecord.slug}/event-works/stage-management`,
+      `/dashboard/${festivalRecord.slug}/pre-event-works/stage-management`,
     );
   }
 }
@@ -78,7 +78,7 @@ export async function updateStage(stageId: string, data: StageData) {
 
   if (festivalRecord) {
     revalidatePath(
-      `/dashboard/${festivalRecord.slug}/event-works/stage-management`,
+      `/dashboard/${festivalRecord.slug}/pre-event-works/stage-management`,
     );
   }
 }
@@ -104,7 +104,7 @@ export async function deleteStage(stageId: string) {
   );
 
   revalidatePath(
-    `/dashboard/${stageRecord.festival.slug}/event-works/stage-management`,
+    `/dashboard/${stageRecord.festival.slug}/pre-event-works/stage-management`,
   );
 }
 

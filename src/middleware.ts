@@ -14,10 +14,11 @@ export function middleware(_request: NextRequest) {
   // Referrer policy
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
 
-  // Permissions policy (restrict browser features)
+  // Permissions policy (restrict browser features).
+  // camera=(self) allows getUserMedia on this origin (e.g. programme QR scan). camera=() blocks all camera access.
   response.headers.set(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()",
+    "camera=(self), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()",
   );
 
   // Content Security Policy - strict but allows necessary resources

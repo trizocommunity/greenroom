@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { csrfFetch } from "@/core/http/csrf-fetch";
 
 export function TeamLeaderLoginClient({
   festivalSlug,
@@ -25,7 +26,7 @@ export function TeamLeaderLoginClient({
   const requestOtp = async () => {
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/team-leader/request-otp", {
+      const res = await csrfFetch("/api/team-leader/request-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ festivalSlug, studentSlug }),
@@ -54,7 +55,7 @@ export function TeamLeaderLoginClient({
     if (!otp) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/team-leader/verify-otp", {
+      const res = await csrfFetch("/api/team-leader/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ festivalSlug, studentSlug, otp }),

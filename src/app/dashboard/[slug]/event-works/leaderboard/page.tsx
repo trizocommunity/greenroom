@@ -10,7 +10,7 @@ import {
 } from "@/features/programmes/services/programme-status.service";
 import { getFestivalLeaderboardDataBySlug } from "@/features/results/services/leaderboard.service";
 
-export default async function TeamStatusPage({
+export default async function LeaderboardPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
@@ -25,10 +25,10 @@ export default async function TeamStatusPage({
   }
 
   const tier = (festival.tier ?? "STANDARD") as Tier;
-  const canViewLeaderboard =
-    tier === "BASIC"
-      ? true
-      : await getEffectiveFeatureEnabled(festival.tier, "liveScoreboard");
+  const canViewLeaderboard = await getEffectiveFeatureEnabled(
+    tier,
+    "liveScoreboard",
+  );
   if (!canViewLeaderboard) {
     redirect(
       `/dashboard/${slug}?error=upgrade_required&feature=liveScoreboard`,
@@ -50,9 +50,9 @@ export default async function TeamStatusPage({
     return (
       <EmptyState
         title="No programmes in Event Works yet"
-        description="On Standard and Pro plans, programmes appear here only after they are added to the schedule. Add your programmes to the schedule in Pre-Works to see them in Marks, Results, and Leaderboard."
+        description="On Standard and Pro plans, programmes appear here only after they are added to the schedule. Add your programmes to the schedule in Pre Event Works to see them in Marks, Results, and Leaderboard."
         actionLabel="Go to Schedule"
-        actionLink={`/dashboard/${slug}/pre-works/schedule`}
+        actionLink={`/dashboard/${slug}/pre-event-works/schedule`}
         icon={Calendar}
       />
     );
@@ -64,7 +64,7 @@ export default async function TeamStatusPage({
         title="No Data Available"
         description="Leaderboard will be populated once assignments and results are available."
         actionLabel="Go to Assignments"
-        actionLink={`/dashboard/${slug}/pre-works/assignments`}
+        actionLink={`/dashboard/${slug}/pre-event-works/assignments`}
         icon={Trophy}
       />
     );

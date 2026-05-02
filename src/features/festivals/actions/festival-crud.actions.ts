@@ -300,30 +300,6 @@ export async function setPublicSiteEnabledAction(
 
     await assertFestivalMutationAllowed(festivalId);
 
-    if (enabled) {
-      const validation = validatePublicSiteRequirements({
-        name: festival.name,
-        description: festival.description,
-        orgName: festival.orgName,
-        orgDescription: festival.orgDescription,
-        orgWebsite: festival.orgWebsite,
-        orgLocation: festival.orgLocation,
-        tier: festival.tier as any,
-        galleryImageCount: festival.festivalGalleryImages.length ?? 0,
-        newsPosts: (festival.festivalNews ?? []).map((p) => ({
-          title: p.title,
-          content: p.content,
-          imageUrl: p.imageUrl,
-        })),
-      });
-      if (!validation.canEnable) {
-        throw new AppError(
-          validation.errors.join(" ") ||
-            "Complete required content before enabling the public site.",
-        );
-      }
-    }
-
     await db
       .update(festivalTable)
       .set({

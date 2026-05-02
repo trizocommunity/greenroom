@@ -1,5 +1,6 @@
 import { and, count, desc, eq, exists, type SQL, sql } from "drizzle-orm";
 import { db } from "@/core/database/client";
+import { withDbRetry } from "@/core/database/db-retry";
 import {
   category as categories,
   festival as festivals,
@@ -81,35 +82,65 @@ export async function findFestivalByOwnerId(ownerId: string) {
   });
 }
 
+/** Owner row for festival queries — never load password into app memory. */
+const festivalOwnerUserColumns = {
+  columns: {
+    id: true,
+    email: true,
+    fullName: true,
+    displayName: true,
+    globalRole: true,
+    isActive: true,
+    age: true,
+    createdAt: true,
+    updatedAt: true,
+  },
+} as const;
+
+async function attachProgrammeAndStudentCounts<
+  T extends { id: string },
+>(row: T) {
+  const [progRow, studRow] = await Promise.all([
+    db
+      .select({ n: count() })
+      .from(programmes)
+      .where(eq(programmes.festivalId, row.id)),
+    db
+      .select({ n: count() })
+      .from(students)
+      .where(eq(students.festivalId, row.id)),
+  ]);
+
+  return {
+    ...row,
+    _count: {
+      programmes: Number(progRow[0]?.n ?? 0),
+      students: Number(studRow[0]?.n ?? 0),
+    },
+  };
+}
+
 export async function findFestivalBySlugOrId(slugOrId: string) {
-  const bySlug = await db.query.festival.findFirst({
-    where: eq(festivals.slug, slugOrId),
-    with: {
-      user: true,
-      programmes: { columns: { id: true } },
-      students: { columns: { id: true } },
-    },
+  return withDbRetry(async () => {
+    const bySlug = await db.query.festival.findFirst({
+      where: eq(festivals.slug, slugOrId),
+      with: { user: festivalOwnerUserColumns },
+    });
+
+    if (bySlug) {
+      return attachProgrammeAndStudentCounts(bySlug);
+    }
+
+    const byId = await db.query.festival.findFirst({
+      where: eq(festivals.id, slugOrId),
+      with: { user: festivalOwnerUserColumns },
+    });
+
+    if (byId) {
+      return attachProgrammeAndStudentCounts(byId);
+    }
+    return null;
   });
-
-  if (bySlug) {
-    const { programmes: p, students: s, ...rest } = bySlug;
-    return { ...rest, _count: { programmes: p.length, students: s.length } };
-  }
-
-  const byId = await db.query.festival.findFirst({
-    where: eq(festivals.id, slugOrId),
-    with: {
-      user: true,
-      programmes: { columns: { id: true } },
-      students: { columns: { id: true } },
-    },
-  });
-
-  if (byId) {
-    const { programmes: p, students: s, ...rest } = byId;
-    return { ...rest, _count: { programmes: p.length, students: s.length } };
-  }
-  return null;
 }
 
 export async function updateTeamStandings(festivalId: string, standings: any) {

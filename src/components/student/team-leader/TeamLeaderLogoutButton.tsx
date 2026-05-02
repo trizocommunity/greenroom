@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { csrfFetch } from "@/core/http/csrf-fetch";
 
 export function TeamLeaderLogoutButton({ redirectTo }: { redirectTo: string }) {
   const router = useRouter();
@@ -10,7 +11,7 @@ export function TeamLeaderLogoutButton({ redirectTo }: { redirectTo: string }) {
       variant="outline"
       size="sm"
       onClick={async () => {
-        await fetch("/api/team-leader/logout", { method: "POST" });
+        await csrfFetch("/api/team-leader/logout", { method: "POST" });
         router.push(redirectTo);
         router.refresh();
       }}

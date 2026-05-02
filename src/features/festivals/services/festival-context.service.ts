@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
+import { withDbRetry } from "@/core/database/db-retry";
 import { festivalMember, festival as festivals } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
@@ -44,12 +45,14 @@ export async function getFestivalContext(
       : "NONE";
 
   if (!isCreator && !isSuperAdmin && userId) {
-    const member = await db.query.festivalMember.findFirst({
-      where: and(
-        eq(festivalMember.festivalId, festival.id),
-        eq(festivalMember.userId, userId),
-      ),
-    });
+    const member = await withDbRetry(() =>
+      db.query.festivalMember.findFirst({
+        where: and(
+          eq(festivalMember.festivalId, festival.id),
+          eq(festivalMember.userId, userId),
+        ),
+      }),
+    );
 
     if (member?.isActive) {
       role = member.role as FestivalRole;
