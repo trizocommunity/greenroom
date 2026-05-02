@@ -37,12 +37,12 @@ export const FestivalExpirationService = {
    * These are ONGOING/PAST festivals not yet EXPIRED that are approaching expiry.
    */
   async getFestivalsApproachingExpiry(): Promise<
-    { id: string; name: string; slug: string; expiresAt: string }[]
+    { id: string; name: string; slug: string; expiresAt: string | null }[]
   > {
     const now = new Date();
     const windowEnd = new Date(
       now.getTime() + PRE_ARCHIVAL_DAYS * MS_PER_DAY,
-    ).toISOString();
+    );
     const list = await db
       .select({
         id: festivals.id,

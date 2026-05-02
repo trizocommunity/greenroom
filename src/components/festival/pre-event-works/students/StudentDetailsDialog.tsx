@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { Crown, Eye, Loader2, Mail, Phone } from "lucide-react";
 import { useState } from "react";
 import { useFestival } from "@/components/festival/FestivalContext";
-import { TeamStudentsDialog } from "@/components/festival/pre-works/assignments/TeamStudentsDialog";
+import { TeamStudentsDialog } from "@/components/festival/pre-event-works/assignments/TeamStudentsDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { StudentProfileView } from "@/components/festival/pre-works/students/StudentProfileView";
+import { StudentProfileView } from "@/components/festival/pre-event-works/students/StudentProfileView";
 import { APP_URL } from "@/config/routes";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";

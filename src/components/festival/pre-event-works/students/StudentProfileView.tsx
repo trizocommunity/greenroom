@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { QrCodeDisplay } from "@/components/common/QrCodeDisplay";
 import { useFestival } from "@/components/festival/FestivalContext";
-import { TeamStudentsDialog } from "@/components/festival/pre-works/assignments/TeamStudentsDialog";
+import { TeamStudentsDialog } from "@/components/festival/pre-event-works/assignments/TeamStudentsDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -126,7 +126,7 @@ export function StudentProfileView({
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href={`/dashboard/${festivalSlug}/pre-works/students`}>
+          <Link href={`/dashboard/${festivalSlug}/pre-event-works/students`}>
             <ArrowLeft className="h-4 w-4" />
             <span className="sr-only">Back to students</span>
           </Link>

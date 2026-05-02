@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { AlertTriangle, Calendar, CheckCircle, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -67,15 +68,24 @@ export function FestivalStatusBadge({
   size = "default",
   interactive = false,
 }: FestivalStatusBadgeProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const normalized = status as DerivedFestivalStatus;
-  const isExpiredByTime = expiresAt ? new Date(expiresAt) < new Date() : false;
+  
+  // Use a stable value for SSR, only check live time on client
+  const isExpiredByTime = (mounted && expiresAt) ? new Date(expiresAt) < new Date() : false;
+  
   const effectiveStatus: DerivedFestivalStatus =
     normalized === "EXPIRED" || isExpiredByTime ? "EXPIRED" : normalized;
-  const countdown = getFestivalStatusCountdownText(effectiveStatus, {
+    
+  const countdown = mounted ? getFestivalStatusCountdownText(effectiveStatus, {
     startDate,
     endDate,
     expiresAt,
-  });
+  }) : null;
 
   const badgeSizeClass = size === "sm" ? "text-xs px-1.5 py-0" : "";
   const iconSizeClass = size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3";
@@ -89,15 +99,11 @@ export function FestivalStatusBadge({
       <Badge
         variant={config.variant}
         className={`${badgeSizeClass} ${config.className}`}
-        suppressHydrationWarning
       >
         <Icon className={`${iconSizeClass} mr-1`} />
         <span>{label}</span>
         {countdown ? (
-          <span
-            className="ml-1.5 border-l border-current/20 pl-1.5 opacity-90"
-            suppressHydrationWarning
-          >
+          <span className="ml-1.5 border-l border-current/20 pl-1.5 opacity-90">
             {countdown}
           </span>
         ) : null}

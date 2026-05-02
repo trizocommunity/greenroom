@@ -61,7 +61,7 @@ export async function saveChestNumberSettings(
   });
 
   if (updatedFestival) {
-    revalidatePath(`/dashboard/${updatedFestival.slug}/pre-works/students`);
+    revalidatePath(`/dashboard/${updatedFestival.slug}/pre-event-works/students`);
   }
 }
 
@@ -199,7 +199,7 @@ export async function generateChestNumbers(festivalId: string) {
       .where(eq(festivalTable.id, festivalId));
   });
 
-  revalidatePath(`/dashboard/${festival.slug}/pre-works/students`);
+  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/students`);
   return {
     count: eligibleStudents.length,
     message: `Chest numbers generated for ${eligibleStudents.length} students.`,
@@ -236,7 +236,7 @@ export async function resetChestNumbers(festivalId: string) {
       .where(eq(festivalTable.id, festivalId));
   });
 
-  revalidatePath(`/dashboard/${festival.slug}/pre-works/students`);
+  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/students`);
 }
 
 export async function assignChestNumberForNewStudent(
@@ -461,5 +461,5 @@ export async function updateAllChestNumbers(
       .where(eq(festivalTable.id, festivalId));
   });
 
-  revalidatePath(`/dashboard/${festival.slug}/pre-works/students`);
+  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/students`);
 }

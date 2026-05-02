@@ -26,7 +26,7 @@ export function DashboardBreadcrumb({
   const canUseExternalJudging = useFeatureTag("eventWorks.externalJudging");
 
   // 1. Get path relative to dashboard root
-  // e.g. /dashboard/my-fest/pre-works/categories -> pre-works/categories
+  // e.g. /dashboard/my-fest/pre-event-works/categories -> Pre Event Works/categories
   const relativePath = pathname.replace(basePath, "");
   const segments = relativePath.split("/").filter(Boolean);
 
@@ -46,7 +46,7 @@ export function DashboardBreadcrumb({
     if (exactMatch) return exactMatch.title;
 
     // Fallback: Sidebar groups or formatted string
-    if (segment === "pre-works") return "Pre-Works";
+    if (segment === "pre-event-works" || segment === "Pre Event Works") return "Pre Event Works";
     if (segment === "event-works") return "Event Works";
     if (segment === "on-event-works") return "On-Event Works";
 
@@ -82,7 +82,7 @@ export function DashboardBreadcrumb({
                   <BreadcrumbPage>{title}</BreadcrumbPage>
                 ) : (
                   // Make intermediate steps clickable if they correspond to a real page?
-                  // For "pre-works", there is no page usually, so we might want to check if it's clickable.
+                  // For "Pre Event Works", there is no page usually, so we might want to check if it's clickable.
                   // For now, let's assume if it's in sidebar items, it's clickable.
                   <BreadcrumbLink
                     asChild

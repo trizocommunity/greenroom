@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { GroupsClient } from "@/components/festival/pre-works/groups/GroupsClient";
+import { GroupsClient } from "@/components/festival/pre-event-works/groups/GroupsClient";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 
 export default async function GroupsPage({

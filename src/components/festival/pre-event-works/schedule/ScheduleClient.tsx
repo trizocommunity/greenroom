@@ -301,7 +301,7 @@ export function ScheduleClient({
             </p>
             <p className="text-sm text-muted-foreground">
               Sessions (e.g. opening ceremony) are managed separately under
-              Pre-Works → Sessions.
+              Pre Event Works → Sessions.
             </p>
           </HowItWorksButton>
           <Button
@@ -352,11 +352,11 @@ export function ScheduleClient({
                 "Create, edit, delete, and reorder are disabled in read-only mode."}
               {!isReadOnly &&
                 !hasStages &&
-                "Please create a stage first in Pre-Works → Stage Management."}
+                "Please create a stage first in Pre Event Works → Stage Management."}
               {!isReadOnly &&
                 hasStages &&
                 !hasProgrammes &&
-                "Please create programmes first in Pre-Works → Programmes."}
+                "Please create programmes first in Pre Event Works → Programmes."}
               {!isReadOnly &&
                 hasStages &&
                 hasProgrammes &&

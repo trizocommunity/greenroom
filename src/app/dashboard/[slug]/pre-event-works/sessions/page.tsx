@@ -1,6 +1,6 @@
 import { eachDayOfInterval, format, startOfDay } from "date-fns";
 import { notFound, redirect } from "next/navigation";
-import { SessionScheduleClient } from "@/components/festival/pre-works/schedule/SessionScheduleClient";
+import { SessionScheduleClient } from "@/components/festival/pre-event-works/schedule/SessionScheduleClient";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 import { getScheduleEntries } from "@/features/schedule/actions/schedule.actions";

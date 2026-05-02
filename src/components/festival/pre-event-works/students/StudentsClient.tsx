@@ -296,7 +296,7 @@ export function StudentsClient({
                     {canViewStudentProfile ? (
                       <DropdownMenuItem asChild>
                         <Link
-                          href={`/dashboard/${festivalSlug}/pre-works/students/${
+                          href={`/dashboard/${festivalSlug}/pre-event-works/students/${
                             tl.profileSlug ?? tl.id
                           }`}
                         >
@@ -583,7 +583,7 @@ export function StudentsClient({
                         {canViewStudentProfile ? (
                           <DropdownMenuItem asChild>
                             <Link
-                              href={`/dashboard/${festivalSlug}/pre-works/students/${
+                              href={`/dashboard/${festivalSlug}/pre-event-works/students/${
                                 student.profileSlug ?? student.id
                               }`}
                             >
@@ -749,7 +749,7 @@ export function StudentsClient({
                           {canViewStudentProfile ? (
                             <DropdownMenuItem asChild>
                               <Link
-                                href={`/dashboard/${festivalSlug}/pre-works/students/${
+                                href={`/dashboard/${festivalSlug}/pre-event-works/students/${
                                   student.profileSlug ?? student.id
                                 }`}
                               >

@@ -90,49 +90,49 @@ export default async function OverviewWidgets({
     {
       label: "Groups",
       icon: Users,
-      href: `/dashboard/${slug}/pre-works/groups`,
+      href: `/dashboard/${slug}/pre-event-works/groups`,
       condition: planFeature(features, "groups"),
     },
     {
       label: "Students",
       icon: UserPlus,
-      href: `/dashboard/${slug}/pre-works/students`,
+      href: `/dashboard/${slug}/pre-event-works/students`,
       condition: planFeature(features, "students"),
     },
     {
       label: "Categories",
       icon: List,
-      href: `/dashboard/${slug}/pre-works/categories`,
+      href: `/dashboard/${slug}/pre-event-works/categories`,
       condition: planFeature(features, "categories"),
     },
     {
       label: "Programs",
       icon: FileText,
-      href: `/dashboard/${slug}/pre-works/programmes`,
+      href: `/dashboard/${slug}/pre-event-works/programmes`,
       condition: planFeature(features, "programmes"),
     },
     {
       label: "Assignment",
       icon: ClipboardCheck,
-      href: `/dashboard/${slug}/pre-works/assignments`,
+      href: `/dashboard/${slug}/pre-event-works/assignments`,
       condition: planFeature(features, "assignments"),
     },
     {
       label: "QR Codes",
       icon: QrCode,
-      href: `/dashboard/${slug}/pre-works/qr-codes`,
+      href: `/dashboard/${slug}/pre-event-works/qr-codes`,
       condition: planFeature(features, "qrCodes"),
     },
     {
       label: "Schedule",
       icon: Calendar,
-      href: `/dashboard/${slug}/pre-works/schedule`,
+      href: `/dashboard/${slug}/pre-event-works/schedule`,
       condition: planFeature(features, "schedule"),
     },
     {
       label: "Stages",
       icon: Mic,
-      href: `/dashboard/${slug}/pre-works/stage-management`,
+      href: `/dashboard/${slug}/pre-event-works/stage-management`,
       condition: planFeature(features, "stageManagement"),
     },
     {
@@ -271,7 +271,7 @@ export default async function OverviewWidgets({
               </div>
               <div className="pt-4 border-t mt-auto">
                 <Link
-                  href={`/dashboard/${slug}/pre-works/programmes`}
+                  href={`/dashboard/${slug}/pre-event-works/programmes`}
                   className="w-full flex items-center justify-center py-2 text-sm border rounded-md hover:bg-muted/50 transition-colors"
                 >
                   View All Programmes <ArrowRight className="ml-2 h-4 w-4" />
@@ -322,7 +322,7 @@ export default async function OverviewWidgets({
               </div>
               <div className="pt-4 border-t mt-auto">
                 <Link
-                  href={`/dashboard/${slug}/pre-works/students`}
+                  href={`/dashboard/${slug}/pre-event-works/students`}
                   className="w-full flex items-center justify-center py-2 text-sm border rounded-md hover:bg-muted/50 transition-colors"
                 >
                   View All Students <ArrowRight className="ml-2 h-4 w-4" />

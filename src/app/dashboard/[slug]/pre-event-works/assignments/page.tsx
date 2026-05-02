@@ -2,7 +2,7 @@ import { count, eq } from "drizzle-orm";
 import { CalendarRange, Users } from "lucide-react";
 import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
-import { AssignmentsClient } from "@/components/festival/pre-works/assignments/AssignmentsClient";
+import { AssignmentsClient } from "@/components/festival/pre-event-works/assignments/AssignmentsClient";
 import { db } from "@/core/database/client";
 import {
   programme as programmeTable,
@@ -31,7 +31,7 @@ export default async function AssignmentsPage({
         title="No Programmes Found"
         description="You need to create programmes before you can assign students."
         actionLabel="Create Programmes"
-        actionLink={`/dashboard/${festival.slug}/pre-works/programmes`}
+        actionLink={`/dashboard/${festival.slug}/pre-event-works/programmes`}
         icon={CalendarRange}
       />
     );
@@ -49,7 +49,7 @@ export default async function AssignmentsPage({
         title="No Students Found"
         description="You need to create students before you can assign them to programmes."
         actionLabel="Create Students"
-        actionLink={`/dashboard/${festival.slug}/pre-works/students`}
+        actionLink={`/dashboard/${festival.slug}/pre-event-works/students`}
         icon={Users}
       />
     );

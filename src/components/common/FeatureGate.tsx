@@ -105,7 +105,7 @@ export function FeatureGate({
  */
 function getFeatureLabel(feature: FeaturePath): string {
   const labels: Record<FeaturePath, string> = {
-    // Pre-Works
+    // Pre Event Works
     categories: "Categories",
     groups: "Groups",
     students: "Students",

@@ -81,7 +81,7 @@ export default async function MarksRedirectPage({
           title="No Assignments Found"
           description="Judgment can only be recorded after students are assigned to programmes."
           actionLabel="Go to Assignments"
-          actionLink={`/dashboard/${slug}/pre-works/assignments`}
+          actionLink={`/dashboard/${slug}/pre-event-works/assignments`}
           icon={ClipboardList}
         />
       );
@@ -89,9 +89,9 @@ export default async function MarksRedirectPage({
     return (
       <EmptyState
         title="No programmes in Event Works yet"
-        description="On Standard and Pro plans, programmes appear here only after they are added to the schedule. Add your programmes to the schedule in Pre-Works to see them in Judgment, Results, and Leaderboard."
+        description="On Standard and Pro plans, programmes appear here only after they are added to the schedule. Add your programmes to the schedule in Pre Event Works to see them in Judgment, Results, and Leaderboard."
         actionLabel="Go to Schedule"
-        actionLink={`/dashboard/${slug}/pre-works/schedule`}
+        actionLink={`/dashboard/${slug}/pre-event-works/schedule`}
         icon={Calendar}
       />
     );
@@ -109,7 +109,7 @@ export default async function MarksRedirectPage({
         title="No Assignments Found"
         description="Judgment can only be recorded after students are assigned to programmes."
         actionLabel="Go to Assignments"
-        actionLink={`/dashboard/${slug}/pre-works/assignments`}
+        actionLink={`/dashboard/${slug}/pre-event-works/assignments`}
         icon={ClipboardList}
       />
     );

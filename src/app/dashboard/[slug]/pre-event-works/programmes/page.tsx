@@ -2,7 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import { Tags, Users } from "lucide-react";
 import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
-import { ProgrammesClient } from "@/components/festival/pre-works/programmes/ProgrammesClient";
+import { ProgrammesClient } from "@/components/festival/pre-event-works/programmes/ProgrammesClient";
 import { db } from "@/core/database/client";
 import {
   category as categoryTable,
@@ -36,7 +36,7 @@ export default async function ProgrammesPage({
         title="No Categories Found"
         description="You need to create categories before you can create programmes."
         actionLabel="Create Categories"
-        actionLink={`/dashboard/${festival.slug}/pre-works/categories`}
+        actionLink={`/dashboard/${festival.slug}/pre-event-works/categories`}
         icon={Tags}
       />
     );
@@ -61,7 +61,7 @@ export default async function ProgrammesPage({
         title="No Students Found"
         description="You need to create students before you can manage programmes."
         actionLabel="Create Students"
-        actionLink={`/dashboard/${festival.slug}/pre-works/students`}
+        actionLink={`/dashboard/${festival.slug}/pre-event-works/students`}
         icon={Users}
       />
     );

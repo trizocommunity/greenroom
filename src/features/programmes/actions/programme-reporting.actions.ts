@@ -467,7 +467,8 @@ export async function assignCodeLettersWithSpinAction(
   festivalId: string,
   reportingSessionId: string,
   codeAssignments: Array<{
-    teamNumber: number;
+    teamNumber: number | null;
+    studentId?: string | null;
     code: string;
   }>,
 ) {

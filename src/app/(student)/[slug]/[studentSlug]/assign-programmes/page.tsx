@@ -1,6 +1,6 @@
 import { desc, eq, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { DeadlinesCard } from "@/components/festival/pre-works/DeadlinesCard";
+import { DeadlinesCard } from "@/components/festival/pre-event-works/DeadlinesCard";
 import { AssignProgrammesClient } from "@/components/student/team-leader/AssignProgrammesClient";
 import { requireTeamLeaderSession } from "@/core/auth/team-leader-guard";
 import { db } from "@/core/database/client";

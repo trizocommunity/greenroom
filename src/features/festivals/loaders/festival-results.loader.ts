@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { result as resultTable } from "@/core/database/schema";
 
@@ -40,7 +40,6 @@ export async function getPublicFestivalResults(
         },
       },
     },
-    orderBy: [asc(sql`programme.name`), asc(resultTable.position)],
   });
 
   const resultsByProgramme = results.reduce(

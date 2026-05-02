@@ -1,10 +1,9 @@
 import { randomInt, randomUUID } from "node:crypto";
-import { and, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   programmeCodeLetter as codeLetterTable,
   programmeCodeLetterRecipient as codeLetterRecipientTable,
-  programmeReportedParticipant as reportedParticipantTable,
   programmeReportingSession as prsTable,
 } from "@/core/database/schema";
 
@@ -39,19 +38,47 @@ export const CodeLetterGeneratorService = {
     },
     reportedParticipants: Array<{ studentId: string | null }>,
     actorName: string,
+    txIn?: any,
   ): Promise<CodeLetterEntry[]> {
     const studentCodes: CodeLetterEntry[] = [];
     const nowStr = new Date().toISOString();
+    
+    // Filter out rows without studentId
     const shuffled = reportedParticipants.filter((r): r is { studentId: string } =>
       Boolean(r.studentId),
     );
     shuffleInPlace(shuffled);
 
-    await db.transaction(async (tx) => {
+    const run = async (tx: any) => {
+      // 1. Find existing assignments for this session
+      const existing = await tx.query.programmeCodeLetter.findMany({
+        where: eq(codeLetterTable.reportingSessionId, session.id),
+        with: {
+          programmeCodeLetterRecipients: true,
+        },
+      });
+
+      const usedCodes = new Set(existing.map((e: any) => e.code));
+      const assignedStudentIds = new Set<string>();
+      for (const e of existing) {
+        for (const r of e.programmeCodeLetterRecipients) {
+          assignedStudentIds.add(r.studentId);
+        }
+      }
+
+      // 2. Filter out participants who already have codes
+      const toAssign = shuffled.filter((s) => !assignedStudentIds.has(s.studentId));
+      if (toAssign.length === 0) return;
+
       let ordinal = 0;
-      for (const row of shuffled) {
-        ordinal += 1;
-        const code = sequentialAlphabetCode(ordinal);
+      for (const row of toAssign) {
+        // Find next available letter that isn't already used
+        let code = "";
+        do {
+          ordinal += 1;
+          code = sequentialAlphabetCode(ordinal);
+        } while (usedCodes.has(code));
+
         const codeLetterId = randomUUID();
         await tx.insert(codeLetterTable).values({
           id: codeLetterId,
@@ -62,15 +89,25 @@ export const CodeLetterGeneratorService = {
           issuedBy: actorName,
           updatedAt: nowStr,
         } as any);
+        
         await tx.insert(codeLetterRecipientTable).values({
           id: randomUUID(),
           codeLetterId: codeLetterId,
           studentId: row.studentId,
           updatedAt: nowStr,
         } as any);
+        
         studentCodes.push({ studentId: row.studentId, code });
       }
-    });
+    };
+
+    if (txIn) {
+      await run(txIn);
+    } else {
+      await db.transaction(async (tx) => {
+        await run(tx);
+      });
+    }
 
     return studentCodes;
   },
@@ -87,34 +124,62 @@ export const CodeLetterGeneratorService = {
       teamNumber: number | null;
     }>,
     actorName: string,
+    txIn?: any,
   ): Promise<CodeLetterEntry[]> {
     const studentCodes: CodeLetterEntry[] = [];
     const nowStr = new Date().toISOString();
 
-    type TeamBucket = { studentIds: Set<string> };
-    const byTeam = new Map<string, TeamBucket>();
+    const run = async (tx: any) => {
+      // 1. Find existing assignments
+      const existing = await tx.query.programmeCodeLetter.findMany({
+        where: eq(codeLetterTable.reportingSessionId, session.id),
+        with: {
+          programmeCodeLetterRecipients: true,
+        },
+      });
 
-    for (const row of reportedParticipants) {
-      const teamKey =
-        row.groupId != null && row.teamNumber != null
-          ? `${row.groupId}\0${row.teamNumber}`
-          : `legacy:${row.studentId}`;
-      let bucket = byTeam.get(teamKey);
-      if (!bucket) {
-        bucket = { studentIds: new Set<string>() };
-        byTeam.set(teamKey, bucket);
+      const usedCodes = new Set(existing.map((e: any) => e.code));
+      const assignedStudentIds = new Set<string>();
+      for (const e of existing) {
+        for (const r of e.programmeCodeLetterRecipients) {
+          assignedStudentIds.add(r.studentId);
+        }
       }
-      if (row.studentId) bucket.studentIds.add(row.studentId);
-    }
 
-    const teamBuckets = Array.from(byTeam.values());
-    shuffleInPlace(teamBuckets);
+      // 2. Group by team
+      type TeamBucket = { studentIds: Set<string> };
+      const byTeam = new Map<string, TeamBucket>();
 
-    await db.transaction(async (tx) => {
+      for (const row of reportedParticipants) {
+        // Skip students who already have a code
+        if (row.studentId && assignedStudentIds.has(row.studentId)) continue;
+
+        const teamKey =
+          row.groupId != null && row.teamNumber != null
+            ? `${row.groupId}\0${row.teamNumber}`
+            : `legacy:${row.studentId}`;
+        let bucket = byTeam.get(teamKey);
+        if (!bucket) {
+          bucket = { studentIds: new Set<string>() };
+          byTeam.set(teamKey, bucket);
+        }
+        if (row.studentId) bucket.studentIds.add(row.studentId);
+      }
+
+      const teamBuckets = Array.from(byTeam.values());
+      if (teamBuckets.length === 0) return;
+      
+      shuffleInPlace(teamBuckets);
+
       let ordinal = 0;
       for (const bucket of teamBuckets) {
-        ordinal += 1;
-        const code = sequentialAlphabetCode(ordinal);
+        // Find next available letter
+        let code = "";
+        do {
+          ordinal += 1;
+          code = sequentialAlphabetCode(ordinal);
+        } while (usedCodes.has(code));
+
         const codeLetterId = randomUUID();
         await tx.insert(codeLetterTable).values({
           id: codeLetterId,
@@ -135,7 +200,15 @@ export const CodeLetterGeneratorService = {
           studentCodes.push({ studentId, code });
         }
       }
-    });
+    };
+
+    if (txIn) {
+      await run(txIn);
+    } else {
+      await db.transaction(async (tx) => {
+        await run(tx);
+      });
+    }
 
     return studentCodes;
   },
@@ -146,29 +219,38 @@ export const CodeLetterGeneratorService = {
       festivalId: string;
       programmeId: string;
     },
-    codeAssignments: Array<{ teamNumber: number; code: string }>,
+    codeAssignments: Array<{ teamNumber: number | null; studentId?: string | null; code: string }>,
     reportedParticipants: Array<{
       studentId: string | null;
       groupId: string | null;
       teamNumber: number | null;
     }>,
     actorName: string,
+    txIn?: any,
   ): Promise<CodeLetterEntry[]> {
     const studentCodes: CodeLetterEntry[] = [];
     const nowStr = new Date().toISOString();
 
-    await db.transaction(async (tx) => {
+    const run = async (tx: any) => {
       for (const assignment of codeAssignments) {
-        const teamParticipants = reportedParticipants.filter(
-          (p) =>
-            p.groupId !== null &&
-            p.teamNumber === assignment.teamNumber &&
-            p.studentId !== null,
-        );
+        let teamParticipants: Array<{ studentId: string | null }> = [];
+
+        if (assignment.teamNumber !== null && assignment.teamNumber !== undefined) {
+          teamParticipants = reportedParticipants.filter(
+            (p) =>
+              p.groupId !== null &&
+              p.teamNumber === assignment.teamNumber &&
+              p.studentId !== null,
+          );
+        } else if (assignment.studentId) {
+          teamParticipants = reportedParticipants.filter(
+            (p) => p.studentId === assignment.studentId,
+          );
+        }
 
         if (teamParticipants.length === 0) {
           throw new Error(
-            `Team ${assignment.teamNumber} has no reported participants`,
+            `No reported participants found for assignment`,
           );
         }
 
@@ -198,7 +280,15 @@ export const CodeLetterGeneratorService = {
           }
         }
       }
-    });
+    };
+
+    if (txIn) {
+      await run(txIn);
+    } else {
+      await db.transaction(async (tx) => {
+        await run(tx);
+      });
+    }
 
     return studentCodes;
   },

@@ -3,7 +3,7 @@ import { Tags } from "lucide-react";
 import { revalidatePath } from "next/cache";
 import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
-import { StudentsClient } from "@/components/festival/pre-works/students/StudentsClient";
+import { StudentsClient } from "@/components/festival/pre-event-works/students/StudentsClient";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { category as categoryTable } from "@/core/database/schema";
@@ -37,7 +37,7 @@ export default async function StudentsPage({
         title="No Categories Found"
         description="You need to create categories before you can add students."
         actionLabel="Create Categories"
-        actionLink={`/dashboard/${festival.slug}/pre-works/categories`}
+        actionLink={`/dashboard/${festival.slug}/pre-event-works/categories`}
         icon={Tags}
       />
     );
@@ -50,7 +50,7 @@ export default async function StudentsPage({
 
   const initialChestSettings = await getChestNumberSettings(festival.id);
 
-  const studentsPath = `/dashboard/${slug}/pre-works/students` as const;
+  const studentsPath = `/dashboard/${slug}/pre-event-works/students` as const;
   async function handleChestRevalidate() {
     "use server";
     revalidatePath(studentsPath);

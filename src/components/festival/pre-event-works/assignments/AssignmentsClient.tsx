@@ -5,7 +5,7 @@ import { Loader2, Plus, Search, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
-import { DeadlinesCard } from "@/components/festival/pre-works/DeadlinesCard";
+import { DeadlinesCard } from "@/components/festival/pre-event-works/DeadlinesCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";

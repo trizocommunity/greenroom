@@ -6,5 +6,5 @@ interface PageProps {
 
 export default async function ChestNumbersPage({ params }: PageProps) {
   const { slug } = await params;
-  redirect(`/dashboard/${slug}/pre-works/students`);
+  redirect(`/dashboard/${slug}/pre-event-works/students`);
 }

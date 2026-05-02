@@ -1,6 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
-import { ScheduleClient } from "@/components/festival/pre-works/schedule/ScheduleClient";
+import { ScheduleClient } from "@/components/festival/pre-event-works/schedule/ScheduleClient";
 import { db } from "@/core/database/client";
 import { programme as programmeTable } from "@/core/database/schema";
 import type { Tier } from "@/core/types/app-enums";

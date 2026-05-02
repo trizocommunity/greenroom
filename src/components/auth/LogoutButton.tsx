@@ -17,6 +17,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { csrfFetch } from "@/core/http/csrf-fetch";
 
 interface LogoutButtonProps {
   /** Custom trigger element. If not provided, uses default Button */
@@ -52,7 +53,7 @@ export function LogoutButton({
 
   const { mutate: logout, isPending } = useMutation({
     mutationFn: async () => {
-      const response = await fetch("/api/auth/logout", {
+      const response = await csrfFetch("/api/auth/logout", {
         method: "POST",
       });
       if (!response.ok) {

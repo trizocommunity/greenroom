@@ -125,16 +125,12 @@ export default async function FestivalPage({
 
       {/* About Section */}
       {fullLandingPage && displayData.description && (
-        <section className="py-24 px-4 bg-background border-t border-white/10 relative overflow-hidden">
-          <div className="absolute inset-x-0 top-0 h-40 bg-linear-to-b from-primary/5 to-transparent blur-3xl -z-10" />
-          <div className="max-w-3xl mx-auto text-center space-y-6">
-            <span className="text-sm font-bold tracking-widest text-primary uppercase">
-              About the Event
-            </span>
-            <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-foreground">
+        <section className="py-12 px-4 bg-background border-t border-white/10">
+          <div className="max-w-3xl mx-auto text-center space-y-4">
+            <h2 className="text-2xl md:text-4xl font-bold uppercase tracking-tight text-foreground">
               {festival.name}
             </h2>
-            <p className="text-xl text-muted-foreground leading-relaxed font-medium">
+            <p className="text-base text-muted-foreground leading-relaxed">
               {displayData.description}
             </p>
           </div>

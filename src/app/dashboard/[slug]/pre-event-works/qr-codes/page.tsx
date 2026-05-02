@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
-import { QrCodesClient } from "@/components/festival/pre-works/qr-codes/QrCodesClient";
-import { QrCodesHowItWorks } from "@/components/festival/pre-works/qr-codes/QrCodesHowItWorks";
+import { QrCodesClient } from "@/components/festival/pre-event-works/qr-codes/QrCodesClient";
+import { QrCodesHowItWorks } from "@/components/festival/pre-event-works/qr-codes/QrCodesHowItWorks";
 import { APP_URL } from "@/config/routes";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";

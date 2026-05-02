@@ -58,16 +58,24 @@ export async function middleware(request: NextRequest) {
   const nonce = generateNonce();
   const signature = await signNonce(nonce, CSRF_SECRET);
 
-  response.cookies.set("_csrf_nonce", nonce, {
-    httpOnly: false,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    path: "/",
-    maxAge: 60 * 60,
-  });
+response.cookies.set("_csrf_nonce", nonce, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+      maxAge: 60 * 60,
+    });
 
-  response.headers.set("x-csrf-nonce", nonce);
-  response.headers.set("x-csrf-signature", signature);
+    response.cookies.set("_csrf_sig", signature, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+      maxAge: 60 * 60,
+    });
+
+    response.headers.set("x-csrf-nonce", nonce);
+    response.headers.set("x-csrf-signature", signature);
 
   const cspNonce = `'nonce-${nonce}'`;
 

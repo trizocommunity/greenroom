@@ -41,9 +41,9 @@ export default async function ResultsPage({
     return (
       <EmptyState
         title="No programmes in Event Works yet"
-        description="On Standard and Pro plans, programmes appear here only after they are added to the schedule. Add your programmes to the schedule in Pre-Works to see them in Marks, Results, and Leaderboard."
+        description="On Standard and Pro plans, programmes appear here only after they are added to the schedule. Add your programmes to the schedule in Pre Event Works to see them in Marks, Results, and Leaderboard."
         actionLabel="Go to Schedule"
-        actionLink={`/dashboard/${slug}/pre-works/schedule`}
+        actionLink={`/dashboard/${slug}/pre-event-works/schedule`}
         icon={Calendar}
       />
     );

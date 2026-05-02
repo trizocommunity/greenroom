@@ -264,7 +264,7 @@ export function SessionScheduleClient({
               title, date, time, and optionally assign a stage.
             </p>
             <p className="text-sm text-muted-foreground">
-              Create at least one stage in Pre-Works → Stage Management before
+              Create at least one stage in Pre Event Works → Stage Management before
               adding sessions. Session types (General, Ceremony, Talk, Concert)
               help you label the kind of activity.
             </p>
@@ -308,7 +308,7 @@ export function SessionScheduleClient({
               {isReadOnly
                 ? "Create, edit, and delete session actions are disabled."
                 : !hasStages
-                  ? "Please create a stage first in Pre-Works → Stage Management before adding sessions."
+                  ? "Please create a stage first in Pre Event Works → Stage Management before adding sessions."
                   : "Add sessions with title, stage, and time."}
             </p>
             <Button

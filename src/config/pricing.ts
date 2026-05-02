@@ -4,7 +4,7 @@ import type { Tier } from "@/core/types/app-enums";
 // Also typed the Record properly to remove `any`.
 
 export interface TierFeatures {
-  // Pre-Works Access
+  // Pre Event Works Access
   categories: boolean;
   groups: boolean;
   students: boolean;
@@ -113,7 +113,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       categories: 5,
     },
     features: {
-      // Pre-Works Access
+      // Pre Event Works Access
       categories: true,
       groups: true,
       students: true,
@@ -205,7 +205,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       categories: 10,
     },
     features: {
-      // Pre-Works Access — all enabled
+      // Pre Event Works Access — all enabled
       categories: true,
       groups: true,
       students: true,
@@ -297,7 +297,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       categories: 50,
     },
     features: {
-      // Pre-Works Access — all enabled
+      // Pre Event Works Access — all enabled
       categories: true,
       groups: true,
       students: true,

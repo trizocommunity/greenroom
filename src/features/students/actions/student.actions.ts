@@ -72,7 +72,7 @@ export async function createStudentWithServiceAction(
   });
   await assignChestNumberForNewStudent(festivalId, newStudent.id);
   try {
-    revalidatePath(`/dashboard/${festival.slug}/pre-works/students`);
+    revalidatePath(`/dashboard/${festival.slug}/pre-event-works/students`);
   } catch {}
   return newStudent;
 }
@@ -197,7 +197,7 @@ export async function bulkCreateStudentsAction(
   }
 
   try {
-    revalidatePath(`/dashboard/${festival.slug}/pre-works/students`);
+    revalidatePath(`/dashboard/${festival.slug}/pre-event-works/students`);
   } catch {}
 
   return { success: true, successCount, errors };

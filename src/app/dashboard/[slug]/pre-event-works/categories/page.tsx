@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { CategoriesClient } from "@/components/festival/pre-works/categories/CategoriesClient";
+import { CategoriesClient } from "@/components/festival/pre-event-works/categories/CategoriesClient";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 
 export default async function CategoriesPage({

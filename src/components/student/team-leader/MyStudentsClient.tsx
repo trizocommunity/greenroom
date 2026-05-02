@@ -15,7 +15,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { QrCodeWithActions } from "@/components/common/QrCodeWithActions";
-import { StudentDetailsDialog } from "@/components/festival/pre-works/students/StudentDetailsDialog";
+import { StudentDetailsDialog } from "@/components/festival/pre-event-works/students/StudentDetailsDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
