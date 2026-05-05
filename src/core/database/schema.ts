@@ -11,7 +11,6 @@ import {
   text,
   timestamp,
   uniqueIndex,
-  varchar,
 } from "drizzle-orm/pg-core";
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
@@ -110,22 +109,6 @@ export const stageType = pgEnum("StageType", ["STAGE", "NON_STAGE"]);
 export const tier = pgEnum("Tier", ["BASIC", "STANDARD", "PRO"]);
 
 // ─── Utility / standalone tables ─────────────────────────────────────────────
-
-export const prismaMigrations = pgTable("_prisma_migrations", {
-  id: varchar({ length: 36 }).primaryKey().notNull(),
-  checksum: varchar({ length: 64 }).notNull(),
-  finishedAt: timestamp("finished_at", { withTimezone: true, mode: "string" }),
-  migrationName: varchar("migration_name", { length: 255 }).notNull(),
-  logs: text(),
-  rolledBackAt: timestamp("rolled_back_at", {
-    withTimezone: true,
-    mode: "string",
-  }),
-  startedAt: timestamp("started_at", { withTimezone: true, mode: "string" })
-    .defaultNow()
-    .notNull(),
-  appliedStepsCount: integer("applied_steps_count").default(0).notNull(),
-});
 
 export const auditLog = pgTable("audit_log", {
   id: text().primaryKey().notNull(),
@@ -314,6 +297,11 @@ export const category = pgTable(
     type: categoryType().default("SINGLE").notNull(),
   },
   (table) => [
+    uniqueIndex("category_festivalId_name_key").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+      table.name.asc().nullsLast(),
+    ),
     foreignKey({
       columns: [table.festivalId],
       foreignColumns: [festival.id],
@@ -342,6 +330,11 @@ export const group = pgTable(
     color: text().default("#2563eb").notNull(),
   },
   (table) => [
+    uniqueIndex("group_festivalId_name_key").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+      table.name.asc().nullsLast(),
+    ),
     index("group_festivalId_createdAt_idx").using(
       "btree",
       table.festivalId.asc().nullsLast(),
@@ -499,6 +492,11 @@ export const stage = pgTable(
       .notNull(),
   },
   (table) => [
+    uniqueIndex("stage_festivalId_name_key").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+      table.name.asc().nullsLast(),
+    ),
     index("stage_festivalId_idx").using(
       "btree",
       table.festivalId.asc().nullsLast(),
@@ -643,6 +641,11 @@ export const programmeAssignment = pgTable(
     })
       .onUpdate("cascade")
       .onDelete("set null"),
+    index("programme_assignment_programmeId_teamNumber_idx").using(
+      "btree",
+      table.programmeId.asc().nullsLast(),
+      table.teamNumber.asc().nullsLast(),
+    ),
   ],
 );
 
@@ -677,6 +680,11 @@ export const result = pgTable(
       "btree",
       table.festivalId.asc().nullsLast(),
       table.createdAt.desc().nullsFirst(),
+    ),
+    index("result_programmeId_position_idx").using(
+      "btree",
+      table.programmeId.asc().nullsLast(),
+      table.position.asc().nullsLast(),
     ),
     foreignKey({
       columns: [table.festivalId],
@@ -1655,6 +1663,16 @@ export const programmeNotification = pgTable(
       "btree",
       table.recipientUserId.asc().nullsLast(),
       table.isRead.asc().nullsLast(),
+    ),
+    index("programme_notification_recipientUserId_createdAt_idx").using(
+      "btree",
+      table.recipientUserId.asc().nullsLast(),
+      table.createdAt.desc().nullsFirst(),
+    ),
+    index("programme_notification_recipientStudentId_createdAt_idx").using(
+      "btree",
+      table.recipientStudentId.asc().nullsLast(),
+      table.createdAt.desc().nullsFirst(),
     ),
     foreignKey({
       columns: [table.festivalId],
