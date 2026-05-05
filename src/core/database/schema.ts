@@ -401,6 +401,99 @@ export const programme = pgTable(
   ],
 );
 
+export const festivalScoringPolicy = pgTable(
+  "festival_scoring_policy",
+  {
+    id: text().primaryKey().notNull(),
+    festivalId: text("festival_id").notNull(),
+    version: integer().default(1).notNull(),
+    isActive: boolean("is_active").default(true).notNull(),
+    normalizeTo: integer("normalize_to").default(100).notNull(),
+    noGradeBelow: integer("no_grade_below").default(50).notNull(),
+    gradeRules: jsonb("grade_rules").notNull(),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", { precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp("updated_at", { precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("festival_scoring_policy_festivalId_key").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "festival_scoring_policy_festivalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
+export const festivalScoringAwardRule = pgTable(
+  "festival_scoring_award_rule",
+  {
+    id: text().primaryKey().notNull(),
+    festivalId: text("festival_id").notNull(),
+    scoringPolicyId: text("scoring_policy_id").notNull(),
+    criteriaType: text("criteria_type").default("PARTICIPANT_RANGE").notNull(),
+    rowLabel: text("row_label"),
+    programmeIds: jsonb("programme_ids"),
+    categoryId: text("category_id"),
+    programmeType: programmeType("programme_type"),
+    minParticipants: integer("min_participants").default(1).notNull(),
+    maxParticipants: integer("max_participants"),
+    grade: text().notNull(),
+    awardPoints: integer("award_points").notNull(),
+    priority: integer().default(0).notNull(),
+    createdAt: timestamp("created_at", { precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp("updated_at", { precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    index("festival_scoring_award_rule_festivalId_idx").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+    ),
+    index("festival_scoring_award_rule_scoringPolicyId_idx").using(
+      "btree",
+      table.scoringPolicyId.asc().nullsLast(),
+    ),
+    index("festival_scoring_award_rule_categoryId_idx").using(
+      "btree",
+      table.categoryId.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "festival_scoring_award_rule_festivalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.scoringPolicyId],
+      foreignColumns: [festivalScoringPolicy.id],
+      name: "festival_scoring_award_rule_scoringPolicyId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.categoryId],
+      foreignColumns: [category.id],
+      name: "festival_scoring_award_rule_categoryId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("set null"),
+  ],
+);
+
 // ─── 7. student (depends on: festival, group, category) ──────────────────────
 
 export const student = pgTable(
@@ -662,6 +755,8 @@ export const result = pgTable(
     position: integer(),
     score: doublePrecision().default(0).notNull(),
     points: integer().default(0).notNull(),
+    awardPoints: integer("award_points").default(0).notNull(),
+    scoringPolicyVersion: integer("scoring_policy_version"),
     remarks: text(),
     isPublished: boolean().default(false).notNull(),
     createdAt: timestamp({ precision: 3, mode: "string" })

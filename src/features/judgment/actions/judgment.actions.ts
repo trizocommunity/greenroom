@@ -40,6 +40,11 @@ import {
   calculatePosition,
 } from "@/features/results/services/results-calculator";
 import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
+import {
+  getScoringPolicyWithRules,
+  resolveScoringPolicy,
+  upsertScoringPolicyActionData,
+} from "@/features/judgment/services/scoring-policy.service";
 
 function hashTokenSHA256(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -903,7 +908,8 @@ export async function submitJudgeScoresAction(
   const assignmentPoints = new Map<string, number>();
   const programmeRow = await db.query.programme.findFirst({
     where: eq(programmeTable.id, link.judgmentConfig.programmeId),
-    columns: { festivalId: true },
+    columns: { festivalId: true, categoryId: true, type: true },
+    with: { festival: { columns: { tier: true } } },
   });
   if (!programmeRow) throw new AppError("Programme not found.");
 
@@ -925,10 +931,43 @@ export async function submitJudgeScoresAction(
   await db.transaction(async (tx) => {
     for (const [assignmentId, pts] of assignmentPoints.entries()) {
       judgedAssignmentIds.push(assignmentId);
-      const { grade, remarks } = calculateGrade(
-        pts,
-        link.judgmentConfig.scoreLimit,
-      );
+      const assignmentRow = await db.query.programmeAssignment.findFirst({
+        where: eq(assignmentTable.id, assignmentId),
+        columns: { groupId: true, teamNumber: true },
+      });
+
+      let participantsCount = 1;
+      if (programmeRow.type === "GROUP" && assignmentRow) {
+        const teamMembers = await db
+          .select({ id: assignmentTable.id })
+          .from(assignmentTable)
+          .where(
+            and(
+              eq(assignmentTable.programmeId, link.judgmentConfig.programmeId),
+              eq(assignmentTable.teamNumber, assignmentRow.teamNumber ?? 1),
+              assignmentRow.groupId
+                ? eq(assignmentTable.groupId, assignmentRow.groupId)
+                : sql`${assignmentTable.groupId} is null`,
+            ),
+          );
+        participantsCount = Math.max(1, teamMembers.length);
+      }
+
+      const policyResolved = await resolveScoringPolicy({
+        festivalId: programmeRow.festivalId,
+        programme: {
+          id: link.judgmentConfig.programmeId,
+          categoryId: programmeRow.categoryId,
+          type: programmeRow.type,
+        },
+        participantsCount,
+        points: pts,
+      });
+
+      const fallbackGradeData = calculateGrade(pts, link.judgmentConfig.scoreLimit);
+      const grade = policyResolved.grade ?? fallbackGradeData.grade;
+      const remarks =
+        policyResolved.grade === null ? "No grade (below threshold)" : fallbackGradeData.remarks;
       const position = calculatePosition(pts, averages);
       await tx
         .insert(resultTable)
@@ -940,6 +979,8 @@ export async function submitJudgeScoresAction(
           grade,
           position,
           points: pts,
+          awardPoints: policyResolved.awardPoints,
+          scoringPolicyVersion: policyResolved.policyVersion,
           remarks,
           isPublished: false,
           updatedAt: now,
@@ -950,6 +991,8 @@ export async function submitJudgeScoresAction(
             grade,
             position,
             points: pts,
+            awardPoints: policyResolved.awardPoints,
+            scoringPolicyVersion: policyResolved.policyVersion,
             remarks,
             isPublished: false,
             updatedAt: now,
@@ -1038,4 +1081,49 @@ export async function submitGroupJudgeScoresAction(input: {
     );
   }
   return last;
+}
+
+export async function getScoringPolicyAction(festivalId: string) {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
+  return getScoringPolicyWithRules(festivalId);
+}
+
+export async function saveScoringPolicyAction(input: {
+  festivalId: string;
+  noGradeBelow: number;
+  gradeRules: Array<{ grade: string; min: number; max: number }>;
+  awardRules: Array<{
+    criteriaType: "PARTICIPANT_RANGE" | "PROGRAMME_SET";
+    rowLabel?: string | null;
+    programmeIds?: string[] | null;
+    categoryId?: string | null;
+    minParticipants: number;
+    maxParticipants?: number | null;
+    grade: string;
+    awardPoints: number;
+    priority?: number;
+  }>;
+}) {
+  const session = await getSession();
+  await assertFestivalAccess(session, input.festivalId, {
+    requireWritable: true,
+  });
+
+  if (!Number.isFinite(input.noGradeBelow) || input.noGradeBelow < 0 || input.noGradeBelow > 100) {
+    throw new AppError("No-grade threshold must be between 0 and 100.");
+  }
+  if (input.gradeRules.length === 0) {
+    throw new AppError("At least one grade rule is required.");
+  }
+
+  await upsertScoringPolicyActionData({
+    festivalId: input.festivalId,
+    noGradeBelow: Math.round(input.noGradeBelow),
+    gradeRules: input.gradeRules,
+    awardRules: input.awardRules,
+    updatedBy: session?.userId ?? null,
+  });
+
+  return { success: true as const };
 }

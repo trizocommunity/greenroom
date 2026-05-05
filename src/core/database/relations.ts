@@ -3,6 +3,8 @@ import {
   category,
   expiredFestivalResult,
   festival,
+  festivalScoringAwardRule,
+  festivalScoringPolicy,
   festivalCategoryPreference,
   festivalGalleryImage,
   festivalLifecycleEvent,
@@ -96,6 +98,8 @@ export const festivalRelations = relations(festival, ({ one, many }) => ({
   programmeJudgeSessions: many(programmeJudgeSession),
   judges: many(judge),
   judgmentConfigs: many(judgmentConfig),
+  scoringPolicies: many(festivalScoringPolicy),
+  scoringAwardRules: many(festivalScoringAwardRule),
 }));
 
 export const categoryRelations = relations(category, ({ one, many }) => ({
@@ -106,6 +110,7 @@ export const categoryRelations = relations(category, ({ one, many }) => ({
   }),
   students: many(student),
   assignments: many(programmeAssignment),
+  scoringAwardRules: many(festivalScoringAwardRule),
 }));
 
 export const groupRelations = relations(group, ({ one, many }) => ({
@@ -230,6 +235,35 @@ export const resultRelations = relations(result, ({ one }) => ({
     references: [programmeAssignment.id],
   }),
 }));
+
+export const festivalScoringPolicyRelations = relations(
+  festivalScoringPolicy,
+  ({ one, many }) => ({
+    festival: one(festival, {
+      fields: [festivalScoringPolicy.festivalId],
+      references: [festival.id],
+    }),
+    awardRules: many(festivalScoringAwardRule),
+  }),
+);
+
+export const festivalScoringAwardRuleRelations = relations(
+  festivalScoringAwardRule,
+  ({ one }) => ({
+    festival: one(festival, {
+      fields: [festivalScoringAwardRule.festivalId],
+      references: [festival.id],
+    }),
+    scoringPolicy: one(festivalScoringPolicy, {
+      fields: [festivalScoringAwardRule.scoringPolicyId],
+      references: [festivalScoringPolicy.id],
+    }),
+    category: one(category, {
+      fields: [festivalScoringAwardRule.categoryId],
+      references: [category.id],
+    }),
+  }),
+);
 
 export const programmeReportingSessionRelations = relations(
   programmeReportingSession,

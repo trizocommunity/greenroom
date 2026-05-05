@@ -131,6 +131,13 @@ export const getFestivalDashboardSidebarConfig = (
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {
+          title: "Scoring Policy",
+          href: `${basePath}/event-works/scoring`,
+          icon: ListChecks,
+          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"] as FestivalRole[],
+          disabled: !useExternalJudging,
+        },
+        {
           title: "Members",
           href: `${basePath}/members`,
           icon: Users,
