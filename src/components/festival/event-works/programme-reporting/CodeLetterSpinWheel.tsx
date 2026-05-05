@@ -70,8 +70,11 @@ export function CodeLetterSpinWheel({
     const segmentAngle = 360 / codes.length;
     const fullRotations = 5 + Math.floor(Math.random() * 5);
     const targetBase = fullRotations * 360;
+    // Wheel must land with the winning segment center under the top arrow.
     const landingAngle = (360 - (winningIndex * segmentAngle + segmentAngle / 2)) % 360;
-    const finalRotation = rotation + targetBase + landingAngle;
+    const currentRotationNormalized = ((rotation % 360) + 360) % 360;
+    const deltaToLanding = (landingAngle - currentRotationNormalized + 360) % 360;
+    const finalRotation = rotation + targetBase + deltaToLanding;
 
     setRotation(finalRotation);
 
