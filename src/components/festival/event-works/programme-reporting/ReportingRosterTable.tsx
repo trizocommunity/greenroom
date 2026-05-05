@@ -11,6 +11,8 @@ interface ReportingRosterTableProps {
   isClosed: boolean;
   onMark: (row: RosterTableRow, checked: boolean) => Promise<void>;
   onSpin: (row: RosterTableRow) => void;
+  /** While set, that roster row’s Spin control shows loading until code is assigned / flow ends */
+  spinPendingAssignmentId: string | null;
   markingIds: Set<string>;
   getIssuedCodeForRow: (row: RosterTableRow) => string | null;
   programmeType: "INDIVIDUAL" | "GROUP";
@@ -22,6 +24,7 @@ export function ReportingRosterTable({
   isClosed,
   onMark,
   onSpin,
+  spinPendingAssignmentId,
   markingIds,
   getIssuedCodeForRow,
   programmeType,
@@ -33,7 +36,7 @@ export function ReportingRosterTable({
         <div className="grid grid-cols-12 border-b bg-muted/40 px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
           <div className="col-span-1 flex justify-center">Present</div>
           <div className="col-span-6">
-            {programmeType === "GROUP" ? "Team / members" : "Student"}
+            {programmeType === "GROUP" ? "Participant (team)" : "Student"}
           </div>
           <div className="col-span-2">Group</div>
           <div className="col-span-3 text-right">Code (spin)</div>
@@ -42,10 +45,8 @@ export function ReportingRosterTable({
           {rows.map((row) => {
             const issuedCode = getIssuedCodeForRow(row);
             const showCode = (isClosed || !!issuedCode) && row.isReported;
-            const isMarking =
-              row.mode === "individual"
-                ? markingIds.has(row.assignmentId)
-                : row.assignmentIds.some((id) => markingIds.has(id));
+            const isMarking = markingIds.has(row.assignmentId);
+            const isSpinPending = spinPendingAssignmentId === row.assignmentId;
 
             return (
               <div
@@ -121,16 +122,10 @@ export function ReportingRosterTable({
         {rows.map((row) => {
           const issuedCode = getIssuedCodeForRow(row);
           const showCode = (isClosed || !!issuedCode) && row.isReported;
-          const title =
-            row.mode === "groupTeam" ? `Team ${row.teamCell}` : row.nameColumn;
-          const subtitle =
-            row.mode === "groupTeam"
-              ? `${row.groupName ?? "—"} · Team ${row.teamCell}`
-              : (row.groupName ?? "—");
-          const isMarking =
-            row.mode === "individual"
-              ? markingIds.has(row.assignmentId)
-              : row.assignmentIds.some((id) => markingIds.has(id));
+          const title = row.nameColumn;
+          const subtitle = row.groupName ?? "—";
+          const isMarking = markingIds.has(row.assignmentId);
+          const isSpinPending = spinPendingAssignmentId === row.assignmentId;
 
           return (
             <div
@@ -184,10 +179,21 @@ export function ReportingRosterTable({
                   <button
                     type="button"
                     onClick={() => onSpin(row)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold transition-all shadow-sm active:scale-95"
+                    disabled={isSpinPending}
+                    aria-busy={isSpinPending}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 disabled:pointer-events-none disabled:opacity-70 text-white text-[10px] font-bold transition-all shadow-sm active:scale-95"
                   >
-                    <Dices className="h-3 w-3" />
-                    Spin
+                    {isSpinPending ? (
+                      <>
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Getting code…
+                      </>
+                    ) : (
+                      <>
+                        <Dices className="h-3 w-3" />
+                        Spin
+                      </>
+                    )}
                   </button>
                 ) : (
                   <span className="text-muted-foreground/30">—</span>

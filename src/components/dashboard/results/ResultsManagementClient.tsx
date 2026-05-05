@@ -26,6 +26,16 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -74,6 +84,7 @@ import {
   useFeatureTag,
 } from "@/features/plan-features/hooks/use-feature";
 import { createProgrammeJudgeLinkAction } from "@/features/programmes/actions/programme-judging.actions";
+import { reopenProgrammeReportingByProgrammeAction } from "@/features/programmes/actions/programme-reporting.actions";
 import {
   bulkPublishProgrammeResults,
   deleteResult,
@@ -192,6 +203,13 @@ export function ResultsManagementClient({
   const [publishingProgrammeId, setPublishingProgrammeId] = useState<
     string | null
   >(null);
+  const [reopeningProgrammeId, setReopeningProgrammeId] = useState<
+    string | null
+  >(null);
+  const [reopenConfirmProgramme, setReopenConfirmProgramme] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   // Avoid hydration mismatch: timers should not be based on Date.now() during SSR.
   // We start ticking after mount.
   const [nowMs, setNowMs] = useState<number | null>(null);
@@ -687,6 +705,35 @@ export function ResultsManagementClient({
       const allSucceeded = responses.every((r) => r?.success);
       if (allSucceeded) toast.success("Result deleted successfully");
       else toast.error("Failed to delete some results");
+    });
+  };
+
+  const handleReopenReporting = (programmeId: string, programmeName: string) => {
+    if (isReadOnly) return;
+    setReopenConfirmProgramme({ id: programmeId, name: programmeName });
+  };
+
+  const confirmReopenReporting = () => {
+    if (!reopenConfirmProgramme || isReadOnly) return;
+    setReopeningProgrammeId(reopenConfirmProgramme.id);
+    startTransition(async () => {
+      try {
+        const response = await reopenProgrammeReportingByProgrammeAction(
+          festival.id,
+          reopenConfirmProgramme.id,
+        );
+        if (response.success) {
+          toast.success(
+            response.data?.message ?? "Reporting reopened and marks cleared.",
+          );
+          setReopenConfirmProgramme(null);
+          router.refresh();
+        } else {
+          toast.error("Failed to reopen reporting");
+        }
+      } finally {
+        setReopeningProgrammeId(null);
+      }
     });
   };
 
@@ -1598,7 +1645,6 @@ export function ResultsManagementClient({
                               : "Create judge link"}
                           </DropdownMenuItem>
                         ) : null}
-
                         {judgeLinksByProgrammeId[prog.id]?.judgeUrl ? (
                           <>
                             <DropdownMenuItem
@@ -1616,6 +1662,26 @@ export function ResultsManagementClient({
                               Share on WhatsApp
                             </DropdownMenuItem>
                           </>
+                        ) : null}
+                        {canUseExternalJudging &&
+                        !isReadOnly &&
+                        ["STARTED", "ENDED", "JUDGED", "PUBLISHED"].includes(
+                          prog.status ?? "",
+                        ) ? (
+                          <DropdownMenuItem
+                            onClick={() =>
+                              handleReopenReporting(prog.id, prog.name)
+                            }
+                            className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+                            disabled={reopeningProgrammeId === prog.id}
+                          >
+                            {reopeningProgrammeId === prog.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Unlock className="h-4 w-4" />
+                            )}
+                            Reopen reporting
+                          </DropdownMenuItem>
                         ) : null}
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -1770,7 +1836,7 @@ export function ResultsManagementClient({
                         variant="secondary"
                         className="font-mono font-semibold"
                       >
-                        {row.points} pts
+                        {row.points} avg
                       </Badge>
                       {row.remarks && (
                         <span className="text-muted-foreground text-xs line-clamp-2">
@@ -1794,7 +1860,7 @@ export function ResultsManagementClient({
                       </TableHead>
                       <TableHead className="text-center">Code</TableHead>
                       <TableHead className="text-center">Grade</TableHead>
-                      <TableHead className="text-center">Points</TableHead>
+                      <TableHead className="text-center">Final Avg</TableHead>
                       <TableHead>Remarks</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1850,7 +1916,7 @@ export function ResultsManagementClient({
                             variant="secondary"
                             className="font-mono font-semibold"
                           >
-                            {row.points} pts
+                            {row.points} avg
                           </Badge>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
@@ -1865,6 +1931,35 @@ export function ResultsManagementClient({
           )}
         </DialogContent>
       </Dialog>
+      <AlertDialog
+        open={Boolean(reopenConfirmProgramme)}
+        onOpenChange={(open) => {
+          if (!open) setReopenConfirmProgramme(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reopen reporting for this programme?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {reopenConfirmProgramme?.name
+                ? `This will reopen reporting for "${reopenConfirmProgramme.name}" and clear attendance, code letters, and marks for this programme.`
+                : "This action clears attendance, code letters, and marks for this programme."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={Boolean(reopeningProgrammeId)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={confirmReopenReporting}
+              disabled={Boolean(reopeningProgrammeId)}
+            >
+              {reopeningProgrammeId ? "Reopening..." : "Reopen and clear data"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

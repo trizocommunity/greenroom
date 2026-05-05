@@ -51,6 +51,10 @@ import type { SessionType } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
+  localWallClockToDate,
+  parseStoredScheduleInstant,
+} from "@/features/schedule/utils/schedule-datetime";
+import {
   type ConflictParts,
   checkScheduleConflict,
   createScheduleEntry,
@@ -132,6 +136,7 @@ export function SessionScheduleClient({
   const [activeStageId, setActiveStageId] = useState<string>("");
 
   const hasStages = stages.length > 0;
+  const hasFestivalDates = dateOptions.length > 0;
 
   const refresh = useCallback(() => {
     window.location.reload();
@@ -140,7 +145,7 @@ export function SessionScheduleClient({
   const groupedByDay = entries.reduce<
     Record<string, ScheduleEntryWithRelations[]>
   >((acc, entry) => {
-    const key = getDateKey(new Date(entry.startTime));
+    const key = getDateKey(parseStoredScheduleInstant(entry.startTime));
     if (!acc[key]) acc[key] = [];
     acc[key].push(entry);
     return acc;
@@ -168,6 +173,7 @@ export function SessionScheduleClient({
     stageId?: string;
     startTime: Date;
     endTime?: Date;
+    scheduleDayKey: string;
   }) => {
     setAddFormError(null);
     setSaving(true);
@@ -184,6 +190,7 @@ export function SessionScheduleClient({
         stageId: data.stageId || null,
         startTime: data.startTime,
         endTime: data.endTime ?? null,
+        scheduleDayKey: data.scheduleDayKey,
       });
       if (res.success) {
         toast.success("Session added to schedule.");
@@ -209,6 +216,7 @@ export function SessionScheduleClient({
       stageId?: string | null;
       startTime?: Date;
       endTime?: Date | null;
+      scheduleDayKey?: string;
     },
   ) => {
     setEditFormError(null);
@@ -266,7 +274,8 @@ export function SessionScheduleClient({
             <p className="text-sm text-muted-foreground">
               Create at least one stage in Pre Event Works → Stage Management before
               adding sessions. Session types (General, Ceremony, Talk, Concert)
-              help you label the kind of activity.
+              help you label the kind of activity. Times must fall within your
+              festival event dates; overlaps on the same stage are blocked.
             </p>
           </HowItWorksButton>
           <Button
@@ -282,16 +291,36 @@ export function SessionScheduleClient({
                 );
                 return;
               }
+              if (!hasFestivalDates) {
+                toast.error(
+                  "Set your festival start and end dates in Festival setup before adding sessions.",
+                );
+                return;
+              }
               setAddOpen(true);
             }}
             className="gap-2"
-            disabled={!hasStages || isReadOnly}
+            disabled={!hasStages || !hasFestivalDates || isReadOnly}
           >
             <Plus className="h-4 w-4" />
             Add session
           </Button>
         </div>
       </div>
+
+      {!isReadOnly && hasStages && !hasFestivalDates && (
+        <div
+          className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100"
+          role="status"
+        >
+          <p className="font-medium">Set festival event dates</p>
+          <p className="text-muted-foreground mt-0.5">
+            Add a start and end date in{" "}
+            <span className="font-medium text-foreground">Festival setup</span>{" "}
+            so session times are limited to your event days.
+          </p>
+        </div>
+      )}
 
       {sortedDays.length === 0 ? (
         <Card>
@@ -302,14 +331,18 @@ export function SessionScheduleClient({
                 ? "Read-only mode"
                 : !hasStages
                   ? "No stages yet"
-                  : "No sessions yet"}
+                  : !hasFestivalDates
+                    ? "Set festival event dates"
+                    : "No sessions yet"}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
               {isReadOnly
                 ? "Create, edit, and delete session actions are disabled."
                 : !hasStages
                   ? "Please create a stage first in Pre Event Works → Stage Management before adding sessions."
-                  : "Add sessions with title, stage, and time."}
+                  : !hasFestivalDates
+                    ? "Add start and end dates for your festival in Festival setup, then return here to add sessions."
+                    : "Add sessions with title, stage, and time."}
             </p>
             <Button
               variant="outline"
@@ -325,9 +358,15 @@ export function SessionScheduleClient({
                   );
                   return;
                 }
+                if (!hasFestivalDates) {
+                  toast.error(
+                    "Set your festival start and end dates in Festival setup before adding sessions.",
+                  );
+                  return;
+                }
                 setAddOpen(true);
               }}
-              disabled={!hasStages || isReadOnly}
+              disabled={!hasStages || !hasFestivalDates || isReadOnly}
             >
               Add session
             </Button>
@@ -451,9 +490,15 @@ export function SessionScheduleClient({
                       <div className="flex flex-col gap-2 text-sm text-muted-foreground">
                         <span className="inline-flex items-center gap-2">
                           <Clock className="h-4 w-4 shrink-0 text-primary/70" />
-                          {format(new Date(entry.startTime), "h:mm a")}
+                          {format(
+                            parseStoredScheduleInstant(entry.startTime),
+                            "h:mm a",
+                          )}
                           {entry.endTime &&
-                            ` – ${format(new Date(entry.endTime), "h:mm a")}`}
+                            ` – ${format(
+                              parseStoredScheduleInstant(entry.endTime),
+                              "h:mm a",
+                            )}`}
                         </span>
                         {entry.stage?.name && (
                           <span className="inline-flex items-center gap-2">
@@ -550,6 +595,7 @@ function AddSessionDialog({
     stageId?: string;
     startTime: Date;
     endTime?: Date;
+    scheduleDayKey: string;
   }) => Promise<void>;
   saving: boolean;
   formError: string | null;
@@ -586,14 +632,16 @@ function AddSessionDialog({
   useEffect(() => {
     if (!open) return;
     debounceRef.current = setTimeout(async () => {
-      const startTime = new Date(`${effectiveDate}T${startTimeStr}`);
+      const startTime = localWallClockToDate(effectiveDate, startTimeStr);
       const endTime = endTimeStr
-        ? new Date(`${effectiveDate}T${endTimeStr}`)
+        ? localWallClockToDate(effectiveDate, endTimeStr)
         : null;
       const res = await checkScheduleConflict(festivalId, {
         startTime,
         endTime,
         stageId: stageId || null,
+        scheduleDayKey: effectiveDate,
+        entryType: "SESSION",
       });
       if (res.ok) {
         setConflictError(null);
@@ -619,13 +667,13 @@ function AddSessionDialog({
       toast.error("Select a stage.");
       return;
     }
-    const effectiveDate =
+    const submitDate =
       dateOptions.length > 0 && !dateOptions.some((o) => o.value === dateStr)
         ? dateOptions[0]!.value
         : dateStr;
-    const startTime = new Date(`${effectiveDate}T${startTimeStr}`);
+    const startTime = localWallClockToDate(submitDate, startTimeStr);
     const endTime = endTimeStr
-      ? new Date(`${effectiveDate}T${endTimeStr}`)
+      ? localWallClockToDate(submitDate, endTimeStr)
       : undefined;
     await onSubmit({
       title: t,
@@ -635,6 +683,7 @@ function AddSessionDialog({
       stageId: stageId || undefined,
       startTime,
       endTime,
+      scheduleDayKey: submitDate,
     });
   };
 
@@ -870,6 +919,7 @@ function EditSessionDialog({
     stageId?: string | null;
     startTime?: Date;
     endTime?: Date | null;
+    scheduleDayKey: string;
   }) => Promise<void>;
   saving: boolean;
   formError: string | null;
@@ -877,7 +927,10 @@ function EditSessionDialog({
   stages: StageOption[];
   dateOptions: DateOption[];
 }) {
-  const entryDateStr = format(new Date(entry.startTime), "yyyy-MM-dd");
+  const entryDateStr = format(
+    parseStoredScheduleInstant(entry.startTime),
+    "yyyy-MM-dd",
+  );
   const optionsForEdit =
     dateOptions.length > 0
       ? dateOptions.some((o) => o.value === entryDateStr)
@@ -885,14 +938,20 @@ function EditSessionDialog({
         : [
             {
               value: entryDateStr,
-              label: format(new Date(entry.startTime), "EEE, d MMM yyyy"),
+              label: format(
+                parseStoredScheduleInstant(entry.startTime),
+                "EEE, d MMM yyyy",
+              ),
             },
             ...dateOptions,
           ]
       : [
           {
             value: entryDateStr,
-            label: format(new Date(entry.startTime), "EEE, d MMM yyyy"),
+            label: format(
+              parseStoredScheduleInstant(entry.startTime),
+              "EEE, d MMM yyyy",
+            ),
           },
         ];
   const [title, setTitle] = useState(entry.title ?? "");
@@ -909,22 +968,32 @@ function EditSessionDialog({
   const [stageId, setStageId] = useState(entry.stageId ?? "");
   const [dateStr, setDateStr] = useState(entryDateStr);
   const [startTimeStr, setStartTimeStr] = useState(
-    format(new Date(entry.startTime), "HH:mm"),
+    format(parseStoredScheduleInstant(entry.startTime), "HH:mm"),
   );
   const [endTimeStr, setEndTimeStr] = useState(
-    entry.endTime ? format(new Date(entry.endTime), "HH:mm") : "",
+    entry.endTime
+      ? format(parseStoredScheduleInstant(entry.endTime), "HH:mm")
+      : "",
   );
+
+  const effectiveDate = optionsForEdit.some((o) => o.value === dateStr)
+    ? dateStr
+    : optionsForEdit[0]!.value;
 
   useEffect(() => {
     if (!open) return;
     debounceRef.current = setTimeout(async () => {
-      const startTime = new Date(`${dateStr}T${startTimeStr}`);
-      const endTime = endTimeStr ? new Date(`${dateStr}T${endTimeStr}`) : null;
+      const startTime = localWallClockToDate(effectiveDate, startTimeStr);
+      const endTime = endTimeStr
+        ? localWallClockToDate(effectiveDate, endTimeStr)
+        : null;
       const res = await checkScheduleConflict(festivalId, {
         startTime,
         endTime,
         stageId: stageId || null,
         excludeEntryId: entry.id,
+        scheduleDayKey: effectiveDate,
+        entryType: "SESSION",
       });
       if (res.ok) {
         setConflictError(null);
@@ -937,7 +1006,15 @@ function EditSessionDialog({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [festivalId, entry.id, open, dateStr, startTimeStr, endTimeStr, stageId]);
+  }, [
+    festivalId,
+    entry.id,
+    open,
+    effectiveDate,
+    startTimeStr,
+    endTimeStr,
+    stageId,
+  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -945,8 +1022,10 @@ function EditSessionDialog({
       toast.error("Select a stage.");
       return;
     }
-    const startTime = new Date(`${dateStr}T${startTimeStr}`);
-    const endTime = endTimeStr ? new Date(`${dateStr}T${endTimeStr}`) : null;
+    const startTime = localWallClockToDate(effectiveDate, startTimeStr);
+    const endTime = endTimeStr
+      ? localWallClockToDate(effectiveDate, endTimeStr)
+      : null;
     await onSubmit({
       title: title.trim() || null,
       description: description.trim() || null,
@@ -955,6 +1034,7 @@ function EditSessionDialog({
       stageId: stageId || null,
       startTime,
       endTime,
+      scheduleDayKey: effectiveDate,
     });
   };
 

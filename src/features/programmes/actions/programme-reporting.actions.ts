@@ -117,6 +117,63 @@ async function assertStageManagerAccess(festivalId: string): Promise<string> {
   );
 }
 
+async function assertReportingReopenAccess(
+  festivalId: string,
+): Promise<string> {
+  const session = await getSession();
+  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.id, festivalId),
+    columns: { id: true, ownerId: true, tier: true },
+  });
+  if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
+
+  const canUseReporting = await getEffectiveFeatureEnabled(
+    festival.tier as Tier,
+    "schedule",
+  );
+  if (!canUseReporting) {
+    throw new AppError(
+      "Programme reporting is available on Standard plan and above.",
+    );
+  }
+
+  const user = await db.query.user.findFirst({
+    where: eq(userTable.id, session.userId),
+    columns: { displayName: true, fullName: true, email: true },
+  });
+
+  if (session.role === "SUPER_ADMIN" || festival.ownerId === session.userId) {
+    return (
+      user?.displayName || user?.fullName || user?.email || "Festival Admin"
+    );
+  }
+
+  const member = await db.query.festivalMember.findFirst({
+    where: and(
+      eq(festivalMemberTable.festivalId, festivalId),
+      eq(festivalMemberTable.userId, session.userId),
+    ),
+    with: {
+      user: { columns: { displayName: true, fullName: true, email: true } },
+    },
+  });
+
+  if (!member?.isActive || member.role !== "ADMIN") {
+    throw new AppError(
+      "Only festival owners or admins can reopen reporting after close.",
+    );
+  }
+
+  return (
+    member.user.displayName ||
+    member.user.fullName ||
+    member.user.email ||
+    "Festival Admin"
+  );
+}
+
 export async function getProgrammeReportingBoardAction(festivalId: string) {
   const actor = await getSession();
   if (actor?.userId) {
@@ -208,6 +265,48 @@ export async function closeProgrammeReportingAction(
   const festival = await findFestivalById(festivalId);
   if (festival) {
     revalidatePath(`/dashboard/${festival.slug}/event-works/reporting`);
+    revalidatePath(`/${festival.slug}`);
+  }
+  return { success: true, data: res };
+}
+
+export async function reopenProgrammeReportingAction(
+  festivalId: string,
+  reportingSessionId: string,
+) {
+  const actorName = await assertReportingReopenAccess(festivalId);
+  const res = await ProgrammeReportingService.reopenClosedSession(
+    reportingSessionId,
+    actorName,
+  );
+  const festival = await findFestivalById(festivalId);
+  if (festival) {
+    revalidatePath(`/dashboard/${festival.slug}/event-works/reporting`);
+    revalidatePath(`/dashboard/${festival.slug}/event-works/results`);
+    revalidatePath(`/dashboard/${festival.slug}/event-works/judgment`);
+    revalidatePath(`/dashboard/${festival.slug}/event-works/leaderboard`);
+    revalidatePath(`/${festival.slug}/results`);
+    revalidatePath(`/${festival.slug}`);
+  }
+  return { success: true, data: res };
+}
+
+export async function reopenProgrammeReportingByProgrammeAction(
+  festivalId: string,
+  programmeId: string,
+) {
+  const actorName = await assertReportingReopenAccess(festivalId);
+  const res = await ProgrammeReportingService.reopenLatestClosedSessionByProgramme(
+    programmeId,
+    actorName,
+  );
+  const festival = await findFestivalById(festivalId);
+  if (festival) {
+    revalidatePath(`/dashboard/${festival.slug}/event-works/reporting`);
+    revalidatePath(`/dashboard/${festival.slug}/event-works/results`);
+    revalidatePath(`/dashboard/${festival.slug}/event-works/judgment`);
+    revalidatePath(`/dashboard/${festival.slug}/event-works/leaderboard`);
+    revalidatePath(`/${festival.slug}/results`);
     revalidatePath(`/${festival.slug}`);
   }
   return { success: true, data: res };

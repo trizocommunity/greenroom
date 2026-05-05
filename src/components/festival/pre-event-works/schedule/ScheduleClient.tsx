@@ -63,6 +63,10 @@ import {
 import { cn } from "@/core/utils/cn";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
+  localWallClockToDate,
+  parseStoredScheduleInstant,
+} from "@/features/schedule/utils/schedule-datetime";
+import {
   type ConflictParts,
   checkScheduleConflict,
   createScheduleEntry,
@@ -154,7 +158,9 @@ export function ScheduleClient({
 
   const hasStages = stages.length > 0;
   const hasProgrammes = programmes.length > 0;
-  const canAdd = hasStages && hasProgrammes && !isReadOnly;
+  const hasFestivalDates = dateOptions.length > 0;
+  const canAdd =
+    hasStages && hasProgrammes && hasFestivalDates && !isReadOnly;
 
   const refresh = useCallback(async () => {
     const data = await getScheduleEntries(festivalId);
@@ -164,7 +170,7 @@ export function ScheduleClient({
   const groupedByDay = entries.reduce<
     Record<string, ScheduleEntryWithRelations[]>
   >((acc, entry) => {
-    const key = getDateKey(new Date(entry.startTime));
+    const key = getDateKey(parseStoredScheduleInstant(entry.startTime));
     if (!acc[key]) acc[key] = [];
     acc[key].push(entry);
     return acc;
@@ -189,6 +195,7 @@ export function ScheduleClient({
     stageId?: string;
     startTime: Date;
     endTime?: Date;
+    scheduleDayKey: string;
   }) => {
     setAddFormError(null);
     setSaving(true);
@@ -200,6 +207,7 @@ export function ScheduleClient({
         stageId: data.stageId || null,
         startTime: data.startTime,
         endTime: data.endTime ?? null,
+        scheduleDayKey: data.scheduleDayKey,
       });
       if (res.success) {
         toast.success("Added to schedule.");
@@ -221,6 +229,7 @@ export function ScheduleClient({
       stageId?: string | null;
       startTime?: Date;
       endTime?: Date | null;
+      scheduleDayKey: string;
     },
   ) => {
     setSaving(true);
@@ -257,7 +266,7 @@ export function ScheduleClient({
     direction: "up" | "down",
   ) => {
     if (isReadOnly) return;
-    const dayKey = getDateKey(new Date(entry.startTime));
+    const dayKey = getDateKey(parseStoredScheduleInstant(entry.startTime));
     const list =
       activeStageId === ""
         ? (groupedByDay[dayKey] ?? [])
@@ -297,7 +306,9 @@ export function ScheduleClient({
               Use the day tabs to switch dates. You can reorder entries, edit
               times, or remove them. The same time can be used on different
               stages (e.g. Stage A and Stage B both at 11:00); a conflict only
-              occurs when the same stage has two entries at the same time.
+              occurs when the same stage has two overlapping time ranges. Start
+              and end times must stay within your festival event dates and on
+              the same day.
             </p>
             <p className="text-sm text-muted-foreground">
               Sessions (e.g. opening ceremony) are managed separately under
@@ -323,6 +334,12 @@ export function ScheduleClient({
                 );
                 return;
               }
+              if (!hasFestivalDates) {
+                toast.error(
+                  "Set your festival start and end dates in Festival setup before scheduling.",
+                );
+                return;
+              }
               setAddOpen(true);
             }}
             className="gap-2"
@@ -333,6 +350,20 @@ export function ScheduleClient({
           </Button>
         </div>
       </div>
+
+      {!isReadOnly && hasStages && hasProgrammes && !hasFestivalDates && (
+        <div
+          className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100"
+          role="status"
+        >
+          <p className="font-medium">Set festival event dates</p>
+          <p className="text-muted-foreground mt-0.5">
+            Add a start and end date in{" "}
+            <span className="font-medium text-foreground">Festival setup</span>{" "}
+            so every schedule slot can be validated against your event days.
+          </p>
+        </div>
+      )}
 
       {sortedDays.length === 0 ? (
         <Card>
@@ -345,7 +376,9 @@ export function ScheduleClient({
                   ? "No stages yet"
                   : !hasProgrammes
                     ? "No programmes yet"
-                    : "No schedule entries yet"}
+                    : !hasFestivalDates
+                      ? "Set festival event dates"
+                      : "No schedule entries yet"}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
               {isReadOnly &&
@@ -360,6 +393,12 @@ export function ScheduleClient({
               {!isReadOnly &&
                 hasStages &&
                 hasProgrammes &&
+                !hasFestivalDates &&
+                "Add start and end dates for your festival in Festival setup, then return here to build the schedule."}
+              {!isReadOnly &&
+                hasStages &&
+                hasProgrammes &&
+                hasFestivalDates &&
                 "Add programmes to build your schedule."}
             </p>
             <Button
@@ -379,6 +418,12 @@ export function ScheduleClient({
                 if (!hasProgrammes) {
                   toast.error(
                     "Please create programmes first before scheduling.",
+                  );
+                  return;
+                }
+                if (!hasFestivalDates) {
+                  toast.error(
+                    "Set your festival start and end dates in Festival setup before scheduling.",
                   );
                   return;
                 }
@@ -524,9 +569,15 @@ export function ScheduleClient({
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          {format(new Date(entry.startTime), "h:mm a")}
+                          {format(
+                            parseStoredScheduleInstant(entry.startTime),
+                            "h:mm a",
+                          )}
                           {entry.endTime &&
-                            ` – ${format(new Date(entry.endTime), "h:mm a")}`}
+                            ` – ${format(
+                              parseStoredScheduleInstant(entry.endTime),
+                              "h:mm a",
+                            )}`}
                           {entry.stage?.name && ` · ${entry.stage.name}`}
                         </p>
                         {(entry.createdBy || entry.updatedBy) && (
@@ -687,6 +738,7 @@ function AddEntryDialog({
     stageId?: string;
     startTime: Date;
     endTime?: Date;
+    scheduleDayKey: string;
   }) => Promise<void>;
   saving: boolean;
   formError: string | null;
@@ -722,14 +774,16 @@ function AddEntryDialog({
   useEffect(() => {
     if (!open) return;
     debounceRef.current = setTimeout(async () => {
-      const startTime = new Date(`${effectiveDate}T${startTimeStr}`);
+      const startTime = localWallClockToDate(effectiveDate, startTimeStr);
       const endTime = endTimeStr
-        ? new Date(`${effectiveDate}T${endTimeStr}`)
+        ? localWallClockToDate(effectiveDate, endTimeStr)
         : null;
       const res = await checkScheduleConflict(festivalId, {
         startTime,
         endTime,
         stageId: stageId || null,
+        scheduleDayKey: effectiveDate,
+        entryType: "PROGRAMME",
       });
       if (res.ok) {
         setConflictError(null);
@@ -777,15 +831,16 @@ function AddEntryDialog({
       dateOptions.length > 0 && !dateOptions.some((o) => o.value === dateStr)
         ? dateOptions[0]!.value
         : dateStr;
-    const startTime = new Date(`${effectiveDate}T${startTimeStr}`);
+    const startTime = localWallClockToDate(effectiveDate, startTimeStr);
     const endTime = endTimeStr
-      ? new Date(`${effectiveDate}T${endTimeStr}`)
+      ? localWallClockToDate(effectiveDate, endTimeStr)
       : undefined;
     await onSubmit({
       programmeId,
       stageId: stageId || undefined,
       startTime,
       endTime,
+      scheduleDayKey: effectiveDate,
     });
   };
 
@@ -1026,12 +1081,16 @@ function EditEntryDialog({
     stageId?: string | null;
     startTime?: Date;
     endTime?: Date | null;
+    scheduleDayKey: string;
   }) => Promise<void>;
   saving: boolean;
   stages: StageOption[];
   dateOptions: DateOption[];
 }) {
-  const entryDateStr = format(new Date(entry.startTime), "yyyy-MM-dd");
+  const entryDateStr = format(
+    parseStoredScheduleInstant(entry.startTime),
+    "yyyy-MM-dd",
+  );
   const optionsForEdit =
     dateOptions.length > 0
       ? dateOptions.some((o) => o.value === entryDateStr)
@@ -1039,23 +1098,31 @@ function EditEntryDialog({
         : [
             {
               value: entryDateStr,
-              label: format(new Date(entry.startTime), "EEE, d MMM yyyy"),
+              label: format(
+                parseStoredScheduleInstant(entry.startTime),
+                "EEE, d MMM yyyy",
+              ),
             },
             ...dateOptions,
           ]
       : [
           {
             value: entryDateStr,
-            label: format(new Date(entry.startTime), "EEE, d MMM yyyy"),
+            label: format(
+              parseStoredScheduleInstant(entry.startTime),
+              "EEE, d MMM yyyy",
+            ),
           },
         ];
   const [stageId, setStageId] = useState(entry.stageId ?? "");
   const [dateStr, setDateStr] = useState(entryDateStr);
   const [startTimeStr, setStartTimeStr] = useState(
-    format(new Date(entry.startTime), "HH:mm"),
+    format(parseStoredScheduleInstant(entry.startTime), "HH:mm"),
   );
   const [endTimeStr, setEndTimeStr] = useState(
-    entry.endTime ? format(new Date(entry.endTime), "HH:mm") : "",
+    entry.endTime
+      ? format(parseStoredScheduleInstant(entry.endTime), "HH:mm")
+      : "",
   );
   const [conflictError, setConflictError] = useState<string | null>(null);
   const [conflictParts, setConflictParts] = useState<ConflictParts | null>(
@@ -1063,21 +1130,24 @@ function EditEntryDialog({
   );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const effectiveDate =
-    dateOptions.length > 0 && !optionsForEdit.some((o) => o.value === dateStr)
-      ? optionsForEdit[0]!.value
-      : dateStr;
+  const effectiveDate = optionsForEdit.some((o) => o.value === dateStr)
+    ? dateStr
+    : optionsForEdit[0]!.value;
 
   useEffect(() => {
     if (!open) return;
     debounceRef.current = setTimeout(async () => {
-      const startTime = new Date(`${dateStr}T${startTimeStr}`);
-      const endTime = endTimeStr ? new Date(`${dateStr}T${endTimeStr}`) : null;
+      const startTime = localWallClockToDate(effectiveDate, startTimeStr);
+      const endTime = endTimeStr
+        ? localWallClockToDate(effectiveDate, endTimeStr)
+        : null;
       const res = await checkScheduleConflict(festivalId, {
         startTime,
         endTime,
         stageId: stageId || null,
         excludeEntryId: entry.id,
+        scheduleDayKey: effectiveDate,
+        entryType: "PROGRAMME",
       });
       if (res.ok) {
         setConflictError(null);
@@ -1090,7 +1160,15 @@ function EditEntryDialog({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [festivalId, entry.id, open, dateStr, startTimeStr, endTimeStr, stageId]);
+  }, [
+    festivalId,
+    entry.id,
+    open,
+    effectiveDate,
+    startTimeStr,
+    endTimeStr,
+    stageId,
+  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1098,12 +1176,15 @@ function EditEntryDialog({
       toast.error("Select a stage.");
       return;
     }
-    const startTime = new Date(`${dateStr}T${startTimeStr}`);
-    const endTime = endTimeStr ? new Date(`${dateStr}T${endTimeStr}`) : null;
+    const startTime = localWallClockToDate(effectiveDate, startTimeStr);
+    const endTime = endTimeStr
+      ? localWallClockToDate(effectiveDate, endTimeStr)
+      : null;
     await onSubmit({
       stageId: stageId || null,
       startTime,
       endTime,
+      scheduleDayKey: effectiveDate,
     });
   };
 

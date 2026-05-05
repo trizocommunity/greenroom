@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/core/utils/cn";
+import { parseStoredScheduleInstant } from "@/features/schedule/utils/schedule-datetime";
 
 const SESSION_TYPE_LABELS: Record<string, string> = {
   GENERAL: "General",
@@ -49,7 +50,7 @@ export function PublicSessionCards({ entries }: { entries: SessionEntry[] }) {
     const byDay: Record<string, SessionEntry[]> = {};
     for (const e of entries) {
       const key = e.startTime
-        ? format(new Date(e.startTime), "yyyy-MM-dd")
+        ? format(parseStoredScheduleInstant(e.startTime), "yyyy-MM-dd")
         : TBA_DAY_KEY;
       if (!byDay[key]) byDay[key] = [];
       byDay[key].push(e);
@@ -168,8 +169,10 @@ export function PublicSessionCards({ entries }: { entries: SessionEntry[] }) {
 function SessionCard({ entry }: { entry: SessionEntry }) {
   const [showMore, setShowMore] = useState(false);
   const hasSchedule = entry.startTime != null;
-  const start = entry.startTime ? new Date(entry.startTime) : null;
-  const end = entry.endTime ? new Date(entry.endTime) : null;
+  const start = entry.startTime
+    ? parseStoredScheduleInstant(entry.startTime)
+    : null;
+  const end = entry.endTime ? parseStoredScheduleInstant(entry.endTime) : null;
   const isPastEvent = hasSchedule && start ? isPast(end || start) : false;
   const typeLabel =
     SESSION_TYPE_LABELS[entry.session.type] ?? entry.session.type ?? "Session";

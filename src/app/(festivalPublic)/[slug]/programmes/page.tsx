@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getPublicFestivalData } from "@/features/festivals/loaders/festival-public.loader";
 import { getScheduleEntriesPublic } from "@/features/schedule/actions/schedule.actions";
+import { parseStoredScheduleInstant } from "@/features/schedule/utils/schedule-datetime";
 import { ProgrammesByDay } from "./ProgrammesByDay";
 
 export async function generateMetadata({
@@ -48,7 +49,10 @@ export default async function ProgrammesPage({
   const groupedByDay = programmeEntries.reduce<
     Record<string, typeof programmeEntries>
   >((acc, entry) => {
-    const key = format(new Date(entry.startTime), "yyyy-MM-dd");
+    const key = format(
+      parseStoredScheduleInstant(entry.startTime),
+      "yyyy-MM-dd",
+    );
     if (!acc[key]) acc[key] = [];
     acc[key].push(entry);
     return acc;
@@ -60,8 +64,10 @@ export default async function ProgrammesPage({
     const dayDate = parseISO(dateKey);
     const entries = groupedByDay[dateKey].map((entry) => ({
       id: entry.id,
-      startTime: new Date(entry.startTime).toISOString(),
-      endTime: entry.endTime ? new Date(entry.endTime).toISOString() : null,
+      startTime: parseStoredScheduleInstant(entry.startTime).toISOString(),
+      endTime: entry.endTime
+        ? parseStoredScheduleInstant(entry.endTime).toISOString()
+        : null,
       programme: {
         id: entry.programme!.id,
         name: entry.programme!.name,

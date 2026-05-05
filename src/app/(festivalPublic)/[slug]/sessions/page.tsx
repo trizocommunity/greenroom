@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getPublicFestivalData } from "@/features/festivals/loaders/festival-public.loader";
 import { getScheduleEntriesPublic } from "@/features/schedule/actions/schedule.actions";
+import { parseStoredScheduleInstant } from "@/features/schedule/utils/schedule-datetime";
 import { PublicSessionCards } from "./PublicSessionCards";
 
 export async function generateMetadata({
@@ -43,8 +44,10 @@ export default async function SessionsPage({
 
   const serialized = sessionEntries.map((e) => ({
     id: e.id,
-    startTime: new Date(e.startTime).toISOString(),
-    endTime: e.endTime ? new Date(e.endTime).toISOString() : null,
+    startTime: parseStoredScheduleInstant(e.startTime).toISOString(),
+    endTime: e.endTime
+      ? parseStoredScheduleInstant(e.endTime).toISOString()
+      : null,
     session: {
       id: e.id,
       name: e.title || "Session",

@@ -204,6 +204,12 @@ export const getFestivalDashboardSidebarConfig = (
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
         },
         {
+          title: "Judges",
+          href: `${basePath}/pre-event-works/judges`,
+          icon: Gavel,
+          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
+        },
+        {
           title: "Gallery",
           href: `${basePath}/content/gallery`,
           icon: Image,

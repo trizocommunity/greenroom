@@ -1,377 +1,1168 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import {
+  CheckCircle2,
+  Circle,
+  Lock,
+  ShieldCheck,
+  UserRound,
+  Users2,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { formatCountdownHms } from "@/core/utils/format-countdown";
 import {
-  refreshJudgeOpenLockAction,
-  submitProgrammeJudgeSessionAction,
-} from "@/features/programmes/actions/programme-judging.actions";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/core/utils/cn";
+import {
+  submitGroupJudgeScoresAction,
+  submitJudgeScoresAction,
+  verifyJudgmentLinkPinAction,
+} from "@/features/judgment/actions/judgment.actions";
 
-export function ExternalJudgeClient({
-  token,
-  programmeName,
-  festival,
-  programmeDetails,
-  codeLetters,
-  startedAt,
-  isClosed,
-  openNonce,
-  lockState,
-  recentJudges,
-}: {
-  token: string;
-  programmeName: string;
-  festival: {
-    name: string;
-    slug: string;
-    location?: string | null;
-    startDate?: string | null;
-    endDate?: string | null;
-  };
-  programmeDetails: {
-    stageName?: string | null;
-    categoryName?: string | null;
-    programmeType?: "INDIVIDUAL" | "GROUP" | null;
-  };
-  codeLetters: string[];
-  startedAt: Date;
-  isClosed: boolean;
-  openNonce: string | null;
-  lockState: "open" | "in_use" | "closed";
-  recentJudges: Array<{
-    judgeName: string;
-    judgeContact: string;
-    judgeNote: string;
-    judgedAt: string;
+export type JudgePageExpiredPayload = {
+  expired: true;
+  reason: "time" | "closed";
+  festival: { name: string; slug: string };
+  programme: { name: string };
+};
+
+export type JudgePageActivePayload = {
+  scoreLimit: number;
+  judgingMode: "SINGLE" | "GROUP";
+  festival: { name: string; slug: string };
+  programme: { name: string; type: "INDIVIDUAL" | "GROUP" };
+  judges: Array<{ id: string; name: string }>;
+  codeLetters: Array<{ id: string; code: string }>;
+  existingScores: Array<{
+    judgeId: string;
+    codeLetterId: string;
+    score: number;
   }>;
-}) {
-  // Avoid hydration mismatch: first render should not depend on the current time.
-  const [nowMs, setNowMs] = useState(() => new Date(startedAt).getTime());
-  const [isPending, startTransition] = useTransition();
-  const [hasSubmitted, setHasSubmitted] = useState(false);
-  const [showCelebration, setShowCelebration] = useState(false);
-  const [judgeName, setJudgeName] = useState("");
-  const [judgeContact, setJudgeContact] = useState("");
-  const [judgeNote, setJudgeNote] = useState("");
-  const [selectedJudgeKey, setSelectedJudgeKey] = useState("");
+  requiresPin: boolean;
+  attemptsRemaining: number;
+  lockUntil: string | null;
+  expiresAt: string;
+};
 
-  useEffect(() => {
-    if (recentJudges.length === 0) return;
-    const latest = recentJudges[0];
-    setSelectedJudgeKey(`${latest.judgeName}|${latest.judgedAt}`);
-    setJudgeName(latest.judgeName);
-    setJudgeContact(latest.judgeContact);
-    setJudgeNote(latest.judgeNote);
-  }, [recentJudges]);
+export type JudgePagePayload = JudgePageExpiredPayload | JudgePageActivePayload;
 
-  // Keep count-up updated.
-  useEffect(() => {
-    const id = window.setInterval(() => setNowMs(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    if (!openNonce || lockState !== "open" || hasSubmitted) return;
-    const id = window.setInterval(() => {
-      refreshJudgeOpenLockAction(token, openNonce);
-    }, 15_000);
-    return () => window.clearInterval(id);
-  }, [token, openNonce, lockState, hasSubmitted]);
-
-  const elapsedSeconds = useMemo(() => {
-    const start = new Date(startedAt).getTime();
-    return Math.max(0, Math.floor((nowMs - start) / 1000));
-  }, [nowMs, startedAt]);
-
-  const [valuesByCode, setValuesByCode] = useState<Record<string, string>>(
-    () => {
-      const base: Record<string, string> = {};
-      for (const c of codeLetters) base[c] = "";
-      return base;
-    },
-  );
-
-  useEffect(() => {
-    setValuesByCode((prev) => {
-      const next: Record<string, string> = { ...prev };
-      for (const c of codeLetters) {
-        if (next[c] == null) next[c] = "";
-      }
-      return next;
-    });
-  }, [codeLetters]);
-
-  const allFilled = codeLetters.every((c) => {
-    const v = valuesByCode[c];
-    return v != null && v !== "" && Number.isFinite(Number(v));
-  });
-
-  const closed = isClosed || hasSubmitted || lockState !== "open";
-  // Server-rendered refresh after a successful submit arrives as `isClosed=true`.
-  // Treat both in-use and closed tokens as expired/locked for display.
-  const isExpired = !hasSubmitted && (lockState === "in_use" || isClosed);
-  const canSubmit = allFilled && judgeName.trim().length >= 2 && !closed;
-
-  const onSubmit = () => {
-    if (closed) return;
-    if (!canSubmit) {
-      toast.error("Please complete judge details and all points.");
-      return;
+type SubmissionSummary =
+  | {
+      kind: "SINGLE";
+      judgeName: string;
+      rows: Array<{ code: string; score: number }>;
     }
+  | {
+      kind: "GROUP";
+      rows: Array<{
+        code: string;
+        byJudge: Array<{ name: string; score: number }>;
+      }>;
+    };
 
-    const pointsByCode: Record<string, number> = {};
-    for (const c of codeLetters) pointsByCode[c] = Number(valuesByCode[c]);
+type SubmissionPhase = "idle" | "summary" | "closed";
 
-    startTransition(async () => {
-      const res = await submitProgrammeJudgeSessionAction(
-        token,
-        pointsByCode,
-        {
-          judgeName: judgeName.trim(),
-          judgeContact: judgeContact.trim() || null,
-          judgeNote: judgeNote.trim() || null,
-        },
-        openNonce ?? "",
-      );
-      if (!res.success) {
-        toast.error(res.error);
-        return;
-      }
+function isExpiredPayload(p: JudgePagePayload): p is JudgePageExpiredPayload {
+  return "expired" in p && p.expired === true;
+}
 
-      setHasSubmitted(true);
-      setShowCelebration(true);
-      window.setTimeout(() => setShowCelebration(false), 1800);
-      toast.success("Judging submitted successfully.");
-    });
-  };
+function scoreCellErrorLabel(
+  raw: string | undefined,
+  limit: number,
+): "Required" | "Invalid" | null {
+  if (raw === undefined || raw === "" || raw === "-" || raw === ".")
+    return "Required";
+  const v = Number(raw);
+  if (!Number.isFinite(v) || v < 0 || v > limit) return "Invalid";
+  return null;
+}
 
+function isFieldFilled(raw: string | undefined): boolean {
+  return !(raw === undefined || raw === "" || raw === "-" || raw === ".");
+}
+
+function judgeHasAllCodes(
+  judgeId: string,
+  codeLetters: Array<{ id: string }>,
+  existingScores: Array<{ judgeId: string; codeLetterId: string }>,
+) {
+  return codeLetters.every((c) =>
+    existingScores.some(
+      (s) => s.judgeId === judgeId && s.codeLetterId === c.id,
+    ),
+  );
+}
+
+function otherJudgesScoresSummary(
+  codeLetterId: string,
+  selfId: string,
+  judges: Array<{ id: string; name: string }>,
+  scoresByKey: Record<string, string>,
+): string | null {
+  const parts: string[] = [];
+  for (const j of judges) {
+    if (j.id === selfId) continue;
+    const raw = scoresByKey[`${j.id}:${codeLetterId}`];
+    if (raw === undefined || raw === "") continue;
+    const v = Number(raw);
+    if (!Number.isFinite(v)) continue;
+    const short = j.name.trim().split(/\s+/)[0] ?? j.name;
+    parts.push(`${short}: ${raw}`);
+  }
+  return parts.length ? parts.join(" · ") : null;
+}
+
+function JudgeShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-dvh p-4 sm:p-6  max-w-md mx-auto">
-      <div className="space-y-4 pb-24 pt-10 sm:pb-4">
-        <div className="space-y-1">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
-            {festival.name}
-          </p>
-          <h1 className="text-xl sm:text-2xl font-bold">{programmeName}</h1>
-          <div className="flex items-center gap-2 flex-wrap">
-            {!hasSubmitted && lockState === "open" ? (
-              <Badge variant="outline" className="font-mono">
-                Count: {formatCountdownHms(elapsedSeconds)}
-              </Badge>
-            ) : null}
-            {isExpired ? (
-              <Badge variant="secondary">Link expired</Badge>
-            ) : closed ? (
-              <Badge variant="secondary">Judging completed</Badge>
-            ) : (
-              <Badge variant="outline">External judge</Badge>
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-lg border p-3 sm:p-4 bg-muted/10">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
-            Programme details
-          </p>
-          <div className="grid grid-cols-1 gap-1.5 text-sm">
-            <p>
-              <span className="text-muted-foreground">Stage:</span>{" "}
-              {programmeDetails.stageName ?? "Not assigned"}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Category:</span>{" "}
-              {programmeDetails.categoryName ?? "Uncategorized"}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Type:</span>{" "}
-              {programmeDetails.programmeType === "GROUP"
-                ? "Group"
-                : programmeDetails.programmeType === "INDIVIDUAL"
-                  ? "Individual"
-                  : "Unknown"}
-            </p>
-          </div>
-        </div>
-
-        {isExpired ? (
-          <div className="rounded-lg border p-4 bg-muted/20">
-            <h2 className="font-semibold">This link is expired</h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              This judging link is closed and can no longer be used. Ask the
-              stage manager to regenerate and share a new judge link.
-            </p>
-          </div>
-        ) : null}
-
-        {!isExpired && hasSubmitted ? (
-          <div className="rounded-lg border p-3 sm:p-4">
-            <p className="text-sm font-medium mb-2">Judgment summary</p>
-            <div className="overflow-hidden rounded-md border">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/40">
-                  <tr>
-                    <th className="text-left px-3 py-2 font-medium">Code</th>
-                    <th className="text-right px-3 py-2 font-medium">Points</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {codeLetters.map((code) => (
-                    <tr key={code} className="border-t">
-                      <td className="px-3 py-2 font-mono">{code}</td>
-                      <td className="px-3 py-2 text-right font-semibold">
-                        {valuesByCode[code] ?? "-"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ) : !isExpired && codeLetters.length === 0 ? (
-          <div className="text-sm text-muted-foreground">
-            No code letters available.
-          </div>
-        ) : !isExpired ? (
-          <div className="space-y-3 rounded-lg border p-3 sm:p-4">
-            {codeLetters.map((code) => (
-              <div
-                key={code}
-                className="rounded-lg border p-3 sm:p-4 space-y-2"
-              >
-                <div className="min-w-0">
-                  <div className="font-mono font-semibold text-base">
-                    {code}
-                  </div>
-                  <div className="text-[11px] text-muted-foreground">
-                    Enter points (0 to 10, step 0.5)
-                  </div>
-                </div>
-                <Input
-                  type="number"
-                  step="0.5"
-                  min={0}
-                  max={10}
-                  value={valuesByCode[code] ?? ""}
-                  onChange={(e) =>
-                    setValuesByCode((prev) => ({
-                      ...prev,
-                      [code]: e.target.value,
-                    }))
-                  }
-                  disabled={closed || isPending}
-                  placeholder="Pts"
-                  className="text-center font-mono h-11 sm:h-10 text-base sm:text-sm"
-                  inputMode="decimal"
-                />
-              </div>
-            ))}
-          </div>
-        ) : null}
-
-        {!isExpired && hasSubmitted ? (
-          <div className="rounded-lg border p-5 bg-emerald-500/10 border-emerald-500/30">
-            <div className={showCelebration ? "animate-pulse" : ""}>
-              <p className="text-lg font-semibold">
-                Thank you, {judgeName || "Judge"}!
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Your scoring has been submitted successfully.
-              </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                This link is now closed for security.
-              </p>
-              <Badge className="mt-3">Submitted</Badge>
-            </div>
-          </div>
-        ) : null}
-
-        {!isExpired && !closed ? (
-          <div className="space-y-2 rounded-lg border p-3 sm:p-4">
-            <p className="text-sm font-medium">Judge details</p>
-            {recentJudges.length > 0 ? (
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">
-                  Recent judges (auto-filled)
-                </p>
-                <select
-                  className="w-full h-10 rounded-md border bg-background px-3 text-sm"
-                  value={selectedJudgeKey}
-                  onChange={(e) => {
-                    const key = e.target.value;
-                    setSelectedJudgeKey(key);
-                    const selected = recentJudges.find(
-                      (j) => `${j.judgeName}|${j.judgedAt}` === key,
-                    );
-                    if (!selected) return;
-                    setJudgeName(selected.judgeName);
-                    setJudgeContact(selected.judgeContact);
-                    setJudgeNote(selected.judgeNote);
-                  }}
-                >
-                  {recentJudges.map((j) => (
-                    <option
-                      key={`${j.judgeName}-${j.judgedAt}`}
-                      value={`${j.judgeName}|${j.judgedAt}`}
-                    >
-                      {j.judgeName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
-            <Input
-              inputSize="m"
-              placeholder="Judge name *"
-              value={judgeName}
-              onChange={(e) => {
-                setSelectedJudgeKey("");
-                setJudgeName(e.target.value);
-              }}
-              className="text-base sm:text-sm"
-            />
-            <Input
-              inputSize="m"
-              placeholder="Contact (optional)"
-              value={judgeContact}
-              onChange={(e) => {
-                setSelectedJudgeKey("");
-                setJudgeContact(e.target.value);
-              }}
-              className="text-base sm:text-sm"
-            />
-            <Input
-              inputSize="m"
-              placeholder="Note (optional)"
-              value={judgeNote}
-              onChange={(e) => {
-                setSelectedJudgeKey("");
-                setJudgeNote(e.target.value);
-              }}
-              className="text-base sm:text-sm"
-            />
-          </div>
-        ) : null}
-
-        {!isExpired && !hasSubmitted && (
-          <div className="fixed bottom-0 left-0 right-0 p-3 bg-background/95 border-t sm:static sm:border-0 sm:bg-transparent sm:p-0">
-            <Button
-              onClick={onSubmit}
-              disabled={!canSubmit || isPending || codeLetters.length === 0}
-              className="w-full sm:w-auto sm:ml-auto"
-            >
-              {closed
-                ? "Judging completed"
-                : isPending
-                  ? "Submitting..."
-                  : "Submit"}
-            </Button>
-          </div>
-        )}
+    <div className="min-h-[100dvh] bg-gradient-to-b from-background via-background to-muted/25">
+      <div className="mx-auto w-full max-w-full px-3 pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))] pt-6 sm:max-w-3xl sm:px-6 sm:pb-10 sm:pt-10 lg:max-w-5xl">
+        {children}
       </div>
     </div>
   );
+}
+
+function JudgeLinkClosedCard({
+  festivalName,
+  programmeName,
+  headline,
+  detail,
+}: {
+  festivalName: string;
+  programmeName: string;
+  headline: string;
+  detail: string;
+}) {
+  return (
+    <JudgeShell>
+      <Card className="mx-auto max-w-md border-border/60 shadow-md">
+        <CardHeader className="space-y-2 pb-2 text-center">
+          <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            {festivalName}
+          </p>
+          <CardTitle className="text-xl font-semibold leading-tight">
+            {programmeName}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 pb-8 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+            <Lock className="h-5 w-5 text-muted-foreground" aria-hidden />
+          </div>
+          <p className="text-base font-medium text-foreground">{headline}</p>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {detail}
+          </p>
+        </CardContent>
+      </Card>
+    </JudgeShell>
+  );
+}
+
+function ScoreField({
+  value,
+  onChange,
+  disabled,
+  max,
+  invalid,
+  compact,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+  max: number;
+  invalid?: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <Input
+      type="number"
+      inputMode="decimal"
+      min={0}
+      max={max}
+      step={0.5}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      aria-invalid={invalid}
+      className={cn(
+        "tabular-nums transition-[box-shadow,colors] focus-visible:ring-2",
+        compact
+          ? "h-11 w-full min-w-0 max-w-full text-center text-base font-semibold sm:max-w-[5.5rem]"
+          : "h-12 w-full min-w-0 max-w-full text-center text-base font-semibold sm:max-w-[6.5rem]",
+        disabled &&
+          "cursor-not-allowed border-transparent bg-muted/50 text-muted-foreground",
+        invalid && !disabled && "border-destructive/80 ring-destructive/20",
+      )}
+    />
+  );
+}
+
+function SubmissionSummaryView({
+  festivalName,
+  programmeName,
+  summary,
+  scoreLimit,
+  variant = "complete",
+  onContinue,
+}: {
+  festivalName: string;
+  programmeName: string;
+  summary: SubmissionSummary;
+  scoreLimit: number;
+  variant?: "complete" | "partial";
+  onContinue: () => void;
+}) {
+  const isPartial = variant === "partial";
+  return (
+    <JudgeShell>
+      <div className="mx-auto flex max-w-lg flex-col gap-6 sm:max-w-2xl">
+        <div className="text-center">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
+            <CheckCircle2 className="h-8 w-8" aria-hidden />
+          </div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            {festivalName}
+          </p>
+          <h1 className="mt-1 text-xl font-bold tracking-tight sm:text-2xl">
+            {programmeName}
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {isPartial ? (
+              <>
+                Your scores are saved (max {scoreLimit} pts per score). Other
+                judges still need to submit using this link.
+              </>
+            ) : (
+              <>
+                Summary of what you just submitted (max {scoreLimit} pts per
+                score).
+              </>
+            )}
+          </p>
+        </div>
+
+        <Card className="border-border/70 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Submission preview</CardTitle>
+            <CardDescription>
+              {summary.kind === "SINGLE" ? (
+                <>Judge: {summary.judgeName}</>
+              ) : (
+                <>Full panel — all judges and code letters</>
+              )}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {summary.kind === "SINGLE" ? (
+              <ul className="divide-y rounded-md border">
+                {summary.rows.map((r) => (
+                  <li
+                    key={r.code}
+                    className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm"
+                  >
+                    <span className="font-mono font-semibold">{r.code}</span>
+                    <span className="tabular-nums font-medium">{r.score}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="overflow-x-auto rounded-md border">
+                <table className="w-full min-w-[280px] text-left text-sm">
+                  <thead className="border-b bg-muted/40">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">Code</th>
+                      {summary.rows[0]?.byJudge.map((j) => (
+                        <th
+                          key={j.name}
+                          className="whitespace-nowrap px-3 py-2 font-medium"
+                        >
+                          {j.name}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {summary.rows.map((row) => (
+                      <tr key={row.code} className="border-t">
+                        <td className="px-3 py-2 font-mono font-semibold">
+                          {row.code}
+                        </td>
+                        {row.byJudge.map((cell) => (
+                          <td
+                            key={cell.name}
+                            className="px-3 py-2 tabular-nums"
+                          >
+                            {cell.score}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {isPartial ? (
+                <>
+                  You can return to the scoring panel to review your entries
+                  until every judge has submitted.
+                </>
+              ) : (
+                <>
+                  When you continue, this session ends and the link behaves as
+                  closed — you will not be able to change these scores here.
+                </>
+              )}
+            </p>
+            <Button
+              className="h-11 w-full sm:w-auto"
+              size="lg"
+              onClick={onContinue}
+            >
+              {isPartial ? "Back to panel" : "Continue to closed session"}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </JudgeShell>
+  );
+}
+
+function ExternalJudgeActiveClient({
+  token,
+  payload,
+}: {
+  token: string;
+  payload: JudgePageActivePayload;
+}) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [submissionPhase, setSubmissionPhase] =
+    useState<SubmissionPhase>("idle");
+  const [submittedSummary, setSubmittedSummary] =
+    useState<SubmissionSummary | null>(null);
+  const [summaryVariant, setSummaryVariant] = useState<"complete" | "partial">(
+    "complete",
+  );
+  const [pin, setPin] = useState("");
+  const [pinFeedback, setPinFeedback] = useState<{
+    type: "error" | "success";
+    message: string;
+  } | null>(null);
+  const [isPinUnlocked, setIsPinUnlocked] = useState(!payload.requiresPin);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [selectedJudgeId, setSelectedJudgeId] = useState<string>(
+    payload.judgingMode === "SINGLE" && payload.judges.length === 1
+      ? payload.judges[0].id
+      : "",
+  );
+  const [scoresByKey, setScoresByKey] = useState<Record<string, string>>(() => {
+    const out: Record<string, string> = {};
+    for (const row of payload.existingScores) {
+      out[`${row.judgeId}:${row.codeLetterId}`] = String(row.score);
+    }
+    return out;
+  });
+
+  const existingScoresKey = useMemo(
+    () => JSON.stringify(payload.existingScores),
+    [payload.existingScores],
+  );
+
+  useEffect(() => {
+    setScoresByKey((prev) => {
+      const next = { ...prev };
+      for (const row of payload.existingScores) {
+        next[`${row.judgeId}:${row.codeLetterId}`] = String(row.score);
+      }
+      return next;
+    });
+  }, [existingScoresKey, payload.existingScores]);
+
+  const everyCellValidGroup = useMemo(() => {
+    return payload.codeLetters.every((c) =>
+      payload.judges.every((j) => {
+        const v = Number(scoresByKey[`${j.id}:${c.id}`] ?? "");
+        return Number.isFinite(v) && v >= 0 && v <= payload.scoreLimit;
+      }),
+    );
+  }, [payload.judges, payload.codeLetters, payload.scoreLimit, scoresByKey]);
+
+  const selectedJudgeRowComplete = useMemo(() => {
+    if (payload.judgingMode !== "SINGLE" || !selectedJudgeId) return false;
+    return payload.codeLetters.every((c) => {
+      const v = Number(scoresByKey[`${selectedJudgeId}:${c.id}`] ?? "");
+      return Number.isFinite(v) && v >= 0 && v <= payload.scoreLimit;
+    });
+  }, [
+    payload.judgingMode,
+    selectedJudgeId,
+    payload.codeLetters,
+    payload.scoreLimit,
+    scoresByKey,
+  ]);
+
+  const canSubmit = useMemo(() => {
+    if (!isPinUnlocked) return false;
+    if (payload.judgingMode === "SINGLE") {
+      if (!selectedJudgeId) return false;
+      return selectedJudgeRowComplete;
+    }
+    return everyCellValidGroup;
+  }, [
+    isPinUnlocked,
+    payload.judgingMode,
+    selectedJudgeId,
+    selectedJudgeRowComplete,
+    everyCellValidGroup,
+  ]);
+
+  const singleShowSelectedCellHints =
+    payload.judgingMode === "SINGLE" &&
+    isPinUnlocked &&
+    Boolean(selectedJudgeId) &&
+    !selectedJudgeRowComplete;
+
+  const groupShowCellHints =
+    payload.judgingMode === "GROUP" && isPinUnlocked && !everyCellValidGroup;
+
+  const judgesDoneCount = useMemo(() => {
+    if (payload.judgingMode !== "SINGLE" || payload.judges.length <= 1)
+      return null;
+    let n = 0;
+    for (const j of payload.judges) {
+      if (judgeHasAllCodes(j.id, payload.codeLetters, payload.existingScores))
+        n += 1;
+    }
+    return n;
+  }, [
+    payload.judgingMode,
+    payload.judges,
+    payload.codeLetters,
+    payload.existingScores,
+  ]);
+
+  const progress = useMemo(() => {
+    const limit = payload.scoreLimit;
+    if (payload.judgingMode === "SINGLE") {
+      if (payload.judges.length > 1 && !selectedJudgeId) {
+        return {
+          pct: 0,
+          label: "Your entry",
+          sub: `0 / ${payload.codeLetters.length} codes — pick your name`,
+          hint: "Select who you are to track progress.",
+        };
+      }
+      const jid =
+        payload.judges.length === 1 ? payload.judges[0].id : selectedJudgeId;
+      if (!jid) {
+        return {
+          pct: 0,
+          label: "Your entry",
+          sub: `0 / ${payload.codeLetters.length} codes`,
+          hint: null as string | null,
+        };
+      }
+      const filled = payload.codeLetters.filter((c) =>
+        isFieldFilled(scoresByKey[`${jid}:${c.id}`]),
+      ).length;
+      const valid = payload.codeLetters.filter((c) => {
+        const v = Number(scoresByKey[`${jid}:${c.id}`] ?? "");
+        return Number.isFinite(v) && v >= 0 && v <= limit;
+      }).length;
+      const total = payload.codeLetters.length;
+      const pct = total ? Math.round((filled / total) * 100) : 0;
+      return {
+        pct,
+        label: "Your entry",
+        sub: `${filled} / ${total} fields filled`,
+        hint:
+          filled < total
+            ? `${total - filled} code letter${total - filled !== 1 ? "s" : ""} still need a score.`
+            : valid < total
+              ? `${total - valid} field${total - valid !== 1 ? "s" : ""} need valid scores.`
+              : null,
+      };
+    }
+    let filled = 0;
+    let valid = 0;
+    let total = 0;
+    for (const c of payload.codeLetters) {
+      for (const j of payload.judges) {
+        total += 1;
+        const raw = scoresByKey[`${j.id}:${c.id}`];
+        if (isFieldFilled(raw)) filled += 1;
+        const v = Number(scoresByKey[`${j.id}:${c.id}`] ?? "");
+        if (Number.isFinite(v) && v >= 0 && v <= limit) valid += 1;
+      }
+    }
+    const pct = total ? Math.round((filled / total) * 100) : 0;
+    return {
+      pct,
+      label: "Panel progress",
+      sub: `${filled} / ${total} fields filled`,
+      hint:
+        filled < total
+          ? `${total - filled} field${total - filled !== 1 ? "s" : ""} left.`
+          : valid < total
+            ? `${total - valid} field${total - valid !== 1 ? "s" : ""} need valid scores.`
+            : null,
+    };
+  }, [
+    payload.judgingMode,
+    payload.judges,
+    payload.codeLetters,
+    payload.scoreLimit,
+    selectedJudgeId,
+    scoresByKey,
+  ]);
+
+  useEffect(() => {
+    if (!payload.requiresPin) setIsPinUnlocked(true);
+  }, [payload.requiresPin]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const key = "judge_device_id_v1";
+    let value = window.localStorage.getItem(key);
+    if (!value) {
+      value = crypto.randomUUID();
+      window.localStorage.setItem(key, value);
+    }
+    setDeviceId(value);
+  }, []);
+
+  const onScoreFieldChange = (key: string, raw: string, max: number) => {
+    if (submitError) setSubmitError(null);
+    if (raw === "" || raw === "-" || raw === ".") {
+      setScoresByKey((prev) => ({ ...prev, [key]: raw }));
+      return;
+    }
+    const n = Number(raw);
+    if (!Number.isFinite(n)) {
+      setSubmitError("Enter a valid number.");
+      setScoresByKey((prev) => ({ ...prev, [key]: raw }));
+      return;
+    }
+    if (n < 0) {
+      setSubmitError("Score cannot be negative.");
+      setScoresByKey((prev) => ({ ...prev, [key]: raw }));
+      return;
+    }
+    if (n > max) {
+      setSubmitError(`Score cannot exceed ${max} (the configured limit).`);
+      setScoresByKey((prev) => ({ ...prev, [key]: raw }));
+      return;
+    }
+    setScoresByKey((prev) => ({ ...prev, [key]: raw }));
+  };
+
+  const onVerifyPin = () => {
+    startTransition(async () => {
+      setPinFeedback(null);
+      try {
+        await verifyJudgmentLinkPinAction({
+          token,
+          pin,
+          deviceId,
+        });
+        setPinFeedback({
+          type: "success",
+          message: "PIN verified successfully.",
+        });
+        await new Promise((resolve) => window.setTimeout(resolve, 600));
+        setIsPinUnlocked(true);
+        router.refresh();
+      } catch (error: any) {
+        setPinFeedback({
+          type: "error",
+          message: error?.message ?? "Invalid PIN.",
+        });
+      }
+    });
+  };
+
+  const onSubmit = () => {
+    setSubmitError(null);
+    if (!canSubmit) {
+      if (payload.judgingMode === "GROUP") {
+        setSubmitError(
+          `Fill all fields with valid scores (0–${payload.scoreLimit}).`,
+        );
+      } else if (!selectedJudgeId) {
+        setSubmitError("Select your name first.");
+      } else {
+        setSubmitError(
+          `Fill all fields with valid scores (0–${payload.scoreLimit}).`,
+        );
+      }
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        if (payload.judgingMode === "SINGLE") {
+          const scoresByCodeLetterId: Record<string, number> = {};
+          for (const c of payload.codeLetters) {
+            scoresByCodeLetterId[c.id] = Number(
+              scoresByKey[`${selectedJudgeId}:${c.id}`],
+            );
+          }
+          const judgeName =
+            payload.judges.find((j) => j.id === selectedJudgeId)?.name ??
+            "Judge";
+          const summaryRows = payload.codeLetters.map((c) => ({
+            code: c.code,
+            score: scoresByCodeLetterId[c.id],
+          }));
+          const res = await submitJudgeScoresAction({
+            token,
+            judgeId: selectedJudgeId,
+            scoresByCodeLetterId,
+          });
+          setSummaryVariant(res.judgmentComplete ? "complete" : "partial");
+          setSubmittedSummary({ kind: "SINGLE", judgeName, rows: summaryRows });
+          setSubmissionPhase("summary");
+        } else {
+          const scoresByJudgeId: Record<string, Record<string, number>> = {};
+          for (const j of payload.judges) {
+            scoresByJudgeId[j.id] = {};
+            for (const c of payload.codeLetters) {
+              scoresByJudgeId[j.id][c.id] = Number(
+                scoresByKey[`${j.id}:${c.id}`],
+              );
+            }
+          }
+          const groupRows = payload.codeLetters.map((c) => ({
+            code: c.code,
+            byJudge: payload.judges.map((j) => ({
+              name: j.name,
+              score: scoresByJudgeId[j.id][c.id],
+            })),
+          }));
+          await submitGroupJudgeScoresAction({
+            token,
+            scoresByJudgeId,
+          });
+          setSummaryVariant("complete");
+          setSubmittedSummary({ kind: "GROUP", rows: groupRows });
+          setSubmissionPhase("summary");
+        }
+      } catch (error: any) {
+        setSubmitError(error?.message ?? "Failed to submit scores.");
+        toast.error(error?.message ?? "Failed to submit scores.");
+      }
+    });
+  };
+
+  if (submissionPhase === "closed") {
+    return (
+      <JudgeLinkClosedCard
+        festivalName={payload.festival.name}
+        programmeName={payload.programme.name}
+        headline="Session closed"
+        detail="This judgment link is no longer active. Your scores were saved and cannot be changed from this page."
+      />
+    );
+  }
+
+  if (submissionPhase === "summary" && submittedSummary) {
+    return (
+      <SubmissionSummaryView
+        festivalName={payload.festival.name}
+        programmeName={payload.programme.name}
+        summary={submittedSummary}
+        scoreLimit={payload.scoreLimit}
+        variant={summaryVariant}
+        onContinue={() => {
+          if (summaryVariant === "partial") {
+            setSubmissionPhase("idle");
+            router.refresh();
+          } else {
+            setSubmissionPhase("closed");
+          }
+          setSubmittedSummary(null);
+          setSummaryVariant("complete");
+        }}
+      />
+    );
+  }
+
+  if (!isPinUnlocked) {
+    return (
+      <JudgeShell>
+        <div className="mx-auto w-full max-w-md">
+          <Card className="overflow-hidden border-border/70 shadow-sm">
+            <CardHeader className="space-y-1 pb-4">
+              <div className="flex items-center gap-2 text-primary">
+                <ShieldCheck className="h-5 w-5 shrink-0" aria-hidden />
+                <CardTitle className="text-lg">Enter PIN</CardTitle>
+              </div>
+              <CardDescription>
+                Use the PIN from your stage manager. Digits only, 4–6
+                characters.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Input
+                value={pin}
+                onChange={(e) => {
+                  setPin(e.target.value.replace(/\D/g, "").slice(0, 6));
+                  if (pinFeedback?.type === "error") setPinFeedback(null);
+                }}
+                placeholder="••••"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                autoFocus
+                className="h-12 text-center font-mono text-xl tracking-[0.35em] placeholder:tracking-normal sm:h-14 sm:text-2xl"
+              />
+              <Button
+                className="h-11 w-full text-base"
+                onClick={onVerifyPin}
+                disabled={isPending || !/^\d{4,6}$/.test(pin)}
+              >
+                {isPending ? "Checking…" : "Unlock scoring"}
+              </Button>
+              {pinFeedback ? (
+                <p
+                  className={cn(
+                    "text-center text-xs font-medium",
+                    pinFeedback.type === "error"
+                      ? "text-destructive"
+                      : "text-emerald-600",
+                  )}
+                >
+                  {pinFeedback.message}
+                </p>
+              ) : null}
+              <p className="text-center text-xs text-muted-foreground">
+                Attempts left: {payload.attemptsRemaining}
+              </p>
+              {payload.lockUntil ? (
+                <p className="text-center text-xs text-destructive">
+                  Locked until {new Date(payload.lockUntil).toLocaleString()}
+                </p>
+              ) : null}
+            </CardContent>
+          </Card>
+        </div>
+      </JudgeShell>
+    );
+  }
+
+  const isGroup = payload.judgingMode === "GROUP";
+  const modeLabel = isGroup ? "Group panel" : "Separate judges";
+  const ModeIcon = isGroup ? Users2 : UserRound;
+  const progressPct = Math.min(100, Math.max(0, progress.pct));
+
+  return (
+    <JudgeShell>
+      <div className="space-y-6 sm:space-y-8">
+        <header className="space-y-3 sm:space-y-4">
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              {payload.festival.name}
+            </p>
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl">
+              {payload.programme.name}
+            </h1>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary" className="rounded-md font-normal">
+              Max {payload.scoreLimit} pts
+            </Badge>
+            <Badge variant="outline" className="rounded-md font-normal">
+              {payload.programme.type === "GROUP"
+                ? "Group programme"
+                : "Individual programme"}
+            </Badge>
+            <Badge
+              variant="outline"
+              className="gap-1.5 rounded-md border-primary/25 bg-primary/[0.06] pr-2.5 font-normal text-primary"
+            >
+              <ModeIcon className="h-3.5 w-3.5" aria-hidden />
+              {modeLabel}
+            </Badge>
+          </div>
+          <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground sm:text-sm">
+            {isGroup ? (
+              <>
+                Everyone uses this screen together. Fill every judge for each
+                code letter, then submit once — the link closes after a
+                successful panel submit.
+              </>
+            ) : payload.judges.length > 1 ? (
+              <>
+                Each judge uses this link from their own device. Enter the PIN,
+                choose your name, score only your entries, and submit. The link
+                stays open until every judge has submitted.
+              </>
+            ) : (
+              <>
+                Enter scores for each code letter, then submit. The link closes
+                after you submit.
+              </>
+            )}
+          </p>
+        </header>
+
+        <Separator className="opacity-60" />
+
+        <Card className="border-primary/20 bg-primary/[0.04] sm:hidden">
+          <CardContent className="space-y-2 p-4">
+            <div className="flex items-center justify-between gap-2 text-xs font-medium">
+              <span className="text-muted-foreground">{progress.label}</span>
+              <span className="tabular-nums text-foreground">
+                {progress.sub}
+              </span>
+            </div>
+            <Progress
+              value={progressPct}
+              className="h-2.5"
+              aria-label={`${progress.label}: ${progress.sub}`}
+            />
+            {progress.hint ? (
+              <p className="text-[11px] text-muted-foreground">
+                {progress.hint}
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        {payload.judgingMode === "SINGLE" && payload.judges.length > 1 ? (
+          <section className="space-y-3">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold tracking-tight">
+                  Who are you?
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Tap your name — only your column becomes editable.
+                </p>
+              </div>
+              {judgesDoneCount !== null ? (
+                <p className="text-xs font-medium text-muted-foreground">
+                  Finished: {judgesDoneCount}/{payload.judges.length} judges
+                </p>
+              ) : null}
+            </div>
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {payload.judges.map((j) => {
+                const done = judgeHasAllCodes(
+                  j.id,
+                  payload.codeLetters,
+                  payload.existingScores,
+                );
+                const active = selectedJudgeId === j.id;
+                return (
+                  <button
+                    key={j.id}
+                    type="button"
+                    onClick={() => setSelectedJudgeId(j.id)}
+                    className={cn(
+                      "flex min-w-[10rem] shrink-0 flex-col items-start gap-1 rounded-xl border px-4 py-3 text-left transition-all active:scale-[0.99]",
+                      active
+                        ? "border-primary bg-primary/[0.08] shadow-sm ring-2 ring-primary/20"
+                        : "border-border/80 bg-card hover:border-primary/30 hover:bg-muted/30",
+                    )}
+                  >
+                    <span className="flex w-full items-center justify-between gap-2">
+                      <span className="truncate text-sm font-semibold">
+                        {j.name}
+                      </span>
+                      {done ? (
+                        <CheckCircle2
+                          className="h-4 w-4 shrink-0 text-emerald-600"
+                          aria-label="Submitted"
+                        />
+                      ) : (
+                        <Circle
+                          className="h-4 w-4 shrink-0 text-muted-foreground/50"
+                          aria-hidden
+                        />
+                      )}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {done ? "Submitted" : "Pending"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
+
+        {payload.judgingMode === "SINGLE" ? (
+          <section className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold tracking-tight">Scores</h2>
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {progress.sub}
+              </span>
+            </div>
+            <div className="space-y-3">
+              {payload.codeLetters.map((c) => {
+                const effectiveJudgeId =
+                  payload.judges.length === 1
+                    ? payload.judges[0].id
+                    : selectedJudgeId;
+                const fieldKey = effectiveJudgeId
+                  ? `${effectiveJudgeId}:${c.id}`
+                  : "";
+                const others =
+                  effectiveJudgeId && payload.judges.length > 1
+                    ? otherJudgesScoresSummary(
+                        c.id,
+                        effectiveJudgeId,
+                        payload.judges,
+                        scoresByKey,
+                      )
+                    : null;
+                const cellErr =
+                  singleShowSelectedCellHints && effectiveJudgeId
+                    ? scoreCellErrorLabel(
+                        scoresByKey[`${effectiveJudgeId}:${c.id}`],
+                        payload.scoreLimit,
+                      )
+                    : null;
+                return (
+                  <Card
+                    key={c.id}
+                    className={cn(
+                      "border-border/70 transition-shadow",
+                      cellErr && "ring-1 ring-destructive/25",
+                    )}
+                  >
+                    <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                          Code letter
+                        </p>
+                        <p className="font-mono text-lg font-semibold tracking-tight sm:text-xl">
+                          {c.code}
+                        </p>
+                        {others ? (
+                          <p className="text-xs text-muted-foreground">
+                            <span className="font-medium text-foreground/80">
+                              Others:{" "}
+                            </span>
+                            {others}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="flex w-full flex-col items-stretch gap-1 sm:w-auto sm:items-end">
+                        <ScoreField
+                          value={fieldKey ? (scoresByKey[fieldKey] ?? "") : ""}
+                          onChange={(v) => {
+                            if (!effectiveJudgeId) return;
+                            onScoreFieldChange(
+                              `${effectiveJudgeId}:${c.id}`,
+                              v,
+                              payload.scoreLimit,
+                            );
+                          }}
+                          disabled={isPending || !effectiveJudgeId}
+                          max={payload.scoreLimit}
+                          invalid={Boolean(cellErr)}
+                        />
+                        {cellErr ? (
+                          <p className="text-[11px] font-medium text-destructive sm:text-right">
+                            {cellErr}
+                          </p>
+                        ) : null}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </section>
+        ) : (
+          <section className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold tracking-tight">
+                Panel scores
+              </h2>
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {progress.sub}
+              </span>
+            </div>
+            <div className="space-y-4">
+              {payload.codeLetters.map((c) => (
+                <Card key={c.id} className="border-border/70">
+                  <CardHeader className="space-y-1 pb-2 pt-4 sm:pt-5">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      Code letter
+                    </p>
+                    <CardTitle className="font-mono text-lg font-semibold sm:text-xl">
+                      {c.code}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-4 pt-0 sm:pb-5">
+                    <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 md:grid-cols-3">
+                      {payload.judges.map((j) => {
+                        const key = `${j.id}:${c.id}`;
+                        const err = groupShowCellHints
+                          ? scoreCellErrorLabel(
+                              scoresByKey[key],
+                              payload.scoreLimit,
+                            )
+                          : null;
+                        return (
+                          <div
+                            key={j.id}
+                            className={cn(
+                              "flex min-w-0 flex-col gap-1.5 rounded-lg border border-border/60 bg-muted/20 p-3",
+                              err && "ring-1 ring-destructive/30",
+                            )}
+                          >
+                            <span className="truncate text-xs font-medium text-muted-foreground">
+                              {j.name}
+                            </span>
+                            <ScoreField
+                              compact
+                              value={scoresByKey[key] ?? ""}
+                              onChange={(v) =>
+                                onScoreFieldChange(key, v, payload.scoreLimit)
+                              }
+                              disabled={isPending}
+                              max={payload.scoreLimit}
+                              invalid={Boolean(err)}
+                            />
+                            {err ? (
+                              <p className="text-[11px] font-medium text-destructive">
+                                {err}
+                              </p>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+
+      {isPinUnlocked ? (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/60 bg-background/95 px-3 py-2 backdrop-blur-md supports-[backdrop-filter]:bg-background/75 sm:static sm:z-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none"
+          style={{
+            paddingBottom: "max(0.9rem, env(safe-area-inset-bottom, 0px))",
+          }}
+        >
+          <div className="mx-auto flex w-full max-w-full flex-col gap-2.5 rounded-xl border border-border/50 bg-background/85 px-2.5 py-2 shadow-sm sm:max-w-3xl sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none lg:max-w-5xl lg:flex-row lg:items-end lg:justify-between lg:gap-6">
+            <div
+              className="min-w-0 flex-1 space-y-2"
+              role="status"
+              aria-live="polite"
+              aria-label={`${progress.label}: ${progress.sub}`}
+            >
+              <div className="hidden sm:block">
+                <div className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">
+                  <span>{progress.label}</span>
+                  <span className="tabular-nums text-foreground">
+                    {progress.sub}
+                  </span>
+                </div>
+                <Progress value={progressPct} className="h-2.5" />
+                {progress.hint ? (
+                  <p className="text-xs text-muted-foreground">
+                    {progress.hint}
+                  </p>
+                ) : null}
+              </div>
+              <div className="sm:hidden">
+                {progress.hint ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    {progress.hint}
+                  </p>
+                ) : null}
+              </div>
+              {payload.judgingMode === "SINGLE" &&
+              isPinUnlocked &&
+              payload.judges.length > 1 ? (
+                !selectedJudgeId ? (
+                  <p className="text-xs text-muted-foreground sm:hidden">
+                    Select your name to enable scoring.
+                  </p>
+                ) : !selectedJudgeRowComplete ? (
+                  <p className="text-xs text-destructive sm:hidden">
+                    Enter a score for each code (0–{payload.scoreLimit}).
+                  </p>
+                ) : null
+              ) : null}
+              {submitError ? (
+                <p className="text-xs font-medium text-destructive">
+                  {submitError}
+                </p>
+              ) : null}
+            </div>
+            <Button
+              size="lg"
+              className="h-12 w-full shrink-0 sm:w-auto sm:min-w-[11rem]"
+              onClick={onSubmit}
+              suppressHydrationWarning
+              disabled={
+                !canSubmit ||
+                isPending ||
+                (payload.judgingMode === "SINGLE" &&
+                  payload.judges.length > 1 &&
+                  !selectedJudgeId)
+              }
+            >
+              {isPending
+                ? "Submitting…"
+                : isGroup
+                  ? "Submit panel"
+                  : "Submit scores"}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </JudgeShell>
+  );
+}
+
+export function ExternalJudgeClient({
+  token,
+  payload,
+}: {
+  token: string;
+  payload: JudgePagePayload;
+}) {
+  if (isExpiredPayload(payload)) {
+    const headline =
+      payload.reason === "time"
+        ? "This judgment link has expired."
+        : "This judgment link is no longer available.";
+    const detail =
+      payload.reason === "time"
+        ? "Ask the stage manager for a new link if judging is still open."
+        : "The session may have been completed or the link was closed.";
+    return (
+      <JudgeLinkClosedCard
+        festivalName={payload.festival.name}
+        programmeName={payload.programme.name}
+        headline={headline}
+        detail={detail}
+      />
+    );
+  }
+
+  return <ExternalJudgeActiveClient token={token} payload={payload} />;
 }

@@ -235,16 +235,21 @@ export const CodeLetterGeneratorService = {
       for (const assignment of codeAssignments) {
         let teamParticipants: Array<{ studentId: string | null }> = [];
 
-        if (assignment.teamNumber !== null && assignment.teamNumber !== undefined) {
+        // Prefer a single student (spin per participant). Team-wide assignment only
+        // when no studentId is provided (legacy / bulk).
+        if (assignment.studentId) {
+          teamParticipants = reportedParticipants.filter(
+            (p) => p.studentId === assignment.studentId,
+          );
+        } else if (
+          assignment.teamNumber !== null &&
+          assignment.teamNumber !== undefined
+        ) {
           teamParticipants = reportedParticipants.filter(
             (p) =>
               p.groupId !== null &&
               p.teamNumber === assignment.teamNumber &&
               p.studentId !== null,
-          );
-        } else if (assignment.studentId) {
-          teamParticipants = reportedParticipants.filter(
-            (p) => p.studentId === assignment.studentId,
           );
         }
 
