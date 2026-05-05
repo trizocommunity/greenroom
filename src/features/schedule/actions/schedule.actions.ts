@@ -3,7 +3,6 @@
 import { randomUUID } from "crypto";
 import { format } from "date-fns";
 import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
@@ -14,10 +13,13 @@ import {
 import type { Tier } from "@/core/types/app-enums";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
-import { ProgrammeReportingService } from "@/features/programmes/services/programme-reporting.service";
 import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
 import { assertStageBelongsToFestival } from "@/features/schedule/utils/assert-stage-belongs-to-festival";
 import { parseStoredScheduleInstant } from "@/features/schedule/utils/schedule-datetime";
+import {
+  handleProgrammeEntryMutation,
+  revalidateSchedulePaths,
+} from "@/features/schedule/utils/schedule-orchestration";
 import { validateScheduleTimesForFestival } from "@/features/schedule/utils/schedule-times-validation";
 
 export type ScheduleEntryWithRelations = Awaited<
@@ -186,7 +188,10 @@ export async function checkScheduleConflict(
   if (stageId) {
     const stageOk = await assertStageBelongsToFestival(stageId, festivalId);
     if (!stageOk)
-      return { ok: false, error: "That stage does not belong to this festival." };
+      return {
+        ok: false,
+        error: "That stage does not belong to this festival.",
+      };
   }
 
   const conflict = await getTimeConflictError(
@@ -267,8 +272,7 @@ export async function createScheduleEntry(
     data.endTime ?? null,
     data.scheduleDayKey,
   );
-  if (!timeCheck.ok)
-    return { success: false, error: timeCheck.error };
+  if (!timeCheck.ok) return { success: false, error: timeCheck.error };
 
   const stageOk = await assertStageBelongsToFestival(data.stageId, festivalId);
   if (!stageOk)
@@ -319,10 +323,7 @@ export async function createScheduleEntry(
     await updateProgrammeStatus(data.programmeId);
   }
 
-  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/schedule`);
-  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/sessions`);
-  revalidatePath(`/${festival.slug}/sessions`);
-  revalidatePath(`/${festival.slug}/programmes`);
+  revalidateSchedulePaths(festival.slug);
   return { success: true };
 }
 
@@ -395,10 +396,7 @@ export async function updateScheduleEntry(
   }
 
   if (newStageId) {
-    const stageOk = await assertStageBelongsToFestival(
-      newStageId,
-      festivalId,
-    );
+    const stageOk = await assertStageBelongsToFestival(newStageId, festivalId);
     if (!stageOk)
       return {
         success: false,
@@ -448,21 +446,14 @@ export async function updateScheduleEntry(
     .where(eq(scheduleEntryTable.id, id));
 
   if (existing.type === "PROGRAMME") {
-    await ProgrammeReportingService.unlockByScheduleEntryChange(existing.id);
-    if (existing.programmeId) await updateProgrammeStatus(existing.programmeId);
-    if (
-      data.programmeId !== undefined &&
-      data.programmeId !== null &&
-      data.programmeId !== existing.programmeId
-    ) {
-      await updateProgrammeStatus(data.programmeId);
-    }
+    await handleProgrammeEntryMutation({
+      scheduleEntryId: existing.id,
+      previousProgrammeId: existing.programmeId,
+      nextProgrammeId: data.programmeId,
+    });
   }
 
-  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/schedule`);
-  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/sessions`);
-  revalidatePath(`/${festival.slug}/sessions`);
-  revalidatePath(`/${festival.slug}/programmes`);
+  revalidateSchedulePaths(festival.slug);
   return { success: true };
 }
 
@@ -487,17 +478,13 @@ export async function deleteScheduleEntry(
 
   await db.delete(scheduleEntryTable).where(eq(scheduleEntryTable.id, id));
   if (entry.type === "PROGRAMME") {
-    await ProgrammeReportingService.unlockByScheduleEntryChange(entry.id);
+    await handleProgrammeEntryMutation({
+      scheduleEntryId: entry.id,
+      previousProgrammeId: entry.programmeId,
+    });
   }
 
-  if (entry.type === "PROGRAMME" && entry.programmeId) {
-    await updateProgrammeStatus(entry.programmeId);
-  }
-
-  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/schedule`);
-  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/sessions`);
-  revalidatePath(`/${festival.slug}/sessions`);
-  revalidatePath(`/${festival.slug}/programmes`);
+  revalidateSchedulePaths(festival.slug);
   return { success: true };
 }
 
@@ -561,9 +548,6 @@ export async function reorderScheduleEntries(
     }
   });
 
-  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/schedule`);
-  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/sessions`);
-  revalidatePath(`/${festival.slug}/sessions`);
-  revalidatePath(`/${festival.slug}/programmes`);
+  revalidateSchedulePaths(festival.slug);
   return { success: true };
 }
