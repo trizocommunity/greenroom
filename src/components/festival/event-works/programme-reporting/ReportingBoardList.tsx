@@ -71,6 +71,11 @@ export function ReportingBoardList({
                   </div>
                 )}
               </div>
+              {item.programme?.category?.name ? (
+                <p className="text-[11px] text-muted-foreground truncate">
+                  {item.programme.category.name}
+                </p>
+              ) : null}
 
               <div className="flex items-center gap-2 mt-1">
                 <Badge

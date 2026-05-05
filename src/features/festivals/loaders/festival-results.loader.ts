@@ -16,6 +16,9 @@ export interface PublicResult {
   codeLetter?: string | null;
 }
 
+const getResultPoints = (result: { points?: number; awardPoints?: number | null }) =>
+  result.awardPoints ?? result.points ?? 0;
+
 /**
  * Fetch published results for a festival (public site)
  */
@@ -89,7 +92,7 @@ export async function getPublicFestivalResults(
             teamName: teamName || "Unknown Team",
             group: result.programmeAssignment.group?.name || "N/A",
             position: result.position || 999,
-            points: result.points,
+            points: getResultPoints(result),
             grade: result.grade,
           });
         }
@@ -121,7 +124,7 @@ export async function getPublicFestivalResults(
           winner: result.programmeAssignment.student?.name || "Unknown",
           team: result.programmeAssignment.group?.name || "N/A",
           position: result.position || 999,
-          points: result.points,
+          points: getResultPoints(result),
           grade: result.grade,
           codeLetter: null,
         });

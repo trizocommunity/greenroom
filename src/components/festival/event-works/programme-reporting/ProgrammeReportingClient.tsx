@@ -356,64 +356,83 @@ export function ProgrammeReportingClient({
     });
   }, [assignments, selected, optimisticReportedBySession]);
 
-  const reportedUnitsCount = useMemo(
-    () => assignmentsWithReported.filter((a) => a.isReported).length,
-    [assignmentsWithReported],
-  );
-
   const rosterTableRows = useMemo((): RosterTableRow[] => {
     const programme = selected?.programme;
     if (!programme?.id) return [];
     const rows = assignmentsWithReported;
 
-    const mapped = rows.map((a) => ({
-      key: a.id,
-      mode: "individual" as const,
-      assignmentId: a.id,
-      studentId: a.studentId,
-      nameColumn:
-        programme.type === "GROUP" && a.teamNumber != null
-          ? `${a.studentName ?? "—"} · Team ${a.teamNumber}`
-          : (a.studentName ?? "—"),
-      groupName: a.groupName,
-      teamCell: a.teamNumber ?? "—",
-      isReported: a.isReported,
-    }));
+    if (programme.type !== "GROUP") {
+      return rows.map((a) => ({
+        key: a.id,
+        mode: "individual" as const,
+        assignmentId: a.id,
+        studentId: a.studentId,
+        nameColumn: a.studentName ?? "—",
+        groupName: a.groupName,
+        teamCell: a.teamNumber ?? "—",
+        isReported: a.isReported,
+      }));
+    }
 
-    if (programme.type !== "GROUP") return mapped;
+    const byTeam = new Map<string, AssignmentWithReported[]>();
+    for (const row of rows) {
+      const key = `${row.groupId ?? "no-group"}::${row.teamNumber ?? 0}`;
+      const bucket = byTeam.get(key) ?? [];
+      bucket.push(row);
+      byTeam.set(key, bucket);
+    }
 
-    return [...mapped].sort((A, B) => {
-      const ga = (A.groupName ?? "").localeCompare(
-        B.groupName ?? "",
-        undefined,
-        {
-          sensitivity: "base",
-        },
-      );
-      if (ga !== 0) return ga;
-      const ta =
-        typeof A.teamCell === "number" ? A.teamCell : Number(A.teamCell) || 0;
-      const tb =
-        typeof B.teamCell === "number" ? B.teamCell : Number(B.teamCell) || 0;
-      if (ta !== tb) return ta - tb;
-      return A.nameColumn.localeCompare(B.nameColumn, undefined, {
+    const teamRows: RosterTableRow[] = Array.from(byTeam.entries()).map(
+      ([teamKey, members]) => {
+        const lead = members[0]!;
+        const teamNumber = lead.teamNumber ?? 0;
+        const teamStudentIds = members
+          .map((m) => m.studentId)
+          .filter((id): id is string => Boolean(id));
+        return {
+          key: teamKey,
+          mode: "team",
+          assignmentId: lead.id,
+          groupId: lead.groupId,
+          teamNumber,
+          teamStudentIds,
+          nameColumn:
+            teamNumber > 0
+              ? `${lead.groupName ?? "Group"} · Team ${teamNumber}`
+              : (lead.groupName ?? "Team"),
+          groupName: lead.groupName,
+          teamCell: teamNumber,
+          isReported: members.some((m) => m.isReported),
+        };
+      },
+    );
+
+    return teamRows.sort((a, b) => {
+      const ga = (a.groupName ?? "").localeCompare(b.groupName ?? "", undefined, {
         sensitivity: "base",
       });
+      if (ga !== 0) return ga;
+      const aTeam = typeof a.teamCell === "number" ? a.teamCell : Number(a.teamCell) || 0;
+      const bTeam = typeof b.teamCell === "number" ? b.teamCell : Number(b.teamCell) || 0;
+      return aTeam - bTeam;
     });
   }, [assignmentsWithReported, selected?.programme]);
+
+  const reportedUnitsCount = useMemo(
+    () => rosterTableRows.filter((r) => r.isReported).length,
+    [rosterTableRows],
+  );
 
   const session = selected?.reportingSession;
 
   /** Submit is allowed only when every present participant has a spun code letter. */
   const allReportedHaveCodeLetters = useMemo(() => {
-    const letters = session?.programmeCodeLetters ?? [];
     for (const row of rosterTableRows) {
       if (!row.isReported) continue;
-      if (!row.studentId) return false;
-      if (!getCodeForStudentFromLetters(letters, row.studentId)) return false;
+      if (!getIssuedCodeForRow(row)) return false;
     }
     return true;
-  }, [rosterTableRows, session?.programmeCodeLetters]);
+  }, [rosterTableRows, session?.programmeCodeLetters, selected?.programme?.type]);
 
   const sessionStatus = getUiReportingStatus(
     session?.status,
@@ -464,8 +483,11 @@ export function ProgrammeReportingClient({
 
     try {
       const assignment = {
-        teamNumber: null as number | null,
-        studentId: activeSpinRow.studentId,
+        teamNumber:
+          activeSpinRow.mode === "team" ? activeSpinRow.teamNumber : null,
+        groupId: activeSpinRow.mode === "team" ? activeSpinRow.groupId : null,
+        studentId:
+          activeSpinRow.mode === "individual" ? activeSpinRow.studentId : null,
         code,
       };
 
@@ -495,14 +517,17 @@ export function ProgrammeReportingClient({
     }
   };
 
-  const getIssuedCodeForRow = (row: RosterTableRow): string | null => {
-    return row.studentId
-      ? getCodeForStudentFromLetters(
-          session?.programmeCodeLetters ?? [],
-          row.studentId,
-        )
-      : null;
-  };
+  function getIssuedCodeForRow(row: RosterTableRow): string | null {
+    const letters = session?.programmeCodeLetters ?? [];
+    if (row.mode === "team") {
+      for (const sid of row.teamStudentIds) {
+        const code = getCodeForStudentFromLetters(letters, sid);
+        if (code) return code;
+      }
+      return null;
+    }
+    return row.studentId ? getCodeForStudentFromLetters(letters, row.studentId) : null;
+  }
 
   const onStart = () => {
     if (!selected) return;
@@ -550,7 +575,7 @@ export function ProgrammeReportingClient({
           }
           toast.success(
             programmeType === "GROUP"
-              ? "Reporting ended — each reported participant received a code letter."
+              ? "Reporting ended — each reported team received one code letter."
               : "Reporting ended — code letters issued to reported students.",
           );
           router.refresh();
@@ -768,6 +793,11 @@ export function ProgrammeReportingClient({
             <CardTitle className="text-lg flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span>{selected?.programme?.name || "Select a programme"}</span>
+                {selected?.programme?.category?.name ? (
+                  <Badge variant="outline" className="text-[10px] uppercase">
+                    {selected.programme.category.name}
+                  </Badge>
+                ) : null}
                 {session?.isLocked && (
                   <Badge variant="secondary" className="text-[10px] uppercase">
                     Locked
@@ -1016,7 +1046,7 @@ export function ProgrammeReportingClient({
                   {isClosed ? (
                     <p className="text-xs text-muted-foreground">
                       {selected.programme?.type === "GROUP"
-                        ? "Code letters per participant; notifications sent."
+                        ? "One code letter per reported team; notifications sent."
                         : "Codes issued; notifications sent."}
                     </p>
                   ) : null}
@@ -1091,10 +1121,7 @@ export function ProgrammeReportingClient({
         open={isSpinWheelOpen}
         onOpenChange={handleSpinWheelOpenChange}
         targetName={activeSpinRow?.nameColumn || "Participant"}
-        participantCount={Math.max(
-          1,
-          assignmentsWithReported.filter((a) => a.isReported).length,
-        )}
+        participantCount={Math.max(1, reportedUnitsCount)}
         alreadyAssignedCodes={alreadyAssignedCodes}
         onResult={handleSpinResult}
       />

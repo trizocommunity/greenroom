@@ -289,8 +289,13 @@ export async function resolveScoringPolicy(input: {
 }): Promise<{ grade: string | null; awardPoints: number; policyVersion: number }> {
   const policy = await getScoringPolicyWithRules(input.festivalId);
   const grade = resolveGrade(input.points, policy.noGradeBelow, policy.gradeRules);
-  if (!grade) {
+  if (!grade && input.points < policy.noGradeBelow) {
     return { grade: null, awardPoints: 0, policyVersion: policy.policyVersion };
+  }
+  if (!grade) {
+    throw new AppError(
+      `Scoring policy coverage missing: no grade rule matches ${input.points} points. Update the festival scoring policy and retry submission.`,
+    );
   }
 
   const candidates = policy.awardRules.filter((rule) => {
@@ -325,7 +330,13 @@ export async function resolveScoringPolicy(input: {
 
   return {
     grade,
-    awardPoints: candidates[0]?.awardPoints ?? 0,
+    awardPoints:
+      candidates[0]?.awardPoints ??
+      (() => {
+        throw new AppError(
+          `Scoring policy coverage missing: no award rule matches grade ${grade} for this programme/participant combination. Update the festival scoring policy and retry submission.`,
+        );
+      })(),
     policyVersion: policy.policyVersion,
   };
 }

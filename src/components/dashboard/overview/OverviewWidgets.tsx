@@ -237,16 +237,12 @@ export default async function OverviewWidgets({
                     className="flex items-center justify-between border-b pb-2 last:border-0 "
                   >
                     <div>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <p className="text-sm font-medium leading-none truncate max-w-[200px]">
-                            {prog.name}
-                          </p>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{prog.name}</p>
-                        </TooltipContent>
-                      </Tooltip>
+                      <p
+                        className="text-sm font-medium leading-none truncate max-w-[200px]"
+                        title={prog.name}
+                      >
+                        {prog.name}
+                      </p>
                       <p className="text-xs text-muted-foreground truncate max-w-[160px]">
                         {prog.category.name}
                       </p>

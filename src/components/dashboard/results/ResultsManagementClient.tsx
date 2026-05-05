@@ -118,6 +118,7 @@ type Programme = {
       grade: string | null;
       position: number | null;
       points: number;
+      awardPoints?: number | null;
       remarks: string | null;
       isPublished: boolean;
       codeLetter?: { code: string } | null;
@@ -184,6 +185,9 @@ const getSubLabel = (assignment: Programme["assignments"][0], type: string) => {
   }
   return `#${assignment.student?.chestNumber || "N/A"}`;
 };
+
+const getResultPoints = (result: { points?: number; awardPoints?: number | null }) =>
+  result.awardPoints ?? result.points ?? 0;
 
 export function ResultsManagementClient({
   festival,
@@ -257,7 +261,7 @@ export function ResultsManagementClient({
             chestNumber: "",
             codeLetter: assignment.result?.codeLetter?.code ?? "-",
             grade: assignment.result.grade,
-            points: assignment.result.points,
+            points: getResultPoints(assignment.result),
             position: assignment.result.position ?? null,
             remarks: assignment.result.remarks,
           });
@@ -283,7 +287,7 @@ export function ResultsManagementClient({
             : "",
           codeLetter: assignment.result?.codeLetter?.code ?? "-",
           grade: result.grade,
-          points: result.points,
+          points: getResultPoints(result),
           position: result.position ?? null,
           remarks: result.remarks,
         };

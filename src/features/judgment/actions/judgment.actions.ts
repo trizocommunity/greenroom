@@ -36,7 +36,6 @@ import {
 } from "@/core/database/schema";
 import { AppError } from "@/core/errors/errors";
 import {
-  calculateGrade,
   calculatePosition,
 } from "@/features/results/services/results-calculator";
 import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
@@ -159,7 +158,7 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
           ),
         ),
       ),
-      columns: { id: true, name: true, status: true },
+      columns: { id: true, name: true, status: true, type: true },
       with: { category: { columns: { name: true } } },
       orderBy: [asc(programmeTable.name)],
     }),
@@ -168,7 +167,7 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
         eq(programmeTable.festivalId, festivalId),
         inArray(programmeTable.status, ["JUDGED", "ENDED"]),
       ),
-      columns: { id: true, name: true, status: true },
+      columns: { id: true, name: true, status: true, type: true },
       with: { category: { columns: { name: true } } },
       orderBy: [asc(programmeTable.name)],
     }),
@@ -255,6 +254,7 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
       id: p.id,
       name: p.name,
       status: p.status,
+      programmeType: p.type,
       programmeCategory: p.category?.name ?? null,
       reportingDetails: reportingByProgrammeId.get(p.id) ?? null,
     })),
@@ -262,6 +262,7 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
       id: p.id,
       name: p.name,
       status: p.status,
+      programmeType: p.type,
       programmeCategory: p.category?.name ?? null,
       reportingDetails: reportingByProgrammeId.get(p.id) ?? null,
     })),
@@ -964,10 +965,11 @@ export async function submitJudgeScoresAction(
         points: pts,
       });
 
-      const fallbackGradeData = calculateGrade(pts, link.judgmentConfig.scoreLimit);
-      const grade = policyResolved.grade ?? fallbackGradeData.grade;
+      const grade = policyResolved.grade;
       const remarks =
-        policyResolved.grade === null ? "No grade (below threshold)" : fallbackGradeData.remarks;
+        policyResolved.grade === null
+          ? "No grade (below threshold)"
+          : "Grade resolved by scoring policy";
       const position = calculatePosition(pts, averages);
       await tx
         .insert(resultTable)
@@ -1055,6 +1057,167 @@ export async function submitJudgeScoresAction(
   }
 
   return { success: true as const, judgmentComplete: shouldDeactivateLink };
+}
+
+export async function previewJudgeSubmissionSummaryAction(input: {
+  token: string;
+  scoresByJudgeId: Record<string, Record<string, number>>;
+}) {
+  const tokenHash = hashTokenSHA256(input.token);
+  const link = await db.query.judgmentLink.findFirst({
+    where: and(
+      eq(judgmentLinkTable.tokenHash, tokenHash),
+      eq(judgmentLinkTable.isActive, true),
+    ),
+    with: {
+      judgmentConfig: {
+        columns: {
+          id: true,
+          programmeId: true,
+          reportingSessionId: true,
+          scoreLimit: true,
+        },
+      },
+    },
+  });
+  if (!link) throw new AppError("Judgment link is invalid or expired.");
+
+  const assignedJudges = await db.query.judgmentConfigJudge.findMany({
+    where: eq(judgmentConfigJudgeTable.configId, link.configId),
+    columns: { judgeId: true },
+  });
+  const assignedJudgeIds = new Set(assignedJudges.map((row) => row.judgeId));
+  if (assignedJudgeIds.size === 0) {
+    throw new AppError("No judges are assigned for this judgment link.");
+  }
+
+  const codeLetters = await db.query.programmeCodeLetter.findMany({
+    where: and(
+      eq(codeLetterTable.programmeId, link.judgmentConfig.programmeId),
+      eq(
+        codeLetterTable.reportingSessionId,
+        link.judgmentConfig.reportingSessionId,
+      ),
+    ),
+    with: { programmeCodeLetterRecipients: true },
+  });
+  if (codeLetters.length === 0) throw new AppError("No code letters found.");
+  const validCodeLetterIds = new Set(codeLetters.map((c) => c.id));
+
+  for (const [judgeId, scoresByCodeLetterId] of Object.entries(
+    input.scoresByJudgeId,
+  )) {
+    if (!assignedJudgeIds.has(judgeId)) {
+      throw new AppError("Selected judge is not assigned.");
+    }
+    for (const [codeLetterId, score] of Object.entries(scoresByCodeLetterId)) {
+      if (!validCodeLetterIds.has(codeLetterId)) {
+        throw new AppError("Invalid code letter score payload.");
+      }
+      if (
+        !Number.isFinite(score) ||
+        score < 0 ||
+        score > link.judgmentConfig.scoreLimit
+      ) {
+        throw new AppError(
+          `Score must be between 0 and ${link.judgmentConfig.scoreLimit}.`,
+        );
+      }
+    }
+  }
+
+  const allScores = await db.query.judgmentScore.findMany({
+    where: eq(judgmentScoreTable.configId, link.configId),
+    columns: { judgeId: true, codeLetterId: true, score: true },
+  });
+  const mergedScores = new Map<string, number>();
+  for (const row of allScores) {
+    mergedScores.set(`${row.judgeId}:${row.codeLetterId}`, row.score);
+  }
+  for (const [judgeId, scoresByCodeLetterId] of Object.entries(
+    input.scoresByJudgeId,
+  )) {
+    for (const [codeLetterId, score] of Object.entries(scoresByCodeLetterId)) {
+      mergedScores.set(`${judgeId}:${codeLetterId}`, score);
+    }
+  }
+
+  const programmeRow = await db.query.programme.findFirst({
+    where: eq(programmeTable.id, link.judgmentConfig.programmeId),
+    columns: { festivalId: true, categoryId: true, type: true },
+  });
+  if (!programmeRow) throw new AppError("Programme not found.");
+
+  const rows: Array<{
+    codeLetterId: string;
+    code: string;
+    points: number;
+    grade: string | null;
+    awardPoints: number;
+  }> = [];
+
+  for (const codeLetter of codeLetters) {
+    const scoredValues: number[] = [];
+    for (const judgeId of assignedJudgeIds) {
+      const maybeScore = mergedScores.get(`${judgeId}:${codeLetter.id}`);
+      if (maybeScore !== undefined) scoredValues.push(maybeScore);
+    }
+    const average =
+      scoredValues.length > 0
+        ? scoredValues.reduce((sum, v) => sum + v, 0) / scoredValues.length
+        : 0;
+    const points = Math.round(average);
+
+    const firstRecipient = codeLetter.programmeCodeLetterRecipients[0];
+    let participantsCount = 1;
+    if (firstRecipient) {
+      const assignmentRow = await db.query.programmeAssignment.findFirst({
+        where: and(
+          eq(assignmentTable.programmeId, link.judgmentConfig.programmeId),
+          eq(assignmentTable.studentId, firstRecipient.studentId),
+        ),
+        columns: { groupId: true, teamNumber: true },
+      });
+
+      if (programmeRow.type === "GROUP" && assignmentRow) {
+        const teamMembers = await db
+          .select({ id: assignmentTable.id })
+          .from(assignmentTable)
+          .where(
+            and(
+              eq(assignmentTable.programmeId, link.judgmentConfig.programmeId),
+              eq(assignmentTable.teamNumber, assignmentRow.teamNumber ?? 1),
+              assignmentRow.groupId
+                ? eq(assignmentTable.groupId, assignmentRow.groupId)
+                : sql`${assignmentTable.groupId} is null`,
+            ),
+          );
+        participantsCount = Math.max(1, teamMembers.length);
+      }
+    }
+
+    const policyResolved = await resolveScoringPolicy({
+      festivalId: programmeRow.festivalId,
+      programme: {
+        id: link.judgmentConfig.programmeId,
+        categoryId: programmeRow.categoryId,
+        type: programmeRow.type,
+      },
+      participantsCount,
+      points,
+    });
+
+    rows.push({
+      codeLetterId: codeLetter.id,
+      code: codeLetter.code,
+      points,
+      grade: policyResolved.grade,
+      awardPoints: policyResolved.awardPoints,
+    });
+  }
+
+  rows.sort((a, b) => a.code.localeCompare(b.code));
+  return { rows };
 }
 
 export async function submitGroupJudgeScoresAction(input: {

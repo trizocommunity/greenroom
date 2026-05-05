@@ -59,6 +59,9 @@ type Programme = {
   assignments: any[];
 };
 
+const getResultPoints = (result: { points?: number; awardPoints?: number | null }) =>
+  result.awardPoints ?? result.points ?? 0;
+
 interface ResultsExploreClientProps {
   festival: { id: string; name: string; slug: string };
   programmes: Programme[];
@@ -182,7 +185,7 @@ export function ResultsExploreClient({
             chestNumber: "",
             codeLetter: assignment.result?.codeLetter?.code ?? "-",
             grade: assignment.result.grade,
-            points: assignment.result.points,
+            points: getResultPoints(assignment.result),
             position: assignment.result.position || 0,
             remarks: assignment.result.remarks,
           });
@@ -207,7 +210,7 @@ export function ResultsExploreClient({
             : "",
           codeLetter: result.codeLetter?.code ?? "-",
           grade: result.grade,
-          points: result.points,
+          points: getResultPoints(result),
           position: result.position || 0,
           remarks: result.remarks,
         };

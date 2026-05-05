@@ -35,15 +35,28 @@ export type AssignmentWithReported = ProgrammeReportingAssignmentRow & {
   isReported: boolean;
 };
 
-/** One roster row per assignment (individual programme or each member of a group team). */
-export type RosterTableRow = {
-  key: string;
-  mode: "individual";
-  assignmentId: string;
-  studentId: string | null;
-  nameColumn: string;
-  groupName: string | null;
-  teamCell: string | number;
-  isReported: boolean;
-  reportedBy?: string | null;
-};
+export type RosterTableRow =
+  | {
+      key: string;
+      mode: "individual";
+      assignmentId: string;
+      studentId: string | null;
+      nameColumn: string;
+      groupName: string | null;
+      teamCell: string | number;
+      isReported: boolean;
+      reportedBy?: string | null;
+    }
+  | {
+      key: string;
+      mode: "team";
+      assignmentId: string;
+      groupId: string | null;
+      teamNumber: number;
+      teamStudentIds: string[];
+      nameColumn: string;
+      groupName: string | null;
+      teamCell: number;
+      isReported: boolean;
+      reportedBy?: string | null;
+    };

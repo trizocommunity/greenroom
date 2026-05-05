@@ -928,6 +928,7 @@ export const ProgrammeReportingService = {
     reportingSessionId: string,
     codeAssignments: Array<{
       teamNumber: number | null;
+      groupId?: string | null;
       studentId?: string | null;
       code: string;
     }>,

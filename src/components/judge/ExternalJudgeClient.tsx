@@ -25,6 +25,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/core/utils/cn";
 import {
+  previewJudgeSubmissionSummaryAction,
   submitGroupJudgeScoresAction,
   submitJudgeScoresAction,
   verifyJudgmentLinkPinAction,
@@ -71,7 +72,14 @@ type SubmissionSummary =
       }>;
     };
 
-type SubmissionPhase = "idle" | "summary" | "closed";
+type SubmissionPhase = "idle" | "review" | "summary" | "closed";
+type PolicyResultRow = {
+  codeLetterId: string;
+  code: string;
+  points: number;
+  grade: string | null;
+  awardPoints: number;
+};
 
 function isExpiredPayload(p: JudgePagePayload): p is JudgePageExpiredPayload {
   return "expired" in p && p.expired === true;
@@ -214,6 +222,7 @@ function SubmissionSummaryView({
   summary,
   scoreLimit,
   variant = "complete",
+  policyRows,
   onContinue,
 }: {
   festivalName: string;
@@ -221,6 +230,7 @@ function SubmissionSummaryView({
   summary: SubmissionSummary;
   scoreLimit: number;
   variant?: "complete" | "partial";
+  policyRows: PolicyResultRow[];
   onContinue: () => void;
 }) {
   const isPartial = variant === "partial";
@@ -312,6 +322,37 @@ function SubmissionSummaryView({
                 </table>
               </div>
             )}
+            <div className="space-y-2 rounded-md border bg-muted/20 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Finalized result summary
+              </p>
+              <div className="overflow-x-auto rounded-md border bg-background">
+                <table className="w-full min-w-[280px] text-left text-xs sm:text-sm">
+                  <thead className="border-b bg-muted/40">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">Code</th>
+                      <th className="px-3 py-2 font-medium">Result points</th>
+                      <th className="px-3 py-2 font-medium">Normalized points</th>
+                      <th className="px-3 py-2 font-medium">Grade</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {policyRows.map((row) => (
+                      <tr key={row.codeLetterId} className="border-t">
+                        <td className="px-3 py-2 font-mono font-semibold">
+                          {row.code}
+                        </td>
+                        <td className="px-3 py-2 tabular-nums">
+                          {row.awardPoints}
+                        </td>
+                        <td className="px-3 py-2 tabular-nums">{row.points}</td>
+                        <td className="px-3 py-2">{row.grade ?? "No grade"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
             <p className="text-xs text-muted-foreground">
               {isPartial ? (
                 <>
@@ -332,6 +373,161 @@ function SubmissionSummaryView({
             >
               {isPartial ? "Back to panel" : "Continue to closed session"}
             </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </JudgeShell>
+  );
+}
+
+function SubmissionReviewView({
+  festivalName,
+  programmeName,
+  summary,
+  scoreLimit,
+  isPending,
+  submitError,
+  policyRows,
+  onEdit,
+  onConfirm,
+}: {
+  festivalName: string;
+  programmeName: string;
+  summary: SubmissionSummary;
+  scoreLimit: number;
+  isPending: boolean;
+  submitError: string | null;
+  policyRows: PolicyResultRow[];
+  onEdit: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <JudgeShell>
+      <div className="mx-auto flex max-w-lg flex-col gap-6 sm:max-w-2xl">
+        <div className="text-center">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            {festivalName}
+          </p>
+          <h1 className="mt-1 text-xl font-bold tracking-tight sm:text-2xl">
+            Review before submit
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Confirm your scores below (max {scoreLimit} pts per score), or go
+            back to edit before final submission.
+          </p>
+        </div>
+
+        <Card className="border-border/70 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">{programmeName}</CardTitle>
+            <CardDescription>
+              {summary.kind === "SINGLE" ? (
+                <>Judge: {summary.judgeName}</>
+              ) : (
+                <>Full panel — all judges and code letters</>
+              )}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {summary.kind === "SINGLE" ? (
+              <ul className="divide-y rounded-md border">
+                {summary.rows.map((r) => (
+                  <li
+                    key={r.code}
+                    className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm"
+                  >
+                    <span className="font-mono font-semibold">{r.code}</span>
+                    <span className="tabular-nums font-medium">{r.score}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="overflow-x-auto rounded-md border">
+                <table className="w-full min-w-[280px] text-left text-sm">
+                  <thead className="border-b bg-muted/40">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">Code</th>
+                      {summary.rows[0]?.byJudge.map((j) => (
+                        <th
+                          key={j.name}
+                          className="whitespace-nowrap px-3 py-2 font-medium"
+                        >
+                          {j.name}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {summary.rows.map((row) => (
+                      <tr key={row.code} className="border-t">
+                        <td className="px-3 py-2 font-mono font-semibold">
+                          {row.code}
+                        </td>
+                        {row.byJudge.map((cell) => (
+                          <td
+                            key={cell.name}
+                            className="px-3 py-2 tabular-nums"
+                          >
+                            {cell.score}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div className="space-y-2 rounded-md border bg-muted/20 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Estimated result summary
+              </p>
+              <div className="overflow-x-auto rounded-md border bg-background">
+                <table className="w-full min-w-[280px] text-left text-xs sm:text-sm">
+                  <thead className="border-b bg-muted/40">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">Code</th>
+                      <th className="px-3 py-2 font-medium">Result points</th>
+                      <th className="px-3 py-2 font-medium">Normalized points</th>
+                      <th className="px-3 py-2 font-medium">Grade</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {policyRows.map((row) => (
+                      <tr key={row.codeLetterId} className="border-t">
+                        <td className="px-3 py-2 font-mono font-semibold">
+                          {row.code}
+                        </td>
+                        <td className="px-3 py-2 tabular-nums">
+                          {row.awardPoints}
+                        </td>
+                        <td className="px-3 py-2 tabular-nums">{row.points}</td>
+                        <td className="px-3 py-2">{row.grade ?? "No grade"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            {submitError ? (
+              <p className="text-xs font-medium text-destructive">{submitError}</p>
+            ) : null}
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button
+                variant="outline"
+                className="h-11 w-full sm:w-auto"
+                onClick={onEdit}
+                disabled={isPending}
+              >
+                Edit scores
+              </Button>
+              <Button
+                className="h-11 w-full sm:w-auto"
+                onClick={onConfirm}
+                disabled={isPending}
+              >
+                {isPending ? "Submitting..." : "Confirm and submit"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -362,6 +558,12 @@ function ExternalJudgeActiveClient({
   } | null>(null);
   const [isPinUnlocked, setIsPinUnlocked] = useState(!payload.requiresPin);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [reviewSummary, setReviewSummary] = useState<SubmissionSummary | null>(
+    null,
+  );
+  const [reviewPolicyRows, setReviewPolicyRows] = useState<PolicyResultRow[]>(
+    [],
+  );
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [selectedJudgeId, setSelectedJudgeId] = useState<string>(
     payload.judgingMode === "SINGLE" && payload.judges.length === 1
@@ -594,7 +796,40 @@ function ExternalJudgeActiveClient({
     });
   };
 
-  const onSubmit = () => {
+  const buildReviewSummary = (): SubmissionSummary | null => {
+    if (payload.judgingMode === "SINGLE") {
+      const judgeName =
+        payload.judges.find((j) => j.id === selectedJudgeId)?.name ?? "Judge";
+      const rows = payload.codeLetters.map((c) => ({
+        code: c.code,
+        score: Number(scoresByKey[`${selectedJudgeId}:${c.id}`]),
+      }));
+      return { kind: "SINGLE", judgeName, rows };
+    }
+    return {
+      kind: "GROUP",
+      rows: payload.codeLetters.map((c) => ({
+        code: c.code,
+        byJudge: payload.judges.map((j) => ({
+          name: j.name,
+          score: Number(scoresByKey[`${j.id}:${c.id}`]),
+        })),
+      })),
+    };
+  };
+
+  const humanizeSubmitError = (message: string) => {
+    const normalized = message.toLowerCase();
+    if (
+      normalized.includes("scoring policy has no matching grade rule") ||
+      normalized.includes("scoring policy has no matching award rule")
+    ) {
+      return "Scores were saved, but result mapping failed because the scoring policy does not cover this case yet. Ask an admin to update the scoring policy and submit again.";
+    }
+    return message;
+  };
+
+  const onStartReview = () => {
     setSubmitError(null);
     if (!canSubmit) {
       if (payload.judgingMode === "GROUP") {
@@ -610,7 +845,57 @@ function ExternalJudgeActiveClient({
       }
       return;
     }
+    const summary = buildReviewSummary();
+    if (!summary) {
+      setSubmitError("Unable to build review summary. Please try again.");
+      return;
+    }
+    startTransition(async () => {
+      try {
+        const scoresByJudgeId: Record<string, Record<string, number>> = {};
+        if (payload.judgingMode === "SINGLE") {
+          scoresByJudgeId[selectedJudgeId] = {};
+          for (const c of payload.codeLetters) {
+            scoresByJudgeId[selectedJudgeId][c.id] = Number(
+              scoresByKey[`${selectedJudgeId}:${c.id}`],
+            );
+          }
+        } else {
+          for (const j of payload.judges) {
+            scoresByJudgeId[j.id] = {};
+            for (const c of payload.codeLetters) {
+              scoresByJudgeId[j.id][c.id] = Number(scoresByKey[`${j.id}:${c.id}`]);
+            }
+          }
+        }
+        const preview = await previewJudgeSubmissionSummaryAction({
+          token,
+          scoresByJudgeId,
+        });
+        setReviewPolicyRows(preview.rows);
+        setReviewSummary(summary);
+        setSubmissionPhase("review");
+      } catch (error: any) {
+        setSubmitError(
+          humanizeSubmitError(
+            error?.message ?? "Failed to compute policy summary for review.",
+          ),
+        );
+      }
+    });
+  };
 
+  const onConfirmSubmit = () => {
+    if (submissionPhase !== "review") return;
+    if (!canSubmit) {
+      setSubmitError(
+        `Please complete all required valid scores (0-${payload.scoreLimit}) before confirming.`,
+      );
+      setSubmissionPhase("idle");
+      setReviewSummary(null);
+      setReviewPolicyRows([]);
+      return;
+    }
     startTransition(async () => {
       try {
         if (payload.judgingMode === "SINGLE") {
@@ -620,20 +905,16 @@ function ExternalJudgeActiveClient({
               scoresByKey[`${selectedJudgeId}:${c.id}`],
             );
           }
-          const judgeName =
-            payload.judges.find((j) => j.id === selectedJudgeId)?.name ??
-            "Judge";
-          const summaryRows = payload.codeLetters.map((c) => ({
-            code: c.code,
-            score: scoresByCodeLetterId[c.id],
-          }));
           const res = await submitJudgeScoresAction({
             token,
             judgeId: selectedJudgeId,
             scoresByCodeLetterId,
           });
           setSummaryVariant(res.judgmentComplete ? "complete" : "partial");
-          setSubmittedSummary({ kind: "SINGLE", judgeName, rows: summaryRows });
+          if (!reviewSummary) {
+            throw new Error("Review summary is missing.");
+          }
+          setSubmittedSummary(reviewSummary);
           setSubmissionPhase("summary");
         } else {
           const scoresByJudgeId: Record<string, Record<string, number>> = {};
@@ -645,27 +926,47 @@ function ExternalJudgeActiveClient({
               );
             }
           }
-          const groupRows = payload.codeLetters.map((c) => ({
-            code: c.code,
-            byJudge: payload.judges.map((j) => ({
-              name: j.name,
-              score: scoresByJudgeId[j.id][c.id],
-            })),
-          }));
           await submitGroupJudgeScoresAction({
             token,
             scoresByJudgeId,
           });
           setSummaryVariant("complete");
-          setSubmittedSummary({ kind: "GROUP", rows: groupRows });
+          if (!reviewSummary) {
+            throw new Error("Review summary is missing.");
+          }
+          setSubmittedSummary(reviewSummary);
           setSubmissionPhase("summary");
         }
       } catch (error: any) {
-        setSubmitError(error?.message ?? "Failed to submit scores.");
-        toast.error(error?.message ?? "Failed to submit scores.");
+        const message = humanizeSubmitError(
+          error?.message ?? "Failed to submit scores.",
+        );
+        setSubmitError(message);
+        toast.error(message);
       }
     });
   };
+
+  if (submissionPhase === "review" && reviewSummary) {
+    return (
+      <SubmissionReviewView
+        festivalName={payload.festival.name}
+        programmeName={payload.programme.name}
+        summary={reviewSummary}
+        scoreLimit={payload.scoreLimit}
+        isPending={isPending}
+        submitError={submitError}
+        policyRows={reviewPolicyRows}
+        onEdit={() => {
+          setSubmissionPhase("idle");
+          setSubmitError(null);
+          setReviewSummary(null);
+          setReviewPolicyRows([]);
+        }}
+        onConfirm={onConfirmSubmit}
+      />
+    );
+  }
 
   if (submissionPhase === "closed") {
     return (
@@ -686,6 +987,7 @@ function ExternalJudgeActiveClient({
         summary={submittedSummary}
         scoreLimit={payload.scoreLimit}
         variant={summaryVariant}
+        policyRows={reviewPolicyRows}
         onContinue={() => {
           if (summaryVariant === "partial") {
             setSubmissionPhase("idle");
@@ -695,6 +997,8 @@ function ExternalJudgeActiveClient({
           }
           setSubmittedSummary(null);
           setSummaryVariant("complete");
+          setReviewSummary(null);
+          setReviewPolicyRows([]);
         }}
       />
     );
@@ -799,20 +1103,20 @@ function ExternalJudgeActiveClient({
           <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground sm:text-sm">
             {isGroup ? (
               <>
-                Everyone uses this screen together. Fill every judge for each
-                code letter, then submit once — the link closes after a
-                successful panel submit.
+                Everyone uses this screen together. Enter scores, review the
+                panel summary, then confirm once. The link closes after final
+                submit.
               </>
             ) : payload.judges.length > 1 ? (
               <>
                 Each judge uses this link from their own device. Enter the PIN,
-                choose your name, score only your entries, and submit. The link
-                stays open until every judge has submitted.
+                choose your name, score only your entries, then review and
+                confirm. The link stays open until every judge has submitted.
               </>
             ) : (
               <>
-                Enter scores for each code letter, then submit. The link closes
-                after you submit.
+                Enter scores for each code letter, review once, and confirm
+                final submit. The link closes after submission.
               </>
             )}
           </p>
@@ -1115,7 +1419,7 @@ function ExternalJudgeActiveClient({
             <Button
               size="lg"
               className="h-12 w-full shrink-0 sm:w-auto sm:min-w-[11rem]"
-              onClick={onSubmit}
+              onClick={onStartReview}
               suppressHydrationWarning
               disabled={
                 !canSubmit ||
@@ -1128,8 +1432,8 @@ function ExternalJudgeActiveClient({
               {isPending
                 ? "Submitting…"
                 : isGroup
-                  ? "Submit panel"
-                  : "Submit scores"}
+                  ? "Review panel submit"
+                  : "Review scores"}
             </Button>
           </div>
         </div>

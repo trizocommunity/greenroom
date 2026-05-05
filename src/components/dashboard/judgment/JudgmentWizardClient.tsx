@@ -30,6 +30,7 @@ type Programme = {
   id: string;
   name: string;
   status: string;
+  programmeType: "INDIVIDUAL" | "GROUP";
   programmeCategory?: string | null;
   reportingDetails?: {
     stageName: string | null;
@@ -70,8 +71,7 @@ type JudgedProgrammeCard = {
 
 function resetWizardForm() {
   return {
-    step: 1 as 1 | 2 | 3 | 4,
-    scoreLimit: "10",
+    step: 2 as 2 | 3 | 4,
     selectedJudgeIds: [] as string[],
     newJudgeName: "",
     newJudgeDescription: "",
@@ -95,6 +95,7 @@ export function JudgmentWizardClient({
     judgedProgrammes: JudgedProgrammeCard[];
   };
 }) {
+  const POLICY_SCORE_LIMIT = 100;
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
 
@@ -104,6 +105,7 @@ export function JudgmentWizardClient({
   );
   const [reportedStudentsView, setReportedStudentsView] = useState<{
     programmeName: string;
+    programmeType: "INDIVIDUAL" | "GROUP";
     details: NonNullable<Programme["reportingDetails"]>;
   } | null>(null);
   const [wizardProgrammeId, setWizardProgrammeId] = useState<string | null>(
@@ -111,8 +113,7 @@ export function JudgmentWizardClient({
   );
   const [wizardKind, setWizardKind] = useState<"create" | "rejudge">("create");
 
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
-  const [scoreLimit, setScoreLimit] = useState("10");
+  const [step, setStep] = useState<2 | 3 | 4>(2);
   const [selectedJudgeIds, setSelectedJudgeIds] = useState<string[]>([]);
   const [generatedUrlByConfigId, setGeneratedUrlByConfigId] = useState<
     Record<string, string>
@@ -172,8 +173,7 @@ export function JudgmentWizardClient({
     );
   }, [judgeProgrammes, rejudgeProgrammes, wizardProgrammeId]);
 
-  const canMoveToStep2 = Boolean(wizardProgramme) && Number(scoreLimit) > 0;
-  const canGenerate = canMoveToStep2 && selectedJudgeIds.length > 0;
+  const canGenerate = Boolean(wizardProgramme) && selectedJudgeIds.length > 0;
 
   const openWizardForProgramme = (
     programmeId: string,
@@ -183,7 +183,6 @@ export function JudgmentWizardClient({
     setWizardKind(kind);
     setWizardProgrammeId(programmeId);
     setStep(r.step);
-    setScoreLimit(r.scoreLimit);
     setSelectedJudgeIds(r.selectedJudgeIds);
     setNewJudgeName(r.newJudgeName);
     setNewJudgeDescription(r.newJudgeDescription);
@@ -199,7 +198,7 @@ export function JudgmentWizardClient({
     setDialogOpen(false);
     setWizardProgrammeId(null);
     setWizardKind("create");
-    setStep(1);
+    setStep(2);
     setLastCreatedConfigId(null);
   };
 
@@ -238,7 +237,7 @@ export function JudgmentWizardClient({
         const result = await createJudgmentConfigurationAction({
           festivalId,
           programmeId: wizardProgramme.id,
-          scoreLimit: Number(scoreLimit),
+          scoreLimit: POLICY_SCORE_LIMIT,
           judgeIds: selectedJudgeIds,
           judgingMode,
           manualPin: pinMode === "manual" ? manualPin : null,
@@ -355,8 +354,7 @@ export function JudgmentWizardClient({
                     {active ? (
                       <>
                         <p className="text-[11px] leading-relaxed text-muted-foreground">
-                          {active.judgingMode} · max {active.scoreLimit} ·{" "}
-                          {active.judges.length} judge
+                          {active.judgingMode} · {active.judges.length} judge
                           {active.judges.length !== 1 ? "s" : ""}
                           {!active.activeLinkId ? " · link closed" : ""}
                         </p>
@@ -388,12 +386,15 @@ export function JudgmentWizardClient({
                               if (!p.reportingDetails) return;
                               setReportedStudentsView({
                                 programmeName: p.name,
+                                programmeType: p.programmeType,
                                 details: p.reportingDetails,
                               });
                             }}
                             disabled={!p.reportingDetails}
                           >
-                            View reported students
+                            {p.programmeType === "GROUP"
+                              ? "View reported teams"
+                              : "View reported students"}
                           </Button>
                           <Button
                             type="button"
@@ -563,8 +564,8 @@ export function JudgmentWizardClient({
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {item.programmeStatus} · {item.judgingMode} ·{" "}
-                      {item.programmeCategory ?? "No category"} · limit{" "}
-                      {item.scoreLimit} · {item.totalJudgments} entries
+                      {item.programmeCategory ?? "No category"} ·{" "}
+                      {item.totalJudgments} entries
                     </p>
                   </div>
                   <Button
@@ -603,7 +604,9 @@ export function JudgmentWizardClient({
               </DialogHeader>
               <div className="space-y-3 pt-2">
                 <p className="text-sm text-muted-foreground">
-                  Reported students ({reportedStudentsView.details.reportedCount})
+                  {reportedStudentsView.programmeType === "GROUP"
+                    ? `Reported teams (${reportedStudentsView.details.reportedCount})`
+                    : `Reported students (${reportedStudentsView.details.reportedCount})`}
                 </p>
                 {reportedStudentsView.details.reportedStudents.length === 0 ? (
                   <Card>
@@ -663,48 +666,14 @@ export function JudgmentWizardClient({
 
           <div className="space-y-4 pt-1 sm:space-y-5 sm:pt-2">
             <p className="text-xs text-muted-foreground sm:text-sm">
-              Step {step} of 4
+              Step {step - 1} of 3
             </p>
-
-            {step === 1 ? (
-              <div className="space-y-3 sm:space-y-4">
-                <div className="space-y-2">
-                  <Label>Score limit</Label>
-                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                    {[10, 20, 50, 100].map((v) => (
-                      <Button
-                        key={v}
-                        type="button"
-                        variant={
-                          scoreLimit === String(v) ? "default" : "outline"
-                        }
-                        onClick={() => setScoreLimit(String(v))}
-                      >
-                        {v}
-                      </Button>
-                    ))}
-                    <Input
-                      className="w-28"
-                      value={scoreLimit}
-                      onChange={(e) => setScoreLimit(e.target.value)}
-                      placeholder="Custom"
-                      type="number"
-                      min={1}
-                    />
-                  </div>
-                </div>
-                <Button
-                  className="h-8 text-xs sm:h-9 sm:text-sm"
-                  onClick={() => setStep(2)}
-                  disabled={!canMoveToStep2}
-                >
-                  Continue to judges
-                </Button>
-              </div>
-            ) : null}
 
             {step === 2 ? (
               <div className="space-y-3 sm:space-y-4">
+                <p className="text-xs text-muted-foreground">
+                  Score limit is enforced by scoring policy.
+                </p>
                 <div className="space-y-2">
                   <Label>Select judges</Label>
                   <div className="grid max-h-[220px] gap-2 overflow-y-auto sm:max-h-[280px]">
@@ -749,24 +718,14 @@ export function JudgmentWizardClient({
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  <Button
-                    className="h-8 text-xs sm:h-9 sm:text-sm"
-                    type="button"
-                    variant="outline"
-                    onClick={() => setStep(1)}
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    className="h-8 text-xs sm:h-9 sm:text-sm"
-                    type="button"
-                    onClick={() => setStep(3)}
-                    disabled={!canGenerate}
-                  >
-                    Continue to mode
-                  </Button>
-                </div>
+                <Button
+                  className="h-8 text-xs sm:h-9 sm:text-sm"
+                  type="button"
+                  onClick={() => setStep(3)}
+                  disabled={!canGenerate}
+                >
+                  Continue to mode
+                </Button>
               </div>
             ) : null}
 
@@ -928,7 +887,6 @@ export function JudgmentWizardClient({
                     onClick={() => {
                       const r = resetWizardForm();
                       setStep(r.step);
-                      setScoreLimit(r.scoreLimit);
                       setSelectedJudgeIds(r.selectedJudgeIds);
                       setPinMode(r.pinMode);
                       setManualPin(r.manualPin);
@@ -964,8 +922,7 @@ export function JudgmentWizardClient({
                 <DialogTitle>{judgedDetail.programmeName}</DialogTitle>
                 <DialogDescription>
                   Status {judgedDetail.programmeStatus} · Mode{" "}
-                  {judgedDetail.judgingMode} · Score limit{" "}
-                  {judgedDetail.scoreLimit} · {judgedDetail.totalJudgments}{" "}
+                  {judgedDetail.judgingMode} · {judgedDetail.totalJudgments}{" "}
                   score entries
                 </DialogDescription>
               </DialogHeader>
