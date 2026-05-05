@@ -1,18 +1,21 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
   category as categoryTable,
   programmeCodeLetter as codeLetterTable,
   programmeCodeLetterRecipient as codeLetterRecipientTable,
+  programmeJudgeSession as judgeSessionTable,
   programme as programmeTable,
   programmeReportingSession as prsTable,
   programmeReportedParticipant as reportedParticipantTable,
+  result as resultTable,
   scheduleEntry as scheduleEntryTable,
 } from "@/core/database/schema";
 import { CodeLetterGeneratorService } from "./code-letter-generator.service";
 import { NotificationService } from "@/features/notifications/services/notification.service";
+import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
 
 async function getOrCreateSessionByScheduleEntry(scheduleEntryId: string) {
   const existing = await db.query.programmeReportingSession.findFirst({
@@ -62,6 +65,138 @@ async function getAssignedRecipientsForSession(reportingSessionId: string) {
 }
 
 export const ProgrammeReportingService = {
+  async reopenLatestClosedSessionByProgramme(
+    programmeId: string,
+    actorName: string,
+  ) {
+    const latestClosedSession = await db.query.programmeReportingSession.findFirst({
+      where: and(
+        eq(prsTable.programmeId, programmeId),
+        eq(prsTable.status, "CLOSED"),
+      ),
+      orderBy: [desc(prsTable.endedAt)],
+      columns: { id: true },
+    });
+    if (!latestClosedSession) {
+      throw new Error("No closed reporting session found for this programme.");
+    }
+    return this.reopenClosedSession(latestClosedSession.id, actorName);
+  },
+
+  async reopenClosedSession(
+    reportingSessionId: string,
+    actorName: string,
+    opts?: { keepProgrammeInResetStatus?: boolean },
+  ) {
+    const session = await db.query.programmeReportingSession.findFirst({
+      where: eq(prsTable.id, reportingSessionId),
+      with: {
+        programme: { columns: { type: true, name: true } },
+      },
+    });
+    if (!session) throw new Error("Reporting session not found");
+    if (!session.isLocked || session.status !== "CLOSED") {
+      throw new Error(
+        "Only closed reporting sessions can be reopened destructively.",
+      );
+    }
+
+    const nowStr = new Date().toISOString();
+
+    await db.transaction(async (tx) => {
+      await CodeLetterGeneratorService.clearSessionCodeLetters(session.id);
+      await tx
+        .delete(reportedParticipantTable)
+        .where(eq(reportedParticipantTable.reportingSessionId, session.id));
+
+      await tx
+        .delete(resultTable)
+        .where(eq(resultTable.programmeId, session.programmeId));
+
+      await tx
+        .update(judgeSessionTable)
+        .set({
+          usedAt: nowStr,
+          endedAt: nowStr,
+          updatedAt: nowStr,
+        })
+        .where(
+          and(
+            eq(judgeSessionTable.programmeId, session.programmeId),
+            isNull(judgeSessionTable.usedAt),
+          ),
+        );
+
+      await tx
+        .update(prsTable)
+        .set({
+          status: "RESET",
+          isLocked: false,
+          startedAt: null,
+          startedBy: null,
+          endedAt: nowStr,
+          endedBy: actorName,
+          windowEndsAt: null,
+          updatedAt: nowStr,
+        })
+        .where(eq(prsTable.id, session.id));
+
+      await tx
+        .update(programmeTable)
+        .set({
+          status: opts?.keepProgrammeInResetStatus ? "RESET" : "SCHEDULED",
+          publishedAt: null,
+          updatedAt: nowStr,
+        })
+        .where(eq(programmeTable.id, session.programmeId));
+    });
+
+    if (!opts?.keepProgrammeInResetStatus) {
+      await updateProgrammeStatus(session.programmeId);
+    }
+
+    await NotificationService.dispatch({
+      eventType: "PROGRAMME_STATUS_CHANGED",
+      festivalId: session.festivalId,
+      targets: {
+        programmeId: session.programmeId,
+        includeTeamLeadersForProgramme: true,
+      },
+      context: {
+        title: "Reporting reopened",
+        body: "Reporting was reopened. Previous code letters and submitted marks were cleared.",
+        payload: {
+          reportingSessionId: session.id,
+          programmeId: session.programmeId,
+          status: "SCHEDULED",
+        },
+      },
+      channels: ["IN_APP"],
+    });
+
+    await NotificationService.dispatch({
+      eventType: "REPORTING_RESET",
+      festivalId: session.festivalId,
+      targets: {
+        programmeId: session.programmeId,
+        includeTeamLeadersForProgramme: true,
+      },
+      context: {
+        title: "Reporting reopened",
+        body: "Previous reporting codes are no longer valid. Reporting will restart with new attendance and code letters.",
+        payload: { reportingSessionId: session.id, programmeId: session.programmeId },
+      },
+      channels: ["IN_APP", "EMAIL"],
+    });
+
+    return {
+      success: true,
+      message: `Reporting reopened for ${session.programme.name}. Previous attendance, codes, and marks were cleared.`,
+      reportingSessionId: session.id,
+      programmeId: session.programmeId,
+    };
+  },
+
   async listByFestival(festivalId: string) {
     const entries = await db.query.scheduleEntry.findMany({
       where: and(
@@ -694,16 +829,26 @@ export const ProgrammeReportingService = {
   async unlockByScheduleEntryChange(scheduleEntryId: string) {
     const session = await db.query.programmeReportingSession.findFirst({
       where: eq(prsTable.scheduleEntryId, scheduleEntryId),
-      columns: { id: true, festivalId: true },
+      columns: { id: true, programmeId: true, status: true, isLocked: true },
     });
     if (!session) return;
 
+    if (session.status === "CLOSED" && session.isLocked) {
+      await this.reopenClosedSession(session.id, "Schedule update", {
+        keepProgrammeInResetStatus: false,
+      });
+      return;
+    }
+
     await db.transaction(async (tx) => {
-      // Clear reporting data
       await CodeLetterGeneratorService.clearSessionCodeLetters(session.id);
       await tx
         .delete(reportedParticipantTable)
         .where(eq(reportedParticipantTable.reportingSessionId, session.id));
+
+      await tx
+        .delete(resultTable)
+        .where(eq(resultTable.programmeId, session.programmeId));
 
       await tx
         .update(prsTable)
@@ -733,43 +878,8 @@ export const ProgrammeReportingService = {
       .where(eq(assignmentTable.programmeId, session.programmeId));
 
     const totalParticipants = assignmentCountResult.c;
-    const isGroupProgramme = session.programme.type === "GROUP";
-
-    let reportedCount: number;
-    let totalUnits: number;
-
-    if (isGroupProgramme) {
-      const uniqueTeams = new Map<string, { members: number }>();
-      for (const participant of session.programmeReportedParticipants) {
-        if (participant.groupId && participant.teamNumber !== null) {
-          const teamKey = `${participant.groupId}-${participant.teamNumber}`;
-          if (!uniqueTeams.has(teamKey)) {
-            uniqueTeams.set(teamKey, { members: 0 });
-          }
-          uniqueTeams.get(teamKey)!.members += 1;
-        }
-      }
-      reportedCount = uniqueTeams.size;
-
-      const allAssignments = await db.query.programmeAssignment.findMany({
-        where: eq(assignmentTable.programmeId, session.programmeId),
-        columns: { groupId: true, teamNumber: true },
-      });
-      const totalUniqueTeams = new Map<string, number>();
-      for (const assignment of allAssignments) {
-        if (assignment.groupId && assignment.teamNumber !== null) {
-          const teamKey = `${assignment.groupId}-${assignment.teamNumber}`;
-          totalUniqueTeams.set(
-            teamKey,
-            (totalUniqueTeams.get(teamKey) || 0) + 1,
-          );
-        }
-      }
-      totalUnits = totalUniqueTeams.size;
-    } else {
-      reportedCount = session.programmeReportedParticipants.length;
-      totalUnits = totalParticipants;
-    }
+    const reportedCount = session.programmeReportedParticipants.length;
+    const totalUnits = totalParticipants;
 
     const remaining = totalUnits - reportedCount;
     const startTime = session.startedAt ? new Date(session.startedAt) : null;
@@ -838,17 +948,14 @@ export const ProgrammeReportingService = {
     // Session remains IN_PROGRESS to allow more participants to report and spin
     // Session status and programme status will be updated via a separate close action
 
-    const isGroup = session.programme.type === "GROUP";
     for (const { studentId, code } of studentCodes) {
       await NotificationService.dispatch({
         eventType: "CODE_LETTER_ISSUED",
         festivalId: session.festivalId,
         targets: { studentIds: [studentId] },
         context: {
-          title: isGroup ? "Team code issued" : "Code letter issued",
-          body: isGroup
-            ? `Your team’s code is ${code}.`
-            : `Your programme reporting code letter is ${code}.`,
+          title: "Code letter issued",
+          body: `Your programme reporting code letter is ${code}.`,
           payload: {
             reportingSessionId,
             programmeId: session.programmeId,

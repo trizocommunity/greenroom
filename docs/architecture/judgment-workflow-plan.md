@@ -87,6 +87,25 @@ So: `**STARTED**` / `**ENDED**` are **not** overwritten by `**SCHEDULED`** when 
 
 ---
 
+## Operator correction matrix
+
+Use this quick matrix when operators report mistakes.
+
+| Mistake | Current state | Recommended action | Side effects |
+| --- | --- | --- | --- |
+| Wrong mark / grade / position | `STARTED` / `ENDED` / `PUBLISHED` | If published: **unpublish** first, then `saveResult` or `deleteResult`, then publish again if needed. | `updateProgrammeStatus` recomputes status after each change. |
+| Wrong participant marked present | Reporting `IN_PROGRESS` | Unmark or use reset (`resetProgrammeReportingAction`) before close. | Code letters can still be reissued cleanly on close. |
+| Wrong code-letter assignment before close | Reporting `IN_PROGRESS` | Re-spin specific rows, or reset and re-run reporting. | Existing in-progress letters are replaced by latest assignment choices. |
+| Reporting closed by mistake | Reporting `CLOSED` (locked) | Use **Reopen reporting** (destructive) to clear reporting + result rows, invalidate open judge links, then restart reporting. | Previous codes and marks for this programme are intentionally discarded. |
+| Judge link used with wrong mapping | After judge submit | Reopen reporting (destructive), then restart reporting and create a new judge link. | Old submitted marks are removed to prevent stale scoring. |
+
+### Notes
+
+- `unlockByScheduleEntryChange` is now equivalent to the same destructive reopen path for consistency.
+- Avoid “recreate judge link” as a correction tool when reporting/codes are wrong; judge submit upserts touched assignments and removes untouched rows.
+
+---
+
 ## Optional product follow-ups
 
 - **Leaderboard “soon”** — decide whether `**ENDED`** programmes with unpublished marks show placeholders, hide until publish, or staff-only draft views (`leaderboard` services / `LeaderboardClient`).

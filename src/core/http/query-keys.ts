@@ -41,6 +41,15 @@ export const queryKeys = {
     all: () => ["groups"] as const,
     list: (festivalId: string) => ["groups", "list", festivalId] as const,
   },
+  judges: {
+    all: () => ["judges"] as const,
+    list: (festivalId: string) => ["judges", "list", festivalId] as const,
+  },
+  judgment: {
+    all: () => ["judgment"] as const,
+    dashboard: (festivalId: string) =>
+      ["judgment", "dashboard", festivalId] as const,
+  },
   programmes: {
     all: () => ["programmes"] as const,
     list: (festivalId: string) => ["programmes", "list", festivalId] as const,

@@ -1,18 +1,15 @@
-import { asc, eq } from "drizzle-orm";
-import { Calendar } from "lucide-react";
 import type { Metadata } from "next";
+import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { EmptyState } from "@/components/common/EmptyState";
-import { JudgmentClient } from "@/components/dashboard/judgment/JudgmentClient";
+import { JudgmentWizardClient } from "@/components/dashboard/judgment/JudgmentWizardClient";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
-import {
-  festival as festivalTable,
-  stage as stageTable,
-} from "@/core/database/schema";
+import { festival as festivalTable } from "@/core/database/schema";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
-import { getProgrammeJudgingBoard } from "@/features/programmes/services/programme-judgment-board.service";
+import {
+  getJudgmentDashboardDataAction,
+} from "@/features/judgment/actions/judgment.actions";
 
 export const metadata: Metadata = {
   title: "Judgment",
@@ -56,37 +53,12 @@ export default async function JudgmentPage({
   )
     return notFound();
 
-  const [board, festivalStages] = await Promise.all([
-    getProgrammeJudgingBoard(festival.id),
-    db.query.stage.findMany({
-      where: eq(stageTable.festivalId, festival.id),
-      columns: { id: true, name: true },
-      orderBy: [asc(stageTable.name)],
-    }),
-  ]);
-
-  if (board.stages.length === 0 && board.judgedProgrammes.length === 0) {
-    return (
-      <EmptyState
-        title="No programmes ready for judging"
-        description="Once reporting ends and programmes become STARTED, you can create judge links here. After judges submit, programme history will appear below."
-        actionLabel="Go to Schedule"
-        actionLink={`/dashboard/${slug}/pre-event-works/schedule`}
-        icon={Calendar}
-      />
-    );
-  }
+  const initialDashboardData = await getJudgmentDashboardDataAction(festival.id);
 
   return (
-    <JudgmentClient
-      festival={{
-        id: festival.id,
-        slug: festival.slug,
-        tier: festival.tier as any,
-      }}
-      stages={board.stages as any}
-      festivalStages={festivalStages}
-      judgedProgrammes={board.judgedProgrammes as any}
+    <JudgmentWizardClient
+      festivalId={festival.id}
+      initialDashboardData={initialDashboardData as any}
     />
   );
 }

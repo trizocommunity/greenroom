@@ -931,6 +931,212 @@ export const programmeCodeLetterRecipient = pgTable(
 
 // ─── 16. programme_judge_session (depends on: festival, programme, programme_reporting_session) ──
 
+export const judge = pgTable(
+  "judge",
+  {
+    id: text().primaryKey().notNull(),
+    festivalId: text("festival_id").notNull(),
+    name: text().notNull(),
+    description: text(),
+    createdAt: timestamp("created_at", { precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp("updated_at", { precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    index("judge_festivalId_idx").using("btree", table.festivalId.asc().nullsLast()),
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "judge_festivalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
+export const judgmentConfig = pgTable(
+  "judgment_config",
+  {
+    id: text().primaryKey().notNull(),
+    festivalId: text("festival_id").notNull(),
+    programmeId: text("programme_id").notNull(),
+    reportingSessionId: text("reporting_session_id").notNull(),
+    scoreLimit: integer("score_limit").notNull(),
+    judgingMode: text("judging_mode").default("GROUP").notNull(),
+    status: text().default("ACTIVE").notNull(),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", { precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp("updated_at", { precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    index("judgment_config_festivalId_idx").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+    ),
+    index("judgment_config_programmeId_idx").using(
+      "btree",
+      table.programmeId.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "judgment_config_festivalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.programmeId],
+      foreignColumns: [programme.id],
+      name: "judgment_config_programmeId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.reportingSessionId],
+      foreignColumns: [programmeReportingSession.id],
+      name: "judgment_config_reportingSessionId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
+export const judgmentConfigJudge = pgTable(
+  "judgment_config_judge",
+  {
+    id: text().primaryKey().notNull(),
+    configId: text("config_id").notNull(),
+    judgeId: text("judge_id").notNull(),
+    createdAt: timestamp("created_at", { precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("judgment_config_judge_configId_judgeId_key").using(
+      "btree",
+      table.configId.asc().nullsLast(),
+      table.judgeId.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.configId],
+      foreignColumns: [judgmentConfig.id],
+      name: "judgment_config_judge_configId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.judgeId],
+      foreignColumns: [judge.id],
+      name: "judgment_config_judge_judgeId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
+export const judgmentLink = pgTable(
+  "judgment_link",
+  {
+    id: text().primaryKey().notNull(),
+    configId: text("config_id").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    pinHash: text("pin_hash").notNull(),
+    isActive: boolean("is_active").default(true).notNull(),
+    expiresAt: timestamp("expires_at", { precision: 3, mode: "string" }).notNull(),
+    maxAttempts: integer("max_attempts").default(5).notNull(),
+    attempts: integer().default(0).notNull(),
+    lockedUntil: timestamp("locked_until", { precision: 3, mode: "string" }),
+    boundDeviceHash: text("bound_device_hash"),
+    createdAt: timestamp("created_at", { precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    regeneratedAt: timestamp("regenerated_at", { precision: 3, mode: "string" }),
+  },
+  (table) => [
+    uniqueIndex("judgment_link_tokenHash_key").using(
+      "btree",
+      table.tokenHash.asc().nullsLast(),
+    ),
+    index("judgment_link_configId_isActive_idx").using(
+      "btree",
+      table.configId.asc().nullsLast(),
+      table.isActive.asc().nullsLast(),
+    ),
+    index("judgment_link_expiresAt_idx").using(
+      "btree",
+      table.expiresAt.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.configId],
+      foreignColumns: [judgmentConfig.id],
+      name: "judgment_link_configId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
+export const judgmentScore = pgTable(
+  "judgment_score",
+  {
+    id: text().primaryKey().notNull(),
+    configId: text("config_id").notNull(),
+    linkId: text("link_id").notNull(),
+    judgeId: text("judge_id").notNull(),
+    codeLetterId: text("code_letter_id").notNull(),
+    score: doublePrecision().notNull(),
+    submittedAt: timestamp("submitted_at", { precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp("updated_at", { precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("judgment_score_configId_judgeId_codeLetterId_key").using(
+      "btree",
+      table.configId.asc().nullsLast(),
+      table.judgeId.asc().nullsLast(),
+      table.codeLetterId.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.configId],
+      foreignColumns: [judgmentConfig.id],
+      name: "judgment_score_configId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.linkId],
+      foreignColumns: [judgmentLink.id],
+      name: "judgment_score_linkId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.judgeId],
+      foreignColumns: [judge.id],
+      name: "judgment_score_judgeId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.codeLetterId],
+      foreignColumns: [programmeCodeLetter.id],
+      name: "judgment_score_codeLetterId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
 export const programmeJudgeSession = pgTable(
   "programme_judge_session",
   {

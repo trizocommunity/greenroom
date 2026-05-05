@@ -2,22 +2,25 @@
 
 import { randomUUID } from "crypto";
 import { format } from "date-fns";
-import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
-  programme as programmeTable,
   scheduleEntry as scheduleEntryTable,
-  stage as stageTable,
   user as userTable,
 } from "@/core/database/schema";
 import type { Tier } from "@/core/types/app-enums";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
-import { ProgrammeReportingService } from "@/features/programmes/services/programme-reporting.service";
 import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
+import { assertStageBelongsToFestival } from "@/features/schedule/utils/assert-stage-belongs-to-festival";
+import { parseStoredScheduleInstant } from "@/features/schedule/utils/schedule-datetime";
+import {
+  handleProgrammeEntryMutation,
+  revalidateSchedulePaths,
+} from "@/features/schedule/utils/schedule-orchestration";
+import { validateScheduleTimesForFestival } from "@/features/schedule/utils/schedule-times-validation";
 
 export type ScheduleEntryWithRelations = Awaited<
   ReturnType<typeof getScheduleEntries>
@@ -61,6 +64,8 @@ async function getTimeConflictError(
   endTime: Date | null,
   stageId: string | null,
   excludeEntryId?: string,
+  /** Only compare against entries of this type (programme vs session schedules). */
+  entryType?: "PROGRAMME" | "SESSION",
 ): Promise<ConflictParts | null> {
   const where = and(
     eq(scheduleEntryTable.festivalId, festivalId),
@@ -68,6 +73,7 @@ async function getTimeConflictError(
       ? eq(scheduleEntryTable.stageId, stageId)
       : isNull(scheduleEntryTable.stageId),
     excludeEntryId ? ne(scheduleEntryTable.id, excludeEntryId) : undefined,
+    entryType ? eq(scheduleEntryTable.type, entryType) : undefined,
   );
 
   const others = await db.query.scheduleEntry.findMany({
@@ -82,8 +88,8 @@ async function getTimeConflictError(
       rangesOverlap(
         startTime,
         endTime,
-        new Date(o.startTime),
-        o.endTime ? new Date(o.endTime) : null,
+        parseStoredScheduleInstant(o.startTime),
+        o.endTime ? parseStoredScheduleInstant(o.endTime) : null,
       )
     ) {
       const timeStr = format(startTime, "h:mm a");
@@ -96,11 +102,6 @@ async function getTimeConflictError(
     }
   }
   return null;
-}
-
-// Helper for Drizzle isNull since I can't import it easily without checking where it is
-function isNull(column: any) {
-  return sql`${column} IS NULL`;
 }
 
 function conflictPartsToMessage(parts: ConflictParts): string {
@@ -155,21 +156,51 @@ export async function checkScheduleConflict(
     endTime?: Date | null;
     stageId?: string | null;
     excludeEntryId?: string;
+    /** Selected calendar day (yyyy-MM-dd); required for strict festival-day checks */
+    scheduleDayKey?: string | null;
+    entryType: "PROGRAMME" | "SESSION";
   },
 ): Promise<
   { ok: true } | { ok: false; error: string; conflictParts?: ConflictParts }
 > {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
-  const { startTime, endTime = null, stageId = null, excludeEntryId } = params;
-  if (endTime != null && endTime <= startTime)
-    return { ok: false, error: "End time must be after start time." };
+  const {
+    startTime,
+    endTime = null,
+    stageId = null,
+    excludeEntryId,
+    scheduleDayKey,
+    entryType,
+  } = params;
+
+  const festival = await findFestivalById(festivalId);
+  if (!festival) return { ok: false, error: "Festival not found" };
+
+  const timeCheck = validateScheduleTimesForFestival(
+    festival,
+    startTime,
+    endTime,
+    scheduleDayKey,
+  );
+  if (!timeCheck.ok) return { ok: false, error: timeCheck.error };
+
+  if (stageId) {
+    const stageOk = await assertStageBelongsToFestival(stageId, festivalId);
+    if (!stageOk)
+      return {
+        ok: false,
+        error: "That stage does not belong to this festival.",
+      };
+  }
+
   const conflict = await getTimeConflictError(
     festivalId,
     startTime,
     endTime,
     stageId,
     excludeEntryId,
+    entryType,
   );
   if (conflict)
     return {
@@ -201,6 +232,8 @@ export async function createScheduleEntry(
     startTime: Date;
     endTime?: Date | null;
     order?: number;
+    /** Calendar day (yyyy-MM-dd) selected in the form; required when festival has event dates */
+    scheduleDayKey?: string | null;
   },
 ): Promise<
   | { success: true }
@@ -233,14 +266,28 @@ export async function createScheduleEntry(
   }
   if (!data.stageId) return { success: false, error: "Please select a stage." };
 
-  if (data.endTime != null && data.endTime <= data.startTime)
-    return { success: false, error: "End time must be after start time." };
+  const timeCheck = validateScheduleTimesForFestival(
+    festival,
+    data.startTime,
+    data.endTime ?? null,
+    data.scheduleDayKey,
+  );
+  if (!timeCheck.ok) return { success: false, error: timeCheck.error };
+
+  const stageOk = await assertStageBelongsToFestival(data.stageId, festivalId);
+  if (!stageOk)
+    return {
+      success: false,
+      error: "That stage does not belong to this festival.",
+    };
 
   const conflict = await getTimeConflictError(
     festivalId,
     data.startTime,
     data.endTime ?? null,
     data.stageId ?? null,
+    undefined,
+    data.type,
   );
   if (conflict)
     return {
@@ -276,10 +323,7 @@ export async function createScheduleEntry(
     await updateProgrammeStatus(data.programmeId);
   }
 
-  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/schedule`);
-  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/sessions`);
-  revalidatePath(`/${festival.slug}/sessions`);
-  revalidatePath(`/${festival.slug}/programmes`);
+  revalidateSchedulePaths(festival.slug);
   return { success: true };
 }
 
@@ -296,6 +340,7 @@ export async function updateScheduleEntry(
     startTime?: Date;
     endTime?: Date | null;
     order?: number;
+    scheduleDayKey?: string | null;
   },
 ): Promise<
   | { success: true }
@@ -328,18 +373,36 @@ export async function updateScheduleEntry(
   const newStartTime =
     data.startTime !== undefined
       ? data.startTime
-      : new Date(existing.startTime);
+      : parseStoredScheduleInstant(existing.startTime);
   const newEndTime =
     data.endTime !== undefined
       ? data.endTime
       : existing.endTime
-        ? new Date(existing.endTime)
+        ? parseStoredScheduleInstant(existing.endTime)
         : null;
   const newStageId =
     data.stageId !== undefined ? data.stageId : existing.stageId;
 
-  if (newEndTime != null && newEndTime <= newStartTime)
-    return { success: false, error: "End time must be after start time." };
+  const timeFieldsChanging =
+    data.startTime !== undefined || data.endTime !== undefined;
+  if (timeFieldsChanging) {
+    const timeCheck = validateScheduleTimesForFestival(
+      festival,
+      newStartTime,
+      newEndTime,
+      data.scheduleDayKey,
+    );
+    if (!timeCheck.ok) return { success: false, error: timeCheck.error };
+  }
+
+  if (newStageId) {
+    const stageOk = await assertStageBelongsToFestival(newStageId, festivalId);
+    if (!stageOk)
+      return {
+        success: false,
+        error: "That stage does not belong to this festival.",
+      };
+  }
 
   const conflict = await getTimeConflictError(
     festivalId,
@@ -347,6 +410,7 @@ export async function updateScheduleEntry(
     newEndTime ?? null,
     newStageId ?? null,
     id,
+    existing.type,
   );
   if (conflict)
     return {
@@ -382,21 +446,14 @@ export async function updateScheduleEntry(
     .where(eq(scheduleEntryTable.id, id));
 
   if (existing.type === "PROGRAMME") {
-    await ProgrammeReportingService.unlockByScheduleEntryChange(existing.id);
-    if (existing.programmeId) await updateProgrammeStatus(existing.programmeId);
-    if (
-      data.programmeId !== undefined &&
-      data.programmeId !== null &&
-      data.programmeId !== existing.programmeId
-    ) {
-      await updateProgrammeStatus(data.programmeId);
-    }
+    await handleProgrammeEntryMutation({
+      scheduleEntryId: existing.id,
+      previousProgrammeId: existing.programmeId,
+      nextProgrammeId: data.programmeId,
+    });
   }
 
-  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/schedule`);
-  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/sessions`);
-  revalidatePath(`/${festival.slug}/sessions`);
-  revalidatePath(`/${festival.slug}/programmes`);
+  revalidateSchedulePaths(festival.slug);
   return { success: true };
 }
 
@@ -421,17 +478,13 @@ export async function deleteScheduleEntry(
 
   await db.delete(scheduleEntryTable).where(eq(scheduleEntryTable.id, id));
   if (entry.type === "PROGRAMME") {
-    await ProgrammeReportingService.unlockByScheduleEntryChange(entry.id);
+    await handleProgrammeEntryMutation({
+      scheduleEntryId: entry.id,
+      previousProgrammeId: entry.programmeId,
+    });
   }
 
-  if (entry.type === "PROGRAMME" && entry.programmeId) {
-    await updateProgrammeStatus(entry.programmeId);
-  }
-
-  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/schedule`);
-  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/sessions`);
-  revalidatePath(`/${festival.slug}/sessions`);
-  revalidatePath(`/${festival.slug}/programmes`);
+  revalidateSchedulePaths(festival.slug);
   return { success: true };
 }
 
@@ -495,9 +548,6 @@ export async function reorderScheduleEntries(
     }
   });
 
-  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/schedule`);
-  revalidatePath(`/dashboard/${festival.slug}/pre-event-works/sessions`);
-  revalidatePath(`/${festival.slug}/sessions`);
-  revalidatePath(`/${festival.slug}/programmes`);
+  revalidateSchedulePaths(festival.slug);
   return { success: true };
 }

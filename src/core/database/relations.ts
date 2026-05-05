@@ -6,6 +6,11 @@ import {
   festivalCategoryPreference,
   festivalGalleryImage,
   festivalLifecycleEvent,
+  judge,
+  judgmentConfig,
+  judgmentConfigJudge,
+  judgmentLink,
+  judgmentScore,
   festivalMember,
   festivalNews,
   group,
@@ -89,6 +94,8 @@ export const festivalRelations = relations(festival, ({ one, many }) => ({
   programmeNotifications: many(programmeNotification),
   realtimeOutboxes: many(realtimeOutbox),
   programmeJudgeSessions: many(programmeJudgeSession),
+  judges: many(judge),
+  judgmentConfigs: many(judgmentConfig),
 }));
 
 export const categoryRelations = relations(category, ({ one, many }) => ({
@@ -126,6 +133,7 @@ export const programmeRelations = relations(programme, ({ one, many }) => ({
   programmeReportingSessions: many(programmeReportingSession),
   programmeCodeLetters: many(programmeCodeLetter),
   programmeJudgeSessions: many(programmeJudgeSession),
+  judgmentConfigs: many(judgmentConfig),
 }));
 
 export const studentRelations = relations(student, ({ one, many }) => ({
@@ -286,6 +294,7 @@ export const programmeCodeLetterRelations = relations(
       fields: [programmeCodeLetter.programmeId],
       references: [programme.id],
     }),
+    judgmentScores: many(judgmentScore),
   }),
 );
 
@@ -320,6 +329,77 @@ export const programmeJudgeSessionRelations = relations(
     }),
   }),
 );
+
+export const judgeRelations = relations(judge, ({ one, many }) => ({
+  festival: one(festival, {
+    fields: [judge.festivalId],
+    references: [festival.id],
+  }),
+  judgmentConfigJudges: many(judgmentConfigJudge),
+  judgmentScores: many(judgmentScore),
+}));
+
+export const judgmentConfigRelations = relations(
+  judgmentConfig,
+  ({ one, many }) => ({
+    festival: one(festival, {
+      fields: [judgmentConfig.festivalId],
+      references: [festival.id],
+    }),
+    programme: one(programme, {
+      fields: [judgmentConfig.programmeId],
+      references: [programme.id],
+    }),
+    programmeReportingSession: one(programmeReportingSession, {
+      fields: [judgmentConfig.reportingSessionId],
+      references: [programmeReportingSession.id],
+    }),
+    judges: many(judgmentConfigJudge),
+    links: many(judgmentLink),
+    scores: many(judgmentScore),
+  }),
+);
+
+export const judgmentConfigJudgeRelations = relations(
+  judgmentConfigJudge,
+  ({ one }) => ({
+    judgmentConfig: one(judgmentConfig, {
+      fields: [judgmentConfigJudge.configId],
+      references: [judgmentConfig.id],
+    }),
+    judge: one(judge, {
+      fields: [judgmentConfigJudge.judgeId],
+      references: [judge.id],
+    }),
+  }),
+);
+
+export const judgmentLinkRelations = relations(judgmentLink, ({ one, many }) => ({
+  judgmentConfig: one(judgmentConfig, {
+    fields: [judgmentLink.configId],
+    references: [judgmentConfig.id],
+  }),
+  scores: many(judgmentScore),
+}));
+
+export const judgmentScoreRelations = relations(judgmentScore, ({ one }) => ({
+  judgmentConfig: one(judgmentConfig, {
+    fields: [judgmentScore.configId],
+    references: [judgmentConfig.id],
+  }),
+  judgmentLink: one(judgmentLink, {
+    fields: [judgmentScore.linkId],
+    references: [judgmentLink.id],
+  }),
+  judge: one(judge, {
+    fields: [judgmentScore.judgeId],
+    references: [judge.id],
+  }),
+  programmeCodeLetter: one(programmeCodeLetter, {
+    fields: [judgmentScore.codeLetterId],
+    references: [programmeCodeLetter.id],
+  }),
+}));
 
 export const festivalMemberRelations = relations(festivalMember, ({ one }) => ({
   festival: one(festival, {

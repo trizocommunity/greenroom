@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/core/utils/cn";
+import { parseStoredScheduleInstant } from "@/features/schedule/utils/schedule-datetime";
 
 export type ProgrammeEntry = {
   id: string;
@@ -137,8 +138,8 @@ export function ProgrammesByDay({ days }: ProgrammesByDayProps) {
 }
 
 function ProgrammeCard({ entry }: { entry: ProgrammeEntry }) {
-  const start = new Date(entry.startTime);
-  const end = entry.endTime ? new Date(entry.endTime) : null;
+  const start = parseStoredScheduleInstant(entry.startTime);
+  const end = entry.endTime ? parseStoredScheduleInstant(entry.endTime) : null;
 
   return (
     <article className="rounded-xl border border-border bg-card p-5 shadow-sm hover:shadow-md transition-shadow">

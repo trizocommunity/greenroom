@@ -10,6 +10,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -29,6 +39,7 @@ import {
   getReportingStatsAction,
   markProgrammeAssignmentsBulkAction,
   markProgrammeParticipantAction,
+  reopenProgrammeReportingAction,
   resetProgrammeReportingAction,
   startProgrammeReportingAction,
 } from "@/features/programmes/actions/programme-reporting.actions";
@@ -107,8 +118,9 @@ export function ProgrammeReportingClient({
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const [activeAction, setActiveAction] = useState<
-    null | "start" | "reset" | "close" | "mark"
+    null | "start" | "reset" | "close" | "mark" | "reopen"
   >(null);
+  const [isReopenConfirmOpen, setIsReopenConfirmOpen] = useState(false);
   const [optimisticReportedBySession, setOptimisticReportedBySession] =
     useState<Record<string, Set<string>>>({});
   const [reportingStats, setReportingStats] = useState<{
@@ -126,6 +138,9 @@ export function ProgrammeReportingClient({
     null,
   );
   const [isSpinWheelOpen, setIsSpinWheelOpen] = useState(false);
+  const [spinPendingAssignmentId, setSpinPendingAssignmentId] = useState<
+    string | null
+  >(null);
   const confettiRef = useRef<HTMLDivElement>(null);
 
   // Polling refresh every 10 seconds for updates
@@ -341,71 +356,33 @@ export function ProgrammeReportingClient({
     });
   }, [assignments, selected, optimisticReportedBySession]);
 
-  const reportedUnitsCount = useMemo(() => {
-    if (!selected?.programme?.type) return 0;
-    if (selected.programme.type === "INDIVIDUAL") {
-      return assignmentsWithReported.filter((a) => a.isReported).length;
-    }
-    // GROUP: count unique team keys
-    const reportedTeams = new Set<string>();
-    for (const a of assignmentsWithReported) {
-      if (a.isReported && a.groupId && a.teamNumber != null) {
-        reportedTeams.add(`${a.groupId}-${a.teamNumber}`);
-      }
-    }
-    return reportedTeams.size;
-  }, [assignmentsWithReported, selected?.programme?.type]);
+  const reportedUnitsCount = useMemo(
+    () => assignmentsWithReported.filter((a) => a.isReported).length,
+    [assignmentsWithReported],
+  );
 
   const rosterTableRows = useMemo((): RosterTableRow[] => {
     const programme = selected?.programme;
     if (!programme?.id) return [];
     const rows = assignmentsWithReported;
 
-    if (programme.type !== "GROUP") {
-      return rows.map((a) => ({
-        key: a.id,
-        mode: "individual" as const,
-        assignmentId: a.id,
-        studentId: a.studentId,
-        nameColumn: a.studentName ?? "—",
-        groupName: a.groupName,
-        teamCell: a.teamNumber ?? "—",
-        isReported: a.isReported,
-      }));
-    }
+    const mapped = rows.map((a) => ({
+      key: a.id,
+      mode: "individual" as const,
+      assignmentId: a.id,
+      studentId: a.studentId,
+      nameColumn:
+        programme.type === "GROUP" && a.teamNumber != null
+          ? `${a.studentName ?? "—"} · Team ${a.teamNumber}`
+          : (a.studentName ?? "—"),
+      groupName: a.groupName,
+      teamCell: a.teamNumber ?? "—",
+      isReported: a.isReported,
+    }));
 
-    const teamMap = new Map<string, AssignmentWithReported[]>();
-    for (const a of rows) {
-      const gid = a.groupId ?? "";
-      const tn = a.teamNumber ?? 1;
-      const key = `${gid}\0${tn}`;
-      const list = teamMap.get(key) ?? [];
-      list.push(a);
-      teamMap.set(key, list);
-    }
+    if (programme.type !== "GROUP") return mapped;
 
-    const clusters = Array.from(teamMap.entries()).map(([key, members]) => {
-      const sortedMembers = [...members].sort((m1, m2) =>
-        (m1.studentName ?? "").localeCompare(m2.studentName ?? "", undefined, {
-          sensitivity: "base",
-        }),
-      );
-      const first = sortedMembers[0]!;
-      const tn = first.teamNumber ?? 1;
-      const names = sortedMembers.map((m) => m.studentName ?? "—").join(", ");
-      return {
-        key,
-        mode: "groupTeam" as const,
-        assignmentIds: sortedMembers.map((m) => m.id),
-        studentIds: sortedMembers.map((m) => m.studentId),
-        nameColumn: `Team ${tn} · ${names}`,
-        groupName: first.groupName,
-        teamCell: tn,
-        isReported: sortedMembers.every((m) => m.isReported),
-      };
-    });
-
-    clusters.sort((A, B) => {
+    return [...mapped].sort((A, B) => {
       const ga = (A.groupName ?? "").localeCompare(
         B.groupName ?? "",
         undefined,
@@ -414,28 +391,26 @@ export function ProgrammeReportingClient({
         },
       );
       if (ga !== 0) return ga;
-      return A.teamCell - B.teamCell;
+      const ta =
+        typeof A.teamCell === "number" ? A.teamCell : Number(A.teamCell) || 0;
+      const tb =
+        typeof B.teamCell === "number" ? B.teamCell : Number(B.teamCell) || 0;
+      if (ta !== tb) return ta - tb;
+      return A.nameColumn.localeCompare(B.nameColumn, undefined, {
+        sensitivity: "base",
+      });
     });
-
-    return clusters;
   }, [assignmentsWithReported, selected?.programme]);
 
   const session = selected?.reportingSession;
 
-  /** Submit is allowed only when every present row already has a spun / assigned code letter. */
+  /** Submit is allowed only when every present participant has a spun code letter. */
   const allReportedHaveCodeLetters = useMemo(() => {
     const letters = session?.programmeCodeLetters ?? [];
     for (const row of rosterTableRows) {
       if (!row.isReported) continue;
-      if (row.mode === "individual") {
-        if (!row.studentId) return false;
-        if (!getCodeForStudentFromLetters(letters, row.studentId)) return false;
-      } else {
-        const hasCode = row.studentIds.some(
-          (sid) => sid && getCodeForStudentFromLetters(letters, sid),
-        );
-        if (!hasCode) return false;
-      }
+      if (!row.studentId) return false;
+      if (!getCodeForStudentFromLetters(letters, row.studentId)) return false;
     }
     return true;
   }, [rosterTableRows, session?.programmeCodeLetters]);
@@ -488,13 +463,10 @@ export function ProgrammeReportingClient({
     if (!activeSpinRow || !session) return;
 
     try {
-      // Prepare the assignment object
       const assignment = {
-        teamNumber:
-          activeSpinRow.mode === "groupTeam" ? activeSpinRow.teamCell : null,
-        studentId:
-          activeSpinRow.mode === "individual" ? activeSpinRow.studentId : null,
-        code: code,
+        teamNumber: null as number | null,
+        studentId: activeSpinRow.studentId,
+        code,
       };
 
       const result = await assignCodeLettersWithSpinAction(
@@ -504,36 +476,32 @@ export function ProgrammeReportingClient({
       );
 
       if (result.success) {
-        toast.success(`Code ${code} assigned to ${activeSpinRow.nameColumn}`);
+        toast.success(`Code ${code} · ${activeSpinRow.nameColumn}`);
         router.refresh();
       }
     } catch (error) {
       toast.error("Failed to assign code");
       console.error(error);
+    } finally {
+      setSpinPendingAssignmentId(null);
+    }
+  };
+
+  const handleSpinWheelOpenChange = (open: boolean) => {
+    setIsSpinWheelOpen(open);
+    if (!open) {
+      setSpinPendingAssignmentId(null);
+      setActiveSpinRow(null);
     }
   };
 
   const getIssuedCodeForRow = (row: RosterTableRow): string | null => {
-    if (row.mode === "individual") {
-      return row.studentId
-        ? getCodeForStudentFromLetters(
-            session?.programmeCodeLetters ?? [],
-            row.studentId,
-          )
-        : null;
-    }
-    return (
-      row.studentIds
-        .map((sid) =>
-          sid
-            ? getCodeForStudentFromLetters(
-                session?.programmeCodeLetters ?? [],
-                sid,
-              )
-            : null,
+    return row.studentId
+      ? getCodeForStudentFromLetters(
+          session?.programmeCodeLetters ?? [],
+          row.studentId,
         )
-        .find((c) => c != null) ?? null
-    );
+      : null;
   };
 
   const onStart = () => {
@@ -582,8 +550,8 @@ export function ProgrammeReportingClient({
           }
           toast.success(
             programmeType === "GROUP"
-              ? "Reporting ended — one code letter per reported team (shared by all members)."
-              : "Reporting ended — individual code letters issued to reported students.",
+              ? "Reporting ended — each reported participant received a code letter."
+              : "Reporting ended — code letters issued to reported students.",
           );
           router.refresh();
         } else toast.error("Failed to submit reporting");
@@ -597,45 +565,40 @@ export function ProgrammeReportingClient({
     });
   };
 
-  const handleSpinWheelConfirm = async (
-    assignments: Array<{
-      teamNumber: number | null;
-      studentId?: string | null;
-      code: string;
-    }>,
-  ) => {
+  const onReopen = () => {
     if (!session?.id) return;
-
-    try {
-      toast.info("Assigning code letters...");
-      const result = await assignCodeLettersWithSpinAction(
-        festivalId,
-        session.id,
-        assignments,
-      );
-
-      if (result.success) {
-        toast.success(
-          `Successfully assigned ${assignments.length} code letters!`,
+    setActiveAction("reopen");
+    startTransition(async () => {
+      try {
+        const res = await reopenProgrammeReportingAction(
+          festivalId,
+          session.id,
         );
-        setIsSpinWheelOpen(false);
-        router.refresh();
-      } else {
-        toast.error("Failed to assign code letters");
+        if (res.success) {
+          const message =
+            res.data && typeof res.data === "object" && "message" in res.data
+              ? (res.data as { message: string }).message
+              : "Reporting reopened successfully";
+          toast.success(message);
+          setIsReopenConfirmOpen(false);
+          router.refresh();
+        } else {
+          toast.error("Failed to reopen reporting");
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to reopen reporting",
+        );
+      } finally {
+        setActiveAction(null);
       }
-    } catch (error) {
-      console.error("Failed to assign codes:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to assign codes",
-      );
-    }
+    });
   };
 
   const onMarkRow = async (row: RosterTableRow, checked: boolean) => {
     if (!session?.id) return;
 
-    const ids =
-      row.mode === "individual" ? [row.assignmentId] : row.assignmentIds;
+    const ids = [row.assignmentId];
 
     // Optimistic update
     setOptimisticReportedBySession((prev) => {
@@ -654,21 +617,12 @@ export function ProgrammeReportingClient({
     });
 
     try {
-      if (row.mode === "individual") {
-        await markProgrammeParticipantAction(
-          festivalId,
-          session.id,
-          row.assignmentId,
-          checked,
-        );
-      } else {
-        await markProgrammeAssignmentsBulkAction(
-          festivalId,
-          session.id,
-          row.assignmentIds,
-          checked,
-        );
-      }
+      await markProgrammeParticipantAction(
+        festivalId,
+        session.id,
+        row.assignmentId,
+        checked,
+      );
     } catch (error) {
       toast.error("Failed to update status");
       router.refresh();
@@ -847,9 +801,11 @@ export function ProgrammeReportingClient({
                   <BarChart3 className="h-6 w-6 text-muted-foreground" />
                 </div>
                 <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                  Choose a programme under <strong className="text-foreground">Up next</strong>{" "}
-                  (or switch to <strong className="text-foreground">Full list</strong>), then run
-                  reporting on the right.
+                  Choose a programme under{" "}
+                  <strong className="text-foreground">Up next</strong> (or
+                  switch to{" "}
+                  <strong className="text-foreground">Full list</strong>), then
+                  run reporting on the right.
                 </p>
               </div>
             ) : (
@@ -947,7 +903,7 @@ export function ProgrammeReportingClient({
                             title={
                               !allReportedHaveCodeLetters &&
                               reportedUnitsCount > 0
-                                ? "Assign a code letter to each present row (spin) before submitting."
+                                ? "Assign a code letter to each present participant (spin per person) before submitting."
                                 : undefined
                             }
                             disabled={
@@ -969,12 +925,6 @@ export function ProgrammeReportingClient({
                               "Submit & notify"
                             )}
                           </Button>
-                          {reportedUnitsCount > 0 &&
-                          !allReportedHaveCodeLetters ? (
-                            <p className="basis-full text-[11px] leading-snug text-amber-800 dark:text-amber-200/90 sm:basis-auto sm:max-w-[14rem]">
-                              Spin a code for each present row, then submit.
-                            </p>
-                          ) : null}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
@@ -1006,7 +956,9 @@ export function ProgrammeReportingClient({
                                       await markProgrammeAssignmentsBulkAction(
                                         festivalId,
                                         session.id,
-                                        assignmentsWithReported.map((a) => a.id),
+                                        assignmentsWithReported.map(
+                                          (a) => a.id,
+                                        ),
                                         true,
                                       );
                                     if (res.success) {
@@ -1040,6 +992,17 @@ export function ProgrammeReportingClient({
                           </DropdownMenu>
                         </>
                       ) : null}
+                      {isClosed ? (
+                        <Button
+                          variant="destructive"
+                          onClick={() => setIsReopenConfirmOpen(true)}
+                          disabled={
+                            isPending || activeAction != null || !session?.id
+                          }
+                        >
+                          Reopen reporting
+                        </Button>
+                      ) : null}
                     </div>
                   </div>
 
@@ -1053,7 +1016,7 @@ export function ProgrammeReportingClient({
                   {isClosed ? (
                     <p className="text-xs text-muted-foreground">
                       {selected.programme?.type === "GROUP"
-                        ? "Codes issued per team; notifications sent."
+                        ? "Code letters per participant; notifications sent."
                         : "Codes issued; notifications sent."}
                     </p>
                   ) : null}
@@ -1080,9 +1043,11 @@ export function ProgrammeReportingClient({
                       isClosed={isClosed}
                       onMark={onMarkRow}
                       onSpin={(row) => {
+                        setSpinPendingAssignmentId(row.assignmentId);
                         setActiveSpinRow(row);
                         setIsSpinWheelOpen(true);
                       }}
+                      spinPendingAssignmentId={spinPendingAssignmentId}
                       markingIds={markingIds}
                       getIssuedCodeForRow={getIssuedCodeForRow}
                       programmeType={selected.programme.type}
@@ -1124,12 +1089,45 @@ export function ProgrammeReportingClient({
       {/* Code Letter Spin Wheel Modal */}
       <CodeLetterSpinWheel
         open={isSpinWheelOpen}
-        onOpenChange={setIsSpinWheelOpen}
+        onOpenChange={handleSpinWheelOpenChange}
         targetName={activeSpinRow?.nameColumn || "Participant"}
-        participantCount={rosterTableRows.filter((r) => r.isReported).length}
+        participantCount={Math.max(
+          1,
+          assignmentsWithReported.filter((a) => a.isReported).length,
+        )}
         alreadyAssignedCodes={alreadyAssignedCodes}
         onResult={handleSpinResult}
       />
+
+      <AlertDialog
+        open={isReopenConfirmOpen}
+        onOpenChange={setIsReopenConfirmOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reopen closed reporting?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This clears reported attendance, code letters, and all marks for
+              this programme. Open judge links are invalidated and you must run
+              reporting again before judging.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={activeAction === "reopen"}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={onReopen}
+              disabled={activeAction === "reopen"}
+            >
+              {activeAction === "reopen"
+                ? "Reopening..."
+                : "Reopen and clear data"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

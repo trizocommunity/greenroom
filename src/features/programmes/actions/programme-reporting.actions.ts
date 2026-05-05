@@ -1,121 +1,23 @@
 "use server";
 
 import { and, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
 import { getSession } from "@/core/auth/session";
-import { getTeamLeaderSessionFromCookie } from "@/core/auth/team-leader-session";
 import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
-  festivalMember as festivalMemberTable,
-  festival as festivalTable,
   programmeNotification as notificationTable,
   programmeReportingSession as prsTable,
   programmeReportedParticipant as reportedParticipantTable,
   student as studentTable,
-  user as userTable,
 } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
-import type { Tier } from "@/core/types/app-enums";
-import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
-import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import {
+  assertReportingReopenAccess,
+  assertStageManagerAccess,
+  assertStudentNotificationAccess,
+} from "@/features/programmes/actions/reporting-access";
+import { revalidateProgrammeReporting } from "@/features/programmes/actions/reporting-revalidation";
 import { ProgrammeReportingService } from "@/features/programmes/services/programme-reporting.service";
-
-async function assertStudentNotificationAccess(studentId: string) {
-  const student = await db.query.student.findFirst({
-    where: eq(studentTable.id, studentId),
-    columns: { id: true, festivalId: true, groupId: true },
-  });
-  if (!student) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
-
-  const session = await getSession();
-  if (session?.userId) {
-    if (session.role === "SUPER_ADMIN") return student;
-
-    const festival = await db.query.festival.findFirst({
-      where: eq(festivalTable.id, student.festivalId),
-      columns: { ownerId: true },
-    });
-    if (festival?.ownerId === session.userId) return student;
-
-    const membership = await db.query.festivalMember.findFirst({
-      where: and(
-        eq(festivalMemberTable.festivalId, student.festivalId),
-        eq(festivalMemberTable.userId, session.userId),
-      ),
-      columns: { isActive: true },
-    });
-    if (membership?.isActive) return student;
-  }
-
-  const tlSession = await getTeamLeaderSessionFromCookie();
-  if (
-    tlSession &&
-    new Date(tlSession.expiresAt) > new Date() &&
-    !tlSession.revokedAt &&
-    tlSession.festivalId === student.festivalId &&
-    tlSession.studentId === studentId
-  ) {
-    return student;
-  }
-
-  throw new AppError(ERROR_MESSAGES.FORBIDDEN);
-}
-
-async function assertStageManagerAccess(festivalId: string): Promise<string> {
-  const session = await getSession();
-  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
-
-  const festival = await db.query.festival.findFirst({
-    where: eq(festivalTable.id, festivalId),
-    columns: { id: true, ownerId: true, tier: true },
-  });
-  if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
-  const canUseReporting = await getEffectiveFeatureEnabled(
-    festival.tier as Tier,
-    "schedule",
-  );
-  if (!canUseReporting) {
-    throw new AppError(
-      "Programme reporting is available on Standard plan and above.",
-    );
-  }
-
-  const user = await db.query.user.findFirst({
-    where: eq(userTable.id, session.userId),
-    columns: { displayName: true, fullName: true, email: true },
-  });
-
-  if (session.role === "SUPER_ADMIN" || festival.ownerId === session.userId) {
-    return (
-      user?.displayName || user?.fullName || user?.email || "Stage Manager"
-    );
-  }
-
-  const member = await db.query.festivalMember.findFirst({
-    where: and(
-      eq(festivalMemberTable.festivalId, festivalId),
-      eq(festivalMemberTable.userId, session.userId),
-    ),
-    with: {
-      user: { columns: { displayName: true, fullName: true, email: true } },
-    },
-  });
-
-  if (
-    !member?.isActive ||
-    (member.role !== "STAGE_MANAGER" && member.role !== "ADMIN")
-  ) {
-    throw new AppError(ERROR_MESSAGES.FORBIDDEN);
-  }
-
-  return (
-    member.user.displayName ||
-    member.user.fullName ||
-    member.user.email ||
-    "Stage Manager"
-  );
-}
 
 export async function getProgrammeReportingBoardAction(festivalId: string) {
   const actor = await getSession();
@@ -133,10 +35,7 @@ export async function startProgrammeReportingAction(
 ) {
   const actorName = await assertStageManagerAccess(festivalId);
   const res = await ProgrammeReportingService.start(scheduleEntryId, actorName);
-  const festival = await findFestivalById(festivalId);
-  if (festival) {
-    revalidatePath(`/dashboard/${festival.slug}/event-works/reporting`);
-  }
+  await revalidateProgrammeReporting(festivalId, "reporting");
   return { success: true, data: res };
 }
 
@@ -149,10 +48,7 @@ export async function resetProgrammeReportingAction(
     reportingSessionId,
     actorName,
   );
-  const festival = await findFestivalById(festivalId);
-  if (festival) {
-    revalidatePath(`/dashboard/${festival.slug}/event-works/reporting`);
-  }
+  await revalidateProgrammeReporting(festivalId, "reporting");
   return { success: true, data: res };
 }
 
@@ -169,10 +65,7 @@ export async function markProgrammeParticipantAction(
     isReported,
     actorName,
   );
-  const festival = await findFestivalById(festivalId);
-  if (festival) {
-    revalidatePath(`/dashboard/${festival.slug}/event-works/reporting`);
-  }
+  await revalidateProgrammeReporting(festivalId, "reporting");
   return { success: true };
 }
 
@@ -189,10 +82,7 @@ export async function markProgrammeAssignmentsBulkAction(
     isReported,
     actorName,
   );
-  const festival = await findFestivalById(festivalId);
-  if (festival) {
-    revalidatePath(`/dashboard/${festival.slug}/event-works/reporting`);
-  }
+  await revalidateProgrammeReporting(festivalId, "reporting");
   return { success: true };
 }
 
@@ -205,11 +95,34 @@ export async function closeProgrammeReportingAction(
     reportingSessionId,
     actorName,
   );
-  const festival = await findFestivalById(festivalId);
-  if (festival) {
-    revalidatePath(`/dashboard/${festival.slug}/event-works/reporting`);
-    revalidatePath(`/${festival.slug}`);
-  }
+  await revalidateProgrammeReporting(festivalId, "reporting-close");
+  return { success: true, data: res };
+}
+
+export async function reopenProgrammeReportingAction(
+  festivalId: string,
+  reportingSessionId: string,
+) {
+  const actorName = await assertReportingReopenAccess(festivalId);
+  const res = await ProgrammeReportingService.reopenClosedSession(
+    reportingSessionId,
+    actorName,
+  );
+  await revalidateProgrammeReporting(festivalId, "reporting-reopen");
+  return { success: true, data: res };
+}
+
+export async function reopenProgrammeReportingByProgrammeAction(
+  festivalId: string,
+  programmeId: string,
+) {
+  const actorName = await assertReportingReopenAccess(festivalId);
+  const res =
+    await ProgrammeReportingService.reopenLatestClosedSessionByProgramme(
+      programmeId,
+      actorName,
+    );
+  await revalidateProgrammeReporting(festivalId, "reporting-reopen");
   return { success: true, data: res };
 }
 
@@ -418,10 +331,7 @@ export async function scanAndReportStudentAction(
       actorName,
     );
 
-    const festival = await findFestivalById(festivalId);
-    if (festival) {
-      revalidatePath(`/dashboard/${festival.slug}/event-works/reporting`);
-    }
+    await revalidateProgrammeReporting(festivalId, "reporting");
 
     return {
       success: true,
@@ -479,11 +389,7 @@ export async function assignCodeLettersWithSpinAction(
     codeAssignments,
     actorName,
   );
-
-  const festival = await findFestivalById(festivalId);
-  if (festival) {
-    revalidatePath(`/dashboard/${festival.slug}/event-works/reporting`);
-  }
+  await revalidateProgrammeReporting(festivalId, "reporting");
 
   return { success: true, data: result };
 }
