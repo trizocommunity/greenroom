@@ -262,6 +262,12 @@ export function ScoringPolicyClient({
   categories: Array<{ id: string; name: string }>;
   programmes: Array<{ id: string; name: string; categoryId: string | null }>;
 }) {
+  const programmeNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of programmes) m.set(p.id, p.name);
+    return m;
+  }, [programmes]);
+
   const [isPending, startTransition] = useTransition();
   const [noGradeBelow, setNoGradeBelow] = useState<number>(policy.noGradeBelow);
   const [gradeRules, setGradeRules] = useState<GradeRule[]>(policy.gradeRules);
@@ -273,7 +279,6 @@ export function ScoringPolicyClient({
     rowLabel: "",
   });
   const [newProgrammeRow, setNewProgrammeRow] = useState({
-    rowLabel: "",
     programmeIds: [] as string[],
     categoryId: null as string | null,
   });
@@ -420,8 +425,7 @@ export function ScoringPolicyClient({
     }
     setMatrixRows((prev) => [
       {
-        rowLabel:
-          newProgrammeRow.rowLabel.trim() || `Programme Set ${prev.length + 1}`,
+        rowLabel: `Programme Set ${prev.length + 1}`,
         criteriaType: "PROGRAMME_SET",
         programmeIds: newProgrammeRow.programmeIds,
         categoryId: newProgrammeRow.categoryId,
@@ -432,7 +436,6 @@ export function ScoringPolicyClient({
       ...prev,
     ]);
     setNewProgrammeRow({
-      rowLabel: "",
       programmeIds: [],
       categoryId: null,
     });
@@ -654,12 +657,49 @@ export function ScoringPolicyClient({
                   )}
                 </div>
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-[1.4fr_1fr_3fr_auto] md:items-center">
-                  <Input
-                    value={row.rowLabel}
-                    onChange={(e) => updateMatrixRow(idx, { rowLabel: e.target.value })}
-                    placeholder="Row label"
-                    className="h-9"
-                  />
+                  {row.criteriaType === "PROGRAMME_SET" ? (
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Badge
+                          variant="outline"
+                          className="h-5 px-2 text-[10px] uppercase"
+                        >
+                          {categories.find((c) => c.id === row.categoryId)?.name ??
+                            "No category"}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {row.programmeIds.length} selected
+                        </span>
+                      </div>
+                      {row.programmeIds.length > 0 ? (
+                        <div className="mt-1 flex flex-wrap gap-1.5">
+                          {row.programmeIds.map((id) => (
+                            <Badge
+                              key={id}
+                              variant="secondary"
+                              className="h-5 max-w-full truncate px-2 text-[10px]"
+                              title={programmeNameById.get(id) ?? id}
+                            >
+                              {programmeNameById.get(id) ?? "Unknown programme"}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          No programmes selected.
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <Input
+                      value={row.rowLabel}
+                      onChange={(e) =>
+                        updateMatrixRow(idx, { rowLabel: e.target.value })
+                      }
+                      placeholder="Row label"
+                      className="h-9"
+                    />
+                  )}
                   <div className="text-xs text-muted-foreground">{rowCriteriaSummary(row)}</div>
                   <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
                     {availableGrades.map((grade) => (
@@ -689,23 +729,12 @@ export function ScoringPolicyClient({
                   </Button>
                 </div>
 
-                <details
-                  className={
-                    row.criteriaType === "PROGRAMME_SET"
-                      ? "mt-2 rounded-md border border-violet-500/30 bg-violet-500/10 p-2"
-                      : "mt-2 rounded-md bg-muted/30 p-2"
-                  }
-                >
-                  <summary className="cursor-pointer text-xs font-medium">
-                    Advanced options
-                  </summary>
-                  <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-4">
-                    {row.criteriaType === "PARTICIPANT_RANGE" ? (
-                      <div className="rounded-md border border-dashed p-2 text-[11px] text-muted-foreground md:col-span-4">
-                        Participant range is taken from Row Label (examples: <code>1</code>, <code>2</code>,{" "}
-                        <code>4-5</code>).
-                      </div>
-                    ) : (
+                {row.criteriaType === "PROGRAMME_SET" ? (
+                  <details className="mt-2 rounded-md border border-violet-500/30 bg-violet-500/10 p-2">
+                    <summary className="cursor-pointer text-xs font-medium">
+                      Advanced options
+                    </summary>
+                    <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-4">
                       <div className="space-y-1 md:col-span-4">
                         <Label>Programmes</Label>
                         {!row.categoryId ? (
@@ -713,36 +742,45 @@ export function ScoringPolicyClient({
                             Select category first to choose programmes.
                           </div>
                         ) : (
-                        <div className="max-h-28 space-y-1 overflow-auto rounded-md border bg-background p-2">
-                          {getProgrammesByCategory(row.categoryId).map((programme) => {
-                            const checked = row.programmeIds.includes(programme.id);
-                            return (
-                              <label
-                                key={programme.id}
-                                className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-muted/50"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={checked}
-                                  onChange={() =>
-                                    updateMatrixRow(idx, {
-                                      programmeIds: toggleInList(row.programmeIds, programme.id),
-                                    })
-                                  }
-                                />
-                                <span className="text-xs">{programme.name}</span>
-                              </label>
-                            );
-                          })}
-                        </div>
+                          <div className="max-h-28 space-y-1 overflow-auto rounded-md border bg-background p-2">
+                            {getProgrammesByCategory(row.categoryId).map(
+                              (programme) => {
+                                const checked = row.programmeIds.includes(
+                                  programme.id,
+                                );
+                                return (
+                                  <label
+                                    key={programme.id}
+                                    className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-muted/50"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() =>
+                                        updateMatrixRow(idx, {
+                                          programmeIds: toggleInList(
+                                            row.programmeIds,
+                                            programme.id,
+                                          ),
+                                        })
+                                      }
+                                    />
+                                    <span className="text-xs">
+                                      {programme.name}
+                                    </span>
+                                  </label>
+                                );
+                              },
+                            )}
+                          </div>
                         )}
                         <p className="text-[11px] text-muted-foreground">
                           Selected: {row.programmeIds.length}
                         </p>
                       </div>
-                    )}
-                  </div>
-                </details>
+                    </div>
+                  </details>
+                ) : null}
               </div>
             ))}
           </div>
@@ -851,16 +889,6 @@ export function ScoringPolicyClient({
             </p>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="space-y-1">
-              <Label>Row Label</Label>
-              <Input
-                value={newProgrammeRow.rowLabel}
-                onChange={(e) =>
-                  setNewProgrammeRow((prev) => ({ ...prev, rowLabel: e.target.value }))
-                }
-                placeholder="e.g. Project / Special Programmes"
-              />
-            </div>
             <div className="space-y-1">
               <Label>Category</Label>
               <select
