@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/core/utils/cn";
 
 export type CompactHistoryItem = {
@@ -11,6 +11,7 @@ export type CompactHistoryItem = {
   metaSecondary?: string | null;
   badge?: string | null;
   metaSecondaryTitle?: string;
+  detailSummary?: string | null;
 };
 
 export function CompactHistoryList({
@@ -18,59 +19,65 @@ export function CompactHistoryList({
   count,
   emptyText,
   items,
-  maxHeightClass = "max-h-[42vh]",
   className,
+  onViewItem,
 }: {
   title: string;
   count: number;
   emptyText: string;
   items: CompactHistoryItem[];
-  maxHeightClass?: string;
   className?: string;
+  onViewItem?: (id: string) => void;
 }) {
   return (
-    <div className={cn("space-y-3", className)}>
+    <div className={cn("space-y-2.5", className)}>
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">{title}</h2>
+        <h2 className="text-base font-semibold sm:text-lg">{title}</h2>
         <Badge variant="secondary">{count}</Badge>
       </div>
 
       {items.length === 0 ? (
         <div className="text-sm text-muted-foreground">{emptyText}</div>
       ) : (
-        <div className={cn("space-y-2 overflow-y-auto pr-1", maxHeightClass)}>
+        <div className="space-y-1.5">
           {items.map((item) => (
-            <Card key={item.id} className="overflow-hidden">
-              <CardContent className="px-3 py-2.5">
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="font-medium truncate">{item.title}</span>
+            <div
+              key={item.id}
+              className="flex items-center gap-2 rounded-lg border border-border/70 bg-background/70 px-3 py-2"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                  <span className="truncate text-sm font-medium">{item.title}</span>
                   {item.badge ? (
-                    <span className="rounded border bg-muted/30 px-1.5 py-0.5 text-[11px] text-muted-foreground shrink-0">
+                    <span className="shrink-0 rounded border bg-muted/30 px-1.5 py-0.5 text-[10px] text-muted-foreground">
                       {item.badge}
                     </span>
                   ) : null}
-                  {item.metaPrimary ? (
-                    <>
-                      <span className="text-muted-foreground">•</span>
-                      <span className="text-muted-foreground shrink-0">
-                        {item.metaPrimary}
-                      </span>
-                    </>
-                  ) : null}
-                  {item.metaSecondary ? (
-                    <>
-                      <span className="text-muted-foreground">•</span>
-                      <span
-                        className="text-muted-foreground truncate"
-                        title={item.metaSecondaryTitle}
-                      >
-                        {item.metaSecondary}
-                      </span>
-                    </>
-                  ) : null}
+                  <span className="truncate text-[11px] text-muted-foreground">
+                    {[item.metaPrimary, item.metaSecondary].filter(Boolean).join(" • ")}
+                  </span>
                 </div>
-              </CardContent>
-            </Card>
+                {item.detailSummary ? (
+                  <p
+                    className="truncate text-[11px] text-muted-foreground/90"
+                    title={item.metaSecondaryTitle}
+                  >
+                    {item.detailSummary}
+                  </p>
+                ) : null}
+              </div>
+              {onViewItem ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="h-7 shrink-0 px-2 text-[11px]"
+                  onClick={() => onViewItem(item.id)}
+                >
+                  View
+                </Button>
+              ) : null}
+            </div>
           ))}
         </div>
       )}

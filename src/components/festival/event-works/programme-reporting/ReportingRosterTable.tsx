@@ -30,7 +30,7 @@ export function ReportingRosterTable({
   programmeType,
 }: ReportingRosterTableProps) {
   return (
-    <div className="rounded-md border overflow-hidden">
+    <div className="rounded-xl border border-border/70 overflow-hidden bg-card/60">
       {/* Desktop roster (column layout) */}
       <div className="hidden md:block">
         <div className="grid grid-cols-12 border-b bg-muted/40 px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -53,7 +53,9 @@ export function ReportingRosterTable({
                 key={row.key}
                 className={cn(
                   "grid grid-cols-12 items-center px-3 py-2.5 text-sm transition-colors",
-                  row.isReported ? "bg-green-500/[0.02]" : "hover:bg-muted/30",
+                  row.isReported
+                    ? "bg-emerald-500/[0.05]"
+                    : "hover:bg-muted/30",
                 )}
               >
                 <div className="col-span-1 flex justify-center">
@@ -95,17 +97,28 @@ export function ReportingRosterTable({
                 </div>
                 <div className="col-span-3 text-right font-mono text-xs">
                   {showCode ? (
-                    <span className="inline-flex items-center rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-blue-700 dark:text-blue-300 font-bold">
+                    <span className="inline-flex items-center rounded-md border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-violet-700 dark:text-violet-300 font-bold">
                       {issuedCode}
                     </span>
                   ) : row.isReported && isInProgress ? (
                     <button
                       type="button"
                       onClick={() => onSpin(row)}
-                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold transition-all shadow-sm active:scale-95"
+                      disabled={isSpinPending}
+                      aria-busy={isSpinPending}
+                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-violet-600 hover:bg-violet-500 disabled:pointer-events-none disabled:opacity-70 text-white text-[10px] font-bold transition-all shadow-sm active:scale-95"
                     >
-                      <Dices className="h-3 w-3" />
-                      Spin
+                      {isSpinPending ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Getting code…
+                        </>
+                      ) : (
+                        <>
+                          <Dices className="h-3 w-3" />
+                          Spin
+                        </>
+                      )}
                     </button>
                   ) : (
                     <span className="text-muted-foreground/40">—</span>
@@ -132,7 +145,7 @@ export function ReportingRosterTable({
               key={row.key}
               className={cn(
                 "bg-background px-3 py-3 flex items-center gap-4 transition-colors",
-                row.isReported && "bg-green-500/[0.01]",
+                row.isReported && "bg-emerald-500/[0.05]",
               )}
             >
               <div className="shrink-0">
@@ -172,7 +185,7 @@ export function ReportingRosterTable({
               </div>
               <div className="shrink-0 font-mono text-xs">
                 {showCode ? (
-                  <span className="inline-flex items-center rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-blue-700 dark:text-blue-300 font-bold">
+                  <span className="inline-flex items-center rounded-md border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-violet-700 dark:text-violet-300 font-bold">
                     {issuedCode}
                   </span>
                 ) : row.isReported && isInProgress ? (
@@ -181,7 +194,7 @@ export function ReportingRosterTable({
                     onClick={() => onSpin(row)}
                     disabled={isSpinPending}
                     aria-busy={isSpinPending}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 disabled:pointer-events-none disabled:opacity-70 text-white text-[10px] font-bold transition-all shadow-sm active:scale-95"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-violet-600 hover:bg-violet-500 disabled:pointer-events-none disabled:opacity-70 text-white text-[10px] font-bold transition-all shadow-sm active:scale-95"
                   >
                     {isSpinPending ? (
                       <>

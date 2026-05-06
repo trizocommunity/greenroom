@@ -1,6 +1,14 @@
 "use client";
 
-import { BarChart3, Clock, Loader2, MoreHorizontal } from "lucide-react";
+import {
+  BarChart3,
+  Clock,
+  ListFilter,
+  Loader2,
+  MoreHorizontal,
+  Sparkles,
+  Users2,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import party from "party-js";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -26,6 +34,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -41,6 +56,7 @@ import {
   markProgrammeParticipantAction,
   reopenProgrammeReportingAction,
   resetProgrammeReportingAction,
+  resetSpinCodeLettersAction,
   startProgrammeReportingAction,
 } from "@/features/programmes/actions/programme-reporting.actions";
 import { getCodeForStudentFromLetters } from "@/features/programmes/services/programme-reporting-code";
@@ -49,6 +65,7 @@ import { QrScanner } from "./QrScanner";
 import { ReportingQuickAddSection } from "./ReportingQuickAddSection";
 import { ReportingBoardList } from "./ReportingBoardList";
 import { ReportingRosterTable } from "./ReportingRosterTable";
+import { ReportingStats } from "./ReportingStats";
 import type {
   AssignmentWithReported,
   ProgrammeReportingAssignmentRow,
@@ -90,6 +107,22 @@ function getUiReportingStatus(
   return status ?? "NOT_STARTED";
 }
 
+function generateCodeLetters(count: number): string[] {
+  const safeCount = Math.max(1, count);
+  const letters: string[] = [];
+  for (let i = 1; i <= safeCount; i++) {
+    let n = i;
+    let value = "";
+    while (n > 0) {
+      const rem = (n - 1) % 26;
+      value = String.fromCharCode(65 + rem) + value;
+      n = Math.floor((n - 1) / 26);
+    }
+    letters.push(value);
+  }
+  return letters;
+}
+
 export function ProgrammeReportingClient({
   festivalId,
   board,
@@ -118,7 +151,14 @@ export function ProgrammeReportingClient({
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const [activeAction, setActiveAction] = useState<
-    null | "start" | "reset" | "close" | "mark" | "reopen"
+    | null
+    | "start"
+    | "reset"
+    | "close"
+    | "mark"
+    | "reopen"
+    | "reset-codes"
+    | "random-spin"
   >(null);
   const [isReopenConfirmOpen, setIsReopenConfirmOpen] = useState(false);
   const [optimisticReportedBySession, setOptimisticReportedBySession] =
@@ -141,6 +181,10 @@ export function ProgrammeReportingClient({
   const [spinPendingAssignmentId, setSpinPendingAssignmentId] = useState<
     string | null
   >(null);
+  const [spinAssignRequested, setSpinAssignRequested] = useState(false);
+  const [historyDetailOpenId, setHistoryDetailOpenId] = useState<string | null>(
+    null,
+  );
   const confettiRef = useRef<HTMLDivElement>(null);
 
   // Polling refresh every 10 seconds for updates
@@ -215,9 +259,9 @@ export function ProgrammeReportingClient({
     const statusRank = (s: string): number => {
       if (boardListMode === "queue") {
         switch (s) {
-          case "NOT_STARTED":
-            return 0;
           case "IN_PROGRESS":
+            return 0;
+          case "NOT_STARTED":
             return 1;
           case "RESET":
           case "TIMED_OUT":
@@ -292,8 +336,123 @@ export function ProgrammeReportingClient({
         badge: reportingSessionStatusLabel(status),
         metaPrimary: `${item.stage?.name ?? "No stage"} • ${new Date(item.startTime).toLocaleTimeString()}`,
         metaSecondary: `${item.programme?.category?.name ?? "No category"} • ${item.programme?.type ?? "—"}`,
+        detailSummary: `${item.reportingSession?.programmeReportedParticipants.length ?? 0} reported • ${item.reportingSession?.programmeCodeLetters.length ?? 0} codes`,
       }));
-  }, [board]);
+  }, [board, mounted]);
+
+  const reportingHistoryDetailsById = useMemo(() => {
+    const details = new Map<
+      string,
+      {
+        programmeName: string;
+        categoryName: string;
+        stageName: string;
+        type: "INDIVIDUAL" | "GROUP" | "—";
+        statusLabel: string;
+        timeline: Array<{ title: string; at: string; note?: string }>;
+        startTimeLabel: string;
+        reportedCount: number;
+        codeCount: number;
+        rows: Array<{ label: string; group: string; code: string }>;
+      }
+    >();
+
+    for (const item of board) {
+      const uiStatus = getUiReportingStatus(
+        item.reportingSession?.status,
+        item.reportingSession?.windowEndsAt ?? null,
+        mounted,
+      );
+      if (!["CLOSED", "RESET", "TIMED_OUT"].includes(uiStatus)) continue;
+
+      const programmeId = item.programme?.id;
+      const programmeType = item.programme?.type ?? "—";
+      const reportedIds = new Set(
+        item.reportingSession?.programmeReportedParticipants.map((r) => r.assignmentId) ?? [],
+      );
+      const assignedCodes = item.reportingSession?.programmeCodeLetters ?? [];
+      const codeByStudentId = new Map<string, string>();
+      for (const c of assignedCodes) {
+        for (const recipient of c.programmeCodeLetterRecipients) {
+          codeByStudentId.set(recipient.studentId, c.code);
+        }
+      }
+
+      const programmeAssignments = assignments.filter(
+        (a) => a.programmeId === programmeId && reportedIds.has(a.id),
+      );
+
+      const rows =
+        programmeType === "GROUP"
+          ? Array.from(
+              programmeAssignments.reduce(
+                (acc, row) => {
+                  const key = `${row.groupId ?? "no-group"}::${row.teamNumber ?? 0}`;
+                  const current = acc.get(key) ?? [];
+                  current.push(row);
+                  acc.set(key, current);
+                  return acc;
+                },
+                new Map<string, ProgrammeReportingAssignmentRow[]>(),
+              ),
+            ).map(([, members]) => {
+              const lead = members[0];
+              const firstStudentId = members.find((m) => m.studentId)?.studentId ?? null;
+              return {
+                label:
+                  lead?.teamNumber && lead.teamNumber > 0
+                    ? `${lead.groupName ?? "Group"} · Team ${lead.teamNumber}`
+                    : (lead?.groupName ?? "Team"),
+                group: lead?.groupName ?? "—",
+                code:
+                  (firstStudentId ? codeByStudentId.get(firstStudentId) : null) ?? "—",
+              };
+            })
+          : programmeAssignments.map((row) => ({
+              label: row.studentName ?? "—",
+              group: row.groupName ?? "—",
+              code: row.studentId ? (codeByStudentId.get(row.studentId) ?? "—") : "—",
+            }));
+
+      details.set(item.id, {
+        programmeName: item.programme?.name ?? "Unknown programme",
+        categoryName: item.programme?.category?.name ?? "No category",
+        stageName: item.stage?.name ?? "No stage",
+        type: programmeType,
+        statusLabel: reportingSessionStatusLabel(uiStatus),
+        timeline: [
+          {
+            title: "Scheduled slot",
+            at: new Date(item.startTime).toLocaleString(),
+            note: `${item.stage?.name ?? "No stage"} • ${item.programme?.type ?? "—"}`,
+          },
+          {
+            title: "Reporting status",
+            at:
+              item.reportingSession?.windowEndsAt != null
+                ? new Date(item.reportingSession.windowEndsAt).toLocaleString()
+                : new Date(item.startTime).toLocaleString(),
+            note: reportingSessionStatusLabel(uiStatus),
+          },
+          {
+            title: "Summary snapshot",
+            at: new Date(item.startTime).toLocaleString(),
+            note: `${reportedIds.size} reported • ${assignedCodes.length} codes`,
+          },
+        ],
+        startTimeLabel: new Date(item.startTime).toLocaleString(),
+        reportedCount: reportedIds.size,
+        codeCount: assignedCodes.length,
+        rows,
+      });
+    }
+
+    return details;
+  }, [board, assignments, mounted]);
+
+  const historyDetail = historyDetailOpenId
+    ? reportingHistoryDetailsById.get(historyDetailOpenId) ?? null
+    : null;
 
   useEffect(() => {
     if (!filteredBoard.length) {
@@ -427,12 +586,25 @@ export function ProgrammeReportingClient({
 
   /** Submit is allowed only when every present participant has a spun code letter. */
   const allReportedHaveCodeLetters = useMemo(() => {
+    const letters = session?.programmeCodeLetters ?? [];
+
+    const hasCodeForRow = (row: RosterTableRow) => {
+      if (row.mode === "team") {
+        return row.teamStudentIds.some(
+          (sid) => getCodeForStudentFromLetters(letters, sid) != null,
+        );
+      }
+      return row.studentId
+        ? getCodeForStudentFromLetters(letters, row.studentId) != null
+        : false;
+    };
+
     for (const row of rosterTableRows) {
       if (!row.isReported) continue;
-      if (!getIssuedCodeForRow(row)) return false;
+      if (!hasCodeForRow(row)) return false;
     }
     return true;
-  }, [rosterTableRows, session?.programmeCodeLetters, selected?.programme?.type]);
+  }, [rosterTableRows, session?.programmeCodeLetters]);
 
   const sessionStatus = getUiReportingStatus(
     session?.status,
@@ -480,6 +652,7 @@ export function ProgrammeReportingClient({
 
   const handleSpinResult = async (code: string) => {
     if (!activeSpinRow || !session) return;
+    setSpinAssignRequested(true);
 
     try {
       const assignment = {
@@ -504,7 +677,6 @@ export function ProgrammeReportingClient({
     } catch (error) {
       toast.error("Failed to assign code");
       console.error(error);
-    } finally {
       setSpinPendingAssignmentId(null);
     }
   };
@@ -512,8 +684,11 @@ export function ProgrammeReportingClient({
   const handleSpinWheelOpenChange = (open: boolean) => {
     setIsSpinWheelOpen(open);
     if (!open) {
-      setSpinPendingAssignmentId(null);
+      if (!spinAssignRequested) {
+        setSpinPendingAssignmentId(null);
+      }
       setActiveSpinRow(null);
+      setSpinAssignRequested(false);
     }
   };
 
@@ -528,6 +703,32 @@ export function ProgrammeReportingClient({
     }
     return row.studentId ? getCodeForStudentFromLetters(letters, row.studentId) : null;
   }
+
+  useEffect(() => {
+    if (!spinPendingAssignmentId) return;
+
+    const pendingRow = rosterTableRows.find(
+      (row) => row.assignmentId === spinPendingAssignmentId,
+    );
+    if (!pendingRow) {
+      setSpinPendingAssignmentId(null);
+      return;
+    }
+
+    const letters = session?.programmeCodeLetters ?? [];
+    const hasIssuedCode =
+      pendingRow.mode === "team"
+        ? pendingRow.teamStudentIds.some(
+            (studentId) => getCodeForStudentFromLetters(letters, studentId) != null,
+          )
+        : pendingRow.studentId != null
+          ? getCodeForStudentFromLetters(letters, pendingRow.studentId) != null
+          : false;
+
+    if (hasIssuedCode) {
+      setSpinPendingAssignmentId(null);
+    }
+  }, [spinPendingAssignmentId, rosterTableRows, session?.programmeCodeLetters]);
 
   const onStart = () => {
     if (!selected) return;
@@ -556,6 +757,94 @@ export function ProgrammeReportingClient({
         router.refresh();
       } else toast.error("Failed to reset reporting");
       setActiveAction(null);
+    });
+  };
+
+  const onResetCodeLetters = () => {
+    if (!session?.id) return;
+    setActiveAction("reset-codes");
+    startTransition(async () => {
+      try {
+        const res = await resetSpinCodeLettersAction(festivalId, session.id);
+        if (res.success) {
+          setSpinPendingAssignmentId(null);
+          setSpinAssignRequested(false);
+          setIsSpinWheelOpen(false);
+          setActiveSpinRow(null);
+          toast.success("All code letters cleared. You can re-spin for everyone.");
+          router.refresh();
+        } else {
+          toast.error("Failed to reset code letters");
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to reset code letters",
+        );
+      } finally {
+        setActiveAction(null);
+      }
+    });
+  };
+
+  const onRandomSpinAll = () => {
+    if (!session?.id) return;
+
+    const reportedRows = rosterTableRows.filter((row) => row.isReported);
+    const rowsNeedingCode = reportedRows.filter((row) => !getIssuedCodeForRow(row));
+    if (!rowsNeedingCode.length) {
+      toast.info("All reported rows already have code letters.");
+      return;
+    }
+
+    const existingCodes = new Set(alreadyAssignedCodes);
+    const allCodes = generateCodeLetters(reportedRows.length);
+    let availableCodes = allCodes.filter((code) => !existingCodes.has(code));
+
+    if (availableCodes.length < rowsNeedingCode.length) {
+      const expandedCodes = generateCodeLetters(
+        reportedRows.length + rowsNeedingCode.length,
+      );
+      availableCodes = expandedCodes.filter((code) => !existingCodes.has(code));
+    }
+
+    if (availableCodes.length < rowsNeedingCode.length) {
+      toast.error("Not enough unique code letters available for random assignment.");
+      return;
+    }
+
+    const shuffledCodes = [...availableCodes].sort(() => Math.random() - 0.5);
+    const assignments = rowsNeedingCode.map((row, index) => ({
+      teamNumber: row.mode === "team" ? row.teamNumber : null,
+      groupId: row.mode === "team" ? row.groupId : null,
+      studentId: row.mode === "individual" ? row.studentId : null,
+      code: shuffledCodes[index]!,
+    }));
+
+    setActiveAction("random-spin");
+    startTransition(async () => {
+      try {
+        const res = await assignCodeLettersWithSpinAction(
+          festivalId,
+          session.id,
+          assignments,
+        );
+        if (res.success) {
+          toast.success(
+            `Random spin assigned ${assignments.length} code letter${assignments.length > 1 ? "s" : ""}.`,
+          );
+          router.refresh();
+        } else {
+          toast.error("Failed to assign random code letters");
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to assign random code letters",
+        );
+      } finally {
+        setActiveAction(null);
+      }
     });
   };
 
@@ -661,11 +950,45 @@ export function ProgrammeReportingClient({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 sm:space-y-5">
+      <Card className="overflow-hidden border-violet-200/40 bg-linear-to-r from-violet-500/10 via-indigo-500/5 to-background">
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div className="space-y-1">
+            <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-700 dark:text-violet-300">
+              <Sparkles className="h-3.5 w-3.5" />
+              Programme Reporting
+            </p>
+            <h2 className="text-base font-semibold sm:text-lg">
+              Live check-in, code assignment, and submit
+            </h2>
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              Pick a programme from the queue, mark present participants, assign code letters, then submit.
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 sm:w-auto">
+            <div className="rounded-lg border bg-background/70 px-2.5 py-2 text-center">
+              <p className="text-[10px] uppercase text-muted-foreground">Queue</p>
+              <p className="text-sm font-semibold">{filteredBoard.length}</p>
+            </div>
+            <div className="rounded-lg border bg-background/70 px-2.5 py-2 text-center">
+              <p className="text-[10px] uppercase text-muted-foreground">On roster</p>
+              <p className="text-sm font-semibold">{rosterTableRows.length}</p>
+            </div>
+            <div className="rounded-lg border bg-background/70 px-2.5 py-2 text-center">
+              <p className="text-[10px] uppercase text-muted-foreground">Present</p>
+              <p className="text-sm font-semibold">{reportedUnitsCount}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-1">
           <CardHeader className="space-y-3 pb-2">
-            <CardTitle className="text-base">Programmes</CardTitle>
+            <CardTitle className="text-base inline-flex items-center gap-2">
+              <ListFilter className="h-4 w-4 text-muted-foreground" />
+              Programmes
+            </CardTitle>
             <div className="flex rounded-lg border bg-muted/40 p-0.5 text-xs font-medium">
               <button
                 type="button"
@@ -786,7 +1109,7 @@ export function ProgrammeReportingClient({
         </Card>
 
         <Card
-          className="lg:col-span-2 relative overflow-hidden"
+          className="lg:col-span-2 relative overflow-hidden border-border/70 shadow-sm"
           ref={confettiRef}
         >
           <CardHeader className="pb-3 border-b border-border/40">
@@ -931,9 +1254,10 @@ export function ProgrammeReportingClient({
                             className="rounded-lg font-semibold"
                             onClick={onClose}
                             title={
-                              !allReportedHaveCodeLetters &&
-                              reportedUnitsCount > 0
-                                ? "Assign a code letter to each present participant (spin per person) before submitting."
+                              reportedUnitsCount === 0
+                                ? "Mark at least one participant/team as present before submitting."
+                                : !allReportedHaveCodeLetters
+                                  ? "Assign a code letter to each present participant (spin per person) before submitting."
                                 : undefined
                             }
                             disabled={
@@ -943,6 +1267,7 @@ export function ProgrammeReportingClient({
                               session.isLocked ||
                               !isInProgress ||
                               assignmentsWithReported.length === 0 ||
+                              reportedUnitsCount === 0 ||
                               !allReportedHaveCodeLetters
                             }
                           >
@@ -971,6 +1296,7 @@ export function ProgrammeReportingClient({
                                 disabled={
                                   isPending ||
                                   activeAction === "mark" ||
+                                  activeAction === "random-spin" ||
                                   !session?.id ||
                                   session.isLocked ||
                                   !isInProgress ||
@@ -1007,6 +1333,21 @@ export function ProgrammeReportingClient({
                                 Mark all present
                               </DropdownMenuItem>
                               <DropdownMenuItem
+                                disabled={
+                                  isPending ||
+                                  activeAction === "random-spin" ||
+                                  !session?.id ||
+                                  session.isLocked ||
+                                  !isInProgress ||
+                                  reportedUnitsCount === 0
+                                }
+                                onClick={onRandomSpinAll}
+                              >
+                                {activeAction === "random-spin"
+                                  ? "Random spinning..."
+                                  : "Random spin all codes"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
                                 disabled={
                                   isPending ||
@@ -1017,6 +1358,21 @@ export function ProgrammeReportingClient({
                                 onClick={onReset}
                               >
                                 Stop without codes
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={
+                                  isPending ||
+                                  activeAction === "reset-codes" ||
+                                  !session?.id ||
+                                  session.isLocked ||
+                                  !isInProgress ||
+                                  !session.programmeCodeLetters?.length
+                                }
+                                onClick={onResetCodeLetters}
+                              >
+                                {activeAction === "reset-codes"
+                                  ? "Resetting code letters..."
+                                  : "Reset all code letters"}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -1062,9 +1418,14 @@ export function ProgrammeReportingClient({
                   ) : null}
                 </div>
 
+                {isInProgress && reportingStats ? (
+                  <ReportingStats stats={reportingStats} />
+                ) : null}
+
                 {selected.programme ? (
                   <div className="space-y-2">
-                    <h3 className="text-sm font-semibold tracking-tight">
+                    <h3 className="inline-flex items-center gap-1.5 text-sm font-semibold tracking-tight">
+                      <Users2 className="h-4 w-4 text-muted-foreground" />
                       Roster
                     </h3>
                     <ReportingRosterTable
@@ -1074,6 +1435,7 @@ export function ProgrammeReportingClient({
                       onMark={onMarkRow}
                       onSpin={(row) => {
                         setSpinPendingAssignmentId(row.assignmentId);
+                        setSpinAssignRequested(false);
                         setActiveSpinRow(row);
                         setIsSpinWheelOpen(true);
                       }}
@@ -1113,7 +1475,7 @@ export function ProgrammeReportingClient({
         count={reportingHistoryItems.length}
         emptyText="Reporting history appears after sessions end or close."
         items={reportingHistoryItems}
-        maxHeightClass="max-h-[30vh]"
+        onViewItem={setHistoryDetailOpenId}
       />
 
       {/* Code Letter Spin Wheel Modal */}
@@ -1155,6 +1517,104 @@ export function ProgrammeReportingClient({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={Boolean(historyDetail)}
+        onOpenChange={(open) => {
+          if (!open) setHistoryDetailOpenId(null);
+        }}
+      >
+        <DialogContent className="max-h-[min(88dvh,720px)] overflow-y-auto sm:max-w-2xl">
+          {historyDetail ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>{historyDetail.programmeName}</DialogTitle>
+                <DialogDescription>
+                  {historyDetail.stageName} • {historyDetail.startTimeLabel}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                  <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
+                    <p className="text-[10px] uppercase text-muted-foreground">Status</p>
+                    <p className="text-xs font-semibold">{historyDetail.statusLabel}</p>
+                  </div>
+                  <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
+                    <p className="text-[10px] uppercase text-muted-foreground">Type</p>
+                    <p className="text-xs font-semibold">{historyDetail.type}</p>
+                  </div>
+                  <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
+                    <p className="text-[10px] uppercase text-muted-foreground">Category</p>
+                    <p className="text-xs font-semibold">{historyDetail.categoryName}</p>
+                  </div>
+                  <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
+                    <p className="text-[10px] uppercase text-muted-foreground">Reported</p>
+                    <p className="text-xs font-semibold">{historyDetail.reportedCount}</p>
+                  </div>
+                  <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
+                    <p className="text-[10px] uppercase text-muted-foreground">Codes</p>
+                    <p className="text-xs font-semibold">{historyDetail.codeCount}</p>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border bg-card/60 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Timeline
+                  </p>
+                  <div className="mt-2 space-y-2">
+                    {historyDetail.timeline.map((step, index) => (
+                      <div key={`${step.title}-${index}`} className="flex items-start gap-2">
+                        <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border bg-background text-[10px] font-semibold">
+                          {index + 1}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium">{step.title}</p>
+                          <p className="text-[11px] text-muted-foreground">{step.at}</p>
+                          {step.note ? (
+                            <p className="text-[11px] text-muted-foreground/90">{step.note}</p>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="overflow-hidden rounded-lg border">
+                  <div className="grid grid-cols-12 bg-muted/40 px-3 py-2 text-[11px] font-semibold uppercase text-muted-foreground">
+                    <span className="col-span-6">
+                      {historyDetail.type === "GROUP" ? "Team" : "Student"}
+                    </span>
+                    <span className="col-span-4">Group</span>
+                    <span className="col-span-2 text-right">Code</span>
+                  </div>
+                  <div className="max-h-[45vh] divide-y overflow-y-auto">
+                    {historyDetail.rows.length ? (
+                      historyDetail.rows.map((row) => (
+                        <div
+                          key={`${row.label}-${row.group}-${row.code}`}
+                          className="grid grid-cols-12 items-center px-3 py-2 text-sm"
+                        >
+                          <span className="col-span-6 truncate font-medium">{row.label}</span>
+                          <span className="col-span-4 truncate text-muted-foreground">
+                            {row.group}
+                          </span>
+                          <span className="col-span-2 text-right font-mono text-xs">
+                            {row.code}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="px-3 py-6 text-center text-sm text-muted-foreground">
+                        No reported entries captured for this session.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

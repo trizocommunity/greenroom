@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { queryKeys } from "@/core/http/query-keys";
+import type { ProgrammeJudgmentStatus } from "@/core/types/app-enums";
 import { createJudgeAction } from "@/features/judges/actions/judge.actions";
 import {
   createJudgmentConfigurationAction,
@@ -38,7 +39,12 @@ type Programme = {
     scheduleStart: string | null;
     scheduleEnd: string | null;
     reportedCount: number;
-    reportedStudents: string[];
+    reportedEntries: Array<{
+      label: string;
+      groupName: string | null;
+      categoryName: string | null;
+      codeLetter: string | null;
+    }>;
   } | null;
 };
 type ActiveConfig = {
@@ -51,16 +57,30 @@ type ActiveConfig = {
   judgingMode: "SINGLE" | "GROUP";
   judges: Array<{ id: string; name: string }>;
   activeLinkId: string | null;
+  judgmentStatus: ProgrammeJudgmentStatus;
 };
 type JudgedProgrammeCard = {
   configId: string;
+  createdAt: string | Date;
   programmeId: string;
   programmeName: string;
   programmeStatus: string;
   programmeCategory?: string | null;
   scoreLimit: number;
   judgingMode: "SINGLE" | "GROUP";
+  requiredCodeLetters: number;
   totalJudgments: number;
+  isJudgmentComplete: boolean;
+  judgmentStatus: ProgrammeJudgmentStatus;
+  completionSummary: string;
+  judgeProgress: Array<{
+    judgeId: string;
+    judgeName: string;
+    scoredCount: number;
+    requiredCount: number;
+    isComplete: boolean;
+  }>;
+  pendingJudgeNames: string[];
   judges: Array<{ id: string; name: string; submittedAt: string | null }>;
   codeLetterRows: Array<{
     codeLetterId: string;
@@ -96,6 +116,27 @@ export function JudgmentWizardClient({
     judgedProgrammes: JudgedProgrammeCard[];
   };
 }) {
+  const formatCardDateTime = (value: string | Date) =>
+    new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(value));
+
+  const judgmentStatusLabel = (status: ProgrammeJudgmentStatus) => {
+    switch (status) {
+      case "COMPLETED":
+        return "Completed";
+      case "AWAITING_JUDGES":
+        return "Awaiting judges";
+      case "SCORING_IN_PROGRESS":
+        return "Scoring in progress";
+      case "LINK_ACTIVE":
+        return "Link active";
+      default:
+        return "Not started";
+    }
+  };
+
   const dirtySourceId = `judgment-wizard:${festivalId}`;
   const { registerDirtySource, unregisterDirtySource, setDirty } =
     useUnsavedChanges();
@@ -107,8 +148,12 @@ export function JudgmentWizardClient({
   const [judgedDetail, setJudgedDetail] = useState<JudgedProgrammeCard | null>(
     null,
   );
+  const [completedDetail, setCompletedDetail] = useState<JudgedProgrammeCard | null>(
+    null,
+  );
   const [reportedStudentsView, setReportedStudentsView] = useState<{
     programmeName: string;
+    programmeCategory: string | null;
     programmeType: "INDIVIDUAL" | "GROUP";
     details: NonNullable<Programme["reportingDetails"]>;
   } | null>(null);
@@ -176,6 +221,21 @@ export function JudgmentWizardClient({
       null
     );
   }, [judgeProgrammes, rejudgeProgrammes, wizardProgrammeId]);
+
+  const sortedJudgedCodeRows = useMemo(() => {
+    if (!judgedDetail) return [];
+    return [...judgedDetail.codeLetterRows].sort((a, b) =>
+      a.code.localeCompare(b.code, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      }),
+    );
+  }, [judgedDetail]);
+  const completedJudgments = useMemo(() => {
+    return judgedProgrammes
+      .filter((item) => item.isJudgmentComplete)
+      .sort((a, b) => b.totalJudgments - a.totalJudgments);
+  }, [judgedProgrammes]);
 
   const canGenerate = Boolean(wizardProgramme) && selectedJudgeIds.length > 0;
   const hasUnsavedWizardInputs =
@@ -325,21 +385,25 @@ export function JudgmentWizardClient({
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      <div>
+      <div className="px-1">
         <h1 className="text-lg font-bold tracking-tight sm:text-2xl">
           Judgment
         </h1>
       </div>
 
-      <section className="space-y-2.5 sm:space-y-3">
+      <section className="space-y-3">
+        <div className="flex items-center justify-end gap-2">
+          <Badge variant="outline" className="text-[10px]">
+            {judgeProgrammes.length} programme
+            {judgeProgrammes.length === 1 ? "" : "s"}
+          </Badge>
+        </div>
         {judgeProgrammes.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-sm text-muted-foreground">
+          <div className="py-10 text-center text-sm text-muted-foreground">
               No programmes are ready to judge right now.
-            </CardContent>
-          </Card>
+          </div>
         ) : (
-          <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {judgeProgrammes.map((p) => {
               const active = activeByProgrammeId.get(p.id);
               const url = active
@@ -351,17 +415,14 @@ export function JudgmentWizardClient({
               return (
                 <Card
                   key={p.id}
-                  className="flex flex-col overflow-hidden rounded-lg border border-border/70 shadow-sm"
+                  className="flex flex-col overflow-hidden rounded-xl bg-background/40 transition-colors hover:bg-muted/20"
                 >
-                  <CardHeader className="space-y-1 p-3 pb-2 sm:p-4 sm:pb-2">
+                  <CardHeader className="space-y-1 p-2.5 pb-2 sm:p-4 sm:pb-2">
                     <div className="flex items-start justify-between gap-2">
                       <CardTitle className="text-[13px] font-semibold leading-snug line-clamp-2 sm:text-sm">
                         {p.name}
                       </CardTitle>
-                      <Badge
-                        variant="secondary"
-                        className="shrink-0 text-[10px] font-normal"
-                      >
+                      <Badge variant="secondary" className="shrink-0 text-[10px]">
                         {p.status}
                       </Badge>
                     </div>
@@ -371,10 +432,10 @@ export function JudgmentWizardClient({
                       </p>
                     ) : null}
                   </CardHeader>
-                  <CardContent className="flex flex-1 flex-col gap-2.5 p-3 pt-0 sm:gap-3 sm:p-4 sm:pt-0">
+                  <CardContent className="flex flex-1 flex-col gap-2 p-2.5 pt-0 sm:gap-3 sm:p-4 sm:pt-0">
                     {active ? (
                       <>
-                        <p className="text-[11px] leading-relaxed text-muted-foreground">
+                        <p className="rounded-md border bg-muted/20 px-2 py-1 text-[11px] leading-relaxed text-muted-foreground">
                           {active.judgingMode} · {active.judges.length} judge
                           {active.judges.length !== 1 ? "s" : ""}
                           {!active.activeLinkId ? " · link closed" : ""}
@@ -397,16 +458,17 @@ export function JudgmentWizardClient({
                             </p>
                           </div>
                         ) : null}
-                        <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                        <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:gap-2">
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="h-7 px-2 text-xs sm:h-8 sm:px-3 sm:text-sm"
+                            className="h-7 px-2 text-[11px] sm:h-8 sm:px-3 sm:text-sm"
                             onClick={() => {
                               if (!p.reportingDetails) return;
                               setReportedStudentsView({
                                 programmeName: p.name,
+                                programmeCategory: p.programmeCategory ?? null,
                                 programmeType: p.programmeType,
                                 details: p.reportingDetails,
                               });
@@ -421,7 +483,7 @@ export function JudgmentWizardClient({
                             type="button"
                             variant="secondary"
                             size="sm"
-                            className="h-7 px-2 text-xs sm:h-8 sm:px-3 sm:text-sm"
+                            className="h-7 px-2 text-[11px] sm:h-8 sm:px-3 sm:text-sm"
                             onClick={async () => {
                               if (!url) {
                                 toast.info(
@@ -441,7 +503,7 @@ export function JudgmentWizardClient({
                             type="button"
                             variant="secondary"
                             size="sm"
-                            className="h-7 px-2 text-xs sm:h-8 sm:px-3 sm:text-sm"
+                            className="h-7 px-2 text-[11px] sm:h-8 sm:px-3 sm:text-sm"
                             onClick={async () => {
                               if (!pin) {
                                 toast.info(
@@ -460,7 +522,7 @@ export function JudgmentWizardClient({
                           <Button
                             type="button"
                             size="sm"
-                            className="h-7 px-2 text-xs sm:h-8 sm:px-3 sm:text-sm"
+                            className="h-7 px-2 text-[11px] sm:h-8 sm:px-3 sm:text-sm"
                             onClick={() => onRegenerate(active.id)}
                             disabled={isPending}
                           >
@@ -469,17 +531,17 @@ export function JudgmentWizardClient({
                           </Button>
                         </div>
                         {url ? (
-                          <div className="space-y-1 rounded-md border border-border/50 bg-muted/20 px-2 py-1.5">
+                          <div className="space-y-1.5 rounded-md border border-violet-400/40 bg-violet-500/10 px-2 py-2">
                             <p
-                              className="truncate font-mono text-[10px] text-muted-foreground"
+                              className="truncate font-mono text-[10px] text-foreground"
                               title={url}
                             >
                               {url}
                             </p>
                             {pin ? (
-                              <p className="font-mono text-[10px]">
-                                PIN{" "}
-                                <span className="font-semibold text-foreground">
+                              <p className="font-mono text-[11px]">
+                                <span className="text-muted-foreground">Pincode </span>
+                                <span className="font-semibold tracking-wider text-violet-600 dark:text-violet-300">
                                   {pin}
                                 </span>
                               </p>
@@ -489,17 +551,37 @@ export function JudgmentWizardClient({
                       </>
                     ) : null}
                     <div className="mt-auto">
-                      {!active ? (
+                      <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:gap-2">
                         <Button
                           type="button"
                           size="sm"
-                          className="h-8 w-full text-xs sm:h-9 sm:text-sm"
-                          onClick={() => openWizardForProgramme(p.id, "create")}
+                          variant="outline"
+                          className="h-8 text-xs sm:h-9 sm:flex-1 sm:text-sm"
+                          onClick={() => {
+                            if (!p.reportingDetails) return;
+                            setReportedStudentsView({
+                              programmeName: p.name,
+                              programmeCategory: p.programmeCategory ?? null,
+                              programmeType: p.programmeType,
+                              details: p.reportingDetails,
+                            });
+                          }}
+                          disabled={!p.reportingDetails}
                         >
-                          <Link2 className="mr-1.5 h-3.5 w-3.5" />
-                          Generate link
+                          View
                         </Button>
-                      ) : null}
+                        {!active ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="h-8 text-xs sm:h-9 sm:flex-1 sm:text-sm"
+                            onClick={() => openWizardForProgramme(p.id, "create")}
+                          >
+                            <Link2 className="mr-1.5 h-3.5 w-3.5" />
+                            Generate link
+                          </Button>
+                        ) : null}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -511,93 +593,141 @@ export function JudgmentWizardClient({
 
       <Separator />
 
-      <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 ">
-        <section className="space-y-2.5 sm:space-y-3">
-          <h2 className="text-base font-semibold tracking-tight sm:text-lg">
-            Rejudge
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <section className="space-y-3">
+          <h2 className="text-base font-semibold tracking-tight sm:text-lg flex items-center justify-between">
+            Completed judgments
+            <Badge variant="outline" className="text-[10px]">
+              {completedJudgments.length}
+            </Badge>
           </h2>
-          {rejudgeProgrammes.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                No judged programmes available for rejudge (published items
-                never appear here).
-              </CardContent>
-            </Card>
+          {completedJudgments.length === 0 ? (
+            <div className="py-10 text-center text-sm text-muted-foreground">
+                No completed judgments yet.
+            </div>
           ) : (
-            <div className="divide-y rounded-lg border border-border/70 bg-card">
-              {rejudgeProgrammes.map((p) => (
+            <div className="space-y-2">
+              {completedJudgments.map((item) => (
                 <div
-                  key={p.id}
-                  className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3"
+                  key={item.configId}
+                  className="rounded-xl border border-border/60 bg-linear-to-br from-background to-muted/30 p-3 text-sm shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md sm:p-4"
                 >
-                  <div className="min-w-0 flex items-center gap-2">
-                    <p className="truncate text-[13px] font-medium sm:text-sm">
-                      {p.name}
-                    </p>
-                    <Badge
-                      variant="outline"
-                      className="shrink-0 text-[10px] font-normal"
-                    >
-                      {p.status}
-                    </Badge>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-1.5">
+                      <p className="truncate text-sm font-semibold leading-snug">
+                        {item.programmeName}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <span className="rounded bg-muted/40 px-1.5 py-0.5">
+                          {item.programmeStatus}
+                        </span>
+                        <span className="rounded bg-muted/40 px-1.5 py-0.5">
+                          {item.judgingMode}
+                        </span>
+                        <span className="rounded bg-muted/40 px-1.5 py-0.5">
+                          {item.programmeCategory ?? "No category"}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                        <Badge variant="default" className="h-5 px-2 text-[10px]">
+                          {judgmentStatusLabel(item.judgmentStatus)}
+                        </Badge>
+                        <span className="text-muted-foreground/80">
+                          Created {formatCardDateTime(item.createdAt)}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {item.completionSummary}
+                        </span>
+                        <span className="text-muted-foreground/80">
+                          {item.totalJudgments} entries
+                        </span>
+                      </div>
+                      {item.judgingMode === "SINGLE" &&
+                      item.pendingJudgeNames.length > 0 ? (
+                        <p className="text-[11px] text-muted-foreground">
+                          Pending: {item.pendingJudgeNames.join(", ")}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="flex shrink-0 flex-col items-stretch gap-1.5 self-center">
+                      <Button
+                        className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCompletedDetail(item)}
+                      >
+                        View details
+                      </Button>
+                      <Button
+                        className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setJudgedDetail(item)}
+                      >
+                        Review scores
+                      </Button>
+                    </div>
                   </div>
-                  {p.programmeCategory ? (
-                    <p className="w-full text-[11px] text-muted-foreground sm:w-auto sm:mr-auto sm:pl-2">
-                      {p.programmeCategory}
-                    </p>
-                  ) : null}
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
-                    onClick={() => openWizardForProgramme(p.id, "rejudge")}
-                  >
-                    <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
-                    Rejudge
-                  </Button>
                 </div>
               ))}
             </div>
           )}
         </section>
 
-        <section className="space-y-2.5 sm:space-y-3">
-          <h2 className="text-base font-semibold tracking-tight sm:text-lg">
-            Judged programmes
+        <section className="space-y-3">
+          <h2 className="text-base font-semibold tracking-tight sm:text-lg flex items-center justify-between">
+            Rejudge
+            <Badge variant="outline" className="text-[10px]">
+              {rejudgeProgrammes.length}
+            </Badge>
           </h2>
-          {judgedProgrammes.length === 0 ? (
-            <Card>
-              <CardContent className="p-4 text-sm text-muted-foreground">
-                No submitted judging data yet.
-              </CardContent>
-            </Card>
+          {rejudgeProgrammes.length === 0 ? (
+            <div className="py-10 text-center text-sm text-muted-foreground">
+                No judged programmes available for rejudge (published items
+                never appear here).
+            </div>
           ) : (
-            <div className="divide-y rounded-xl border bg-card">
-              {judgedProgrammes.map((item) => (
+            <div className="space-y-2">
+              {rejudgeProgrammes.map((p) => (
                 <div
-                  key={item.configId}
-                  className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-sm hover:bg-muted/40 sm:px-4 sm:py-3"
+                  key={p.id}
+                  className="rounded-xl border border-border/60 bg-linear-to-br from-background to-muted/30 px-3 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md sm:px-4"
                 >
-                  <div className="min-w-0 space-y-0.5">
-                    <p className="truncate text-[13px] font-medium leading-snug sm:text-sm">
-                      {item.programmeName}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {item.programmeStatus} · {item.judgingMode} ·{" "}
-                      {item.programmeCategory ?? "No category"} ·{" "}
-                      {item.totalJudgments} entries
-                    </p>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-[13px] font-semibold sm:text-sm">
+                          {p.name}
+                        </p>
+                        
+                        {p.programmeCategory ? (
+                          <p className="text-[11px] text-muted-foreground">
+                            {p.programmeCategory}
+                          </p>
+                        ) : null}
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className="w-fit text-[10px] font-normal"
+                      >
+                        {p.status}
+                      </Badge>
+                    </div>
+                    <div className="shrink-0 self-center">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
+                        onClick={() => openWizardForProgramme(p.id, "rejudge")}
+                      >
+                        <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
+                        Rejudge
+                      </Button>
+                    </div>
                   </div>
-                  <Button
-                    className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setJudgedDetail(item)}
-                  >
-                    View details
-                  </Button>
                 </div>
               ))}
             </div>
@@ -629,24 +759,50 @@ export function JudgmentWizardClient({
                     ? `Reported teams (${reportedStudentsView.details.reportedCount})`
                     : `Reported students (${reportedStudentsView.details.reportedCount})`}
                 </p>
-                {reportedStudentsView.details.reportedStudents.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Category: {reportedStudentsView.programmeCategory ?? "—"}
+                </p>
+                {reportedStudentsView.details.reportedEntries.length === 0 ? (
                   <Card>
                     <CardContent className="p-4 text-sm text-muted-foreground">
                       No reported student details available.
                     </CardContent>
                   </Card>
                 ) : (
-                  <div className="divide-y rounded-lg border bg-card">
-                    {reportedStudentsView.details.reportedStudents.map(
-                      (studentLabel) => (
-                        <div
-                          key={studentLabel}
-                          className="px-3 py-2 text-sm text-foreground"
-                        >
-                          {studentLabel}
+                  <div className="max-h-[min(56vh,26rem)] space-y-1 overflow-y-auto rounded-lg border bg-card p-1.5">
+                    {reportedStudentsView.details.reportedEntries.map((entry) => (
+                      <div
+                        key={`${entry.label}-${entry.codeLetter ?? "na"}`}
+                        className="rounded-md border bg-background/70 px-2 py-1.5"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="min-w-0 truncate text-xs font-medium text-foreground">
+                            {entry.label}
+                          </p>
+                          <span className="shrink-0 rounded border bg-muted px-2 py-0.5 font-mono text-xs font-semibold text-foreground">
+                            {reportedStudentsView.programmeType === "GROUP"
+                              ? `Team ${entry.codeLetter ?? "—"}`
+                              : entry.codeLetter ?? "—"}
+                          </span>
                         </div>
-                      ),
-                    )}
+                        {reportedStudentsView.programmeType === "GROUP" ? (
+                          <div className="mt-1 text-[10px] leading-tight text-muted-foreground">
+                            <p className="truncate">
+                              Group · {reportedStudentsView.programmeCategory ?? "—"}
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="mt-1 text-[10px] leading-tight text-muted-foreground">
+                            <p className="truncate">
+                              Individual · {entry.groupName ?? "—"} ·{" "}
+                              {entry.categoryName ??
+                                reportedStudentsView.programmeCategory ??
+                                "—"}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -685,23 +841,34 @@ export function JudgmentWizardClient({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 pt-1 sm:space-y-5 sm:pt-2">
+          <div className="space-y-3 pt-1 sm:space-y-4 sm:pt-2">
             <p className="text-xs text-muted-foreground sm:text-sm">
               Step {step - 1} of 3
             </p>
 
             {step === 2 ? (
-              <div className="space-y-3 sm:space-y-4">
-                <p className="text-xs text-muted-foreground">
-                  Score limit is enforced by scoring policy.
-                </p>
+              <div className="space-y-3">
+                <div className="rounded-md border bg-muted/20 px-2.5 py-2">
+                  <p className="text-[11px] text-muted-foreground">
+                    Score limit is enforced by scoring policy.
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-foreground">
+                    Selected judges: {selectedJudgeIds.length}
+                  </p>
+                </div>
                 <div className="space-y-2">
-                  <Label>Select judges</Label>
-                  <div className="grid max-h-[220px] gap-2 overflow-y-auto sm:max-h-[280px]">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Select judges
+                  </Label>
+                  <div className="grid max-h-[170px] gap-1.5 overflow-y-auto rounded-md border p-1.5 sm:max-h-[210px]">
                     {judges.map((j) => (
                       <label
                         key={j.id}
-                        className="flex items-center gap-2 rounded-md border px-3 py-2 text-xs sm:text-sm"
+                        className={`flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs transition-colors sm:text-sm ${
+                          selectedJudgeIds.includes(j.id)
+                            ? "border-violet-400/60 bg-violet-500/10"
+                            : "bg-background"
+                        }`}
                       >
                         <input
                           type="checkbox"
@@ -714,22 +881,26 @@ export function JudgmentWizardClient({
                   </div>
                 </div>
 
-                <div className="space-y-2 rounded-md border p-2.5 sm:p-3">
-                  <Label>Add judge</Label>
-                  <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                <div className="space-y-1.5 rounded-md border p-2 bg-muted/10">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Add judge
+                  </Label>
+                  <div className="grid gap-1.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center">
                     <Input
                       value={newJudgeName}
                       onChange={(e) => setNewJudgeName(e.target.value)}
-                      placeholder="Judge name"
+                      placeholder="Name"
+                      className="h-8 text-xs sm:text-sm"
                     />
                     <Input
                       value={newJudgeDescription}
                       onChange={(e) => setNewJudgeDescription(e.target.value)}
                       placeholder="Description (optional)"
+                      className="h-8 text-xs sm:text-sm"
                     />
                     <Button
                       type="button"
-                      className="h-8 text-xs sm:h-9 sm:text-sm"
+                      className="h-8 px-2.5 text-xs"
                       onClick={onInlineCreateJudge}
                       disabled={!newJudgeName.trim() || isPending}
                     >
@@ -740,24 +911,26 @@ export function JudgmentWizardClient({
                 </div>
 
                 <Button
-                  className="h-8 text-xs sm:h-9 sm:text-sm"
+                  className="h-8 text-xs w-full sm:h-9"
                   type="button"
                   onClick={() => setStep(3)}
                   disabled={!canGenerate}
                 >
-                  Continue to mode
+                  Continue
                 </Button>
               </div>
             ) : null}
 
             {step === 3 ? (
-              <div className="space-y-3 sm:space-y-4">
-                <div className="space-y-2 rounded-md border p-2.5 sm:p-3">
-                  <Label>Judging mode</Label>
+              <div className="space-y-3">
+                <div className="space-y-2 rounded-lg border border-border/70 bg-muted/10 p-2.5">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Judging mode
+                  </Label>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <button
                       type="button"
-                      className={`rounded-md border px-3 py-2 text-left text-sm ${judgingMode === "SINGLE" ? "border-primary bg-primary/5" : ""}`}
+                      className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${judgingMode === "SINGLE" ? "border-violet-400/60 bg-violet-500/10" : "bg-background hover:bg-muted/40"}`}
                       onClick={() => setJudgingMode("SINGLE")}
                     >
                       <p className="font-medium">Single</p>
@@ -767,7 +940,7 @@ export function JudgmentWizardClient({
                     </button>
                     <button
                       type="button"
-                      className={`rounded-md border px-3 py-2 text-left text-sm ${judgingMode === "GROUP" ? "border-primary bg-primary/5" : ""}`}
+                      className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${judgingMode === "GROUP" ? "border-violet-400/60 bg-violet-500/10" : "bg-background hover:bg-muted/40"}`}
                       onClick={() => setJudgingMode("GROUP")}
                     >
                       <p className="font-medium">Group</p>
@@ -778,13 +951,16 @@ export function JudgmentWizardClient({
                   </div>
                 </div>
 
-                <div className="space-y-2 rounded-md border p-2.5 sm:p-3">
-                  <Label>PIN</Label>
-                  <div className="flex flex-wrap gap-2">
+                <div className="space-y-2 rounded-lg border border-border/70 bg-muted/10 p-2.5">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Pincode
+                  </Label>
+                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                     <Button
                       type="button"
                       variant={pinMode === "auto" ? "default" : "outline"}
                       size="sm"
+                      className="h-8 text-xs"
                       onClick={() => setPinMode("auto")}
                     >
                       Auto
@@ -793,12 +969,13 @@ export function JudgmentWizardClient({
                       type="button"
                       variant={pinMode === "manual" ? "default" : "outline"}
                       size="sm"
+                      className="h-8 text-xs"
                       onClick={() => setPinMode("manual")}
                     >
                       Manual
                     </Button>
                     <select
-                      className="h-9 rounded-md border bg-background px-2 text-sm"
+                      className="col-span-2 h-8 rounded-md border bg-background px-2 text-xs sm:col-span-1 sm:h-9 sm:text-sm"
                       value={pinLength}
                       onChange={(e) =>
                         setPinLength(Number(e.target.value) as 4 | 5 | 6)
@@ -819,13 +996,14 @@ export function JudgmentWizardClient({
                       }
                       placeholder="4–6 digit PIN"
                       inputMode="numeric"
+                      className="h-8 text-xs sm:h-9 sm:text-sm"
                     />
                   ) : null}
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 pt-1">
                   <Button
-                    className="h-8 text-xs sm:h-9 sm:text-sm"
+                    className="h-8 flex-1 text-xs sm:h-9 sm:flex-none"
                     type="button"
                     variant="outline"
                     onClick={() => setStep(2)}
@@ -833,7 +1011,7 @@ export function JudgmentWizardClient({
                     Back
                   </Button>
                   <Button
-                    className="h-8 text-xs sm:h-9 sm:text-sm"
+                    className="h-8 flex-1 text-xs sm:h-9 sm:flex-none"
                     type="button"
                     onClick={onGenerate}
                     disabled={
@@ -849,23 +1027,30 @@ export function JudgmentWizardClient({
             ) : null}
 
             {step === 4 ? (
-              <div className="space-y-3 sm:space-y-4">
+              <div className="space-y-3">
                 <p className="text-xs text-muted-foreground sm:text-sm">
                   Share the link and PIN with judges. Copy now — the PIN is not
                   stored in plain text.
                 </p>
                 {dialogGeneratedUrl ? (
-                  <div className="space-y-2 rounded-md border bg-muted/30 p-3 text-xs">
-                    <p className="break-all text-muted-foreground">
-                      {dialogGeneratedUrl}
-                    </p>
-                    {dialogGeneratedPin ? (
-                      <p className="font-mono">
-                        PIN:{" "}
-                        <span className="font-semibold text-foreground">
-                          {dialogGeneratedPin}
-                        </span>
+                  <div className="space-y-2 rounded-lg border border-violet-400/40 bg-violet-500/10 p-3 text-xs shadow-sm">
+                    <div className="rounded-md border border-violet-300/30 bg-background/70 p-2">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        Judge link
                       </p>
+                      <p className="mt-1 break-all font-mono text-[11px] text-foreground">
+                        {dialogGeneratedUrl}
+                      </p>
+                    </div>
+                    {dialogGeneratedPin ? (
+                      <div className="rounded-md border border-violet-300/30 bg-background/70 p-2">
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                          Pincode
+                        </p>
+                        <p className="mt-1 font-mono text-base font-bold tracking-widest text-violet-600 dark:text-violet-300">
+                          {dialogGeneratedPin}
+                        </p>
+                      </div>
                     ) : null}
                     <div className="flex flex-wrap gap-1.5 pt-1 sm:gap-2">
                       <Button
@@ -894,7 +1079,7 @@ export function JudgmentWizardClient({
                             toast.success("PIN copied.");
                           }}
                         >
-                          Copy PIN
+                          Copy pincode
                         </Button>
                       ) : null}
                     </div>
@@ -933,6 +1118,112 @@ export function JudgmentWizardClient({
       </Dialog>
 
       <Dialog
+        open={Boolean(completedDetail)}
+        onOpenChange={(open) => !open && setCompletedDetail(null)}
+      >
+        <DialogContent className="max-h-[min(90dvh,720px)] w-[calc(100%-1rem)] max-w-2xl overflow-y-auto p-4 sm:w-[calc(100%-1.5rem)] sm:p-6">
+          {completedDetail ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>{completedDetail.programmeName}</DialogTitle>
+                <DialogDescription>
+                  Completed judgment summary and timeline
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
+                    <p className="text-[10px] uppercase text-muted-foreground">Status</p>
+                    <p className="text-xs font-semibold">
+                      {judgmentStatusLabel(completedDetail.judgmentStatus)}
+                    </p>
+                  </div>
+                  <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
+                    <p className="text-[10px] uppercase text-muted-foreground">Mode</p>
+                    <p className="text-xs font-semibold">{completedDetail.judgingMode}</p>
+                  </div>
+                  <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
+                    <p className="text-[10px] uppercase text-muted-foreground">Entries</p>
+                    <p className="text-xs font-semibold">{completedDetail.totalJudgments}</p>
+                  </div>
+                  <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
+                    <p className="text-[10px] uppercase text-muted-foreground">Code letters</p>
+                    <p className="text-xs font-semibold">
+                      {completedDetail.requiredCodeLetters}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border bg-card/60 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Timeline
+                  </p>
+                  <div className="mt-2 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border bg-background text-[10px] font-semibold">
+                        1
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Configuration created</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {formatCardDateTime(completedDetail.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border bg-background text-[10px] font-semibold">
+                        2
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Judge submissions</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {completedDetail.judges.filter((j) => j.submittedAt).length}/
+                          {completedDetail.judges.length} submitted
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border bg-background text-[10px] font-semibold">
+                        3
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Completion</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {completedDetail.completionSummary}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border bg-card/60 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Judges
+                  </p>
+                  <div className="mt-2 space-y-1.5">
+                    {completedDetail.judges.map((judge) => (
+                      <div
+                        key={judge.id}
+                        className="flex items-center justify-between rounded-md border bg-background px-2.5 py-2 text-xs"
+                      >
+                        <span className="font-medium">{judge.name}</span>
+                        <span className="text-muted-foreground">
+                          {judge.submittedAt
+                            ? formatCardDateTime(judge.submittedAt)
+                            : "Not submitted"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
         open={Boolean(judgedDetail)}
         onOpenChange={(open) => !open && setJudgedDetail(null)}
       >
@@ -964,6 +1255,24 @@ export function JudgmentWizardClient({
                     ))}
                   </div>
                 </div>
+                {judgedDetail.judgingMode === "SINGLE" ? (
+                  <div className="rounded-md border p-2.5 sm:p-3">
+                    <p className="mb-2 text-xs font-medium">Single-mode completion</p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {judgedDetail.judgeProgress.map((progress) => (
+                        <div
+                          key={progress.judgeId}
+                          className="rounded-md border bg-muted/20 px-2.5 py-2 text-xs"
+                        >
+                          <p className="font-medium">{progress.judgeName}</p>
+                          <p className="text-muted-foreground">
+                            {progress.scoredCount}/{progress.requiredCount} code letters
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <div className="overflow-x-auto rounded-md border">
                   <table className="min-w-full text-xs sm:text-sm">
                     <thead className="bg-muted/40">
@@ -981,7 +1290,7 @@ export function JudgmentWizardClient({
                       </tr>
                     </thead>
                     <tbody>
-                      {judgedDetail.codeLetterRows.map((row) => (
+                      {sortedJudgedCodeRows.map((row) => (
                         <tr key={row.codeLetterId} className="border-t">
                           <td className="px-3 py-2 font-mono">{row.code}</td>
                           {judgedDetail.judges.map((j) => (

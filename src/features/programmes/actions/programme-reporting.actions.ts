@@ -394,3 +394,16 @@ export async function assignCodeLettersWithSpinAction(
 
   return { success: true, data: result };
 }
+
+export async function resetSpinCodeLettersAction(
+  festivalId: string,
+  reportingSessionId: string,
+) {
+  const actorName = await assertStageManagerAccess(festivalId);
+  const result = await ProgrammeReportingService.resetSpinCodeLetters(
+    reportingSessionId,
+    actorName,
+  );
+  await revalidateProgrammeReporting(festivalId, "reporting");
+  return { success: true, data: result };
+}

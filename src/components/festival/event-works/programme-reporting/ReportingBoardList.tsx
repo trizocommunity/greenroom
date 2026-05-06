@@ -24,6 +24,13 @@ export function ReportingBoardList({
   getUiReportingStatus,
   assignmentCountByProgrammeId,
 }: ReportingBoardListProps) {
+  const statusTone = (status: string) => {
+    if (status === "IN_PROGRESS") return "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
+    if (status === "NOT_STARTED") return "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300";
+    if (status === "CLOSED") return "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300";
+    return "border-border bg-muted/40 text-muted-foreground";
+  };
+
   return (
     <div className="flex flex-col gap-2 p-1 overflow-y-auto max-h-[calc(100vh-250px)] sm:max-h-[calc(100vh-320px)]">
       {items.length === 0 ? (
@@ -49,10 +56,10 @@ export function ReportingBoardList({
               type="button"
               onClick={() => onSelect(item.id)}
               className={cn(
-                "flex flex-col gap-1 p-3 text-left rounded-lg border transition-all duration-200",
+                "group flex flex-col gap-1.5 p-3 text-left rounded-xl border transition-all duration-200",
                 isSelected
-                  ? "bg-primary/10 border-primary/50 ring-1 ring-primary/20"
-                  : "bg-card hover:bg-muted/50 border-border",
+                  ? "bg-primary/10 border-primary/50 ring-1 ring-primary/20 shadow-sm"
+                  : "bg-card hover:bg-muted/40 border-border/70 hover:border-border",
               )}
             >
               <div className="flex items-start justify-between gap-2">
@@ -80,7 +87,10 @@ export function ReportingBoardList({
               <div className="flex items-center gap-2 mt-1">
                 <Badge
                   variant="outline"
-                  className="h-5 px-1.5 text-[10px] uppercase font-semibold tracking-wider"
+                  className={cn(
+                    "h-5 px-1.5 text-[10px] uppercase font-semibold tracking-wider",
+                    statusTone(uiStatus),
+                  )}
                 >
                   {uiStatus.replace("_", " ")}
                 </Badge>

@@ -134,7 +134,7 @@ function otherJudgesScoresSummary(
 function JudgeShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-background via-background to-muted/25">
-      <div className="mx-auto w-full max-w-full px-3 pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))] pt-6 sm:max-w-3xl sm:px-6 sm:pb-10 sm:pt-10 lg:max-w-5xl">
+      <div className="mx-auto w-full max-w-full px-3 pb-[calc(8.5rem+env(safe-area-inset-bottom,0px))] pt-6 sm:max-w-3xl sm:px-6 sm:pt-10 lg:max-w-5xl">
         {children}
       </div>
     </div>
@@ -219,24 +219,18 @@ function ScoreField({
 function SubmissionSummaryView({
   festivalName,
   programmeName,
-  summary,
-  scoreLimit,
   variant = "complete",
-  policyRows,
   onContinue,
 }: {
   festivalName: string;
   programmeName: string;
-  summary: SubmissionSummary;
-  scoreLimit: number;
   variant?: "complete" | "partial";
-  policyRows: PolicyResultRow[];
   onContinue: () => void;
 }) {
   const isPartial = variant === "partial";
   return (
     <JudgeShell>
-      <div className="mx-auto flex max-w-lg flex-col gap-6 sm:max-w-2xl">
+      <div className="mx-auto flex max-w-lg flex-col gap-6">
         <div className="text-center">
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
             <CheckCircle2 className="h-8 w-8" aria-hidden />
@@ -250,119 +244,37 @@ function SubmissionSummaryView({
           <p className="mt-2 text-sm text-muted-foreground">
             {isPartial ? (
               <>
-                Your scores are saved (max {scoreLimit} pts per score). Other
-                judges still need to submit using this link.
+                Thanks! Your scores are saved. Other judges still need to submit
+                using this link.
               </>
             ) : (
-              <>
-                Summary of what you just submitted (max {scoreLimit} pts per
-                score).
-              </>
+              <>Thank you! Your judgment has been submitted successfully.</>
             )}
           </p>
         </div>
 
         <Card className="border-border/70 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Submission preview</CardTitle>
+          <CardHeader className="pb-2 text-center">
+            <CardTitle className="text-base">Submission received</CardTitle>
             <CardDescription>
-              {summary.kind === "SINGLE" ? (
-                <>Judge: {summary.judgeName}</>
+              {isPartial ? (
+                <>You can return to the panel. Your saved scores remain intact.</>
               ) : (
-                <>Full panel — all judges and code letters</>
+                <>This session is now finalized for this link.</>
               )}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {summary.kind === "SINGLE" ? (
-              <ul className="divide-y rounded-md border">
-                {summary.rows.map((r) => (
-                  <li
-                    key={r.code}
-                    className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm"
-                  >
-                    <span className="font-mono font-semibold">{r.code}</span>
-                    <span className="tabular-nums font-medium">{r.score}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="overflow-x-auto rounded-md border">
-                <table className="w-full min-w-[280px] text-left text-sm">
-                  <thead className="border-b bg-muted/40">
-                    <tr>
-                      <th className="px-3 py-2 font-medium">Code</th>
-                      {summary.rows[0]?.byJudge.map((j) => (
-                        <th
-                          key={j.name}
-                          className="whitespace-nowrap px-3 py-2 font-medium"
-                        >
-                          {j.name}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {summary.rows.map((row) => (
-                      <tr key={row.code} className="border-t">
-                        <td className="px-3 py-2 font-mono font-semibold">
-                          {row.code}
-                        </td>
-                        {row.byJudge.map((cell) => (
-                          <td
-                            key={cell.name}
-                            className="px-3 py-2 tabular-nums"
-                          >
-                            {cell.score}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            <div className="space-y-2 rounded-md border bg-muted/20 p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Finalized result summary
-              </p>
-              <div className="overflow-x-auto rounded-md border bg-background">
-                <table className="w-full min-w-[280px] text-left text-xs sm:text-sm">
-                  <thead className="border-b bg-muted/40">
-                    <tr>
-                      <th className="px-3 py-2 font-medium">Code</th>
-                      <th className="px-3 py-2 font-medium">Result points</th>
-                      <th className="px-3 py-2 font-medium">Normalized points</th>
-                      <th className="px-3 py-2 font-medium">Grade</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {policyRows.map((row) => (
-                      <tr key={row.codeLetterId} className="border-t">
-                        <td className="px-3 py-2 font-mono font-semibold">
-                          {row.code}
-                        </td>
-                        <td className="px-3 py-2 tabular-nums">
-                          {row.awardPoints}
-                        </td>
-                        <td className="px-3 py-2 tabular-nums">{row.points}</td>
-                        <td className="px-3 py-2">{row.grade ?? "No grade"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+          <CardContent className="space-y-4">
             <p className="text-xs text-muted-foreground">
               {isPartial ? (
                 <>
-                  You can return to the scoring panel to review your entries
-                  until every judge has submitted.
+                  You may return to the scoring panel if any assigned judges are
+                  still pending.
                 </>
               ) : (
                 <>
-                  When you continue, this session ends and the link behaves as
-                  closed — you will not be able to change these scores here.
+                  This link will now behave as closed and scores cannot be
+                  changed from this page.
                 </>
               )}
             </p>
@@ -596,7 +508,9 @@ function ExternalJudgeActiveClient({
   const everyCellValidGroup = useMemo(() => {
     return payload.codeLetters.every((c) =>
       payload.judges.every((j) => {
-        const v = Number(scoresByKey[`${j.id}:${c.id}`] ?? "");
+        const raw = scoresByKey[`${j.id}:${c.id}`];
+        if (!isFieldFilled(raw)) return false;
+        const v = Number(raw);
         return Number.isFinite(v) && v >= 0 && v <= payload.scoreLimit;
       }),
     );
@@ -605,7 +519,9 @@ function ExternalJudgeActiveClient({
   const selectedJudgeRowComplete = useMemo(() => {
     if (payload.judgingMode !== "SINGLE" || !selectedJudgeId) return false;
     return payload.codeLetters.every((c) => {
-      const v = Number(scoresByKey[`${selectedJudgeId}:${c.id}`] ?? "");
+      const raw = scoresByKey[`${selectedJudgeId}:${c.id}`];
+      if (!isFieldFilled(raw)) return false;
+      const v = Number(raw);
       return Number.isFinite(v) && v >= 0 && v <= payload.scoreLimit;
     });
   }, [
@@ -620,8 +536,10 @@ function ExternalJudgeActiveClient({
     if (!isPinUnlocked) return false;
     if (payload.judgingMode === "SINGLE") {
       if (!selectedJudgeId) return false;
+      if (payload.codeLetters.length === 0) return false;
       return selectedJudgeRowComplete;
     }
+    if (payload.codeLetters.length === 0 || payload.judges.length === 0) return false;
     return everyCellValidGroup;
   }, [
     isPinUnlocked,
@@ -629,6 +547,61 @@ function ExternalJudgeActiveClient({
     selectedJudgeId,
     selectedJudgeRowComplete,
     everyCellValidGroup,
+    payload.codeLetters.length,
+    payload.judges.length,
+  ]);
+
+  const submitValidationMessage = useMemo(() => {
+    if (!isPinUnlocked) return "Enter the pincode to start scoring.";
+    if (payload.judgingMode === "SINGLE") {
+      if (!selectedJudgeId) return "Select your judge name to continue.";
+      const total = payload.codeLetters.length;
+      const filled = payload.codeLetters.filter((c) =>
+        isFieldFilled(scoresByKey[`${selectedJudgeId}:${c.id}`]),
+      ).length;
+      const valid = payload.codeLetters.filter((c) => {
+        const raw = scoresByKey[`${selectedJudgeId}:${c.id}`];
+        if (!isFieldFilled(raw)) return false;
+        const v = Number(raw);
+        return Number.isFinite(v) && v >= 0 && v <= payload.scoreLimit;
+      }).length;
+      if (filled < total) {
+        return `Complete all scores before preview (${filled}/${total} filled).`;
+      }
+      if (valid < total) {
+        return `Fix invalid scores before preview (allowed range: 0-${payload.scoreLimit}).`;
+      }
+      return null;
+    }
+
+    let total = 0;
+    let filled = 0;
+    let valid = 0;
+    for (const c of payload.codeLetters) {
+      for (const j of payload.judges) {
+        total += 1;
+        const raw = scoresByKey[`${j.id}:${c.id}`];
+        if (isFieldFilled(raw)) filled += 1;
+        if (!isFieldFilled(raw)) continue;
+        const v = Number(raw);
+        if (Number.isFinite(v) && v >= 0 && v <= payload.scoreLimit) valid += 1;
+      }
+    }
+    if (filled < total) {
+      return `Complete all panel scores before preview (${filled}/${total} filled).`;
+    }
+    if (valid < total) {
+      return `Fix invalid panel scores before preview (allowed range: 0-${payload.scoreLimit}).`;
+    }
+    return null;
+  }, [
+    isPinUnlocked,
+    payload.judgingMode,
+    payload.codeLetters,
+    payload.judges,
+    payload.scoreLimit,
+    selectedJudgeId,
+    scoresByKey,
   ]);
 
   const singleShowSelectedCellHints =
@@ -681,15 +654,17 @@ function ExternalJudgeActiveClient({
         isFieldFilled(scoresByKey[`${jid}:${c.id}`]),
       ).length;
       const valid = payload.codeLetters.filter((c) => {
-        const v = Number(scoresByKey[`${jid}:${c.id}`] ?? "");
+        const raw = scoresByKey[`${jid}:${c.id}`];
+        if (!isFieldFilled(raw)) return false;
+        const v = Number(raw);
         return Number.isFinite(v) && v >= 0 && v <= limit;
       }).length;
       const total = payload.codeLetters.length;
-      const pct = total ? Math.round((filled / total) * 100) : 0;
+      const pct = total ? Math.round((valid / total) * 100) : 0;
       return {
         pct,
         label: "Your entry",
-        sub: `${filled} / ${total} fields filled`,
+        sub: `${valid} / ${total} fields valid`,
         hint:
           filled < total
             ? `${total - filled} code letter${total - filled !== 1 ? "s" : ""} still need a score.`
@@ -706,15 +681,16 @@ function ExternalJudgeActiveClient({
         total += 1;
         const raw = scoresByKey[`${j.id}:${c.id}`];
         if (isFieldFilled(raw)) filled += 1;
-        const v = Number(scoresByKey[`${j.id}:${c.id}`] ?? "");
+        if (!isFieldFilled(raw)) continue;
+        const v = Number(raw);
         if (Number.isFinite(v) && v >= 0 && v <= limit) valid += 1;
       }
     }
-    const pct = total ? Math.round((filled / total) * 100) : 0;
+    const pct = total ? Math.round((valid / total) * 100) : 0;
     return {
       pct,
       label: "Panel progress",
-      sub: `${filled} / ${total} fields filled`,
+      sub: `${valid} / ${total} fields valid`,
       hint:
         filled < total
           ? `${total - filled} field${total - filled !== 1 ? "s" : ""} left.`
@@ -832,17 +808,10 @@ function ExternalJudgeActiveClient({
   const onStartReview = () => {
     setSubmitError(null);
     if (!canSubmit) {
-      if (payload.judgingMode === "GROUP") {
-        setSubmitError(
-          `Fill all fields with valid scores (0–${payload.scoreLimit}).`,
-        );
-      } else if (!selectedJudgeId) {
-        setSubmitError("Select your name first.");
-      } else {
-        setSubmitError(
-          `Fill all fields with valid scores (0–${payload.scoreLimit}).`,
-        );
-      }
+      setSubmitError(
+        submitValidationMessage ??
+          `Please complete all required valid scores (0-${payload.scoreLimit}) before preview.`,
+      );
       return;
     }
     const summary = buildReviewSummary();
@@ -889,7 +858,8 @@ function ExternalJudgeActiveClient({
     if (submissionPhase !== "review") return;
     if (!canSubmit) {
       setSubmitError(
-        `Please complete all required valid scores (0-${payload.scoreLimit}) before confirming.`,
+        submitValidationMessage ??
+          `Please complete all required valid scores (0-${payload.scoreLimit}) before confirming.`,
       );
       setSubmissionPhase("idle");
       setReviewSummary(null);
@@ -984,10 +954,7 @@ function ExternalJudgeActiveClient({
       <SubmissionSummaryView
         festivalName={payload.festival.name}
         programmeName={payload.programme.name}
-        summary={submittedSummary}
-        scoreLimit={payload.scoreLimit}
         variant={summaryVariant}
-        policyRows={reviewPolicyRows}
         onContinue={() => {
           if (summaryVariant === "partial") {
             setSubmissionPhase("idle");
@@ -1364,35 +1331,28 @@ function ExternalJudgeActiveClient({
 
       {isPinUnlocked ? (
         <div
-          className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/60 bg-background/95 px-3 py-2 backdrop-blur-md supports-[backdrop-filter]:bg-background/75 sm:static sm:z-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none"
+          className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/60 bg-background/95 px-2 py-2 backdrop-blur-md supports-[backdrop-filter]:bg-background/75 sm:px-3"
           style={{
-            paddingBottom: "max(0.9rem, env(safe-area-inset-bottom, 0px))",
+            paddingBottom: "max(0.65rem, env(safe-area-inset-bottom, 0px))",
           }}
         >
-          <div className="mx-auto flex w-full max-w-full flex-col gap-2.5 rounded-xl border border-border/50 bg-background/85 px-2.5 py-2 shadow-sm sm:max-w-3xl sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none lg:max-w-5xl lg:flex-row lg:items-end lg:justify-between lg:gap-6">
+          <div className="mx-auto flex w-full max-w-5xl flex-col gap-2 rounded-xl border border-border/50 bg-background/90 p-2 shadow-sm sm:p-2.5 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
             <div
-              className="min-w-0 flex-1 space-y-2"
+              className="min-w-0 flex-1 space-y-1.5"
               role="status"
               aria-live="polite"
               aria-label={`${progress.label}: ${progress.sub}`}
             >
-              <div className="hidden sm:block">
-                <div className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">
-                  <span>{progress.label}</span>
-                  <span className="tabular-nums text-foreground">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-2 text-[11px] font-medium text-muted-foreground sm:text-xs">
+                  <span className="truncate">{progress.label}</span>
+                  <span className="tabular-nums text-foreground text-[11px] sm:text-xs">
                     {progress.sub}
                   </span>
                 </div>
-                <Progress value={progressPct} className="h-2.5" />
+                <Progress value={progressPct} className="h-2" />
                 {progress.hint ? (
-                  <p className="text-xs text-muted-foreground">
-                    {progress.hint}
-                  </p>
-                ) : null}
-              </div>
-              <div className="sm:hidden">
-                {progress.hint ? (
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[10px] leading-tight text-muted-foreground sm:text-xs">
                     {progress.hint}
                   </p>
                 ) : null}
@@ -1401,24 +1361,30 @@ function ExternalJudgeActiveClient({
               isPinUnlocked &&
               payload.judges.length > 1 ? (
                 !selectedJudgeId ? (
-                  <p className="text-xs text-muted-foreground sm:hidden">
+                  <p className="text-[10px] leading-tight text-muted-foreground sm:text-xs">
                     Select your name to enable scoring.
                   </p>
                 ) : !selectedJudgeRowComplete ? (
-                  <p className="text-xs text-destructive sm:hidden">
+                  <p className="text-[10px] leading-tight text-destructive sm:text-xs">
                     Enter a score for each code (0–{payload.scoreLimit}).
                   </p>
                 ) : null
               ) : null}
               {submitError ? (
-                <p className="text-xs font-medium text-destructive">
+                <p className="text-[10px] font-medium leading-tight text-destructive sm:text-xs">
                   {submitError}
+                </p>
+              ) : null}
+              {!submitError && !canSubmit ? (
+                <p className="text-[10px] font-medium leading-tight text-amber-600 dark:text-amber-400 sm:text-xs">
+                  {submitValidationMessage ??
+                    "Complete scoring on all fields to preview submit."}
                 </p>
               ) : null}
             </div>
             <Button
               size="lg"
-              className="h-12 w-full shrink-0 sm:w-auto sm:min-w-[11rem]"
+              className="h-10 w-full shrink-0 text-xs sm:h-11 sm:min-w-[12rem] sm:text-sm lg:w-auto"
               onClick={onStartReview}
               suppressHydrationWarning
               disabled={
@@ -1432,8 +1398,8 @@ function ExternalJudgeActiveClient({
               {isPending
                 ? "Submitting…"
                 : isGroup
-                  ? "Review panel submit"
-                  : "Review scores"}
+                  ? "Preview panel submit"
+                  : "Preview submit"}
             </Button>
           </div>
         </div>

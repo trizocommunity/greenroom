@@ -35,6 +35,7 @@ import {
   result as resultTable,
 } from "@/core/database/schema";
 import { AppError } from "@/core/errors/errors";
+import type { ProgrammeJudgmentStatus } from "@/core/types/app-enums";
 import {
   calculatePosition,
 } from "@/features/results/services/results-calculator";
@@ -203,7 +204,7 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
             programmeReportedParticipants: {
               orderBy: [asc(reportedParticipantTable.reportedAt)],
               with: {
-                student: { columns: { name: true, chestNumber: true } },
+                student: { columns: { id: true, name: true, chestNumber: true } },
                 group: { columns: { name: true } },
                 programmeAssignment: { columns: { teamNumber: true } },
               },
@@ -212,6 +213,36 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
         })
       : [];
 
+  const sessionIds = latestClosedSessions.map((s) => s.id);
+  const codeLettersBySessionId = new Map<
+    string,
+    Array<{ code: string; studentIds: string[] }>
+  >();
+
+  if (sessionIds.length > 0) {
+    const sessionCodeLetters = await db.query.programmeCodeLetter.findMany({
+      where: inArray(codeLetterTable.reportingSessionId, sessionIds),
+      columns: {
+        reportingSessionId: true,
+        code: true,
+      },
+      with: {
+        programmeCodeLetterRecipients: {
+          columns: { studentId: true },
+        },
+      },
+    });
+
+    for (const row of sessionCodeLetters) {
+      const bucket = codeLettersBySessionId.get(row.reportingSessionId) ?? [];
+      bucket.push({
+        code: row.code,
+        studentIds: row.programmeCodeLetterRecipients.map((r) => r.studentId),
+      });
+      codeLettersBySessionId.set(row.reportingSessionId, bucket);
+    }
+  }
+
   const reportingByProgrammeId = new Map<
     string,
     {
@@ -219,33 +250,117 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
       scheduleStart: string | null;
       scheduleEnd: string | null;
       reportedCount: number;
-      reportedStudents: string[];
+      reportedEntries: Array<{
+        label: string;
+        groupName: string | null;
+        categoryName: string | null;
+        codeLetter: string | null;
+      }>;
     }
   >();
+  const programmeTypeById = new Map<
+    string,
+    "INDIVIDUAL" | "GROUP"
+  >([
+    ...judgeProgrammes.map((p) => [p.id, p.type] as const),
+    ...rejudgeProgrammes.map((p) => [p.id, p.type] as const),
+  ]);
 
   for (const sessionRow of latestClosedSessions) {
     if (reportingByProgrammeId.has(sessionRow.programmeId)) continue;
-    const reportedStudents = sessionRow.programmeReportedParticipants
-      .map((r) => {
-        if (r.student?.name) {
-          return r.student.chestNumber
-            ? `${r.student.name} (${r.student.chestNumber})`
-            : r.student.name;
-        }
-        if (r.group?.name) {
-          const teamNo = r.teamNumber ?? r.programmeAssignment?.teamNumber;
-          return teamNo ? `${r.group.name} - Team ${teamNo}` : r.group.name;
-        }
-        return null;
-      })
-      .filter((x): x is string => Boolean(x));
+    const programmeType = programmeTypeById.get(sessionRow.programmeId) ?? "INDIVIDUAL";
+    const codeByStudentId = new Map<string, string>();
+    const sessionCodeLetters = codeLettersBySessionId.get(sessionRow.id) ?? [];
+    for (const codeLetter of sessionCodeLetters) {
+      for (const studentId of codeLetter.studentIds) {
+        codeByStudentId.set(studentId, codeLetter.code);
+      }
+    }
+
+    const reportedEntries =
+      programmeType === "GROUP"
+        ? (() => {
+            const teamMap = new Map<
+              string,
+              {
+                label: string;
+                groupName: string | null;
+                categoryName: string | null;
+                codeLetter: string | null;
+              }
+            >();
+
+            for (const r of sessionRow.programmeReportedParticipants) {
+              const teamNo = r.teamNumber ?? r.programmeAssignment?.teamNumber;
+              const groupName = r.group?.name ?? null;
+              const key = `${groupName ?? "no-group"}::${teamNo ?? "no-team"}`;
+              const label = groupName
+                ? teamNo
+                  ? `${groupName} - Team ${teamNo}`
+                  : groupName
+                : `Team ${teamNo ?? "—"}`;
+              const codeLetter = r.student?.id
+                ? (codeByStudentId.get(r.student.id) ?? null)
+                : null;
+
+              const existing = teamMap.get(key);
+              if (!existing) {
+                teamMap.set(key, {
+                  label,
+                  groupName,
+                  categoryName: null,
+                  codeLetter,
+                });
+                continue;
+              }
+
+              if (!existing.codeLetter && codeLetter) {
+                existing.codeLetter = codeLetter;
+              }
+            }
+
+            return Array.from(teamMap.values());
+          })()
+        : sessionRow.programmeReportedParticipants
+            .map((r) => {
+              const teamNo = r.teamNumber ?? r.programmeAssignment?.teamNumber;
+              const label = r.student?.name
+                ? r.student.chestNumber
+                  ? `${r.student.name} (${r.student.chestNumber})`
+                  : r.student.name
+                : r.group?.name
+                  ? teamNo
+                    ? `${r.group.name} - Team ${teamNo}`
+                    : r.group.name
+                  : null;
+              if (!label) return null;
+
+              return {
+                label,
+                groupName: r.group?.name ?? null,
+                categoryName: null,
+                codeLetter: r.student?.id
+                  ? (codeByStudentId.get(r.student.id) ?? null)
+                  : null,
+              };
+            })
+            .filter(
+              (
+                x,
+              ): x is {
+                label: string;
+                groupName: string | null;
+                categoryName: string | null;
+                codeLetter: string | null;
+              } => Boolean(x),
+            );
 
     reportingByProgrammeId.set(sessionRow.programmeId, {
       stageName: sessionRow.stage?.name ?? sessionRow.scheduleEntry?.stage?.name ?? null,
       scheduleStart: sessionRow.scheduleEntry?.startTime ?? null,
       scheduleEnd: sessionRow.scheduleEntry?.endTime ?? null,
-      reportedCount: reportedStudents.length,
-      reportedStudents,
+      reportedCount: reportedEntries.length,
+      reportedEntries,
     });
   }
 
@@ -308,6 +423,7 @@ export async function getActiveJudgmentConfigsAction(festivalId: string) {
     judgingMode: c.judgingMode as "SINGLE" | "GROUP",
     judges: c.judges.map((j) => ({ id: j.judge.id, name: j.judge.name })),
     activeLinkId: c.links[0]?.id ?? null,
+    judgmentStatus: c.links[0]?.id ? "LINK_ACTIVE" : "SCORING_IN_PROGRESS",
   }));
 }
 
@@ -386,8 +502,49 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
           return { ...row, average };
         });
 
+      const requiredCodeLetters = codeLetterRows.length;
+      const assignedJudgeCount = config.judges.length;
+      const judgeProgress = config.judges.map((j) => {
+        const judgeCodeLetters = new Set(
+          config.scores
+            .filter((score) => score.judgeId === j.judge.id)
+            .map((score) => score.codeLetterId),
+        );
+        const scoredCount = judgeCodeLetters.size;
+        const isComplete =
+          requiredCodeLetters > 0 && scoredCount >= requiredCodeLetters;
+        return {
+          judgeId: j.judge.id,
+          judgeName: j.judge.name,
+          scoredCount,
+          requiredCount: requiredCodeLetters,
+          isComplete,
+        };
+      });
+      const judgesWithCompleteSet = judgeProgress.filter((j) => j.isComplete).length;
+      const isSingle = (config.judgingMode as "SINGLE" | "GROUP") === "SINGLE";
+      const isJudgmentComplete = isSingle
+        ? requiredCodeLetters > 0 &&
+          assignedJudgeCount > 0 &&
+          judgesWithCompleteSet === assignedJudgeCount
+        : config.scores.length > 0;
+      const judgmentStatus: ProgrammeJudgmentStatus = isJudgmentComplete
+        ? "COMPLETED"
+        : isSingle
+          ? judgesWithCompleteSet > 0
+            ? "AWAITING_JUDGES"
+            : "SCORING_IN_PROGRESS"
+          : "SCORING_IN_PROGRESS";
+      const completionSummary = isSingle
+        ? `${judgesWithCompleteSet}/${assignedJudgeCount} judges completed`
+        : `${config.scores.length} submitted score entries`;
+      const pendingJudgeNames = judgeProgress
+        .filter((j) => !j.isComplete)
+        .map((j) => j.judgeName);
+
       return {
         configId: config.id,
+        createdAt: config.createdAt,
         programmeId: config.programme.id,
         programmeName: config.programme.name,
         programmeStatus: config.programme.status,
@@ -400,7 +557,13 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
           submittedAt: judgeSubmittedAt.get(j.judge.id) ?? null,
         })),
         codeLetterRows,
+        requiredCodeLetters,
         totalJudgments: config.scores.length,
+        isJudgmentComplete,
+        judgmentStatus,
+        completionSummary,
+        judgeProgress,
+        pendingJudgeNames,
       };
     },
   );

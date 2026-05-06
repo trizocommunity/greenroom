@@ -988,4 +988,48 @@ export const ProgrammeReportingService = {
       studentsNotified: studentCodes.length,
     };
   },
+
+  async resetSpinCodeLetters(reportingSessionId: string, actorName: string) {
+    const session = await db.query.programmeReportingSession.findFirst({
+      where: eq(prsTable.id, reportingSessionId),
+      columns: {
+        id: true,
+        status: true,
+        isLocked: true,
+        programmeId: true,
+        festivalId: true,
+      },
+    });
+
+    if (!session) throw new Error("Reporting session not found");
+    if (session.isLocked) {
+      throw new Error("Cannot reset code letters for a closed reporting session");
+    }
+    if (session.status !== "IN_PROGRESS") {
+      throw new Error("Code letters can only be reset while reporting is in progress");
+    }
+
+    await CodeLetterGeneratorService.clearSessionCodeLetters(reportingSessionId);
+
+    await NotificationService.dispatch({
+      eventType: "REPORTING_RESET",
+      festivalId: session.festivalId,
+      targets: {
+        programmeId: session.programmeId,
+        includeTeamLeadersForProgramme: true,
+      },
+      context: {
+        title: "Code letters reset",
+        body: "All issued code letters were cleared. Stage manager will re-spin and assign fresh letters.",
+        payload: {
+          reportingSessionId: session.id,
+          programmeId: session.programmeId,
+          actionBy: actorName,
+        },
+      },
+      channels: ["IN_APP"],
+    });
+
+    return { success: true };
+  },
 };

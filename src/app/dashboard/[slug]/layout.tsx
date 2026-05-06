@@ -115,7 +115,7 @@ export default async function FestivalDashboardLayout({
   };
 
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <FestivalProvider festival={festivalData}>
         <FestivalDashboardClientShell>
           <FestivalDashboardSidebar festival={festivalData} role={userRole} />

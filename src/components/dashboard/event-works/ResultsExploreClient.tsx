@@ -66,6 +66,7 @@ interface ResultsExploreClientProps {
   festival: { id: string; name: string; slug: string };
   programmes: Programme[];
   categories: { id: string; name: string }[];
+  initialProgrammeId?: string;
   children?: React.ReactNode;
 }
 
@@ -73,6 +74,7 @@ export function ResultsExploreClient({
   festival,
   programmes,
   categories,
+  initialProgrammeId,
   children,
 }: ResultsExploreClientProps) {
   const router = useRouter();
@@ -145,6 +147,19 @@ export function ResultsExploreClient({
       return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
     });
   }, [programmesWithResults, filterCategory, filterType, searchQuery]);
+
+  useEffect(() => {
+    if (!initialProgrammeId) return;
+    const targetProgramme = programmesWithResults.find(
+      (programme) => programme.id === initialProgrammeId,
+    );
+    if (!targetProgramme) return;
+
+    setFilterCategory("all");
+    setFilterType("all");
+    setSearchQuery(targetProgramme.name);
+    setViewProgramme(targetProgramme as Programme);
+  }, [initialProgrammeId, programmesWithResults]);
 
   const togglePublishProgramme = (programmeId: string, publish: boolean) => {
     setPublishingProgrammeId(programmeId);
@@ -336,6 +351,9 @@ export function ResultsExploreClient({
                   </p>
                 </div>
                 <div className="shrink-0 flex items-center gap-1.5">
+                  {prog.id === initialProgrammeId ? (
+                    <Badge className="text-[10px]">From Judgment</Badge>
+                  ) : null}
                   <Badge variant="outline" className="text-[10px]">
                     {prog.type === "GROUP" ? "Group" : "Individual"}
                   </Badge>
