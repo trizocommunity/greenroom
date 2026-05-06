@@ -2,8 +2,9 @@
 
 import { format } from "date-fns";
 import { Copy, Eye, Loader2, Trash2, User } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import { Badge } from "@/components/ui/badge";
@@ -155,6 +156,9 @@ function AddMemberDialog({
   atMemberCap: boolean;
   maxTeamMembers: number;
 }) {
+  const dirtySourceId = `members-add-dialog:${festivalId}`;
+  const { registerDirtySource, unregisterDirtySource, setDirty } =
+    useUnsavedChanges();
   const festival = useFestival();
   const readOnlyExpired = festival?.readOnlyExpired ?? false;
   const [open, setOpen] = useState(false);
@@ -165,6 +169,16 @@ function AddMemberDialog({
     role: "STAGE_MANAGER",
     password: "",
   });
+  const hasUnsavedForm =
+    open &&
+    (formData.fullName.trim().length > 0 ||
+      formData.email.trim().length > 0 ||
+      formData.password.trim().length > 0);
+  const canCreateMember =
+    hasUnsavedForm &&
+    formData.fullName.trim().length > 0 &&
+    formData.email.trim().length > 0 &&
+    formData.password.trim().length >= 6;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,6 +200,7 @@ function AddMemberDialog({
           password: "",
         });
         window.location.reload(); // Simple reload to refresh list
+        setDirty(dirtySourceId, false);
       } else {
         toast.error(result.error as string);
       }
@@ -195,6 +210,15 @@ function AddMemberDialog({
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    registerDirtySource(dirtySourceId);
+    return () => unregisterDirtySource(dirtySourceId);
+  }, [dirtySourceId, registerDirtySource, unregisterDirtySource]);
+
+  useEffect(() => {
+    setDirty(dirtySourceId, hasUnsavedForm);
+  }, [dirtySourceId, hasUnsavedForm, setDirty]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -285,7 +309,7 @@ function AddMemberDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading || !canCreateMember}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create Member
             </Button>

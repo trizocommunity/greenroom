@@ -1,9 +1,10 @@
 "use client";
 
 import { Copy, Link2, Plus, RefreshCcw } from "lucide-react";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -95,6 +96,9 @@ export function JudgmentWizardClient({
     judgedProgrammes: JudgedProgrammeCard[];
   };
 }) {
+  const dirtySourceId = `judgment-wizard:${festivalId}`;
+  const { registerDirtySource, unregisterDirtySource, setDirty } =
+    useUnsavedChanges();
   const POLICY_SCORE_LIMIT = 100;
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
@@ -174,6 +178,14 @@ export function JudgmentWizardClient({
   }, [judgeProgrammes, rejudgeProgrammes, wizardProgrammeId]);
 
   const canGenerate = Boolean(wizardProgramme) && selectedJudgeIds.length > 0;
+  const hasUnsavedWizardInputs =
+    dialogOpen &&
+    (selectedJudgeIds.length > 0 ||
+      step !== 2 ||
+      newJudgeName.trim().length > 0 ||
+      newJudgeDescription.trim().length > 0 ||
+      pinMode === "manual" ||
+      manualPin.trim().length > 0);
 
   const openWizardForProgramme = (
     programmeId: string,
@@ -301,6 +313,15 @@ export function JudgmentWizardClient({
   const dialogGeneratedPin = step4ConfigId
     ? generatedPinByConfigId[step4ConfigId]
     : undefined;
+
+  useEffect(() => {
+    registerDirtySource(dirtySourceId);
+    return () => unregisterDirtySource(dirtySourceId);
+  }, [dirtySourceId, registerDirtySource, unregisterDirtySource]);
+
+  useEffect(() => {
+    setDirty(dirtySourceId, hasUnsavedWizardInputs);
+  }, [dirtySourceId, hasUnsavedWizardInputs, setDirty]);
 
   return (
     <div className="space-y-6 sm:space-y-8">

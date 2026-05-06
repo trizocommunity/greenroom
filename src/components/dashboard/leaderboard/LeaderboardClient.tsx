@@ -218,6 +218,14 @@ export function LeaderboardClient({
     return (publishedStandings ?? []).filter((t: any) => t?.name === groupName);
   }, [groups, publishedStandings, studentFilterGroup]);
 
+  const hasStandingsChanges = useMemo(() => {
+    const normalize = (items: Array<{ name: string; points: number }>) =>
+      items.map((item) => ({ name: item.name, points: Number(item.points ?? 0) }));
+    const live = normalize(teamStandings);
+    const published = normalize(publishedStandings ?? []);
+    return JSON.stringify(live) !== JSON.stringify(published);
+  }, [publishedStandings, teamStandings]);
+
   const [updatingStandingsId, setUpdatingStandingsId] = useState<string | null>(
     null,
   );
@@ -285,7 +293,7 @@ export function LeaderboardClient({
                   }
                 });
               }}
-              disabled={isPending}
+              disabled={isPending || !hasStandingsChanges}
               title="Publish Standings"
             >
               {isPending && updatingStandingsId === "standings" ? (

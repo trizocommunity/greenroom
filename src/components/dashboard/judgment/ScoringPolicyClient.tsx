@@ -1,8 +1,9 @@
 "use client";
 
 import { Plus, Save, Trash2 } from "lucide-react";
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -190,55 +191,89 @@ function GradeRulesSection(props: {
   const { gradeRules, onAddGrade, onUpdateGradeRule, onRemoveGradeRule } = props;
   return (
     <Card>
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <CardTitle>Grade Rules</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Define grade bands. Matrix columns are generated from these labels.
-          </p>
-        </div>
-        <Button variant="outline" onClick={onAddGrade} className="w-full sm:w-auto">
-          <Plus className="mr-2 h-4 w-4" />
-          Add Grade
-        </Button>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="hidden grid-cols-4 gap-2 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground md:grid">
-          <span>Grade</span>
-          <span>Min</span>
-          <span>Max</span>
-          <span>Action</span>
-        </div>
-        {gradeRules.map((row, idx) => (
-          <div
-            key={`${idx}-${row.grade}`}
-            className="grid grid-cols-1 gap-2 rounded-md border p-3 md:grid-cols-4 md:border-0 md:p-0"
-          >
-            <Input
-              placeholder="Grade"
-              value={row.grade}
-              onChange={(e) => onUpdateGradeRule(idx, { grade: e.target.value })}
-            />
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              value={row.min}
-              onChange={(e) => onUpdateGradeRule(idx, { min: Number(e.target.value) })}
-            />
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              value={row.max}
-              onChange={(e) => onUpdateGradeRule(idx, { max: Number(e.target.value) })}
-            />
-            <Button variant="ghost" onClick={() => onRemoveGradeRule(idx)} className="justify-start md:justify-center">
-              <Trash2 className="mr-2 h-4 w-4" />
-              Remove
-            </Button>
+      <CardHeader className="space-y-1.5 pb-3">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="space-y-1">
+            <CardTitle className="text-base sm:text-lg">Grade Rules</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Matrix columns are generated from these grade labels.
+            </p>
           </div>
-        ))}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onAddGrade}
+            className="h-8 w-full sm:w-auto"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add grade
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <div className="rounded-lg border overflow-hidden">
+          <div className="grid grid-cols-[1fr_84px_84px_40px] items-center gap-2 bg-muted/40 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <span>Grade</span>
+            <span className="text-center">Min</span>
+            <span className="text-center">Max</span>
+            <span className="sr-only">Remove</span>
+          </div>
+          <div className="divide-y">
+            {gradeRules.length === 0 ? (
+              <div className="px-3 py-4 text-sm text-muted-foreground">
+                Add a grade band to begin.
+              </div>
+            ) : (
+              gradeRules.map((row, idx) => (
+                <div
+                  key={`${idx}-${row.grade}`}
+                  className="grid grid-cols-[1fr_84px_84px_40px] items-center gap-2 px-3 py-2"
+                >
+                  <Input
+                    placeholder="A+"
+                    value={row.grade}
+                    onChange={(e) =>
+                      onUpdateGradeRule(idx, { grade: e.target.value })
+                    }
+                    className="h-9"
+                  />
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={row.min}
+                    onChange={(e) =>
+                      onUpdateGradeRule(idx, { min: Number(e.target.value) })
+                    }
+                    className="h-9 text-center font-mono"
+                  />
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={row.max}
+                    onChange={(e) =>
+                      onUpdateGradeRule(idx, { max: Number(e.target.value) })
+                    }
+                    className="h-9 text-center font-mono"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                    onClick={() => onRemoveGradeRule(idx)}
+                    aria-label="Remove grade"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Tip: keep the list short (e.g. A+, A, B, C) for faster scoring.
+        </p>
       </CardContent>
     </Card>
   );
@@ -262,6 +297,14 @@ export function ScoringPolicyClient({
   categories: Array<{ id: string; name: string }>;
   programmes: Array<{ id: string; name: string; categoryId: string | null }>;
 }) {
+  const dirtySourceId = `scoring-policy:${festivalId}`;
+  const {
+    registerDirtySource,
+    unregisterDirtySource,
+    setDirty,
+    registerSaveHandler,
+    unregisterSaveHandler,
+  } = useUnsavedChanges();
   const programmeNameById = useMemo(() => {
     const m = new Map<string, string>();
     for (const p of programmes) m.set(p.id, p.name);
@@ -442,7 +485,7 @@ export function ScoringPolicyClient({
     setAddProgrammeOpen(false);
   };
 
-  const onSave = () => {
+  const onSave = useCallback(() => {
     startTransition(async () => {
       try {
         const normalizedGrades = gradeRules.map((r) => ({
@@ -490,13 +533,14 @@ export function ScoringPolicyClient({
           gradeRules: normalizedGrades,
           awardRules,
         });
+        setDirty(dirtySourceId, false);
         toast.success("Scoring policy saved.");
       } catch (error) {
         const message = error instanceof Error ? error.message : "Failed to save scoring policy.";
         toast.error(message);
       }
     });
-  };
+  }, [dirtySourceId, festivalId, gradeRules, matrixRows, noGradeBelow, setDirty]);
 
   const initialComparisonKey = useMemo(
     () =>
@@ -578,6 +622,20 @@ export function ScoringPolicyClient({
       }),
     );
   }, [matrixRows, availableGrades]);
+
+  useEffect(() => {
+    registerDirtySource(dirtySourceId);
+    return () => unregisterDirtySource(dirtySourceId);
+  }, [dirtySourceId, registerDirtySource, unregisterDirtySource]);
+
+  useEffect(() => {
+    setDirty(dirtySourceId, hasChanges);
+  }, [dirtySourceId, hasChanges, setDirty]);
+
+  useEffect(() => {
+    registerSaveHandler(dirtySourceId, async () => onSave());
+    return () => unregisterSaveHandler(dirtySourceId);
+  }, [dirtySourceId, onSave, registerSaveHandler, unregisterSaveHandler]);
 
   return (
     <div className="space-y-4 sm:space-y-6">

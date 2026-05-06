@@ -14,6 +14,7 @@ import {
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { Button } from "@/components/ui/button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
@@ -51,6 +52,9 @@ export function GalleryClient({
   festivalSlug: _festivalSlug,
   initialImages,
 }: GalleryClientProps) {
+  const dirtySourceId = `gallery:${festivalId}`;
+  const { registerDirtySource, unregisterDirtySource, setDirty } =
+    useUnsavedChanges();
   const { isReadOnly } = useFestivalReadOnly();
   const [images, setImages] = useState<ImageRecord[]>(initialImages);
   const [pendingUpload, setPendingUpload] = useState<{
@@ -161,6 +165,7 @@ export function GalleryClient({
         }
         setPendingUpload(null);
         setUploadModalUploading(false);
+        setDirty(dirtySourceId, false);
         window.location.reload();
       } else {
         toast.error(res.error ?? "Failed to add photos.");
@@ -170,7 +175,7 @@ export function GalleryClient({
       toast.error("Upload failed.");
       setUploadModalUploading(false);
     }
-  }, [festivalId, pendingUpload, closeUploadModal, isReadOnly]);
+  }, [closeUploadModal, dirtySourceId, festivalId, isReadOnly, pendingUpload, setDirty]);
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -249,6 +254,20 @@ export function GalleryClient({
     setLightboxIndex((i) =>
       i === null ? null : i >= images.length - 1 ? 0 : i + 1,
     );
+
+  useEffect(() => {
+    registerDirtySource(dirtySourceId);
+    return () => unregisterDirtySource(dirtySourceId);
+  }, [dirtySourceId, registerDirtySource, unregisterDirtySource]);
+
+  useEffect(() => {
+    if (isReadOnly) {
+      setDirty(dirtySourceId, false);
+      return;
+    }
+    const hasUnsavedSelection = Boolean(pendingUpload?.files.length);
+    setDirty(dirtySourceId, hasUnsavedSelection);
+  }, [dirtySourceId, isReadOnly, pendingUpload?.files.length, setDirty]);
 
   return (
     <div className="space-y-6">

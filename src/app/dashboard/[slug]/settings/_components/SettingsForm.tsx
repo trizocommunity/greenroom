@@ -15,8 +15,9 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -45,7 +46,32 @@ interface SettingsFormProps {
   festival: any;
 }
 
+function serializeSettingsFormData(formData: {
+  name: string;
+  description: string;
+  slug: string;
+  location: string;
+  startDate: Date | null;
+  endDate: Date | null;
+  orgName: string;
+  orgDescription: string;
+  orgWebsite: string;
+  orgLocation: string;
+  logo: string;
+  programmeAssignmentDeadline: string;
+  teamLeaderLimit: number;
+}) {
+  return JSON.stringify({
+    ...formData,
+    startDate: formData.startDate ? formData.startDate.toISOString() : null,
+    endDate: formData.endDate ? formData.endDate.toISOString() : null,
+  });
+}
+
 export function SettingsForm({ festival }: SettingsFormProps) {
+  const dirtySourceId = `festival-settings:${festival.id}`;
+  const { registerDirtySource, unregisterDirtySource, setDirty } =
+    useUnsavedChanges();
   const router = useRouter();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const { isReadOnly } = useFestivalReadOnly();
@@ -84,6 +110,29 @@ export function SettingsForm({ festival }: SettingsFormProps) {
       : "",
     teamLeaderLimit: Number(festival.teamLeaderLimit ?? 2),
   });
+  const [savedSnapshot, setSavedSnapshot] = useState(() =>
+    serializeSettingsFormData({
+      name: festival.name || "",
+      description: festival.description || "",
+      slug: festival.slug || "",
+      location: festival.location || "",
+      startDate: festival.startDate ? new Date(festival.startDate) : null,
+      endDate: festival.endDate ? new Date(festival.endDate) : null,
+      orgName: festival.orgName || "",
+      orgDescription: festival.orgDescription || "",
+      orgWebsite: festival.orgWebsite || "",
+      orgLocation: festival.orgLocation || "",
+      logo: festival.branding?.logo || "",
+      programmeAssignmentDeadline: festival.programmeAssignmentDeadline
+        ? new Date(festival.programmeAssignmentDeadline).toISOString().slice(0, 16)
+        : "",
+      teamLeaderLimit: Number(festival.teamLeaderLimit ?? 2),
+    }),
+  );
+  const hasChanges = useMemo(
+    () => serializeSettingsFormData(formData) !== savedSnapshot,
+    [formData, savedSnapshot],
+  );
 
   const durationStart = useMemo(() => {
     const createdAt = festival?.createdAt ? new Date(festival.createdAt) : null;
@@ -169,6 +218,8 @@ export function SettingsForm({ festival }: SettingsFormProps) {
       });
 
       if (orgRes.success && brandingRes.success) {
+        setSavedSnapshot(serializeSettingsFormData(formData));
+        setDirty(dirtySourceId, false);
         toast.success("General settings updated");
         router.refresh();
       } else {
@@ -205,6 +256,8 @@ export function SettingsForm({ festival }: SettingsFormProps) {
       });
 
       if (basicsRes.success && configRes.success) {
+        setSavedSnapshot(serializeSettingsFormData(formData));
+        setDirty(dirtySourceId, false);
         toast.success("Festival settings updated");
         router.refresh();
       } else {
@@ -236,6 +289,19 @@ export function SettingsForm({ festival }: SettingsFormProps) {
     setFormData({ ...formData, logo: "" });
     toast.info("Logo removed. Save to apply changes.");
   };
+
+  useEffect(() => {
+    registerDirtySource(dirtySourceId);
+    return () => unregisterDirtySource(dirtySourceId);
+  }, [dirtySourceId, registerDirtySource, unregisterDirtySource]);
+
+  useEffect(() => {
+    if (isReadOnly) {
+      setDirty(dirtySourceId, false);
+      return;
+    }
+    setDirty(dirtySourceId, hasChanges);
+  }, [dirtySourceId, hasChanges, isReadOnly, setDirty]);
 
   return (
     <Tabs defaultValue={isBasic ? "festival" : "general"} className="space-y-6">
@@ -461,7 +527,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
             <div className="flex justify-end">
               <Button
                 type="submit"
-                disabled={isSavingGeneral || isReadOnly}
+                disabled={isSavingGeneral || isReadOnly || !hasChanges}
                 className="min-w-[160px]"
               >
                 {isSavingGeneral && (
@@ -671,7 +737,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
           <div className="flex justify-end">
             <Button
               type="submit"
-              disabled={isSavingFestival || isReadOnly}
+              disabled={isSavingFestival || isReadOnly || !hasChanges}
               className="min-w-[160px]"
             >
               {isSavingFestival && (

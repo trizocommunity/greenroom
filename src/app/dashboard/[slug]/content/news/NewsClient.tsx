@@ -12,8 +12,9 @@ import {
   Trash2,
 } from "lucide-react";
 import Image from "next/image";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,6 +79,9 @@ export function NewsClient({
   festivalSlug: _festivalSlug,
   initialPosts,
 }: NewsClientProps) {
+  const dirtySourceId = `news:${festivalId}`;
+  const { registerDirtySource, unregisterDirtySource, setDirty } =
+    useUnsavedChanges();
   const { isReadOnly } = useFestivalReadOnly();
   const [posts, setPosts] = useState<NewsPost[]>(initialPosts);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -87,12 +91,18 @@ export function NewsClient({
   const [uploadingImage, setUploadingImage] = useState(false);
   const [viewDetailsPost, setViewDetailsPost] = useState<NewsPost | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [initialFormSnapshot, setInitialFormSnapshot] = useState(
+    JSON.stringify(emptyForm),
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const hasUnsavedForm =
+    dialogOpen && JSON.stringify(form) !== initialFormSnapshot;
 
   const openCreate = () => {
     if (isReadOnly) return;
     setEditingId(null);
     setForm(emptyForm);
+    setInitialFormSnapshot(JSON.stringify(emptyForm));
     setDialogOpen(true);
   };
 
@@ -106,6 +116,15 @@ export function NewsClient({
       imageUrl: post.imageUrl ?? "",
       published: !!post.publishedAt,
     });
+    setInitialFormSnapshot(
+      JSON.stringify({
+        title: post.title,
+        excerpt: post.excerpt ?? "",
+        content: post.content,
+        imageUrl: post.imageUrl ?? "",
+        published: !!post.publishedAt,
+      }),
+    );
     setDialogOpen(true);
   };
 
@@ -127,6 +146,7 @@ export function NewsClient({
         });
         if (res.success) {
           toast.success("News updated.");
+          setDirty(dirtySourceId, false);
           setDialogOpen(false);
           window.location.reload();
         } else toast.error(res.error ?? "Failed to update.");
@@ -140,6 +160,7 @@ export function NewsClient({
         });
         if (res.success) {
           toast.success("News post created.");
+          setDirty(dirtySourceId, false);
           setDialogOpen(false);
           window.location.reload();
         } else toast.error(res.error ?? "Failed to create.");
@@ -150,6 +171,19 @@ export function NewsClient({
       setSaving(false);
     }
   };
+
+  useEffect(() => {
+    registerDirtySource(dirtySourceId);
+    return () => unregisterDirtySource(dirtySourceId);
+  }, [dirtySourceId, registerDirtySource, unregisterDirtySource]);
+
+  useEffect(() => {
+    if (isReadOnly) {
+      setDirty(dirtySourceId, false);
+      return;
+    }
+    setDirty(dirtySourceId, hasUnsavedForm);
+  }, [dirtySourceId, hasUnsavedForm, isReadOnly, setDirty]);
 
   const handleDelete = async (id: string) => {
     if (isReadOnly) return;
@@ -498,7 +532,7 @@ export function NewsClient({
             <Button
               size="sm"
               onClick={handleSave}
-              disabled={saving || isReadOnly}
+              disabled={saving || isReadOnly || !hasUnsavedForm || !form.title.trim()}
             >
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {editingId ? "Update" : "Create"}

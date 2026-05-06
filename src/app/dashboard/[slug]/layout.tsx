@@ -3,6 +3,7 @@ import { Suspense } from "react";
 // Removed unused breadcrumb imports
 import { DashboardBreadcrumb } from "@/components/festival/dashboard/DashboardBreadcrumb";
 import { DashboardCelebration } from "@/components/festival/dashboard/DashboardCelebration";
+import { FestivalDashboardClientShell } from "@/components/festival/dashboard/FestivalDashboardClientShell";
 import { DashboardRightSidebar } from "@/components/festival/dashboard/DashboardRightSidebar";
 import { FestivalDashboardSidebar } from "@/components/festival/dashboard/FestivalDashboardSidebar";
 import { ReadOnlyExpiredBanner } from "@/components/festival/dashboard/ReadOnlyExpiredBanner";
@@ -116,69 +117,71 @@ export default async function FestivalDashboardLayout({
   return (
     <SidebarProvider>
       <FestivalProvider festival={festivalData}>
-        <FestivalDashboardSidebar festival={festivalData} role={userRole} />
+        <FestivalDashboardClientShell>
+          <FestivalDashboardSidebar festival={festivalData} role={userRole} />
 
-        <SidebarInset>
-          <header className="sticky top-0 z-10 w-full flex h-14 shrink-0 items-center justify-between border-b bg-background/95 backdrop-blur px-4 md:px-8 shadow-sm">
-            <div className="flex items-center gap-2">
-              <SidebarTrigger className="h-8 w-8" />
-              <div className="mr-2 h-4 w-px bg-border hidden lg:block" />
-              <DashboardBreadcrumb slug={slug} />
-            </div>
+          <SidebarInset>
+            <header className="sticky top-0 z-10 w-full flex h-14 shrink-0 items-center justify-between border-b bg-background/95 backdrop-blur px-4 md:px-8 shadow-sm">
+              <div className="flex items-center gap-2">
+                <SidebarTrigger className="h-8 w-8" />
+                <div className="mr-2 h-4 w-px bg-border hidden lg:block" />
+                <DashboardBreadcrumb slug={slug} />
+              </div>
 
-            {/* Header Actions */}
-            <div className="flex items-center gap-2">
-              <FestivalStatusBadge
-                status={derivedStatus}
-                createdAt={festival.createdAt}
-                startDate={festival.startDate}
-                endDate={festival.endDate}
-                expiresAt={festival.expiresAt}
-                size="default"
-                interactive={true}
-              />
-              <DashboardRightSidebar
-                user={userData}
-                festivalSlug={slug}
-                showStatusAndUsage={
-                  userRole === "OWNER" || userRole === "SUPER_ADMIN"
-                }
-                festivalName={festival.name}
-                festivalStatus={derivedStatus}
-                festivalCreatedAt={festival.createdAt}
-                festivalStartDate={festival.startDate}
-                festivalEndDate={festival.endDate}
-                festivalExpiresAt={festival.expiresAt}
-                daysRemaining={
-                  festival.expiresAt
-                    ? Math.ceil(
-                        (new Date(festival.expiresAt).getTime() - Date.now()) /
-                          (1000 * 60 * 60 * 24),
-                      )
-                    : null
-                }
-                userRole={userRole}
-                usage={{
-                  studentsCount: festival._count?.students || 0,
-                  programmesCount: festival._count?.programmes || 0,
-                  stagesCount: festival.stagesCount || 0,
-                  storageUsedMB: festival.storageUsedMb ?? 0,
-                }}
-                limits={festivalData.limits}
-                tierLabel={TIER_CONFIG[getResolvedTier(festival.tier)].label}
-                canAccessSettings={effectiveFeatures.festivalSettings}
-              />
-            </div>
-          </header>
+              {/* Header Actions */}
+              <div className="flex items-center gap-2">
+                <FestivalStatusBadge
+                  status={derivedStatus}
+                  createdAt={festival.createdAt}
+                  startDate={festival.startDate}
+                  endDate={festival.endDate}
+                  expiresAt={festival.expiresAt}
+                  size="default"
+                  interactive={true}
+                />
+                <DashboardRightSidebar
+                  user={userData}
+                  festivalSlug={slug}
+                  showStatusAndUsage={
+                    userRole === "OWNER" || userRole === "SUPER_ADMIN"
+                  }
+                  festivalName={festival.name}
+                  festivalStatus={derivedStatus}
+                  festivalCreatedAt={festival.createdAt}
+                  festivalStartDate={festival.startDate}
+                  festivalEndDate={festival.endDate}
+                  festivalExpiresAt={festival.expiresAt}
+                  daysRemaining={
+                    festival.expiresAt
+                      ? Math.ceil(
+                          (new Date(festival.expiresAt).getTime() - Date.now()) /
+                            (1000 * 60 * 60 * 24),
+                        )
+                      : null
+                  }
+                  userRole={userRole}
+                  usage={{
+                    studentsCount: festival._count?.students || 0,
+                    programmesCount: festival._count?.programmes || 0,
+                    stagesCount: festival.stagesCount || 0,
+                    storageUsedMB: festival.storageUsedMb ?? 0,
+                  }}
+                  limits={festivalData.limits}
+                  tierLabel={TIER_CONFIG[getResolvedTier(festival.tier)].label}
+                  canAccessSettings={effectiveFeatures.festivalSettings}
+                />
+              </div>
+            </header>
 
-          <main className="flex flex-1 flex-col gap-4 md:gap-6 p-4 md:p-8 relative overflow-hidden">
-            <Suspense fallback={null}>
-              <DashboardCelebration />
-            </Suspense>
-            <ReadOnlyExpiredBanner />
-            {children}
-          </main>
-        </SidebarInset>
+            <main className="flex flex-1 flex-col gap-4 md:gap-6 p-4 md:p-8 relative overflow-hidden">
+              <Suspense fallback={null}>
+                <DashboardCelebration />
+              </Suspense>
+              <ReadOnlyExpiredBanner />
+              {children}
+            </main>
+          </SidebarInset>
+        </FestivalDashboardClientShell>
       </FestivalProvider>
     </SidebarProvider>
   );

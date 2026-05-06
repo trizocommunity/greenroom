@@ -22,8 +22,9 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import {
   AlertDialog,
@@ -195,6 +196,14 @@ export function ResultsManagementClient({
   categories,
   children,
 }: ResultsManagementClientProps) {
+  const dirtySourceId = `results-management:${festival.id}`;
+  const {
+    registerDirtySource,
+    unregisterDirtySource,
+    setDirty,
+    registerSaveHandler,
+    unregisterSaveHandler,
+  } = useUnsavedChanges();
   const { isReadOnly } = useFestivalReadOnly();
   const canUseExternalJudging = useFeatureTag("eventWorks.externalJudging");
   const router = useRouter();
@@ -556,6 +565,7 @@ export function ResultsManagementClient({
     });
   }, [scores, currentProgramme]);
   const hasAnyPoints = results.some((r) => r.points !== null && r.points > 0);
+  const hasUnsavedResults = isModalOpen && Object.keys(scores).length > 0;
 
   const handleScoreChange = (teamId: string, value: string) => {
     const points = parseFloat(value);
@@ -570,7 +580,7 @@ export function ResultsManagementClient({
     }
   };
 
-  const handleSaveResults = async (shouldPublish = false) => {
+  const handleSaveResults = useCallback(async (shouldPublish = false) => {
     if (isReadOnly) return;
     if (!currentProgramme) return;
 
@@ -611,7 +621,7 @@ export function ResultsManagementClient({
         toast.error(`Failed to save ${errorCount} results`);
       }
     });
-  };
+  }, [currentProgramme, festival.id, isReadOnly, results]);
 
   const handlePublishProgramme = (
     programmeId: string,
@@ -818,6 +828,33 @@ export function ResultsManagementClient({
     filterCategory !== "all" ||
     filterStatus !== "all" ||
     filterProgrammeType !== "all";
+
+  useEffect(() => {
+    registerDirtySource(dirtySourceId);
+    return () => unregisterDirtySource(dirtySourceId);
+  }, [dirtySourceId, registerDirtySource, unregisterDirtySource]);
+
+  useEffect(() => {
+    if (isReadOnly) {
+      setDirty(dirtySourceId, false);
+      return;
+    }
+    setDirty(dirtySourceId, hasUnsavedResults);
+  }, [dirtySourceId, hasUnsavedResults, isReadOnly, setDirty]);
+
+  useEffect(() => {
+    registerSaveHandler(dirtySourceId, async () => {
+      if (!hasUnsavedResults) return;
+      await handleSaveResults(false);
+    });
+    return () => unregisterSaveHandler(dirtySourceId);
+  }, [
+    dirtySourceId,
+    hasUnsavedResults,
+    handleSaveResults,
+    registerSaveHandler,
+    unregisterSaveHandler,
+  ]);
 
   return (
     <div className="space-y-4">
@@ -1354,6 +1391,7 @@ export function ResultsManagementClient({
                           disabled={
                             isReadOnly ||
                             isPending ||
+                            !hasUnsavedResults ||
                             currentProgramme.stats?.status === "published"
                           }
                           className="w-full h-10 sm:h-12 text-xs sm:text-base font-semibold gap-2 touch-manipulation"
