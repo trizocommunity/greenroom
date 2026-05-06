@@ -327,6 +327,31 @@ export function ProgrammeReportingClient({
   ]);
 
   const reportingHistoryItems = useMemo(() => {
+    const historyStatusRank = (status: string) => {
+      switch (status) {
+        case "CLOSED":
+          return 0;
+        case "TIMED_OUT":
+          return 1;
+        case "RESET":
+          return 2;
+        default:
+          return 99;
+      }
+    };
+
+    const getHistoryTimestamp = (item: BoardItem) => {
+      const endedAt = item.reportingSession?.endedAt
+        ? new Date(item.reportingSession.endedAt).getTime()
+        : Number.NaN;
+      if (Number.isFinite(endedAt)) return endedAt;
+      const updatedAt = item.reportingSession?.updatedAt
+        ? new Date(item.reportingSession.updatedAt).getTime()
+        : Number.NaN;
+      if (Number.isFinite(updatedAt)) return updatedAt;
+      return new Date(item.startTime).getTime();
+    };
+
     return board
       .map((item) => {
         const status = getUiReportingStatus(
@@ -340,19 +365,48 @@ export function ProgrammeReportingClient({
         };
       })
       .filter(({ status }) => ["CLOSED", "RESET", "TIMED_OUT"].includes(status))
-      .sort(
-        (a, b) =>
-          new Date(b.item.startTime).getTime() -
-          new Date(a.item.startTime).getTime(),
-      )
-      .map(({ item, status }) => ({
-        id: item.id,
-        title: item.programme?.name ?? "Unknown programme",
-        badge: reportingSessionStatusLabel(status),
-        metaPrimary: `${item.stage?.name ?? "No stage"} • ${formatHistoryTime(item.startTime)}`,
-        metaSecondary: `${item.programme?.category?.name ?? "No category"} • ${item.programme?.type ?? "—"}`,
-        detailSummary: `${item.reportingSession?.programmeReportedParticipants.length ?? 0} reported • ${item.reportingSession?.programmeCodeLetters.length ?? 0} codes`,
-      }));
+      .sort((a, b) => {
+        const rankDelta = historyStatusRank(a.status) - historyStatusRank(b.status);
+        if (rankDelta !== 0) return rankDelta;
+
+        const timeDelta = getHistoryTimestamp(b.item) - getHistoryTimestamp(a.item);
+        if (timeDelta !== 0) return timeDelta;
+
+        return (a.item.programme?.name ?? "").localeCompare(b.item.programme?.name ?? "");
+      })
+      .map(({ item, status }) => {
+        const programmeType = item.programme?.type ?? "INDIVIDUAL";
+        const programmeStatus = (item.programme?.status ?? "").toUpperCase();
+        const reportedRows = item.reportingSession?.programmeReportedParticipants ?? [];
+        const codeLetters = item.reportingSession?.programmeCodeLetters ?? [];
+
+        const reportedCount =
+          programmeType === "GROUP"
+            ? new Set(
+                reportedRows.map(
+                  (r) => `${r.groupId ?? "no-group"}::${r.teamNumber ?? 0}`,
+                ),
+              ).size
+            : reportedRows.length;
+
+        const reportedLabel = programmeType === "GROUP" ? "teams reported" : "reported";
+        const codeLabel = programmeType === "GROUP" ? "team codes" : "codes";
+        const tinyBadge =
+          programmeStatus.includes("COMPLETED") ||
+          programmeStatus.includes("PUBLISHED")
+            ? "Judged"
+            : null;
+
+        return {
+          id: item.id,
+          title: item.programme?.name ?? "Unknown programme",
+          badge: reportingSessionStatusLabel(status),
+          tinyBadge,
+          metaPrimary: `${item.stage?.name ?? "No stage"} • ${formatHistoryTime(item.startTime)}`,
+          metaSecondary: `${item.programme?.category?.name ?? "No category"} • ${item.programme?.type ?? "—"}`,
+          detailSummary: `${reportedCount} ${reportedLabel} • ${codeLetters.length} ${codeLabel}`,
+        };
+      });
   }, [board, mounted]);
 
   const reportingHistoryDetailsById = useMemo(() => {
@@ -1638,11 +1692,15 @@ export function ProgrammeReportingClient({
                     <p className="text-xs font-semibold">{historyDetail.categoryName}</p>
                   </div>
                   <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
-                    <p className="text-[10px] uppercase text-muted-foreground">Reported</p>
+                    <p className="text-[10px] uppercase text-muted-foreground">
+                      {historyDetail.type === "GROUP" ? "Teams reported" : "Reported"}
+                    </p>
                     <p className="text-xs font-semibold">{historyDetail.reportedCount}</p>
                   </div>
                   <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
-                    <p className="text-[10px] uppercase text-muted-foreground">Codes</p>
+                    <p className="text-[10px] uppercase text-muted-foreground">
+                      {historyDetail.type === "GROUP" ? "Team codes" : "Codes"}
+                    </p>
                     <p className="text-xs font-semibold">{historyDetail.codeCount}</p>
                   </div>
                 </div>

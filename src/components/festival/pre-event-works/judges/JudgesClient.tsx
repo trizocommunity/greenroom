@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { ERROR_MESSAGES } from "@/core/errors/errors";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { useJudges } from "@/features/judges/hooks/use-judges";
 
@@ -50,6 +51,14 @@ function getInitials(name: string) {
     .join("");
 }
 
+function normalizeJudgeName(name: string) {
+  return name.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+}
+
+const JUDGE_NAME_MIN_LENGTH = 2;
+const JUDGE_NAME_MAX_LENGTH = 80;
+const JUDGE_DESCRIPTION_MAX_LENGTH = 500;
+
 export function JudgesClient({
   festivalId,
   children,
@@ -68,11 +77,62 @@ export function JudgesClient({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<{ name?: string; description?: string }>(
+    {},
+  );
+
+  const trimmedName = name.trim();
+  const trimmedDescription = description.trim();
+  const hasFormChanges = editing
+    ? trimmedName !== editing.name.trim() ||
+      trimmedDescription !== (editing.description ?? "").trim()
+    : trimmedName.length > 0 || trimmedDescription.length > 0;
+
+  const validateForm = () => {
+    const nextErrors: { name?: string; description?: string } = {};
+    if (!trimmedName) {
+      nextErrors.name = ERROR_MESSAGES.JUDGE_NAME_REQUIRED;
+    } else if (trimmedName.length < JUDGE_NAME_MIN_LENGTH) {
+      nextErrors.name = `Judge name must be at least ${JUDGE_NAME_MIN_LENGTH} characters.`;
+    } else if (trimmedName.length > JUDGE_NAME_MAX_LENGTH) {
+      nextErrors.name = `Judge name must be ${JUDGE_NAME_MAX_LENGTH} characters or fewer.`;
+    } else {
+      const duplicateJudge = judges.find((judge) => {
+        if (editing && judge.id === editing.id) return false;
+        return normalizeJudgeName(judge.name) === normalizeJudgeName(trimmedName);
+      });
+      if (duplicateJudge) {
+        nextErrors.name = ERROR_MESSAGES.JUDGE_NAME_DUPLICATE;
+      }
+    }
+
+    if (trimmedDescription.length > JUDGE_DESCRIPTION_MAX_LENGTH) {
+      nextErrors.description =
+        `Description must be ${JUDGE_DESCRIPTION_MAX_LENGTH} characters or fewer.`;
+    }
+
+    setFormErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleFormOpenChange = (open: boolean) => {
+    if (!open && hasFormChanges && !isSaving) {
+      const shouldDiscard = window.confirm(
+        "You have unsaved changes. Do you want to discard them?",
+      );
+      if (!shouldDiscard) return;
+    }
+    setFormOpen(open);
+    if (!open) {
+      setFormErrors({});
+    }
+  };
 
   const openCreate = () => {
     setEditing(null);
     setName("");
     setDescription("");
+    setFormErrors({});
     setFormOpen(true);
   };
 
@@ -80,22 +140,28 @@ export function JudgesClient({
     setEditing(row);
     setName(row.name);
     setDescription(row.description ?? "");
+    setFormErrors({});
     setFormOpen(true);
   };
 
   const onSubmit = async () => {
+    if (!validateForm()) return;
     setIsSaving(true);
     try {
       if (editing) {
         await updateJudge({
           judgeId: editing.id,
-          name,
-          description: description || null,
+          name: trimmedName,
+          description: trimmedDescription || null,
         });
       } else {
-        await createJudge({ name, description: description || null });
+        await createJudge({
+          name: trimmedName,
+          description: trimmedDescription || null,
+        });
       }
       setFormOpen(false);
+      setFormErrors({});
     } finally {
       setIsSaving(false);
     }
@@ -226,7 +292,7 @@ export function JudgesClient({
         </div>
       ) : null}
 
-      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+      <Dialog open={formOpen} onOpenChange={handleFormOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Judge" : "Create Judge"}</DialogTitle>
@@ -237,21 +303,49 @@ export function JudgesClient({
           <div className="space-y-3">
             <Input
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (formErrors.name) {
+                  setFormErrors((prev) => ({ ...prev, name: undefined }));
+                }
+              }}
               placeholder="Judge name"
+              maxLength={JUDGE_NAME_MAX_LENGTH + 20}
             />
+            {formErrors.name ? (
+              <p className="text-xs text-destructive">{formErrors.name}</p>
+            ) : null}
             <Textarea
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => {
+                setDescription(e.target.value);
+                if (formErrors.description) {
+                  setFormErrors((prev) => ({ ...prev, description: undefined }));
+                }
+              }}
               placeholder="Description (optional)"
               rows={4}
+              maxLength={JUDGE_DESCRIPTION_MAX_LENGTH + 50}
             />
+            <div className="flex items-center justify-between">
+              {formErrors.description ? (
+                <p className="text-xs text-destructive">{formErrors.description}</p>
+              ) : (
+                <span />
+              )}
+              <p className="text-xs text-muted-foreground">
+                {trimmedDescription.length}/{JUDGE_DESCRIPTION_MAX_LENGTH}
+              </p>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setFormOpen(false)}>
+            <Button variant="outline" onClick={() => handleFormOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={onSubmit} disabled={!name.trim() || isSaving}>
+            <Button
+              onClick={onSubmit}
+              disabled={!trimmedName || isSaving || trimmedName.length > JUDGE_NAME_MAX_LENGTH}
+            >
               {isSaving ? "Saving..." : editing ? "Update" : "Create"}
             </Button>
           </DialogFooter>
@@ -271,44 +365,8 @@ export function JudgesClient({
                   Assigned judging activities and scoring progress.
                 </DialogDescription>
               </DialogHeader>
-              <p className="text-sm text-muted-foreground">
-                {viewingActivities.description || "No description"}
-              </p>
 
               <div className="space-y-2">
-                <p className="text-sm font-medium">Activities</p>
-                <div className="grid grid-cols-3 gap-2 rounded-lg border bg-muted/20 p-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Total activities</p>
-                    <p className="text-sm font-semibold">{viewingActivities.activities.length}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Total judged points</p>
-                    <p className="text-sm font-semibold">
-                      {viewingActivities.activities.reduce(
-                        (sum, activity) => sum + activity.judgedPointsCount,
-                        0,
-                      )}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Average score</p>
-                    <p className="text-sm font-semibold">
-                      {(() => {
-                        const pool = viewingActivities.activities
-                          .map((activity) => activity.averagePoints)
-                          .filter((value): value is number => value !== null);
-                        return pool.length > 0
-                          ? Number(
-                              (
-                                pool.reduce((sum, value) => sum + value, 0) / pool.length
-                              ).toFixed(2),
-                            )
-                          : "-";
-                      })()}
-                    </p>
-                  </div>
-                </div>
                 <div className="space-y-2 max-h-72 overflow-auto pr-1">
                   {viewingActivities.activities.length > 0 ? (
                     viewingActivities.activities.map((activity) => (
@@ -357,26 +415,8 @@ export function JudgesClient({
                   Programme-wise judging points and score averages.
                 </DialogDescription>
               </DialogHeader>
-              <p className="text-sm text-muted-foreground">
-                {viewingProgrammes.description || "No description"}
-              </p>
 
               <div className="space-y-2">
-                <p className="text-sm font-medium">Programmes</p>
-                <div className="grid grid-cols-3 gap-2 rounded-lg border bg-muted/20 p-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Programmes</p>
-                    <p className="text-sm font-semibold">{viewingProgrammes.programmes.length}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Activities mapped</p>
-                    <p className="text-sm font-semibold">{viewingProgrammes.activities.length}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Stages involved</p>
-                    <p className="text-sm font-semibold">{viewingProgrammes.stages.length}</p>
-                  </div>
-                </div>
                 <div className="space-y-2 max-h-72 overflow-auto pr-1">
                   {viewingProgrammes.programmes.length > 0 ? (
                     viewingProgrammes.programmes.map((programme) => {

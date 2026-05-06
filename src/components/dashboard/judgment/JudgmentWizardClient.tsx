@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ERROR_MESSAGES } from "@/core/errors/errors";
 import { queryKeys } from "@/core/http/query-keys";
 import type { ProgrammeJudgmentStatus } from "@/core/types/app-enums";
 import { createJudgeAction } from "@/features/judges/actions/judge.actions";
@@ -100,6 +101,10 @@ type JudgedProgrammeCard = {
     judgeScores: Record<string, number>;
   }>;
 };
+
+function normalizeJudgeName(name: string) {
+  return name.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+}
 
 function resetWizardForm() {
   return {
@@ -186,6 +191,7 @@ export function JudgmentWizardClient({
   >({});
   const [newJudgeName, setNewJudgeName] = useState("");
   const [newJudgeDescription, setNewJudgeDescription] = useState("");
+  const [inlineJudgeError, setInlineJudgeError] = useState<string | null>(null);
   const [pinMode, setPinMode] = useState<"auto" | "manual">("auto");
   const [manualPin, setManualPin] = useState("");
   const [pinLength, setPinLength] = useState<4 | 5 | 6>(4);
@@ -352,11 +358,23 @@ export function JudgmentWizardClient({
   };
 
   const onInlineCreateJudge = () => {
-    if (!newJudgeName.trim()) return;
+    const trimmedName = newJudgeName.trim();
+    if (!trimmedName) {
+      setInlineJudgeError(ERROR_MESSAGES.JUDGE_NAME_REQUIRED);
+      return;
+    }
+    const duplicateJudge = judges.find(
+      (judge) => normalizeJudgeName(judge.name) === normalizeJudgeName(trimmedName),
+    );
+    if (duplicateJudge) {
+      setInlineJudgeError(ERROR_MESSAGES.JUDGE_NAME_DUPLICATE);
+      return;
+    }
+    setInlineJudgeError(null);
     startTransition(async () => {
       try {
         await createJudgeAction(festivalId, {
-          name: newJudgeName,
+          name: trimmedName,
           description: newJudgeDescription || null,
         });
         await queryClient.invalidateQueries({
@@ -368,8 +386,9 @@ export function JudgmentWizardClient({
         toast.success("Judge created.");
         setNewJudgeName("");
         setNewJudgeDescription("");
+        setInlineJudgeError(null);
       } catch (error: any) {
-        toast.error(error?.message ?? "Failed to create judge.");
+        setInlineJudgeError(error?.message ?? ERROR_MESSAGES.DEFAULT);
       }
     });
   };
@@ -966,13 +985,19 @@ export function JudgmentWizardClient({
                   <div className="grid gap-1.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center">
                     <Input
                       value={newJudgeName}
-                      onChange={(e) => setNewJudgeName(e.target.value)}
+                      onChange={(e) => {
+                        setNewJudgeName(e.target.value);
+                        if (inlineJudgeError) setInlineJudgeError(null);
+                      }}
                       placeholder="Name"
                       className="h-8 text-xs sm:text-sm"
                     />
                     <Input
                       value={newJudgeDescription}
-                      onChange={(e) => setNewJudgeDescription(e.target.value)}
+                      onChange={(e) => {
+                        setNewJudgeDescription(e.target.value);
+                        if (inlineJudgeError) setInlineJudgeError(null);
+                      }}
                       placeholder="Description (optional)"
                       className="h-8 text-xs sm:text-sm"
                     />
@@ -986,6 +1011,9 @@ export function JudgmentWizardClient({
                       Add
                     </Button>
                   </div>
+                  {inlineJudgeError ? (
+                    <p className="text-xs text-destructive">{inlineJudgeError}</p>
+                  ) : null}
                 </div>
 
                 <Button
