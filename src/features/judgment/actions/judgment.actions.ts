@@ -45,6 +45,7 @@ import {
   resolveScoringPolicy,
   upsertScoringPolicyActionData,
 } from "@/features/judgment/services/scoring-policy.service";
+import { listFestivalJudgesWithAssignments } from "@/features/judges/repositories/judge.repository";
 
 function hashTokenSHA256(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -172,11 +173,7 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
       with: { category: { columns: { name: true } } },
       orderBy: [asc(programmeTable.name)],
     }),
-    db.query.judge.findMany({
-      where: eq(judgeTable.festivalId, festivalId),
-      columns: { id: true, name: true, description: true },
-      orderBy: [asc(judgeTable.name)],
-    }),
+    listFestivalJudgesWithAssignments(festivalId),
   ]);
 
   const programmeIds = Array.from(

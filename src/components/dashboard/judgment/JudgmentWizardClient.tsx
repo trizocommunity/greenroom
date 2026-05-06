@@ -248,7 +248,16 @@ export function JudgmentWizardClient({
   const completedJudgments = useMemo(() => {
     return judgedProgrammes
       .filter((item) => item.isJudgmentComplete)
-      .sort((a, b) => b.totalJudgments - a.totalJudgments);
+      .sort((a, b) => {
+        const aPublished = (a.programmeStatus ?? "")
+          .toUpperCase()
+          .includes("PUBLISHED");
+        const bPublished = (b.programmeStatus ?? "")
+          .toUpperCase()
+          .includes("PUBLISHED");
+        if (aPublished !== bPublished) return aPublished ? 1 : -1;
+        return b.totalJudgments - a.totalJudgments;
+      });
   }, [judgedProgrammes]);
   const completedDetailTimeline = useMemo(() => {
     if (!completedDetail) return [];
@@ -352,6 +361,9 @@ export function JudgmentWizardClient({
         });
         await queryClient.invalidateQueries({
           queryKey: queryKeys.judgment.dashboard(festivalId),
+        });
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.judges.list(festivalId),
         });
         toast.success("Judge created.");
         setNewJudgeName("");
@@ -475,9 +487,9 @@ export function JudgmentWizardClient({
               return (
                 <Card
                   key={p.id}
-                  className="flex flex-col overflow-hidden rounded-xl bg-background/40 transition-colors hover:bg-muted/20"
+                  className="flex flex-col overflow-hidden rounded-lg bg-background/40 transition-colors hover:bg-muted/20"
                 >
-                  <CardHeader className="space-y-1 p-2.5 pb-2 sm:p-4 sm:pb-2">
+                  <CardHeader className="space-y-1 p-2 pb-1.5 sm:p-3 sm:pb-1.5">
                     <div className="flex items-start justify-between gap-2">
                       <CardTitle className="text-[13px] font-semibold leading-snug line-clamp-2 sm:text-sm">
                         {p.name}
@@ -492,16 +504,16 @@ export function JudgmentWizardClient({
                       </p>
                     ) : null}
                   </CardHeader>
-                  <CardContent className="flex flex-1 flex-col gap-2 p-2.5 pt-0 sm:gap-3 sm:p-4 sm:pt-0">
+                  <CardContent className="flex flex-1 flex-col gap-1.5 p-2 pt-0 sm:gap-2 sm:p-3 sm:pt-0">
                     {active ? (
                       <>
-                        <p className="rounded-md border bg-muted/20 px-2 py-1 text-[11px] leading-relaxed text-muted-foreground">
+                        <p className="rounded-md border bg-muted/20 px-2 py-1 text-[10px] leading-relaxed text-muted-foreground">
                           {active.judgingMode} · {active.judges.length} judge
                           {active.judges.length !== 1 ? "s" : ""}
                           {!active.activeLinkId ? " · link closed" : ""}
                         </p>
                         {p.reportingDetails ? (
-                          <div className="space-y-0.5 text-[11px] text-muted-foreground">
+                          <div className="space-y-0.5 text-[10px] text-muted-foreground">
                             <p>Stage: {p.reportingDetails.stageName ?? "—"}</p>
                             <p>
                               Time:{" "}
@@ -518,12 +530,12 @@ export function JudgmentWizardClient({
                             </p>
                           </div>
                         ) : null}
-                        <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:gap-2">
+                        <div className="grid grid-cols-2 gap-1 sm:flex sm:flex-wrap sm:gap-1.5">
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="h-7 px-2 text-[11px] sm:h-8 sm:px-3 sm:text-sm"
+                            className="h-6 px-2 text-[10px] sm:h-7 sm:px-2.5 sm:text-xs"
                             onClick={() => {
                               if (!p.reportingDetails) return;
                               setReportedStudentsView({
@@ -543,7 +555,7 @@ export function JudgmentWizardClient({
                             type="button"
                             variant="secondary"
                             size="sm"
-                            className="h-7 px-2 text-[11px] sm:h-8 sm:px-3 sm:text-sm"
+                            className="h-6 px-2 text-[10px] sm:h-7 sm:px-2.5 sm:text-xs"
                             onClick={async () => {
                               if (!url) {
                                 toast.info(
@@ -556,14 +568,14 @@ export function JudgmentWizardClient({
                             }}
                             disabled={isPending}
                           >
-                            <Copy className="mr-1 h-3.5 w-3.5" />
+                            <Copy className="mr-1 h-3 w-3" />
                             Copy
                           </Button>
                           <Button
                             type="button"
                             variant="secondary"
                             size="sm"
-                            className="h-7 px-2 text-[11px] sm:h-8 sm:px-3 sm:text-sm"
+                            className="h-6 px-2 text-[10px] sm:h-7 sm:px-2.5 sm:text-xs"
                             onClick={async () => {
                               if (!pin) {
                                 toast.info(
@@ -576,30 +588,30 @@ export function JudgmentWizardClient({
                             }}
                             disabled={isPending}
                           >
-                            <Copy className="mr-1 h-3.5 w-3.5" />
+                            <Copy className="mr-1 h-3 w-3" />
                             Copy PIN
                           </Button>
                           <Button
                             type="button"
                             size="sm"
-                            className="h-7 px-2 text-[11px] sm:h-8 sm:px-3 sm:text-sm"
+                            className="h-6 px-2 text-[10px] sm:h-7 sm:px-2.5 sm:text-xs"
                             onClick={() => onRegenerate(active.id)}
                             disabled={isPending}
                           >
-                            <RefreshCcw className="mr-1 h-3.5 w-3.5" />
+                            <RefreshCcw className="mr-1 h-3 w-3" />
                             Regenerate
                           </Button>
                         </div>
                         {url ? (
-                          <div className="space-y-1.5 rounded-md border border-violet-400/40 bg-violet-500/10 px-2 py-2">
+                          <div className="space-y-1 rounded-md border border-violet-400/40 bg-violet-500/10 px-2 py-1.5">
                             <p
-                              className="truncate font-mono text-[10px] text-foreground"
+                              className="truncate font-mono text-[9px] text-foreground sm:text-[10px]"
                               title={url}
                             >
                               {url}
                             </p>
                             {pin ? (
-                              <p className="font-mono text-[11px]">
+                              <p className="font-mono text-[10px] sm:text-[11px]">
                                 <span className="text-muted-foreground">Pincode </span>
                                 <span className="font-semibold tracking-wider text-violet-600 dark:text-violet-300">
                                   {pin}
@@ -611,12 +623,12 @@ export function JudgmentWizardClient({
                       </>
                     ) : null}
                     <div className="mt-auto">
-                      <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:gap-2">
+                      <div className="grid grid-cols-2 gap-1 sm:flex sm:flex-wrap sm:gap-1.5">
                         <Button
                           type="button"
                           size="sm"
                           variant="outline"
-                          className="h-8 text-xs sm:h-9 sm:flex-1 sm:text-sm"
+                          className="h-7 text-[11px] sm:h-8 sm:flex-1 sm:text-xs"
                           onClick={() => {
                             if (!p.reportingDetails) return;
                             setReportedStudentsView({
@@ -634,7 +646,7 @@ export function JudgmentWizardClient({
                           <Button
                             type="button"
                             size="sm"
-                            className="h-8 text-xs sm:h-9 sm:flex-1 sm:text-sm"
+                            className="h-7 text-[11px] sm:h-8 sm:flex-1 sm:text-xs"
                             onClick={() => openWizardForProgramme(p.id, "create")}
                           >
                             <Link2 className="mr-1.5 h-3.5 w-3.5" />
@@ -678,6 +690,13 @@ export function JudgmentWizardClient({
                         {item.programmeName}
                       </p>
                       <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                        {(item.programmeStatus ?? "")
+                          .toUpperCase()
+                          .includes("PUBLISHED") ? (
+                          <span className="rounded border border-violet-400/60 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300">
+                            Published
+                          </span>
+                        ) : null}
                         <span className="rounded bg-muted/40 px-1.5 py-0.5">
                           {item.programmeStatus}
                         </span>

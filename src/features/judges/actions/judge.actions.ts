@@ -6,14 +6,12 @@ import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { judge as judgeTable } from "@/core/database/schema";
+import { listFestivalJudgesWithAssignments } from "@/features/judges/repositories/judge.repository";
 
 export async function getJudgesAction(festivalId: string) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
-  return db.query.judge.findMany({
-    where: eq(judgeTable.festivalId, festivalId),
-    orderBy: [asc(judgeTable.name)],
-  });
+  return listFestivalJudgesWithAssignments(festivalId);
 }
 
 export async function createJudgeAction(
