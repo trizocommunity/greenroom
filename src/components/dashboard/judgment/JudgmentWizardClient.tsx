@@ -701,7 +701,6 @@ export function JudgmentWizardClient({
                         <p className="truncate text-[13px] font-semibold sm:text-sm">
                           {p.name}
                         </p>
-                        
                         {p.programmeCategory ? (
                           <p className="text-[11px] text-muted-foreground">
                             {p.programmeCategory}
