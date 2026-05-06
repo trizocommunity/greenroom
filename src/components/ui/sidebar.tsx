@@ -358,8 +358,58 @@ function SidebarRail({
   side = "left",
   ...props
 }: React.ComponentProps<"button"> & { side?: "left" | "right" }) {
-  const { toggleLeftSidebar, toggleRightSidebar } = useSidebar();
+  const {
+    toggleLeftSidebar,
+    toggleRightSidebar,
+    leftOpen,
+    rightOpen,
+    setLeftOpen,
+    setRightOpen,
+  } = useSidebar();
   const toggle = side === "right" ? toggleRightSidebar : toggleLeftSidebar;
+  const isOpen = side === "right" ? rightOpen : leftOpen;
+  const setOpen = side === "right" ? setRightOpen : setLeftOpen;
+  const dragStartXRef = React.useRef<number | null>(null);
+  const dragStartOpenRef = React.useRef<boolean>(isOpen);
+  const dragActiveRef = React.useRef(false);
+
+  const handlePointerMove = React.useCallback(
+    (event: PointerEvent) => {
+      if (dragStartXRef.current == null) return;
+
+      const deltaX = event.clientX - dragStartXRef.current;
+      const signedDelta = side === "right" ? -deltaX : deltaX;
+      const threshold = 18;
+      if (Math.abs(signedDelta) < threshold) return;
+
+      dragActiveRef.current = true;
+      if (dragStartOpenRef.current) {
+        if (signedDelta < 0) setOpen(false);
+      } else {
+        if (signedDelta > 0) setOpen(true);
+      }
+    },
+    [setOpen, side],
+  );
+
+  const handlePointerUp = React.useCallback(() => {
+    dragStartXRef.current = null;
+    window.removeEventListener("pointermove", handlePointerMove);
+    window.removeEventListener("pointerup", handlePointerUp);
+    window.removeEventListener("pointercancel", handlePointerUp);
+    window.setTimeout(() => {
+      dragActiveRef.current = false;
+    }, 0);
+  }, [handlePointerMove]);
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    dragStartXRef.current = event.clientX;
+    dragStartOpenRef.current = isOpen;
+    dragActiveRef.current = false;
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
+  };
 
   return (
     <button
@@ -367,7 +417,14 @@ function SidebarRail({
       data-slot="sidebar-rail"
       aria-label="Toggle Sidebar"
       tabIndex={-1}
-      onClick={toggle}
+      onPointerDown={handlePointerDown}
+      onClick={(event) => {
+        if (dragActiveRef.current) {
+          event.preventDefault();
+          return;
+        }
+        toggle();
+      }}
       title="Toggle Sidebar"
       className={cn(
         "hover:after:bg-sidebar-border absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] sm:flex",
@@ -453,7 +510,7 @@ function SidebarContent({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="sidebar-content"
       data-sidebar="content"
       className={cn(
-        "flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
+        "flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
         className,
       )}
       {...props}

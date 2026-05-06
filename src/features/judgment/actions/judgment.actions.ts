@@ -463,6 +463,7 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
   const judgedCards = Array.from(latestWithScoresByProgramme.values()).map(
     (config) => {
       const judgeSubmittedAt = new Map<string, string>();
+      const judgeFirstScoredAt = new Map<string, string>();
       const byCodeLetter = new Map<
         string,
         {
@@ -473,6 +474,14 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
       >();
 
       for (const score of config.scores) {
+        const prevFirstScoredAt = judgeFirstScoredAt.get(score.judgeId);
+        if (
+          !prevFirstScoredAt ||
+          new Date(score.updatedAt) < new Date(prevFirstScoredAt)
+        ) {
+          judgeFirstScoredAt.set(score.judgeId, score.updatedAt);
+        }
+
         const prevSubmittedAt = judgeSubmittedAt.get(score.judgeId);
         if (
           !prevSubmittedAt ||
@@ -554,6 +563,7 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
         judges: config.judges.map((j) => ({
           id: j.judge.id,
           name: j.judge.name,
+          firstScoredAt: judgeFirstScoredAt.get(j.judge.id) ?? null,
           submittedAt: judgeSubmittedAt.get(j.judge.id) ?? null,
         })),
         codeLetterRows,

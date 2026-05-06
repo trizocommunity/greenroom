@@ -3,6 +3,7 @@ export type ProgrammeReportingAssignmentRow = {
   programmeId: string;
   studentId: string | null;
   studentName: string | null;
+  chestNumber?: string | null;
   groupId: string | null;
   groupName: string | null;
   teamNumber: number | null;
@@ -23,9 +24,17 @@ export type ReportingBoardItem = {
     status: string;
     windowEndsAt: Date | null;
     isLocked: boolean;
-    programmeReportedParticipants: Array<{ assignmentId: string }>;
+    programmeReportedParticipants: Array<{
+      assignmentId: string;
+      studentId: string | null;
+      groupId: string | null;
+      teamNumber: number | null;
+      reportedAt: string;
+      reportedBy: string | null;
+    }>;
     programmeCodeLetters: Array<{
       code: string;
+      issuedAt?: string;
       programmeCodeLetterRecipients: Array<{ studentId: string }>;
     }>;
   } | null;

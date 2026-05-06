@@ -1,10 +1,16 @@
 "use client";
 
 import { Copy, Link2, Plus, RefreshCcw } from "lucide-react";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,7 +87,12 @@ type JudgedProgrammeCard = {
     isComplete: boolean;
   }>;
   pendingJudgeNames: string[];
-  judges: Array<{ id: string; name: string; submittedAt: string | null }>;
+  judges: Array<{
+    id: string;
+    name: string;
+    firstScoredAt: string | null;
+    submittedAt: string | null;
+  }>;
   codeLetterRows: Array<{
     codeLetterId: string;
     code: string;
@@ -116,11 +127,14 @@ export function JudgmentWizardClient({
     judgedProgrammes: JudgedProgrammeCard[];
   };
 }) {
-  const formatCardDateTime = (value: string | Date) =>
-    new Intl.DateTimeFormat(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(value));
+  const formatCardDateTime = useCallback(
+    (value: string | Date) =>
+      new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(new Date(value)),
+    [],
+  );
 
   const judgmentStatusLabel = (status: ProgrammeJudgmentStatus) => {
     switch (status) {
@@ -236,6 +250,52 @@ export function JudgmentWizardClient({
       .filter((item) => item.isJudgmentComplete)
       .sort((a, b) => b.totalJudgments - a.totalJudgments);
   }, [judgedProgrammes]);
+  const completedDetailTimeline = useMemo(() => {
+    if (!completedDetail) return [];
+
+    const events: Array<{
+      at: number;
+      title: string;
+      detail: string;
+    }> = [
+      {
+        at: new Date(completedDetail.createdAt).getTime(),
+        title: "Configuration created",
+        detail: `Mode ${completedDetail.judgingMode} • ${completedDetail.requiredCodeLetters} code letters`,
+      },
+    ];
+
+    for (const judge of completedDetail.judges) {
+      if (judge.firstScoredAt) {
+        events.push({
+          at: new Date(judge.firstScoredAt).getTime(),
+          title: `${judge.name} started scoring`,
+          detail: formatCardDateTime(judge.firstScoredAt),
+        });
+      }
+      if (judge.submittedAt) {
+        events.push({
+          at: new Date(judge.submittedAt).getTime(),
+          title: `${judge.name} submitted`,
+          detail: formatCardDateTime(judge.submittedAt),
+        });
+      } else {
+        events.push({
+          at: new Date(completedDetail.createdAt).getTime(),
+          title: `${judge.name} pending`,
+          detail: "No submission recorded",
+        });
+      }
+    }
+
+    events.push({
+      at: new Date(completedDetail.createdAt).getTime() + 1,
+      title: "Judgment completion",
+      detail: completedDetail.completionSummary,
+    });
+
+    return events.sort((a, b) => a.at - b.at);
+  }, [completedDetail, formatCardDateTime]);
 
   const canGenerate = Boolean(wizardProgramme) && selectedJudgeIds.length > 0;
   const hasUnsavedWizardInputs =
@@ -1120,7 +1180,7 @@ export function JudgmentWizardClient({
         open={Boolean(completedDetail)}
         onOpenChange={(open) => !open && setCompletedDetail(null)}
       >
-        <DialogContent className="max-h-[min(90dvh,720px)] w-[calc(100%-1rem)] max-w-2xl overflow-y-auto p-4 sm:w-[calc(100%-1.5rem)] sm:p-6">
+        <DialogContent className="max-h-[min(90dvh,720px)] w-[calc(100%-1rem)] max-w-2xl overflow-y-auto p-3 sm:w-[calc(100%-1.5rem)] sm:p-6">
           {completedDetail ? (
             <>
               <DialogHeader>
@@ -1130,7 +1190,7 @@ export function JudgmentWizardClient({
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-3">
+              <div className="space-y-2.5 sm:space-y-3">
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
                     <p className="text-[10px] uppercase text-muted-foreground">Status</p>
@@ -1155,45 +1215,52 @@ export function JudgmentWizardClient({
                 </div>
 
                 <div className="rounded-lg border bg-card/60 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Timeline
-                  </p>
-                  <div className="mt-2 space-y-2">
-                    <div className="flex items-start gap-2">
-                      <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border bg-background text-[10px] font-semibold">
-                        1
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Configuration created</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {formatCardDateTime(completedDetail.createdAt)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border bg-background text-[10px] font-semibold">
-                        2
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Judge submissions</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {completedDetail.judges.filter((j) => j.submittedAt).length}/
-                          {completedDetail.judges.length} submitted
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border bg-background text-[10px] font-semibold">
-                        3
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Completion</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {completedDetail.completionSummary}
-                        </p>
-                      </div>
-                    </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Timeline
+                    </p>
+                    <Badge variant="outline" className="h-5 text-[10px]">
+                      {completedDetailTimeline.length} events
+                    </Badge>
                   </div>
+                  <Accordion type="single" collapsible className="mt-2 rounded-md border border-border/70 bg-background/70 px-2.5">
+                    <AccordionItem value="judgment-timeline" className="border-b-0">
+                      <AccordionTrigger className="py-2 hover:no-underline">
+                        <div className="flex min-w-0 items-center gap-2 text-left">
+                          <span className="truncate text-[11px] font-semibold sm:text-[12px]">
+                            Timeline events
+                          </span>
+                          <span className="truncate text-[10px] text-muted-foreground">
+                            {completedDetailTimeline.length} total
+                          </span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pb-2 pt-0">
+                        <div className="grid gap-1.5 sm:grid-cols-2">
+                          {completedDetailTimeline.map((event, index) => (
+                            <div
+                              key={`${event.title}-${index}`}
+                              className="rounded-md border border-border/70 bg-linear-to-br from-background via-background to-muted/30 px-2.5 py-2"
+                            >
+                              <div className="flex items-start gap-2">
+                                <span className="inline-flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full border border-violet-400/40 bg-violet-500/10 text-[9px] font-semibold text-violet-700 dark:text-violet-300">
+                                  {index + 1}
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="truncate text-[11px] font-semibold sm:text-[12px]">
+                                    {event.title}
+                                  </p>
+                                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                                    {event.detail}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
                 </div>
 
                 <div className="rounded-lg border bg-card/60 p-3">
@@ -1204,13 +1271,15 @@ export function JudgmentWizardClient({
                     {completedDetail.judges.map((judge) => (
                       <div
                         key={judge.id}
-                        className="flex items-center justify-between rounded-md border bg-background px-2.5 py-2 text-xs"
+                        className="flex flex-col items-start justify-between gap-0.5 rounded-md border bg-background px-2.5 py-2 text-xs sm:flex-row sm:items-center"
                       >
                         <span className="font-medium">{judge.name}</span>
                         <span className="text-muted-foreground">
                           {judge.submittedAt
-                            ? formatCardDateTime(judge.submittedAt)
-                            : "Not submitted"}
+                            ? `Submitted ${formatCardDateTime(judge.submittedAt)}`
+                            : judge.firstScoredAt
+                              ? `Opened/started ${formatCardDateTime(judge.firstScoredAt)}`
+                              : "Not opened"}
                         </span>
                       </div>
                     ))}

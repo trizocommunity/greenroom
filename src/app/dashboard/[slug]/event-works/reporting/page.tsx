@@ -51,7 +51,7 @@ export default async function ProgrammeReportingPage({
     db.query.programmeAssignment.findMany({
       where: eq(assignmentTable.festivalId, festival.id),
       with: {
-        student: { columns: { name: true } },
+        student: { columns: { name: true, chestNumber: true } },
         group: { columns: { name: true, id: true } },
       },
       columns: {
@@ -87,6 +87,7 @@ export default async function ProgrammeReportingPage({
     programmeId: row.programmeId,
     studentId: row.studentId ?? null,
     studentName: (row as any).student?.name ?? null,
+    chestNumber: (row as any).student?.chestNumber ?? null,
     groupId: row.groupId ?? (row as any).group?.id ?? null,
     groupName: (row as any).group?.name ?? null,
     teamNumber: row.teamNumber ?? null,

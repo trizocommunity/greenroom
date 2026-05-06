@@ -28,6 +28,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -121,6 +127,15 @@ function generateCodeLetters(count: number): string[] {
     letters.push(value);
   }
   return letters;
+}
+
+function formatHistoryTime(value: Date | string): string {
+  const date = value instanceof Date ? value : new Date(value);
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(date);
 }
 
 export function ProgrammeReportingClient({
@@ -334,7 +349,7 @@ export function ProgrammeReportingClient({
         id: item.id,
         title: item.programme?.name ?? "Unknown programme",
         badge: reportingSessionStatusLabel(status),
-        metaPrimary: `${item.stage?.name ?? "No stage"} • ${new Date(item.startTime).toLocaleTimeString()}`,
+        metaPrimary: `${item.stage?.name ?? "No stage"} • ${formatHistoryTime(item.startTime)}`,
         metaSecondary: `${item.programme?.category?.name ?? "No category"} • ${item.programme?.type ?? "—"}`,
         detailSummary: `${item.reportingSession?.programmeReportedParticipants.length ?? 0} reported • ${item.reportingSession?.programmeCodeLetters.length ?? 0} codes`,
       }));
@@ -354,6 +369,15 @@ export function ProgrammeReportingClient({
         reportedCount: number;
         codeCount: number;
         rows: Array<{ label: string; group: string; code: string }>;
+        participantTimeline: Array<{
+          key: string;
+          label: string;
+          chestOrTeam: string;
+          group: string;
+          reportedAt: string | null;
+          spunAt: string | null;
+          code: string;
+        }>;
       }
     >();
 
@@ -372,9 +396,13 @@ export function ProgrammeReportingClient({
       );
       const assignedCodes = item.reportingSession?.programmeCodeLetters ?? [];
       const codeByStudentId = new Map<string, string>();
+      const spunAtByStudentId = new Map<string, string>();
       for (const c of assignedCodes) {
         for (const recipient of c.programmeCodeLetterRecipients) {
           codeByStudentId.set(recipient.studentId, c.code);
+          if (c.issuedAt) {
+            spunAtByStudentId.set(recipient.studentId, c.issuedAt);
+          }
         }
       }
 
@@ -414,6 +442,67 @@ export function ProgrammeReportingClient({
               code: row.studentId ? (codeByStudentId.get(row.studentId) ?? "—") : "—",
             }));
 
+      const reportedByAssignmentId = new Map(
+        (item.reportingSession?.programmeReportedParticipants ?? []).map((r) => [
+          r.assignmentId,
+          r,
+        ]),
+      );
+
+      const participantTimeline =
+        programmeType === "GROUP"
+          ? Array.from(
+              programmeAssignments.reduce(
+                (acc, row) => {
+                  const key = `${row.groupId ?? "no-group"}::${row.teamNumber ?? 0}`;
+                  const current = acc.get(key) ?? [];
+                  current.push(row);
+                  acc.set(key, current);
+                  return acc;
+                },
+                new Map<string, ProgrammeReportingAssignmentRow[]>(),
+              ),
+            ).map(([teamKey, members]) => {
+              const lead = members[0];
+              const firstReported = members
+                .map((m) => reportedByAssignmentId.get(m.id))
+                .find(Boolean);
+              const firstStudentId = members.find((m) => m.studentId)?.studentId ?? null;
+              const code = firstStudentId ? (codeByStudentId.get(firstStudentId) ?? "—") : "—";
+              const spunAt = firstStudentId
+                ? (spunAtByStudentId.get(firstStudentId) ?? null)
+                : null;
+              const teamLabel = lead?.teamNumber
+                ? `Team ${lead.teamNumber}`
+                : "Team";
+
+              return {
+                key: teamKey,
+                label: lead?.groupName ?? "Group",
+                chestOrTeam: teamLabel,
+                group: lead?.groupName ?? "—",
+                reportedAt: firstReported?.reportedAt ?? null,
+                spunAt,
+                code,
+              };
+            })
+          : programmeAssignments.map((row) => {
+              const reported = reportedByAssignmentId.get(row.id);
+              const code = row.studentId ? (codeByStudentId.get(row.studentId) ?? "—") : "—";
+              const spunAt = row.studentId
+                ? (spunAtByStudentId.get(row.studentId) ?? null)
+                : null;
+              return {
+                key: row.id,
+                label: row.studentName ?? "—",
+                chestOrTeam: row.chestNumber ? `Chest ${row.chestNumber}` : "Chest —",
+                group: row.groupName ?? "—",
+                reportedAt: reported?.reportedAt ?? null,
+                spunAt,
+                code,
+              };
+            });
+
       details.set(item.id, {
         programmeName: item.programme?.name ?? "Unknown programme",
         categoryName: item.programme?.category?.name ?? "No category",
@@ -444,6 +533,7 @@ export function ProgrammeReportingClient({
         reportedCount: reportedIds.size,
         codeCount: assignedCodes.length,
         rows,
+        participantTimeline,
       });
     }
 
@@ -1524,7 +1614,7 @@ export function ProgrammeReportingClient({
           if (!open) setHistoryDetailOpenId(null);
         }}
       >
-        <DialogContent className="max-h-[min(88dvh,720px)] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="max-h-[min(88dvh,720px)] overflow-y-auto p-3 sm:max-w-2xl sm:p-6">
           {historyDetail ? (
             <>
               <DialogHeader>
@@ -1533,7 +1623,7 @@ export function ProgrammeReportingClient({
                   {historyDetail.stageName} • {historyDetail.startTimeLabel}
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-3">
+              <div className="space-y-2.5 sm:space-y-3">
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                   <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
                     <p className="text-[10px] uppercase text-muted-foreground">Status</p>
@@ -1561,54 +1651,106 @@ export function ProgrammeReportingClient({
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Timeline
                   </p>
-                  <div className="mt-2 space-y-2">
-                    {historyDetail.timeline.map((step, index) => (
-                      <div key={`${step.title}-${index}`} className="flex items-start gap-2">
-                        <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border bg-background text-[10px] font-semibold">
-                          {index + 1}
+                  <Accordion type="single" collapsible className="mt-2 rounded-md border border-border/70 bg-background/70 px-2.5">
+                    <AccordionItem value="reporting-timeline" className="border-b-0">
+                      <AccordionTrigger className="py-2 hover:no-underline">
+                        <div className="flex min-w-0 items-center gap-2 text-left">
+                          <span className="truncate text-[11px] font-semibold sm:text-[12px]">
+                            Timeline events
+                          </span>
+                          <span className="truncate text-[10px] text-muted-foreground">
+                            {historyDetail.timeline.length + historyDetail.participantTimeline.length} total
+                          </span>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium">{step.title}</p>
-                          <p className="text-[11px] text-muted-foreground">{step.at}</p>
-                          {step.note ? (
-                            <p className="text-[11px] text-muted-foreground/90">{step.note}</p>
-                          ) : null}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pb-2 pt-0">
+                        <div className="space-y-2">
+                          <div>
+                            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              Reporting timeline
+                            </p>
+                            <div className="grid gap-1.5 sm:grid-cols-2">
+                              {historyDetail.timeline.map((step, index) => (
+                                <div
+                                  key={`${step.title}-${index}`}
+                                  className="rounded-md border border-border/70 bg-linear-to-br from-background via-background to-muted/30 px-2.5 py-2"
+                                >
+                                  <div className="flex items-start gap-2">
+                                    <span className="inline-flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full border border-violet-400/40 bg-violet-500/10 text-[9px] font-semibold text-violet-700 dark:text-violet-300">
+                                      {index + 1}
+                                    </span>
+                                    <div className="min-w-0">
+                                      <p className="truncate text-[11px] font-semibold sm:text-[12px]">
+                                        {step.title}
+                                      </p>
+                                      <p className="mt-0.5 text-[10px] text-muted-foreground">
+                                        {step.at}
+                                      </p>
+                                      {step.note ? (
+                                        <p className="text-[10px] text-muted-foreground/90">
+                                          {step.note}
+                                        </p>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
 
-                <div className="overflow-hidden rounded-lg border">
-                  <div className="grid grid-cols-12 bg-muted/40 px-3 py-2 text-[11px] font-semibold uppercase text-muted-foreground">
-                    <span className="col-span-6">
-                      {historyDetail.type === "GROUP" ? "Team" : "Student"}
-                    </span>
-                    <span className="col-span-4">Group</span>
-                    <span className="col-span-2 text-right">Code</span>
-                  </div>
-                  <div className="max-h-[45vh] divide-y overflow-y-auto">
-                    {historyDetail.rows.length ? (
-                      historyDetail.rows.map((row) => (
-                        <div
-                          key={`${row.label}-${row.group}-${row.code}`}
-                          className="grid grid-cols-12 items-center px-3 py-2 text-sm"
-                        >
-                          <span className="col-span-6 truncate font-medium">{row.label}</span>
-                          <span className="col-span-4 truncate text-muted-foreground">
-                            {row.group}
-                          </span>
-                          <span className="col-span-2 text-right font-mono text-xs">
-                            {row.code}
-                          </span>
+                          <div>
+                            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              {historyDetail.type === "GROUP"
+                                ? "Team reported timeline"
+                                : "Participant reported timeline"}
+                            </p>
+                            {historyDetail.participantTimeline.length ? (
+                              <div className="grid gap-1.5 sm:grid-cols-2">
+                                {historyDetail.participantTimeline.map((entry, index) => (
+                                  <div
+                                    key={entry.key}
+                                    className="rounded-md border border-border/70 bg-background/70 px-2.5 py-2"
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="min-w-0">
+                                        <p className="truncate text-[11px] font-semibold sm:text-[12px]">
+                                          {index + 1}. {entry.label}
+                                        </p>
+                                        <p className="text-[10px] text-muted-foreground">
+                                          {entry.chestOrTeam} • {entry.group}
+                                        </p>
+                                      </div>
+                                      <span className="rounded border bg-violet-500/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-violet-700 dark:text-violet-300">
+                                        {entry.code}
+                                      </span>
+                                    </div>
+                                    <div className="mt-1 grid gap-1 text-[10px] text-muted-foreground">
+                                      <p>
+                                        Reported:{" "}
+                                        {entry.reportedAt
+                                          ? new Date(entry.reportedAt).toLocaleString()
+                                          : "—"}
+                                      </p>
+                                      <p>
+                                        Spun/Issued:{" "}
+                                        {entry.spunAt
+                                          ? new Date(entry.spunAt).toLocaleString()
+                                          : "Pending"}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-[11px] text-muted-foreground">
+                                No reported entries captured for this session.
+                              </p>
+                            )}
+                          </div>
                         </div>
-                      ))
-                    ) : (
-                      <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-                        No reported entries captured for this session.
-                      </p>
-                    )}
-                  </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
                 </div>
               </div>
             </>
