@@ -103,6 +103,15 @@ type JudgedProgrammeCard = {
   }>;
 };
 
+/** Snapshot shape for React Query; server actions infer narrower DB enums that clash with `initialData`. */
+type JudgmentDashboardQueryData = {
+  judgeProgrammes: Programme[];
+  rejudgeProgrammes: Programme[];
+  judges: Judge[];
+  activeConfigs: ActiveConfig[];
+  judgedProgrammes: JudgedProgrammeCard[];
+};
+
 function normalizeJudgeName(name: string) {
   return name.trim().replace(/\s+/g, " ").toLocaleLowerCase();
 }
@@ -125,13 +134,7 @@ export function JudgmentWizardClient({
   initialDashboardData,
 }: {
   festivalId: string;
-  initialDashboardData: {
-    judgeProgrammes: Programme[];
-    rejudgeProgrammes: Programme[];
-    judges: Judge[];
-    activeConfigs: ActiveConfig[];
-    judgedProgrammes: JudgedProgrammeCard[];
-  };
+  initialDashboardData: JudgmentDashboardQueryData;
 }) {
   const formatCardDateTime = useCallback(
     (value: string | Date) =>
@@ -204,9 +207,10 @@ export function JudgmentWizardClient({
   const [lastCreatedConfigId, setLastCreatedConfigId] = useState<string | null>(
     null,
   );
-  const dashboardQuery = useQuery({
+  const dashboardQuery = useQuery<JudgmentDashboardQueryData>({
     queryKey: queryKeys.judgment.dashboard(festivalId),
-    queryFn: () => getJudgmentDashboardDataAction(festivalId),
+    queryFn: () =>
+      getJudgmentDashboardDataAction(festivalId) as Promise<JudgmentDashboardQueryData>,
     initialData: initialDashboardData,
     enabled: Boolean(festivalId),
     staleTime: 0,

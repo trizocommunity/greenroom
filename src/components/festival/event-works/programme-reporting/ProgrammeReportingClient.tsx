@@ -344,7 +344,7 @@ export function ProgrammeReportingClient({
       }
     };
 
-    const getHistoryTimestamp = (item: BoardItem) => {
+    const getHistoryTimestamp = (item: ReportingBoardItem) => {
       const endedAt = item.reportingSession?.endedAt
         ? parseStoredInstant(item.reportingSession.endedAt).getTime()
         : Number.NaN;
