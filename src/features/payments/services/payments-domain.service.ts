@@ -15,7 +15,7 @@ import {
 } from "@/features/payments/services/razorpay.service";
 
 type PaymentPurpose = "FESTIVAL_CREATION";
-type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "REFUNDED";
+type PaymentStatus = "PENDING" | "PAID" | "FAILED";
 type Tier = "BASIC" | "STANDARD" | "PRO";
 
 type InitiatePaymentParams = {
@@ -141,8 +141,12 @@ export async function verifyPaymentDomain(
       status: "PAID",
       referenceId: razorpayPaymentId,
     })
-    .where(eq(payment.id, paymentId))
+    .where(and(eq(payment.id, paymentId), eq(payment.status, "PENDING")))
     .returning();
+
+  if (updated.length === 0) {
+    throw new Error("Payment already processed");
+  }
 
   const updatedPayment = updated[0];
 

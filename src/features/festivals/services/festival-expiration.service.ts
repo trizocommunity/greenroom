@@ -1,6 +1,10 @@
 /**
  * Festival expiration: snapshot results, delete non-retained data, set EXPIRED.
  * All plans use fixed 30-day duration; no read-only after expiry.
+ *
+ * Lifecycle:
+ *   READY/ONGOING/PAST → pre-archival (7 days before expiresAt)
+ *   pre-archival → EXPIRED → deleted (via cron at/after expiresAt)
  */
 
 import { eq, lt, ne } from "drizzle-orm";
@@ -176,14 +180,14 @@ export const FestivalExpirationService = {
         metadata: { snapshotCount: publishedResults.length },
       } as any);
 
-      // 4. Update festival
+      // 4. Update festival — resultPdfUrl intentionally left null so
+      // on-demand PDF generation is used (avoids stale stored PDFs)
       const now = new Date();
       await tx
         .update(festivals)
         .set({
           status: "EXPIRED",
           expiredAt: now.toISOString(),
-          resultPdfUrl: null,
           studentsCount: 0,
           programmesCount: 0,
           stagesCount: 0,
@@ -251,6 +255,21 @@ export const FestivalExpirationService = {
     }
 
     return Buffer.from(doc.output("arraybuffer"));
+  },
+
+  /**
+   * Process all festivals that are within the pre-archival window. Idempotent.
+   */
+  async runPreArchivalCycle(): Promise<{ processed: number }> {
+    const approaching = await this.getFestivalsApproachingExpiry();
+    for (const f of approaching) {
+      try {
+        await this.preArchiveFestival(f.id);
+      } catch (err) {
+        console.error(`[Pre-Archival] Failed for festival ${f.slug}:`, err);
+      }
+    }
+    return { processed: approaching.length };
   },
 
   /**

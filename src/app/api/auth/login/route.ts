@@ -25,9 +25,16 @@ export async function POST(request: Request) {
 
     const user = await findUserByEmail(email);
 
-    if (!user || user.isActive === false) {
+    if (!user) {
       return NextResponse.json(
-        { error: "Invalid credentials or inactive account" },
+        { error: "Invalid credentials" },
+        { status: 401 },
+      );
+    }
+
+    if (user.isActive === false) {
+      return NextResponse.json(
+        { error: "Account is inactive" },
         { status: 401 },
       );
     }

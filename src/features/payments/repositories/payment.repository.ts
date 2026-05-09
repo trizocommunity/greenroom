@@ -4,7 +4,7 @@ import { db } from "@/core/database/client";
 import { payment } from "@/core/database/schema";
 
 export type Payment = typeof payment.$inferSelect;
-export type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "REFUNDED";
+export type PaymentStatus = "PENDING" | "PAID" | "FAILED";
 export type Tier = "BASIC" | "STANDARD" | "PRO";
 
 export type CreatePaymentInput = {
@@ -104,7 +104,7 @@ export async function updatePaymentStatus(
       status,
       ...(razorpayId && { referenceId: razorpayId }),
     })
-    .where(eq(payment.id, id))
+    .where(and(eq(payment.id, id), eq(payment.status, "PENDING")))
     .returning();
   return result[0];
 }

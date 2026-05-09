@@ -4,15 +4,14 @@ import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
   category as categoryTable,
-  programmeCodeLetterRecipient as codeLetterRecipientTable,
   programmeCodeLetter as codeLetterTable,
+  programmeCodeLetterRecipient as codeLetterRecipientTable,
   programmeJudgeSession as judgeSessionTable,
   programme as programmeTable,
   programmeReportingSession as prsTable,
   programmeReportedParticipant as reportedParticipantTable,
   result as resultTable,
   scheduleEntry as scheduleEntryTable,
-  stage as stageTable,
   student as studentTable,
 } from "@/core/database/schema";
 import { CodeLetterGeneratorService } from "./code-letter-generator.service";
@@ -354,21 +353,8 @@ export const ProgrammeReportingService = {
     const now = new Date().toISOString();
 
     await db.transaction(async (tx) => {
-      const codeLetters = await tx.query.programmeCodeLetter.findMany({
-        where: eq(codeLetterTable.reportingSessionId, reportingSessionId),
-        columns: { id: true },
-      });
+      await CodeLetterGeneratorService.clearSessionCodeLetters(reportingSessionId);
 
-      if (codeLetters.length > 0) {
-        const codeLetterIds = codeLetters.map((cl) => cl.id);
-        await tx
-          .delete(codeLetterRecipientTable)
-          .where(inArray(codeLetterRecipientTable.codeLetterId, codeLetterIds));
-      }
-
-      await tx
-        .delete(codeLetterTable)
-        .where(eq(codeLetterTable.reportingSessionId, reportingSessionId));
       await tx
         .delete(reportedParticipantTable)
         .where(
@@ -1022,7 +1008,6 @@ export const ProgrammeReportingService = {
       session.programmeReportedParticipants,
       actorName,
     );
-
     // Session remains IN_PROGRESS to allow more participants to report and spin
     // Session status and programme status will be updated via a separate close action
 

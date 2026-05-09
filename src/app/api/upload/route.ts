@@ -83,7 +83,7 @@ export async function POST(request: Request) {
     const folderPath = `greenroom/festivals/${folder}`;
     const signatureString = `folder=${folderPath}&timestamp=${timestamp}${apiSecret}`;
     const signature = crypto
-      .createHash("sha1")
+      .createHash("sha256")
       .update(signatureString)
       .digest("hex");
 

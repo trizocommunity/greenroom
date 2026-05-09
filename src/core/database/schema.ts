@@ -54,7 +54,6 @@ export const paymentStatus = pgEnum("PaymentStatus", [
   "PENDING",
   "PAID",
   "FAILED",
-  "REFUNDED",
 ]);
 export const programmeNotificationEventType = pgEnum(
   "ProgrammeNotificationEventType",
@@ -1464,6 +1463,11 @@ export const payment = pgTable(
       table.purpose.asc().nullsLast(),
       table.status.asc().nullsLast(),
     ),
+    uniqueIndex("payment_userId_purpose_pending_unique_idx").using(
+      "btree",
+      table.userId.asc().nullsLast(),
+      table.purpose.asc().nullsLast(),
+    ).where(sql`${table.status} = 'PENDING' AND ${table.used} = false`),
     foreignKey({
       columns: [table.userId],
       foreignColumns: [user.id],

@@ -43,6 +43,7 @@ export function StatusStrip({
                 "flex items-center gap-1",
                 daysRemaining < 10 && "text-destructive font-medium",
               )}
+              suppressHydrationWarning
             >
               <Clock className="h-3 w-3" />
               {daysRemaining}d left

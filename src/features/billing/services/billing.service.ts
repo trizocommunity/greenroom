@@ -31,7 +31,7 @@ export async function consumePayment(
       used: true,
       festivalId: metadata.festivalId,
     })
-    .where(eq(payment.id, paymentId))
+    .where(and(eq(payment.id, paymentId), eq(payment.used, false)))
     .returning();
   return result[0];
 }
