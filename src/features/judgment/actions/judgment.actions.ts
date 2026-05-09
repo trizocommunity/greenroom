@@ -335,7 +335,7 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
               return {
                 label,
                 groupName: r.group?.name ?? null,
-                categoryName: null,
+                categoryName: null as string | null,
                 codeLetter: r.student?.id
                   ? (codeByStudentId.get(r.student.id) ?? null)
                   : null,
@@ -420,7 +420,9 @@ export async function getActiveJudgmentConfigsAction(festivalId: string) {
     judgingMode: c.judgingMode as "SINGLE" | "GROUP",
     judges: c.judges.map((j) => ({ id: j.judge.id, name: j.judge.name })),
     activeLinkId: c.links[0]?.id ?? null,
-    judgmentStatus: c.links[0]?.id ? "LINK_ACTIVE" : "SCORING_IN_PROGRESS",
+    judgmentStatus: (c.links[0]?.id
+      ? "LINK_ACTIVE"
+      : "SCORING_IN_PROGRESS") as ProgrammeJudgmentStatus,
   }));
 }
 

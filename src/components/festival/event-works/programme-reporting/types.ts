@@ -23,6 +23,9 @@ export type ReportingBoardItem = {
   reportingSession: {
     id: string;
     status: string;
+    /** Present when loaded from DB; used for history sort */
+    endedAt?: string | null;
+    updatedAt?: string | null;
     windowEndsAt: Date | null;
     isLocked: boolean;
     programmeReportedParticipants: Array<{
