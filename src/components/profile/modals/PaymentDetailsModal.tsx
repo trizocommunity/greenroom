@@ -19,6 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { parseStoredInstant } from "@/core/utils/date-time";
 
 interface PaymentDetailsModalProps {
   isOpen: boolean;
@@ -32,6 +33,9 @@ export function PaymentDetailsModal({
   payment,
 }: PaymentDetailsModalProps) {
   if (!payment) return null;
+  const createdAt = payment.createdAt
+    ? parseStoredInstant(payment.createdAt)
+    : null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -86,9 +90,7 @@ export function PaymentDetailsModal({
                   Date
                 </div>
                 <p className="font-semibold text-sm">
-                  {payment.createdAt
-                    ? format(new Date(payment.createdAt), "PPP p")
-                    : "N/A"}
+                  {createdAt ? format(createdAt, "PPP p") : "N/A"}
                 </p>
               </div>
 

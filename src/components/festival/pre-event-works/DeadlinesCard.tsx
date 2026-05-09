@@ -4,6 +4,7 @@ import { format, isPast } from "date-fns";
 import { CalendarClock } from "lucide-react";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { Badge } from "@/components/ui/badge";
+import { parseStoredInstant } from "@/core/utils/date-time";
 
 export function DeadlinesCard({
   isLockedOverride,
@@ -16,7 +17,7 @@ export function DeadlinesCard({
 
   if (!deadline) return null;
 
-  const deadlineDate = new Date(deadline);
+  const deadlineDate = parseStoredInstant(deadline);
   const isExpired = isLockedOverride ?? isPast(deadlineDate);
 
   return (

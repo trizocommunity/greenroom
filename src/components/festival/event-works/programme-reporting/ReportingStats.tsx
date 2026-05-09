@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { CheckCircle2, Clock, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { parseStoredInstant } from "@/core/utils/date-time";
 
 interface ReportingStatsProps {
   stats: {
@@ -67,7 +68,7 @@ export function ReportingStats({ stats }: ReportingStatsProps) {
             </p>
             <p className="text-lg font-bold truncate">
               {stats.estimatedEnd
-                ? format(new Date(stats.estimatedEnd), "h:mm a")
+                ? format(parseStoredInstant(stats.estimatedEnd), "h:mm a")
                 : "Calculating..."}
             </p>
           </div>

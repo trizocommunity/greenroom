@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { getSession } from "@/core/auth/session";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 
 /**
@@ -21,7 +22,7 @@ export async function downloadExpiredFestivalResultsPdfAction(
 
   const isExpired =
     festival.status === "EXPIRED" ||
-    (festival.expiresAt && new Date(festival.expiresAt) < new Date());
+    (festival.expiresAt && parseStoredInstant(festival.expiresAt) < new Date());
   if (!isExpired) redirect("/profile");
 
   redirect(`/api/profile/festivals/${festivalId}/expired-results-pdf`);

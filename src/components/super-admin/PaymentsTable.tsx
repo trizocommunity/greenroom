@@ -30,6 +30,7 @@ import {
   type Payment,
   useSuperAdminPayments,
 } from "@/features/payments/hooks/use-super-admin-payments";
+import { parseStoredInstant } from "@/core/utils/date-time";
 
 const columns: ColumnDef<Payment>[] = [
   {
@@ -46,7 +47,10 @@ const columns: ColumnDef<Payment>[] = [
       );
     },
     cell: ({ row }) =>
-      format(new Date(row.getValue("createdAt")), "dd MMM yyyy, hh:mm a"),
+      format(
+        parseStoredInstant(row.getValue("createdAt") as string | Date),
+        "dd MMM yyyy, hh:mm a",
+      ),
   },
   {
     accessorKey: "user.fullName",

@@ -33,6 +33,10 @@ function assignmentOf(r: any) {
   return r.programmeAssignment ?? r.assignment;
 }
 
+function resultPointsOf(r: any): number {
+  return (r?.awardPoints ?? r?.points ?? 0) as number;
+}
+
 // Types matching what's passed from the page
 interface LeaderboardClientProps {
   festival: {
@@ -94,6 +98,7 @@ export function LeaderboardClient({
       string,
       { name: string; points: number; isGroup: boolean }
     > = {};
+    const countedGroupProgrammeTeams = new Set<string>();
 
     scopedResults.forEach((r) => {
       let teamName = "Unknown";
@@ -119,7 +124,17 @@ export function LeaderboardClient({
       if (!standings[teamName]) {
         standings[teamName] = { name: teamName, points: 0, isGroup };
       }
-      standings[teamName].points += r.points || 0;
+
+      // GROUP programmes create one result row per member assignment.
+      // Count once per team per programme to avoid double counting.
+      if (r.programme?.type === "GROUP" && a.group?.id) {
+        const teamNumber = a.teamNumber ?? 1;
+        const teamProgrammeKey = `${r.programme.id}:${a.group.id}:${teamNumber}`;
+        if (countedGroupProgrammeTeams.has(teamProgrammeKey)) return;
+        countedGroupProgrammeTeams.add(teamProgrammeKey);
+      }
+
+      standings[teamName].points += resultPointsOf(r);
     });
 
     return Object.values(standings)
@@ -180,7 +195,7 @@ export function LeaderboardClient({
           points: 0,
         };
       }
-      byStudent[sid].points += r.points ?? 0;
+      byStudent[sid].points += resultPointsOf(r);
     });
 
     return Object.values(byStudent)
@@ -202,6 +217,14 @@ export function LeaderboardClient({
     if (!groupName) return [];
     return (publishedStandings ?? []).filter((t: any) => t?.name === groupName);
   }, [groups, publishedStandings, studentFilterGroup]);
+
+  const hasStandingsChanges = useMemo(() => {
+    const normalize = (items: Array<{ name: string; points: number }>) =>
+      items.map((item) => ({ name: item.name, points: Number(item.points ?? 0) }));
+    const live = normalize(teamStandings);
+    const published = normalize(publishedStandings ?? []);
+    return JSON.stringify(live) !== JSON.stringify(published);
+  }, [publishedStandings, teamStandings]);
 
   const [updatingStandingsId, setUpdatingStandingsId] = useState<string | null>(
     null,
@@ -270,7 +293,7 @@ export function LeaderboardClient({
                   }
                 });
               }}
-              disabled={isPending}
+              disabled={isPending || !hasStandingsChanges}
               title="Publish Standings"
             >
               {isPending && updatingStandingsId === "standings" ? (

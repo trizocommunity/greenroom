@@ -67,6 +67,11 @@ export const ERROR_MESSAGES = {
   PROGRAMME_HAS_ASSIGNMENTS:
     "Cannot delete a programme that has existing assignments.",
 
+  // ─── Judges ───────────────────────────────────────────────────────────────
+  JUDGE_NAME_REQUIRED: "Judge name is required.",
+  JUDGE_NAME_DUPLICATE: "Judge name already exists. Please use a unique name.",
+  JUDGE_NOT_FOUND: "Judge not found.",
+
   // ─── Assignments ──────────────────────────────────────────────────────────
   ASSIGNMENT_NOT_FOUND: "Assignment not found.",
   ASSIGNMENT_INVALID_FESTIVAL:

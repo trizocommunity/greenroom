@@ -1,3 +1,5 @@
+import { parseStoredInstant, toDateOrNull } from "@/core/utils/date-time";
+
 /**
  * Festival lifecycle status (READY, ONGOING, PAST, EXPIRED).
  * EXPIRED is set by the expiration cron; others can be derived from dates for display.
@@ -25,11 +27,11 @@ export function getDerivedFestivalStatus(
   const status = festival.status as DerivedFestivalStatus;
 
   if (status === "EXPIRED") return "EXPIRED";
-  if (festival.expiresAt && new Date(festival.expiresAt) <= now) {
+  if (festival.expiresAt && parseStoredInstant(festival.expiresAt) <= now) {
     return "EXPIRED";
   }
-  const startDate = festival.startDate ? new Date(festival.startDate) : null;
-  const endDate = festival.endDate ? new Date(festival.endDate) : null;
+  const startDate = toDateOrNull(festival.startDate);
+  const endDate = toDateOrNull(festival.endDate);
   if (endDate && now > endDate) return "PAST";
   // ONGOING only when we have both dates and now is inside [startDate, endDate]
   if (startDate && endDate && now >= startDate && now <= endDate) {
@@ -46,9 +48,7 @@ export const FESTIVAL_STATUS_LABELS: Record<DerivedFestivalStatus, string> = {
 };
 
 function toDate(value?: Date | string | null): Date | null {
-  if (!value) return null;
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+  return toDateOrNull(value);
 }
 
 function daysUntil(target: Date, now: Date): number {

@@ -35,11 +35,17 @@ import {
   result as resultTable,
 } from "@/core/database/schema";
 import { AppError } from "@/core/errors/errors";
+import type { ProgrammeJudgmentStatus } from "@/core/types/app-enums";
 import {
-  calculateGrade,
   calculatePosition,
 } from "@/features/results/services/results-calculator";
 import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
+import {
+  getScoringPolicyWithRules,
+  resolveScoringPolicy,
+  upsertScoringPolicyActionData,
+} from "@/features/judgment/services/scoring-policy.service";
+import { listFestivalJudgesWithAssignments } from "@/features/judges/repositories/judge.repository";
 
 function hashTokenSHA256(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -154,7 +160,7 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
           ),
         ),
       ),
-      columns: { id: true, name: true, status: true },
+      columns: { id: true, name: true, status: true, type: true },
       with: { category: { columns: { name: true } } },
       orderBy: [asc(programmeTable.name)],
     }),
@@ -163,15 +169,11 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
         eq(programmeTable.festivalId, festivalId),
         inArray(programmeTable.status, ["JUDGED", "ENDED"]),
       ),
-      columns: { id: true, name: true, status: true },
+      columns: { id: true, name: true, status: true, type: true },
       with: { category: { columns: { name: true } } },
       orderBy: [asc(programmeTable.name)],
     }),
-    db.query.judge.findMany({
-      where: eq(judgeTable.festivalId, festivalId),
-      columns: { id: true, name: true, description: true },
-      orderBy: [asc(judgeTable.name)],
-    }),
+    listFestivalJudgesWithAssignments(festivalId),
   ]);
 
   const programmeIds = Array.from(
@@ -199,7 +201,7 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
             programmeReportedParticipants: {
               orderBy: [asc(reportedParticipantTable.reportedAt)],
               with: {
-                student: { columns: { name: true, chestNumber: true } },
+                student: { columns: { id: true, name: true, chestNumber: true } },
                 group: { columns: { name: true } },
                 programmeAssignment: { columns: { teamNumber: true } },
               },
@@ -208,6 +210,36 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
         })
       : [];
 
+  const sessionIds = latestClosedSessions.map((s) => s.id);
+  const codeLettersBySessionId = new Map<
+    string,
+    Array<{ code: string; studentIds: string[] }>
+  >();
+
+  if (sessionIds.length > 0) {
+    const sessionCodeLetters = await db.query.programmeCodeLetter.findMany({
+      where: inArray(codeLetterTable.reportingSessionId, sessionIds),
+      columns: {
+        reportingSessionId: true,
+        code: true,
+      },
+      with: {
+        programmeCodeLetterRecipients: {
+          columns: { studentId: true },
+        },
+      },
+    });
+
+    for (const row of sessionCodeLetters) {
+      const bucket = codeLettersBySessionId.get(row.reportingSessionId) ?? [];
+      bucket.push({
+        code: row.code,
+        studentIds: row.programmeCodeLetterRecipients.map((r) => r.studentId),
+      });
+      codeLettersBySessionId.set(row.reportingSessionId, bucket);
+    }
+  }
+
   const reportingByProgrammeId = new Map<
     string,
     {
@@ -215,33 +247,117 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
       scheduleStart: string | null;
       scheduleEnd: string | null;
       reportedCount: number;
-      reportedStudents: string[];
+      reportedEntries: Array<{
+        label: string;
+        groupName: string | null;
+        categoryName: string | null;
+        codeLetter: string | null;
+      }>;
     }
   >();
+  const programmeTypeById = new Map<
+    string,
+    "INDIVIDUAL" | "GROUP"
+  >([
+    ...judgeProgrammes.map((p) => [p.id, p.type] as const),
+    ...rejudgeProgrammes.map((p) => [p.id, p.type] as const),
+  ]);
 
   for (const sessionRow of latestClosedSessions) {
     if (reportingByProgrammeId.has(sessionRow.programmeId)) continue;
-    const reportedStudents = sessionRow.programmeReportedParticipants
-      .map((r) => {
-        if (r.student?.name) {
-          return r.student.chestNumber
-            ? `${r.student.name} (${r.student.chestNumber})`
-            : r.student.name;
-        }
-        if (r.group?.name) {
-          const teamNo = r.teamNumber ?? r.programmeAssignment?.teamNumber;
-          return teamNo ? `${r.group.name} - Team ${teamNo}` : r.group.name;
-        }
-        return null;
-      })
-      .filter((x): x is string => Boolean(x));
+    const programmeType = programmeTypeById.get(sessionRow.programmeId) ?? "INDIVIDUAL";
+    const codeByStudentId = new Map<string, string>();
+    const sessionCodeLetters = codeLettersBySessionId.get(sessionRow.id) ?? [];
+    for (const codeLetter of sessionCodeLetters) {
+      for (const studentId of codeLetter.studentIds) {
+        codeByStudentId.set(studentId, codeLetter.code);
+      }
+    }
+
+    const reportedEntries =
+      programmeType === "GROUP"
+        ? (() => {
+            const teamMap = new Map<
+              string,
+              {
+                label: string;
+                groupName: string | null;
+                categoryName: string | null;
+                codeLetter: string | null;
+              }
+            >();
+
+            for (const r of sessionRow.programmeReportedParticipants) {
+              const teamNo = r.teamNumber ?? r.programmeAssignment?.teamNumber;
+              const groupName = r.group?.name ?? null;
+              const key = `${groupName ?? "no-group"}::${teamNo ?? "no-team"}`;
+              const label = groupName
+                ? teamNo
+                  ? `${groupName} - Team ${teamNo}`
+                  : groupName
+                : `Team ${teamNo ?? "—"}`;
+              const codeLetter = r.student?.id
+                ? (codeByStudentId.get(r.student.id) ?? null)
+                : null;
+
+              const existing = teamMap.get(key);
+              if (!existing) {
+                teamMap.set(key, {
+                  label,
+                  groupName,
+                  categoryName: null,
+                  codeLetter,
+                });
+                continue;
+              }
+
+              if (!existing.codeLetter && codeLetter) {
+                existing.codeLetter = codeLetter;
+              }
+            }
+
+            return Array.from(teamMap.values());
+          })()
+        : sessionRow.programmeReportedParticipants
+            .map((r) => {
+              const teamNo = r.teamNumber ?? r.programmeAssignment?.teamNumber;
+              const label = r.student?.name
+                ? r.student.chestNumber
+                  ? `${r.student.name} (${r.student.chestNumber})`
+                  : r.student.name
+                : r.group?.name
+                  ? teamNo
+                    ? `${r.group.name} - Team ${teamNo}`
+                    : r.group.name
+                  : null;
+              if (!label) return null;
+
+              return {
+                label,
+                groupName: r.group?.name ?? null,
+                categoryName: null,
+                codeLetter: r.student?.id
+                  ? (codeByStudentId.get(r.student.id) ?? null)
+                  : null,
+              };
+            })
+            .filter(
+              (
+                x,
+              ): x is {
+                label: string;
+                groupName: string | null;
+                categoryName: string | null;
+                codeLetter: string | null;
+              } => Boolean(x),
+            );
 
     reportingByProgrammeId.set(sessionRow.programmeId, {
       stageName: sessionRow.stage?.name ?? sessionRow.scheduleEntry?.stage?.name ?? null,
       scheduleStart: sessionRow.scheduleEntry?.startTime ?? null,
       scheduleEnd: sessionRow.scheduleEntry?.endTime ?? null,
-      reportedCount: reportedStudents.length,
-      reportedStudents,
+      reportedCount: reportedEntries.length,
+      reportedEntries,
     });
   }
 
@@ -250,6 +366,7 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
       id: p.id,
       name: p.name,
       status: p.status,
+      programmeType: p.type,
       programmeCategory: p.category?.name ?? null,
       reportingDetails: reportingByProgrammeId.get(p.id) ?? null,
     })),
@@ -257,6 +374,7 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
       id: p.id,
       name: p.name,
       status: p.status,
+      programmeType: p.type,
       programmeCategory: p.category?.name ?? null,
       reportingDetails: reportingByProgrammeId.get(p.id) ?? null,
     })),
@@ -302,6 +420,7 @@ export async function getActiveJudgmentConfigsAction(festivalId: string) {
     judgingMode: c.judgingMode as "SINGLE" | "GROUP",
     judges: c.judges.map((j) => ({ id: j.judge.id, name: j.judge.name })),
     activeLinkId: c.links[0]?.id ?? null,
+    judgmentStatus: c.links[0]?.id ? "LINK_ACTIVE" : "SCORING_IN_PROGRESS",
   }));
 }
 
@@ -341,6 +460,7 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
   const judgedCards = Array.from(latestWithScoresByProgramme.values()).map(
     (config) => {
       const judgeSubmittedAt = new Map<string, string>();
+      const judgeFirstScoredAt = new Map<string, string>();
       const byCodeLetter = new Map<
         string,
         {
@@ -351,6 +471,14 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
       >();
 
       for (const score of config.scores) {
+        const prevFirstScoredAt = judgeFirstScoredAt.get(score.judgeId);
+        if (
+          !prevFirstScoredAt ||
+          new Date(score.updatedAt) < new Date(prevFirstScoredAt)
+        ) {
+          judgeFirstScoredAt.set(score.judgeId, score.updatedAt);
+        }
+
         const prevSubmittedAt = judgeSubmittedAt.get(score.judgeId);
         if (
           !prevSubmittedAt ||
@@ -380,8 +508,49 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
           return { ...row, average };
         });
 
+      const requiredCodeLetters = codeLetterRows.length;
+      const assignedJudgeCount = config.judges.length;
+      const judgeProgress = config.judges.map((j) => {
+        const judgeCodeLetters = new Set(
+          config.scores
+            .filter((score) => score.judgeId === j.judge.id)
+            .map((score) => score.codeLetterId),
+        );
+        const scoredCount = judgeCodeLetters.size;
+        const isComplete =
+          requiredCodeLetters > 0 && scoredCount >= requiredCodeLetters;
+        return {
+          judgeId: j.judge.id,
+          judgeName: j.judge.name,
+          scoredCount,
+          requiredCount: requiredCodeLetters,
+          isComplete,
+        };
+      });
+      const judgesWithCompleteSet = judgeProgress.filter((j) => j.isComplete).length;
+      const isSingle = (config.judgingMode as "SINGLE" | "GROUP") === "SINGLE";
+      const isJudgmentComplete = isSingle
+        ? requiredCodeLetters > 0 &&
+          assignedJudgeCount > 0 &&
+          judgesWithCompleteSet === assignedJudgeCount
+        : config.scores.length > 0;
+      const judgmentStatus: ProgrammeJudgmentStatus = isJudgmentComplete
+        ? "COMPLETED"
+        : isSingle
+          ? judgesWithCompleteSet > 0
+            ? "AWAITING_JUDGES"
+            : "SCORING_IN_PROGRESS"
+          : "SCORING_IN_PROGRESS";
+      const completionSummary = isSingle
+        ? `${judgesWithCompleteSet}/${assignedJudgeCount} judges completed`
+        : `${config.scores.length} submitted score entries`;
+      const pendingJudgeNames = judgeProgress
+        .filter((j) => !j.isComplete)
+        .map((j) => j.judgeName);
+
       return {
         configId: config.id,
+        createdAt: config.createdAt,
         programmeId: config.programme.id,
         programmeName: config.programme.name,
         programmeStatus: config.programme.status,
@@ -391,10 +560,17 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
         judges: config.judges.map((j) => ({
           id: j.judge.id,
           name: j.judge.name,
+          firstScoredAt: judgeFirstScoredAt.get(j.judge.id) ?? null,
           submittedAt: judgeSubmittedAt.get(j.judge.id) ?? null,
         })),
         codeLetterRows,
+        requiredCodeLetters,
         totalJudgments: config.scores.length,
+        isJudgmentComplete,
+        judgmentStatus,
+        completionSummary,
+        judgeProgress,
+        pendingJudgeNames,
       };
     },
   );
@@ -903,7 +1079,8 @@ export async function submitJudgeScoresAction(
   const assignmentPoints = new Map<string, number>();
   const programmeRow = await db.query.programme.findFirst({
     where: eq(programmeTable.id, link.judgmentConfig.programmeId),
-    columns: { festivalId: true },
+    columns: { festivalId: true, categoryId: true, type: true },
+    with: { festival: { columns: { tier: true } } },
   });
   if (!programmeRow) throw new AppError("Programme not found.");
 
@@ -925,10 +1102,44 @@ export async function submitJudgeScoresAction(
   await db.transaction(async (tx) => {
     for (const [assignmentId, pts] of assignmentPoints.entries()) {
       judgedAssignmentIds.push(assignmentId);
-      const { grade, remarks } = calculateGrade(
-        pts,
-        link.judgmentConfig.scoreLimit,
-      );
+      const assignmentRow = await db.query.programmeAssignment.findFirst({
+        where: eq(assignmentTable.id, assignmentId),
+        columns: { groupId: true, teamNumber: true },
+      });
+
+      let participantsCount = 1;
+      if (programmeRow.type === "GROUP" && assignmentRow) {
+        const teamMembers = await db
+          .select({ id: assignmentTable.id })
+          .from(assignmentTable)
+          .where(
+            and(
+              eq(assignmentTable.programmeId, link.judgmentConfig.programmeId),
+              eq(assignmentTable.teamNumber, assignmentRow.teamNumber ?? 1),
+              assignmentRow.groupId
+                ? eq(assignmentTable.groupId, assignmentRow.groupId)
+                : sql`${assignmentTable.groupId} is null`,
+            ),
+          );
+        participantsCount = Math.max(1, teamMembers.length);
+      }
+
+      const policyResolved = await resolveScoringPolicy({
+        festivalId: programmeRow.festivalId,
+        programme: {
+          id: link.judgmentConfig.programmeId,
+          categoryId: programmeRow.categoryId,
+          type: programmeRow.type,
+        },
+        participantsCount,
+        points: pts,
+      });
+
+      const grade = policyResolved.grade;
+      const remarks =
+        policyResolved.grade === null
+          ? "No grade (below threshold)"
+          : "Grade resolved by scoring policy";
       const position = calculatePosition(pts, averages);
       await tx
         .insert(resultTable)
@@ -940,6 +1151,8 @@ export async function submitJudgeScoresAction(
           grade,
           position,
           points: pts,
+          awardPoints: policyResolved.awardPoints,
+          scoringPolicyVersion: policyResolved.policyVersion,
           remarks,
           isPublished: false,
           updatedAt: now,
@@ -950,6 +1163,8 @@ export async function submitJudgeScoresAction(
             grade,
             position,
             points: pts,
+            awardPoints: policyResolved.awardPoints,
+            scoringPolicyVersion: policyResolved.policyVersion,
             remarks,
             isPublished: false,
             updatedAt: now,
@@ -1014,6 +1229,167 @@ export async function submitJudgeScoresAction(
   return { success: true as const, judgmentComplete: shouldDeactivateLink };
 }
 
+export async function previewJudgeSubmissionSummaryAction(input: {
+  token: string;
+  scoresByJudgeId: Record<string, Record<string, number>>;
+}) {
+  const tokenHash = hashTokenSHA256(input.token);
+  const link = await db.query.judgmentLink.findFirst({
+    where: and(
+      eq(judgmentLinkTable.tokenHash, tokenHash),
+      eq(judgmentLinkTable.isActive, true),
+    ),
+    with: {
+      judgmentConfig: {
+        columns: {
+          id: true,
+          programmeId: true,
+          reportingSessionId: true,
+          scoreLimit: true,
+        },
+      },
+    },
+  });
+  if (!link) throw new AppError("Judgment link is invalid or expired.");
+
+  const assignedJudges = await db.query.judgmentConfigJudge.findMany({
+    where: eq(judgmentConfigJudgeTable.configId, link.configId),
+    columns: { judgeId: true },
+  });
+  const assignedJudgeIds = new Set(assignedJudges.map((row) => row.judgeId));
+  if (assignedJudgeIds.size === 0) {
+    throw new AppError("No judges are assigned for this judgment link.");
+  }
+
+  const codeLetters = await db.query.programmeCodeLetter.findMany({
+    where: and(
+      eq(codeLetterTable.programmeId, link.judgmentConfig.programmeId),
+      eq(
+        codeLetterTable.reportingSessionId,
+        link.judgmentConfig.reportingSessionId,
+      ),
+    ),
+    with: { programmeCodeLetterRecipients: true },
+  });
+  if (codeLetters.length === 0) throw new AppError("No code letters found.");
+  const validCodeLetterIds = new Set(codeLetters.map((c) => c.id));
+
+  for (const [judgeId, scoresByCodeLetterId] of Object.entries(
+    input.scoresByJudgeId,
+  )) {
+    if (!assignedJudgeIds.has(judgeId)) {
+      throw new AppError("Selected judge is not assigned.");
+    }
+    for (const [codeLetterId, score] of Object.entries(scoresByCodeLetterId)) {
+      if (!validCodeLetterIds.has(codeLetterId)) {
+        throw new AppError("Invalid code letter score payload.");
+      }
+      if (
+        !Number.isFinite(score) ||
+        score < 0 ||
+        score > link.judgmentConfig.scoreLimit
+      ) {
+        throw new AppError(
+          `Score must be between 0 and ${link.judgmentConfig.scoreLimit}.`,
+        );
+      }
+    }
+  }
+
+  const allScores = await db.query.judgmentScore.findMany({
+    where: eq(judgmentScoreTable.configId, link.configId),
+    columns: { judgeId: true, codeLetterId: true, score: true },
+  });
+  const mergedScores = new Map<string, number>();
+  for (const row of allScores) {
+    mergedScores.set(`${row.judgeId}:${row.codeLetterId}`, row.score);
+  }
+  for (const [judgeId, scoresByCodeLetterId] of Object.entries(
+    input.scoresByJudgeId,
+  )) {
+    for (const [codeLetterId, score] of Object.entries(scoresByCodeLetterId)) {
+      mergedScores.set(`${judgeId}:${codeLetterId}`, score);
+    }
+  }
+
+  const programmeRow = await db.query.programme.findFirst({
+    where: eq(programmeTable.id, link.judgmentConfig.programmeId),
+    columns: { festivalId: true, categoryId: true, type: true },
+  });
+  if (!programmeRow) throw new AppError("Programme not found.");
+
+  const rows: Array<{
+    codeLetterId: string;
+    code: string;
+    points: number;
+    grade: string | null;
+    awardPoints: number;
+  }> = [];
+
+  for (const codeLetter of codeLetters) {
+    const scoredValues: number[] = [];
+    for (const judgeId of assignedJudgeIds) {
+      const maybeScore = mergedScores.get(`${judgeId}:${codeLetter.id}`);
+      if (maybeScore !== undefined) scoredValues.push(maybeScore);
+    }
+    const average =
+      scoredValues.length > 0
+        ? scoredValues.reduce((sum, v) => sum + v, 0) / scoredValues.length
+        : 0;
+    const points = Math.round(average);
+
+    const firstRecipient = codeLetter.programmeCodeLetterRecipients[0];
+    let participantsCount = 1;
+    if (firstRecipient) {
+      const assignmentRow = await db.query.programmeAssignment.findFirst({
+        where: and(
+          eq(assignmentTable.programmeId, link.judgmentConfig.programmeId),
+          eq(assignmentTable.studentId, firstRecipient.studentId),
+        ),
+        columns: { groupId: true, teamNumber: true },
+      });
+
+      if (programmeRow.type === "GROUP" && assignmentRow) {
+        const teamMembers = await db
+          .select({ id: assignmentTable.id })
+          .from(assignmentTable)
+          .where(
+            and(
+              eq(assignmentTable.programmeId, link.judgmentConfig.programmeId),
+              eq(assignmentTable.teamNumber, assignmentRow.teamNumber ?? 1),
+              assignmentRow.groupId
+                ? eq(assignmentTable.groupId, assignmentRow.groupId)
+                : sql`${assignmentTable.groupId} is null`,
+            ),
+          );
+        participantsCount = Math.max(1, teamMembers.length);
+      }
+    }
+
+    const policyResolved = await resolveScoringPolicy({
+      festivalId: programmeRow.festivalId,
+      programme: {
+        id: link.judgmentConfig.programmeId,
+        categoryId: programmeRow.categoryId,
+        type: programmeRow.type,
+      },
+      participantsCount,
+      points,
+    });
+
+    rows.push({
+      codeLetterId: codeLetter.id,
+      code: codeLetter.code,
+      points,
+      grade: policyResolved.grade,
+      awardPoints: policyResolved.awardPoints,
+    });
+  }
+
+  rows.sort((a, b) => a.code.localeCompare(b.code));
+  return { rows };
+}
+
 export async function submitGroupJudgeScoresAction(input: {
   token: string;
   scoresByJudgeId: Record<string, Record<string, number>>;
@@ -1038,4 +1414,49 @@ export async function submitGroupJudgeScoresAction(input: {
     );
   }
   return last;
+}
+
+export async function getScoringPolicyAction(festivalId: string) {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
+  return getScoringPolicyWithRules(festivalId);
+}
+
+export async function saveScoringPolicyAction(input: {
+  festivalId: string;
+  noGradeBelow: number;
+  gradeRules: Array<{ grade: string; min: number; max: number }>;
+  awardRules: Array<{
+    criteriaType: "PARTICIPANT_RANGE" | "PROGRAMME_SET";
+    rowLabel?: string | null;
+    programmeIds?: string[] | null;
+    categoryId?: string | null;
+    minParticipants: number;
+    maxParticipants?: number | null;
+    grade: string;
+    awardPoints: number;
+    priority?: number;
+  }>;
+}) {
+  const session = await getSession();
+  await assertFestivalAccess(session, input.festivalId, {
+    requireWritable: true,
+  });
+
+  if (!Number.isFinite(input.noGradeBelow) || input.noGradeBelow < 0 || input.noGradeBelow > 100) {
+    throw new AppError("No-grade threshold must be between 0 and 100.");
+  }
+  if (input.gradeRules.length === 0) {
+    throw new AppError("At least one grade rule is required.");
+  }
+
+  await upsertScoringPolicyActionData({
+    festivalId: input.festivalId,
+    noGradeBelow: Math.round(input.noGradeBelow),
+    gradeRules: input.gradeRules,
+    awardRules: input.awardRules,
+    updatedBy: session?.userId ?? null,
+  });
+
+  return { success: true as const };
 }

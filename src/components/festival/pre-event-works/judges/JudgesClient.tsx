@@ -1,12 +1,14 @@
 "use client";
 
-import { Loader2, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import { Eye, Loader2, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -19,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { ERROR_MESSAGES } from "@/core/errors/errors";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { useJudges } from "@/features/judges/hooks/use-judges";
 
@@ -26,7 +29,35 @@ type JudgeRow = {
   id: string;
   name: string;
   description: string | null;
+  activities: Array<{
+    configId: string;
+    judgingMode: string;
+    status: string;
+    programme: { id: string; name: string } | null;
+    stage: { id: string; name: string } | null;
+    judgedPointsCount: number;
+    averagePoints: number | null;
+  }>;
+  programmes: Array<{ id: string; name: string }>;
+  stages: Array<{ id: string; name: string }>;
 };
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
+function normalizeJudgeName(name: string) {
+  return name.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+}
+
+const JUDGE_NAME_MIN_LENGTH = 2;
+const JUDGE_NAME_MAX_LENGTH = 80;
+const JUDGE_DESCRIPTION_MAX_LENGTH = 500;
 
 export function JudgesClient({
   festivalId,
@@ -41,14 +72,67 @@ export function JudgesClient({
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<JudgeRow | null>(null);
   const [deleting, setDeleting] = useState<JudgeRow | null>(null);
+  const [viewingActivities, setViewingActivities] = useState<JudgeRow | null>(null);
+  const [viewingProgrammes, setViewingProgrammes] = useState<JudgeRow | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<{ name?: string; description?: string }>(
+    {},
+  );
+
+  const trimmedName = name.trim();
+  const trimmedDescription = description.trim();
+  const hasFormChanges = editing
+    ? trimmedName !== editing.name.trim() ||
+      trimmedDescription !== (editing.description ?? "").trim()
+    : trimmedName.length > 0 || trimmedDescription.length > 0;
+
+  const validateForm = () => {
+    const nextErrors: { name?: string; description?: string } = {};
+    if (!trimmedName) {
+      nextErrors.name = ERROR_MESSAGES.JUDGE_NAME_REQUIRED;
+    } else if (trimmedName.length < JUDGE_NAME_MIN_LENGTH) {
+      nextErrors.name = `Judge name must be at least ${JUDGE_NAME_MIN_LENGTH} characters.`;
+    } else if (trimmedName.length > JUDGE_NAME_MAX_LENGTH) {
+      nextErrors.name = `Judge name must be ${JUDGE_NAME_MAX_LENGTH} characters or fewer.`;
+    } else {
+      const duplicateJudge = judges.find((judge) => {
+        if (editing && judge.id === editing.id) return false;
+        return normalizeJudgeName(judge.name) === normalizeJudgeName(trimmedName);
+      });
+      if (duplicateJudge) {
+        nextErrors.name = ERROR_MESSAGES.JUDGE_NAME_DUPLICATE;
+      }
+    }
+
+    if (trimmedDescription.length > JUDGE_DESCRIPTION_MAX_LENGTH) {
+      nextErrors.description =
+        `Description must be ${JUDGE_DESCRIPTION_MAX_LENGTH} characters or fewer.`;
+    }
+
+    setFormErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleFormOpenChange = (open: boolean) => {
+    if (!open && hasFormChanges && !isSaving) {
+      const shouldDiscard = window.confirm(
+        "You have unsaved changes. Do you want to discard them?",
+      );
+      if (!shouldDiscard) return;
+    }
+    setFormOpen(open);
+    if (!open) {
+      setFormErrors({});
+    }
+  };
 
   const openCreate = () => {
     setEditing(null);
     setName("");
     setDescription("");
+    setFormErrors({});
     setFormOpen(true);
   };
 
@@ -56,22 +140,28 @@ export function JudgesClient({
     setEditing(row);
     setName(row.name);
     setDescription(row.description ?? "");
+    setFormErrors({});
     setFormOpen(true);
   };
 
   const onSubmit = async () => {
+    if (!validateForm()) return;
     setIsSaving(true);
     try {
       if (editing) {
         await updateJudge({
           judgeId: editing.id,
-          name,
-          description: description || null,
+          name: trimmedName,
+          description: trimmedDescription || null,
         });
       } else {
-        await createJudge({ name, description: description || null });
+        await createJudge({
+          name: trimmedName,
+          description: trimmedDescription || null,
+        });
       }
       setFormOpen(false);
+      setFormErrors({});
     } finally {
       setIsSaving(false);
     }
@@ -99,27 +189,44 @@ export function JudgesClient({
         {judges.map((j) => (
           <div
             key={j.id}
-            className="rounded-xl border bg-card p-4 flex flex-col gap-3"
+            className="rounded-2xl border bg-card p-4 flex flex-col gap-4 shadow-sm"
           >
-            <div className="flex items-start justify-between">
-              <div className="min-w-0">
-                <h3 className="font-semibold truncate">{j.name}</h3>
-                <p className="text-sm text-muted-foreground line-clamp-3">
-                  {j.description || "No description"}
-                </p>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="h-10 w-10 rounded-full border bg-muted/50 flex items-center justify-center text-xs font-semibold">
+                  {getInitials(j.name)}
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-base font-semibold truncate tracking-wide">
+                    {j.name}
+                  </h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                    {j.description || "No description"}
+                  </p>
+                </div>
               </div>
-              {!isReadOnly ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => setViewingActivities(j as JudgeRow)}>
+                    <Eye className="h-4 w-4 mr-2" />
+                    Activities
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setViewingProgrammes(j as JudgeRow)}>
+                    <Eye className="h-4 w-4 mr-2" />
+                    Programmes
+                  </DropdownMenuItem>
+                  {!isReadOnly ? (
                     <DropdownMenuItem onSelect={() => openEdit(j as JudgeRow)}>
                       <Pencil className="h-4 w-4 mr-2" />
                       Edit
                     </DropdownMenuItem>
+                  ) : null}
+                  {!isReadOnly ? (
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive"
                       onSelect={() => setDeleting(j as JudgeRow)}
@@ -127,9 +234,53 @@ export function JudgesClient({
                       <Trash2 className="h-4 w-4 mr-2" />
                       Delete
                     </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : null}
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-2">
+                Stage highlights
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {j.stages.length > 0 ? (
+                  j.stages.slice(0, 3).map((stage) => (
+                    <Badge
+                      key={stage.id}
+                      className="bg-primary/10 text-primary border-primary/30"
+                      variant="outline"
+                    >
+                      {stage.name}
+                    </Badge>
+                  )).concat(
+                    j.stages.length > 3
+                      ? ([
+                          <Badge key={`${j.id}-more-stages`} variant="outline">
+                            +{j.stages.length - 3} more
+                          </Badge>,
+                        ] as any)
+                      : [],
+                  )
+                ) : (
+                  <span className="text-xs text-muted-foreground">No stages assigned</span>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center rounded-xl border bg-muted/20 p-2">
+              <div>
+                <p className="text-lg font-semibold leading-none">{j.activities.length}</p>
+                <p className="text-[11px] text-muted-foreground mt-1">Activities</p>
+              </div>
+              <div>
+                <p className="text-lg font-semibold leading-none">{j.programmes.length}</p>
+                <p className="text-[11px] text-muted-foreground mt-1">Programmes</p>
+              </div>
+              <div>
+                <p className="text-lg font-semibold leading-none">{j.stages.length}</p>
+                <p className="text-[11px] text-muted-foreground mt-1">Stages</p>
+              </div>
             </div>
           </div>
         ))}
@@ -141,32 +292,179 @@ export function JudgesClient({
         </div>
       ) : null}
 
-      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+      <Dialog open={formOpen} onOpenChange={handleFormOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Judge" : "Create Judge"}</DialogTitle>
+            <DialogDescription>
+              Keep judge profile details updated for judging workflows.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <Input
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (formErrors.name) {
+                  setFormErrors((prev) => ({ ...prev, name: undefined }));
+                }
+              }}
               placeholder="Judge name"
+              maxLength={JUDGE_NAME_MAX_LENGTH + 20}
             />
+            {formErrors.name ? (
+              <p className="text-xs text-destructive">{formErrors.name}</p>
+            ) : null}
             <Textarea
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => {
+                setDescription(e.target.value);
+                if (formErrors.description) {
+                  setFormErrors((prev) => ({ ...prev, description: undefined }));
+                }
+              }}
               placeholder="Description (optional)"
               rows={4}
+              maxLength={JUDGE_DESCRIPTION_MAX_LENGTH + 50}
             />
+            <div className="flex items-center justify-between">
+              {formErrors.description ? (
+                <p className="text-xs text-destructive">{formErrors.description}</p>
+              ) : (
+                <span />
+              )}
+              <p className="text-xs text-muted-foreground">
+                {trimmedDescription.length}/{JUDGE_DESCRIPTION_MAX_LENGTH}
+              </p>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setFormOpen(false)}>
+            <Button variant="outline" onClick={() => handleFormOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={onSubmit} disabled={!name.trim() || isSaving}>
+            <Button
+              onClick={onSubmit}
+              disabled={!trimmedName || isSaving || trimmedName.length > JUDGE_NAME_MAX_LENGTH}
+            >
               {isSaving ? "Saving..." : editing ? "Update" : "Create"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!viewingActivities}
+        onOpenChange={(open) => !open && setViewingActivities(null)}
+      >
+        <DialogContent className="max-w-3xl">
+          {viewingActivities ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>{viewingActivities.name} - Activities</DialogTitle>
+                <DialogDescription>
+                  Assigned judging activities and scoring progress.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-2">
+                <div className="space-y-2 max-h-72 overflow-auto pr-1">
+                  {viewingActivities.activities.length > 0 ? (
+                    viewingActivities.activities.map((activity) => (
+                      <div
+                        key={activity.configId}
+                        className="rounded-lg border p-3 flex items-center justify-between gap-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {activity.programme?.name ?? "Programme"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {activity.stage?.name ?? "No stage"} · {activity.judgingMode}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-muted-foreground">
+                            Judged points: {activity.judgedPointsCount}
+                          </p>
+                          <Badge variant="outline" className="mt-1">
+                            Avg: {activity.averagePoints ?? "-"}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No activities assigned.</p>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!viewingProgrammes}
+        onOpenChange={(open) => !open && setViewingProgrammes(null)}
+      >
+        <DialogContent className="max-w-3xl">
+          {viewingProgrammes ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>{viewingProgrammes.name} - Programmes</DialogTitle>
+                <DialogDescription>
+                  Programme-wise judging points and score averages.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-2">
+                <div className="space-y-2 max-h-72 overflow-auto pr-1">
+                  {viewingProgrammes.programmes.length > 0 ? (
+                    viewingProgrammes.programmes.map((programme) => {
+                      const programmeActivities = viewingProgrammes.activities.filter(
+                        (activity) => activity.programme?.id === programme.id,
+                      );
+                      const totalPoints = programmeActivities.reduce(
+                        (sum, activity) => sum + activity.judgedPointsCount,
+                        0,
+                      );
+                      const avgPool = programmeActivities
+                        .map((activity) => activity.averagePoints)
+                        .filter((value): value is number => value !== null);
+                      const programmeAverage =
+                        avgPool.length > 0
+                          ? Number(
+                              (avgPool.reduce((sum, value) => sum + value, 0) /
+                                avgPool.length).toFixed(2),
+                            )
+                          : null;
+
+                      return (
+                        <div
+                          key={programme.id}
+                          className="rounded-lg border p-3 flex items-center justify-between gap-3"
+                        >
+                          <div>
+                            <p className="text-sm font-medium truncate">{programme.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Activities: {programmeActivities.length}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-muted-foreground">Points: {totalPoints}</p>
+                            <Badge variant="outline" className="mt-1">
+                              Avg: {programmeAverage ?? "-"}
+                            </Badge>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No programmes assigned.</p>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : null}
         </DialogContent>
       </Dialog>
 

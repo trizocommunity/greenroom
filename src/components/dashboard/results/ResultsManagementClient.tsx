@@ -22,8 +22,9 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import {
   AlertDialog,
@@ -77,6 +78,7 @@ import {
 } from "@/components/ui/table";
 import type { ProgrammeStatus } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { formatCountdownHms } from "@/core/utils/format-countdown";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
@@ -118,6 +120,7 @@ type Programme = {
       grade: string | null;
       position: number | null;
       points: number;
+      awardPoints?: number | null;
       remarks: string | null;
       isPublished: boolean;
       codeLetter?: { code: string } | null;
@@ -185,12 +188,23 @@ const getSubLabel = (assignment: Programme["assignments"][0], type: string) => {
   return `#${assignment.student?.chestNumber || "N/A"}`;
 };
 
+const getResultPoints = (result: { points?: number; awardPoints?: number | null }) =>
+  result.awardPoints ?? result.points ?? 0;
+
 export function ResultsManagementClient({
   festival,
   programmes,
   categories,
   children,
 }: ResultsManagementClientProps) {
+  const dirtySourceId = `results-management:${festival.id}`;
+  const {
+    registerDirtySource,
+    unregisterDirtySource,
+    setDirty,
+    registerSaveHandler,
+    unregisterSaveHandler,
+  } = useUnsavedChanges();
   const { isReadOnly } = useFestivalReadOnly();
   const canUseExternalJudging = useFeatureTag("eventWorks.externalJudging");
   const router = useRouter();
@@ -257,7 +271,7 @@ export function ResultsManagementClient({
             chestNumber: "",
             codeLetter: assignment.result?.codeLetter?.code ?? "-",
             grade: assignment.result.grade,
-            points: assignment.result.points,
+            points: getResultPoints(assignment.result),
             position: assignment.result.position ?? null,
             remarks: assignment.result.remarks,
           });
@@ -283,7 +297,7 @@ export function ResultsManagementClient({
             : "",
           codeLetter: assignment.result?.codeLetter?.code ?? "-",
           grade: result.grade,
-          points: result.points,
+          points: getResultPoints(result),
           position: result.position ?? null,
           remarks: result.remarks,
         };
@@ -552,6 +566,7 @@ export function ResultsManagementClient({
     });
   }, [scores, currentProgramme]);
   const hasAnyPoints = results.some((r) => r.points !== null && r.points > 0);
+  const hasUnsavedResults = isModalOpen && Object.keys(scores).length > 0;
 
   const handleScoreChange = (teamId: string, value: string) => {
     const points = parseFloat(value);
@@ -566,7 +581,7 @@ export function ResultsManagementClient({
     }
   };
 
-  const handleSaveResults = async (shouldPublish = false) => {
+  const handleSaveResults = useCallback(async (shouldPublish = false) => {
     if (isReadOnly) return;
     if (!currentProgramme) return;
 
@@ -607,7 +622,7 @@ export function ResultsManagementClient({
         toast.error(`Failed to save ${errorCount} results`);
       }
     });
-  };
+  }, [currentProgramme, festival.id, isReadOnly, results]);
 
   const handlePublishProgramme = (
     programmeId: string,
@@ -652,7 +667,7 @@ export function ResultsManagementClient({
           return;
         }
 
-        const startedAt = new Date(response.data.startedAt);
+        const startedAt = parseStoredInstant(response.data.startedAt);
         setJudgeLinksByProgrammeId((prev) => ({
           ...prev,
           [programmeId]: {
@@ -815,6 +830,33 @@ export function ResultsManagementClient({
     filterStatus !== "all" ||
     filterProgrammeType !== "all";
 
+  useEffect(() => {
+    registerDirtySource(dirtySourceId);
+    return () => unregisterDirtySource(dirtySourceId);
+  }, [dirtySourceId, registerDirtySource, unregisterDirtySource]);
+
+  useEffect(() => {
+    if (isReadOnly) {
+      setDirty(dirtySourceId, false);
+      return;
+    }
+    setDirty(dirtySourceId, hasUnsavedResults);
+  }, [dirtySourceId, hasUnsavedResults, isReadOnly, setDirty]);
+
+  useEffect(() => {
+    registerSaveHandler(dirtySourceId, async () => {
+      if (!hasUnsavedResults) return;
+      await handleSaveResults(false);
+    });
+    return () => unregisterSaveHandler(dirtySourceId);
+  }, [
+    dirtySourceId,
+    hasUnsavedResults,
+    handleSaveResults,
+    registerSaveHandler,
+    unregisterSaveHandler,
+  ]);
+
   return (
     <div className="space-y-4">
       {/* Header row: children left, Enter Judgment right — icon only on mobile */}
@@ -832,11 +874,11 @@ export function ResultsManagementClient({
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <HowItWorksButton
             title="How marks work"
-            description="Enter points per chest; grade and rank are calculated automatically."
+            description="Enter points per entry (team for group, participant for individual); grade and rank are calculated automatically."
           >
             <p className="text-sm text-muted-foreground">
-              Enter <strong>points</strong> per student. Grade and rank update
-              automatically from the highest entered value.
+              Enter <strong>points</strong> per entry. Group programmes use team
+              units, individual programmes use participant units.
             </p>
           </HowItWorksButton>
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
@@ -1350,6 +1392,7 @@ export function ResultsManagementClient({
                           disabled={
                             isReadOnly ||
                             isPending ||
+                            !hasUnsavedResults ||
                             currentProgramme.stats?.status === "published"
                           }
                           className="w-full h-10 sm:h-12 text-xs sm:text-base font-semibold gap-2 touch-manipulation"
@@ -1424,7 +1467,7 @@ export function ResultsManagementClient({
                     </DialogTitle>
                     <DialogDescription>
                       These programmes have assignments but are missing scores
-                      for some or all students.
+                      for some or all entries.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="max-h-[60vh] overflow-y-auto space-y-2 mt-4 pr-2">
@@ -1453,7 +1496,9 @@ export function ResultsManagementClient({
                               {prog.stats.totalParticipants}
                             </span>
                             <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                              Scored
+                              {prog.type === "GROUP"
+                                ? "Teams scored"
+                                : "Participants scored"}
                             </span>
                           </div>
                           <Button
@@ -1559,7 +1604,8 @@ export function ResultsManagementClient({
                 ? Math.max(
                     0,
                     Math.floor(
-                      (nowMs - new Date(startedAtForTimer).getTime()) / 1000,
+                      (nowMs - parseStoredInstant(startedAtForTimer).getTime()) /
+                        1000,
                     ),
                   )
                 : null;

@@ -1,9 +1,16 @@
 "use client";
 
 import { Copy, Link2, Plus, RefreshCcw } from "lucide-react";
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +23,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ERROR_MESSAGES } from "@/core/errors/errors";
 import { queryKeys } from "@/core/http/query-keys";
+import type { ProgrammeJudgmentStatus } from "@/core/types/app-enums";
+import { formatStoredDateTime, parseStoredInstant } from "@/core/utils/date-time";
 import { createJudgeAction } from "@/features/judges/actions/judge.actions";
 import {
   createJudgmentConfigurationAction,
@@ -30,13 +40,19 @@ type Programme = {
   id: string;
   name: string;
   status: string;
+  programmeType: "INDIVIDUAL" | "GROUP";
   programmeCategory?: string | null;
   reportingDetails?: {
     stageName: string | null;
     scheduleStart: string | null;
     scheduleEnd: string | null;
     reportedCount: number;
-    reportedStudents: string[];
+    reportedEntries: Array<{
+      label: string;
+      groupName: string | null;
+      categoryName: string | null;
+      codeLetter: string | null;
+    }>;
   } | null;
 };
 type ActiveConfig = {
@@ -49,17 +65,36 @@ type ActiveConfig = {
   judgingMode: "SINGLE" | "GROUP";
   judges: Array<{ id: string; name: string }>;
   activeLinkId: string | null;
+  judgmentStatus: ProgrammeJudgmentStatus;
 };
 type JudgedProgrammeCard = {
   configId: string;
+  createdAt: string | Date;
   programmeId: string;
   programmeName: string;
   programmeStatus: string;
   programmeCategory?: string | null;
   scoreLimit: number;
   judgingMode: "SINGLE" | "GROUP";
+  requiredCodeLetters: number;
   totalJudgments: number;
-  judges: Array<{ id: string; name: string; submittedAt: string | null }>;
+  isJudgmentComplete: boolean;
+  judgmentStatus: ProgrammeJudgmentStatus;
+  completionSummary: string;
+  judgeProgress: Array<{
+    judgeId: string;
+    judgeName: string;
+    scoredCount: number;
+    requiredCount: number;
+    isComplete: boolean;
+  }>;
+  pendingJudgeNames: string[];
+  judges: Array<{
+    id: string;
+    name: string;
+    firstScoredAt: string | null;
+    submittedAt: string | null;
+  }>;
   codeLetterRows: Array<{
     codeLetterId: string;
     code: string;
@@ -68,10 +103,13 @@ type JudgedProgrammeCard = {
   }>;
 };
 
+function normalizeJudgeName(name: string) {
+  return name.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+}
+
 function resetWizardForm() {
   return {
-    step: 1 as 1 | 2 | 3 | 4,
-    scoreLimit: "10",
+    step: 2 as 2 | 3 | 4,
     selectedJudgeIds: [] as string[],
     newJudgeName: "",
     newJudgeDescription: "",
@@ -95,6 +133,37 @@ export function JudgmentWizardClient({
     judgedProgrammes: JudgedProgrammeCard[];
   };
 }) {
+  const formatCardDateTime = useCallback(
+    (value: string | Date) =>
+      formatStoredDateTime(value, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }),
+    [],
+  );
+  const toEpoch = useCallback((value: string | Date) => {
+    return parseStoredInstant(value).getTime();
+  }, []);
+
+  const judgmentStatusLabel = (status: ProgrammeJudgmentStatus) => {
+    switch (status) {
+      case "COMPLETED":
+        return "Completed";
+      case "AWAITING_JUDGES":
+        return "Awaiting judges";
+      case "SCORING_IN_PROGRESS":
+        return "Scoring in progress";
+      case "LINK_ACTIVE":
+        return "Link active";
+      default:
+        return "Not started";
+    }
+  };
+
+  const dirtySourceId = `judgment-wizard:${festivalId}`;
+  const { registerDirtySource, unregisterDirtySource, setDirty } =
+    useUnsavedChanges();
+  const POLICY_SCORE_LIMIT = 100;
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
 
@@ -102,8 +171,13 @@ export function JudgmentWizardClient({
   const [judgedDetail, setJudgedDetail] = useState<JudgedProgrammeCard | null>(
     null,
   );
+  const [completedDetail, setCompletedDetail] = useState<JudgedProgrammeCard | null>(
+    null,
+  );
   const [reportedStudentsView, setReportedStudentsView] = useState<{
     programmeName: string;
+    programmeCategory: string | null;
+    programmeType: "INDIVIDUAL" | "GROUP";
     details: NonNullable<Programme["reportingDetails"]>;
   } | null>(null);
   const [wizardProgrammeId, setWizardProgrammeId] = useState<string | null>(
@@ -111,8 +185,7 @@ export function JudgmentWizardClient({
   );
   const [wizardKind, setWizardKind] = useState<"create" | "rejudge">("create");
 
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
-  const [scoreLimit, setScoreLimit] = useState("10");
+  const [step, setStep] = useState<2 | 3 | 4>(2);
   const [selectedJudgeIds, setSelectedJudgeIds] = useState<string[]>([]);
   const [generatedUrlByConfigId, setGeneratedUrlByConfigId] = useState<
     Record<string, string>
@@ -122,6 +195,7 @@ export function JudgmentWizardClient({
   >({});
   const [newJudgeName, setNewJudgeName] = useState("");
   const [newJudgeDescription, setNewJudgeDescription] = useState("");
+  const [inlineJudgeError, setInlineJudgeError] = useState<string | null>(null);
   const [pinMode, setPinMode] = useState<"auto" | "manual">("auto");
   const [manualPin, setManualPin] = useState("");
   const [pinLength, setPinLength] = useState<4 | 5 | 6>(4);
@@ -172,8 +246,85 @@ export function JudgmentWizardClient({
     );
   }, [judgeProgrammes, rejudgeProgrammes, wizardProgrammeId]);
 
-  const canMoveToStep2 = Boolean(wizardProgramme) && Number(scoreLimit) > 0;
-  const canGenerate = canMoveToStep2 && selectedJudgeIds.length > 0;
+  const sortedJudgedCodeRows = useMemo(() => {
+    if (!judgedDetail) return [];
+    return [...judgedDetail.codeLetterRows].sort((a, b) =>
+      a.code.localeCompare(b.code, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      }),
+    );
+  }, [judgedDetail]);
+  const completedJudgments = useMemo(() => {
+    return judgedProgrammes
+      .filter((item) => item.isJudgmentComplete)
+      .sort((a, b) => {
+        const aPublished = (a.programmeStatus ?? "")
+          .toUpperCase()
+          .includes("PUBLISHED");
+        const bPublished = (b.programmeStatus ?? "")
+          .toUpperCase()
+          .includes("PUBLISHED");
+        if (aPublished !== bPublished) return aPublished ? 1 : -1;
+        return b.totalJudgments - a.totalJudgments;
+      });
+  }, [judgedProgrammes]);
+  const completedDetailTimeline = useMemo(() => {
+    if (!completedDetail) return [];
+
+    const events: Array<{
+      at: number;
+      title: string;
+      detail: string;
+    }> = [
+      {
+        at: toEpoch(completedDetail.createdAt),
+        title: "Configuration created",
+        detail: `Mode ${completedDetail.judgingMode} • ${completedDetail.requiredCodeLetters} code letters`,
+      },
+    ];
+
+    for (const judge of completedDetail.judges) {
+      if (judge.firstScoredAt) {
+        events.push({
+          at: toEpoch(judge.firstScoredAt),
+          title: `${judge.name} started scoring`,
+          detail: formatCardDateTime(judge.firstScoredAt),
+        });
+      }
+      if (judge.submittedAt) {
+        events.push({
+          at: toEpoch(judge.submittedAt),
+          title: `${judge.name} submitted`,
+          detail: formatCardDateTime(judge.submittedAt),
+        });
+      } else {
+        events.push({
+          at: toEpoch(completedDetail.createdAt),
+          title: `${judge.name} pending`,
+          detail: "No submission recorded",
+        });
+      }
+    }
+
+    events.push({
+      at: toEpoch(completedDetail.createdAt) + 1,
+      title: "Judgment completion",
+      detail: completedDetail.completionSummary,
+    });
+
+    return events.sort((a, b) => a.at - b.at);
+  }, [completedDetail, formatCardDateTime, toEpoch]);
+
+  const canGenerate = Boolean(wizardProgramme) && selectedJudgeIds.length > 0;
+  const hasUnsavedWizardInputs =
+    dialogOpen &&
+    (selectedJudgeIds.length > 0 ||
+      step !== 2 ||
+      newJudgeName.trim().length > 0 ||
+      newJudgeDescription.trim().length > 0 ||
+      pinMode === "manual" ||
+      manualPin.trim().length > 0);
 
   const openWizardForProgramme = (
     programmeId: string,
@@ -183,7 +334,6 @@ export function JudgmentWizardClient({
     setWizardKind(kind);
     setWizardProgrammeId(programmeId);
     setStep(r.step);
-    setScoreLimit(r.scoreLimit);
     setSelectedJudgeIds(r.selectedJudgeIds);
     setNewJudgeName(r.newJudgeName);
     setNewJudgeDescription(r.newJudgeDescription);
@@ -199,7 +349,7 @@ export function JudgmentWizardClient({
     setDialogOpen(false);
     setWizardProgrammeId(null);
     setWizardKind("create");
-    setStep(1);
+    setStep(2);
     setLastCreatedConfigId(null);
   };
 
@@ -212,21 +362,37 @@ export function JudgmentWizardClient({
   };
 
   const onInlineCreateJudge = () => {
-    if (!newJudgeName.trim()) return;
+    const trimmedName = newJudgeName.trim();
+    if (!trimmedName) {
+      setInlineJudgeError(ERROR_MESSAGES.JUDGE_NAME_REQUIRED);
+      return;
+    }
+    const duplicateJudge = judges.find(
+      (judge) => normalizeJudgeName(judge.name) === normalizeJudgeName(trimmedName),
+    );
+    if (duplicateJudge) {
+      setInlineJudgeError(ERROR_MESSAGES.JUDGE_NAME_DUPLICATE);
+      return;
+    }
+    setInlineJudgeError(null);
     startTransition(async () => {
       try {
         await createJudgeAction(festivalId, {
-          name: newJudgeName,
+          name: trimmedName,
           description: newJudgeDescription || null,
         });
         await queryClient.invalidateQueries({
           queryKey: queryKeys.judgment.dashboard(festivalId),
         });
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.judges.list(festivalId),
+        });
         toast.success("Judge created.");
         setNewJudgeName("");
         setNewJudgeDescription("");
+        setInlineJudgeError(null);
       } catch (error: any) {
-        toast.error(error?.message ?? "Failed to create judge.");
+        setInlineJudgeError(error?.message ?? ERROR_MESSAGES.DEFAULT);
       }
     });
   };
@@ -238,7 +404,7 @@ export function JudgmentWizardClient({
         const result = await createJudgmentConfigurationAction({
           festivalId,
           programmeId: wizardProgramme.id,
-          scoreLimit: Number(scoreLimit),
+          scoreLimit: POLICY_SCORE_LIMIT,
           judgeIds: selectedJudgeIds,
           judgingMode,
           manualPin: pinMode === "manual" ? manualPin : null,
@@ -303,23 +469,36 @@ export function JudgmentWizardClient({
     ? generatedPinByConfigId[step4ConfigId]
     : undefined;
 
+  useEffect(() => {
+    registerDirtySource(dirtySourceId);
+    return () => unregisterDirtySource(dirtySourceId);
+  }, [dirtySourceId, registerDirtySource, unregisterDirtySource]);
+
+  useEffect(() => {
+    setDirty(dirtySourceId, hasUnsavedWizardInputs);
+  }, [dirtySourceId, hasUnsavedWizardInputs, setDirty]);
+
   return (
     <div className="space-y-6 sm:space-y-8">
-      <div>
+      <div className="px-1">
         <h1 className="text-lg font-bold tracking-tight sm:text-2xl">
           Judgment
         </h1>
       </div>
 
-      <section className="space-y-2.5 sm:space-y-3">
+      <section className="space-y-3">
+        <div className="flex items-center justify-end gap-2">
+          <Badge variant="outline" className="text-[10px]">
+            {judgeProgrammes.length} programme
+            {judgeProgrammes.length === 1 ? "" : "s"}
+          </Badge>
+        </div>
         {judgeProgrammes.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-sm text-muted-foreground">
+          <div className="py-10 text-center text-sm text-muted-foreground">
               No programmes are ready to judge right now.
-            </CardContent>
-          </Card>
+          </div>
         ) : (
-          <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {judgeProgrammes.map((p) => {
               const active = activeByProgrammeId.get(p.id);
               const url = active
@@ -331,17 +510,14 @@ export function JudgmentWizardClient({
               return (
                 <Card
                   key={p.id}
-                  className="flex flex-col overflow-hidden rounded-lg border border-border/70 shadow-sm"
+                  className="flex flex-col overflow-hidden rounded-lg bg-background/40 transition-colors hover:bg-muted/20"
                 >
-                  <CardHeader className="space-y-1 p-3 pb-2 sm:p-4 sm:pb-2">
+                  <CardHeader className="space-y-1 p-2 pb-1.5 sm:p-3 sm:pb-1.5">
                     <div className="flex items-start justify-between gap-2">
                       <CardTitle className="text-[13px] font-semibold leading-snug line-clamp-2 sm:text-sm">
                         {p.name}
                       </CardTitle>
-                      <Badge
-                        variant="secondary"
-                        className="shrink-0 text-[10px] font-normal"
-                      >
+                      <Badge variant="secondary" className="shrink-0 text-[10px]">
                         {p.status}
                       </Badge>
                     </div>
@@ -351,55 +527,54 @@ export function JudgmentWizardClient({
                       </p>
                     ) : null}
                   </CardHeader>
-                  <CardContent className="flex flex-1 flex-col gap-2.5 p-3 pt-0 sm:gap-3 sm:p-4 sm:pt-0">
+                  <CardContent className="flex flex-1 flex-col gap-1.5 p-2 pt-0 sm:gap-2 sm:p-3 sm:pt-0">
                     {active ? (
                       <>
-                        <p className="text-[11px] leading-relaxed text-muted-foreground">
-                          {active.judgingMode} · max {active.scoreLimit} ·{" "}
-                          {active.judges.length} judge
+                        <p className="rounded-md border bg-muted/20 px-2 py-1 text-[10px] leading-relaxed text-muted-foreground">
+                          {active.judgingMode} · {active.judges.length} judge
                           {active.judges.length !== 1 ? "s" : ""}
                           {!active.activeLinkId ? " · link closed" : ""}
                         </p>
                         {p.reportingDetails ? (
-                          <div className="space-y-0.5 text-[11px] text-muted-foreground">
+                          <div className="space-y-0.5 text-[10px] text-muted-foreground">
                             <p>Stage: {p.reportingDetails.stageName ?? "—"}</p>
                             <p>
                               Time:{" "}
                               {p.reportingDetails.scheduleStart
-                                ? new Date(
-                                    p.reportingDetails.scheduleStart,
-                                  ).toLocaleString()
+                                ? formatCardDateTime(p.reportingDetails.scheduleStart)
                                 : "—"}
                               {p.reportingDetails.scheduleEnd
-                                ? ` - ${new Date(
-                                    p.reportingDetails.scheduleEnd,
-                                  ).toLocaleString()}`
+                                ? ` - ${formatCardDateTime(p.reportingDetails.scheduleEnd)}`
                                 : ""}
                             </p>
                           </div>
                         ) : null}
-                        <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                        <div className="grid grid-cols-2 gap-1 sm:flex sm:flex-wrap sm:gap-1.5">
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="h-7 px-2 text-xs sm:h-8 sm:px-3 sm:text-sm"
+                            className="h-6 px-2 text-[10px] sm:h-7 sm:px-2.5 sm:text-xs"
                             onClick={() => {
                               if (!p.reportingDetails) return;
                               setReportedStudentsView({
                                 programmeName: p.name,
+                                programmeCategory: p.programmeCategory ?? null,
+                                programmeType: p.programmeType,
                                 details: p.reportingDetails,
                               });
                             }}
                             disabled={!p.reportingDetails}
                           >
-                            View reported students
+                            {p.programmeType === "GROUP"
+                              ? "View reported teams"
+                              : "View reported students"}
                           </Button>
                           <Button
                             type="button"
                             variant="secondary"
                             size="sm"
-                            className="h-7 px-2 text-xs sm:h-8 sm:px-3 sm:text-sm"
+                            className="h-6 px-2 text-[10px] sm:h-7 sm:px-2.5 sm:text-xs"
                             onClick={async () => {
                               if (!url) {
                                 toast.info(
@@ -412,14 +587,14 @@ export function JudgmentWizardClient({
                             }}
                             disabled={isPending}
                           >
-                            <Copy className="mr-1 h-3.5 w-3.5" />
+                            <Copy className="mr-1 h-3 w-3" />
                             Copy
                           </Button>
                           <Button
                             type="button"
                             variant="secondary"
                             size="sm"
-                            className="h-7 px-2 text-xs sm:h-8 sm:px-3 sm:text-sm"
+                            className="h-6 px-2 text-[10px] sm:h-7 sm:px-2.5 sm:text-xs"
                             onClick={async () => {
                               if (!pin) {
                                 toast.info(
@@ -432,32 +607,32 @@ export function JudgmentWizardClient({
                             }}
                             disabled={isPending}
                           >
-                            <Copy className="mr-1 h-3.5 w-3.5" />
+                            <Copy className="mr-1 h-3 w-3" />
                             Copy PIN
                           </Button>
                           <Button
                             type="button"
                             size="sm"
-                            className="h-7 px-2 text-xs sm:h-8 sm:px-3 sm:text-sm"
+                            className="h-6 px-2 text-[10px] sm:h-7 sm:px-2.5 sm:text-xs"
                             onClick={() => onRegenerate(active.id)}
                             disabled={isPending}
                           >
-                            <RefreshCcw className="mr-1 h-3.5 w-3.5" />
+                            <RefreshCcw className="mr-1 h-3 w-3" />
                             Regenerate
                           </Button>
                         </div>
                         {url ? (
-                          <div className="space-y-1 rounded-md border border-border/50 bg-muted/20 px-2 py-1.5">
+                          <div className="space-y-1 rounded-md border border-violet-400/40 bg-violet-500/10 px-2 py-1.5">
                             <p
-                              className="truncate font-mono text-[10px] text-muted-foreground"
+                              className="truncate font-mono text-[9px] text-foreground sm:text-[10px]"
                               title={url}
                             >
                               {url}
                             </p>
                             {pin ? (
-                              <p className="font-mono text-[10px]">
-                                PIN{" "}
-                                <span className="font-semibold text-foreground">
+                              <p className="font-mono text-[10px] sm:text-[11px]">
+                                <span className="text-muted-foreground">Pincode </span>
+                                <span className="font-semibold tracking-wider text-violet-600 dark:text-violet-300">
                                   {pin}
                                 </span>
                               </p>
@@ -467,17 +642,37 @@ export function JudgmentWizardClient({
                       </>
                     ) : null}
                     <div className="mt-auto">
-                      {!active ? (
+                      <div className="grid grid-cols-2 gap-1 sm:flex sm:flex-wrap sm:gap-1.5">
                         <Button
                           type="button"
                           size="sm"
-                          className="h-8 w-full text-xs sm:h-9 sm:text-sm"
-                          onClick={() => openWizardForProgramme(p.id, "create")}
+                          variant="outline"
+                          className="h-7 text-[11px] sm:h-8 sm:flex-1 sm:text-xs"
+                          onClick={() => {
+                            if (!p.reportingDetails) return;
+                            setReportedStudentsView({
+                              programmeName: p.name,
+                              programmeCategory: p.programmeCategory ?? null,
+                              programmeType: p.programmeType,
+                              details: p.reportingDetails,
+                            });
+                          }}
+                          disabled={!p.reportingDetails}
                         >
-                          <Link2 className="mr-1.5 h-3.5 w-3.5" />
-                          Generate link
+                          View
                         </Button>
-                      ) : null}
+                        {!active ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="h-7 text-[11px] sm:h-8 sm:flex-1 sm:text-xs"
+                            onClick={() => openWizardForProgramme(p.id, "create")}
+                          >
+                            <Link2 className="mr-1.5 h-3.5 w-3.5" />
+                            Generate link
+                          </Button>
+                        ) : null}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -489,93 +684,147 @@ export function JudgmentWizardClient({
 
       <Separator />
 
-      <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 ">
-        <section className="space-y-2.5 sm:space-y-3">
-          <h2 className="text-base font-semibold tracking-tight sm:text-lg">
-            Rejudge
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <section className="space-y-3">
+          <h2 className="text-base font-semibold tracking-tight sm:text-lg flex items-center justify-between">
+            Completed judgments
+            <Badge variant="outline" className="text-[10px]">
+              {completedJudgments.length}
+            </Badge>
           </h2>
-          {rejudgeProgrammes.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                No judged programmes available for rejudge (published items
-                never appear here).
-              </CardContent>
-            </Card>
+          {completedJudgments.length === 0 ? (
+            <div className="py-10 text-center text-sm text-muted-foreground">
+                No completed judgments yet.
+            </div>
           ) : (
-            <div className="divide-y rounded-lg border border-border/70 bg-card">
-              {rejudgeProgrammes.map((p) => (
+            <div className="space-y-2">
+              {completedJudgments.map((item) => (
                 <div
-                  key={p.id}
-                  className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3"
+                  key={item.configId}
+                  className="rounded-xl border border-border/60 bg-linear-to-br from-background to-muted/30 p-3 text-sm shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md sm:p-4"
                 >
-                  <div className="min-w-0 flex items-center gap-2">
-                    <p className="truncate text-[13px] font-medium sm:text-sm">
-                      {p.name}
-                    </p>
-                    <Badge
-                      variant="outline"
-                      className="shrink-0 text-[10px] font-normal"
-                    >
-                      {p.status}
-                    </Badge>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-1.5">
+                      <p className="truncate text-sm font-semibold leading-snug">
+                        {item.programmeName}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                        {(item.programmeStatus ?? "")
+                          .toUpperCase()
+                          .includes("PUBLISHED") ? (
+                          <span className="rounded border border-violet-400/60 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300">
+                            Published
+                          </span>
+                        ) : null}
+                        <span className="rounded bg-muted/40 px-1.5 py-0.5">
+                          {item.programmeStatus}
+                        </span>
+                        <span className="rounded bg-muted/40 px-1.5 py-0.5">
+                          {item.judgingMode}
+                        </span>
+                        <span className="rounded bg-muted/40 px-1.5 py-0.5">
+                          {item.programmeCategory ?? "No category"}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                        <Badge variant="default" className="h-5 px-2 text-[10px]">
+                          {judgmentStatusLabel(item.judgmentStatus)}
+                        </Badge>
+                        <span className="text-muted-foreground/80">
+                          Created {formatCardDateTime(item.createdAt)}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {item.completionSummary}
+                        </span>
+                        <span className="text-muted-foreground/80">
+                          {item.totalJudgments} entries
+                        </span>
+                      </div>
+                      {item.judgingMode === "SINGLE" &&
+                      item.pendingJudgeNames.length > 0 ? (
+                        <p className="text-[11px] text-muted-foreground">
+                          Pending: {item.pendingJudgeNames.join(", ")}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="flex shrink-0 flex-col items-stretch gap-1.5 self-center">
+                      <Button
+                        className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCompletedDetail(item)}
+                      >
+                        View details
+                      </Button>
+                      <Button
+                        className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setJudgedDetail(item)}
+                      >
+                        Review scores
+                      </Button>
+                    </div>
                   </div>
-                  {p.programmeCategory ? (
-                    <p className="w-full text-[11px] text-muted-foreground sm:w-auto sm:mr-auto sm:pl-2">
-                      {p.programmeCategory}
-                    </p>
-                  ) : null}
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
-                    onClick={() => openWizardForProgramme(p.id, "rejudge")}
-                  >
-                    <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
-                    Rejudge
-                  </Button>
                 </div>
               ))}
             </div>
           )}
         </section>
 
-        <section className="space-y-2.5 sm:space-y-3">
-          <h2 className="text-base font-semibold tracking-tight sm:text-lg">
-            Judged programmes
+        <section className="space-y-3">
+          <h2 className="text-base font-semibold tracking-tight sm:text-lg flex items-center justify-between">
+            Rejudge
+            <Badge variant="outline" className="text-[10px]">
+              {rejudgeProgrammes.length}
+            </Badge>
           </h2>
-          {judgedProgrammes.length === 0 ? (
-            <Card>
-              <CardContent className="p-4 text-sm text-muted-foreground">
-                No submitted judging data yet.
-              </CardContent>
-            </Card>
+          {rejudgeProgrammes.length === 0 ? (
+            <div className="py-10 text-center text-sm text-muted-foreground">
+                No judged programmes available for rejudge (published items
+                never appear here).
+            </div>
           ) : (
-            <div className="divide-y rounded-xl border bg-card">
-              {judgedProgrammes.map((item) => (
+            <div className="space-y-2">
+              {rejudgeProgrammes.map((p) => (
                 <div
-                  key={item.configId}
-                  className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-sm hover:bg-muted/40 sm:px-4 sm:py-3"
+                  key={p.id}
+                  className="rounded-xl border border-border/60 bg-linear-to-br from-background to-muted/30 px-3 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md sm:px-4"
                 >
-                  <div className="min-w-0 space-y-0.5">
-                    <p className="truncate text-[13px] font-medium leading-snug sm:text-sm">
-                      {item.programmeName}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {item.programmeStatus} · {item.judgingMode} ·{" "}
-                      {item.programmeCategory ?? "No category"} · limit{" "}
-                      {item.scoreLimit} · {item.totalJudgments} entries
-                    </p>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-[13px] font-semibold sm:text-sm">
+                          {p.name}
+                        </p>
+                        {p.programmeCategory ? (
+                          <p className="text-[11px] text-muted-foreground">
+                            {p.programmeCategory}
+                          </p>
+                        ) : null}
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className="w-fit text-[10px] font-normal"
+                      >
+                        {p.status}
+                      </Badge>
+                    </div>
+                    <div className="shrink-0 self-center">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
+                        onClick={() => openWizardForProgramme(p.id, "rejudge")}
+                      >
+                        <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
+                        Rejudge
+                      </Button>
+                    </div>
                   </div>
-                  <Button
-                    className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setJudgedDetail(item)}
-                  >
-                    View details
-                  </Button>
                 </div>
               ))}
             </div>
@@ -595,34 +844,60 @@ export function JudgmentWizardClient({
                 <DialogDescription>
                   Stage {reportedStudentsView.details.stageName ?? "—"} ·{" "}
                   {reportedStudentsView.details.scheduleStart
-                    ? new Date(
-                        reportedStudentsView.details.scheduleStart,
-                      ).toLocaleString()
+                    ? formatCardDateTime(reportedStudentsView.details.scheduleStart)
                     : "No schedule time"}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3 pt-2">
                 <p className="text-sm text-muted-foreground">
-                  Reported students ({reportedStudentsView.details.reportedCount})
+                  {reportedStudentsView.programmeType === "GROUP"
+                    ? `Reported teams (${reportedStudentsView.details.reportedCount})`
+                    : `Reported students (${reportedStudentsView.details.reportedCount})`}
                 </p>
-                {reportedStudentsView.details.reportedStudents.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Category: {reportedStudentsView.programmeCategory ?? "—"}
+                </p>
+                {reportedStudentsView.details.reportedEntries.length === 0 ? (
                   <Card>
                     <CardContent className="p-4 text-sm text-muted-foreground">
                       No reported student details available.
                     </CardContent>
                   </Card>
                 ) : (
-                  <div className="divide-y rounded-lg border bg-card">
-                    {reportedStudentsView.details.reportedStudents.map(
-                      (studentLabel) => (
-                        <div
-                          key={studentLabel}
-                          className="px-3 py-2 text-sm text-foreground"
-                        >
-                          {studentLabel}
+                  <div className="max-h-[min(56vh,26rem)] space-y-1 overflow-y-auto rounded-lg border bg-card p-1.5">
+                    {reportedStudentsView.details.reportedEntries.map((entry) => (
+                      <div
+                        key={`${entry.label}-${entry.codeLetter ?? "na"}`}
+                        className="rounded-md border bg-background/70 px-2 py-1.5"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="min-w-0 truncate text-xs font-medium text-foreground">
+                            {entry.label}
+                          </p>
+                          <span className="shrink-0 rounded border bg-muted px-2 py-0.5 font-mono text-xs font-semibold text-foreground">
+                            {reportedStudentsView.programmeType === "GROUP"
+                              ? `Team ${entry.codeLetter ?? "—"}`
+                              : entry.codeLetter ?? "—"}
+                          </span>
                         </div>
-                      ),
-                    )}
+                        {reportedStudentsView.programmeType === "GROUP" ? (
+                          <div className="mt-1 text-[10px] leading-tight text-muted-foreground">
+                            <p className="truncate">
+                              Group · {reportedStudentsView.programmeCategory ?? "—"}
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="mt-1 text-[10px] leading-tight text-muted-foreground">
+                            <p className="truncate">
+                              Individual · {entry.groupName ?? "—"} ·{" "}
+                              {entry.categoryName ??
+                                reportedStudentsView.programmeCategory ??
+                                "—"}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -661,57 +936,34 @@ export function JudgmentWizardClient({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 pt-1 sm:space-y-5 sm:pt-2">
+          <div className="space-y-3 pt-1 sm:space-y-4 sm:pt-2">
             <p className="text-xs text-muted-foreground sm:text-sm">
-              Step {step} of 4
+              Step {step - 1} of 3
             </p>
 
-            {step === 1 ? (
-              <div className="space-y-3 sm:space-y-4">
-                <div className="space-y-2">
-                  <Label>Score limit</Label>
-                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                    {[10, 20, 50, 100].map((v) => (
-                      <Button
-                        key={v}
-                        type="button"
-                        variant={
-                          scoreLimit === String(v) ? "default" : "outline"
-                        }
-                        onClick={() => setScoreLimit(String(v))}
-                      >
-                        {v}
-                      </Button>
-                    ))}
-                    <Input
-                      className="w-28"
-                      value={scoreLimit}
-                      onChange={(e) => setScoreLimit(e.target.value)}
-                      placeholder="Custom"
-                      type="number"
-                      min={1}
-                    />
-                  </div>
-                </div>
-                <Button
-                  className="h-8 text-xs sm:h-9 sm:text-sm"
-                  onClick={() => setStep(2)}
-                  disabled={!canMoveToStep2}
-                >
-                  Continue to judges
-                </Button>
-              </div>
-            ) : null}
-
             {step === 2 ? (
-              <div className="space-y-3 sm:space-y-4">
+              <div className="space-y-3">
+                <div className="rounded-md border bg-muted/20 px-2.5 py-2">
+                  <p className="text-[11px] text-muted-foreground">
+                    Score limit is enforced by scoring policy.
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-foreground">
+                    Selected judges: {selectedJudgeIds.length}
+                  </p>
+                </div>
                 <div className="space-y-2">
-                  <Label>Select judges</Label>
-                  <div className="grid max-h-[220px] gap-2 overflow-y-auto sm:max-h-[280px]">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Select judges
+                  </Label>
+                  <div className="grid max-h-[170px] gap-1.5 overflow-y-auto rounded-md border p-1.5 sm:max-h-[210px]">
                     {judges.map((j) => (
                       <label
                         key={j.id}
-                        className="flex items-center gap-2 rounded-md border px-3 py-2 text-xs sm:text-sm"
+                        className={`flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs transition-colors sm:text-sm ${
+                          selectedJudgeIds.includes(j.id)
+                            ? "border-violet-400/60 bg-violet-500/10"
+                            : "bg-background"
+                        }`}
                       >
                         <input
                           type="checkbox"
@@ -724,22 +976,32 @@ export function JudgmentWizardClient({
                   </div>
                 </div>
 
-                <div className="space-y-2 rounded-md border p-2.5 sm:p-3">
-                  <Label>Add judge</Label>
-                  <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                <div className="space-y-1.5 rounded-md border p-2 bg-muted/10">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Add judge
+                  </Label>
+                  <div className="grid gap-1.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center">
                     <Input
                       value={newJudgeName}
-                      onChange={(e) => setNewJudgeName(e.target.value)}
-                      placeholder="Judge name"
+                      onChange={(e) => {
+                        setNewJudgeName(e.target.value);
+                        if (inlineJudgeError) setInlineJudgeError(null);
+                      }}
+                      placeholder="Name"
+                      className="h-8 text-xs sm:text-sm"
                     />
                     <Input
                       value={newJudgeDescription}
-                      onChange={(e) => setNewJudgeDescription(e.target.value)}
+                      onChange={(e) => {
+                        setNewJudgeDescription(e.target.value);
+                        if (inlineJudgeError) setInlineJudgeError(null);
+                      }}
                       placeholder="Description (optional)"
+                      className="h-8 text-xs sm:text-sm"
                     />
                     <Button
                       type="button"
-                      className="h-8 text-xs sm:h-9 sm:text-sm"
+                      className="h-8 px-2.5 text-xs"
                       onClick={onInlineCreateJudge}
                       disabled={!newJudgeName.trim() || isPending}
                     >
@@ -747,37 +1009,32 @@ export function JudgmentWizardClient({
                       Add
                     </Button>
                   </div>
+                  {inlineJudgeError ? (
+                    <p className="text-xs text-destructive">{inlineJudgeError}</p>
+                  ) : null}
                 </div>
 
-                <div className="flex gap-2">
-                  <Button
-                    className="h-8 text-xs sm:h-9 sm:text-sm"
-                    type="button"
-                    variant="outline"
-                    onClick={() => setStep(1)}
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    className="h-8 text-xs sm:h-9 sm:text-sm"
-                    type="button"
-                    onClick={() => setStep(3)}
-                    disabled={!canGenerate}
-                  >
-                    Continue to mode
-                  </Button>
-                </div>
+                <Button
+                  className="h-8 text-xs w-full sm:h-9"
+                  type="button"
+                  onClick={() => setStep(3)}
+                  disabled={!canGenerate}
+                >
+                  Continue
+                </Button>
               </div>
             ) : null}
 
             {step === 3 ? (
-              <div className="space-y-3 sm:space-y-4">
-                <div className="space-y-2 rounded-md border p-2.5 sm:p-3">
-                  <Label>Judging mode</Label>
+              <div className="space-y-3">
+                <div className="space-y-2 rounded-lg border border-border/70 bg-muted/10 p-2.5">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Judging mode
+                  </Label>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <button
                       type="button"
-                      className={`rounded-md border px-3 py-2 text-left text-sm ${judgingMode === "SINGLE" ? "border-primary bg-primary/5" : ""}`}
+                      className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${judgingMode === "SINGLE" ? "border-violet-400/60 bg-violet-500/10" : "bg-background hover:bg-muted/40"}`}
                       onClick={() => setJudgingMode("SINGLE")}
                     >
                       <p className="font-medium">Single</p>
@@ -787,7 +1044,7 @@ export function JudgmentWizardClient({
                     </button>
                     <button
                       type="button"
-                      className={`rounded-md border px-3 py-2 text-left text-sm ${judgingMode === "GROUP" ? "border-primary bg-primary/5" : ""}`}
+                      className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${judgingMode === "GROUP" ? "border-violet-400/60 bg-violet-500/10" : "bg-background hover:bg-muted/40"}`}
                       onClick={() => setJudgingMode("GROUP")}
                     >
                       <p className="font-medium">Group</p>
@@ -798,13 +1055,16 @@ export function JudgmentWizardClient({
                   </div>
                 </div>
 
-                <div className="space-y-2 rounded-md border p-2.5 sm:p-3">
-                  <Label>PIN</Label>
-                  <div className="flex flex-wrap gap-2">
+                <div className="space-y-2 rounded-lg border border-border/70 bg-muted/10 p-2.5">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Pincode
+                  </Label>
+                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                     <Button
                       type="button"
                       variant={pinMode === "auto" ? "default" : "outline"}
                       size="sm"
+                      className="h-8 text-xs"
                       onClick={() => setPinMode("auto")}
                     >
                       Auto
@@ -813,12 +1073,13 @@ export function JudgmentWizardClient({
                       type="button"
                       variant={pinMode === "manual" ? "default" : "outline"}
                       size="sm"
+                      className="h-8 text-xs"
                       onClick={() => setPinMode("manual")}
                     >
                       Manual
                     </Button>
                     <select
-                      className="h-9 rounded-md border bg-background px-2 text-sm"
+                      className="col-span-2 h-8 rounded-md border bg-background px-2 text-xs sm:col-span-1 sm:h-9 sm:text-sm"
                       value={pinLength}
                       onChange={(e) =>
                         setPinLength(Number(e.target.value) as 4 | 5 | 6)
@@ -839,13 +1100,14 @@ export function JudgmentWizardClient({
                       }
                       placeholder="4–6 digit PIN"
                       inputMode="numeric"
+                      className="h-8 text-xs sm:h-9 sm:text-sm"
                     />
                   ) : null}
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 pt-1">
                   <Button
-                    className="h-8 text-xs sm:h-9 sm:text-sm"
+                    className="h-8 flex-1 text-xs sm:h-9 sm:flex-none"
                     type="button"
                     variant="outline"
                     onClick={() => setStep(2)}
@@ -853,7 +1115,7 @@ export function JudgmentWizardClient({
                     Back
                   </Button>
                   <Button
-                    className="h-8 text-xs sm:h-9 sm:text-sm"
+                    className="h-8 flex-1 text-xs sm:h-9 sm:flex-none"
                     type="button"
                     onClick={onGenerate}
                     disabled={
@@ -869,23 +1131,30 @@ export function JudgmentWizardClient({
             ) : null}
 
             {step === 4 ? (
-              <div className="space-y-3 sm:space-y-4">
+              <div className="space-y-3">
                 <p className="text-xs text-muted-foreground sm:text-sm">
                   Share the link and PIN with judges. Copy now — the PIN is not
                   stored in plain text.
                 </p>
                 {dialogGeneratedUrl ? (
-                  <div className="space-y-2 rounded-md border bg-muted/30 p-3 text-xs">
-                    <p className="break-all text-muted-foreground">
-                      {dialogGeneratedUrl}
-                    </p>
-                    {dialogGeneratedPin ? (
-                      <p className="font-mono">
-                        PIN:{" "}
-                        <span className="font-semibold text-foreground">
-                          {dialogGeneratedPin}
-                        </span>
+                  <div className="space-y-2 rounded-lg border border-violet-400/40 bg-violet-500/10 p-3 text-xs shadow-sm">
+                    <div className="rounded-md border border-violet-300/30 bg-background/70 p-2">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        Judge link
                       </p>
+                      <p className="mt-1 break-all font-mono text-[11px] text-foreground">
+                        {dialogGeneratedUrl}
+                      </p>
+                    </div>
+                    {dialogGeneratedPin ? (
+                      <div className="rounded-md border border-violet-300/30 bg-background/70 p-2">
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                          Pincode
+                        </p>
+                        <p className="mt-1 font-mono text-base font-bold tracking-widest text-violet-600 dark:text-violet-300">
+                          {dialogGeneratedPin}
+                        </p>
+                      </div>
                     ) : null}
                     <div className="flex flex-wrap gap-1.5 pt-1 sm:gap-2">
                       <Button
@@ -914,7 +1183,7 @@ export function JudgmentWizardClient({
                             toast.success("PIN copied.");
                           }}
                         >
-                          Copy PIN
+                          Copy pincode
                         </Button>
                       ) : null}
                     </div>
@@ -928,7 +1197,6 @@ export function JudgmentWizardClient({
                     onClick={() => {
                       const r = resetWizardForm();
                       setStep(r.step);
-                      setScoreLimit(r.scoreLimit);
                       setSelectedJudgeIds(r.selectedJudgeIds);
                       setPinMode(r.pinMode);
                       setManualPin(r.manualPin);
@@ -954,6 +1222,121 @@ export function JudgmentWizardClient({
       </Dialog>
 
       <Dialog
+        open={Boolean(completedDetail)}
+        onOpenChange={(open) => !open && setCompletedDetail(null)}
+      >
+        <DialogContent className="max-h-[min(90dvh,720px)] w-[calc(100%-1rem)] max-w-2xl overflow-y-auto p-3 sm:w-[calc(100%-1.5rem)] sm:p-6">
+          {completedDetail ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>{completedDetail.programmeName}</DialogTitle>
+                <DialogDescription>
+                  Completed judgment summary and timeline
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-2.5 sm:space-y-3">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
+                    <p className="text-[10px] uppercase text-muted-foreground">Status</p>
+                    <p className="text-xs font-semibold">
+                      {judgmentStatusLabel(completedDetail.judgmentStatus)}
+                    </p>
+                  </div>
+                  <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
+                    <p className="text-[10px] uppercase text-muted-foreground">Mode</p>
+                    <p className="text-xs font-semibold">{completedDetail.judgingMode}</p>
+                  </div>
+                  <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
+                    <p className="text-[10px] uppercase text-muted-foreground">Entries</p>
+                    <p className="text-xs font-semibold">{completedDetail.totalJudgments}</p>
+                  </div>
+                  <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
+                    <p className="text-[10px] uppercase text-muted-foreground">Code letters</p>
+                    <p className="text-xs font-semibold">
+                      {completedDetail.requiredCodeLetters}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border bg-card/60 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Timeline
+                    </p>
+                    <Badge variant="outline" className="h-5 text-[10px]">
+                      {completedDetailTimeline.length} events
+                    </Badge>
+                  </div>
+                  <Accordion type="single" collapsible className="mt-2 rounded-md border border-border/70 bg-background/70 px-2.5">
+                    <AccordionItem value="judgment-timeline" className="border-b-0">
+                      <AccordionTrigger className="py-2 hover:no-underline">
+                        <div className="flex min-w-0 items-center gap-2 text-left">
+                          <span className="truncate text-[11px] font-semibold sm:text-[12px]">
+                            Timeline events
+                          </span>
+                          <span className="truncate text-[10px] text-muted-foreground">
+                            {completedDetailTimeline.length} total
+                          </span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pb-2 pt-0">
+                        <div className="grid gap-1.5 sm:grid-cols-2">
+                          {completedDetailTimeline.map((event, index) => (
+                            <div
+                              key={`${event.title}-${index}`}
+                              className="rounded-md border border-border/70 bg-linear-to-br from-background via-background to-muted/30 px-2.5 py-2"
+                            >
+                              <div className="flex items-start gap-2">
+                                <span className="inline-flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full border border-violet-400/40 bg-violet-500/10 text-[9px] font-semibold text-violet-700 dark:text-violet-300">
+                                  {index + 1}
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="truncate text-[11px] font-semibold sm:text-[12px]">
+                                    {event.title}
+                                  </p>
+                                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                                    {event.detail}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                </div>
+
+                <div className="rounded-lg border bg-card/60 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Judges
+                  </p>
+                  <div className="mt-2 space-y-1.5">
+                    {completedDetail.judges.map((judge) => (
+                      <div
+                        key={judge.id}
+                        className="flex flex-col items-start justify-between gap-0.5 rounded-md border bg-background px-2.5 py-2 text-xs sm:flex-row sm:items-center"
+                      >
+                        <span className="font-medium">{judge.name}</span>
+                        <span className="text-muted-foreground">
+                          {judge.submittedAt
+                            ? `Submitted ${formatCardDateTime(judge.submittedAt)}`
+                            : judge.firstScoredAt
+                              ? `Opened/started ${formatCardDateTime(judge.firstScoredAt)}`
+                              : "Not opened"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
         open={Boolean(judgedDetail)}
         onOpenChange={(open) => !open && setJudgedDetail(null)}
       >
@@ -964,8 +1347,7 @@ export function JudgmentWizardClient({
                 <DialogTitle>{judgedDetail.programmeName}</DialogTitle>
                 <DialogDescription>
                   Status {judgedDetail.programmeStatus} · Mode{" "}
-                  {judgedDetail.judgingMode} · Score limit{" "}
-                  {judgedDetail.scoreLimit} · {judgedDetail.totalJudgments}{" "}
+                  {judgedDetail.judgingMode} · {judgedDetail.totalJudgments}{" "}
                   score entries
                 </DialogDescription>
               </DialogHeader>
@@ -980,12 +1362,30 @@ export function JudgmentWizardClient({
                       >
                         {j.name}
                         {j.submittedAt
-                          ? ` · ${new Date(j.submittedAt).toLocaleString()}`
+                          ? ` · ${formatCardDateTime(j.submittedAt)}`
                           : " · not submitted"}
                       </span>
                     ))}
                   </div>
                 </div>
+                {judgedDetail.judgingMode === "SINGLE" ? (
+                  <div className="rounded-md border p-2.5 sm:p-3">
+                    <p className="mb-2 text-xs font-medium">Single-mode completion</p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {judgedDetail.judgeProgress.map((progress) => (
+                        <div
+                          key={progress.judgeId}
+                          className="rounded-md border bg-muted/20 px-2.5 py-2 text-xs"
+                        >
+                          <p className="font-medium">{progress.judgeName}</p>
+                          <p className="text-muted-foreground">
+                            {progress.scoredCount}/{progress.requiredCount} code letters
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <div className="overflow-x-auto rounded-md border">
                   <table className="min-w-full text-xs sm:text-sm">
                     <thead className="bg-muted/40">
@@ -1003,7 +1403,7 @@ export function JudgmentWizardClient({
                       </tr>
                     </thead>
                     <tbody>
-                      {judgedDetail.codeLetterRows.map((row) => (
+                      {sortedJudgedCodeRows.map((row) => (
                         <tr key={row.codeLetterId} className="border-t">
                           <td className="px-3 py-2 font-mono">{row.code}</td>
                           {judgedDetail.judges.map((j) => (

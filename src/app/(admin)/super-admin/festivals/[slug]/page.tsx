@@ -11,6 +11,7 @@ import {
   festivalLifecycleEvent as lifecycleEventTable,
   expiredFestivalResult as resultTable,
 } from "@/core/database/schema";
+import { formatStoredDateTime } from "@/core/utils/date-time";
 import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 
@@ -106,7 +107,9 @@ export default async function AdminFestivalDetailPage({
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Created At</span>
-              <span>{new Date(festival.createdAt).toLocaleDateString()}</span>
+              <span>
+                {formatStoredDateTime(festival.createdAt, { dateStyle: "medium" })}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Category</span>
@@ -115,7 +118,9 @@ export default async function AdminFestivalDetailPage({
             {isExpired && festival.expiredAt && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Expired At</span>
-                <span>{new Date(festival.expiredAt).toLocaleDateString()}</span>
+                <span>
+                  {formatStoredDateTime(festival.expiredAt, { dateStyle: "medium" })}
+                </span>
               </div>
             )}
           </CardContent>
@@ -205,7 +210,10 @@ export default async function AdminFestivalDetailPage({
                   <li key={ev.id} className="flex items-center gap-3 text-sm">
                     <Badge variant="outline">{ev.event}</Badge>
                     <span className="text-muted-foreground">
-                      {new Date(ev.occurredAt).toLocaleString()}
+                      {formatStoredDateTime(ev.occurredAt, {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}
                     </span>
                   </li>
                 ))}

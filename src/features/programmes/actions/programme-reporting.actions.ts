@@ -6,6 +6,7 @@ import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
   programmeNotification as notificationTable,
+  programme as programmeTable,
   programmeReportingSession as prsTable,
   programmeReportedParticipant as reportedParticipantTable,
   student as studentTable,
@@ -298,6 +299,38 @@ export async function scanAndReportStudentAction(
       };
     }
 
+    const programme = await db.query.programme.findFirst({
+      where: eq(programmeTable.id, session.programmeId),
+      columns: { categoryId: true },
+      with: { category: { columns: { type: true } } },
+    });
+    if (!programme) {
+      return {
+        success: false,
+        error: "Programme not found",
+        reason: "PROGRAMME_NOT_FOUND",
+      };
+    }
+    const isGeneralProgramme = programme.category?.type === "GENERAL";
+    if (!isGeneralProgramme && student.categoryId !== programme.categoryId) {
+      return {
+        success: false,
+        error: `${student.name} category does not match programme category`,
+        reason: "CATEGORY_MISMATCH",
+        student: {
+          id: student.id,
+          name: student.name,
+          chestNumber: student.chestNumber,
+          groupName: student.group?.name,
+          categoryName: student.category?.name,
+        },
+        programme: {
+          id: session.programmeId,
+          name: session.programme?.name,
+        },
+      };
+    }
+
     const existingReport =
       await db.query.programmeReportedParticipant.findFirst({
         where: and(
@@ -378,6 +411,7 @@ export async function assignCodeLettersWithSpinAction(
   reportingSessionId: string,
   codeAssignments: Array<{
     teamNumber: number | null;
+    groupId?: string | null;
     studentId?: string | null;
     code: string;
   }>,
@@ -391,5 +425,18 @@ export async function assignCodeLettersWithSpinAction(
   );
   await revalidateProgrammeReporting(festivalId, "reporting");
 
+  return { success: true, data: result };
+}
+
+export async function resetSpinCodeLettersAction(
+  festivalId: string,
+  reportingSessionId: string,
+) {
+  const actorName = await assertStageManagerAccess(festivalId);
+  const result = await ProgrammeReportingService.resetSpinCodeLetters(
+    reportingSessionId,
+    actorName,
+  );
+  await revalidateProgrammeReporting(festivalId, "reporting");
   return { success: true, data: result };
 }

@@ -15,10 +15,14 @@ export const metadata: Metadata = {
 
 export default async function ResultsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ programmeId?: string }>;
 }) {
   const { slug } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const initialProgrammeId = resolvedSearchParams?.programmeId?.trim() || undefined;
 
   const { festival } = await getFestivalResultsDataBySlug(slug);
 
@@ -68,6 +72,7 @@ export default async function ResultsPage({
         }}
         programmes={eventWorksProgrammes}
         categories={festival.categories}
+        initialProgrammeId={initialProgrammeId}
       >
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">

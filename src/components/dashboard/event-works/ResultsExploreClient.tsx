@@ -44,9 +44,9 @@ import { getGradeBadgeColor } from "@/features/results/services/results-calculat
 
 const getTeamIdentifier = (assignment: any, type: string) => {
   if (type === "GROUP") {
-    const groupName = assignment.group?.name || "No Group";
+    const groupKey = assignment.group?.id ?? assignment.group?.name ?? "no-group";
     const teamNum = assignment.teamNumber || 1;
-    return `${groupName}-${teamNum}`;
+    return `${groupKey}-${teamNum}`;
   }
   return assignment.id;
 };
@@ -59,10 +59,14 @@ type Programme = {
   assignments: any[];
 };
 
+const getResultPoints = (result: { points?: number; awardPoints?: number | null }) =>
+  result.awardPoints ?? result.points ?? 0;
+
 interface ResultsExploreClientProps {
   festival: { id: string; name: string; slug: string };
   programmes: Programme[];
   categories: { id: string; name: string }[];
+  initialProgrammeId?: string;
   children?: React.ReactNode;
 }
 
@@ -70,6 +74,7 @@ export function ResultsExploreClient({
   festival,
   programmes,
   categories,
+  initialProgrammeId,
   children,
 }: ResultsExploreClientProps) {
   const router = useRouter();
@@ -93,21 +98,36 @@ export function ResultsExploreClient({
   const programmesWithResults = useMemo(() => {
     return programmes
       .map((p) => {
-        const assignmentsWithResult = p.assignments.filter(
-          (a: any) => a.result,
-        );
-        const publishedCount = assignmentsWithResult.filter(
+        const assignmentsWithResult = p.assignments.filter((a: any) => a.result);
+
+        let totalResults = assignmentsWithResult.length;
+        let publishedCount = assignmentsWithResult.filter(
           (a: any) => a.result?.isPublished,
         ).length;
-        const hasAnyResult = assignmentsWithResult.length > 0;
-        const isPublished =
-          hasAnyResult && publishedCount === assignmentsWithResult.length;
+
+        if (p.type === "GROUP") {
+          const allTeams = new Set<string>();
+          const publishedTeams = new Set<string>();
+
+          assignmentsWithResult.forEach((a: any) => {
+            const teamId = getTeamIdentifier(a, "GROUP");
+            allTeams.add(teamId);
+            if (a.result?.isPublished) publishedTeams.add(teamId);
+          });
+
+          totalResults = allTeams.size;
+          publishedCount = publishedTeams.size;
+        }
+
+        const hasAnyResult = totalResults > 0;
+        const isPublished = hasAnyResult && publishedCount === totalResults;
+
         return {
           ...p,
           _meta: {
             hasAnyResult,
             publishedCount,
-            totalResults: assignmentsWithResult.length,
+            totalResults,
             isPublished,
           },
         };
@@ -142,6 +162,19 @@ export function ResultsExploreClient({
       return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
     });
   }, [programmesWithResults, filterCategory, filterType, searchQuery]);
+
+  useEffect(() => {
+    if (!initialProgrammeId) return;
+    const targetProgramme = programmesWithResults.find(
+      (programme) => programme.id === initialProgrammeId,
+    );
+    if (!targetProgramme) return;
+
+    setFilterCategory("all");
+    setFilterType("all");
+    setSearchQuery(targetProgramme.name);
+    setViewProgramme(targetProgramme as Programme);
+  }, [initialProgrammeId, programmesWithResults]);
 
   const togglePublishProgramme = (programmeId: string, publish: boolean) => {
     setPublishingProgrammeId(programmeId);
@@ -182,7 +215,7 @@ export function ResultsExploreClient({
             chestNumber: "",
             codeLetter: assignment.result?.codeLetter?.code ?? "-",
             grade: assignment.result.grade,
-            points: assignment.result.points,
+            points: getResultPoints(assignment.result),
             position: assignment.result.position || 0,
             remarks: assignment.result.remarks,
           });
@@ -207,7 +240,7 @@ export function ResultsExploreClient({
             : "",
           codeLetter: result.codeLetter?.code ?? "-",
           grade: result.grade,
-          points: result.points,
+          points: getResultPoints(result),
           position: result.position || 0,
           remarks: result.remarks,
         };
@@ -333,6 +366,9 @@ export function ResultsExploreClient({
                   </p>
                 </div>
                 <div className="shrink-0 flex items-center gap-1.5">
+                  {prog.id === initialProgrammeId ? (
+                    <Badge className="text-[10px]">From Judgment</Badge>
+                  ) : null}
                   <Badge variant="outline" className="text-[10px]">
                     {prog.type === "GROUP" ? "Group" : "Individual"}
                   </Badge>

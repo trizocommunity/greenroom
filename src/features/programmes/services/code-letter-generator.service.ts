@@ -219,7 +219,12 @@ export const CodeLetterGeneratorService = {
       festivalId: string;
       programmeId: string;
     },
-    codeAssignments: Array<{ teamNumber: number | null; studentId?: string | null; code: string }>,
+    codeAssignments: Array<{
+      teamNumber: number | null;
+      groupId?: string | null;
+      studentId?: string | null;
+      code: string;
+    }>,
     reportedParticipants: Array<{
       studentId: string | null;
       groupId: string | null;
@@ -247,7 +252,9 @@ export const CodeLetterGeneratorService = {
         ) {
           teamParticipants = reportedParticipants.filter(
             (p) =>
-              p.groupId !== null &&
+              assignment.groupId !== undefined &&
+              assignment.groupId !== null &&
+              p.groupId === assignment.groupId &&
               p.teamNumber === assignment.teamNumber &&
               p.studentId !== null,
           );

@@ -6,14 +6,38 @@ import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { judge as judgeTable } from "@/core/database/schema";
+import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { listFestivalJudgesWithAssignments } from "@/features/judges/repositories/judge.repository";
+
+function normalizeJudgeName(name: string) {
+  return name.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+}
+
+async function assertUniqueJudgeName(
+  festivalId: string,
+  candidateName: string,
+  excludeJudgeId?: string,
+) {
+  const normalizedCandidate = normalizeJudgeName(candidateName);
+  const existing = await db.query.judge.findMany({
+    where: eq(judgeTable.festivalId, festivalId),
+    columns: { id: true, name: true },
+  });
+
+  const conflict = existing.find((judge) => {
+    if (excludeJudgeId && judge.id === excludeJudgeId) return false;
+    return normalizeJudgeName(judge.name) === normalizedCandidate;
+  });
+
+  if (conflict) {
+    throw new AppError(ERROR_MESSAGES.JUDGE_NAME_DUPLICATE);
+  }
+}
 
 export async function getJudgesAction(festivalId: string) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
-  return db.query.judge.findMany({
-    where: eq(judgeTable.festivalId, festivalId),
-    orderBy: [asc(judgeTable.name)],
-  });
+  return listFestivalJudgesWithAssignments(festivalId);
 }
 
 export async function createJudgeAction(
@@ -24,7 +48,8 @@ export async function createJudgeAction(
   await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
   const name = input.name.trim();
-  if (!name) throw new Error("Judge name is required.");
+  if (!name) throw new AppError(ERROR_MESSAGES.JUDGE_NAME_REQUIRED);
+  await assertUniqueJudgeName(festivalId, name);
 
   const now = new Date().toISOString();
   const [created] = await db
@@ -49,7 +74,8 @@ export async function updateJudgeAction(
   const session = await getSession();
   await assertFestivalAccess(session, festivalId, { requireWritable: true });
   const name = input.name.trim();
-  if (!name) throw new Error("Judge name is required.");
+  if (!name) throw new AppError(ERROR_MESSAGES.JUDGE_NAME_REQUIRED);
+  await assertUniqueJudgeName(festivalId, name, judgeId);
 
   const now = new Date().toISOString();
   const [updated] = await db
@@ -61,7 +87,7 @@ export async function updateJudgeAction(
     })
     .where(and(eq(judgeTable.id, judgeId), eq(judgeTable.festivalId, festivalId)))
     .returning();
-  if (!updated) throw new Error("Judge not found.");
+  if (!updated) throw new AppError(ERROR_MESSAGES.JUDGE_NOT_FOUND);
   return updated;
 }
 

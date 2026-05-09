@@ -61,11 +61,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/core/utils/cn";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
   localWallClockToDate,
   parseStoredScheduleInstant,
 } from "@/features/schedule/utils/schedule-datetime";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import {
   type ConflictParts,
   checkScheduleConflict,
@@ -102,8 +104,8 @@ function getFestivalDateOptions(
   endISO: string | null,
 ): DateOption[] {
   if (!startISO || !endISO) return [];
-  const start = startOfDay(new Date(startISO));
-  const end = startOfDay(new Date(endISO));
+  const start = startOfDay(parseStoredInstant(startISO));
+  const end = startOfDay(parseStoredInstant(endISO));
   if (start > end) return [];
   const days = eachDayOfInterval({ start, end });
   return days.map((d) => ({
@@ -595,7 +597,7 @@ export function ScheduleClient({
                                       {" "}
                                       ·{" "}
                                       {format(
-                                        new Date(entry.updatedAt),
+                                        parseStoredInstant(entry.updatedAt),
                                         "MMM d, h:mm a",
                                       )}
                                     </>
@@ -611,7 +613,7 @@ export function ScheduleClient({
                                     Updated by {entry.updatedBy} on{" "}
                                     {entry.updatedAt &&
                                       format(
-                                        new Date(entry.updatedAt),
+                                        parseStoredInstant(entry.updatedAt),
                                         "MMM d, yyyy 'at' h:mm a",
                                       )}
                                   </p>

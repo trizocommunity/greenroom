@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { adminService } from "@/features/admin/services/admin.service";
 
 export default async function AdminUsersPage() {
@@ -65,7 +66,7 @@ export default async function AdminUsersPage() {
                   )}
                 </TableCell>
                 <TableCell>
-                  {format(new Date(user.createdAt), "MMM d, yyyy")}
+                  {format(parseStoredInstant(user.createdAt), "MMM d, yyyy")}
                 </TableCell>
                 <TableCell>
                   <Badge variant={user.isActive ? "default" : "secondary"}>

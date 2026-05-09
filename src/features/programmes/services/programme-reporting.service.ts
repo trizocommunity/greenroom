@@ -12,6 +12,7 @@ import {
   programmeReportedParticipant as reportedParticipantTable,
   result as resultTable,
   scheduleEntry as scheduleEntryTable,
+  student as studentTable,
 } from "@/core/database/schema";
 import { CodeLetterGeneratorService } from "./code-letter-generator.service";
 import { NotificationService } from "@/features/notifications/services/notification.service";
@@ -62,6 +63,35 @@ async function getAssignedRecipientsForSession(reportingSessionId: string) {
   });
   if (!session) return null;
   return session;
+}
+
+async function assertAssignmentCategoryCompatibility(input: {
+  programmeId: string;
+  studentId: string | null;
+}) {
+  if (!input.studentId) return;
+
+  const programme = await db.query.programme.findFirst({
+    where: eq(programmeTable.id, input.programmeId),
+    columns: { categoryId: true },
+    with: {
+      category: { columns: { type: true } },
+    },
+  });
+  if (!programme) throw new Error("Programme not found");
+  if (programme.category?.type === "GENERAL") return;
+
+  const student = await db.query.student.findFirst({
+    where: eq(studentTable.id, input.studentId),
+    columns: { categoryId: true },
+  });
+  if (!student) throw new Error("Student not found");
+
+  if (student.categoryId !== programme.categoryId) {
+    throw new Error(
+      "Student category does not match programme category for reporting.",
+    );
+  }
 }
 
 export const ProgrammeReportingService = {
@@ -423,6 +453,10 @@ export const ProgrammeReportingService = {
         "Assignment does not belong to this programme reporting session",
       );
     }
+    await assertAssignmentCategoryCompatibility({
+      programmeId: session.programmeId,
+      studentId: assignment.studentId,
+    });
 
     const now = new Date().toISOString();
 
@@ -458,6 +492,12 @@ export const ProgrammeReportingService = {
           ),
           columns: { id: true, studentId: true },
         });
+        for (const ta of teamAssignments) {
+          await assertAssignmentCategoryCompatibility({
+            programmeId: session.programmeId,
+            studentId: ta.studentId,
+          });
+        }
 
         await db.transaction(async (tx) => {
           for (const ta of teamAssignments) {
@@ -603,6 +643,12 @@ export const ProgrammeReportingService = {
     });
     if (assignments.length !== assignmentIds.length) {
       throw new Error("One or more assignments not found");
+    }
+    for (const assignment of assignments) {
+      await assertAssignmentCategoryCompatibility({
+        programmeId: session.programmeId,
+        studentId: assignment.studentId,
+      });
     }
 
     const now = new Date().toISOString();
@@ -872,14 +918,30 @@ export const ProgrammeReportingService = {
 
     if (!session) throw new Error("Reporting session not found");
 
-    const [assignmentCountResult] = await db
-      .select({ c: count() })
-      .from(assignmentTable)
-      .where(eq(assignmentTable.programmeId, session.programmeId));
+    const assignments = await db.query.programmeAssignment.findMany({
+      where: eq(assignmentTable.programmeId, session.programmeId),
+      columns: {
+        id: true,
+        groupId: true,
+        teamNumber: true,
+      },
+    });
 
-    const totalParticipants = assignmentCountResult.c;
-    const reportedCount = session.programmeReportedParticipants.length;
-    const totalUnits = totalParticipants;
+    const totalUnits =
+      session.programme.type === "GROUP"
+        ? new Set(
+            assignments.map((row) => `${row.groupId ?? "no-group"}::${row.teamNumber ?? 0}`),
+          ).size
+        : assignments.length;
+
+    const reportedCount =
+      session.programme.type === "GROUP"
+        ? new Set(
+            session.programmeReportedParticipants.map(
+              (row) => `${row.groupId ?? "no-group"}::${row.teamNumber ?? 0}`,
+            ),
+          ).size
+        : session.programmeReportedParticipants.length;
 
     const remaining = totalUnits - reportedCount;
     const startTime = session.startedAt ? new Date(session.startedAt) : null;
@@ -914,6 +976,7 @@ export const ProgrammeReportingService = {
     reportingSessionId: string,
     codeAssignments: Array<{
       teamNumber: number | null;
+      groupId?: string | null;
       studentId?: string | null;
       code: string;
     }>,
@@ -971,5 +1034,49 @@ export const ProgrammeReportingService = {
       codesAssigned: codeAssignments.length,
       studentsNotified: studentCodes.length,
     };
+  },
+
+  async resetSpinCodeLetters(reportingSessionId: string, actorName: string) {
+    const session = await db.query.programmeReportingSession.findFirst({
+      where: eq(prsTable.id, reportingSessionId),
+      columns: {
+        id: true,
+        status: true,
+        isLocked: true,
+        programmeId: true,
+        festivalId: true,
+      },
+    });
+
+    if (!session) throw new Error("Reporting session not found");
+    if (session.isLocked) {
+      throw new Error("Cannot reset code letters for a closed reporting session");
+    }
+    if (session.status !== "IN_PROGRESS") {
+      throw new Error("Code letters can only be reset while reporting is in progress");
+    }
+
+    await CodeLetterGeneratorService.clearSessionCodeLetters(reportingSessionId);
+
+    await NotificationService.dispatch({
+      eventType: "REPORTING_RESET",
+      festivalId: session.festivalId,
+      targets: {
+        programmeId: session.programmeId,
+        includeTeamLeadersForProgramme: true,
+      },
+      context: {
+        title: "Code letters reset",
+        body: "All issued code letters were cleared. Stage manager will re-spin and assign fresh letters.",
+        payload: {
+          reportingSessionId: session.id,
+          programmeId: session.programmeId,
+          actionBy: actorName,
+        },
+      },
+      channels: ["IN_APP"],
+    });
+
+    return { success: true };
   },
 };

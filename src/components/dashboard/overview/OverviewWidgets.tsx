@@ -35,6 +35,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { festival as festivalSchema } from "@/core/database/schema";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { getDashboardOverviewData } from "@/features/festivals/repositories/festival.repository";
 import type { FeaturePath } from "@/features/plan-features/services/features";
 import { isFeatureTagEnabled } from "@/features/plan-features/services/features-tags";
@@ -237,16 +238,12 @@ export default async function OverviewWidgets({
                     className="flex items-center justify-between border-b pb-2 last:border-0 "
                   >
                     <div>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <p className="text-sm font-medium leading-none truncate max-w-[200px]">
-                            {prog.name}
-                          </p>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{prog.name}</p>
-                        </TooltipContent>
-                      </Tooltip>
+                      <p
+                        className="text-sm font-medium leading-none truncate max-w-[200px]"
+                        title={prog.name}
+                      >
+                        {prog.name}
+                      </p>
                       <p className="text-xs text-muted-foreground truncate max-w-[160px]">
                         {prog.category.name}
                       </p>
@@ -259,7 +256,7 @@ export default async function OverviewWidgets({
                         />
                       )}
                       <p className="text-[12px] text-muted-foreground shrink-0">
-                        {format(new Date(prog.createdAt), "dd/MM/yyyy")}
+                        {format(parseStoredInstant(prog.createdAt), "dd/MM/yyyy")}
                       </p>
                     </div>
                   </div>
@@ -370,7 +367,7 @@ export default async function OverviewWidgets({
                       <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
                         {programme.latestResultAt
                           ? format(
-                              new Date(programme.latestResultAt),
+                              parseStoredInstant(programme.latestResultAt),
                               "dd/MM/yyyy",
                             )
                           : "—"}

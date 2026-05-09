@@ -11,7 +11,6 @@ import {
   text,
   timestamp,
   uniqueIndex,
-  varchar,
 } from "drizzle-orm/pg-core";
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
@@ -109,22 +108,6 @@ export const stageType = pgEnum("StageType", ["STAGE", "NON_STAGE"]);
 export const tier = pgEnum("Tier", ["BASIC", "STANDARD", "PRO"]);
 
 // ─── Utility / standalone tables ─────────────────────────────────────────────
-
-export const prismaMigrations = pgTable("_prisma_migrations", {
-  id: varchar({ length: 36 }).primaryKey().notNull(),
-  checksum: varchar({ length: 64 }).notNull(),
-  finishedAt: timestamp("finished_at", { withTimezone: true, mode: "string" }),
-  migrationName: varchar("migration_name", { length: 255 }).notNull(),
-  logs: text(),
-  rolledBackAt: timestamp("rolled_back_at", {
-    withTimezone: true,
-    mode: "string",
-  }),
-  startedAt: timestamp("started_at", { withTimezone: true, mode: "string" })
-    .defaultNow()
-    .notNull(),
-  appliedStepsCount: integer("applied_steps_count").default(0).notNull(),
-});
 
 export const auditLog = pgTable("audit_log", {
   id: text().primaryKey().notNull(),
@@ -313,6 +296,11 @@ export const category = pgTable(
     type: categoryType().default("SINGLE").notNull(),
   },
   (table) => [
+    uniqueIndex("category_festivalId_name_key").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+      table.name.asc().nullsLast(),
+    ),
     foreignKey({
       columns: [table.festivalId],
       foreignColumns: [festival.id],
@@ -341,6 +329,11 @@ export const group = pgTable(
     color: text().default("#2563eb").notNull(),
   },
   (table) => [
+    uniqueIndex("group_festivalId_name_key").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+      table.name.asc().nullsLast(),
+    ),
     index("group_festivalId_createdAt_idx").using(
       "btree",
       table.festivalId.asc().nullsLast(),
@@ -404,6 +397,99 @@ export const programme = pgTable(
     })
       .onUpdate("cascade")
       .onDelete("cascade"),
+  ],
+);
+
+export const festivalScoringPolicy = pgTable(
+  "festival_scoring_policy",
+  {
+    id: text().primaryKey().notNull(),
+    festivalId: text("festival_id").notNull(),
+    version: integer().default(1).notNull(),
+    isActive: boolean("is_active").default(true).notNull(),
+    normalizeTo: integer("normalize_to").default(100).notNull(),
+    noGradeBelow: integer("no_grade_below").default(50).notNull(),
+    gradeRules: jsonb("grade_rules").notNull(),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", { precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp("updated_at", { precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("festival_scoring_policy_festivalId_key").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "festival_scoring_policy_festivalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
+export const festivalScoringAwardRule = pgTable(
+  "festival_scoring_award_rule",
+  {
+    id: text().primaryKey().notNull(),
+    festivalId: text("festival_id").notNull(),
+    scoringPolicyId: text("scoring_policy_id").notNull(),
+    criteriaType: text("criteria_type").default("PARTICIPANT_RANGE").notNull(),
+    rowLabel: text("row_label"),
+    programmeIds: jsonb("programme_ids"),
+    categoryId: text("category_id"),
+    programmeType: programmeType("programme_type"),
+    minParticipants: integer("min_participants").default(1).notNull(),
+    maxParticipants: integer("max_participants"),
+    grade: text().notNull(),
+    awardPoints: integer("award_points").notNull(),
+    priority: integer().default(0).notNull(),
+    createdAt: timestamp("created_at", { precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp("updated_at", { precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    index("festival_scoring_award_rule_festivalId_idx").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+    ),
+    index("festival_scoring_award_rule_scoringPolicyId_idx").using(
+      "btree",
+      table.scoringPolicyId.asc().nullsLast(),
+    ),
+    index("festival_scoring_award_rule_categoryId_idx").using(
+      "btree",
+      table.categoryId.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "festival_scoring_award_rule_festivalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.scoringPolicyId],
+      foreignColumns: [festivalScoringPolicy.id],
+      name: "festival_scoring_award_rule_scoringPolicyId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.categoryId],
+      foreignColumns: [category.id],
+      name: "festival_scoring_award_rule_categoryId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("set null"),
   ],
 );
 
@@ -498,6 +584,11 @@ export const stage = pgTable(
       .notNull(),
   },
   (table) => [
+    uniqueIndex("stage_festivalId_name_key").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+      table.name.asc().nullsLast(),
+    ),
     index("stage_festivalId_idx").using(
       "btree",
       table.festivalId.asc().nullsLast(),
@@ -642,6 +733,11 @@ export const programmeAssignment = pgTable(
     })
       .onUpdate("cascade")
       .onDelete("set null"),
+    index("programme_assignment_programmeId_teamNumber_idx").using(
+      "btree",
+      table.programmeId.asc().nullsLast(),
+      table.teamNumber.asc().nullsLast(),
+    ),
   ],
 );
 
@@ -658,6 +754,8 @@ export const result = pgTable(
     position: integer(),
     score: doublePrecision().default(0).notNull(),
     points: integer().default(0).notNull(),
+    awardPoints: integer("award_points").default(0).notNull(),
+    scoringPolicyVersion: integer("scoring_policy_version"),
     remarks: text(),
     isPublished: boolean().default(false).notNull(),
     createdAt: timestamp({ precision: 3, mode: "string" })
@@ -676,6 +774,11 @@ export const result = pgTable(
       "btree",
       table.festivalId.asc().nullsLast(),
       table.createdAt.desc().nullsFirst(),
+    ),
+    index("result_programmeId_position_idx").using(
+      "btree",
+      table.programmeId.asc().nullsLast(),
+      table.position.asc().nullsLast(),
     ),
     foreignKey({
       columns: [table.festivalId],
@@ -1659,6 +1762,16 @@ export const programmeNotification = pgTable(
       "btree",
       table.recipientUserId.asc().nullsLast(),
       table.isRead.asc().nullsLast(),
+    ),
+    index("programme_notification_recipientUserId_createdAt_idx").using(
+      "btree",
+      table.recipientUserId.asc().nullsLast(),
+      table.createdAt.desc().nullsFirst(),
+    ),
+    index("programme_notification_recipientStudentId_createdAt_idx").using(
+      "btree",
+      table.recipientStudentId.asc().nullsLast(),
+      table.createdAt.desc().nullsFirst(),
     ),
     foreignKey({
       columns: [table.festivalId],

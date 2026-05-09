@@ -27,6 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PRICING_TIERS } from "@/config/pricing";
 import type { Tier } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { useFestivalPayment } from "@/features/festivals/hooks/use-festival-payment";
 import { useMyFestival } from "@/features/festivals/hooks/use-festivals";
 import { useJoinedFestivals } from "@/features/festivals/hooks/use-joined-festivals";
@@ -192,11 +193,11 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
                     {/* Expiry Progress Section */}
                     <div className="mt-8 pt-6 border-t border-border/50">
                       {(() => {
-                        const start = new Date(
+                        const start = parseStoredInstant(
                           credit.validFrom as string | Date,
                         );
                         const end = credit.validUntil
-                          ? new Date(credit.validUntil as string | Date)
+                          ? parseStoredInstant(credit.validUntil as string | Date)
                           : new Date(
                               start.getTime() + 30 * 24 * 60 * 60 * 1000,
                             );

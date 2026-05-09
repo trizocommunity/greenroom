@@ -8,6 +8,7 @@ import {
   programme as programmeTable,
   student as studentTable,
 } from "@/core/database/schema";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 
 export default async function AssignmentsPage({
@@ -61,7 +62,7 @@ export default async function AssignmentsPage({
         festivalId={festival.id}
         programmeAssignmentDeadline={
           festival.programmeAssignmentDeadline
-            ? new Date(festival.programmeAssignmentDeadline)
+            ? parseStoredInstant(festival.programmeAssignmentDeadline)
             : null
         }
       >

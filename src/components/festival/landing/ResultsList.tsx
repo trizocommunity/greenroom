@@ -468,9 +468,7 @@ export function ResultsList({
                       {program.name}
                     </DialogTitle>
                     <DialogDescription>
-                      {program.type === "GROUP"
-                        ? "Team results (rank & grades)"
-                        : "Student results (rank & grades)"}
+                      Basic result view: Rank, Team, Code, Grade, Points
                     </DialogDescription>
                   </DialogHeader>
 
@@ -505,9 +503,7 @@ export function ResultsList({
                               </div>
                               <div>
                                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                                  {program.type === "GROUP"
-                                    ? "Team"
-                                    : "Student"}
+                                  Team
                                 </p>
                                 <p className="font-bold text-sm">
                                   {result.winner}
@@ -517,12 +513,6 @@ export function ResultsList({
                                     Code {result.codeLetter}
                                   </p>
                                 ) : null}
-                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">
-                                  Group / School
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {result.team}
-                                </p>
                               </div>
                             </div>
                             <div className="text-right">

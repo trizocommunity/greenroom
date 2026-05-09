@@ -33,7 +33,7 @@ export function QuickAddScanForm({
   const busy = fieldStatus === "processing" || fieldStatus === "scanning";
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       <form
         onSubmit={onManualSubmit}
         className="flex gap-1.5"
@@ -45,26 +45,23 @@ export function QuickAddScanForm({
           placeholder="Chest #"
           autoComplete="off"
           disabled={busy}
-          className="h-8 min-w-0 flex-1 font-mono text-xs sm:text-sm"
+          className="h-8 min-w-0 flex-1 font-mono text-xs sm:text-sm border-border/70"
         />
         <Button
           type="submit"
           size="sm"
           disabled={busy || !manualInput.trim()}
-          className="h-8 shrink-0 px-3"
+          className="h-8 shrink-0 px-3 bg-violet-600 hover:bg-violet-500"
         >
           Add
         </Button>
       </form>
 
-      <div
-        className="flex flex-wrap items-center gap-1.5"
-        aria-label="QR from image or camera"
-      >
+      <div className="flex flex-wrap items-center gap-1.5">
         <label
           className={cn(
             buttonVariants({ variant: "secondary", size: "sm" }),
-            "h-8 cursor-pointer gap-1 px-2.5",
+            "h-8 cursor-pointer gap-1 px-2.5 border-border/70",
             fieldStatus === "processing" && "pointer-events-none opacity-50",
           )}
         >
@@ -86,7 +83,7 @@ export function QuickAddScanForm({
               type="button"
               variant="outline"
               size="sm"
-              className="h-8 gap-1 px-2.5"
+              className="h-8 gap-1 px-2.5 border-border/70"
               onClick={onOpenCamera}
               disabled={fieldStatus === "processing"}
             >

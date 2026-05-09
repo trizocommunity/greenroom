@@ -11,6 +11,7 @@ import {
   programmeReportedParticipant as reportedParticipantTable,
   stage as stageTable,
 } from "@/core/database/schema";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import type { Tier } from "@/core/types/app-enums";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
@@ -51,7 +52,7 @@ export default async function ProgrammeReportingPage({
     db.query.programmeAssignment.findMany({
       where: eq(assignmentTable.festivalId, festival.id),
       with: {
-        student: { columns: { name: true } },
+        student: { columns: { name: true, chestNumber: true } },
         group: { columns: { name: true, id: true } },
       },
       columns: {
@@ -71,12 +72,12 @@ export default async function ProgrammeReportingPage({
 
   const normalizedBoard = (board as any[]).map((item: any) => ({
     ...item,
-    startTime: item.startTime ? new Date(item.startTime) : new Date(),
+    startTime: item.startTime ? parseStoredInstant(item.startTime) : new Date(),
     reportingSession: item.reportingSession
       ? {
           ...item.reportingSession,
           windowEndsAt: item.reportingSession.windowEndsAt
-            ? new Date(item.reportingSession.windowEndsAt)
+            ? parseStoredInstant(item.reportingSession.windowEndsAt)
             : null,
         }
       : null,
@@ -87,6 +88,7 @@ export default async function ProgrammeReportingPage({
     programmeId: row.programmeId,
     studentId: row.studentId ?? null,
     studentName: (row as any).student?.name ?? null,
+    chestNumber: (row as any).student?.chestNumber ?? null,
     groupId: row.groupId ?? (row as any).group?.id ?? null,
     groupName: (row as any).group?.name ?? null,
     teamNumber: row.teamNumber ?? null,

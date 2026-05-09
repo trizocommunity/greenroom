@@ -236,7 +236,8 @@ export const AssignmentService = {
       if (!student || student.festivalId !== festivalId)
         throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_STUDENT);
 
-      if (programme.categoryId !== student.categoryId) {
+      const isGeneral = programme.category.type === "GENERAL";
+      if (!isGeneral && programme.categoryId !== student.categoryId) {
         throw new AppError(ERROR_MESSAGES.ASSIGNMENT_CATEGORY_MISMATCH);
       }
 

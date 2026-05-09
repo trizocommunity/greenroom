@@ -2,7 +2,8 @@
 
 import { GalleryVerticalEnd } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import {
   Sidebar,
   SidebarContent,
@@ -15,6 +16,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { getFestivalDashboardSidebarConfig } from "@/config/sidebar.config";
 import type { FestivalStatus } from "@/core/types/app-enums";
@@ -42,6 +44,9 @@ export function FestivalDashboardSidebar({
   role,
 }: FestivalDashboardSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { isMobile, setOpenMobile } = useSidebar();
+  const { requestNavigation } = useUnsavedChanges();
   const features = useFeatures();
   const canUseExternalJudging = useFeatureTag("eventWorks.externalJudging");
   const canUseMarksUI = useFeatureTag("eventWorks.marksUI");
@@ -126,13 +131,28 @@ export function FestivalDashboardSidebar({
     }))
     .filter((group) => group.items.length > 0);
 
+  const onNavClick = (e: React.MouseEvent, href: string) => {
+    if (!isMobile) return;
+    if (e.defaultPrevented) return;
+    if (e.button !== 0) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+    e.preventDefault();
+    requestNavigation({
+      proceed: () => {
+        setOpenMobile(false);
+        router.push(href);
+      },
+    });
+  };
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton isActive={true} size="lg" asChild>
-              <Link href={dashboardPath}>
+              <Link href={dashboardPath} onClick={(e) => onNavClick(e, dashboardPath)}>
                 <div
                   className="flex aspect-square size-9 items-center justify-center rounded-lg text-sidebar-primary-foreground"
                   style={{ backgroundColor: festival.accentColor }}
@@ -170,7 +190,7 @@ export function FestivalDashboardSidebar({
                         isActive={isActive}
                         tooltip={item.title}
                       >
-                        <Link href={item.href}>
+                        <Link href={item.href} onClick={(e) => onNavClick(e, item.href)}>
                           <item.icon />
                           <span>{item.title}</span>
                         </Link>

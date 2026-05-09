@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { getNewsPostsAction } from "@/features/news/actions/news.actions";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
@@ -21,9 +22,9 @@ export default async function NewsPage({ params }: PageProps) {
   const posts = await getNewsPostsAction(festival.id);
   const normalizedPosts = posts.map((post) => ({
     ...post,
-    publishedAt: post.publishedAt ? new Date(post.publishedAt) : null,
-    createdAt: new Date(post.createdAt),
-    updatedAt: new Date(post.updatedAt),
+    publishedAt: post.publishedAt ? parseStoredInstant(post.publishedAt) : null,
+    createdAt: parseStoredInstant(post.createdAt),
+    updatedAt: parseStoredInstant(post.updatedAt),
   }));
 
   return (
