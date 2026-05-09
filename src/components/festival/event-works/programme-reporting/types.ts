@@ -17,6 +17,7 @@ export type ReportingBoardItem = {
     id: string;
     name: string;
     type: "INDIVIDUAL" | "GROUP";
+    status?: string;
     category: { id: string; name: string } | null;
   } | null;
   reportingSession: {

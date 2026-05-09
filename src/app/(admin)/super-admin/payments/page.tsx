@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { adminService } from "@/features/admin/services/admin.service";
 
 function getPaymentStatusVariant(
@@ -188,7 +189,7 @@ export default async function AdminPaymentsPage() {
                     </TableCell>
                     <TableCell className="py-4 text-right">
                       <span className="text-xs font-bold text-muted-foreground">
-                        {format(new Date(payment.createdAt), "MMM d, yyyy")}
+                        {format(parseStoredInstant(payment.createdAt), "MMM d, yyyy")}
                       </span>
                     </TableCell>
                     <TableCell className="py-4">

@@ -44,9 +44,9 @@ import { getGradeBadgeColor } from "@/features/results/services/results-calculat
 
 const getTeamIdentifier = (assignment: any, type: string) => {
   if (type === "GROUP") {
-    const groupName = assignment.group?.name || "No Group";
+    const groupKey = assignment.group?.id ?? assignment.group?.name ?? "no-group";
     const teamNum = assignment.teamNumber || 1;
-    return `${groupName}-${teamNum}`;
+    return `${groupKey}-${teamNum}`;
   }
   return assignment.id;
 };
@@ -98,21 +98,36 @@ export function ResultsExploreClient({
   const programmesWithResults = useMemo(() => {
     return programmes
       .map((p) => {
-        const assignmentsWithResult = p.assignments.filter(
-          (a: any) => a.result,
-        );
-        const publishedCount = assignmentsWithResult.filter(
+        const assignmentsWithResult = p.assignments.filter((a: any) => a.result);
+
+        let totalResults = assignmentsWithResult.length;
+        let publishedCount = assignmentsWithResult.filter(
           (a: any) => a.result?.isPublished,
         ).length;
-        const hasAnyResult = assignmentsWithResult.length > 0;
-        const isPublished =
-          hasAnyResult && publishedCount === assignmentsWithResult.length;
+
+        if (p.type === "GROUP") {
+          const allTeams = new Set<string>();
+          const publishedTeams = new Set<string>();
+
+          assignmentsWithResult.forEach((a: any) => {
+            const teamId = getTeamIdentifier(a, "GROUP");
+            allTeams.add(teamId);
+            if (a.result?.isPublished) publishedTeams.add(teamId);
+          });
+
+          totalResults = allTeams.size;
+          publishedCount = publishedTeams.size;
+        }
+
+        const hasAnyResult = totalResults > 0;
+        const isPublished = hasAnyResult && publishedCount === totalResults;
+
         return {
           ...p,
           _meta: {
             hasAnyResult,
             publishedCount,
-            totalResults: assignmentsWithResult.length,
+            totalResults,
             isPublished,
           },
         };

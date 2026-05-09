@@ -9,6 +9,7 @@ import {
   user as userTable,
 } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import type { Tier } from "@/core/types/app-enums";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 
@@ -70,7 +71,7 @@ export async function assertStudentNotificationAccess(studentId: string) {
   const tlSession = await getTeamLeaderSessionFromCookie();
   if (
     tlSession &&
-    new Date(tlSession.expiresAt) > new Date() &&
+    parseStoredInstant(tlSession.expiresAt) > new Date() &&
     !tlSession.revokedAt &&
     tlSession.festivalId === student.festivalId &&
     tlSession.studentId === studentId

@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { useAssignments } from "@/features/assignments/hooks/use-assignments";
 import { useCategories } from "@/features/categories/hooks/use-categories";
 import { useDeadlineLock } from "@/features/festivals/hooks/use-deadline-lock";
@@ -305,7 +306,7 @@ export function AssignmentsClient({
         }
         const bucket = teamMap.get(key)!;
         bucket.assignments.push(a);
-        const dt = a.assignedAt ? new Date(a.assignedAt) : null;
+        const dt = a.assignedAt ? parseStoredInstant(a.assignedAt) : null;
         if (
           dt &&
           (!bucket.latestAssignedAtDate || dt > bucket.latestAssignedAtDate)
@@ -319,7 +320,7 @@ export function AssignmentsClient({
 
     teamMap.forEach((val) => {
       const assignedAt = val.assignments[0]?.assignedAt
-        ? format(new Date(val.assignments[0].assignedAt), "PP")
+        ? format(parseStoredInstant(val.assignments[0].assignedAt), "PP")
         : null;
       rows.push({
         kind: "team",
@@ -384,7 +385,7 @@ export function AssignmentsClient({
       if (row.kind === "individual") {
         card.attendeesCount += 1;
         const dt = row.assignment.assignedAt
-          ? new Date(row.assignment.assignedAt)
+          ? parseStoredInstant(row.assignment.assignedAt)
           : null;
         if (
           dt &&
@@ -965,7 +966,10 @@ export function AssignmentsClient({
                               "—"}{" "}
                             ·{" "}
                             {r.assignment.assignedAt
-                              ? format(new Date(r.assignment.assignedAt), "PPp")
+                              ? format(
+                                  parseStoredInstant(r.assignment.assignedAt),
+                                  "PPp",
+                                )
                               : "—"}
                             {r.assignment.createdByName && (
                               <span className="ml-1 text-[10px] opacity-70 italic">

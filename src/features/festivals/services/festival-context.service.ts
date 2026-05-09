@@ -3,6 +3,7 @@ import { db } from "@/core/database/client";
 import { withDbRetry } from "@/core/database/db-retry";
 import { festivalMember, festival as festivals } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 
@@ -62,7 +63,7 @@ export async function getFestivalContext(
   const now = new Date();
   const isExpired = Boolean(
     festival.status === "EXPIRED" ||
-      (festival.expiresAt && new Date(festival.expiresAt) < now),
+      (festival.expiresAt && parseStoredInstant(festival.expiresAt) < now),
   );
 
   const readOnlyExpired = false;

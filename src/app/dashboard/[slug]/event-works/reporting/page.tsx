@@ -11,6 +11,7 @@ import {
   programmeReportedParticipant as reportedParticipantTable,
   stage as stageTable,
 } from "@/core/database/schema";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import type { Tier } from "@/core/types/app-enums";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
@@ -71,12 +72,12 @@ export default async function ProgrammeReportingPage({
 
   const normalizedBoard = (board as any[]).map((item: any) => ({
     ...item,
-    startTime: item.startTime ? new Date(item.startTime) : new Date(),
+    startTime: item.startTime ? parseStoredInstant(item.startTime) : new Date(),
     reportingSession: item.reportingSession
       ? {
           ...item.reportingSession,
           windowEndsAt: item.reportingSession.windowEndsAt
-            ? new Date(item.reportingSession.windowEndsAt)
+            ? parseStoredInstant(item.reportingSession.windowEndsAt)
             : null,
         }
       : null,

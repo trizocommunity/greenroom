@@ -78,6 +78,7 @@ import {
 } from "@/components/ui/table";
 import type { ProgrammeStatus } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { formatCountdownHms } from "@/core/utils/format-countdown";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
@@ -666,7 +667,7 @@ export function ResultsManagementClient({
           return;
         }
 
-        const startedAt = new Date(response.data.startedAt);
+        const startedAt = parseStoredInstant(response.data.startedAt);
         setJudgeLinksByProgrammeId((prev) => ({
           ...prev,
           [programmeId]: {
@@ -873,11 +874,11 @@ export function ResultsManagementClient({
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <HowItWorksButton
             title="How marks work"
-            description="Enter points per chest; grade and rank are calculated automatically."
+            description="Enter points per entry (team for group, participant for individual); grade and rank are calculated automatically."
           >
             <p className="text-sm text-muted-foreground">
-              Enter <strong>points</strong> per student. Grade and rank update
-              automatically from the highest entered value.
+              Enter <strong>points</strong> per entry. Group programmes use team
+              units, individual programmes use participant units.
             </p>
           </HowItWorksButton>
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
@@ -1466,7 +1467,7 @@ export function ResultsManagementClient({
                     </DialogTitle>
                     <DialogDescription>
                       These programmes have assignments but are missing scores
-                      for some or all students.
+                      for some or all entries.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="max-h-[60vh] overflow-y-auto space-y-2 mt-4 pr-2">
@@ -1495,7 +1496,9 @@ export function ResultsManagementClient({
                               {prog.stats.totalParticipants}
                             </span>
                             <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                              Scored
+                              {prog.type === "GROUP"
+                                ? "Teams scored"
+                                : "Participants scored"}
                             </span>
                           </div>
                           <Button
@@ -1601,7 +1604,8 @@ export function ResultsManagementClient({
                 ? Math.max(
                     0,
                     Math.floor(
-                      (nowMs - new Date(startedAtForTimer).getTime()) / 1000,
+                      (nowMs - parseStoredInstant(startedAtForTimer).getTime()) /
+                        1000,
                     ),
                   )
                 : null;

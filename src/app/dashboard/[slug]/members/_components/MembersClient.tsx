@@ -36,6 +36,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { FestivalRole } from "@/core/types/app-enums";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { useMembers } from "@/features/members/hooks/use-members";
 import {
@@ -119,7 +120,7 @@ export function MembersClient({
                   />
                 </TableCell>
                 <TableCell className="text-muted-foreground text-sm">
-                  {format(new Date(member.createdAt), "MMM d, yyyy")}
+                  {format(parseStoredInstant(member.createdAt), "MMM d, yyyy")}
                 </TableCell>
                 <TableCell className="text-right">
                   <Badge variant={member.isActive ? "default" : "secondary"}>

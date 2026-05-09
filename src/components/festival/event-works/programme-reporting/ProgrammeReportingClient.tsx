@@ -54,6 +54,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/core/utils/cn";
+import { formatStoredDateTime, parseStoredInstant } from "@/core/utils/date-time";
 import {
   assignCodeLettersWithSpinAction,
   closeProgrammeReportingAction,
@@ -130,7 +131,7 @@ function generateCodeLetters(count: number): string[] {
 }
 
 function formatHistoryTime(value: Date | string): string {
-  const date = value instanceof Date ? value : new Date(value);
+  const date = parseStoredInstant(value);
   return new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
     minute: "2-digit",
@@ -314,7 +315,10 @@ export function ProgrammeReportingClient({
       const ra = statusRank(aStatus);
       const rb = statusRank(bStatus);
       if (ra !== rb) return ra - rb;
-      return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+      return (
+        parseStoredInstant(a.startTime).getTime() -
+        parseStoredInstant(b.startTime).getTime()
+      );
     });
   }, [
     board,
@@ -342,14 +346,14 @@ export function ProgrammeReportingClient({
 
     const getHistoryTimestamp = (item: BoardItem) => {
       const endedAt = item.reportingSession?.endedAt
-        ? new Date(item.reportingSession.endedAt).getTime()
+        ? parseStoredInstant(item.reportingSession.endedAt).getTime()
         : Number.NaN;
       if (Number.isFinite(endedAt)) return endedAt;
       const updatedAt = item.reportingSession?.updatedAt
-        ? new Date(item.reportingSession.updatedAt).getTime()
+        ? parseStoredInstant(item.reportingSession.updatedAt).getTime()
         : Number.NaN;
       if (Number.isFinite(updatedAt)) return updatedAt;
-      return new Date(item.startTime).getTime();
+      return parseStoredInstant(item.startTime).getTime();
     };
 
     return board
@@ -566,24 +570,39 @@ export function ProgrammeReportingClient({
         timeline: [
           {
             title: "Scheduled slot",
-            at: new Date(item.startTime).toLocaleString(),
+            at: formatStoredDateTime(item.startTime, {
+              dateStyle: "medium",
+              timeStyle: "short",
+            }),
             note: `${item.stage?.name ?? "No stage"} • ${item.programme?.type ?? "—"}`,
           },
           {
             title: "Reporting status",
             at:
               item.reportingSession?.windowEndsAt != null
-                ? new Date(item.reportingSession.windowEndsAt).toLocaleString()
-                : new Date(item.startTime).toLocaleString(),
+                ? formatStoredDateTime(item.reportingSession.windowEndsAt, {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })
+                : formatStoredDateTime(item.startTime, {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  }),
             note: reportingSessionStatusLabel(uiStatus),
           },
           {
             title: "Summary snapshot",
-            at: new Date(item.startTime).toLocaleString(),
+            at: formatStoredDateTime(item.startTime, {
+              dateStyle: "medium",
+              timeStyle: "short",
+            }),
             note: `${reportedIds.size} reported • ${assignedCodes.length} codes`,
           },
         ],
-        startTimeLabel: new Date(item.startTime).toLocaleString(),
+        startTimeLabel: formatStoredDateTime(item.startTime, {
+          dateStyle: "medium",
+          timeStyle: "short",
+        }),
         reportedCount: reportedIds.size,
         codeCount: assignedCodes.length,
         rows,
@@ -1786,13 +1805,19 @@ export function ProgrammeReportingClient({
                                       <p>
                                         Reported:{" "}
                                         {entry.reportedAt
-                                          ? new Date(entry.reportedAt).toLocaleString()
+                                          ? formatStoredDateTime(entry.reportedAt, {
+                                              dateStyle: "medium",
+                                              timeStyle: "short",
+                                            })
                                           : "—"}
                                       </p>
                                       <p>
                                         Spun/Issued:{" "}
                                         {entry.spunAt
-                                          ? new Date(entry.spunAt).toLocaleString()
+                                          ? formatStoredDateTime(entry.spunAt, {
+                                              dateStyle: "medium",
+                                              timeStyle: "short",
+                                            })
                                           : "Pending"}
                                       </p>
                                     </div>

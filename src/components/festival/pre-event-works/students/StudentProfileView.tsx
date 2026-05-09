@@ -10,6 +10,7 @@ import { TeamStudentsDialog } from "@/components/festival/pre-event-works/assign
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import {
   Table,
   TableBody,
@@ -261,10 +262,14 @@ export function StudentProfileView({
 
             <div className="flex flex-wrap gap-x-4 gap-y-0.5 pt-2 border-t text-xs text-muted-foreground">
               {student.createdAt && (
-                <span>Created {format(new Date(student.createdAt), "PP")}</span>
+                <span>
+                  Created {format(parseStoredInstant(student.createdAt), "PP")}
+                </span>
               )}
               {student.updatedAt && (
-                <span>Updated {format(new Date(student.updatedAt), "PP")}</span>
+                <span>
+                  Updated {format(parseStoredInstant(student.updatedAt), "PP")}
+                </span>
               )}
             </div>
           </CardContent>

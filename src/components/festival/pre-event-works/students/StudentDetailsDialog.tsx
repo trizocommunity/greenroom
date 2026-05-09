@@ -23,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { getProgrammeTeamMembersAction } from "@/features/assignments/actions/assignment.actions";
 import { useAssignments } from "@/features/assignments/hooks/use-assignments";
 import { useFeature } from "@/features/plan-features/hooks/use-feature";
@@ -220,10 +221,14 @@ export function StudentDetailsDialog({
               )}
               <div className="pt-1.5 border-t text-[11px] text-muted-foreground space-y-0.5">
                 {student.createdAt && (
-                  <div>Created {format(new Date(student.createdAt), "PP")}</div>
+                  <div>
+                    Created {format(parseStoredInstant(student.createdAt), "PP")}
+                  </div>
                 )}
                 {student.updatedAt && (
-                  <div>Updated {format(new Date(student.updatedAt), "PP")}</div>
+                  <div>
+                    Updated {format(parseStoredInstant(student.updatedAt), "PP")}
+                  </div>
                 )}
               </div>
             </div>

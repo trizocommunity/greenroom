@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import type { Festival } from "@/features/festivals/hooks/use-festivals";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 
@@ -27,9 +28,9 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
   const isActive = !isExpired && (status === "ONGOING" || status === "READY");
 
   const totalDays = 30;
-  const createdAt = new Date(festival.createdAt);
+  const createdAt = parseStoredInstant(festival.createdAt);
   const expiresAt = festival.expiresAt
-    ? new Date(festival.expiresAt)
+    ? parseStoredInstant(festival.expiresAt)
     : addDays(createdAt, totalDays);
 
   const daysPassed = Math.max(0, differenceInDays(new Date(), createdAt));

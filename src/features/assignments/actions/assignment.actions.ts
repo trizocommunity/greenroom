@@ -14,6 +14,7 @@ import {
   user as userTable,
 } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { AssignmentService } from "@/features/assignments/services/assignment.service";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { assertFestivalMutationAllowed } from "@/features/festivals/services/festival-lifecycle-policy.service";
@@ -37,7 +38,7 @@ function assertAssignmentWindowOpen(
 ) {
   if (
     festival?.programmeAssignmentDeadline &&
-    new Date() > new Date(festival.programmeAssignmentDeadline)
+    new Date() > parseStoredInstant(festival.programmeAssignmentDeadline)
   ) {
     throw new AppError(ERROR_MESSAGES.ASSIGNMENT_DEADLINE_PASSED);
   }
@@ -63,7 +64,7 @@ async function resolveAssignmentActorContext(
   if (
     !tlSession ||
     tlSession.revokedAt ||
-    new Date(tlSession.expiresAt) <= new Date() ||
+    parseStoredInstant(tlSession.expiresAt) <= new Date() ||
     !tlSession.student?.isTeamLeader ||
     tlSession.festivalId !== festivalId ||
     !tlSession.student.groupId
@@ -354,7 +355,7 @@ export async function getProgrammeTeamMembersAction(
   if (
     !tlSession ||
     tlSession.revokedAt ||
-    new Date(tlSession.expiresAt) <= new Date() ||
+    parseStoredInstant(tlSession.expiresAt) <= new Date() ||
     !tlSession.student?.isTeamLeader ||
     tlSession.festivalId !== festivalId ||
     tlSession.student.groupId !== groupId

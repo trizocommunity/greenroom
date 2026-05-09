@@ -17,6 +17,7 @@ import {
 import { TIER_CONFIG } from "@/config/pricing";
 import { getCurrentUser } from "@/core/auth/current-user";
 import { getSession } from "@/core/auth/session";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 import { getEffectiveTierFeatures } from "@/features/plan-features/services/plan-features.service";
@@ -154,7 +155,8 @@ export default async function FestivalDashboardLayout({
                   daysRemaining={
                     festival.expiresAt
                       ? Math.ceil(
-                          (new Date(festival.expiresAt).getTime() - Date.now()) /
+                          (parseStoredInstant(festival.expiresAt).getTime() -
+                            Date.now()) /
                             (1000 * 60 * 60 * 24),
                         )
                       : null

@@ -49,6 +49,7 @@ import {
 } from "@/components/ui/select";
 import type { SessionType } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
   localWallClockToDate,
@@ -78,8 +79,8 @@ function getFestivalDateOptions(
   endISO: string | null,
 ): DateOption[] {
   if (!startISO || !endISO) return [];
-  const start = startOfDay(new Date(startISO));
-  const end = startOfDay(new Date(endISO));
+  const start = startOfDay(parseStoredInstant(startISO));
+  const end = startOfDay(parseStoredInstant(endISO));
   if (start > end) return [];
   const days = eachDayOfInterval({ start, end });
   return days.map((d) => ({

@@ -1,6 +1,7 @@
 import { eachDayOfInterval, format, startOfDay } from "date-fns";
 import { notFound, redirect } from "next/navigation";
 import { SessionScheduleClient } from "@/components/festival/pre-event-works/schedule/SessionScheduleClient";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 import { getScheduleEntries } from "@/features/schedule/actions/schedule.actions";
@@ -15,8 +16,8 @@ function getFestivalDateOptions(
   endISO: Date | null,
 ): { value: string; label: string }[] {
   if (!startISO || !endISO) return [];
-  const start = startOfDay(new Date(startISO));
-  const end = startOfDay(new Date(endISO));
+  const start = startOfDay(parseStoredInstant(startISO));
+  const end = startOfDay(parseStoredInstant(endISO));
   if (start > end) return [];
   const days = eachDayOfInterval({ start, end });
   return days.map((d) => ({
@@ -41,8 +42,10 @@ export default async function SessionsPage({ params }: PageProps) {
     getStages(festival.id),
   ]);
 
-  const startDate = festival.startDate ? new Date(festival.startDate) : null;
-  const endDate = festival.endDate ? new Date(festival.endDate) : null;
+  const startDate = festival.startDate
+    ? parseStoredInstant(festival.startDate)
+    : null;
+  const endDate = festival.endDate ? parseStoredInstant(festival.endDate) : null;
 
   const dateOptions = getFestivalDateOptions(startDate, endDate);
 

@@ -10,6 +10,7 @@ export type CompactHistoryItem = {
   metaPrimary?: string | null;
   metaSecondary?: string | null;
   badge?: string | null;
+  tinyBadge?: string | null;
   metaSecondaryTitle?: string;
   detailSummary?: string | null;
 };
@@ -51,6 +52,11 @@ export function CompactHistoryList({
                   {item.badge ? (
                     <span className="shrink-0 rounded border bg-muted/30 px-1.5 py-0.5 text-[10px] text-muted-foreground">
                       {item.badge}
+                    </span>
+                  ) : null}
+                  {item.tinyBadge ? (
+                    <span className="shrink-0 rounded border border-violet-400/60 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300">
+                      {item.tinyBadge}
                     </span>
                   ) : null}
                   <span className="truncate text-[11px] text-muted-foreground">

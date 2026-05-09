@@ -315,7 +315,7 @@ function SubmissionReviewView({
 }) {
   return (
     <JudgeShell>
-      <div className="mx-auto flex max-w-lg flex-col gap-6 sm:max-w-2xl">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-3 pb-6 pt-4 sm:gap-6 sm:px-6 sm:pt-6">
         <div className="text-center">
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             {festivalName}
@@ -330,7 +330,7 @@ function SubmissionReviewView({
         </div>
 
         <Card className="border-border/70 shadow-sm">
-          <CardHeader className="pb-2">
+          <CardHeader className="space-y-1 pb-2 sm:pb-3">
             <CardTitle className="text-base">{programmeName}</CardTitle>
             <CardDescription>
               {summary.kind === "SINGLE" ? (
@@ -340,7 +340,7 @@ function SubmissionReviewView({
               )}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-3 sm:space-y-4">
             {summary.kind === "SINGLE" ? (
               <ul className="divide-y rounded-md border">
                 {summary.rows.map((r) => (
@@ -354,8 +354,39 @@ function SubmissionReviewView({
                 ))}
               </ul>
             ) : (
-              <div className="overflow-x-auto rounded-md border">
-                <table className="w-full min-w-[280px] text-left text-sm">
+              <>
+                <div className="space-y-2 sm:hidden">
+                  {summary.rows.map((row) => (
+                    <div
+                      key={row.code}
+                      className="rounded-md border bg-background px-3 py-2.5"
+                    >
+                      <div className="mb-2 flex items-center justify-between">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                          Code
+                        </p>
+                        <p className="font-mono text-base font-semibold">{row.code}</p>
+                      </div>
+                      <div className="space-y-1.5">
+                        {row.byJudge.map((cell) => (
+                          <div
+                            key={cell.name}
+                            className="flex items-center justify-between gap-3 text-sm"
+                          >
+                            <span className="truncate text-muted-foreground">
+                              {cell.name}
+                            </span>
+                            <span className="tabular-nums font-medium">
+                              {cell.score}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden overflow-x-auto rounded-md border sm:block">
+                  <table className="w-full min-w-[420px] text-left text-sm">
                   <thead className="border-b bg-muted/40">
                     <tr>
                       <th className="px-3 py-2 font-medium">Code</th>
@@ -386,38 +417,84 @@ function SubmissionReviewView({
                       </tr>
                     ))}
                   </tbody>
-                </table>
-              </div>
+                  </table>
+                </div>
+              </>
             )}
             <div className="space-y-2 rounded-md border bg-muted/20 p-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Estimated result summary
               </p>
-              <div className="overflow-x-auto rounded-md border bg-background">
-                <table className="w-full min-w-[280px] text-left text-xs sm:text-sm">
-                  <thead className="border-b bg-muted/40">
-                    <tr>
-                      <th className="px-3 py-2 font-medium">Code</th>
-                      <th className="px-3 py-2 font-medium">Result points</th>
-                      <th className="px-3 py-2 font-medium">Normalized points</th>
-                      <th className="px-3 py-2 font-medium">Grade</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {policyRows.map((row) => (
-                      <tr key={row.codeLetterId} className="border-t">
-                        <td className="px-3 py-2 font-mono font-semibold">
+              <div className="space-y-2 sm:hidden">
+                {policyRows.map((row) => (
+                  <div
+                    key={row.codeLetterId}
+                    className="rounded-md border bg-background px-2.5 py-2 text-sm"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="rounded border bg-muted/30 px-1.5 py-0.5 font-mono text-[12px] font-semibold">
+                            {row.code}
+                          </span>
+                          <span className="truncate text-[11px] text-muted-foreground">
+                            {row.grade ?? "No grade"}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Result points:{" "}
+                          <span className="tabular-nums font-medium text-foreground">
+                            {row.awardPoints}
+                          </span>
+                        </p>
+                      </div>
+                      <div className="rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1 text-right">
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-primary/90">
+                          Normalized
+                        </p>
+                        <p className="tabular-nums text-base font-semibold text-primary">
+                          {row.points}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden rounded-md border bg-background p-2 sm:block">
+                <div className="space-y-1.5">
+                  {policyRows.map((row) => (
+                    <div
+                      key={row.codeLetterId}
+                      className="flex items-center justify-between gap-3 rounded-md border bg-background px-3 py-2"
+                    >
+                      <div className="min-w-0 flex items-center gap-2">
+                        <span className="rounded border bg-muted/30 px-2 py-0.5 font-mono text-xs font-semibold">
                           {row.code}
-                        </td>
-                        <td className="px-3 py-2 tabular-nums">
-                          {row.awardPoints}
-                        </td>
-                        <td className="px-3 py-2 tabular-nums">{row.points}</td>
-                        <td className="px-3 py-2">{row.grade ?? "No grade"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          Grade:{" "}
+                          <span className="font-medium text-foreground">
+                            {row.grade ?? "No grade"}
+                          </span>
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          Points:{" "}
+                          <span className="tabular-nums font-medium text-foreground">
+                            {row.awardPoints}
+                          </span>
+                        </span>
+                      </div>
+                      <div className="shrink-0 rounded-md border border-primary/40 bg-primary/10 px-3 py-1 text-right">
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-primary/90">
+                          Normalized
+                        </p>
+                        <p className="tabular-nums text-sm font-semibold text-primary">
+                          {row.points}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
             {submitError ? (
@@ -1337,12 +1414,7 @@ function ExternalJudgeActiveClient({
           }}
         >
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-2 rounded-xl border border-border/50 bg-background/90 p-2 shadow-sm sm:p-2.5 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
-            <div
-              className="min-w-0 flex-1 space-y-1.5"
-              role="status"
-              aria-live="polite"
-              aria-label={`${progress.label}: ${progress.sub}`}
-            >
+            <div className="hidden min-w-0 flex-1 space-y-1.5 sm:block">
               <div className="space-y-1">
                 <div className="flex items-center justify-between gap-2 text-[11px] font-medium text-muted-foreground sm:text-xs">
                   <span className="truncate">{progress.label}</span>

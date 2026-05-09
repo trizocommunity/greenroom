@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { usePaymentHistory } from "@/features/payments/hooks/use-payment-history";
 import { usePaymentStatus } from "@/features/payments/hooks/use-payment-status";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { Skeleton } from "../ui/skeleton";
 
 export function BillingTab() {
@@ -88,12 +89,14 @@ export function BillingTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {payments.map((payment) => (
+                {payments.map((payment) => {
+                  const createdAt = parseStoredInstant(payment.createdAt);
+                  return (
                   <TableRow key={payment.id}>
                     <TableCell className="whitespace-nowrap">
-                      {format(new Date(payment.createdAt), "MMM dd, yyyy")}
+                      {format(createdAt, "MMM dd, yyyy")}
                       <div className="text-xs text-muted-foreground">
-                        {format(new Date(payment.createdAt), "hh:mm a")}
+                        {format(createdAt, "hh:mm a")}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -120,7 +123,8 @@ export function BillingTab() {
                       {payment.razorpayId || "-"}
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           )}

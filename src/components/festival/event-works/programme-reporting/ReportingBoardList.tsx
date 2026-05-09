@@ -2,6 +2,7 @@
 
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { cn } from "@/core/utils/cn";
 import type { ReportingBoardItem } from "./types";
 
@@ -95,7 +96,7 @@ export function ReportingBoardList({
                   {uiStatus.replace("_", " ")}
                 </Badge>
                 <span className="text-[11px] text-muted-foreground font-mono">
-                  {format(new Date(item.startTime), "h:mm a")}
+                  {format(parseStoredInstant(item.startTime), "h:mm a")}
                 </span>
                 {item.stage?.name && (
                   <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">

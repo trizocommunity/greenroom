@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { ERROR_MESSAGES } from "@/core/errors/errors";
 import { queryKeys } from "@/core/http/query-keys";
 import type { ProgrammeJudgmentStatus } from "@/core/types/app-enums";
+import { formatStoredDateTime, parseStoredInstant } from "@/core/utils/date-time";
 import { createJudgeAction } from "@/features/judges/actions/judge.actions";
 import {
   createJudgmentConfigurationAction,
@@ -134,12 +135,15 @@ export function JudgmentWizardClient({
 }) {
   const formatCardDateTime = useCallback(
     (value: string | Date) =>
-      new Intl.DateTimeFormat(undefined, {
+      formatStoredDateTime(value, {
         dateStyle: "medium",
         timeStyle: "short",
-      }).format(new Date(value)),
+      }),
     [],
   );
+  const toEpoch = useCallback((value: string | Date) => {
+    return parseStoredInstant(value).getTime();
+  }, []);
 
   const judgmentStatusLabel = (status: ProgrammeJudgmentStatus) => {
     switch (status) {
@@ -274,7 +278,7 @@ export function JudgmentWizardClient({
       detail: string;
     }> = [
       {
-        at: new Date(completedDetail.createdAt).getTime(),
+        at: toEpoch(completedDetail.createdAt),
         title: "Configuration created",
         detail: `Mode ${completedDetail.judgingMode} • ${completedDetail.requiredCodeLetters} code letters`,
       },
@@ -283,20 +287,20 @@ export function JudgmentWizardClient({
     for (const judge of completedDetail.judges) {
       if (judge.firstScoredAt) {
         events.push({
-          at: new Date(judge.firstScoredAt).getTime(),
+          at: toEpoch(judge.firstScoredAt),
           title: `${judge.name} started scoring`,
           detail: formatCardDateTime(judge.firstScoredAt),
         });
       }
       if (judge.submittedAt) {
         events.push({
-          at: new Date(judge.submittedAt).getTime(),
+          at: toEpoch(judge.submittedAt),
           title: `${judge.name} submitted`,
           detail: formatCardDateTime(judge.submittedAt),
         });
       } else {
         events.push({
-          at: new Date(completedDetail.createdAt).getTime(),
+          at: toEpoch(completedDetail.createdAt),
           title: `${judge.name} pending`,
           detail: "No submission recorded",
         });
@@ -304,13 +308,13 @@ export function JudgmentWizardClient({
     }
 
     events.push({
-      at: new Date(completedDetail.createdAt).getTime() + 1,
+      at: toEpoch(completedDetail.createdAt) + 1,
       title: "Judgment completion",
       detail: completedDetail.completionSummary,
     });
 
     return events.sort((a, b) => a.at - b.at);
-  }, [completedDetail, formatCardDateTime]);
+  }, [completedDetail, formatCardDateTime, toEpoch]);
 
   const canGenerate = Boolean(wizardProgramme) && selectedJudgeIds.length > 0;
   const hasUnsavedWizardInputs =
@@ -537,14 +541,10 @@ export function JudgmentWizardClient({
                             <p>
                               Time:{" "}
                               {p.reportingDetails.scheduleStart
-                                ? new Date(
-                                    p.reportingDetails.scheduleStart,
-                                  ).toLocaleString()
+                                ? formatCardDateTime(p.reportingDetails.scheduleStart)
                                 : "—"}
                               {p.reportingDetails.scheduleEnd
-                                ? ` - ${new Date(
-                                    p.reportingDetails.scheduleEnd,
-                                  ).toLocaleString()}`
+                                ? ` - ${formatCardDateTime(p.reportingDetails.scheduleEnd)}`
                                 : ""}
                             </p>
                           </div>
@@ -844,9 +844,7 @@ export function JudgmentWizardClient({
                 <DialogDescription>
                   Stage {reportedStudentsView.details.stageName ?? "—"} ·{" "}
                   {reportedStudentsView.details.scheduleStart
-                    ? new Date(
-                        reportedStudentsView.details.scheduleStart,
-                      ).toLocaleString()
+                    ? formatCardDateTime(reportedStudentsView.details.scheduleStart)
                     : "No schedule time"}
                 </DialogDescription>
               </DialogHeader>
@@ -1364,7 +1362,7 @@ export function JudgmentWizardClient({
                       >
                         {j.name}
                         {j.submittedAt
-                          ? ` · ${new Date(j.submittedAt).toLocaleString()}`
+                          ? ` · ${formatCardDateTime(j.submittedAt)}`
                           : " · not submitted"}
                       </span>
                     ))}

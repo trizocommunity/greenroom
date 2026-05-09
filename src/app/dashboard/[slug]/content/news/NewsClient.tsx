@@ -42,6 +42,7 @@ import {
   uploadImageToCloudinary,
 } from "@/core/integrations/cloudinary";
 import { cn } from "@/core/utils/cn";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
   createNewsPostAction,
@@ -314,7 +315,7 @@ export function NewsClient({
               </CardTitle>
               <p className="text-xs text-muted-foreground mt-1">
                 {post.publishedAt
-                  ? format(new Date(post.publishedAt), "MMM d, yyyy")
+                  ? format(parseStoredInstant(post.publishedAt), "MMM d, yyyy")
                   : "Draft"}
               </p>
             </CardHeader>
@@ -372,7 +373,7 @@ export function NewsClient({
             <DialogTitle>{viewDetailsPost?.title}</DialogTitle>
             <DialogDescription>
               {viewDetailsPost?.publishedAt
-                ? `Published ${format(new Date(viewDetailsPost.publishedAt), "MMM d, yyyy")}`
+                ? `Published ${format(parseStoredInstant(viewDetailsPost.publishedAt), "MMM d, yyyy")}`
                 : "Draft"}
             </DialogDescription>
           </DialogHeader>

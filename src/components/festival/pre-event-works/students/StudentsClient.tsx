@@ -58,6 +58,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { useCategories } from "@/features/categories/hooks/use-categories";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { useGroups } from "@/features/groups/hooks/use-groups";
@@ -161,7 +162,8 @@ export function StudentsClient({
         return a.name.localeCompare(b.name);
       case "CREATED":
         return (
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          parseStoredInstant(b.createdAt).getTime() -
+          parseStoredInstant(a.createdAt).getTime()
         );
       case "NUMERIC": {
         const aNum = a.chestNumber?.replace(/\D/g, "");
@@ -550,7 +552,7 @@ export function StudentsClient({
                           <span>{student.group?.name || "—"}</span>
                           <span>{student.category?.name || "—"}</span>
                           <span className="text-muted-foreground/80">
-                            {format(new Date(student.createdAt), "MMM d")}
+                            {format(parseStoredInstant(student.createdAt), "MMM d")}
                           </span>
                         </div>
                       </div>
@@ -717,7 +719,10 @@ export function StudentsClient({
                     </TableCell>
                     <TableCell>{student.category?.name || "-"}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {format(new Date(student.createdAt), "MMM d, yyyy")}
+                      {format(
+                        parseStoredInstant(student.createdAt),
+                        "MMM d, yyyy",
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>

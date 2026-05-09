@@ -4,6 +4,7 @@ import { StudentProfileView } from "@/components/festival/pre-event-works/studen
 import { APP_URL } from "@/config/routes";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import {
   FeatureService,
@@ -62,8 +63,8 @@ async function StudentProfileContent({
     <StudentProfileView
       student={{
         ...student,
-        createdAt: new Date(student.createdAt),
-        updatedAt: new Date(student.updatedAt),
+        createdAt: parseStoredInstant(student.createdAt),
+        updatedAt: parseStoredInstant(student.updatedAt),
         assignments: student.assignments ?? [],
       }}
       festivalId={festival.id}

@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/card";
 import { BillingHistorySkeleton } from "@/components/ui/Skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { useBillingHistory } from "@/features/billing/hooks/use-billing-history";
 import { PaymentDetailsModal } from "../modals/PaymentDetailsModal";
 
@@ -93,7 +94,9 @@ export function BillingTab() {
                   </p>
                 </div>
               ) : (
-                payments.map((payment) => (
+                payments.map((payment) => {
+                  const createdAt = parseStoredInstant(payment.createdAt);
+                  return (
                   <div
                     key={payment.id}
                     className="group relative flex flex-col md:flex-row md:items-center justify-between p-5 rounded-2xl transition-all duration-300 hover:bg-muted/50 border border-transparent hover:border-border/50"
@@ -133,7 +136,7 @@ export function BillingTab() {
                         </div>
                         <div className="text-xs font-bold text-muted-foreground/70 uppercase tracking-wider flex items-center gap-2 mt-0.5">
                           {payment.createdAt
-                            ? format(new Date(payment.createdAt), "PPP")
+                            ? format(createdAt, "PPP")
                             : "Unknown Date"}
                           <span className="w-1 h-1 rounded-full bg-border" />
                           {payment.tier || "Standard"} Plan
@@ -169,7 +172,8 @@ export function BillingTab() {
                       </Button>
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
           </CardContent>

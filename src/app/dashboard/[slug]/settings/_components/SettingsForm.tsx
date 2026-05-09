@@ -32,6 +32,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { uploadImageToCloudinary } from "@/core/integrations/cloudinary";
+import { parseStoredInstant, toDateOrNull } from "@/core/utils/date-time";
 import { cn } from "@/core/utils/cn";
 import {
   updateFestivalBrandingAction,
@@ -90,8 +91,8 @@ export function SettingsForm({ festival }: SettingsFormProps) {
     description: festival.description || "",
     slug: festival.slug || "",
     location: festival.location || "",
-    startDate: festival.startDate ? new Date(festival.startDate) : null,
-    endDate: festival.endDate ? new Date(festival.endDate) : null,
+    startDate: toDateOrNull(festival.startDate),
+    endDate: toDateOrNull(festival.endDate),
 
     // Organization
     orgName: festival.orgName || "",
@@ -104,9 +105,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
 
     // Configuration
     programmeAssignmentDeadline: festival.programmeAssignmentDeadline
-      ? new Date(festival.programmeAssignmentDeadline)
-          .toISOString()
-          .slice(0, 16)
+      ? parseStoredInstant(festival.programmeAssignmentDeadline).toISOString()
       : "",
     teamLeaderLimit: Number(festival.teamLeaderLimit ?? 2),
   });
@@ -116,15 +115,15 @@ export function SettingsForm({ festival }: SettingsFormProps) {
       description: festival.description || "",
       slug: festival.slug || "",
       location: festival.location || "",
-      startDate: festival.startDate ? new Date(festival.startDate) : null,
-      endDate: festival.endDate ? new Date(festival.endDate) : null,
+      startDate: toDateOrNull(festival.startDate),
+      endDate: toDateOrNull(festival.endDate),
       orgName: festival.orgName || "",
       orgDescription: festival.orgDescription || "",
       orgWebsite: festival.orgWebsite || "",
       orgLocation: festival.orgLocation || "",
       logo: festival.branding?.logo || "",
       programmeAssignmentDeadline: festival.programmeAssignmentDeadline
-        ? new Date(festival.programmeAssignmentDeadline).toISOString().slice(0, 16)
+        ? parseStoredInstant(festival.programmeAssignmentDeadline).toISOString()
         : "",
       teamLeaderLimit: Number(festival.teamLeaderLimit ?? 2),
     }),
@@ -135,7 +134,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
   );
 
   const durationStart = useMemo(() => {
-    const createdAt = festival?.createdAt ? new Date(festival.createdAt) : null;
+    const createdAt = toDateOrNull(festival?.createdAt);
     return createdAt && !Number.isNaN(createdAt.getTime())
       ? createdAt
       : new Date();
@@ -669,7 +668,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                       id="programmeAssignment"
                       value={
                         formData.programmeAssignmentDeadline
-                          ? new Date(formData.programmeAssignmentDeadline)
+                          ? parseStoredInstant(formData.programmeAssignmentDeadline)
                           : null
                       }
                       onChange={(value) => {
@@ -677,7 +676,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                         setFormData({
                           ...formData,
                           programmeAssignmentDeadline: value
-                            ? value.toISOString().slice(0, 16)
+                            ? value.toISOString()
                             : "",
                         });
                       }}
