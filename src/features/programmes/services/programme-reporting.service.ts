@@ -4,8 +4,8 @@ import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
   category as categoryTable,
-  programmeCodeLetter as codeLetterTable,
   programmeCodeLetterRecipient as codeLetterRecipientTable,
+  programmeCodeLetter as codeLetterTable,
   programmeJudgeSession as judgeSessionTable,
   programme as programmeTable,
   programmeReportingSession as prsTable,
@@ -14,9 +14,9 @@ import {
   scheduleEntry as scheduleEntryTable,
   student as studentTable,
 } from "@/core/database/schema";
-import { CodeLetterGeneratorService } from "./code-letter-generator.service";
 import { NotificationService } from "@/features/notifications/services/notification.service";
 import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
+import { CodeLetterGeneratorService } from "./code-letter-generator.service";
 
 async function getOrCreateSessionByScheduleEntry(scheduleEntryId: string) {
   const existing = await db.query.programmeReportingSession.findFirst({
@@ -99,14 +99,15 @@ export const ProgrammeReportingService = {
     programmeId: string,
     actorName: string,
   ) {
-    const latestClosedSession = await db.query.programmeReportingSession.findFirst({
-      where: and(
-        eq(prsTable.programmeId, programmeId),
-        eq(prsTable.status, "CLOSED"),
-      ),
-      orderBy: [desc(prsTable.endedAt)],
-      columns: { id: true },
-    });
+    const latestClosedSession =
+      await db.query.programmeReportingSession.findFirst({
+        where: and(
+          eq(prsTable.programmeId, programmeId),
+          eq(prsTable.status, "CLOSED"),
+        ),
+        orderBy: [desc(prsTable.endedAt)],
+        columns: { id: true },
+      });
     if (!latestClosedSession) {
       throw new Error("No closed reporting session found for this programme.");
     }
@@ -214,7 +215,10 @@ export const ProgrammeReportingService = {
       context: {
         title: "Reporting reopened",
         body: "Previous reporting codes are no longer valid. Reporting will restart with new attendance and code letters.",
-        payload: { reportingSessionId: session.id, programmeId: session.programmeId },
+        payload: {
+          reportingSessionId: session.id,
+          programmeId: session.programmeId,
+        },
       },
       channels: ["IN_APP", "EMAIL"],
     });
@@ -353,7 +357,9 @@ export const ProgrammeReportingService = {
     const now = new Date().toISOString();
 
     await db.transaction(async (tx) => {
-      await CodeLetterGeneratorService.clearSessionCodeLetters(reportingSessionId);
+      await CodeLetterGeneratorService.clearSessionCodeLetters(
+        reportingSessionId,
+      );
 
       await tx
         .delete(reportedParticipantTable)
@@ -734,7 +740,7 @@ export const ProgrammeReportingService = {
     }
 
     const reportedWithStudent = session.programmeReportedParticipants.filter(
-      (p): p is (typeof p & { studentId: string }) => Boolean(p.studentId),
+      (p): p is typeof p & { studentId: string } => Boolean(p.studentId),
     );
     if (reportedWithStudent.length > 0) {
       const letters = await db.query.programmeCodeLetter.findMany({
@@ -930,7 +936,9 @@ export const ProgrammeReportingService = {
     const totalUnits =
       session.programme.type === "GROUP"
         ? new Set(
-            assignments.map((row) => `${row.groupId ?? "no-group"}::${row.teamNumber ?? 0}`),
+            assignments.map(
+              (row) => `${row.groupId ?? "no-group"}::${row.teamNumber ?? 0}`,
+            ),
           ).size
         : assignments.length;
 
@@ -1050,13 +1058,19 @@ export const ProgrammeReportingService = {
 
     if (!session) throw new Error("Reporting session not found");
     if (session.isLocked) {
-      throw new Error("Cannot reset code letters for a closed reporting session");
+      throw new Error(
+        "Cannot reset code letters for a closed reporting session",
+      );
     }
     if (session.status !== "IN_PROGRESS") {
-      throw new Error("Code letters can only be reset while reporting is in progress");
+      throw new Error(
+        "Code letters can only be reset while reporting is in progress",
+      );
     }
 
-    await CodeLetterGeneratorService.clearSessionCodeLetters(reportingSessionId);
+    await CodeLetterGeneratorService.clearSessionCodeLetters(
+      reportingSessionId,
+    );
 
     await NotificationService.dispatch({
       eventType: "REPORTING_RESET",

@@ -1,10 +1,10 @@
 import { asc, count, eq, inArray } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
+  programmeAssignment as assignmentTable,
   category,
   festival as festivals,
   group as groupTable,
-  programmeAssignment as assignmentTable,
 } from "@/core/database/schema";
 
 export async function getFestivalLeaderboardDataBySlug(slug: string) {

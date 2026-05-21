@@ -1049,7 +1049,10 @@ export const judge = pgTable(
       .notNull(),
   },
   (table) => [
-    index("judge_festivalId_idx").using("btree", table.festivalId.asc().nullsLast()),
+    index("judge_festivalId_idx").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+    ),
     foreignKey({
       columns: [table.festivalId],
       foreignColumns: [festival.id],
@@ -1152,7 +1155,10 @@ export const judgmentLink = pgTable(
     tokenHash: text("token_hash").notNull(),
     pinHash: text("pin_hash").notNull(),
     isActive: boolean("is_active").default(true).notNull(),
-    expiresAt: timestamp("expires_at", { precision: 3, mode: "string" }).notNull(),
+    expiresAt: timestamp("expires_at", {
+      precision: 3,
+      mode: "string",
+    }).notNull(),
     maxAttempts: integer("max_attempts").default(5).notNull(),
     attempts: integer().default(0).notNull(),
     lockedUntil: timestamp("locked_until", { precision: 3, mode: "string" }),
@@ -1160,7 +1166,10 @@ export const judgmentLink = pgTable(
     createdAt: timestamp("created_at", { precision: 3, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    regeneratedAt: timestamp("regenerated_at", { precision: 3, mode: "string" }),
+    regeneratedAt: timestamp("regenerated_at", {
+      precision: 3,
+      mode: "string",
+    }),
   },
   (table) => [
     uniqueIndex("judgment_link_tokenHash_key").using(
@@ -1463,11 +1472,13 @@ export const payment = pgTable(
       table.purpose.asc().nullsLast(),
       table.status.asc().nullsLast(),
     ),
-    uniqueIndex("payment_userId_purpose_pending_unique_idx").using(
-      "btree",
-      table.userId.asc().nullsLast(),
-      table.purpose.asc().nullsLast(),
-    ).where(sql`${table.status} = 'PENDING' AND ${table.used} = false`),
+    uniqueIndex("payment_userId_purpose_pending_unique_idx")
+      .using(
+        "btree",
+        table.userId.asc().nullsLast(),
+        table.purpose.asc().nullsLast(),
+      )
+      .where(sql`${table.status} = 'PENDING' AND ${table.used} = false`),
     foreignKey({
       columns: [table.userId],
       foreignColumns: [user.id],

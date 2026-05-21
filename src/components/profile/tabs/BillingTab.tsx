@@ -97,81 +97,83 @@ export function BillingTab() {
                 payments.map((payment) => {
                   const createdAt = parseStoredInstant(payment.createdAt);
                   return (
-                  <div
-                    key={payment.id}
-                    className="group relative flex flex-col md:flex-row md:items-center justify-between p-5 rounded-2xl transition-all duration-300 hover:bg-muted/50 border border-transparent hover:border-border/50"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div
-                        className={`p-3 rounded-2xl shadow-sm ${
-                          payment.status === "PAID"
-                            ? "bg-green-500/10 text-green-600"
-                            : payment.status === "FAILED"
-                              ? "bg-red-500/10 text-red-600"
-                              : "bg-primary/10 text-primary"
-                        }`}
-                      >
-                        {payment.status === "PAID" ? (
-                          <CheckCircle2 className="w-5 h-5" />
-                        ) : payment.status === "FAILED" ? (
-                          <XCircle className="w-5 h-5" />
-                        ) : (
-                          <Clock className="w-5 h-5" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg font-black tracking-tight">
-                            {payment.amount?.toLocaleString() || 0}{" "}
-                            {payment.currency}
-                          </span>
-                          {payment.used && (
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] uppercase font-black tracking-widest bg-background/50"
-                            >
-                              Redeemed
-                            </Badge>
+                    <div
+                      key={payment.id}
+                      className="group relative flex flex-col md:flex-row md:items-center justify-between p-5 rounded-2xl transition-all duration-300 hover:bg-muted/50 border border-transparent hover:border-border/50"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div
+                          className={`p-3 rounded-2xl shadow-sm ${
+                            payment.status === "PAID"
+                              ? "bg-green-500/10 text-green-600"
+                              : payment.status === "FAILED"
+                                ? "bg-red-500/10 text-red-600"
+                                : "bg-primary/10 text-primary"
+                          }`}
+                        >
+                          {payment.status === "PAID" ? (
+                            <CheckCircle2 className="w-5 h-5" />
+                          ) : payment.status === "FAILED" ? (
+                            <XCircle className="w-5 h-5" />
+                          ) : (
+                            <Clock className="w-5 h-5" />
                           )}
                         </div>
-                        <div className="text-xs font-bold text-muted-foreground/70 uppercase tracking-wider flex items-center gap-2 mt-0.5">
-                          {payment.createdAt
-                            ? format(createdAt, "PPP")
-                            : "Unknown Date"}
-                          <span className="w-1 h-1 rounded-full bg-border" />
-                          {payment.tier || "Standard"} Plan
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg font-black tracking-tight">
+                              {payment.amount?.toLocaleString() || 0}{" "}
+                              {payment.currency}
+                            </span>
+                            {payment.used && (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] uppercase font-black tracking-widest bg-background/50"
+                              >
+                                Redeemed
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-xs font-bold text-muted-foreground/70 uppercase tracking-wider flex items-center gap-2 mt-0.5">
+                            {payment.createdAt
+                              ? format(createdAt, "PPP")
+                              : "Unknown Date"}
+                            <span className="w-1 h-1 rounded-full bg-border" />
+                            {payment.tier || "Standard"} Plan
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center justify-between md:justify-end gap-6 mt-4 md:mt-0">
-                      <div className="text-right hidden sm:block">
-                        <div className="text-xs font-black text-muted-foreground uppercase tracking-tighter">
-                          Status
+                      <div className="flex items-center justify-between md:justify-end gap-6 mt-4 md:mt-0">
+                        <div className="text-right hidden sm:block">
+                          <div className="text-xs font-black text-muted-foreground uppercase tracking-tighter">
+                            Status
+                          </div>
+                          <Badge
+                            variant={
+                              payment.status === "PAID"
+                                ? "default"
+                                : "secondary"
+                            }
+                            className={`mt-1 font-bold ${payment.status === "PAID" ? "bg-green-500 hover:bg-green-600" : ""}`}
+                          >
+                            {payment.status}
+                          </Badge>
                         </div>
-                        <Badge
-                          variant={
-                            payment.status === "PAID" ? "default" : "secondary"
-                          }
-                          className={`mt-1 font-bold ${payment.status === "PAID" ? "bg-green-500 hover:bg-green-600" : ""}`}
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => {
+                            setSelectedPayment(payment);
+                            setIsDetailsOpen(true);
+                          }}
                         >
-                          {payment.status}
-                        </Badge>
+                          <ArrowRight className="w-4 h-4" />
+                        </Button>
                       </div>
-
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => {
-                          setSelectedPayment(payment);
-                          setIsDetailsOpen(true);
-                        }}
-                      >
-                        <ArrowRight className="w-4 h-4" />
-                      </Button>
                     </div>
-                  </div>
                   );
                 })
               )}

@@ -35,12 +35,15 @@ export function UnsavedChangesProvider({
   children: React.ReactNode;
   enabled?: boolean;
 }) {
-  const [dirtyBySource, setDirtyBySource] = useState<Record<string, boolean>>({});
-  const [saveHandlers, setSaveHandlers] = useState<Record<string, SaveHandler>>({});
-  const [modalOpen, setModalOpen] = useState(false);
-  const [pendingAttempt, setPendingAttempt] = useState<NavigationAttempt | null>(
-    null,
+  const [dirtyBySource, setDirtyBySource] = useState<Record<string, boolean>>(
+    {},
   );
+  const [saveHandlers, setSaveHandlers] = useState<Record<string, SaveHandler>>(
+    {},
+  );
+  const [modalOpen, setModalOpen] = useState(false);
+  const [pendingAttempt, setPendingAttempt] =
+    useState<NavigationAttempt | null>(null);
 
   const isDirty = useMemo(
     () => Object.values(dirtyBySource).some(Boolean),
@@ -78,9 +81,12 @@ export function UnsavedChangesProvider({
     });
   }, []);
 
-  const registerSaveHandler = useCallback((id: string, handler: SaveHandler) => {
-    setSaveHandlers((prev) => ({ ...prev, [id]: handler }));
-  }, []);
+  const registerSaveHandler = useCallback(
+    (id: string, handler: SaveHandler) => {
+      setSaveHandlers((prev) => ({ ...prev, [id]: handler }));
+    },
+    [],
+  );
 
   const unregisterSaveHandler = useCallback((id: string) => {
     setSaveHandlers((prev) => {

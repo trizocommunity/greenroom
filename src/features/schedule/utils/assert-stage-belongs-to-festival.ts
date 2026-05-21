@@ -7,7 +7,10 @@ export async function assertStageBelongsToFestival(
   festivalId: string,
 ): Promise<boolean> {
   const row = await db.query.stage.findFirst({
-    where: and(eq(stageTable.id, stageId), eq(stageTable.festivalId, festivalId)),
+    where: and(
+      eq(stageTable.id, stageId),
+      eq(stageTable.festivalId, festivalId),
+    ),
     columns: { id: true },
   });
   return !!row;

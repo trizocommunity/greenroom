@@ -3,19 +3,19 @@ import {
   category,
   expiredFestivalResult,
   festival,
-  festivalScoringAwardRule,
-  festivalScoringPolicy,
   festivalCategoryPreference,
   festivalGalleryImage,
   festivalLifecycleEvent,
+  festivalMember,
+  festivalNews,
+  festivalScoringAwardRule,
+  festivalScoringPolicy,
+  group,
   judge,
   judgmentConfig,
   judgmentConfigJudge,
   judgmentLink,
   judgmentScore,
-  festivalMember,
-  festivalNews,
-  group,
   passwordResetToken,
   payment,
   programme,
@@ -408,13 +408,16 @@ export const judgmentConfigJudgeRelations = relations(
   }),
 );
 
-export const judgmentLinkRelations = relations(judgmentLink, ({ one, many }) => ({
-  judgmentConfig: one(judgmentConfig, {
-    fields: [judgmentLink.configId],
-    references: [judgmentConfig.id],
+export const judgmentLinkRelations = relations(
+  judgmentLink,
+  ({ one, many }) => ({
+    judgmentConfig: one(judgmentConfig, {
+      fields: [judgmentLink.configId],
+      references: [judgmentConfig.id],
+    }),
+    scores: many(judgmentScore),
   }),
-  scores: many(judgmentScore),
-}));
+);
 
 export const judgmentScoreRelations = relations(judgmentScore, ({ one }) => ({
   judgmentConfig: one(judgmentConfig, {

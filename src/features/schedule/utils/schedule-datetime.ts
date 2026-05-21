@@ -15,11 +15,7 @@ export function localWallClockToDate(
   const h = parseInt(parts[0] ?? "0", 10);
   const mi = parseInt(parts[1] ?? "0", 10);
   const sec = parts[2] != null ? parseInt(parts[2], 10) : 0;
-  if (
-    [y, mo, d, h, mi, sec].some(
-      (n) => Number.isNaN(n) || n === undefined,
-    )
-  ) {
+  if ([y, mo, d, h, mi, sec].some((n) => Number.isNaN(n) || n === undefined)) {
     return new Date(NaN);
   }
   return new Date(y, mo - 1, d, h, mi, sec, 0);

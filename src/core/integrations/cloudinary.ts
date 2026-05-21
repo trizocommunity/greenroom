@@ -35,7 +35,9 @@ export async function uploadImageToCloudinary(
     const base64Data = await fileToBase64(file);
 
     const getCsrfHeaders = async (): Promise<Record<string, string>> => {
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
       if (typeof document !== "undefined") {
         const nonceMatch = document.cookie.match(/_csrf_nonce=([^;]+)/);
         const sigMatch = document.cookie.match(/_csrf_sig=([^;]+)/);

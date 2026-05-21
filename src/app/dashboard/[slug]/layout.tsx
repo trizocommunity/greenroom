@@ -3,8 +3,8 @@ import { Suspense } from "react";
 // Removed unused breadcrumb imports
 import { DashboardBreadcrumb } from "@/components/festival/dashboard/DashboardBreadcrumb";
 import { DashboardCelebration } from "@/components/festival/dashboard/DashboardCelebration";
-import { FestivalDashboardClientShell } from "@/components/festival/dashboard/FestivalDashboardClientShell";
 import { DashboardRightSidebar } from "@/components/festival/dashboard/DashboardRightSidebar";
+import { FestivalDashboardClientShell } from "@/components/festival/dashboard/FestivalDashboardClientShell";
 import { FestivalDashboardSidebar } from "@/components/festival/dashboard/FestivalDashboardSidebar";
 import { ReadOnlyExpiredBanner } from "@/components/festival/dashboard/ReadOnlyExpiredBanner";
 import { FestivalProvider } from "@/components/festival/FestivalContext";

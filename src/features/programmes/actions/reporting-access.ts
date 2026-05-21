@@ -9,8 +9,8 @@ import {
   user as userTable,
 } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
-import { parseStoredInstant } from "@/core/utils/date-time";
 import type { Tier } from "@/core/types/app-enums";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 
 async function getFestivalWithReportingAccess(festivalId: string) {

@@ -552,7 +552,10 @@ export function StudentsClient({
                           <span>{student.group?.name || "—"}</span>
                           <span>{student.category?.name || "—"}</span>
                           <span className="text-muted-foreground/80">
-                            {format(parseStoredInstant(student.createdAt), "MMM d")}
+                            {format(
+                              parseStoredInstant(student.createdAt),
+                              "MMM d",
+                            )}
                           </span>
                         </div>
                       </div>

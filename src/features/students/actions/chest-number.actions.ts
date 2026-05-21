@@ -61,7 +61,9 @@ export async function saveChestNumberSettings(
   });
 
   if (updatedFestival) {
-    revalidatePath(`/dashboard/${updatedFestival.slug}/pre-event-works/students`);
+    revalidatePath(
+      `/dashboard/${updatedFestival.slug}/pre-event-works/students`,
+    );
   }
 }
 

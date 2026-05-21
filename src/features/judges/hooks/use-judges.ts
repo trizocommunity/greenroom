@@ -21,10 +21,13 @@ export function useJudges(festivalId: string) {
     mutationFn: (input: { name: string; description?: string | null }) =>
       createJudgeAction(festivalId, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.judges.list(festivalId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.judges.list(festivalId),
+      });
       toast.success("Judge created.");
     },
-    onError: (error: any) => toast.error(error?.message || "Failed to create judge."),
+    onError: (error: any) =>
+      toast.error(error?.message || "Failed to create judge."),
   });
 
   const updateMutation = useMutation({
@@ -34,19 +37,25 @@ export function useJudges(festivalId: string) {
       description?: string | null;
     }) => updateJudgeAction(festivalId, input.judgeId, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.judges.list(festivalId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.judges.list(festivalId),
+      });
       toast.success("Judge updated.");
     },
-    onError: (error: any) => toast.error(error?.message || "Failed to update judge."),
+    onError: (error: any) =>
+      toast.error(error?.message || "Failed to update judge."),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (judgeId: string) => deleteJudgeAction(festivalId, judgeId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.judges.list(festivalId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.judges.list(festivalId),
+      });
       toast.success("Judge deleted.");
     },
-    onError: (error: any) => toast.error(error?.message || "Failed to delete judge."),
+    onError: (error: any) =>
+      toast.error(error?.message || "Failed to delete judge."),
   });
 
   return {
@@ -60,4 +69,3 @@ export function useJudges(festivalId: string) {
     isDeleting: deleteMutation.isPending,
   };
 }
-

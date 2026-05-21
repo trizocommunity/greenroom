@@ -44,7 +44,8 @@ import { getGradeBadgeColor } from "@/features/results/services/results-calculat
 
 const getTeamIdentifier = (assignment: any, type: string) => {
   if (type === "GROUP") {
-    const groupKey = assignment.group?.id ?? assignment.group?.name ?? "no-group";
+    const groupKey =
+      assignment.group?.id ?? assignment.group?.name ?? "no-group";
     const teamNum = assignment.teamNumber || 1;
     return `${groupKey}-${teamNum}`;
   }
@@ -59,8 +60,10 @@ type Programme = {
   assignments: any[];
 };
 
-const getResultPoints = (result: { points?: number; awardPoints?: number | null }) =>
-  result.awardPoints ?? result.points ?? 0;
+const getResultPoints = (result: {
+  points?: number;
+  awardPoints?: number | null;
+}) => result.awardPoints ?? result.points ?? 0;
 
 interface ResultsExploreClientProps {
   festival: { id: string; name: string; slug: string };
@@ -98,7 +101,9 @@ export function ResultsExploreClient({
   const programmesWithResults = useMemo(() => {
     return programmes
       .map((p) => {
-        const assignmentsWithResult = p.assignments.filter((a: any) => a.result);
+        const assignmentsWithResult = p.assignments.filter(
+          (a: any) => a.result,
+        );
 
         let totalResults = assignmentsWithResult.length;
         let publishedCount = assignmentsWithResult.filter(

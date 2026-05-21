@@ -1,15 +1,13 @@
-import type { Metadata } from "next";
 import { eq } from "drizzle-orm";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { JudgmentWizardClient } from "@/components/dashboard/judgment/JudgmentWizardClient";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { festival as festivalTable } from "@/core/database/schema";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
+import { getJudgmentDashboardDataAction } from "@/features/judgment/actions/judgment.actions";
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
-import {
-  getJudgmentDashboardDataAction,
-} from "@/features/judgment/actions/judgment.actions";
 
 export const metadata: Metadata = {
   title: "Judgment",
@@ -53,7 +51,9 @@ export default async function JudgmentPage({
   )
     return notFound();
 
-  const initialDashboardData = await getJudgmentDashboardDataAction(festival.id);
+  const initialDashboardData = await getJudgmentDashboardDataAction(
+    festival.id,
+  );
 
   return (
     <JudgmentWizardClient

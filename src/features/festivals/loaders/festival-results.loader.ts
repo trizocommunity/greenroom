@@ -16,8 +16,10 @@ export interface PublicResult {
   codeLetter?: string | null;
 }
 
-const getResultPoints = (result: { points?: number; awardPoints?: number | null }) =>
-  result.awardPoints ?? result.points ?? 0;
+const getResultPoints = (result: {
+  points?: number;
+  awardPoints?: number | null;
+}) => result.awardPoints ?? result.points ?? 0;
 
 /**
  * Fetch published results for a festival (public site)

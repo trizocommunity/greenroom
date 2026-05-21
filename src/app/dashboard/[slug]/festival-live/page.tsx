@@ -1,8 +1,8 @@
 import { and, eq } from "drizzle-orm";
-import { db } from "@/core/database/client";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/core/auth/session";
+import { db } from "@/core/database/client";
 import { festivalMember as memberTable } from "@/core/database/schema";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { isBasicTier } from "@/features/plan-features/services/tier";

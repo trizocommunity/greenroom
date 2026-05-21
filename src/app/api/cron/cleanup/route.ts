@@ -1,19 +1,20 @@
 import { NextResponse } from "next/server";
 import { FestivalExpirationService } from "@/features/festivals/services/festival-expiration.service";
 
-const ALLOWED_CRON_IPS = [
-  "35.92.0.0/14",
-  "35.93.0.0/15",
-  "3.64.0.0/13",
-];
+const ALLOWED_CRON_IPS = ["35.92.0.0/14", "35.93.0.0/15", "3.64.0.0/13"];
 
 function isAllowedCronIP(ip: string | null): boolean {
   if (!ip) return false;
   return ALLOWED_CRON_IPS.some((range) => {
     const [base, bits] = range.split("/");
     const mask = ~((1 << (32 - parseInt(bits, 10))) - 1);
-    const ipNum = ip.split(".").reduce((acc, oct) => (acc << 8) + parseInt(oct, 10), 0) >>> 0;
-    const baseNum = base.split(".").reduce((acc, oct) => (acc << 8) + parseInt(oct, 10), 0) >>> 0;
+    const ipNum =
+      ip.split(".").reduce((acc, oct) => (acc << 8) + parseInt(oct, 10), 0) >>>
+      0;
+    const baseNum =
+      base
+        .split(".")
+        .reduce((acc, oct) => (acc << 8) + parseInt(oct, 10), 0) >>> 0;
     return (ipNum & mask) === (baseNum & mask);
   });
 }
@@ -50,13 +51,17 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const clientIP = request.headers.get("x-real-ip") ||
-                      request.headers.get("x-forwarded-for")?.split(",")[0] ||
-                      null;
+    const clientIP =
+      request.headers.get("x-real-ip") ||
+      request.headers.get("x-forwarded-for")?.split(",")[0] ||
+      null;
     const vercelCronHeader = request.headers.get("x-vercel-signature");
 
     if (process.env.NODE_ENV === "production") {
-      if (vercelCronHeader !== process.env.CRON_SECRET && !isAllowedCronIP(clientIP)) {
+      if (
+        vercelCronHeader !== process.env.CRON_SECRET &&
+        !isAllowedCronIP(clientIP)
+      ) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
     }

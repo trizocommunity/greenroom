@@ -2,9 +2,9 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   category,
+  programmeCodeLetter as codeLetterTable,
   festival as festivals,
   programme as programmeTable,
-  programmeCodeLetter as codeLetterTable,
   programmeReportingSession as reportingSessionTable,
 } from "@/core/database/schema";
 
@@ -113,7 +113,9 @@ export async function getFestivalResultsDataBySlug(slug: string) {
     return { festival: null };
   }
 
-  await enrichProgrammesAssignmentsResultCodeLetters(festival.programmes as any);
+  await enrichProgrammesAssignmentsResultCodeLetters(
+    festival.programmes as any,
+  );
 
   return { festival };
 }

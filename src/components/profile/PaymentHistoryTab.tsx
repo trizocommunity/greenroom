@@ -64,37 +64,37 @@ export function PaymentHistoryTab() {
             {payments.map((payment) => {
               const createdAt = parseStoredInstant(payment.createdAt);
               return (
-              <TableRow key={payment.id}>
-                <TableCell className="whitespace-nowrap">
-                  {format(createdAt, "MMM dd, yyyy")}
-                  <div className="text-xs text-muted-foreground">
-                    {format(createdAt, "hh:mm a")}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  Festival Pass
-                  {payment.festival && (
+                <TableRow key={payment.id}>
+                  <TableCell className="whitespace-nowrap">
+                    {format(createdAt, "MMM dd, yyyy")}
                     <div className="text-xs text-muted-foreground">
-                      Used for: {payment.festival.name}
+                      {format(createdAt, "hh:mm a")}
                     </div>
-                  )}
-                </TableCell>
-                <TableCell className="font-mono text-xs">
-                  {payment.razorpayOrderId || "-"}
-                </TableCell>
-                <TableCell>
-                  {new Intl.NumberFormat("en-IN", {
-                    style: "currency",
-                    currency: payment.currency,
-                  }).format(payment.amount / 100)}
-                </TableCell>
-                <TableCell>
-                  <StatusBadge status={payment.status} />
-                </TableCell>
-                <TableCell className="text-right font-mono text-xs">
-                  {payment.razorpayId || "-"}
-                </TableCell>
-              </TableRow>
+                  </TableCell>
+                  <TableCell>
+                    Festival Pass
+                    {payment.festival && (
+                      <div className="text-xs text-muted-foreground">
+                        Used for: {payment.festival.name}
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">
+                    {payment.razorpayOrderId || "-"}
+                  </TableCell>
+                  <TableCell>
+                    {new Intl.NumberFormat("en-IN", {
+                      style: "currency",
+                      currency: payment.currency,
+                    }).format(payment.amount / 100)}
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge status={payment.status} />
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-xs">
+                    {payment.razorpayId || "-"}
+                  </TableCell>
+                </TableRow>
               );
             })}
           </TableBody>

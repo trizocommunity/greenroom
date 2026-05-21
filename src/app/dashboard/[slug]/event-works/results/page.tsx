@@ -22,7 +22,8 @@ export default async function ResultsPage({
 }) {
   const { slug } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
-  const initialProgrammeId = resolvedSearchParams?.programmeId?.trim() || undefined;
+  const initialProgrammeId =
+    resolvedSearchParams?.programmeId?.trim() || undefined;
 
   const { festival } = await getFestivalResultsDataBySlug(slug);
 

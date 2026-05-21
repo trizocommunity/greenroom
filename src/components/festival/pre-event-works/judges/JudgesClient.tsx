@@ -67,19 +67,30 @@ export function JudgesClient({
   children?: React.ReactNode;
 }) {
   const { isReadOnly } = useFestivalReadOnly();
-  const { judges, isLoading, createJudge, updateJudge, deleteJudge, isDeleting } =
-    useJudges(festivalId);
+  const {
+    judges,
+    isLoading,
+    createJudge,
+    updateJudge,
+    deleteJudge,
+    isDeleting,
+  } = useJudges(festivalId);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<JudgeRow | null>(null);
   const [deleting, setDeleting] = useState<JudgeRow | null>(null);
-  const [viewingActivities, setViewingActivities] = useState<JudgeRow | null>(null);
-  const [viewingProgrammes, setViewingProgrammes] = useState<JudgeRow | null>(null);
+  const [viewingActivities, setViewingActivities] = useState<JudgeRow | null>(
+    null,
+  );
+  const [viewingProgrammes, setViewingProgrammes] = useState<JudgeRow | null>(
+    null,
+  );
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [formErrors, setFormErrors] = useState<{ name?: string; description?: string }>(
-    {},
-  );
+  const [formErrors, setFormErrors] = useState<{
+    name?: string;
+    description?: string;
+  }>({});
 
   const trimmedName = name.trim();
   const trimmedDescription = description.trim();
@@ -99,7 +110,9 @@ export function JudgesClient({
     } else {
       const duplicateJudge = judges.find((judge) => {
         if (editing && judge.id === editing.id) return false;
-        return normalizeJudgeName(judge.name) === normalizeJudgeName(trimmedName);
+        return (
+          normalizeJudgeName(judge.name) === normalizeJudgeName(trimmedName)
+        );
       });
       if (duplicateJudge) {
         nextErrors.name = ERROR_MESSAGES.JUDGE_NAME_DUPLICATE;
@@ -107,8 +120,7 @@ export function JudgesClient({
     }
 
     if (trimmedDescription.length > JUDGE_DESCRIPTION_MAX_LENGTH) {
-      nextErrors.description =
-        `Description must be ${JUDGE_DESCRIPTION_MAX_LENGTH} characters or fewer.`;
+      nextErrors.description = `Description must be ${JUDGE_DESCRIPTION_MAX_LENGTH} characters or fewer.`;
     }
 
     setFormErrors(nextErrors);
@@ -212,11 +224,15 @@ export function JudgesClient({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => setViewingActivities(j as JudgeRow)}>
+                  <DropdownMenuItem
+                    onSelect={() => setViewingActivities(j as JudgeRow)}
+                  >
                     <Eye className="h-4 w-4 mr-2" />
                     Activities
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setViewingProgrammes(j as JudgeRow)}>
+                  <DropdownMenuItem
+                    onSelect={() => setViewingProgrammes(j as JudgeRow)}
+                  >
                     <Eye className="h-4 w-4 mr-2" />
                     Programmes
                   </DropdownMenuItem>
@@ -245,40 +261,58 @@ export function JudgesClient({
               </p>
               <div className="flex flex-wrap gap-2">
                 {j.stages.length > 0 ? (
-                  j.stages.slice(0, 3).map((stage) => (
-                    <Badge
-                      key={stage.id}
-                      className="bg-primary/10 text-primary border-primary/30"
-                      variant="outline"
-                    >
-                      {stage.name}
-                    </Badge>
-                  )).concat(
-                    j.stages.length > 3
-                      ? ([
-                          <Badge key={`${j.id}-more-stages`} variant="outline">
-                            +{j.stages.length - 3} more
-                          </Badge>,
-                        ] as any)
-                      : [],
-                  )
+                  j.stages
+                    .slice(0, 3)
+                    .map((stage) => (
+                      <Badge
+                        key={stage.id}
+                        className="bg-primary/10 text-primary border-primary/30"
+                        variant="outline"
+                      >
+                        {stage.name}
+                      </Badge>
+                    ))
+                    .concat(
+                      j.stages.length > 3
+                        ? ([
+                            <Badge
+                              key={`${j.id}-more-stages`}
+                              variant="outline"
+                            >
+                              +{j.stages.length - 3} more
+                            </Badge>,
+                          ] as any)
+                        : [],
+                    )
                 ) : (
-                  <span className="text-xs text-muted-foreground">No stages assigned</span>
+                  <span className="text-xs text-muted-foreground">
+                    No stages assigned
+                  </span>
                 )}
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-2 text-center rounded-xl border bg-muted/20 p-2">
               <div>
-                <p className="text-lg font-semibold leading-none">{j.activities.length}</p>
-                <p className="text-[11px] text-muted-foreground mt-1">Activities</p>
+                <p className="text-lg font-semibold leading-none">
+                  {j.activities.length}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Activities
+                </p>
               </div>
               <div>
-                <p className="text-lg font-semibold leading-none">{j.programmes.length}</p>
-                <p className="text-[11px] text-muted-foreground mt-1">Programmes</p>
+                <p className="text-lg font-semibold leading-none">
+                  {j.programmes.length}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Programmes
+                </p>
               </div>
               <div>
-                <p className="text-lg font-semibold leading-none">{j.stages.length}</p>
+                <p className="text-lg font-semibold leading-none">
+                  {j.stages.length}
+                </p>
                 <p className="text-[11px] text-muted-foreground mt-1">Stages</p>
               </div>
             </div>
@@ -320,7 +354,10 @@ export function JudgesClient({
               onChange={(e) => {
                 setDescription(e.target.value);
                 if (formErrors.description) {
-                  setFormErrors((prev) => ({ ...prev, description: undefined }));
+                  setFormErrors((prev) => ({
+                    ...prev,
+                    description: undefined,
+                  }));
                 }
               }}
               placeholder="Description (optional)"
@@ -329,7 +366,9 @@ export function JudgesClient({
             />
             <div className="flex items-center justify-between">
               {formErrors.description ? (
-                <p className="text-xs text-destructive">{formErrors.description}</p>
+                <p className="text-xs text-destructive">
+                  {formErrors.description}
+                </p>
               ) : (
                 <span />
               )}
@@ -339,12 +378,19 @@ export function JudgesClient({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => handleFormOpenChange(false)}>
+            <Button
+              variant="outline"
+              onClick={() => handleFormOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button
               onClick={onSubmit}
-              disabled={!trimmedName || isSaving || trimmedName.length > JUDGE_NAME_MAX_LENGTH}
+              disabled={
+                !trimmedName ||
+                isSaving ||
+                trimmedName.length > JUDGE_NAME_MAX_LENGTH
+              }
             >
               {isSaving ? "Saving..." : editing ? "Update" : "Create"}
             </Button>
@@ -379,7 +425,8 @@ export function JudgesClient({
                             {activity.programme?.name ?? "Programme"}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {activity.stage?.name ?? "No stage"} · {activity.judgingMode}
+                            {activity.stage?.name ?? "No stage"} ·{" "}
+                            {activity.judgingMode}
                           </p>
                         </div>
                         <div className="text-right">
@@ -393,7 +440,9 @@ export function JudgesClient({
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-muted-foreground">No activities assigned.</p>
+                    <p className="text-sm text-muted-foreground">
+                      No activities assigned.
+                    </p>
                   )}
                 </div>
               </div>
@@ -420,9 +469,10 @@ export function JudgesClient({
                 <div className="space-y-2 max-h-72 overflow-auto pr-1">
                   {viewingProgrammes.programmes.length > 0 ? (
                     viewingProgrammes.programmes.map((programme) => {
-                      const programmeActivities = viewingProgrammes.activities.filter(
-                        (activity) => activity.programme?.id === programme.id,
-                      );
+                      const programmeActivities =
+                        viewingProgrammes.activities.filter(
+                          (activity) => activity.programme?.id === programme.id,
+                        );
                       const totalPoints = programmeActivities.reduce(
                         (sum, activity) => sum + activity.judgedPointsCount,
                         0,
@@ -433,8 +483,10 @@ export function JudgesClient({
                       const programmeAverage =
                         avgPool.length > 0
                           ? Number(
-                              (avgPool.reduce((sum, value) => sum + value, 0) /
-                                avgPool.length).toFixed(2),
+                              (
+                                avgPool.reduce((sum, value) => sum + value, 0) /
+                                avgPool.length
+                              ).toFixed(2),
                             )
                           : null;
 
@@ -444,13 +496,17 @@ export function JudgesClient({
                           className="rounded-lg border p-3 flex items-center justify-between gap-3"
                         >
                           <div>
-                            <p className="text-sm font-medium truncate">{programme.name}</p>
+                            <p className="text-sm font-medium truncate">
+                              {programme.name}
+                            </p>
                             <p className="text-xs text-muted-foreground">
                               Activities: {programmeActivities.length}
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-xs text-muted-foreground">Points: {totalPoints}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Points: {totalPoints}
+                            </p>
                             <Badge variant="outline" className="mt-1">
                               Avg: {programmeAverage ?? "-"}
                             </Badge>
@@ -459,7 +515,9 @@ export function JudgesClient({
                       );
                     })
                   ) : (
-                    <p className="text-sm text-muted-foreground">No programmes assigned.</p>
+                    <p className="text-sm text-muted-foreground">
+                      No programmes assigned.
+                    </p>
                   )}
                 </div>
               </div>
@@ -484,4 +542,3 @@ export function JudgesClient({
     </div>
   );
 }
-

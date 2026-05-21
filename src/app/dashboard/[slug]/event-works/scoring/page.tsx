@@ -1,5 +1,5 @@
-import type { Metadata } from "next";
 import { asc, eq } from "drizzle-orm";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ScoringPolicyClient } from "@/components/dashboard/judgment/ScoringPolicyClient";
 import { getSession } from "@/core/auth/session";
@@ -38,7 +38,9 @@ export default async function ScoringPolicyPage({
     globalRole: session?.role ?? null,
   });
   if (!context) return notFound();
-  if (!["OWNER", "ADMIN", "STAGE_MANAGER", "SUPER_ADMIN"].includes(context.role)) {
+  if (
+    !["OWNER", "ADMIN", "STAGE_MANAGER", "SUPER_ADMIN"].includes(context.role)
+  ) {
     return notFound();
   }
 
@@ -59,9 +61,12 @@ export default async function ScoringPolicyPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Scoring Policy</h1>
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+          Scoring Policy
+        </h1>
         <p className="text-sm text-muted-foreground sm:text-base">
-          Configure grade rules and customizable award points matrix for STANDARD/PRO judging.
+          Configure grade rules and customizable award points matrix for
+          STANDARD/PRO judging.
         </p>
       </div>
       <ScoringPolicyClient

@@ -13,39 +13,37 @@ import {
   or,
   sql,
 } from "drizzle-orm";
+import { jwtVerify, SignJWT } from "jose";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { SignJWT, jwtVerify } from "jose";
 import { APP_URL } from "@/config/routes";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
+  programmeAssignment as assignmentTable,
+  programmeCodeLetter as codeLetterTable,
   festival as festivalTable,
   judge as judgeTable,
-  judgmentConfig as judgmentConfigTable,
   judgmentConfigJudge as judgmentConfigJudgeTable,
+  judgmentConfig as judgmentConfigTable,
   judgmentLink as judgmentLinkTable,
   judgmentScore as judgmentScoreTable,
   programme as programmeTable,
-  programmeAssignment as assignmentTable,
-  programmeCodeLetter as codeLetterTable,
   programmeReportedParticipant as reportedParticipantTable,
   programmeReportingSession as reportingSessionTable,
   result as resultTable,
 } from "@/core/database/schema";
 import { AppError } from "@/core/errors/errors";
 import type { ProgrammeJudgmentStatus } from "@/core/types/app-enums";
-import {
-  calculatePosition,
-} from "@/features/results/services/results-calculator";
-import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
+import { listFestivalJudgesWithAssignments } from "@/features/judges/repositories/judge.repository";
 import {
   getScoringPolicyWithRules,
   resolveScoringPolicy,
   upsertScoringPolicyActionData,
 } from "@/features/judgment/services/scoring-policy.service";
-import { listFestivalJudgesWithAssignments } from "@/features/judges/repositories/judge.repository";
+import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
+import { calculatePosition } from "@/features/results/services/results-calculator";
 
 function hashTokenSHA256(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -201,7 +199,9 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
             programmeReportedParticipants: {
               orderBy: [asc(reportedParticipantTable.reportedAt)],
               with: {
-                student: { columns: { id: true, name: true, chestNumber: true } },
+                student: {
+                  columns: { id: true, name: true, chestNumber: true },
+                },
                 group: { columns: { name: true } },
                 programmeAssignment: { columns: { teamNumber: true } },
               },
@@ -255,17 +255,15 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
       }>;
     }
   >();
-  const programmeTypeById = new Map<
-    string,
-    "INDIVIDUAL" | "GROUP"
-  >([
+  const programmeTypeById = new Map<string, "INDIVIDUAL" | "GROUP">([
     ...judgeProgrammes.map((p) => [p.id, p.type] as const),
     ...rejudgeProgrammes.map((p) => [p.id, p.type] as const),
   ]);
 
   for (const sessionRow of latestClosedSessions) {
     if (reportingByProgrammeId.has(sessionRow.programmeId)) continue;
-    const programmeType = programmeTypeById.get(sessionRow.programmeId) ?? "INDIVIDUAL";
+    const programmeType =
+      programmeTypeById.get(sessionRow.programmeId) ?? "INDIVIDUAL";
     const codeByStudentId = new Map<string, string>();
     const sessionCodeLetters = codeLettersBySessionId.get(sessionRow.id) ?? [];
     for (const codeLetter of sessionCodeLetters) {
@@ -353,7 +351,8 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
             );
 
     reportingByProgrammeId.set(sessionRow.programmeId, {
-      stageName: sessionRow.stage?.name ?? sessionRow.scheduleEntry?.stage?.name ?? null,
+      stageName:
+        sessionRow.stage?.name ?? sessionRow.scheduleEntry?.stage?.name ?? null,
       scheduleStart: sessionRow.scheduleEntry?.startTime ?? null,
       scheduleEnd: sessionRow.scheduleEntry?.endTime ?? null,
       reportedCount: reportedEntries.length,
@@ -529,7 +528,9 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
           isComplete,
         };
       });
-      const judgesWithCompleteSet = judgeProgress.filter((j) => j.isComplete).length;
+      const judgesWithCompleteSet = judgeProgress.filter(
+        (j) => j.isComplete,
+      ).length;
       const isSingle = (config.judgingMode as "SINGLE" | "GROUP") === "SINGLE";
       const isJudgmentComplete = isSingle
         ? requiredCodeLetters > 0 &&
@@ -1445,7 +1446,11 @@ export async function saveScoringPolicyAction(input: {
     requireWritable: true,
   });
 
-  if (!Number.isFinite(input.noGradeBelow) || input.noGradeBelow < 0 || input.noGradeBelow > 100) {
+  if (
+    !Number.isFinite(input.noGradeBelow) ||
+    input.noGradeBelow < 0 ||
+    input.noGradeBelow > 100
+  ) {
     throw new AppError("No-grade threshold must be between 0 and 100.");
   }
   if (input.gradeRules.length === 0) {

@@ -10,7 +10,6 @@ import { TeamStudentsDialog } from "@/components/festival/pre-event-works/assign
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { parseStoredInstant } from "@/core/utils/date-time";
 import {
   Table,
   TableBody,
@@ -19,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { getProgrammeTeamMembersAction } from "@/features/assignments/actions/assignment.actions";
 import { useFeature } from "@/features/plan-features/hooks/use-feature";
 import {

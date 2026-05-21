@@ -97,9 +97,9 @@ const festivalOwnerUserColumns = {
   },
 } as const;
 
-async function attachProgrammeAndStudentCounts<
-  T extends { id: string },
->(row: T) {
+async function attachProgrammeAndStudentCounts<T extends { id: string }>(
+  row: T,
+) {
   const [progRow, studRow] = await Promise.all([
     db
       .select({ n: count() })

@@ -22,10 +22,22 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
 import { toast } from "sonner";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,12 +48,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -188,8 +194,10 @@ const getSubLabel = (assignment: Programme["assignments"][0], type: string) => {
   return `#${assignment.student?.chestNumber || "N/A"}`;
 };
 
-const getResultPoints = (result: { points?: number; awardPoints?: number | null }) =>
-  result.awardPoints ?? result.points ?? 0;
+const getResultPoints = (result: {
+  points?: number;
+  awardPoints?: number | null;
+}) => result.awardPoints ?? result.points ?? 0;
 
 export function ResultsManagementClient({
   festival,
@@ -581,48 +589,51 @@ export function ResultsManagementClient({
     }
   };
 
-  const handleSaveResults = useCallback(async (shouldPublish = false) => {
-    if (isReadOnly) return;
-    if (!currentProgramme) return;
+  const handleSaveResults = useCallback(
+    async (shouldPublish = false) => {
+      if (isReadOnly) return;
+      if (!currentProgramme) return;
 
-    const resultsToSave = results.filter((r) => r.grade !== "-");
-    if (resultsToSave.length === 0) return;
+      const resultsToSave = results.filter((r) => r.grade !== "-");
+      if (resultsToSave.length === 0) return;
 
-    startTransition(async () => {
-      // Run all saves in parallel instead of sequential awaits
-      const responses = await Promise.all(
-        resultsToSave.map((result) =>
-          saveResult({
-            festivalId: festival.id,
-            programmeId: currentProgramme.id,
-            assignmentId: result.assignmentId,
-            grade: result.grade,
-            position:
-              result.position !== "-" ? (result.position as number) : null,
-            points: result.points,
-            remarks: result.remarks,
-            isPublished: shouldPublish,
-          }),
-        ),
-      );
-
-      const errorCount = responses.filter((r) => !r?.success).length;
-
-      if (errorCount === 0) {
-        toast.success(
-          shouldPublish
-            ? "Results published successfully"
-            : "Results saved successfully",
+      startTransition(async () => {
+        // Run all saves in parallel instead of sequential awaits
+        const responses = await Promise.all(
+          resultsToSave.map((result) =>
+            saveResult({
+              festivalId: festival.id,
+              programmeId: currentProgramme.id,
+              assignmentId: result.assignmentId,
+              grade: result.grade,
+              position:
+                result.position !== "-" ? (result.position as number) : null,
+              points: result.points,
+              remarks: result.remarks,
+              isPublished: shouldPublish,
+            }),
+          ),
         );
-        setScores({});
-        setSelectedCategory("");
-        setSelectedProgramme("");
-        setIsModalOpen(false);
-      } else {
-        toast.error(`Failed to save ${errorCount} results`);
-      }
-    });
-  }, [currentProgramme, festival.id, isReadOnly, results]);
+
+        const errorCount = responses.filter((r) => !r?.success).length;
+
+        if (errorCount === 0) {
+          toast.success(
+            shouldPublish
+              ? "Results published successfully"
+              : "Results saved successfully",
+          );
+          setScores({});
+          setSelectedCategory("");
+          setSelectedProgramme("");
+          setIsModalOpen(false);
+        } else {
+          toast.error(`Failed to save ${errorCount} results`);
+        }
+      });
+    },
+    [currentProgramme, festival.id, isReadOnly, results],
+  );
 
   const handlePublishProgramme = (
     programmeId: string,
@@ -723,7 +734,10 @@ export function ResultsManagementClient({
     });
   };
 
-  const handleReopenReporting = (programmeId: string, programmeName: string) => {
+  const handleReopenReporting = (
+    programmeId: string,
+    programmeName: string,
+  ) => {
     if (isReadOnly) return;
     setReopenConfirmProgramme({ id: programmeId, name: programmeName });
   };
@@ -1604,7 +1618,8 @@ export function ResultsManagementClient({
                 ? Math.max(
                     0,
                     Math.floor(
-                      (nowMs - parseStoredInstant(startedAtForTimer).getTime()) /
+                      (nowMs -
+                        parseStoredInstant(startedAtForTimer).getTime()) /
                         1000,
                     ),
                   )
@@ -1985,7 +2000,9 @@ export function ResultsManagementClient({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reopen reporting for this programme?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Reopen reporting for this programme?
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {reopenConfirmProgramme?.name
                 ? `This will reopen reporting for "${reopenConfirmProgramme.name}" and clear attendance, code letters, and marks for this programme.`

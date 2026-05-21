@@ -152,7 +152,10 @@ export function FestivalDashboardSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton isActive={true} size="lg" asChild>
-              <Link href={dashboardPath} onClick={(e) => onNavClick(e, dashboardPath)}>
+              <Link
+                href={dashboardPath}
+                onClick={(e) => onNavClick(e, dashboardPath)}
+              >
                 <div
                   className="flex aspect-square size-9 items-center justify-center rounded-lg text-sidebar-primary-foreground"
                   style={{ backgroundColor: festival.accentColor }}
@@ -190,7 +193,10 @@ export function FestivalDashboardSidebar({
                         isActive={isActive}
                         tooltip={item.title}
                       >
-                        <Link href={item.href} onClick={(e) => onNavClick(e, item.href)}>
+                        <Link
+                          href={item.href}
+                          onClick={(e) => onNavClick(e, item.href)}
+                        >
                           <item.icon />
                           <span>{item.title}</span>
                         </Link>

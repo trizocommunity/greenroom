@@ -104,7 +104,9 @@ export function QuickAddScanForm({
             ) : null}
           </>
         ) : (
-          <span className="text-[11px] text-muted-foreground">Preview below</span>
+          <span className="text-[11px] text-muted-foreground">
+            Preview below
+          </span>
         )}
       </div>
     </div>

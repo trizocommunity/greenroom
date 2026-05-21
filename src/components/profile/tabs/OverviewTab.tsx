@@ -197,7 +197,9 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
                           credit.validFrom as string | Date,
                         );
                         const end = credit.validUntil
-                          ? parseStoredInstant(credit.validUntil as string | Date)
+                          ? parseStoredInstant(
+                              credit.validUntil as string | Date,
+                            )
                           : new Date(
                               start.getTime() + 30 * 24 * 60 * 60 * 1000,
                             );

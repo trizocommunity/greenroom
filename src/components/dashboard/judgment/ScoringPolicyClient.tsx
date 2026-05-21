@@ -1,7 +1,13 @@
 "use client";
 
 import { Plus, Save, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
 import { toast } from "sonner";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { Badge } from "@/components/ui/badge";
@@ -98,7 +104,8 @@ function normalizeForComparison(input: {
       if (row.criteriaType !== "PARTICIPANT_RANGE") {
         return {
           minParticipants: Number(row.minParticipants),
-          maxParticipants: row.maxParticipants === null ? null : Number(row.maxParticipants),
+          maxParticipants:
+            row.maxParticipants === null ? null : Number(row.maxParticipants),
         };
       }
       const parsed = parseParticipantRangeFromLabel(row.rowLabel);
@@ -134,7 +141,13 @@ function ScoringPolicySection(props: {
   noGradeBelow: number;
   setNoGradeBelow: (value: number) => void;
 }) {
-  const { policyVersion, normalizeTo, isPersisted, noGradeBelow, setNoGradeBelow } = props;
+  const {
+    policyVersion,
+    normalizeTo,
+    isPersisted,
+    noGradeBelow,
+    setNoGradeBelow,
+  } = props;
   return (
     <Card>
       <CardHeader className="space-y-2 pb-3">
@@ -153,7 +166,8 @@ function ScoringPolicySection(props: {
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          Keep this compact and strict: values below threshold will not receive grade.
+          Keep this compact and strict: values below threshold will not receive
+          grade.
         </p>
       </CardHeader>
       <CardContent>
@@ -162,7 +176,9 @@ function ScoringPolicySection(props: {
             <Label htmlFor="no-grade-below" className="text-xs font-medium">
               No grade below (%)
             </Label>
-            <p className="text-[11px] text-muted-foreground">Suggested default: 50</p>
+            <p className="text-[11px] text-muted-foreground">
+              Suggested default: 50
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <Input
@@ -188,7 +204,8 @@ function GradeRulesSection(props: {
   onUpdateGradeRule: (idx: number, patch: Partial<GradeRule>) => void;
   onRemoveGradeRule: (idx: number) => void;
 }) {
-  const { gradeRules, onAddGrade, onUpdateGradeRule, onRemoveGradeRule } = props;
+  const { gradeRules, onAddGrade, onUpdateGradeRule, onRemoveGradeRule } =
+    props;
   return (
     <Card>
       <CardHeader className="space-y-1.5 pb-3">
@@ -317,7 +334,11 @@ export function ScoringPolicyClient({
   const [addGradeOpen, setAddGradeOpen] = useState(false);
   const [addParticipantOpen, setAddParticipantOpen] = useState(false);
   const [addProgrammeOpen, setAddProgrammeOpen] = useState(false);
-  const [newGrade, setNewGrade] = useState<GradeRule>({ grade: "", min: 0, max: 0 });
+  const [newGrade, setNewGrade] = useState<GradeRule>({
+    grade: "",
+    min: 0,
+    max: 0,
+  });
   const [newParticipantRow, setNewParticipantRow] = useState({
     rowLabel: "",
   });
@@ -346,7 +367,8 @@ export function ScoringPolicyClient({
           rule.rowLabel ??
           (rule.criteriaType === "PROGRAMME_SET"
             ? "Programme row"
-            : rule.maxParticipants && rule.maxParticipants !== rule.minParticipants
+            : rule.maxParticipants &&
+                rule.maxParticipants !== rule.minParticipants
               ? `${rule.minParticipants}-${rule.maxParticipants}`
               : String(rule.minParticipants)),
         criteriaType: rule.criteriaType ?? "PARTICIPANT_RANGE",
@@ -375,29 +397,43 @@ export function ScoringPolicyClient({
   const availableGrades = useMemo<string[]>(
     () =>
       Array.from(
-        new Set(gradeRules.map((r) => r.grade.trim().toUpperCase()).filter(Boolean)),
+        new Set(
+          gradeRules.map((r) => r.grade.trim().toUpperCase()).filter(Boolean),
+        ),
       ),
     [gradeRules],
   );
 
   const updateGradeRule = (idx: number, patch: Partial<GradeRule>) => {
-    setGradeRules((prev) => prev.map((row, i) => (i === idx ? { ...row, ...patch } : row)));
+    setGradeRules((prev) =>
+      prev.map((row, i) => (i === idx ? { ...row, ...patch } : row)),
+    );
   };
 
   const updateMatrixRow = (idx: number, patch: Partial<MatrixRow>) => {
-    setMatrixRows((prev) => prev.map((row, i) => (i === idx ? { ...row, ...patch } : row)));
+    setMatrixRows((prev) =>
+      prev.map((row, i) => (i === idx ? { ...row, ...patch } : row)),
+    );
   };
 
-  const updateMatrixGradePoint = (idx: number, grade: string, value: number) => {
+  const updateMatrixGradePoint = (
+    idx: number,
+    grade: string,
+    value: number,
+  ) => {
     setMatrixRows((prev) =>
       prev.map((row, i) =>
-        i === idx ? { ...row, pointsByGrade: { ...row.pointsByGrade, [grade]: value } } : row,
+        i === idx
+          ? { ...row, pointsByGrade: { ...row.pointsByGrade, [grade]: value } }
+          : row,
       ),
     );
   };
 
   const toggleInList = (list: string[], value: string) => {
-    return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
+    return list.includes(value)
+      ? list.filter((v) => v !== value)
+      : [...list, value];
   };
 
   const rowCriteriaSummary = (row: MatrixRow) => {
@@ -406,14 +442,22 @@ export function ScoringPolicyClient({
       return `${row.programmeIds.length} programme(s) selected`;
     }
     const parsed = parseParticipantRangeFromLabel(row.rowLabel);
-    if (parsed.maxParticipants && parsed.maxParticipants !== parsed.minParticipants) {
+    if (
+      parsed.maxParticipants &&
+      parsed.maxParticipants !== parsed.minParticipants
+    ) {
       return `${parsed.minParticipants}-${parsed.maxParticipants} students`;
     }
     return `${parsed.minParticipants} student(s)`;
   };
 
   const getProgrammesByCategory = (categoryId: string | null) => {
-    if (!categoryId) return [] as Array<{ id: string; name: string; categoryId: string | null }>;
+    if (!categoryId)
+      return [] as Array<{
+        id: string;
+        name: string;
+        categoryId: string | null;
+      }>;
     return programmes.filter((p) => p.categoryId === categoryId);
   };
 
@@ -427,7 +471,10 @@ export function ScoringPolicyClient({
       toast.error("Grade min must be less than or equal to max.");
       return;
     }
-    setGradeRules((prev) => [...prev, { grade: label, min: newGrade.min, max: newGrade.max }]);
+    setGradeRules((prev) => [
+      ...prev,
+      { grade: label, min: newGrade.min, max: newGrade.max },
+    ]);
     setNewGrade({ grade: "", min: 0, max: 0 });
     setAddGradeOpen(false);
   };
@@ -494,11 +541,18 @@ export function ScoringPolicyClient({
           max: Number(r.max),
         }));
         const normalizedGradeLabels = normalizedGrades.map((g) => g.grade);
-        const preparedRows = ensurePointsShape(matrixRows, normalizedGradeLabels);
+        const preparedRows = ensurePointsShape(
+          matrixRows,
+          normalizedGradeLabels,
+        );
         const missingGradePoint = preparedRows.some((row) =>
           normalizedGradeLabels.some((grade) => {
             const value = row.pointsByGrade[grade];
-            return value === undefined || value === null || Number.isNaN(Number(value));
+            return (
+              value === undefined ||
+              value === null ||
+              Number.isNaN(Number(value))
+            );
           }),
         );
         if (missingGradePoint) {
@@ -511,8 +565,12 @@ export function ScoringPolicyClient({
             awardRules.push({
               criteriaType: row.criteriaType,
               rowLabel: row.rowLabel?.trim() || null,
-              programmeIds: row.criteriaType === "PROGRAMME_SET" ? row.programmeIds : null,
-              categoryId: row.criteriaType === "PROGRAMME_SET" ? row.categoryId ?? null : null,
+              programmeIds:
+                row.criteriaType === "PROGRAMME_SET" ? row.programmeIds : null,
+              categoryId:
+                row.criteriaType === "PROGRAMME_SET"
+                  ? (row.categoryId ?? null)
+                  : null,
               minParticipants:
                 row.criteriaType === "PARTICIPANT_RANGE"
                   ? parseParticipantRangeFromLabel(row.rowLabel).minParticipants
@@ -536,11 +594,21 @@ export function ScoringPolicyClient({
         setDirty(dirtySourceId, false);
         toast.success("Scoring policy saved.");
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Failed to save scoring policy.";
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to save scoring policy.";
         toast.error(message);
       }
     });
-  }, [dirtySourceId, festivalId, gradeRules, matrixRows, noGradeBelow, setDirty]);
+  }, [
+    dirtySourceId,
+    festivalId,
+    gradeRules,
+    matrixRows,
+    noGradeBelow,
+    setDirty,
+  ]);
 
   const initialComparisonKey = useMemo(
     () =>
@@ -548,53 +616,54 @@ export function ScoringPolicyClient({
         normalizeForComparison({
           noGradeBelow: policy.noGradeBelow,
           gradeRules: policy.gradeRules,
-          matrixRows:
-            (() => {
-              const grouped = new Map<string, MatrixRow>();
-              for (const rule of policy.awardRules) {
-                const key = [
-                  rule.criteriaType ?? "PARTICIPANT_RANGE",
-                  rule.rowLabel ?? "",
-                  (rule.programmeIds ?? []).sort().join(","),
-                  rule.categoryId ?? "",
-                  rule.minParticipants,
-                  rule.maxParticipants ?? "",
-                ].join("|");
-                const existing = grouped.get(key);
-                if (existing) {
-                  existing.pointsByGrade[rule.grade.toUpperCase()] = rule.awardPoints;
-                  continue;
-                }
-                grouped.set(key, {
-                  rowLabel:
-                    rule.rowLabel ??
-                    (rule.criteriaType === "PROGRAMME_SET"
-                      ? "Programme row"
-                      : rule.maxParticipants && rule.maxParticipants !== rule.minParticipants
-                        ? `${rule.minParticipants}-${rule.maxParticipants}`
-                        : String(rule.minParticipants)),
-                  criteriaType: rule.criteriaType ?? "PARTICIPANT_RANGE",
-                  programmeIds: rule.programmeIds ?? [],
-                  categoryId: rule.categoryId ?? null,
-                  minParticipants: rule.minParticipants,
-                  maxParticipants: rule.maxParticipants ?? null,
-                  pointsByGrade: { [rule.grade.toUpperCase()]: rule.awardPoints },
-                });
+          matrixRows: (() => {
+            const grouped = new Map<string, MatrixRow>();
+            for (const rule of policy.awardRules) {
+              const key = [
+                rule.criteriaType ?? "PARTICIPANT_RANGE",
+                rule.rowLabel ?? "",
+                (rule.programmeIds ?? []).sort().join(","),
+                rule.categoryId ?? "",
+                rule.minParticipants,
+                rule.maxParticipants ?? "",
+              ].join("|");
+              const existing = grouped.get(key);
+              if (existing) {
+                existing.pointsByGrade[rule.grade.toUpperCase()] =
+                  rule.awardPoints;
+                continue;
               }
-              return grouped.size > 0
-                ? Array.from(grouped.values())
-                : [
-                    {
-                      rowLabel: "1",
-                      criteriaType: "PARTICIPANT_RANGE",
-                      programmeIds: [],
-                      categoryId: null,
-                      minParticipants: 1,
-                      maxParticipants: 1,
-                      pointsByGrade: {},
-                    },
-                  ];
-            })(),
+              grouped.set(key, {
+                rowLabel:
+                  rule.rowLabel ??
+                  (rule.criteriaType === "PROGRAMME_SET"
+                    ? "Programme row"
+                    : rule.maxParticipants &&
+                        rule.maxParticipants !== rule.minParticipants
+                      ? `${rule.minParticipants}-${rule.maxParticipants}`
+                      : String(rule.minParticipants)),
+                criteriaType: rule.criteriaType ?? "PARTICIPANT_RANGE",
+                programmeIds: rule.programmeIds ?? [],
+                categoryId: rule.categoryId ?? null,
+                minParticipants: rule.minParticipants,
+                maxParticipants: rule.maxParticipants ?? null,
+                pointsByGrade: { [rule.grade.toUpperCase()]: rule.awardPoints },
+              });
+            }
+            return grouped.size > 0
+              ? Array.from(grouped.values())
+              : [
+                  {
+                    rowLabel: "1",
+                    criteriaType: "PARTICIPANT_RANGE",
+                    programmeIds: [],
+                    categoryId: null,
+                    minParticipants: 1,
+                    maxParticipants: 1,
+                    pointsByGrade: {},
+                  },
+                ];
+          })(),
         }),
       ),
     [policy.awardRules, policy.gradeRules, policy.noGradeBelow],
@@ -618,7 +687,9 @@ export function ScoringPolicyClient({
     return ensurePointsShape(matrixRows, availableGrades).some((row) =>
       availableGrades.some((grade) => {
         const value = row.pointsByGrade[grade];
-        return value === undefined || value === null || Number.isNaN(Number(value));
+        return (
+          value === undefined || value === null || Number.isNaN(Number(value))
+        );
       }),
     );
   }, [matrixRows, availableGrades]);
@@ -652,7 +723,9 @@ export function ScoringPolicyClient({
         onAddGrade={() => setAddGradeOpen(true)}
         onUpdateGradeRule={updateGradeRule}
         onRemoveGradeRule={(idx) =>
-          setGradeRules((prev) => prev.filter((_, currentIdx) => currentIdx !== idx))
+          setGradeRules((prev) =>
+            prev.filter((_, currentIdx) => currentIdx !== idx),
+          )
         }
       />
 
@@ -680,7 +753,8 @@ export function ScoringPolicyClient({
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Start with row label and grade points. Expand a row only when you need advanced filters.
+            Start with row label and grade points. Expand a row only when you
+            need advanced filters.
           </p>
 
           {availableGrades.length === 0 && (
@@ -701,7 +775,11 @@ export function ScoringPolicyClient({
               >
                 <div className="mb-1 flex items-center gap-2">
                   <Badge
-                    variant={row.criteriaType === "PROGRAMME_SET" ? "default" : "secondary"}
+                    variant={
+                      row.criteriaType === "PROGRAMME_SET"
+                        ? "default"
+                        : "secondary"
+                    }
                     className="h-5 px-2 text-[10px]"
                   >
                     {row.criteriaType === "PROGRAMME_SET"
@@ -722,8 +800,8 @@ export function ScoringPolicyClient({
                           variant="outline"
                           className="h-5 px-2 text-[10px] uppercase"
                         >
-                          {categories.find((c) => c.id === row.categoryId)?.name ??
-                            "No category"}
+                          {categories.find((c) => c.id === row.categoryId)
+                            ?.name ?? "No category"}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
                           {row.programmeIds.length} selected
@@ -758,16 +836,25 @@ export function ScoringPolicyClient({
                       className="h-9"
                     />
                   )}
-                  <div className="text-xs text-muted-foreground">{rowCriteriaSummary(row)}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {rowCriteriaSummary(row)}
+                  </div>
                   <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
                     {availableGrades.map((grade) => (
-                      <div key={`grade-point-${idx}-${grade}`} className="space-y-1">
+                      <div
+                        key={`grade-point-${idx}-${grade}`}
+                        className="space-y-1"
+                      >
                         <Label className="text-[11px]">{grade}</Label>
                         <Input
                           type="number"
                           value={row.pointsByGrade[grade] ?? 0}
                           onChange={(e) =>
-                            updateMatrixGradePoint(idx, grade, Number(e.target.value))
+                            updateMatrixGradePoint(
+                              idx,
+                              grade,
+                              Number(e.target.value),
+                            )
                           }
                           className="h-8"
                         />
@@ -779,7 +866,9 @@ export function ScoringPolicyClient({
                     size="sm"
                     className="h-8 justify-start px-2 text-xs md:justify-center"
                     onClick={() =>
-                      setMatrixRows((prev) => prev.filter((_, rowIndex) => rowIndex !== idx))
+                      setMatrixRows((prev) =>
+                        prev.filter((_, rowIndex) => rowIndex !== idx),
+                      )
                     }
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
@@ -852,7 +941,11 @@ export function ScoringPolicyClient({
           className="w-full sm:w-auto"
         >
           <Save className="mr-2 h-4 w-4" />
-          {isPending ? "Saving..." : hasChanges ? "Save Scoring Policy" : "No Changes"}
+          {isPending
+            ? "Saving..."
+            : hasChanges
+              ? "Save Scoring Policy"
+              : "No Changes"}
         </Button>
       </div>
 
@@ -869,7 +962,9 @@ export function ScoringPolicyClient({
               <Label>Grade Label</Label>
               <Input
                 value={newGrade.grade}
-                onChange={(e) => setNewGrade((prev) => ({ ...prev, grade: e.target.value }))}
+                onChange={(e) =>
+                  setNewGrade((prev) => ({ ...prev, grade: e.target.value }))
+                }
                 placeholder="A+"
               />
             </div>
@@ -882,7 +977,10 @@ export function ScoringPolicyClient({
                   max={100}
                   value={newGrade.min}
                   onChange={(e) =>
-                    setNewGrade((prev) => ({ ...prev, min: Number(e.target.value) }))
+                    setNewGrade((prev) => ({
+                      ...prev,
+                      min: Number(e.target.value),
+                    }))
                   }
                 />
               </div>
@@ -894,7 +992,10 @@ export function ScoringPolicyClient({
                   max={100}
                   value={newGrade.max}
                   onChange={(e) =>
-                    setNewGrade((prev) => ({ ...prev, max: Number(e.target.value) }))
+                    setNewGrade((prev) => ({
+                      ...prev,
+                      max: Number(e.target.value),
+                    }))
                   }
                 />
               </div>
@@ -923,17 +1024,25 @@ export function ScoringPolicyClient({
               <Input
                 value={newParticipantRow.rowLabel}
                 onChange={(e) =>
-                  setNewParticipantRow((prev) => ({ ...prev, rowLabel: e.target.value }))
+                  setNewParticipantRow((prev) => ({
+                    ...prev,
+                    rowLabel: e.target.value,
+                  }))
                 }
                 placeholder="e.g. 1, 2, 4-5"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddParticipantOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setAddParticipantOpen(false)}
+            >
               Cancel
             </Button>
-            <Button onClick={addParticipantRowFromDialog}>Add Participant Row</Button>
+            <Button onClick={addParticipantRowFromDialog}>
+              Add Participant Row
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -975,29 +1084,36 @@ export function ScoringPolicyClient({
                   Select category first.
                 </div>
               ) : (
-              <div className="max-h-36 space-y-1 overflow-auto rounded-md border bg-background p-2">
-                {getProgrammesByCategory(newProgrammeRow.categoryId).map((programme) => {
-                  const checked = newProgrammeRow.programmeIds.includes(programme.id);
-                  return (
-                    <label
-                      key={programme.id}
-                      className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-muted/50"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() =>
-                          setNewProgrammeRow((prev) => ({
-                            ...prev,
-                            programmeIds: toggleInList(prev.programmeIds, programme.id),
-                          }))
-                        }
-                      />
-                      <span className="text-sm">{programme.name}</span>
-                    </label>
-                  );
-                })}
-              </div>
+                <div className="max-h-36 space-y-1 overflow-auto rounded-md border bg-background p-2">
+                  {getProgrammesByCategory(newProgrammeRow.categoryId).map(
+                    (programme) => {
+                      const checked = newProgrammeRow.programmeIds.includes(
+                        programme.id,
+                      );
+                      return (
+                        <label
+                          key={programme.id}
+                          className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-muted/50"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() =>
+                              setNewProgrammeRow((prev) => ({
+                                ...prev,
+                                programmeIds: toggleInList(
+                                  prev.programmeIds,
+                                  programme.id,
+                                ),
+                              }))
+                            }
+                          />
+                          <span className="text-sm">{programme.name}</span>
+                        </label>
+                      );
+                    },
+                  )}
+                </div>
               )}
               <p className="text-xs text-muted-foreground">
                 Selected programmes: {newProgrammeRow.programmeIds.length}
@@ -1005,10 +1121,15 @@ export function ScoringPolicyClient({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddProgrammeOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setAddProgrammeOpen(false)}
+            >
               Cancel
             </Button>
-            <Button onClick={addProgrammeRowFromDialog}>Add Programme Row</Button>
+            <Button onClick={addProgrammeRowFromDialog}>
+              Add Programme Row
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

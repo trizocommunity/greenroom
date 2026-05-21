@@ -73,10 +73,7 @@ function mapGetUserMediaError(error: unknown): CameraGateReason {
   if (name === "NotFoundError" || name === "DevicesNotFoundError")
     return "nodevice";
   if (name === "NotReadableError" || name === "TrackStartError") return "busy";
-  if (
-    name === "OverconstrainedError" ||
-    name === "ConstraintNotSatisfiedError"
-  )
+  if (name === "OverconstrainedError" || name === "ConstraintNotSatisfiedError")
     return "constraint";
   return "other";
 }
@@ -264,11 +261,7 @@ export function QrScanner({
 
   const enterScannerFullscreen = useCallback(() => {
     const surface = scannerSurfaceRef.current;
-    if (
-      !surface ||
-      !document.fullscreenEnabled ||
-      document.fullscreenElement
-    ) {
+    if (!surface || !document.fullscreenEnabled || document.fullscreenElement) {
       return;
     }
     void surface.requestFullscreen().catch(() => {});

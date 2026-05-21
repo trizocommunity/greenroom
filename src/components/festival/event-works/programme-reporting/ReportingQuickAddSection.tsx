@@ -26,7 +26,9 @@ export function ReportingQuickAddSection({
           <ScanLine className="h-3.5 w-3.5" aria-hidden />
         </span>
         <span className="min-w-0 flex-1 leading-tight">
-          <span className="font-semibold text-foreground">Quick add to roster</span>
+          <span className="font-semibold text-foreground">
+            Quick add to roster
+          </span>
           <span className="text-muted-foreground ml-1 text-[11px] font-normal sm:ml-1.5">
             Chest # · QR photo · camera
           </span>

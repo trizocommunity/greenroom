@@ -11,8 +11,8 @@ import {
   programmeReportedParticipant as reportedParticipantTable,
   stage as stageTable,
 } from "@/core/database/schema";
-import { parseStoredInstant } from "@/core/utils/date-time";
 import type { Tier } from "@/core/types/app-enums";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
 import { getProgrammeReportingBoardAction } from "@/features/programmes/actions/programme-reporting.actions";
@@ -108,18 +108,18 @@ export default async function ProgrammeReportingPage({
               sessions and filter by status.
             </li>
             <li>
-              <strong>Start reporting</strong> opens check-in. Mark who is present
-              via QR or the roster. For each present row, use <strong>Spin</strong>{" "}
-              to draw a code letter.
+              <strong>Start reporting</strong> opens check-in. Mark who is
+              present via QR or the roster. For each present row, use{" "}
+              <strong>Spin</strong> to draw a code letter.
             </li>
             <li>
-              <strong>Stop without codes</strong> ends the session without issuing
-              letters (programme returns to a schedulable state).
+              <strong>Stop without codes</strong> ends the session without
+              issuing letters (programme returns to a schedulable state).
             </li>
             <li>
               <strong>Submit &amp; notify</strong> finalizes reporting, issues
-              codes (one per team for GROUP, one per student for INDIVIDUAL), and
-              notifies students and team leaders.
+              codes (one per team for GROUP, one per student for INDIVIDUAL),
+              and notifies students and team leaders.
             </li>
           </ul>
         </HowItWorksButton>

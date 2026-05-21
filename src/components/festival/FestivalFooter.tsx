@@ -31,14 +31,36 @@ export function FestivalFooter({ festival }: FestivalFooterProps) {
             </span>
           </div>
           <nav className="flex flex-wrap justify-center gap-4 text-xs text-slate-400">
-            <Link href={`/${festival.slug}/about`} className="hover:text-slate-100">About</Link>
-            <Link href={`/${festival.slug}/sessions`} className="hover:text-slate-100">Sessions</Link>
-            <Link href={`/${festival.slug}/results`} className="hover:text-slate-100">Results</Link>
-            <Link href={`/${festival.slug}/gallery`} className="hover:text-slate-100">Gallery</Link>
+            <Link
+              href={`/${festival.slug}/about`}
+              className="hover:text-slate-100"
+            >
+              About
+            </Link>
+            <Link
+              href={`/${festival.slug}/sessions`}
+              className="hover:text-slate-100"
+            >
+              Sessions
+            </Link>
+            <Link
+              href={`/${festival.slug}/results`}
+              className="hover:text-slate-100"
+            >
+              Results
+            </Link>
+            <Link
+              href={`/${festival.slug}/gallery`}
+              className="hover:text-slate-100"
+            >
+              Gallery
+            </Link>
           </nav>
           <p className="text-xs text-slate-500">
             © {new Date().getFullYear()} · Powered by{" "}
-            <Link href="/" className="hover:text-slate-300">Greenroom</Link>
+            <Link href="/" className="hover:text-slate-300">
+              Greenroom
+            </Link>
           </p>
         </div>
       </div>

@@ -20,7 +20,9 @@ export function formatStoredDateTime(
   return new Intl.DateTimeFormat(locales, options).format(date);
 }
 
-export function toDateOrNull(value: string | Date | null | undefined): Date | null {
+export function toDateOrNull(
+  value: string | Date | null | undefined,
+): Date | null {
   const date = parseStoredInstant(value);
   return Number.isNaN(date.getTime()) ? null : date;
 }

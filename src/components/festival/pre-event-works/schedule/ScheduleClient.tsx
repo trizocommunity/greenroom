@@ -64,10 +64,6 @@ import { cn } from "@/core/utils/cn";
 import { parseStoredInstant } from "@/core/utils/date-time";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
-  localWallClockToDate,
-  parseStoredScheduleInstant,
-} from "@/features/schedule/utils/schedule-datetime";
-import {
   type ConflictParts,
   checkScheduleConflict,
   createScheduleEntry,
@@ -77,6 +73,10 @@ import {
   type ScheduleEntryWithRelations,
   updateScheduleEntry,
 } from "@/features/schedule/actions/schedule.actions";
+import {
+  localWallClockToDate,
+  parseStoredScheduleInstant,
+} from "@/features/schedule/utils/schedule-datetime";
 
 type ProgrammeOption = {
   id: string;
@@ -160,8 +160,7 @@ export function ScheduleClient({
   const hasStages = stages.length > 0;
   const hasProgrammes = programmes.length > 0;
   const hasFestivalDates = dateOptions.length > 0;
-  const canAdd =
-    hasStages && hasProgrammes && hasFestivalDates && !isReadOnly;
+  const canAdd = hasStages && hasProgrammes && hasFestivalDates && !isReadOnly;
 
   const refresh = useCallback(async () => {
     const data = await getScheduleEntries(festivalId);
@@ -312,8 +311,8 @@ export function ScheduleClient({
               the same day.
             </p>
             <p className="text-sm text-muted-foreground">
-              Sessions (e.g. opening ceremony) are managed separately under
-              Pre Event Works → Sessions.
+              Sessions (e.g. opening ceremony) are managed separately under Pre
+              Event Works → Sessions.
             </p>
           </HowItWorksButton>
           <Button

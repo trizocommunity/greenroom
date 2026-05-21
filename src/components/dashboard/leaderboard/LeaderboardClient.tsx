@@ -170,10 +170,7 @@ export function LeaderboardClient({
       )
         return;
       // Filter by student's group
-      if (
-        studentFilterGroup !== "all" &&
-        a.groupId !== studentFilterGroup
-      )
+      if (studentFilterGroup !== "all" && a.groupId !== studentFilterGroup)
         return;
 
       const sid = a.student.id;
@@ -220,7 +217,10 @@ export function LeaderboardClient({
 
   const hasStandingsChanges = useMemo(() => {
     const normalize = (items: Array<{ name: string; points: number }>) =>
-      items.map((item) => ({ name: item.name, points: Number(item.points ?? 0) }));
+      items.map((item) => ({
+        name: item.name,
+        points: Number(item.points ?? 0),
+      }));
     const live = normalize(teamStandings);
     const published = normalize(publishedStandings ?? []);
     return JSON.stringify(live) !== JSON.stringify(published);

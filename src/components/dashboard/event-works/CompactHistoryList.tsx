@@ -48,7 +48,9 @@ export function CompactHistoryList({
             >
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                  <span className="truncate text-sm font-medium">{item.title}</span>
+                  <span className="truncate text-sm font-medium">
+                    {item.title}
+                  </span>
                   {item.badge ? (
                     <span className="shrink-0 rounded border bg-muted/30 px-1.5 py-0.5 text-[10px] text-muted-foreground">
                       {item.badge}
@@ -60,7 +62,9 @@ export function CompactHistoryList({
                     </span>
                   ) : null}
                   <span className="truncate text-[11px] text-muted-foreground">
-                    {[item.metaPrimary, item.metaSecondary].filter(Boolean).join(" • ")}
+                    {[item.metaPrimary, item.metaSecondary]
+                      .filter(Boolean)
+                      .join(" • ")}
                   </span>
                 </div>
                 {item.detailSummary ? (

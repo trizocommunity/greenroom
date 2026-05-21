@@ -137,7 +137,8 @@ export async function bulkPublishProgrammeResults(
 
     await ResultModel.bulkPublishByProgramme(programmeId, isPublished);
     await setProgrammePublished(programmeId, isPublished);
-    const reportingSessionId = await latestClosedReportingSessionId(programmeId);
+    const reportingSessionId =
+      await latestClosedReportingSessionId(programmeId);
     await updateProgrammeStatus(programmeId, reportingSessionId);
     revalidateResultsPaths(festivalSlug);
     return { success: true, data: undefined };

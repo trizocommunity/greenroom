@@ -32,8 +32,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { uploadImageToCloudinary } from "@/core/integrations/cloudinary";
-import { parseStoredInstant, toDateOrNull } from "@/core/utils/date-time";
 import { cn } from "@/core/utils/cn";
+import { parseStoredInstant, toDateOrNull } from "@/core/utils/date-time";
 import {
   updateFestivalBrandingAction,
   updateFestivalSettingsAction,
@@ -668,7 +668,9 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                       id="programmeAssignment"
                       value={
                         formData.programmeAssignmentDeadline
-                          ? parseStoredInstant(formData.programmeAssignmentDeadline)
+                          ? parseStoredInstant(
+                              formData.programmeAssignmentDeadline,
+                            )
                           : null
                       }
                       onChange={(value) => {

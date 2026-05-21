@@ -125,7 +125,9 @@ export default async function MarksRedirectPage({
     );
   }
 
-  await enrichProgrammesAssignmentsResultCodeLetters(eventWorksProgrammes as any);
+  await enrichProgrammesAssignmentsResultCodeLetters(
+    eventWorksProgrammes as any,
+  );
 
   return (
     <div className="pt-4 sm:pt-6">

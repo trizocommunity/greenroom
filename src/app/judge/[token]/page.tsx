@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/core/database/client";
@@ -5,7 +6,6 @@ import {
   festival as festivalTable,
   judgmentLink as judgmentLinkTable,
 } from "@/core/database/schema";
-import { createHash } from "node:crypto";
 
 export default async function JudgeTokenPage({
   params,
@@ -15,7 +15,10 @@ export default async function JudgeTokenPage({
   const { token } = await params;
   const tokenHash = createHash("sha256").update(token).digest("hex");
   const link = await db.query.judgmentLink.findFirst({
-    where: and(eq(judgmentLinkTable.tokenHash, tokenHash), eq(judgmentLinkTable.isActive, true)),
+    where: and(
+      eq(judgmentLinkTable.tokenHash, tokenHash),
+      eq(judgmentLinkTable.isActive, true),
+    ),
     with: {
       judgmentConfig: {
         columns: { festivalId: true },

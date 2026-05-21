@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { AlertTriangle, Calendar, CheckCircle, Clock } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -75,18 +75,21 @@ export function FestivalStatusBadge({
   }, []);
 
   const normalized = status as DerivedFestivalStatus;
-  
+
   // Use a stable value for SSR, only check live time on client
-  const isExpiredByTime = (mounted && expiresAt) ? new Date(expiresAt) < new Date() : false;
-  
+  const isExpiredByTime =
+    mounted && expiresAt ? new Date(expiresAt) < new Date() : false;
+
   const effectiveStatus: DerivedFestivalStatus =
     normalized === "EXPIRED" || isExpiredByTime ? "EXPIRED" : normalized;
-    
-  const countdown = mounted ? getFestivalStatusCountdownText(effectiveStatus, {
-    startDate,
-    endDate,
-    expiresAt,
-  }) : null;
+
+  const countdown = mounted
+    ? getFestivalStatusCountdownText(effectiveStatus, {
+        startDate,
+        endDate,
+        expiresAt,
+      })
+    : null;
 
   const badgeSizeClass = size === "sm" ? "text-xs px-1.5 py-0" : "";
   const iconSizeClass = size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3";

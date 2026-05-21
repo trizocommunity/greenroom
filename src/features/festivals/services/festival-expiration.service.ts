@@ -40,9 +40,7 @@ export const FestivalExpirationService = {
     { id: string; name: string; slug: string; expiresAt: string | null }[]
   > {
     const now = new Date();
-    const windowEnd = new Date(
-      now.getTime() + PRE_ARCHIVAL_DAYS * MS_PER_DAY,
-    );
+    const windowEnd = new Date(now.getTime() + PRE_ARCHIVAL_DAYS * MS_PER_DAY);
     const list = await db
       .select({
         id: festivals.id,

@@ -47,18 +47,114 @@ const DEFAULT_GRADE_RULES: GradeRule[] = [
 ];
 
 const DEFAULT_AWARD_RULES: AwardRule[] = [
-  { criteriaType: "PARTICIPANT_RANGE", rowLabel: "1", grade: "A+", minParticipants: 1, maxParticipants: 1, awardPoints: 6, priority: 100 },
-  { criteriaType: "PARTICIPANT_RANGE", rowLabel: "1", grade: "A", minParticipants: 1, maxParticipants: 1, awardPoints: 5, priority: 100 },
-  { criteriaType: "PARTICIPANT_RANGE", rowLabel: "1", grade: "B", minParticipants: 1, maxParticipants: 1, awardPoints: 3, priority: 100 },
-  { criteriaType: "PARTICIPANT_RANGE", rowLabel: "1", grade: "C", minParticipants: 1, maxParticipants: 1, awardPoints: 1, priority: 100 },
-  { criteriaType: "PARTICIPANT_RANGE", rowLabel: "2", grade: "A+", minParticipants: 2, maxParticipants: 2, awardPoints: 7, priority: 100 },
-  { criteriaType: "PARTICIPANT_RANGE", rowLabel: "2", grade: "A", minParticipants: 2, maxParticipants: 2, awardPoints: 6, priority: 100 },
-  { criteriaType: "PARTICIPANT_RANGE", rowLabel: "2", grade: "B", minParticipants: 2, maxParticipants: 2, awardPoints: 4, priority: 100 },
-  { criteriaType: "PARTICIPANT_RANGE", rowLabel: "2", grade: "C", minParticipants: 2, maxParticipants: 2, awardPoints: 2, priority: 100 },
-  { criteriaType: "PARTICIPANT_RANGE", rowLabel: "3", grade: "A+", minParticipants: 3, maxParticipants: 3, awardPoints: 10, priority: 100 },
-  { criteriaType: "PARTICIPANT_RANGE", rowLabel: "3", grade: "A", minParticipants: 3, maxParticipants: 3, awardPoints: 9, priority: 100 },
-  { criteriaType: "PARTICIPANT_RANGE", rowLabel: "3", grade: "B", minParticipants: 3, maxParticipants: 3, awardPoints: 6, priority: 100 },
-  { criteriaType: "PARTICIPANT_RANGE", rowLabel: "3", grade: "C", minParticipants: 3, maxParticipants: 3, awardPoints: 3, priority: 100 },
+  {
+    criteriaType: "PARTICIPANT_RANGE",
+    rowLabel: "1",
+    grade: "A+",
+    minParticipants: 1,
+    maxParticipants: 1,
+    awardPoints: 6,
+    priority: 100,
+  },
+  {
+    criteriaType: "PARTICIPANT_RANGE",
+    rowLabel: "1",
+    grade: "A",
+    minParticipants: 1,
+    maxParticipants: 1,
+    awardPoints: 5,
+    priority: 100,
+  },
+  {
+    criteriaType: "PARTICIPANT_RANGE",
+    rowLabel: "1",
+    grade: "B",
+    minParticipants: 1,
+    maxParticipants: 1,
+    awardPoints: 3,
+    priority: 100,
+  },
+  {
+    criteriaType: "PARTICIPANT_RANGE",
+    rowLabel: "1",
+    grade: "C",
+    minParticipants: 1,
+    maxParticipants: 1,
+    awardPoints: 1,
+    priority: 100,
+  },
+  {
+    criteriaType: "PARTICIPANT_RANGE",
+    rowLabel: "2",
+    grade: "A+",
+    minParticipants: 2,
+    maxParticipants: 2,
+    awardPoints: 7,
+    priority: 100,
+  },
+  {
+    criteriaType: "PARTICIPANT_RANGE",
+    rowLabel: "2",
+    grade: "A",
+    minParticipants: 2,
+    maxParticipants: 2,
+    awardPoints: 6,
+    priority: 100,
+  },
+  {
+    criteriaType: "PARTICIPANT_RANGE",
+    rowLabel: "2",
+    grade: "B",
+    minParticipants: 2,
+    maxParticipants: 2,
+    awardPoints: 4,
+    priority: 100,
+  },
+  {
+    criteriaType: "PARTICIPANT_RANGE",
+    rowLabel: "2",
+    grade: "C",
+    minParticipants: 2,
+    maxParticipants: 2,
+    awardPoints: 2,
+    priority: 100,
+  },
+  {
+    criteriaType: "PARTICIPANT_RANGE",
+    rowLabel: "3",
+    grade: "A+",
+    minParticipants: 3,
+    maxParticipants: 3,
+    awardPoints: 10,
+    priority: 100,
+  },
+  {
+    criteriaType: "PARTICIPANT_RANGE",
+    rowLabel: "3",
+    grade: "A",
+    minParticipants: 3,
+    maxParticipants: 3,
+    awardPoints: 9,
+    priority: 100,
+  },
+  {
+    criteriaType: "PARTICIPANT_RANGE",
+    rowLabel: "3",
+    grade: "B",
+    minParticipants: 3,
+    maxParticipants: 3,
+    awardPoints: 6,
+    priority: 100,
+  },
+  {
+    criteriaType: "PARTICIPANT_RANGE",
+    rowLabel: "3",
+    grade: "C",
+    minParticipants: 3,
+    maxParticipants: 3,
+    awardPoints: 3,
+    priority: 100,
+  },
 ];
 
 const defaultScoringPolicyData = (): ScoringPolicyData => ({
@@ -73,10 +169,18 @@ const defaultScoringPolicyData = (): ScoringPolicyData => ({
 
 function isMissingScoringSchemaError(error: unknown): boolean {
   const dbError = error as
-    | { code?: string; message?: string; cause?: { code?: string; message?: string } }
+    | {
+        code?: string;
+        message?: string;
+        cause?: { code?: string; message?: string };
+      }
     | undefined;
   const code = dbError?.cause?.code ?? dbError?.code;
-  const message = (dbError?.cause?.message ?? dbError?.message ?? "").toLowerCase();
+  const message = (
+    dbError?.cause?.message ??
+    dbError?.message ??
+    ""
+  ).toLowerCase();
   // Postgres: 42P01 = undefined_table, 42703 = undefined_column
   return (
     code === "42P01" ||
@@ -122,7 +226,10 @@ export async function getScoringPolicyWithRules(
       },
       with: {
         awardRules: {
-          orderBy: [asc(scoringAwardRuleTable.priority), asc(scoringAwardRuleTable.grade)],
+          orderBy: [
+            asc(scoringAwardRuleTable.priority),
+            asc(scoringAwardRuleTable.grade),
+          ],
         },
       },
     });
@@ -132,7 +239,10 @@ export async function getScoringPolicyWithRules(
     policy = await fetchPolicy();
   } catch (error) {
     if (isMissingScoringSchemaError(error)) {
-      console.error("Scoring policy schema is missing in database; using defaults.", error);
+      console.error(
+        "Scoring policy schema is missing in database; using defaults.",
+        error,
+      );
       return defaultScoringPolicyData();
     }
     throw error;
@@ -150,7 +260,9 @@ export async function getScoringPolicyWithRules(
     gradeRules: sanitizeGradeRules(policy.gradeRules),
     awardRules: policy.awardRules.map((r) => ({
       id: r.id,
-      criteriaType: (r.criteriaType as "PARTICIPANT_RANGE" | "PROGRAMME_SET") ?? "PARTICIPANT_RANGE",
+      criteriaType:
+        (r.criteriaType as "PARTICIPANT_RANGE" | "PROGRAMME_SET") ??
+        "PARTICIPANT_RANGE",
       rowLabel: r.rowLabel,
       programmeIds: Array.isArray(r.programmeIds)
         ? r.programmeIds.filter((v): v is string => typeof v === "string")
@@ -168,7 +280,8 @@ export async function getScoringPolicyWithRules(
 }
 
 function validateGradeRules(gradeRules: GradeRule[]) {
-  if (gradeRules.length === 0) throw new AppError("At least one grade rule is required.");
+  if (gradeRules.length === 0)
+    throw new AppError("At least one grade rule is required.");
   for (const row of gradeRules) {
     if (!row.grade?.trim()) throw new AppError("Grade label is required.");
     if (row.min < 0 || row.max > 100 || row.min > row.max) {
@@ -235,21 +348,31 @@ export async function upsertScoringPolicyActionData(input: {
 
     for (let i = 0; i < input.awardRules.length; i++) {
       const row = input.awardRules[i]!;
-      if (!row.grade?.trim()) throw new AppError("Award rule grade is required.");
+      if (!row.grade?.trim())
+        throw new AppError("Award rule grade is required.");
       if (row.criteriaType === "PARTICIPANT_RANGE") {
         if (row.minParticipants < 1) {
-          throw new AppError("Award rule minimum participants must be at least 1.");
+          throw new AppError(
+            "Award rule minimum participants must be at least 1.",
+          );
         }
         if (
           row.maxParticipants !== null &&
           row.maxParticipants !== undefined &&
           row.maxParticipants < row.minParticipants
         ) {
-          throw new AppError("Award rule max participants cannot be less than minimum participants.");
+          throw new AppError(
+            "Award rule max participants cannot be less than minimum participants.",
+          );
         }
       }
-      if (row.criteriaType === "PROGRAMME_SET" && (!row.programmeIds || row.programmeIds.length === 0)) {
-        throw new AppError("Programme-set row must contain at least one programme.");
+      if (
+        row.criteriaType === "PROGRAMME_SET" &&
+        (!row.programmeIds || row.programmeIds.length === 0)
+      ) {
+        throw new AppError(
+          "Programme-set row must contain at least one programme.",
+        );
       }
       await tx.insert(scoringAwardRuleTable).values({
         id: randomUUID(),
@@ -275,20 +398,38 @@ export async function upsertScoringPolicyActionData(input: {
   });
 }
 
-function resolveGrade(points: number, noGradeBelow: number, gradeRules: GradeRule[]): string | null {
+function resolveGrade(
+  points: number,
+  noGradeBelow: number,
+  gradeRules: GradeRule[],
+): string | null {
   if (points < noGradeBelow) return null;
-  const matched = gradeRules.find((rule) => points >= rule.min && points <= rule.max);
+  const matched = gradeRules.find(
+    (rule) => points >= rule.min && points <= rule.max,
+  );
   return matched?.grade ?? null;
 }
 
 export async function resolveScoringPolicy(input: {
   festivalId: string;
-  programme: { id: string; categoryId: string | null; type: "INDIVIDUAL" | "GROUP" };
+  programme: {
+    id: string;
+    categoryId: string | null;
+    type: "INDIVIDUAL" | "GROUP";
+  };
   participantsCount: number;
   points: number;
-}): Promise<{ grade: string | null; awardPoints: number; policyVersion: number }> {
+}): Promise<{
+  grade: string | null;
+  awardPoints: number;
+  policyVersion: number;
+}> {
   const policy = await getScoringPolicyWithRules(input.festivalId);
-  const grade = resolveGrade(input.points, policy.noGradeBelow, policy.gradeRules);
+  const grade = resolveGrade(
+    input.points,
+    policy.noGradeBelow,
+    policy.gradeRules,
+  );
   if (!grade && input.points < policy.noGradeBelow) {
     return { grade: null, awardPoints: 0, policyVersion: policy.policyVersion };
   }
@@ -312,16 +453,20 @@ export async function resolveScoringPolicy(input: {
         return false;
       }
     }
-    if (rule.categoryId && rule.categoryId !== input.programme.categoryId) return false;
-    if (rule.programmeType && rule.programmeType !== input.programme.type) return false;
+    if (rule.categoryId && rule.categoryId !== input.programme.categoryId)
+      return false;
+    if (rule.programmeType && rule.programmeType !== input.programme.type)
+      return false;
     return true;
   });
 
   candidates.sort((a, b) => {
     const aTypeBoost = a.criteriaType === "PROGRAMME_SET" ? 10 : 0;
     const bTypeBoost = b.criteriaType === "PROGRAMME_SET" ? 10 : 0;
-    const aSpecificity = Number(Boolean(a.categoryId)) + Number(Boolean(a.programmeType));
-    const bSpecificity = Number(Boolean(b.categoryId)) + Number(Boolean(b.programmeType));
+    const aSpecificity =
+      Number(Boolean(a.categoryId)) + Number(Boolean(a.programmeType));
+    const bSpecificity =
+      Number(Boolean(b.categoryId)) + Number(Boolean(b.programmeType));
     if (aTypeBoost !== bTypeBoost) return bTypeBoost - aTypeBoost;
     if (aSpecificity !== bSpecificity) return bSpecificity - aSpecificity;
     if (a.priority !== b.priority) return a.priority - b.priority;

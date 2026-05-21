@@ -108,7 +108,9 @@ export default async function AdminFestivalDetailPage({
             <div className="flex justify-between">
               <span className="text-muted-foreground">Created At</span>
               <span>
-                {formatStoredDateTime(festival.createdAt, { dateStyle: "medium" })}
+                {formatStoredDateTime(festival.createdAt, {
+                  dateStyle: "medium",
+                })}
               </span>
             </div>
             <div className="flex justify-between">
@@ -119,7 +121,9 @@ export default async function AdminFestivalDetailPage({
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Expired At</span>
                 <span>
-                  {formatStoredDateTime(festival.expiredAt, { dateStyle: "medium" })}
+                  {formatStoredDateTime(festival.expiredAt, {
+                    dateStyle: "medium",
+                  })}
                 </span>
               </div>
             )}

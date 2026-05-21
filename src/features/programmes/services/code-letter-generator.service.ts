@@ -2,8 +2,8 @@ import { randomInt, randomUUID } from "node:crypto";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
-  programmeCodeLetter as codeLetterTable,
   programmeCodeLetterRecipient as codeLetterRecipientTable,
+  programmeCodeLetter as codeLetterTable,
   programmeReportingSession as prsTable,
 } from "@/core/database/schema";
 
@@ -42,10 +42,10 @@ export const CodeLetterGeneratorService = {
   ): Promise<CodeLetterEntry[]> {
     const studentCodes: CodeLetterEntry[] = [];
     const nowStr = new Date().toISOString();
-    
+
     // Filter out rows without studentId
-    const shuffled = reportedParticipants.filter((r): r is { studentId: string } =>
-      Boolean(r.studentId),
+    const shuffled = reportedParticipants.filter(
+      (r): r is { studentId: string } => Boolean(r.studentId),
     );
     shuffleInPlace(shuffled);
 
@@ -67,7 +67,9 @@ export const CodeLetterGeneratorService = {
       }
 
       // 2. Filter out participants who already have codes
-      const toAssign = shuffled.filter((s) => !assignedStudentIds.has(s.studentId));
+      const toAssign = shuffled.filter(
+        (s) => !assignedStudentIds.has(s.studentId),
+      );
       if (toAssign.length === 0) return;
 
       let ordinal = 0;
@@ -89,14 +91,14 @@ export const CodeLetterGeneratorService = {
           issuedBy: actorName,
           updatedAt: nowStr,
         } as any);
-        
+
         await tx.insert(codeLetterRecipientTable).values({
           id: randomUUID(),
           codeLetterId: codeLetterId,
           studentId: row.studentId,
           updatedAt: nowStr,
         } as any);
-        
+
         studentCodes.push({ studentId: row.studentId, code });
       }
     };
@@ -168,7 +170,7 @@ export const CodeLetterGeneratorService = {
 
       const teamBuckets = Array.from(byTeam.values());
       if (teamBuckets.length === 0) return;
-      
+
       shuffleInPlace(teamBuckets);
 
       let ordinal = 0;
@@ -261,9 +263,7 @@ export const CodeLetterGeneratorService = {
         }
 
         if (teamParticipants.length === 0) {
-          throw new Error(
-            `No reported participants found for assignment`,
-          );
+          throw new Error(`No reported participants found for assignment`);
         }
 
         const codeLetterId = randomUUID();

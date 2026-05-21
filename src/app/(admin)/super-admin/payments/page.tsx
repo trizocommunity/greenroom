@@ -189,7 +189,10 @@ export default async function AdminPaymentsPage() {
                     </TableCell>
                     <TableCell className="py-4 text-right">
                       <span className="text-xs font-bold text-muted-foreground">
-                        {format(parseStoredInstant(payment.createdAt), "MMM d, yyyy")}
+                        {format(
+                          parseStoredInstant(payment.createdAt),
+                          "MMM d, yyyy",
+                        )}
                       </span>
                     </TableCell>
                     <TableCell className="py-4">

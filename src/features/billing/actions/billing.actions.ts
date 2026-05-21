@@ -159,7 +159,9 @@ export async function verifyPayment(
         referenceId: razorpayPaymentId,
         updatedAt: new Date().toISOString(),
       })
-      .where(and(eq(paymentTable.id, paymentId), eq(paymentTable.status, "PENDING")))
+      .where(
+        and(eq(paymentTable.id, paymentId), eq(paymentTable.status, "PENDING")),
+      )
       .returning();
 
     if (updated.length === 0) {

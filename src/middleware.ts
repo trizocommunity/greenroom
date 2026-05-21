@@ -1,7 +1,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-const CSRF_SECRET = process.env.CSRF_SECRET || "default-csrf-secret-change-in-production";
+const CSRF_SECRET =
+  process.env.CSRF_SECRET || "default-csrf-secret-change-in-production";
 const NONCE_LENGTH = 16;
 
 function generateNonce(): string {

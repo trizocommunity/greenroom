@@ -533,7 +533,9 @@ export function NewsClient({
             <Button
               size="sm"
               onClick={handleSave}
-              disabled={saving || isReadOnly || !hasUnsavedForm || !form.title.trim()}
+              disabled={
+                saving || isReadOnly || !hasUnsavedForm || !form.title.trim()
+              }
             >
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {editingId ? "Update" : "Create"}

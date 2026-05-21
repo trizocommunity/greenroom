@@ -1,10 +1,10 @@
 "use server";
 
-import type { ActionResponse } from "@/core/types/actions";
-import { AppError, handleActionError } from "@/core/errors/errors";
+import { eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { judge as judgeTable } from "@/core/database/schema";
-import { eq } from "drizzle-orm";
+import { AppError, handleActionError } from "@/core/errors/errors";
+import type { ActionResponse } from "@/core/types/actions";
 import {
   createJudgmentConfigurationAction,
   regenerateJudgmentConfigurationLinkAction,
@@ -31,7 +31,9 @@ export async function createProgrammeJudgeLinkAction(
       limit: 50,
     });
     if (judges.length === 0) {
-      throw new AppError("Create at least one judge in Pre-Event Works before generating links.");
+      throw new AppError(
+        "Create at least one judge in Pre-Event Works before generating links.",
+      );
     }
     const created = await createJudgmentConfigurationAction({
       festivalId,
@@ -73,4 +75,3 @@ export async function regenerateProgrammeJudgeLinkAction(
     return handleActionError(error);
   }
 }
-

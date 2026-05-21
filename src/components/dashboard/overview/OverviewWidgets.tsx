@@ -154,8 +154,7 @@ export default async function OverviewWidgets({
       label: "Results",
       icon: BarChart2,
       href: `/dashboard/${slug}/event-works/results`,
-      condition:
-        canUseExternalJudging && planFeature(features, "results"),
+      condition: canUseExternalJudging && planFeature(features, "results"),
     },
     {
       label: "Leaderboard",
@@ -256,7 +255,10 @@ export default async function OverviewWidgets({
                         />
                       )}
                       <p className="text-[12px] text-muted-foreground shrink-0">
-                        {format(parseStoredInstant(prog.createdAt), "dd/MM/yyyy")}
+                        {format(
+                          parseStoredInstant(prog.createdAt),
+                          "dd/MM/yyyy",
+                        )}
                       </p>
                     </div>
                   </div>

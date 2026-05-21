@@ -52,10 +52,6 @@ import { cn } from "@/core/utils/cn";
 import { parseStoredInstant } from "@/core/utils/date-time";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
-  localWallClockToDate,
-  parseStoredScheduleInstant,
-} from "@/features/schedule/utils/schedule-datetime";
-import {
   type ConflictParts,
   checkScheduleConflict,
   createScheduleEntry,
@@ -63,6 +59,10 @@ import {
   type ScheduleEntryWithRelations,
   updateScheduleEntry,
 } from "@/features/schedule/actions/schedule.actions";
+import {
+  localWallClockToDate,
+  parseStoredScheduleInstant,
+} from "@/features/schedule/utils/schedule-datetime";
 
 const SESSION_TYPE_LABELS: Record<string, string> = {
   GENERAL: "General",
@@ -273,10 +273,11 @@ export function SessionScheduleClient({
               title, date, time, and optionally assign a stage.
             </p>
             <p className="text-sm text-muted-foreground">
-              Create at least one stage in Pre Event Works → Stage Management before
-              adding sessions. Session types (General, Ceremony, Talk, Concert)
-              help you label the kind of activity. Times must fall within your
-              festival event dates; overlaps on the same stage are blocked.
+              Create at least one stage in Pre Event Works → Stage Management
+              before adding sessions. Session types (General, Ceremony, Talk,
+              Concert) help you label the kind of activity. Times must fall
+              within your festival event dates; overlaps on the same stage are
+              blocked.
             </p>
           </HowItWorksButton>
           <Button

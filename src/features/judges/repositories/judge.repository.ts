@@ -91,7 +91,10 @@ export async function listFestivalJudgesWithAssignments(
   for (const row of judgmentScores) {
     if (!configIdSet.has(row.configId)) continue;
     const key = `${row.judgeId}:${row.configId}`;
-    const prev = scoreStatsByJudgeConfig.get(key) ?? { totalPoints: 0, count: 0 };
+    const prev = scoreStatsByJudgeConfig.get(key) ?? {
+      totalPoints: 0,
+      count: 0,
+    };
     prev.totalPoints += row.score;
     prev.count += 1;
     scoreStatsByJudgeConfig.set(key, prev);
@@ -120,7 +123,9 @@ export async function listFestivalJudgesWithAssignments(
 
       if (programme) programmeMap.set(programme.id, programme);
       if (stage) stageMap.set(stage.id, stage);
-      const scoreStats = scoreStatsByJudgeConfig.get(`${judge.id}:${config.id}`);
+      const scoreStats = scoreStatsByJudgeConfig.get(
+        `${judge.id}:${config.id}`,
+      );
       const judgedPointsCount = scoreStats?.count ?? 0;
       const averagePoints =
         scoreStats && scoreStats.count > 0

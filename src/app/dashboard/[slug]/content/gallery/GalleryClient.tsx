@@ -175,7 +175,14 @@ export function GalleryClient({
       toast.error("Upload failed.");
       setUploadModalUploading(false);
     }
-  }, [closeUploadModal, dirtySourceId, festivalId, isReadOnly, pendingUpload, setDirty]);
+  }, [
+    closeUploadModal,
+    dirtySourceId,
+    festivalId,
+    isReadOnly,
+    pendingUpload,
+    setDirty,
+  ]);
 
   const handleDelete = useCallback(
     async (id: string) => {

@@ -45,7 +45,9 @@ export default async function SessionsPage({ params }: PageProps) {
   const startDate = festival.startDate
     ? parseStoredInstant(festival.startDate)
     : null;
-  const endDate = festival.endDate ? parseStoredInstant(festival.endDate) : null;
+  const endDate = festival.endDate
+    ? parseStoredInstant(festival.endDate)
+    : null;
 
   const dateOptions = getFestivalDateOptions(startDate, endDate);
 

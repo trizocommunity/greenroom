@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   CheckCircle2,
   Circle,
@@ -10,6 +9,7 @@ import {
   Users2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -258,7 +258,9 @@ function SubmissionSummaryView({
             <CardTitle className="text-base">Submission received</CardTitle>
             <CardDescription>
               {isPartial ? (
-                <>You can return to the panel. Your saved scores remain intact.</>
+                <>
+                  You can return to the panel. Your saved scores remain intact.
+                </>
               ) : (
                 <>This session is now finalized for this link.</>
               )}
@@ -365,7 +367,9 @@ function SubmissionReviewView({
                         <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                           Code
                         </p>
-                        <p className="font-mono text-base font-semibold">{row.code}</p>
+                        <p className="font-mono text-base font-semibold">
+                          {row.code}
+                        </p>
                       </div>
                       <div className="space-y-1.5">
                         {row.byJudge.map((cell) => (
@@ -387,36 +391,36 @@ function SubmissionReviewView({
                 </div>
                 <div className="hidden overflow-x-auto rounded-md border sm:block">
                   <table className="w-full min-w-[420px] text-left text-sm">
-                  <thead className="border-b bg-muted/40">
-                    <tr>
-                      <th className="px-3 py-2 font-medium">Code</th>
-                      {summary.rows[0]?.byJudge.map((j) => (
-                        <th
-                          key={j.name}
-                          className="whitespace-nowrap px-3 py-2 font-medium"
-                        >
-                          {j.name}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {summary.rows.map((row) => (
-                      <tr key={row.code} className="border-t">
-                        <td className="px-3 py-2 font-mono font-semibold">
-                          {row.code}
-                        </td>
-                        {row.byJudge.map((cell) => (
-                          <td
-                            key={cell.name}
-                            className="px-3 py-2 tabular-nums"
+                    <thead className="border-b bg-muted/40">
+                      <tr>
+                        <th className="px-3 py-2 font-medium">Code</th>
+                        {summary.rows[0]?.byJudge.map((j) => (
+                          <th
+                            key={j.name}
+                            className="whitespace-nowrap px-3 py-2 font-medium"
                           >
-                            {cell.score}
-                          </td>
+                            {j.name}
+                          </th>
                         ))}
                       </tr>
-                    ))}
-                  </tbody>
+                    </thead>
+                    <tbody>
+                      {summary.rows.map((row) => (
+                        <tr key={row.code} className="border-t">
+                          <td className="px-3 py-2 font-mono font-semibold">
+                            {row.code}
+                          </td>
+                          {row.byJudge.map((cell) => (
+                            <td
+                              key={cell.name}
+                              className="px-3 py-2 tabular-nums"
+                            >
+                              {cell.score}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
                   </table>
                 </div>
               </>
@@ -498,7 +502,9 @@ function SubmissionReviewView({
               </div>
             </div>
             {submitError ? (
-              <p className="text-xs font-medium text-destructive">{submitError}</p>
+              <p className="text-xs font-medium text-destructive">
+                {submitError}
+              </p>
             ) : null}
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               <Button
@@ -616,7 +622,8 @@ function ExternalJudgeActiveClient({
       if (payload.codeLetters.length === 0) return false;
       return selectedJudgeRowComplete;
     }
-    if (payload.codeLetters.length === 0 || payload.judges.length === 0) return false;
+    if (payload.codeLetters.length === 0 || payload.judges.length === 0)
+      return false;
     return everyCellValidGroup;
   }, [
     isPinUnlocked,
@@ -910,7 +917,9 @@ function ExternalJudgeActiveClient({
           for (const j of payload.judges) {
             scoresByJudgeId[j.id] = {};
             for (const c of payload.codeLetters) {
-              scoresByJudgeId[j.id][c.id] = Number(scoresByKey[`${j.id}:${c.id}`]);
+              scoresByJudgeId[j.id][c.id] = Number(
+                scoresByKey[`${j.id}:${c.id}`],
+              );
             }
           }
         }

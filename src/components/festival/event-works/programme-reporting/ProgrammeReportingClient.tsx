@@ -14,9 +14,12 @@ import party from "party-js";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { CompactHistoryList } from "@/components/dashboard/event-works/CompactHistoryList";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,18 +30,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +41,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -54,7 +54,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/core/utils/cn";
-import { formatStoredDateTime, parseStoredInstant } from "@/core/utils/date-time";
+import {
+  formatStoredDateTime,
+  parseStoredInstant,
+} from "@/core/utils/date-time";
 import {
   assignCodeLettersWithSpinAction,
   closeProgrammeReportingAction,
@@ -69,8 +72,8 @@ import {
 import { getCodeForStudentFromLetters } from "@/features/programmes/services/programme-reporting-code";
 import { CodeLetterSpinWheel } from "./CodeLetterSpinWheel";
 import { QrScanner } from "./QrScanner";
-import { ReportingQuickAddSection } from "./ReportingQuickAddSection";
 import { ReportingBoardList } from "./ReportingBoardList";
+import { ReportingQuickAddSection } from "./ReportingQuickAddSection";
 import { ReportingRosterTable } from "./ReportingRosterTable";
 import { ReportingStats } from "./ReportingStats";
 import type {
@@ -370,18 +373,23 @@ export function ProgrammeReportingClient({
       })
       .filter(({ status }) => ["CLOSED", "RESET", "TIMED_OUT"].includes(status))
       .sort((a, b) => {
-        const rankDelta = historyStatusRank(a.status) - historyStatusRank(b.status);
+        const rankDelta =
+          historyStatusRank(a.status) - historyStatusRank(b.status);
         if (rankDelta !== 0) return rankDelta;
 
-        const timeDelta = getHistoryTimestamp(b.item) - getHistoryTimestamp(a.item);
+        const timeDelta =
+          getHistoryTimestamp(b.item) - getHistoryTimestamp(a.item);
         if (timeDelta !== 0) return timeDelta;
 
-        return (a.item.programme?.name ?? "").localeCompare(b.item.programme?.name ?? "");
+        return (a.item.programme?.name ?? "").localeCompare(
+          b.item.programme?.name ?? "",
+        );
       })
       .map(({ item, status }) => {
         const programmeType = item.programme?.type ?? "INDIVIDUAL";
         const programmeStatus = (item.programme?.status ?? "").toUpperCase();
-        const reportedRows = item.reportingSession?.programmeReportedParticipants ?? [];
+        const reportedRows =
+          item.reportingSession?.programmeReportedParticipants ?? [];
         const codeLetters = item.reportingSession?.programmeCodeLetters ?? [];
 
         const reportedCount =
@@ -393,7 +401,8 @@ export function ProgrammeReportingClient({
               ).size
             : reportedRows.length;
 
-        const reportedLabel = programmeType === "GROUP" ? "teams reported" : "reported";
+        const reportedLabel =
+          programmeType === "GROUP" ? "teams reported" : "reported";
         const codeLabel = programmeType === "GROUP" ? "team codes" : "codes";
         const tinyBadge =
           programmeStatus.includes("COMPLETED") ||
@@ -450,7 +459,9 @@ export function ProgrammeReportingClient({
       const programmeId = item.programme?.id;
       const programmeType = item.programme?.type ?? "—";
       const reportedIds = new Set(
-        item.reportingSession?.programmeReportedParticipants.map((r) => r.assignmentId) ?? [],
+        item.reportingSession?.programmeReportedParticipants.map(
+          (r) => r.assignmentId,
+        ) ?? [],
       );
       const assignedCodes = item.reportingSession?.programmeCodeLetters ?? [];
       const codeByStudentId = new Map<string, string>();
@@ -471,19 +482,17 @@ export function ProgrammeReportingClient({
       const rows =
         programmeType === "GROUP"
           ? Array.from(
-              programmeAssignments.reduce(
-                (acc, row) => {
-                  const key = `${row.groupId ?? "no-group"}::${row.teamNumber ?? 0}`;
-                  const current = acc.get(key) ?? [];
-                  current.push(row);
-                  acc.set(key, current);
-                  return acc;
-                },
-                new Map<string, ProgrammeReportingAssignmentRow[]>(),
-              ),
+              programmeAssignments.reduce((acc, row) => {
+                const key = `${row.groupId ?? "no-group"}::${row.teamNumber ?? 0}`;
+                const current = acc.get(key) ?? [];
+                current.push(row);
+                acc.set(key, current);
+                return acc;
+              }, new Map<string, ProgrammeReportingAssignmentRow[]>()),
             ).map(([, members]) => {
               const lead = members[0];
-              const firstStudentId = members.find((m) => m.studentId)?.studentId ?? null;
+              const firstStudentId =
+                members.find((m) => m.studentId)?.studentId ?? null;
               return {
                 label:
                   lead?.teamNumber && lead.teamNumber > 0
@@ -491,42 +500,45 @@ export function ProgrammeReportingClient({
                     : (lead?.groupName ?? "Team"),
                 group: lead?.groupName ?? "—",
                 code:
-                  (firstStudentId ? codeByStudentId.get(firstStudentId) : null) ?? "—",
+                  (firstStudentId
+                    ? codeByStudentId.get(firstStudentId)
+                    : null) ?? "—",
               };
             })
           : programmeAssignments.map((row) => ({
               label: row.studentName ?? "—",
               group: row.groupName ?? "—",
-              code: row.studentId ? (codeByStudentId.get(row.studentId) ?? "—") : "—",
+              code: row.studentId
+                ? (codeByStudentId.get(row.studentId) ?? "—")
+                : "—",
             }));
 
       const reportedByAssignmentId = new Map(
-        (item.reportingSession?.programmeReportedParticipants ?? []).map((r) => [
-          r.assignmentId,
-          r,
-        ]),
+        (item.reportingSession?.programmeReportedParticipants ?? []).map(
+          (r) => [r.assignmentId, r],
+        ),
       );
 
       const participantTimeline =
         programmeType === "GROUP"
           ? Array.from(
-              programmeAssignments.reduce(
-                (acc, row) => {
-                  const key = `${row.groupId ?? "no-group"}::${row.teamNumber ?? 0}`;
-                  const current = acc.get(key) ?? [];
-                  current.push(row);
-                  acc.set(key, current);
-                  return acc;
-                },
-                new Map<string, ProgrammeReportingAssignmentRow[]>(),
-              ),
+              programmeAssignments.reduce((acc, row) => {
+                const key = `${row.groupId ?? "no-group"}::${row.teamNumber ?? 0}`;
+                const current = acc.get(key) ?? [];
+                current.push(row);
+                acc.set(key, current);
+                return acc;
+              }, new Map<string, ProgrammeReportingAssignmentRow[]>()),
             ).map(([teamKey, members]) => {
               const lead = members[0];
               const firstReported = members
                 .map((m) => reportedByAssignmentId.get(m.id))
                 .find(Boolean);
-              const firstStudentId = members.find((m) => m.studentId)?.studentId ?? null;
-              const code = firstStudentId ? (codeByStudentId.get(firstStudentId) ?? "—") : "—";
+              const firstStudentId =
+                members.find((m) => m.studentId)?.studentId ?? null;
+              const code = firstStudentId
+                ? (codeByStudentId.get(firstStudentId) ?? "—")
+                : "—";
               const spunAt = firstStudentId
                 ? (spunAtByStudentId.get(firstStudentId) ?? null)
                 : null;
@@ -546,14 +558,18 @@ export function ProgrammeReportingClient({
             })
           : programmeAssignments.map((row) => {
               const reported = reportedByAssignmentId.get(row.id);
-              const code = row.studentId ? (codeByStudentId.get(row.studentId) ?? "—") : "—";
+              const code = row.studentId
+                ? (codeByStudentId.get(row.studentId) ?? "—")
+                : "—";
               const spunAt = row.studentId
                 ? (spunAtByStudentId.get(row.studentId) ?? null)
                 : null;
               return {
                 key: row.id,
                 label: row.studentName ?? "—",
-                chestOrTeam: row.chestNumber ? `Chest ${row.chestNumber}` : "Chest —",
+                chestOrTeam: row.chestNumber
+                  ? `Chest ${row.chestNumber}`
+                  : "Chest —",
                 group: row.groupName ?? "—",
                 reportedAt: reported?.reportedAt ?? null,
                 spunAt,
@@ -614,7 +630,7 @@ export function ProgrammeReportingClient({
   }, [board, assignments, mounted]);
 
   const historyDetail = historyDetailOpenId
-    ? reportingHistoryDetailsById.get(historyDetailOpenId) ?? null
+    ? (reportingHistoryDetailsById.get(historyDetailOpenId) ?? null)
     : null;
 
   useEffect(() => {
@@ -730,12 +746,18 @@ export function ProgrammeReportingClient({
     );
 
     return teamRows.sort((a, b) => {
-      const ga = (a.groupName ?? "").localeCompare(b.groupName ?? "", undefined, {
-        sensitivity: "base",
-      });
+      const ga = (a.groupName ?? "").localeCompare(
+        b.groupName ?? "",
+        undefined,
+        {
+          sensitivity: "base",
+        },
+      );
       if (ga !== 0) return ga;
-      const aTeam = typeof a.teamCell === "number" ? a.teamCell : Number(a.teamCell) || 0;
-      const bTeam = typeof b.teamCell === "number" ? b.teamCell : Number(b.teamCell) || 0;
+      const aTeam =
+        typeof a.teamCell === "number" ? a.teamCell : Number(a.teamCell) || 0;
+      const bTeam =
+        typeof b.teamCell === "number" ? b.teamCell : Number(b.teamCell) || 0;
       return aTeam - bTeam;
     });
   }, [assignmentsWithReported, selected?.programme]);
@@ -864,7 +886,9 @@ export function ProgrammeReportingClient({
       }
       return null;
     }
-    return row.studentId ? getCodeForStudentFromLetters(letters, row.studentId) : null;
+    return row.studentId
+      ? getCodeForStudentFromLetters(letters, row.studentId)
+      : null;
   }
 
   useEffect(() => {
@@ -882,7 +906,8 @@ export function ProgrammeReportingClient({
     const hasIssuedCode =
       pendingRow.mode === "team"
         ? pendingRow.teamStudentIds.some(
-            (studentId) => getCodeForStudentFromLetters(letters, studentId) != null,
+            (studentId) =>
+              getCodeForStudentFromLetters(letters, studentId) != null,
           )
         : pendingRow.studentId != null
           ? getCodeForStudentFromLetters(letters, pendingRow.studentId) != null
@@ -934,14 +959,18 @@ export function ProgrammeReportingClient({
           setSpinAssignRequested(false);
           setIsSpinWheelOpen(false);
           setActiveSpinRow(null);
-          toast.success("All code letters cleared. You can re-spin for everyone.");
+          toast.success(
+            "All code letters cleared. You can re-spin for everyone.",
+          );
           router.refresh();
         } else {
           toast.error("Failed to reset code letters");
         }
       } catch (error) {
         toast.error(
-          error instanceof Error ? error.message : "Failed to reset code letters",
+          error instanceof Error
+            ? error.message
+            : "Failed to reset code letters",
         );
       } finally {
         setActiveAction(null);
@@ -953,7 +982,9 @@ export function ProgrammeReportingClient({
     if (!session?.id) return;
 
     const reportedRows = rosterTableRows.filter((row) => row.isReported);
-    const rowsNeedingCode = reportedRows.filter((row) => !getIssuedCodeForRow(row));
+    const rowsNeedingCode = reportedRows.filter(
+      (row) => !getIssuedCodeForRow(row),
+    );
     if (!rowsNeedingCode.length) {
       toast.info("All reported rows already have code letters.");
       return;
@@ -971,7 +1002,9 @@ export function ProgrammeReportingClient({
     }
 
     if (availableCodes.length < rowsNeedingCode.length) {
-      toast.error("Not enough unique code letters available for random assignment.");
+      toast.error(
+        "Not enough unique code letters available for random assignment.",
+      );
       return;
     }
 
@@ -1125,20 +1158,27 @@ export function ProgrammeReportingClient({
               Live check-in, code assignment, and submit
             </h2>
             <p className="text-xs text-muted-foreground sm:text-sm">
-              Pick a programme from the queue, mark present participants, assign code letters, then submit.
+              Pick a programme from the queue, mark present participants, assign
+              code letters, then submit.
             </p>
           </div>
           <div className="grid grid-cols-3 gap-2 sm:w-auto">
             <div className="rounded-lg border bg-background/70 px-2.5 py-2 text-center">
-              <p className="text-[10px] uppercase text-muted-foreground">Queue</p>
+              <p className="text-[10px] uppercase text-muted-foreground">
+                Queue
+              </p>
               <p className="text-sm font-semibold">{filteredBoard.length}</p>
             </div>
             <div className="rounded-lg border bg-background/70 px-2.5 py-2 text-center">
-              <p className="text-[10px] uppercase text-muted-foreground">On roster</p>
+              <p className="text-[10px] uppercase text-muted-foreground">
+                On roster
+              </p>
               <p className="text-sm font-semibold">{rosterTableRows.length}</p>
             </div>
             <div className="rounded-lg border bg-background/70 px-2.5 py-2 text-center">
-              <p className="text-[10px] uppercase text-muted-foreground">Present</p>
+              <p className="text-[10px] uppercase text-muted-foreground">
+                Present
+              </p>
               <p className="text-sm font-semibold">{reportedUnitsCount}</p>
             </div>
           </div>
@@ -1421,7 +1461,7 @@ export function ProgrammeReportingClient({
                                 ? "Mark at least one participant/team as present before submitting."
                                 : !allReportedHaveCodeLetters
                                   ? "Assign a code letter to each present participant (spin per person) before submitting."
-                                : undefined
+                                  : undefined
                             }
                             disabled={
                               isPending ||
@@ -1699,28 +1739,46 @@ export function ProgrammeReportingClient({
               <div className="space-y-2.5 sm:space-y-3">
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                   <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
-                    <p className="text-[10px] uppercase text-muted-foreground">Status</p>
-                    <p className="text-xs font-semibold">{historyDetail.statusLabel}</p>
-                  </div>
-                  <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
-                    <p className="text-[10px] uppercase text-muted-foreground">Type</p>
-                    <p className="text-xs font-semibold">{historyDetail.type}</p>
-                  </div>
-                  <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
-                    <p className="text-[10px] uppercase text-muted-foreground">Category</p>
-                    <p className="text-xs font-semibold">{historyDetail.categoryName}</p>
+                    <p className="text-[10px] uppercase text-muted-foreground">
+                      Status
+                    </p>
+                    <p className="text-xs font-semibold">
+                      {historyDetail.statusLabel}
+                    </p>
                   </div>
                   <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
                     <p className="text-[10px] uppercase text-muted-foreground">
-                      {historyDetail.type === "GROUP" ? "Teams reported" : "Reported"}
+                      Type
                     </p>
-                    <p className="text-xs font-semibold">{historyDetail.reportedCount}</p>
+                    <p className="text-xs font-semibold">
+                      {historyDetail.type}
+                    </p>
+                  </div>
+                  <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
+                    <p className="text-[10px] uppercase text-muted-foreground">
+                      Category
+                    </p>
+                    <p className="text-xs font-semibold">
+                      {historyDetail.categoryName}
+                    </p>
+                  </div>
+                  <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
+                    <p className="text-[10px] uppercase text-muted-foreground">
+                      {historyDetail.type === "GROUP"
+                        ? "Teams reported"
+                        : "Reported"}
+                    </p>
+                    <p className="text-xs font-semibold">
+                      {historyDetail.reportedCount}
+                    </p>
                   </div>
                   <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
                     <p className="text-[10px] uppercase text-muted-foreground">
                       {historyDetail.type === "GROUP" ? "Team codes" : "Codes"}
                     </p>
-                    <p className="text-xs font-semibold">{historyDetail.codeCount}</p>
+                    <p className="text-xs font-semibold">
+                      {historyDetail.codeCount}
+                    </p>
                   </div>
                 </div>
 
@@ -1728,15 +1786,24 @@ export function ProgrammeReportingClient({
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Timeline
                   </p>
-                  <Accordion type="single" collapsible className="mt-2 rounded-md border border-border/70 bg-background/70 px-2.5">
-                    <AccordionItem value="reporting-timeline" className="border-b-0">
+                  <Accordion
+                    type="single"
+                    collapsible
+                    className="mt-2 rounded-md border border-border/70 bg-background/70 px-2.5"
+                  >
+                    <AccordionItem
+                      value="reporting-timeline"
+                      className="border-b-0"
+                    >
                       <AccordionTrigger className="py-2 hover:no-underline">
                         <div className="flex min-w-0 items-center gap-2 text-left">
                           <span className="truncate text-[11px] font-semibold sm:text-[12px]">
                             Timeline events
                           </span>
                           <span className="truncate text-[10px] text-muted-foreground">
-                            {historyDetail.timeline.length + historyDetail.participantTimeline.length} total
+                            {historyDetail.timeline.length +
+                              historyDetail.participantTimeline.length}{" "}
+                            total
                           </span>
                         </div>
                       </AccordionTrigger>
@@ -1783,46 +1850,54 @@ export function ProgrammeReportingClient({
                             </p>
                             {historyDetail.participantTimeline.length ? (
                               <div className="grid gap-1.5 sm:grid-cols-2">
-                                {historyDetail.participantTimeline.map((entry, index) => (
-                                  <div
-                                    key={entry.key}
-                                    className="rounded-md border border-border/70 bg-background/70 px-2.5 py-2"
-                                  >
-                                    <div className="flex items-start justify-between gap-2">
-                                      <div className="min-w-0">
-                                        <p className="truncate text-[11px] font-semibold sm:text-[12px]">
-                                          {index + 1}. {entry.label}
+                                {historyDetail.participantTimeline.map(
+                                  (entry, index) => (
+                                    <div
+                                      key={entry.key}
+                                      className="rounded-md border border-border/70 bg-background/70 px-2.5 py-2"
+                                    >
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="min-w-0">
+                                          <p className="truncate text-[11px] font-semibold sm:text-[12px]">
+                                            {index + 1}. {entry.label}
+                                          </p>
+                                          <p className="text-[10px] text-muted-foreground">
+                                            {entry.chestOrTeam} • {entry.group}
+                                          </p>
+                                        </div>
+                                        <span className="rounded border bg-violet-500/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-violet-700 dark:text-violet-300">
+                                          {entry.code}
+                                        </span>
+                                      </div>
+                                      <div className="mt-1 grid gap-1 text-[10px] text-muted-foreground">
+                                        <p>
+                                          Reported:{" "}
+                                          {entry.reportedAt
+                                            ? formatStoredDateTime(
+                                                entry.reportedAt,
+                                                {
+                                                  dateStyle: "medium",
+                                                  timeStyle: "short",
+                                                },
+                                              )
+                                            : "—"}
                                         </p>
-                                        <p className="text-[10px] text-muted-foreground">
-                                          {entry.chestOrTeam} • {entry.group}
+                                        <p>
+                                          Spun/Issued:{" "}
+                                          {entry.spunAt
+                                            ? formatStoredDateTime(
+                                                entry.spunAt,
+                                                {
+                                                  dateStyle: "medium",
+                                                  timeStyle: "short",
+                                                },
+                                              )
+                                            : "Pending"}
                                         </p>
                                       </div>
-                                      <span className="rounded border bg-violet-500/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-violet-700 dark:text-violet-300">
-                                        {entry.code}
-                                      </span>
                                     </div>
-                                    <div className="mt-1 grid gap-1 text-[10px] text-muted-foreground">
-                                      <p>
-                                        Reported:{" "}
-                                        {entry.reportedAt
-                                          ? formatStoredDateTime(entry.reportedAt, {
-                                              dateStyle: "medium",
-                                              timeStyle: "short",
-                                            })
-                                          : "—"}
-                                      </p>
-                                      <p>
-                                        Spun/Issued:{" "}
-                                        {entry.spunAt
-                                          ? formatStoredDateTime(entry.spunAt, {
-                                              dateStyle: "medium",
-                                              timeStyle: "short",
-                                            })
-                                          : "Pending"}
-                                      </p>
-                                    </div>
-                                  </div>
-                                ))}
+                                  ),
+                                )}
                               </div>
                             ) : (
                               <p className="text-[11px] text-muted-foreground">

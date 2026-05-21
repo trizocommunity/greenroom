@@ -222,12 +222,14 @@ export function StudentDetailsDialog({
               <div className="pt-1.5 border-t text-[11px] text-muted-foreground space-y-0.5">
                 {student.createdAt && (
                   <div>
-                    Created {format(parseStoredInstant(student.createdAt), "PP")}
+                    Created{" "}
+                    {format(parseStoredInstant(student.createdAt), "PP")}
                   </div>
                 )}
                 {student.updatedAt && (
                   <div>
-                    Updated {format(parseStoredInstant(student.updatedAt), "PP")}
+                    Updated{" "}
+                    {format(parseStoredInstant(student.updatedAt), "PP")}
                   </div>
                 )}
               </div>
