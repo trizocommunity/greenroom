@@ -3,13 +3,24 @@ import { estimateTextWidth, finiteNumber } from "./editor-utils";
 import type { EditorElement } from "./poster-editor-types";
 import type { ElementRect } from "./editor-snap-guides";
 
+function resolveRelativeContainer(
+  node: Konva.Node,
+  relativeTo?: Konva.Node | null,
+): Konva.Container | undefined {
+  const candidate = relativeTo ?? node.getParent();
+  if (candidate && typeof (candidate as Konva.Container).getChildren === "function") {
+    return candidate as Konva.Container;
+  }
+  return undefined;
+}
+
 export function rectFromKonvaNode(
   node: Konva.Node,
   /** Defaults to the node's parent (document space inside the artboard group). */
   relativeTo?: Konva.Node | null,
 ): ElementRect {
   const box = node.getClientRect({
-    relativeTo: relativeTo ?? node.getParent() ?? undefined,
+    relativeTo: resolveRelativeContainer(node, relativeTo),
     skipShadow: true,
     skipStroke: true,
   });

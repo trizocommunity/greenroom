@@ -70,6 +70,7 @@ export default function PosterEditorPlayground() {
     pasteClipboard: PosterEditorState["pasteClipboard"];
     duplicateSelected: PosterEditorState["duplicateSelected"];
     nudgeSelected: PosterEditorState["nudgeSelected"];
+    setPresentOpen: React.Dispatch<React.SetStateAction<boolean>>;
   } | null>(null);
 
   keyboardRef.current = {

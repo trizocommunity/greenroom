@@ -426,7 +426,7 @@ export function fontsForCategory(
 
 export function filterFonts(query: string, category: FontCategory | "all") {
   const q = query.trim().toLowerCase();
-  let list = fontsForCategory(category);
+  const list = fontsForCategory(category);
   if (!q) return list;
   return list.filter(
     (f) =>

@@ -311,17 +311,14 @@ export function SessionScheduleClient({
       </div>
 
       {!isReadOnly && hasStages && !hasFestivalDates && (
-        <div
-          className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100"
-          role="status"
-        >
+        <output className="block rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100">
           <p className="font-medium">Set festival event dates</p>
           <p className="text-muted-foreground mt-0.5">
             Add a start and end date in{" "}
             <span className="font-medium text-foreground">Festival setup</span>{" "}
             so session times are limited to your event days.
           </p>
-        </div>
+        </output>
       )}
 
       {sortedDays.length === 0 ? (

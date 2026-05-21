@@ -39,7 +39,10 @@ import {
   rectFromKonvaNode,
 } from "./editor-transform-sync";
 import type { EditorElement } from "./poster-editor-types";
-import { useCanvasElementHover } from "./use-canvas-element-hover";
+import {
+  useCanvasElementHover,
+  type ElementHoverHandlers,
+} from "./use-canvas-element-hover";
 import type { PosterEditorState, SelectionBounds } from "./use-poster-editor-state";
 
 interface PosterEditorCanvasProps {
@@ -52,6 +55,18 @@ interface PosterEditorCanvasProps {
   /** Zoom override when presenting (fit-to-screen) */
   presentZoom?: number;
 }
+
+type ElementDragHandlers = {
+  onDragStart: () => void;
+  onDragMove: (e: Konva.KonvaEventObject<DragEvent>) => void;
+  onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => void;
+};
+
+const NO_DRAG_HANDLERS: ElementDragHandlers = {
+  onDragStart: () => {},
+  onDragMove: () => {},
+  onDragEnd: () => {},
+};
 
 function BackgroundImage({
   url,
@@ -93,16 +108,9 @@ function ElementImage({
   width: number;
   height: number;
   draggable: boolean;
-  onSelect: (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => void;
-  hoverHandlers: {
-    onMouseEnter: () => void;
-    onMouseLeave: () => void;
-  };
-  dragHandlers: {
-    onDragStart: () => void;
-    onDragMove: (e: Konva.KonvaEventObject<DragEvent>) => void;
-    onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => void;
-  };
+  onSelect?: (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => void;
+  hoverHandlers: ElementHoverHandlers;
+  dragHandlers: ElementDragHandlers;
   onBoundsChange: () => void;
 }) {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
@@ -775,7 +783,9 @@ export function PosterEditorCanvas({
               if (!el.visible) return null;
               const draggable = interactive && !el.locked;
               const nodeOpacity = el.opacity ?? 1;
-              const dragHandlers = interactive ? makeDragHandlers(el) : {};
+              const dragHandlers = interactive
+                ? makeDragHandlers(el)
+                : NO_DRAG_HANDLERS;
               const onSelect = interactive
                 ? (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) =>
                     handleElementSelect(el, e)

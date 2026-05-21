@@ -321,7 +321,7 @@ export function usePosterEditorState() {
         ),
       }));
     },
-    [setDocWithHistory],
+    [setDocWithHistory, patchActiveTab],
   );
 
   const updateElements = useCallback(

@@ -198,7 +198,9 @@ export function QrScanner({
           : await getVideoStream();
 
       if (session !== cameraSessionRef.current) {
-        stream.getTracks().forEach((t) => t.stop());
+        stream.getTracks().forEach((t) => {
+          t.stop();
+        });
         return;
       }
 
@@ -206,7 +208,9 @@ export function QrScanner({
 
       const video = videoRef.current;
       if (!video) {
-        stream.getTracks().forEach((t) => t.stop());
+        stream.getTracks().forEach((t) => {
+          t.stop();
+        });
         console.error("QrScanner: video element missing after mount");
         setStatus("idle");
         setCameraGate("other");
@@ -228,7 +232,9 @@ export function QrScanner({
               console.error("Video play failed:", playErr);
             }
             scanningRef.current = false;
-            stream.getTracks().forEach((t) => t.stop());
+            stream.getTracks().forEach((t) => {
+              t.stop();
+            });
             streamRef.current = null;
             video.onloadedmetadata = null;
             video.srcObject = null;
@@ -593,8 +599,7 @@ export function QrScanner({
       )}
 
       {cameraGate ? (
-        <div
-          role="status"
+        <output
           className={cn(
             "flex rounded-md border border-amber-400/90 bg-amber-50 text-amber-950 shadow-sm dark:border-amber-500/70 dark:bg-amber-950/95 dark:text-amber-50",
             embedded
@@ -610,7 +615,7 @@ export function QrScanner({
             aria-hidden
           />
           <p className="min-w-0 leading-snug">{cameraGateCopy(cameraGate)}</p>
-        </div>
+        </output>
       ) : null}
 
       {status === "scanning" && (

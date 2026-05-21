@@ -11,6 +11,16 @@ export interface HoverBox {
   height: number;
 }
 
+export type ElementHoverHandlers = {
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+};
+
+const NO_HOVER_HANDLERS: ElementHoverHandlers = {
+  onMouseEnter: () => {},
+  onMouseLeave: () => {},
+};
+
 function hoverBoxEqual(a: HoverBox | null, b: HoverBox | null): boolean {
   if (a === b) return true;
   if (!a || !b) return false;
@@ -97,7 +107,7 @@ export function useCanvasElementHover({
 
   const makeHoverHandlers = useCallback(
     (el: EditorElement) => {
-      if (!interactive) return {};
+      if (!interactive) return NO_HOVER_HANDLERS;
       return {
         onMouseEnter: () => {
           if (el.locked) return;

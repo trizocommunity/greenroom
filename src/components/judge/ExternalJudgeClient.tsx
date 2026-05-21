@@ -573,11 +573,6 @@ function ExternalJudgeActiveClient({
     return out;
   });
 
-  const existingScoresKey = useMemo(
-    () => JSON.stringify(payload.existingScores),
-    [payload.existingScores],
-  );
-
   useEffect(() => {
     setScoresByKey((prev) => {
       const next = { ...prev };
@@ -586,7 +581,7 @@ function ExternalJudgeActiveClient({
       }
       return next;
     });
-  }, [existingScoresKey, payload.existingScores]);
+  }, [payload.existingScores]);
 
   const everyCellValidGroup = useMemo(() => {
     return payload.codeLetters.every((c) =>

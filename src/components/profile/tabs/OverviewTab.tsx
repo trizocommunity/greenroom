@@ -146,8 +146,7 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
               <FestivalCardSkeleton />
             </div>
           ) : credit ? (
-            <>
-              <div className="space-y-4">
+            <div className="space-y-4">
                 <Card className="border-primary/30 bg-linear-to-br from-primary/10 via-background to-background relative overflow-hidden ring-1 ring-primary/20">
                   <div className="absolute right-0 top-0 p-4 opacity-10 pointer-events-none">
                     <Sparkles className="w-32 h-32 text-primary" />
@@ -262,8 +261,7 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
                     </div>
                   </CardContent>
                 </Card>
-              </div>
-            </>
+            </div>
           ) : (
             <>
               <div className="space-y-2">

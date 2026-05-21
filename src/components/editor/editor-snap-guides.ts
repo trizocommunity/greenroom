@@ -125,7 +125,6 @@ export function rectAtPosition(
 
 function pushX(
   out: SnapCandidate[],
-  rect: ElementRect,
   edge: number,
   line: number,
   snapX: number,
@@ -140,7 +139,6 @@ function pushX(
 
 function pushY(
   out: SnapCandidate[],
-  rect: ElementRect,
   edge: number,
   line: number,
   snapY: number,
@@ -162,41 +160,41 @@ function collectSnapCandidates(
 ): SnapCandidate[] {
   const out: SnapCandidate[] = [];
 
-  pushX(out, rect, rect.left, 0, 0);
-  pushX(out, rect, rect.centerX, canvasW / 2, canvasW / 2 - rect.width / 2);
-  pushX(out, rect, rect.right, canvasW, canvasW - rect.width);
+  pushX(out, rect.left, 0, 0);
+  pushX(out, rect.centerX, canvasW / 2, canvasW / 2 - rect.width / 2);
+  pushX(out, rect.right, canvasW, canvasW - rect.width);
 
-  pushY(out, rect, rect.top, 0, 0);
-  pushY(out, rect, rect.centerY, canvasH / 2, canvasH / 2 - rect.height / 2);
-  pushY(out, rect, rect.bottom, canvasH, canvasH - rect.height);
+  pushY(out, rect.top, 0, 0);
+  pushY(out, rect.centerY, canvasH / 2, canvasH / 2 - rect.height / 2);
+  pushY(out, rect.bottom, canvasH, canvasH - rect.height);
 
   for (const peer of peers) {
     if (excludeIds.includes(peer.id)) continue;
     const p = elementToRect(peer);
 
-    pushX(out, rect, rect.left, p.left, p.left);
-    pushX(out, rect, rect.left, p.centerX, p.centerX);
-    pushX(out, rect, rect.left, p.right, p.right);
+    pushX(out, rect.left, p.left, p.left);
+    pushX(out, rect.left, p.centerX, p.centerX);
+    pushX(out, rect.left, p.right, p.right);
 
-    pushX(out, rect, rect.centerX, p.centerX, p.centerX - rect.width / 2);
-    pushX(out, rect, rect.centerX, p.left, p.left - rect.width / 2);
-    pushX(out, rect, rect.centerX, p.right, p.right - rect.width / 2);
+    pushX(out, rect.centerX, p.centerX, p.centerX - rect.width / 2);
+    pushX(out, rect.centerX, p.left, p.left - rect.width / 2);
+    pushX(out, rect.centerX, p.right, p.right - rect.width / 2);
 
-    pushX(out, rect, rect.right, p.right, p.right - rect.width);
-    pushX(out, rect, rect.right, p.centerX, p.centerX - rect.width);
-    pushX(out, rect, rect.right, p.left, p.left - rect.width);
+    pushX(out, rect.right, p.right, p.right - rect.width);
+    pushX(out, rect.right, p.centerX, p.centerX - rect.width);
+    pushX(out, rect.right, p.left, p.left - rect.width);
 
-    pushY(out, rect, rect.top, p.top, p.top);
-    pushY(out, rect, rect.top, p.centerY, p.centerY);
-    pushY(out, rect, rect.top, p.bottom, p.bottom);
+    pushY(out, rect.top, p.top, p.top);
+    pushY(out, rect.top, p.centerY, p.centerY);
+    pushY(out, rect.top, p.bottom, p.bottom);
 
-    pushY(out, rect, rect.centerY, p.centerY, p.centerY - rect.height / 2);
-    pushY(out, rect, rect.centerY, p.top, p.top - rect.height / 2);
-    pushY(out, rect, rect.centerY, p.bottom, p.bottom - rect.height / 2);
+    pushY(out, rect.centerY, p.centerY, p.centerY - rect.height / 2);
+    pushY(out, rect.centerY, p.top, p.top - rect.height / 2);
+    pushY(out, rect.centerY, p.bottom, p.bottom - rect.height / 2);
 
-    pushY(out, rect, rect.bottom, p.bottom, p.bottom - rect.height);
-    pushY(out, rect, rect.bottom, p.centerY, p.centerY - rect.height);
-    pushY(out, rect, rect.bottom, p.top, p.top - rect.height);
+    pushY(out, rect.bottom, p.bottom, p.bottom - rect.height);
+    pushY(out, rect.bottom, p.centerY, p.centerY - rect.height);
+    pushY(out, rect.bottom, p.top, p.top - rect.height);
   }
 
   return out;
