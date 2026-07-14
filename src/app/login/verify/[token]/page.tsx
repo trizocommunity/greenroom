@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useVerifyMagicLink } from "@/features/auth/hooks/use-auth";
 
 export default function MagicLinkTokenPage() {
@@ -26,7 +26,9 @@ export default function MagicLinkTokenPage() {
         },
         onError: (err: any) => {
           setError(
-            err?.body?.error?.message || err?.body?.error || "Invalid or expired link",
+            err?.body?.error?.message ||
+              err?.body?.error ||
+              "Invalid or expired link",
           );
         },
       },

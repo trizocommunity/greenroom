@@ -198,7 +198,7 @@ export function FestivalNavbar({
                   </Button>
                 ) : (
                   <Link
-                     href={`/login?redirect=${encodeURIComponent(pathname)}`}
+                    href={`/login?redirect=${encodeURIComponent(pathname)}`}
                     onClick={() => setIsOpen(false)}
                   >
                     <Button variant="outline" className="w-full gap-2">

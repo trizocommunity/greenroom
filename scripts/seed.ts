@@ -83,7 +83,15 @@ async function getOrCreateInstitution(
   ownerId: string,
   data: {
     name: string;
-    type: "COLLEGE" | "MADRASA" | "SCHOOL" | "OTHER" | "UNIVERSITY" | "INSTITUTION" | "CAMPUS" | "DARS";
+    type:
+      | "COLLEGE"
+      | "MADRASA"
+      | "SCHOOL"
+      | "OTHER"
+      | "UNIVERSITY"
+      | "INSTITUTION"
+      | "CAMPUS"
+      | "DARS";
     affiliation?: string | null;
     city?: string | null;
     sizeRange?: string | null;
@@ -274,11 +282,7 @@ async function seed() {
     role: "ANNOUNCER" | "STAGE_MANAGER" | "MEDIA";
   }[] = [];
   for (const acc of memberAccounts) {
-    const userId = await getOrCreateUser(
-      acc.email,
-      acc.name,
-      "USER",
-    );
+    const userId = await getOrCreateUser(acc.email, acc.name, "USER");
     createdMembers.push({ userId, email: acc.email, role: acc.role });
   }
 
@@ -993,12 +997,8 @@ async function seed() {
   console.log(`Tier             : PRO`);
   console.log("──────────────────────────────────────────────────────────");
   console.log("ACCOUNTS VERIFIED / CREATED:");
-  console.log(
-    `  Super Admin    : ${superAdminEmail} (Magic link auth)`,
-  );
-  console.log(
-    `  Festival Owner : ${festivalOwnerEmail} (Magic link auth)`,
-  );
+  console.log(`  Super Admin    : ${superAdminEmail} (Magic link auth)`);
+  console.log(`  Festival Owner : ${festivalOwnerEmail} (Magic link auth)`);
   console.log(
     `  Announcer      : announcer.ahlussuffa@gmail.com (Magic link auth)`,
   );

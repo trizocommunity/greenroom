@@ -1,11 +1,11 @@
 import "server-only";
 
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { user as userTable } from "@/core/database/schema";
 import { completePersonalOnboardingAction } from "@/features/auth/actions/onboarding.actions";
-import { eq } from "drizzle-orm";
 
 export const POST = async (req: Request) => {
   try {

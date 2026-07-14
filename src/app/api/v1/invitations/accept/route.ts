@@ -4,7 +4,11 @@ import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
-import { festival, festivalMember, pendingInvitation } from "@/core/database/schema";
+import {
+  festival,
+  festivalMember,
+  pendingInvitation,
+} from "@/core/database/schema";
 
 export const POST = async (req: Request) => {
   try {

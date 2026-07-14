@@ -1,6 +1,6 @@
 # issue-02: Auth UX — Magic Link Form Feedback & Dev Mode Logging
 
-**Status:** OPEN
+**Status:** ✅ DONE
 
 ## TL;DR
 

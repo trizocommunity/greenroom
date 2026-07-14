@@ -1,12 +1,15 @@
 import "server-only";
 
+import { eq, sql } from "drizzle-orm";
 import { badRequest, createHandler, ok, unauthorized } from "@/api/lib";
-import { createMagicLinkToken, consumeMagicLinkToken } from "@/core/auth/magic-link";
+import {
+  consumeMagicLinkToken,
+  createMagicLinkToken,
+} from "@/core/auth/magic-link";
 import { createSession, deleteSession, getSession } from "@/core/auth/session";
-import { sendMagicLinkEmail } from "@/core/integrations/email";
 import { db } from "@/core/database/client";
 import { user as userTable } from "@/core/database/schema";
-import { eq, sql } from "drizzle-orm";
+import { sendMagicLinkEmail } from "@/core/integrations/email";
 import { findUserById } from "@/features/auth/repositories/user.repository";
 
 const MAGIC_LINK_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
@@ -98,7 +101,10 @@ const handler = createHandler({
         return badRequest("USER_CREATION_FAILED", "Could not create user");
       }
 
-      await createSession(dbUser.id, dbUser.globalRole as "USER" | "SUPER_ADMIN");
+      await createSession(
+        dbUser.id,
+        dbUser.globalRole as "USER" | "SUPER_ADMIN",
+      );
 
       const requiresOnboarding = !dbUser.fullName;
 

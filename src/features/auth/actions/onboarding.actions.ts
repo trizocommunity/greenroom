@@ -1,13 +1,20 @@
 "use server";
 
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
-import { type institutionType, user as userTable } from "@/core/database/schema";
-import { AppError, ERROR_MESSAGES, handleActionError } from "@/core/errors/errors";
-import { createInstitution } from "@/features/institution/repositories/institution.repository";
+import {
+  type institutionType,
+  user as userTable,
+} from "@/core/database/schema";
+import {
+  AppError,
+  ERROR_MESSAGES,
+  handleActionError,
+} from "@/core/errors/errors";
 import type { ActionResponse } from "@/core/types/actions";
-import { eq } from "drizzle-orm";
+import { createInstitution } from "@/features/institution/repositories/institution.repository";
 
 type InstitutionType = (typeof institutionType.enumValues)[number];
 

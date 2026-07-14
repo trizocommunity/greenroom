@@ -8,14 +8,14 @@ type PrefetchLinkProps = ComponentProps<typeof Link> & {
   onHover?: () => void;
 };
 
-export function PrefetchLink({ children, onHover, ...props }: PrefetchLinkProps) {
+export function PrefetchLink({
+  children,
+  onHover,
+  ...props
+}: PrefetchLinkProps) {
   return (
-    <Link
-      {...props}
-      onMouseEnter={onHover}
-    >
+    <Link {...props} onMouseEnter={onHover}>
       {children}
     </Link>
   );
 }
-

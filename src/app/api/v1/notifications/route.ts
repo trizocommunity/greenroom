@@ -1,8 +1,8 @@
 import "server-only";
 
 import { desc, eq } from "drizzle-orm";
-import { badRequest, createProtectedHandler, ok } from "@/api/lib";
 import { markAllReadInput } from "@/api/contracts/notifications";
+import { badRequest, createProtectedHandler, ok } from "@/api/lib";
 import { db } from "@/core/database/client";
 import { programmeNotification } from "@/core/database/schema";
 import { assertStudentNotificationAccess } from "@/features/programmes/actions/reporting-access";

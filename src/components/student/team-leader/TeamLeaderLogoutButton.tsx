@@ -2,8 +2,8 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { useTeamLeaderLogout } from "@/api/client/team-leader";
+import { Button } from "@/components/ui/button";
 
 export function TeamLeaderLogoutButton({ redirectTo }: { redirectTo: string }) {
   const router = useRouter();

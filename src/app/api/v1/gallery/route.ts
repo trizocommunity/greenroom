@@ -92,7 +92,11 @@ const handler = createProtectedHandler({
       .delete(festivalGalleryImage)
       .where(eq(festivalGalleryImage.id, image.id));
     if (removedMb > 0) {
-      await UsageCounterService.incrementUsage(festivalId, "storage", -removedMb);
+      await UsageCounterService.incrementUsage(
+        festivalId,
+        "storage",
+        -removedMb,
+      );
     }
 
     return ok({ success: true });

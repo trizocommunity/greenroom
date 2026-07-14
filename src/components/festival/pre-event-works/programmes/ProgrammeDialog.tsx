@@ -6,6 +6,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
+import { useCategories } from "@/api/client/categories";
+import {
+  useCreateProgramme,
+  useProgramme,
+  useUpdateProgramme,
+} from "@/api/client/programmes";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,12 +48,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useCategories } from "@/api/client/categories";
-import {
-  useCreateProgramme,
-  useProgramme,
-  useUpdateProgramme,
-} from "@/api/client/programmes";
 
 const ProgrammeBaseSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -134,14 +134,15 @@ export function ProgrammeDialog({
   });
 
   const isEditing = !!programme;
-  const isLoadingAction = createProgramme.isPending || updateProgramme.isPending;
+  const isLoadingAction =
+    createProgramme.isPending || updateProgramme.isPending;
   const { isValid } = form.formState;
 
   // Fetch details if viewing (readOnly)
   const { data: details, isLoading: isLoadingDetails } = useProgramme(
-      festivalId,
-      open && readOnly ? programme?.id : undefined,
-    );
+    festivalId,
+    open && readOnly ? programme?.id : undefined,
+  );
 
   useEffect(() => {
     if (open) {
@@ -203,7 +204,11 @@ export function ProgrammeDialog({
     if (readOnly) return;
     try {
       if (isEditing && programme) {
-        await updateProgramme.mutateAsync({ festivalId, programmeId: programme.id, data });
+        await updateProgramme.mutateAsync({
+          festivalId,
+          programmeId: programme.id,
+          data,
+        });
       } else {
         await createProgramme.mutateAsync({ festivalId, data });
       }

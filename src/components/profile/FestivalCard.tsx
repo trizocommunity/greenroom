@@ -3,11 +3,11 @@
 import { addDays, differenceInDays, format } from "date-fns";
 import { Clock, LayoutDashboard, Lock, Pencil } from "lucide-react";
 import Link from "next/link";
+import type { Festival } from "@/api/contracts/festivals";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { parseStoredInstant } from "@/core/utils/date-time";
-import type { Festival } from "@/api/contracts/festivals";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 
 interface FestivalCardProps {

@@ -13,6 +13,14 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import {
+  useAssignments,
+  useBulkCreateAssignments,
+} from "@/api/client/assignments";
+import { useCategories } from "@/api/client/categories";
+import { useGroups } from "@/api/client/groups";
+import { useProgrammes } from "@/api/client/programmes";
+import { useStudents } from "@/api/client/students";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,11 +39,6 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/core/utils/cn";
-import { useAssignments, useBulkCreateAssignments } from "@/api/client/assignments";
-import { useCategories } from "@/api/client/categories";
-import { useGroups } from "@/api/client/groups";
-import { useProgrammes } from "@/api/client/programmes";
-import { useStudents } from "@/api/client/students";
 
 interface AssignmentModalProps {
   festivalId: string;
@@ -118,7 +121,8 @@ export function AssignmentModal({
     // If assigned, we mark them differently.
 
     // We also need to consider category filtering IF the programme is not GENERAL.
-    const isGeneralProgramme = selectedCategoryId === null || selectedCategoryId === undefined;
+    const isGeneralProgramme =
+      selectedCategoryId === null || selectedCategoryId === undefined;
 
     // Filter by Category matching if NOT general and strict mode (User said: first Group, then Category - implying filter)
     if (!isGeneralProgramme && selectedCategoryId) {

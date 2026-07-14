@@ -15,7 +15,8 @@ function makeBrowserQueryClient() {
           if (failureCount > 3) return false;
           if (error && "status" in error) {
             const status = error.status;
-            if (status === 401 || status === 403 || status === 404) return false;
+            if (status === 401 || status === 403 || status === 404)
+              return false;
           }
           return true;
         },

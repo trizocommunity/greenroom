@@ -4,6 +4,10 @@ import { Download, FileDown, Loader2, Search, Share2, X } from "lucide-react";
 import QRCode from "qrcode";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import { useCategories } from "@/api/client/categories";
+import { useGroups } from "@/api/client/groups";
+import { useStudents } from "@/api/client/students";
+import type { Student } from "@/api/contracts/students";
 import { QrCodeDisplay } from "@/components/common/QrCodeDisplay";
 import { QrCodeWithActions } from "@/components/common/QrCodeWithActions";
 import { Badge } from "@/components/ui/badge";
@@ -31,11 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useCategories } from "@/api/client/categories";
-import { useGroups } from "@/api/client/groups";
 import { exportStudentsQrPdfAction } from "@/features/students/actions/qr.actions";
-import type { Student } from "@/api/contracts/students";
-import { useStudents } from "@/api/client/students";
 import {
   getQrCodeContent,
   getStudentProfileUrl,

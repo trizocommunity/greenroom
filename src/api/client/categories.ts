@@ -29,7 +29,11 @@ export function useCategories(festivalId: string) {
 
 export function useCreateCategory() {
   const qc = useQueryClient();
-  return useMutation<Category, Error, { festivalId: string; data: CreateCategoryInput }>({
+  return useMutation<
+    Category,
+    Error,
+    { festivalId: string; data: CreateCategoryInput }
+  >({
     mutationFn: async ({ festivalId, data }) => {
       const res = await fetch(
         `${API_BASE}/categories?festivalId=${encodeURIComponent(festivalId)}`,
@@ -49,7 +53,11 @@ export function useCreateCategory() {
 
 export function useUpdateCategory() {
   const qc = useQueryClient();
-  return useMutation<Category, Error, { festivalId: string; categoryId: string; data: UpdateCategoryInput }>({
+  return useMutation<
+    Category,
+    Error,
+    { festivalId: string; categoryId: string; data: UpdateCategoryInput }
+  >({
     mutationFn: async ({ festivalId, categoryId, data }) => {
       const res = await fetch(
         `${API_BASE}/categories/${categoryId}?festivalId=${encodeURIComponent(festivalId)}`,

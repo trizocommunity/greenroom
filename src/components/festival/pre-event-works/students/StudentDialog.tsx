@@ -6,6 +6,9 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
+import { useCategories } from "@/api/client/categories";
+import { useGroups } from "@/api/client/groups";
+import { useCreateStudent, useUpdateStudent } from "@/api/client/students";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,9 +30,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/core/utils/cn";
-import { useCategories } from "@/api/client/categories";
-import { useGroups } from "@/api/client/groups";
-import { useCreateStudent, useUpdateStudent } from "@/api/client/students";
 import { validateStudentsAction } from "@/features/students/actions/student.actions";
 
 const StudentSchema = z.object({

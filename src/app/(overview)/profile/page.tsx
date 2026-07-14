@@ -16,7 +16,7 @@ export default async function ProfilePage() {
   }
 
   return (
-    <div className="container mx-auto max-w-7xl py-12 px-4">
+    <div className="container mx-auto max-w-7xl py-12 px-6">
       <ProfileView user={user as any} />
     </div>
   );

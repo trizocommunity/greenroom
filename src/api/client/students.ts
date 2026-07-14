@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  BulkCreateStudentInput,
   CreateStudentInput,
+  ExportExcelResponse,
   Student,
   UpdateStudentInput,
-  BulkCreateStudentInput,
-  ExportExcelResponse,
   ValidateStudentsInput,
   ValidateStudentsResponse,
 } from "@/api/contracts/students";
@@ -47,7 +47,11 @@ export function useStudent(festivalId: string, studentId: string) {
 
 export function useCreateStudent() {
   const qc = useQueryClient();
-  return useMutation<Student, Error, { festivalId: string; data: CreateStudentInput }>({
+  return useMutation<
+    Student,
+    Error,
+    { festivalId: string; data: CreateStudentInput }
+  >({
     mutationFn: async ({ festivalId, data }) => {
       const res = await fetch(
         `${API_BASE}/students?festivalId=${encodeURIComponent(festivalId)}`,

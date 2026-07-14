@@ -11,6 +11,11 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import {
+  useAssignments,
+  useBulkCreateAssignments,
+  useDeleteAssignment,
+} from "@/api/client/assignments";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,11 +40,6 @@ import type {
   ProgrammeStatus,
   ProgrammeType,
 } from "@/core/types/app-enums";
-import {
-  useAssignments,
-  useBulkCreateAssignments,
-  useDeleteAssignment,
-} from "@/api/client/assignments";
 import { useDeadlineLock } from "@/features/festivals/hooks/use-deadline-lock";
 import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
 
@@ -634,7 +634,10 @@ export function AssignProgrammesClient({
     const assignment = (assignments as any[]).find(
       (a) =>
         (a.programme?.id ?? a.programmeId) === params.programmeId &&
-        (a.group?.id ?? a.groupId ?? a.student?.groupId ?? a.student?.group?.id) === params.groupId &&
+        (a.group?.id ??
+          a.groupId ??
+          a.student?.groupId ??
+          a.student?.group?.id) === params.groupId &&
         a.teamNumber === params.teamNumber,
     );
     if (!assignment) {
@@ -689,7 +692,10 @@ export function AssignProgrammesClient({
       }));
     }
 
-    await bulkCreateAssignments.mutateAsync({ festivalId, data: { assignments: bulkPayload as any[] } });
+    await bulkCreateAssignments.mutateAsync({
+      festivalId,
+      data: { assignments: bulkPayload as any[] },
+    });
     setSelectedStudentIds([]);
   };
 
@@ -1467,7 +1473,9 @@ export function AssignProgrammesClient({
                                   teamNumber: row.teamNumber,
                                 })
                               }
-                              disabled={runtimeIsReadOnly || deleteAssignment.isPending}
+                              disabled={
+                                runtimeIsReadOnly || deleteAssignment.isPending
+                              }
                               type="button"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -1529,7 +1537,9 @@ export function AssignProgrammesClient({
                             size="icon"
                             className="h-8 w-8 text-destructive hover:text-destructive"
                             onClick={() => onRemoveIndividualAssignment(a.id)}
-                            disabled={runtimeIsReadOnly || deleteAssignment.isPending}
+                            disabled={
+                              runtimeIsReadOnly || deleteAssignment.isPending
+                            }
                             type="button"
                           >
                             <Trash2 className="h-4 w-4" />

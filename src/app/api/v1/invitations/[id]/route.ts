@@ -4,7 +4,11 @@ import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
-import { festival, festivalMember, pendingInvitation } from "@/core/database/schema";
+import {
+  festival,
+  festivalMember,
+  pendingInvitation,
+} from "@/core/database/schema";
 
 export const DELETE = async (
   _req: Request,
@@ -61,9 +65,7 @@ export const DELETE = async (
       );
     }
 
-    await db
-      .delete(pendingInvitation)
-      .where(eq(pendingInvitation.id, id));
+    await db.delete(pendingInvitation).where(eq(pendingInvitation.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {

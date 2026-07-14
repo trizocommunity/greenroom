@@ -15,6 +15,7 @@ import {
 import { format } from "date-fns";
 import { AlertCircle, ArrowUpDown, CreditCard, Search } from "lucide-react";
 import { useState } from "react";
+import { type SuperAdminPayment, useSuperAdminPayments } from "@/api/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,10 +28,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { parseStoredInstant } from "@/core/utils/date-time";
-import {
-  type SuperAdminPayment,
-  useSuperAdminPayments,
-} from "@/api/client";
 
 const columns: ColumnDef<SuperAdminPayment>[] = [
   {

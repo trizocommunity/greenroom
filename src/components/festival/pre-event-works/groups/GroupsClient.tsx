@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { useState } from "react";
+import { useDeleteGroup, useGroups } from "@/api/client/groups";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
@@ -22,7 +23,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import { useDeleteGroup, useGroups } from "@/api/client/groups";
 import { GroupDetailsDialog } from "./GroupDetailsDialog";
 import { GroupDialog } from "./GroupDialog";
 
@@ -219,7 +219,10 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
           title="Delete Group"
           description="Are you sure you want to delete this group? This will also delete all students in this group."
           onDelete={async () => {
-            await deleteGroup.mutateAsync({ festivalId, groupId: actionGroup.group.id });
+            await deleteGroup.mutateAsync({
+              festivalId,
+              groupId: actionGroup.group.id,
+            });
             setActionGroup(null);
           }}
           isDeleting={deleteGroup.isPending}

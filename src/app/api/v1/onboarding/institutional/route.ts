@@ -1,10 +1,10 @@
 import "server-only";
 
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { institution, user as userTable } from "@/core/database/schema";
-import { eq } from "drizzle-orm";
 
 export const POST = async (req: Request) => {
   try {
@@ -29,7 +29,13 @@ export const POST = async (req: Request) => {
       sizeRange,
     } = body;
 
-    if (!fullName || !displayName || !userRole || !institutionName || !institutionType) {
+    if (
+      !fullName ||
+      !displayName ||
+      !userRole ||
+      !institutionName ||
+      !institutionType
+    ) {
       return NextResponse.json(
         { success: false, error: "Missing required fields" },
         { status: 400 },

@@ -29,11 +29,7 @@ export function useUsers() {
 
 export function useUpdateUser() {
   const qc = useQueryClient();
-  return useMutation<
-    User,
-    Error,
-    { id: string; fullName?: string }
-  >({
+  return useMutation<User, Error, { id: string; fullName?: string }>({
     mutationFn: async ({ id, fullName }) => {
       const res = await fetch(`${API_BASE}/users/${id}`, {
         method: "PUT",

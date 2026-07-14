@@ -28,7 +28,11 @@ export function useGallery(festivalId: string) {
 
 export function useCreateGalleryItem() {
   const qc = useQueryClient();
-  return useMutation<GalleryImage, Error, { festivalId: string; data: CreateGalleryImageInput }>({
+  return useMutation<
+    GalleryImage,
+    Error,
+    { festivalId: string; data: CreateGalleryImageInput }
+  >({
     mutationFn: async ({ festivalId, data }) => {
       const res = await fetch(
         `${API_BASE}/gallery?festivalId=${encodeURIComponent(festivalId)}`,

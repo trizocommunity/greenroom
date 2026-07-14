@@ -1,5 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import type { MyFestivalResponse, JoinedFestival } from "@/api/contracts/my-festival";
+import type {
+  JoinedFestival,
+  MyFestivalResponse,
+} from "@/api/contracts/my-festival";
 
 const API_BASE = "/api/v1";
 

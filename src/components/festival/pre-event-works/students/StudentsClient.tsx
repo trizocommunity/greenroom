@@ -21,6 +21,9 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useCategories } from "@/api/client/categories";
+import { useGroups } from "@/api/client/groups";
+import { useDeleteStudent, useStudents } from "@/api/client/students";
 import { FeatureGate } from "@/components/common/FeatureGate";
 import { QrCodeDisplay } from "@/components/common/QrCodeDisplay";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
@@ -59,11 +62,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { parseStoredInstant } from "@/core/utils/date-time";
-import { useCategories } from "@/api/client/categories";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import { useGroups } from "@/api/client/groups";
 import { useFeature } from "@/features/plan-features/hooks/use-feature";
-import { useDeleteStudent, useStudents } from "@/api/client/students";
 import {
   getQrCodeContent,
   getStudentProfilePath,
@@ -895,7 +895,10 @@ export function StudentsClient({
             title="Delete Student"
             description="Are you sure? This will remove the student from all assigned programmes."
             onDelete={async () => {
-              await deleteStudent.mutateAsync({ festivalId, studentId: actionStudent.student.id });
+              await deleteStudent.mutateAsync({
+                festivalId,
+                studentId: actionStudent.student.id,
+              });
               setActionStudent(null);
             }}
             isDeleting={deleteStudent.isPending}

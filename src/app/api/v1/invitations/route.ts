@@ -72,7 +72,10 @@ export const POST = async (req: Request) => {
 
     if (existingInvitation) {
       return NextResponse.json(
-        { success: false, error: "An invitation is already pending for this email" },
+        {
+          success: false,
+          error: "An invitation is already pending for this email",
+        },
         { status: 400 },
       );
     }
@@ -93,7 +96,12 @@ export const POST = async (req: Request) => {
       .returning();
 
     try {
-      await sendInvitationEmail(email, token, festivalRecord.name, festivalRole);
+      await sendInvitationEmail(
+        email,
+        token,
+        festivalRecord.name,
+        festivalRole,
+      );
     } catch {
       // Dev mode logs to terminal
     }

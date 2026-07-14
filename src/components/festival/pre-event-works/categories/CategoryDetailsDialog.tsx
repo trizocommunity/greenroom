@@ -2,6 +2,7 @@
 
 import { Eye, Loader2, Users } from "lucide-react";
 import { useState } from "react";
+import { useStudents } from "@/api/client/students";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useStudents } from "@/api/client/students";
 
 interface CategoryDetailsDialogProps {
   festivalId: string;

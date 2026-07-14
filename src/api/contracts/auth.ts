@@ -8,4 +8,6 @@ export const onboardingInput = z.object({
 export const completeOnboardingResponse = z.object({});
 
 export type OnboardingInput = z.infer<typeof onboardingInput>;
-export type CompleteOnboardingResponse = z.infer<typeof completeOnboardingResponse>;
+export type CompleteOnboardingResponse = z.infer<
+  typeof completeOnboardingResponse
+>;

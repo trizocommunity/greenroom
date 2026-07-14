@@ -25,7 +25,11 @@ export function useStages(festivalId: string) {
 
 export function useCreateStage() {
   const qc = useQueryClient();
-  return useMutation<Stage, Error, { festivalId: string; data: StageDataInput }>({
+  return useMutation<
+    Stage,
+    Error,
+    { festivalId: string; data: StageDataInput }
+  >({
     mutationFn: async ({ festivalId, data }) => {
       const res = await fetch(
         `${API_BASE}/stages?festivalId=${encodeURIComponent(festivalId)}`,
@@ -45,7 +49,11 @@ export function useCreateStage() {
 
 export function useUpdateStage() {
   const qc = useQueryClient();
-  return useMutation<Stage, Error, { festivalId: string; stageId: string; data: StageDataInput }>({
+  return useMutation<
+    Stage,
+    Error,
+    { festivalId: string; stageId: string; data: StageDataInput }
+  >({
     mutationFn: async ({ festivalId, stageId, data }) => {
       const res = await fetch(
         `${API_BASE}/stages/${stageId}?festivalId=${encodeURIComponent(festivalId)}`,

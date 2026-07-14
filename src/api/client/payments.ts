@@ -1,6 +1,4 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import type { Tier } from "@/core/types/app-enums";
-import { loadRazorpay } from "@/core/integrations/razorpay";
 import type {
   InitiatePaymentInput,
   InitiatePaymentResponse,
@@ -9,6 +7,8 @@ import type {
   VerifyPaymentInput,
   VerifyPaymentResponse,
 } from "@/api/contracts/payments";
+import { loadRazorpay } from "@/core/integrations/razorpay";
+import type { Tier } from "@/core/types/app-enums";
 
 const API_BASE = "/api/v1";
 
@@ -31,7 +31,10 @@ export function usePaymentStatus() {
     queryKey: ["payments", "status"],
     queryFn: async () => {
       const res = await fetch(`${API_BASE}/payments`);
-      return handleResponse<{ status: UserStatus; history: PaymentHistoryItem[] }>(res);
+      return handleResponse<{
+        status: UserStatus;
+        history: PaymentHistoryItem[];
+      }>(res);
     },
     staleTime: 30 * 1000,
   });
@@ -68,7 +71,10 @@ export function usePaymentHistory() {
     queryKey: ["payments", "history"],
     queryFn: async () => {
       const res = await fetch(`${API_BASE}/payments`);
-      return handleResponse<{ status: UserStatus; history: PaymentHistoryItem[] }>(res);
+      return handleResponse<{
+        status: UserStatus;
+        history: PaymentHistoryItem[];
+      }>(res);
     },
     staleTime: 30 * 1000,
   });

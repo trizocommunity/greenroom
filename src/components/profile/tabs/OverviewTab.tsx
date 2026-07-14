@@ -4,6 +4,12 @@ import { ArrowRight, Check, Loader2, Plus, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
+  useFestivalPayment,
+  useJoinedFestivals,
+  useMyFestivals,
+  useUnusedCredit,
+} from "@/api/client";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -28,10 +34,7 @@ import { PRICING_TIERS } from "@/config/pricing";
 import type { Tier } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
 import { parseStoredInstant } from "@/core/utils/date-time";
-import { useFestivalPayment } from "@/api/client";
-import { useMyFestivals, useJoinedFestivals } from "@/api/client";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
-import { useUnusedCredit } from "@/api/client";
 import { FestivalCard } from "../FestivalCard";
 import { JoinedFestivalCard } from "../JoinedFestivalCard";
 
@@ -40,11 +43,15 @@ interface OverviewTabProps {
   userId: string;
 }
 
-export function OverviewTab({ displayName, userId: _userId }: OverviewTabProps) {
+export function OverviewTab({
+  displayName,
+  userId: _userId,
+}: OverviewTabProps) {
   const router = useRouter();
   const [confirmationTier, setConfirmationTier] = useState<Tier | null>(null);
 
-  const { data: myFestivalData, isLoading: isFestivalLoading } = useMyFestivals();
+  const { data: myFestivalData, isLoading: isFestivalLoading } =
+    useMyFestivals();
   const festival = myFestivalData?.festival ?? null;
   const { data: joinedFestivals, isLoading: isJoinedLoading } =
     useJoinedFestivals();
@@ -134,7 +141,7 @@ export function OverviewTab({ displayName, userId: _userId }: OverviewTabProps) 
         </h2>
       </div>
 
-      {renderJoinedSection()}
+      {!festival && renderJoinedSection()}
 
       {ownedContent}
 

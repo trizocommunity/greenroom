@@ -1,6 +1,6 @@
 # issue-01: Auth Refactor — Magic Link + Institutional Onboarding + Invitation Flow
 
-**Status:** OPEN
+**Status:** ✅ DONE
 
 ## TL;DR
 

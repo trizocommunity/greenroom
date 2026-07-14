@@ -36,14 +36,19 @@ export async function prefetchStudents(festivalId: string) {
   await queryClient.prefetchQuery({
     queryKey: queryKeys.students.all(festivalId),
     queryFn: async () => {
-      const res = await fetch(`/api/v1/students?festivalId=${encodeURIComponent(festivalId)}`);
+      const res = await fetch(
+        `/api/v1/students?festivalId=${encodeURIComponent(festivalId)}`,
+      );
       return handleResponse<unknown>(res);
     },
     staleTime: 30 * 1000,
   });
 }
 
-export async function prefetchSchedule(festivalId: string, typeFilter?: string) {
+export async function prefetchSchedule(
+  festivalId: string,
+  typeFilter?: string,
+) {
   const queryClient = getQueryClient();
   const params = new URLSearchParams({ festivalId });
   if (typeFilter) params.set("typeFilter", typeFilter);
@@ -62,7 +67,9 @@ export async function prefetchCategories(festivalId: string) {
   await queryClient.prefetchQuery({
     queryKey: queryKeys.categories.all(festivalId),
     queryFn: async () => {
-      const res = await fetch(`/api/v1/categories?festivalId=${encodeURIComponent(festivalId)}`);
+      const res = await fetch(
+        `/api/v1/categories?festivalId=${encodeURIComponent(festivalId)}`,
+      );
       return handleResponse<unknown>(res);
     },
     staleTime: 60 * 1000,
@@ -74,14 +81,19 @@ export async function prefetchGroups(festivalId: string) {
   await queryClient.prefetchQuery({
     queryKey: queryKeys.groups.all(festivalId),
     queryFn: async () => {
-      const res = await fetch(`/api/v1/groups?festivalId=${encodeURIComponent(festivalId)}`);
+      const res = await fetch(
+        `/api/v1/groups?festivalId=${encodeURIComponent(festivalId)}`,
+      );
       return handleResponse<unknown>(res);
     },
     staleTime: 60 * 1000,
   });
 }
 
-export async function prefetchProgrammes(festivalId: string, categoryId?: string) {
+export async function prefetchProgrammes(
+  festivalId: string,
+  categoryId?: string,
+) {
   const queryClient = getQueryClient();
   const params = new URLSearchParams({ festivalId });
   if (categoryId) params.set("categoryId", categoryId);
@@ -100,14 +112,19 @@ export async function prefetchJudges(festivalId: string) {
   await queryClient.prefetchQuery({
     queryKey: queryKeys.judges.all(festivalId),
     queryFn: async () => {
-      const res = await fetch(`/api/v1/judges?festivalId=${encodeURIComponent(festivalId)}`);
+      const res = await fetch(
+        `/api/v1/judges?festivalId=${encodeURIComponent(festivalId)}`,
+      );
       return handleResponse<unknown>(res);
     },
     staleTime: 60 * 1000,
   });
 }
 
-export async function prefetchResults(festivalId: string, programmeId?: string) {
+export async function prefetchResults(
+  festivalId: string,
+  programmeId?: string,
+) {
   const queryClient = getQueryClient();
   const params = new URLSearchParams({ festivalId });
   if (programmeId) params.set("programmeId", programmeId);

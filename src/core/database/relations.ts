@@ -589,13 +589,16 @@ export const institutionRelations = relations(institution, ({ one, many }) => ({
 
 export const magicLinkTokenRelations = relations(magicLinkToken, () => ({}));
 
-export const pendingInvitationRelations = relations(pendingInvitation, ({ one }) => ({
-  festival: one(festival, {
-    fields: [pendingInvitation.festivalId],
-    references: [festival.id],
+export const pendingInvitationRelations = relations(
+  pendingInvitation,
+  ({ one }) => ({
+    festival: one(festival, {
+      fields: [pendingInvitation.festivalId],
+      references: [festival.id],
+    }),
+    inviter: one(user, {
+      fields: [pendingInvitation.invitedBy],
+      references: [user.id],
+    }),
   }),
-  inviter: one(user, {
-    fields: [pendingInvitation.invitedBy],
-    references: [user.id],
-  }),
-}));
+);

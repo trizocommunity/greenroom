@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { SessionPayload } from "@/api/lib/create-handler";
 import type { UpdateProfileInput } from "@/api/contracts/profile";
+import type { SessionPayload } from "@/api/lib/create-handler";
 
 const API_BASE = "/api/v1";
 

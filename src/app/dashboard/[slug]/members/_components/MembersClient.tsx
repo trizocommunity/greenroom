@@ -5,6 +5,11 @@ import { format } from "date-fns";
 import { Copy, Eye, Loader2, Trash2, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import {
+  useAddMember,
+  useMembers,
+  useRemoveMember,
+} from "@/api/client/members";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
@@ -39,7 +44,6 @@ import {
 import type { FestivalRole } from "@/core/types/app-enums";
 import { parseStoredInstant } from "@/core/utils/date-time";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import { useAddMember, useMembers, useRemoveMember } from "@/api/client/members";
 
 interface MembersClientProps {
   festivalId: string;

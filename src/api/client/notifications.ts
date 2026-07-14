@@ -47,7 +47,10 @@ export function useMarkNotificationRead() {
     },
     onMutate: async ({ studentId, notificationId }) => {
       await qc.cancelQueries({ queryKey: ["notifications", studentId] });
-      const prev = qc.getQueryData<Notification[]>(["notifications", studentId]);
+      const prev = qc.getQueryData<Notification[]>([
+        "notifications",
+        studentId,
+      ]);
       qc.setQueryData(
         ["notifications", studentId],
         (old: Notification[] | undefined) =>
@@ -86,7 +89,10 @@ export function useMarkAllNotificationsRead() {
     },
     onMutate: async ({ studentId }) => {
       await qc.cancelQueries({ queryKey: ["notifications", studentId] });
-      const prev = qc.getQueryData<Notification[]>(["notifications", studentId]);
+      const prev = qc.getQueryData<Notification[]>([
+        "notifications",
+        studentId,
+      ]);
       qc.setQueryData(
         ["notifications", studentId],
         (old: Notification[] | undefined) =>

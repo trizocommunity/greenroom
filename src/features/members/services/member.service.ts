@@ -1,7 +1,5 @@
+import { createMagicLinkToken } from "@/core/auth/magic-link";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
-import {
-  createMagicLinkToken,
-} from "@/core/auth/magic-link";
 import { sendMagicLinkEmail } from "@/core/integrations/email";
 import {
   createUser,
@@ -60,7 +58,10 @@ export const MemberService = {
     });
 
     if (isNewUser) {
-      const token = await createMagicLinkToken(data.email, MAGIC_LINK_EXPIRY_MS);
+      const token = await createMagicLinkToken(
+        data.email,
+        MAGIC_LINK_EXPIRY_MS,
+      );
       await sendMagicLinkEmail(data.email, token).catch(() => {});
     }
 

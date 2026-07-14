@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   Assignment,
-  CreateAssignmentInput,
   BulkCreateAssignmentInput,
   BulkCreateResult,
+  CreateAssignmentInput,
   UpdateAssignmentInput,
 } from "@/api/contracts/assignments";
 
@@ -31,7 +31,11 @@ export function useAssignments(festivalId: string) {
 
 export function useCreateAssignment() {
   const qc = useQueryClient();
-  return useMutation<Assignment, Error, { festivalId: string; data: CreateAssignmentInput }>({
+  return useMutation<
+    Assignment,
+    Error,
+    { festivalId: string; data: CreateAssignmentInput }
+  >({
     mutationFn: async ({ festivalId, data }) => {
       const res = await fetch(
         `${API_BASE}/assignments?festivalId=${encodeURIComponent(festivalId)}`,
@@ -51,7 +55,11 @@ export function useCreateAssignment() {
 
 export function useBulkCreateAssignments() {
   const qc = useQueryClient();
-  return useMutation<BulkCreateResult, Error, { festivalId: string; data: BulkCreateAssignmentInput }>({
+  return useMutation<
+    BulkCreateResult,
+    Error,
+    { festivalId: string; data: BulkCreateAssignmentInput }
+  >({
     mutationFn: async ({ festivalId, data }) => {
       const res = await fetch(
         `${API_BASE}/assignments/bulk?festivalId=${encodeURIComponent(festivalId)}`,
@@ -71,7 +79,11 @@ export function useBulkCreateAssignments() {
 
 export function useUpdateAssignment() {
   const qc = useQueryClient();
-  return useMutation<Assignment, Error, { festivalId: string; assignmentId: string; data: UpdateAssignmentInput }>({
+  return useMutation<
+    Assignment,
+    Error,
+    { festivalId: string; assignmentId: string; data: UpdateAssignmentInput }
+  >({
     mutationFn: async ({ festivalId, assignmentId, data }) => {
       const res = await fetch(
         `${API_BASE}/assignments/${assignmentId}?festivalId=${encodeURIComponent(festivalId)}`,
@@ -91,20 +103,22 @@ export function useUpdateAssignment() {
 
 export function useDeleteAssignment() {
   const qc = useQueryClient();
-  return useMutation<void, Error, { festivalId: string; assignmentId: string }>({
-    mutationFn: async ({ festivalId, assignmentId }) => {
-      const res = await fetch(
-        `${API_BASE}/assignments?festivalId=${encodeURIComponent(festivalId)}`,
-        {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ assignmentId }),
-        },
-      );
-      return handleResponse<void>(res);
+  return useMutation<void, Error, { festivalId: string; assignmentId: string }>(
+    {
+      mutationFn: async ({ festivalId, assignmentId }) => {
+        const res = await fetch(
+          `${API_BASE}/assignments?festivalId=${encodeURIComponent(festivalId)}`,
+          {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ assignmentId }),
+          },
+        );
+        return handleResponse<void>(res);
+      },
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: ["assignments"] });
+      },
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["assignments"] });
-    },
-  });
+  );
 }

@@ -2,6 +2,7 @@
 
 import { Eye, Loader2, Users } from "lucide-react";
 import { useState } from "react";
+import { useStudents } from "@/api/client/students";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +23,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useFeature } from "@/features/plan-features/hooks/use-feature";
-import { useStudents } from "@/api/client/students";
 
 interface User {
   id: string;

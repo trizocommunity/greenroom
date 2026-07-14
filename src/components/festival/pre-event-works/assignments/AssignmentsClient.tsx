@@ -4,6 +4,11 @@ import { format } from "date-fns";
 import { Loader2, Plus, Search, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useAssignments, useDeleteAssignment } from "@/api/client/assignments";
+import { useCategories } from "@/api/client/categories";
+import { useGroups } from "@/api/client/groups";
+import { useProgrammes } from "@/api/client/programmes";
+import { useStudents } from "@/api/client/students";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { DeadlinesCard } from "@/components/festival/pre-event-works/DeadlinesCard";
 import { Badge } from "@/components/ui/badge";
@@ -27,17 +32,12 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { parseStoredInstant } from "@/core/utils/date-time";
-import { useAssignments, useDeleteAssignment } from "@/api/client/assignments";
-import { useCategories } from "@/api/client/categories";
-import { useDeadlineLock } from "@/features/festivals/hooks/use-deadline-lock";
-import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import { useGroups } from "@/api/client/groups";
-import { useProgrammes } from "@/api/client/programmes";
-import { useStudents } from "@/api/client/students";
 import {
   deleteAssignmentAction,
   deleteTeamAssignmentAction,
 } from "@/features/assignments/actions/assignment.actions";
+import { useDeadlineLock } from "@/features/festivals/hooks/use-deadline-lock";
+import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { AssignmentModal } from "./AssignmentModal";
 
 type IndividualAssignmentRow = {
@@ -197,15 +197,14 @@ export function AssignmentsClient({
   programmeAssignmentDeadline,
   children,
 }: AssignmentsClientProps) {
-  const {
-    data: assignments = [],
-    isLoading: isAssignmentsLoading,
-  } = useAssignments(festivalId);
+  const { data: assignments = [], isLoading: isAssignmentsLoading } =
+    useAssignments(festivalId);
   const deleteAssignment = useDeleteAssignment();
   const { data: programmes = [] } = useProgrammes(festivalId);
   const { data: categories = [] } = useCategories(festivalId);
   const { data: groups = [] } = useGroups(festivalId);
-  const { data: students = [], isLoading: isStudentsLoading } = useStudents(festivalId);
+  const { data: students = [], isLoading: isStudentsLoading } =
+    useStudents(festivalId);
 
   const isLoading = isAssignmentsLoading || isStudentsLoading;
 
@@ -428,10 +427,7 @@ export function AssignmentsClient({
       const studentCountByGroup = new Map<string, number>();
       for (const s of eligibleStudents) {
         const gid = s.groupId ?? "";
-        studentCountByGroup.set(
-          gid,
-          (studentCountByGroup.get(gid) || 0) + 1,
-        );
+        studentCountByGroup.set(gid, (studentCountByGroup.get(gid) || 0) + 1);
       }
 
       let totalTarget = 0;
@@ -723,7 +719,10 @@ export function AssignmentsClient({
         }
         onDelete={async () => {
           if (deleteTarget?.kind === "individual") {
-            await deleteAssignment.mutateAsync({ festivalId, assignmentId: deleteTarget.assignment.id });
+            await deleteAssignment.mutateAsync({
+              festivalId,
+              assignmentId: deleteTarget.assignment.id,
+            });
             setDeleteTarget(null);
           }
         }}

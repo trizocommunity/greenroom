@@ -3,6 +3,7 @@
 import { format } from "date-fns";
 import { Crown, Eye, Loader2, Mail, Phone } from "lucide-react";
 import { useState } from "react";
+import { useAssignments } from "@/api/client/assignments";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { TeamStudentsDialog } from "@/components/festival/pre-event-works/assignments/TeamStudentsDialog";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +25,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { parseStoredInstant } from "@/core/utils/date-time";
-import { useAssignments } from "@/api/client/assignments";
 import { getProgrammeTeamMembersAction } from "@/features/assignments/actions/assignment.actions";
 import { useFeature } from "@/features/plan-features/hooks/use-feature";
 

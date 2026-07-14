@@ -35,7 +35,10 @@ const handler = createProtectedHandler({
     const buffer = Buffer.from(base64Data, "base64");
 
     if (buffer.length > MAX_FILE_SIZE) {
-      return badRequest("FILE_TOO_LARGE", "File too large. Maximum size is 5MB.");
+      return badRequest(
+        "FILE_TOO_LARGE",
+        "File too large. Maximum size is 5MB.",
+      );
     }
 
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
@@ -43,10 +46,7 @@ const handler = createProtectedHandler({
     const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
     if (!cloudName || !apiKey || !apiSecret) {
-      return badRequest(
-        "CONFIG_ERROR",
-        "Upload service not configured",
-      );
+      return badRequest("CONFIG_ERROR", "Upload service not configured");
     }
 
     const timestamp = Math.round(Date.now() / 1000);

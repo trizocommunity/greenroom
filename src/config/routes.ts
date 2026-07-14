@@ -22,9 +22,7 @@ export const publicRoutes = [
   "/pricing",
 ];
 
-export const authRoutes = [
-  "/login",
-];
+export const authRoutes = ["/login"];
 
 export const festivalRoutes = [
   "/about",

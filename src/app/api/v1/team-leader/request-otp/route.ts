@@ -1,8 +1,8 @@
 import "server-only";
 
+import { requestOtpInput } from "@/api/contracts/team-leader";
 import { badRequest, createHandler, ok } from "@/api/lib";
 import { TeamLeaderAuthService } from "@/features/team-leader/services/team-leader-auth.service";
-import { requestOtpInput } from "@/api/contracts/team-leader";
 
 const handler = createHandler({
   async POST({ request }) {

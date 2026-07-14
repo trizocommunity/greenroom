@@ -3,6 +3,8 @@
 import { Crown, Loader2, Mail } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useGroups, useUpdateGroup } from "@/api/client/groups";
+import { useStudents } from "@/api/client/students";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,10 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useGroups } from "@/api/client/groups";
-import { useUpdateGroup } from "@/api/client/groups";
 import { updateStudentAction } from "@/features/students/actions/student.actions";
-import { useStudents } from "@/api/client/students";
 
 interface AssignTeamLeadersModalProps {
   festivalId: string;

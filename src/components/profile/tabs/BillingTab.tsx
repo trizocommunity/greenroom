@@ -10,6 +10,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useState } from "react";
+import { usePaymentHistory } from "@/api/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +23,6 @@ import {
 import { BillingHistorySkeleton } from "@/components/ui/Skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { parseStoredInstant } from "@/core/utils/date-time";
-import { usePaymentHistory } from "@/api/client";
 import { PaymentDetailsModal } from "../modals/PaymentDetailsModal";
 
 export function BillingTab() {

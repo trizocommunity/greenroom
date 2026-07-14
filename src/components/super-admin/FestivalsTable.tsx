@@ -6,6 +6,11 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
+  type Festival,
+  useDeleteFestival,
+  useFestivals,
+} from "@/api/client/festivals";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -25,11 +30,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  type Festival,
-  useDeleteFestival,
-  useFestivals,
-} from "@/api/client/festivals";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 
 export function FestivalsTable() {

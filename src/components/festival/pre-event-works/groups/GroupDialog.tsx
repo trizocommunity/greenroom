@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
+import { useCreateGroup, useUpdateGroup } from "@/api/client/groups";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,7 +27,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useCreateGroup, useUpdateGroup } from "@/api/client/groups";
 
 const GroupSchema = z.object({
   name: z.string().min(1, "Name is required"),

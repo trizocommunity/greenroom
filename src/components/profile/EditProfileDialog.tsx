@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { useUpdateProfile } from "@/api/client/profile";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,7 +27,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import type { UserProfile } from "@/core/types/app-enums";
-import { useUpdateProfile } from "@/api/client/profile";
 
 const profileSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
@@ -78,7 +78,7 @@ export function EditProfileDialog({ user, trigger }: EditProfileDialogProps) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="w-full sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Edit Profile</DialogTitle>
           <DialogDescription>

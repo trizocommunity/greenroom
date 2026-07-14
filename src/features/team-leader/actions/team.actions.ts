@@ -5,13 +5,13 @@ import { and, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createMagicLinkToken } from "@/core/auth/magic-link";
-import { sendMagicLinkEmail } from "@/core/integrations/email";
 import { db } from "@/core/database/client";
 import {
   festivalMember as festivalMemberTable,
   festival as festivalTable,
   user as userTable,
 } from "@/core/database/schema";
+import { sendMagicLinkEmail } from "@/core/integrations/email";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { ensureFestivalWritable } from "@/features/festivals/services/festival-context.service";
 

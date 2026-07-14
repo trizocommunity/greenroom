@@ -45,7 +45,11 @@ export function useCreateJudge() {
 
 export function useUpdateJudge() {
   const qc = useQueryClient();
-  return useMutation<Judge, Error, { festivalId: string; judgeId: string; data: JudgeInput }>({
+  return useMutation<
+    Judge,
+    Error,
+    { festivalId: string; judgeId: string; data: JudgeInput }
+  >({
     mutationFn: async ({ festivalId, judgeId, data }) => {
       const res = await fetch(
         `${API_BASE}/judges/${judgeId}?festivalId=${encodeURIComponent(festivalId)}`,

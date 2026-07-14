@@ -1,8 +1,8 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
-  TeamLeaderLogoutResponse,
   RequestOtpInput,
   RequestOtpResponse,
+  TeamLeaderLogoutResponse,
   VerifyOtpInput,
   VerifyOtpResponse,
 } from "@/api/contracts/team-leader";

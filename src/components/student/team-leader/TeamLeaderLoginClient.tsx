@@ -4,10 +4,10 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useRequestOtp, useVerifyOtp } from "@/api/client/team-leader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useRequestOtp, useVerifyOtp } from "@/api/client/team-leader";
 
 export function TeamLeaderLoginClient({
   festivalSlug,
@@ -66,7 +66,8 @@ export function TeamLeaderLoginClient({
         },
         onError: (error) => {
           toast.error(
-            (error as { message?: string }).message || "OTP verification failed",
+            (error as { message?: string }).message ||
+              "OTP verification failed",
           );
         },
       },

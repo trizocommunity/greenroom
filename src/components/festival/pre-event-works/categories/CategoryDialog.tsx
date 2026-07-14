@@ -6,6 +6,11 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
+import {
+  useCategories,
+  useCreateCategory,
+  useUpdateCategory,
+} from "@/api/client/categories";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,11 +37,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  useCategories,
-  useCreateCategory,
-  useUpdateCategory,
-} from "@/api/client/categories";
 
 const CategorySchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -107,7 +107,11 @@ export function CategoryDialog({
   const onSubmit = async (data: CategoryFormValues) => {
     try {
       if (isEditing && category) {
-        await updateCategory.mutateAsync({ festivalId, categoryId: category.id, data });
+        await updateCategory.mutateAsync({
+          festivalId,
+          categoryId: category.id,
+          data,
+        });
       } else {
         await createCategory.mutateAsync({ festivalId, data });
       }

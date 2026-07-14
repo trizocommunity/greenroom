@@ -6,7 +6,7 @@ import { useState } from "react";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { ProfileSidebarContent } from "@/components/profile/ProfileSidebarContent";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import type { UserProfile } from "@/core/types/app-enums";
 
 interface DashboardNavbarProps {
@@ -18,7 +18,7 @@ export default function DashboardNavbar({ user }: DashboardNavbarProps) {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-40 backdrop-blur-2xl border-b border-white/10 bg-background/80">
-      <div className="mx-auto max-w-7xl px-4 h-20 flex items-center justify-between">
+      <div className="mx-auto max-w-7xl px-6 h-20 flex items-center justify-between">
         <Link
           href={"/profile"}
           className="text-2xl font-black uppercase tracking-tighter text-foreground"
@@ -33,6 +33,9 @@ export default function DashboardNavbar({ user }: DashboardNavbarProps) {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0">
+              <SheetHeader className="sr-only">
+                <SheetTitle>Navigation Menu</SheetTitle>
+              </SheetHeader>
               <div className="py-6 h-full">
                 <ProfileSidebarContent
                   user={user}

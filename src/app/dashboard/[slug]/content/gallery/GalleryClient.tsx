@@ -14,6 +14,7 @@ import {
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useCloudinaryUpload } from "@/api/client";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,6 @@ import {
   deleteGalleryImageAction,
   deleteGalleryImagesAction,
 } from "@/features/gallery/actions/gallery.actions";
-import { useCloudinaryUpload } from "@/api/client";
 
 type ImageRecord = { id: string; url: string; order: number };
 

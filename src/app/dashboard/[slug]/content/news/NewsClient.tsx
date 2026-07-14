@@ -14,6 +14,7 @@ import {
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useCloudinaryUpload } from "@/api/client";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,6 @@ import {
   deleteNewsPostAction,
   updateNewsPostAction,
 } from "@/features/news/actions/news.actions";
-import { useCloudinaryUpload } from "@/api/client";
 
 type NewsPost = {
   id: string;

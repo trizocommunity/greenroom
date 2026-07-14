@@ -1,12 +1,13 @@
 "use client";
 
-import { CreditCard, LayoutDashboard, Tent } from "lucide-react";
+import { CreditCard, LayoutDashboard, Pencil, Tent } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import type { UserProfile } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
 import { EditProfileDialog } from "./EditProfileDialog";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 
 interface ProfileSidebarContentProps {
   user: UserProfile;
@@ -64,67 +65,88 @@ export function ProfileSidebarContent({
 
   return (
     <div className={cn("flex flex-col h-full", className)}>
-      {/* User Info */}
-      <div className="flex items-center gap-3 mb-4 px-4">
-        <Avatar className="h-10 w-10">
-          <AvatarImage src="" />
-          <AvatarFallback>{initials}</AvatarFallback>
-        </Avatar>
-        <div className="overflow-hidden">
-          <h1 className="text-sm font-medium truncate">{displayName}</h1>
-          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-        </div>
-      </div>
+      {/* User Info & Avatar Header */}
+      <div className="flex flex-col items-start gap-4 mb-6 px-4 md:px-0">
+        {/* Avatar with Edit Button overlay at bottom right */}
+        <div className="relative inline-block">
+          <Avatar className="h-20 w-20 border border-border shadow-sm">
+            <AvatarImage src="" />
+            <AvatarFallback className="text-xl font-bold bg-primary/10 text-primary">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
 
-      {/* Account Type Badge */}
-      {user.accountType && (
-        <div className="px-4 mb-4">
-          <Badge
-            variant="outline"
-            className={cn(
-              "text-xs font-medium",
-              user.accountType === "INSTITUTIONAL"
-                ? "bg-primary/10 text-primary border-primary/20"
-                : "bg-muted text-muted-foreground",
-            )}
-          >
-            {user.accountType}
-          </Badge>
-          {user.accountType === "PERSONAL" && (
-            <p className="text-[10px] text-muted-foreground mt-1.5">
-              Upgrade to Institutional for campus features
-            </p>
+          <EditProfileDialog
+            user={user}
+            trigger={
+              <button
+                type="button"
+                title="Edit Profile"
+                className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-primary text-primary-foreground shadow-md hover:bg-primary/90 transition-all flex items-center justify-center border-2 border-background"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            }
+          />
+        </div>
+
+        {/* Name, Email & Badge */}
+        <div className="space-y-1 w-full">
+          <h1 className="text-base font-bold tracking-tight text-foreground truncate">
+            {displayName}
+          </h1>
+          <p className="text-xs font-medium text-muted-foreground truncate">
+            {user.email}
+          </p>
+
+          {user.accountType && (
+            <div className="pt-1.5">
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-[11px] font-semibold px-2.5 py-0.5",
+                  user.accountType === "INSTITUTIONAL"
+                    ? "bg-primary/10 text-primary border-primary/20"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                {user.accountType}
+              </Badge>
+              {user.accountType === "PERSONAL" && (
+                <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed">
+                  Upgrade to Institutional for campus features
+                </p>
+              )}
+            </div>
           )}
         </div>
-      )}
-
-      {/* Edit Profile Button */}
-      <div className="px-4 mb-8">
-        <EditProfileDialog user={user} />
       </div>
 
       {/* Navigation */}
-      <nav className="flex flex-col md:space-y-1 flex-1">
-        <div className="hidden md:block mb-4 px-4 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+      <nav className="flex flex-col space-y-1 flex-1">
+        <div className="mb-4 px-4 md:px-0 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
           Account
         </div>
-        <div className="flex overflow-x-auto md:flex-col gap-2 pb-2 md:pb-0 px-4 md:px-0 snap-x scrollbar-none hide-scrollbar">
+        <div className="flex flex-col space-y-1 px-2 md:px-0">
           {items.map((item) => (
             <button
               type="button"
               key={item.value}
               onClick={() => navigate(item.value)}
               className={cn(
-                "flex items-center gap-2 md:gap-3 rounded-full md:rounded-md px-4 py-2 text-sm font-medium transition-colors md:w-full text-left whitespace-nowrap snap-start shrink-0",
+                "flex items-center gap-3 rounded-md px-4 py-2.5 text-sm font-medium transition-colors w-full text-left",
                 activeTab === item.value
-                  ? "bg-primary text-primary-foreground md:bg-primary/10 md:text-primary"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground md:bg-transparent",
+                  ? "bg-primary/10 text-primary font-semibold"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
-              <item.icon className="h-4 w-4" />
+              <item.icon className="h-4 w-4 shrink-0" />
               {item.label}
             </button>
           ))}
+        </div>
+        <div className="md:hidden mt-auto pt-6 px-4 border-t border-border/50">
+          <LogoutButton />
         </div>
       </nav>
     </div>

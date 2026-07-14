@@ -19,7 +19,9 @@ const magicLinkRequestSchema = z.object({
 type FormData = z.infer<typeof magicLinkRequestSchema>;
 
 export function MagicLinkRequestForm() {
-  const [submittedEmail, setSubmittedEmail] = React.useState<string | null>(null);
+  const [submittedEmail, setSubmittedEmail] = React.useState<string | null>(
+    null,
+  );
   const { mutate, isPending } = useSendMagicLink();
 
   const {

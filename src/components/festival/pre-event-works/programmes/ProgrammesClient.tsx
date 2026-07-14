@@ -15,6 +15,8 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
+import { useCategories } from "@/api/client/categories";
+import { useDeleteProgramme, useProgrammes } from "@/api/client/programmes";
 import { FeatureGate } from "@/components/common/FeatureGate";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
@@ -52,10 +54,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { ProgrammeStatus } from "@/core/types/app-enums";
-import { useCategories } from "@/api/client/categories";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import { useProgrammes } from "@/api/client/programmes";
-import { useDeleteProgramme } from "@/api/client/programmes";
 import {
   getAssignmentProgressLabel,
   getExpectedAssignmentsTotal,
@@ -595,7 +594,10 @@ export function ProgrammesClient({
             title="Delete Programme"
             description="Are you sure? This will delete all assignments associated with this programme."
             onDelete={async () => {
-              await deleteProgramme.mutateAsync({ festivalId, programmeId: actionProgramme.programme.id });
+              await deleteProgramme.mutateAsync({
+                festivalId,
+                programmeId: actionProgramme.programme.id,
+              });
               setActionProgramme(null);
             }}
             isDeleting={deleteProgramme.isPending}

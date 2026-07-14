@@ -24,8 +24,8 @@ export function ProfileView({ user }: ProfileViewProps) {
 
   return (
     <div className="flex flex-col md:flex-row gap-6 md:gap-8">
-      {/* Sidebar */}
-      <aside className="w-full md:w-64 shrink-0">
+      {/* Sidebar - hidden on mobile, accessible via top navigation menu sidebar */}
+      <aside className="hidden md:block w-64 shrink-0">
         <ProfileSidebarContent user={user} />
       </aside>
 

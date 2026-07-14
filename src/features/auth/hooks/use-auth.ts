@@ -14,7 +14,12 @@ export const useSendMagicLink = () => {
     },
     onError: (error: any) => {
       console.error("Magic link error:", error);
-      toast.error(error?.body?.error?.message || error?.body?.error || error?.message || "Failed to send magic link");
+      toast.error(
+        error?.body?.error?.message ||
+          error?.body?.error ||
+          error?.message ||
+          "Failed to send magic link",
+      );
     },
   });
 };
@@ -27,7 +32,9 @@ export const useVerifyMagicLink = () => {
     mutationFn: (data: { token: string }) => api.auth.verifyMagicLink(data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["me"] });
-      if (data.body.requiresOnboarding) {
+      if (data.body.role === "SUPER_ADMIN") {
+        router.push("/super-admin");
+      } else if (data.body.requiresOnboarding) {
         router.push("/onboarding");
       } else {
         router.push("/profile");
@@ -36,7 +43,11 @@ export const useVerifyMagicLink = () => {
     },
     onError: (error: any) => {
       console.error("Verify magic link error:", error);
-      const errorMessage = error?.body?.error?.message || error?.body?.error || error?.message || "Invalid or expired link";
+      const errorMessage =
+        error?.body?.error?.message ||
+        error?.body?.error ||
+        error?.message ||
+        "Invalid or expired link";
       toast.error(errorMessage);
     },
   });
@@ -55,7 +66,12 @@ export const useLogout = () => {
     },
     onError: (error: any) => {
       console.error("Logout error:", error);
-      toast.error(error?.body?.error?.message || error?.body?.error || error?.message || "Logout failed");
+      toast.error(
+        error?.body?.error?.message ||
+          error?.body?.error ||
+          error?.message ||
+          "Logout failed",
+      );
     },
   });
 };
@@ -75,7 +91,12 @@ export const useCompleteOnboarding = () => {
     },
     onError: (error: any) => {
       console.error("Complete onboarding error:", error);
-      toast.error(error?.body?.error?.message || error?.body?.error || error?.message || "Onboarding failed");
+      toast.error(
+        error?.body?.error?.message ||
+          error?.body?.error ||
+          error?.message ||
+          "Onboarding failed",
+      );
     },
   });
 };
@@ -89,8 +110,7 @@ export const useCompletePersonalOnboarding = () => {
       fullName: string;
       displayName: string;
       userRole: string;
-    }) =>
-      api.auth.completePersonalOnboarding(data),
+    }) => api.auth.completePersonalOnboarding(data),
     onSuccess: () => {
       toast.success("Onboarding complete");
       queryClient.invalidateQueries({ queryKey: ["me"] });
@@ -99,7 +119,12 @@ export const useCompletePersonalOnboarding = () => {
     },
     onError: (error: any) => {
       console.error("Complete onboarding error:", error);
-      toast.error(error?.body?.error?.message || error?.body?.error || error?.message || "Onboarding failed");
+      toast.error(
+        error?.body?.error?.message ||
+          error?.body?.error ||
+          error?.message ||
+          "Onboarding failed",
+      );
     },
   });
 };
@@ -118,8 +143,7 @@ export const useCompleteInstitutionalOnboarding = () => {
       affiliation?: string | null;
       city?: string | null;
       sizeRange?: string | null;
-    }) =>
-      api.auth.completeInstitutionalOnboarding(data),
+    }) => api.auth.completeInstitutionalOnboarding(data),
     onSuccess: () => {
       toast.success("Onboarding complete");
       queryClient.invalidateQueries({ queryKey: ["me"] });
@@ -128,7 +152,12 @@ export const useCompleteInstitutionalOnboarding = () => {
     },
     onError: (error: any) => {
       console.error("Complete onboarding error:", error);
-      toast.error(error?.body?.error?.message || error?.body?.error || error?.message || "Onboarding failed");
+      toast.error(
+        error?.body?.error?.message ||
+          error?.body?.error ||
+          error?.message ||
+          "Onboarding failed",
+      );
     },
   });
 };

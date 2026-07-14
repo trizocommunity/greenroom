@@ -13,7 +13,10 @@ async function handleResponse<T>(res: Response): Promise<T> {
   return json.data;
 }
 
-export function useSchedule(festivalId: string, typeFilter?: "PROGRAMME" | "SESSION") {
+export function useSchedule(
+  festivalId: string,
+  typeFilter?: "PROGRAMME" | "SESSION",
+) {
   return useQuery<ScheduleEntry[]>({
     queryKey: ["schedule", festivalId, typeFilter],
     queryFn: async () => {
@@ -30,7 +33,11 @@ export function useSchedule(festivalId: string, typeFilter?: "PROGRAMME" | "SESS
 
 export function useCreateScheduleItem() {
   const qc = useQueryClient();
-  return useMutation<ScheduleEntry, Error, { festivalId: string; data: CreateScheduleEntryInput }>({
+  return useMutation<
+    ScheduleEntry,
+    Error,
+    { festivalId: string; data: CreateScheduleEntryInput }
+  >({
     mutationFn: async ({ festivalId, data }) => {
       const res = await fetch(
         `${API_BASE}/schedule?festivalId=${encodeURIComponent(festivalId)}`,
@@ -50,7 +57,11 @@ export function useCreateScheduleItem() {
 
 export function useUpdateScheduleItem() {
   const qc = useQueryClient();
-  return useMutation<ScheduleEntry, Error, { festivalId: string; entryId: string; data: UpdateScheduleEntryInput }>({
+  return useMutation<
+    ScheduleEntry,
+    Error,
+    { festivalId: string; entryId: string; data: UpdateScheduleEntryInput }
+  >({
     mutationFn: async ({ festivalId, entryId, data }) => {
       const res = await fetch(
         `${API_BASE}/schedule/${entryId}?festivalId=${encodeURIComponent(festivalId)}`,
@@ -86,8 +97,10 @@ export function useDeleteScheduleItem() {
     onMutate: async ({ festivalId, entryId }) => {
       await qc.cancelQueries({ queryKey: ["schedule", festivalId] });
       const prev = qc.getQueryData<ScheduleEntry[]>(["schedule", festivalId]);
-      qc.setQueryData(["schedule", festivalId], (old: ScheduleEntry[] | undefined) =>
-        old?.filter((e) => e.id !== entryId),
+      qc.setQueryData(
+        ["schedule", festivalId],
+        (old: ScheduleEntry[] | undefined) =>
+          old?.filter((e) => e.id !== entryId),
       );
       return { prev };
     },

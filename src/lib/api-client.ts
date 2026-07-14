@@ -45,12 +45,15 @@ export const api = {
       return { status: res.status, body };
     },
     verifyMagicLink: async (data: { token: string }) => {
-      const res = await fetch(`${baseUrl}/api/v1/auth?action=verify-magic-link`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      });
+      const res = await fetch(
+        `${baseUrl}/api/v1/auth?action=verify-magic-link`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(data),
+        },
+      );
       const contentType = res.headers.get("content-type");
       const body = contentType?.includes("application/json")
         ? await res.json()
@@ -174,9 +177,12 @@ export const api = {
       return { status: res.status, body };
     },
     list: async (festivalId: string) => {
-      const res = await fetch(`${baseUrl}/api/v1/invitations?festivalId=${festivalId}`, {
-        credentials: "include",
-      });
+      const res = await fetch(
+        `${baseUrl}/api/v1/invitations?festivalId=${festivalId}`,
+        {
+          credentials: "include",
+        },
+      );
       const contentType = res.headers.get("content-type");
       const body = contentType?.includes("application/json")
         ? await res.json()
@@ -185,10 +191,13 @@ export const api = {
       return { status: res.status, body };
     },
     cancel: async (data: { invitationId: string }) => {
-      const res = await fetch(`${baseUrl}/api/v1/invitations/${data.invitationId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      const res = await fetch(
+        `${baseUrl}/api/v1/invitations/${data.invitationId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        },
+      );
       const contentType = res.headers.get("content-type");
       const body = contentType?.includes("application/json")
         ? await res.json()

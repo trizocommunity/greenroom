@@ -1,5 +1,6 @@
 import "server-only";
 
+import { and, eq, isNull } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { createProtectedHandler, forbidden, ok } from "@/api/lib";
 import {
@@ -9,7 +10,6 @@ import {
 } from "@/core/auth/team-leader-session";
 import { db } from "@/core/database/client";
 import { teamLeaderSession as sessionTable } from "@/core/database/schema";
-import { and, eq, isNull } from "drizzle-orm";
 
 const handler = createProtectedHandler({
   async POST({ user }) {

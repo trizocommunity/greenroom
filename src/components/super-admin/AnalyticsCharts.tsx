@@ -15,8 +15,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSuperAdminAnalytics } from "@/api/client/admin";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export interface PurchaseSummaryDto {
   userId: string;
@@ -79,7 +79,11 @@ interface AnalyticsChartsProps {
 }
 
 export function AnalyticsCharts({ initialData }: AnalyticsChartsProps) {
-  const { data: fetchedData, dataUpdatedAt, refetch } = useSuperAdminAnalytics(initialData);
+  const {
+    data: fetchedData,
+    dataUpdatedAt,
+    refetch,
+  } = useSuperAdminAnalytics(initialData);
   const data = fetchedData ?? initialData;
   const [lastUpdated, setLastUpdated] = useState<Date | null>(
     initialData ? new Date() : null,

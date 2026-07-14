@@ -1,7 +1,7 @@
 import "server-only";
 
-import { createProtectedHandler, ok, badRequest } from "@/api/lib";
 import { verifyPaymentInput } from "@/api/contracts/payments";
+import { badRequest, createProtectedHandler, ok } from "@/api/lib";
 import { verifyPaymentByOrderIdDomain } from "@/features/payments/services/payments-domain.service";
 
 const handler = createProtectedHandler({

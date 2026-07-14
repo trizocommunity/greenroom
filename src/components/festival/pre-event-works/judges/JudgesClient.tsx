@@ -2,6 +2,12 @@
 
 import { Eye, Loader2, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
+import {
+  useCreateJudge,
+  useDeleteJudge,
+  useJudges,
+  useUpdateJudge,
+} from "@/api/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
@@ -23,12 +29,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ERROR_MESSAGES } from "@/core/errors/errors";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import {
-  useCreateJudge,
-  useDeleteJudge,
-  useJudges,
-  useUpdateJudge,
-} from "@/api/client";
 
 type JudgeRow = {
   id: string;

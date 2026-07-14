@@ -17,7 +17,9 @@ export const useCreateInvitation = () => {
     },
     onError: (error: any) => {
       console.error("Create invitation error:", error);
-      toast.error(error?.body?.error || error?.message || "Failed to send invitation");
+      toast.error(
+        error?.body?.error || error?.message || "Failed to send invitation",
+      );
     },
   });
 };
@@ -30,7 +32,9 @@ export const useAcceptInvitation = () => {
     },
     onError: (error: any) => {
       console.error("Accept invitation error:", error);
-      toast.error(error?.body?.error || error?.message || "Failed to accept invitation");
+      toast.error(
+        error?.body?.error || error?.message || "Failed to accept invitation",
+      );
     },
   });
 };
@@ -45,13 +49,16 @@ export const usePendingInvitations = (festivalId: string | null) => {
 
 export const useCancelInvitation = () => {
   return useMutation({
-    mutationFn: (data: { invitationId: string }) => api.invitations.cancel(data),
+    mutationFn: (data: { invitationId: string }) =>
+      api.invitations.cancel(data),
     onSuccess: () => {
       toast.success("Invitation cancelled");
     },
     onError: (error: any) => {
       console.error("Cancel invitation error:", error);
-      toast.error(error?.body?.error || error?.message || "Failed to cancel invitation");
+      toast.error(
+        error?.body?.error || error?.message || "Failed to cancel invitation",
+      );
     },
   });
 };

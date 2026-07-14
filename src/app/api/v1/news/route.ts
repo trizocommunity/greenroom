@@ -2,10 +2,7 @@ import "server-only";
 
 import { randomUUID } from "crypto";
 import { and, desc, eq } from "drizzle-orm";
-import {
-  createNewsPostInput,
-  updateNewsPostInput,
-} from "@/api/contracts/news";
+import { createNewsPostInput, updateNewsPostInput } from "@/api/contracts/news";
 import {
   badRequest,
   createProtectedHandler,
@@ -140,7 +137,9 @@ const handler = createProtectedHandler({
         ...(data.excerpt !== undefined && { excerpt: data.excerpt }),
         ...(data.content !== undefined && { content: data.content }),
         ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
-        ...(data.publishedAt !== undefined && { publishedAt: data.publishedAt }),
+        ...(data.publishedAt !== undefined && {
+          publishedAt: data.publishedAt,
+        }),
       })
       .where(eq(festivalNews.id, existing.id));
 
@@ -184,7 +183,11 @@ const handler = createProtectedHandler({
     await db.delete(festivalNews).where(eq(festivalNews.id, existing.id));
 
     if (removedMb > 0) {
-      await UsageCounterService.incrementUsage(festivalId, "storage", -removedMb);
+      await UsageCounterService.incrementUsage(
+        festivalId,
+        "storage",
+        -removedMb,
+      );
     }
 
     return ok({ success: true });

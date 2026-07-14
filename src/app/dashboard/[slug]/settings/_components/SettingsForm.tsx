@@ -17,6 +17,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useCloudinaryUpload } from "@/api/client";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,7 +42,6 @@ import { updateFestivalAction } from "@/features/festivals/actions/user-festival
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { FeatureService } from "@/features/plan-features/services/features";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
-import { useCloudinaryUpload } from "@/api/client";
 
 interface SettingsFormProps {
   festival: any;

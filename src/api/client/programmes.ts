@@ -43,7 +43,11 @@ export function useProgramme(festivalId: string, programmeId: string) {
 
 export function useCreateProgramme() {
   const qc = useQueryClient();
-  return useMutation<Programme, Error, { festivalId: string; data: CreateProgrammeInput }>({
+  return useMutation<
+    Programme,
+    Error,
+    { festivalId: string; data: CreateProgrammeInput }
+  >({
     mutationFn: async ({ festivalId, data }) => {
       const res = await fetch(
         `${API_BASE}/programmes?festivalId=${encodeURIComponent(festivalId)}`,
@@ -63,7 +67,11 @@ export function useCreateProgramme() {
 
 export function useUpdateProgramme() {
   const qc = useQueryClient();
-  return useMutation<Programme, Error, { festivalId: string; programmeId: string; data: UpdateProgrammeInput }>({
+  return useMutation<
+    Programme,
+    Error,
+    { festivalId: string; programmeId: string; data: UpdateProgrammeInput }
+  >({
     mutationFn: async ({ festivalId, programmeId, data }) => {
       const res = await fetch(
         `${API_BASE}/programmes/${programmeId}?festivalId=${encodeURIComponent(festivalId)}`,

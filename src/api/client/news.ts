@@ -30,7 +30,11 @@ export function useNews(festivalId: string) {
 
 export function useCreateNews() {
   const qc = useQueryClient();
-  return useMutation<NewsPost, Error, { festivalId: string; data: CreateNewsPostInput }>({
+  return useMutation<
+    NewsPost,
+    Error,
+    { festivalId: string; data: CreateNewsPostInput }
+  >({
     mutationFn: async ({ festivalId, data }) => {
       const res = await fetch(
         `${API_BASE}/news?festivalId=${encodeURIComponent(festivalId)}`,
@@ -50,7 +54,11 @@ export function useCreateNews() {
 
 export function useUpdateNews() {
   const qc = useQueryClient();
-  return useMutation<NewsPost, Error, { festivalId: string; postId: string; data: UpdateNewsPostInput }>({
+  return useMutation<
+    NewsPost,
+    Error,
+    { festivalId: string; postId: string; data: UpdateNewsPostInput }
+  >({
     mutationFn: async ({ festivalId, postId, data }) => {
       const res = await fetch(
         `${API_BASE}/news?festivalId=${encodeURIComponent(festivalId)}`,

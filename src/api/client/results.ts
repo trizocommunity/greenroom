@@ -61,8 +61,14 @@ export function usePublishResults() {
       return handleResponse<void>(res);
     },
     onMutate: async ({ festivalId, programmeId }) => {
-      await qc.cancelQueries({ queryKey: ["results", festivalId, programmeId] });
-      const prev = qc.getQueryData<Result[]>(["results", festivalId, programmeId]);
+      await qc.cancelQueries({
+        queryKey: ["results", festivalId, programmeId],
+      });
+      const prev = qc.getQueryData<Result[]>([
+        "results",
+        festivalId,
+        programmeId,
+      ]);
       qc.setQueryData(
         ["results", festivalId, programmeId],
         (old: Result[] | undefined) =>
@@ -100,8 +106,14 @@ export function useUnpublishResults() {
       return handleResponse<void>(res);
     },
     onMutate: async ({ festivalId, programmeId }) => {
-      await qc.cancelQueries({ queryKey: ["results", festivalId, programmeId] });
-      const prev = qc.getQueryData<Result[]>(["results", festivalId, programmeId]);
+      await qc.cancelQueries({
+        queryKey: ["results", festivalId, programmeId],
+      });
+      const prev = qc.getQueryData<Result[]>([
+        "results",
+        festivalId,
+        programmeId,
+      ]);
       qc.setQueryData(
         ["results", festivalId, programmeId],
         (old: Result[] | undefined) =>

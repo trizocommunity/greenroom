@@ -18,7 +18,9 @@ export const judgeSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   activities: z.array(activitySchema).optional(),
-  programmes: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
+  programmes: z
+    .array(z.object({ id: z.string(), name: z.string() }))
+    .optional(),
   stages: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
 });
 

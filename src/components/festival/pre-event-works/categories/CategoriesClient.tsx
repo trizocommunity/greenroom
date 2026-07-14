@@ -12,6 +12,8 @@ import {
   Users,
 } from "lucide-react";
 import { useState } from "react";
+import { useCategories, useDeleteCategory } from "@/api/client/categories";
+import { useStudents } from "@/api/client/students";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
@@ -22,10 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useCategories } from "@/api/client/categories";
-import { useDeleteCategory } from "@/api/client/categories";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import { useStudents } from "@/api/client/students";
 import { CategoryDetailsDialog } from "./CategoryDetailsDialog";
 import { CategoryDialog } from "./CategoryDialog";
 
@@ -38,12 +37,11 @@ export function CategoriesClient({
   festivalId,
   children,
 }: CategoriesClientProps) {
-  const {
-    data: categories = [],
-    isLoading: isCategoriesLoading,
-  } = useCategories(festivalId);
+  const { data: categories = [], isLoading: isCategoriesLoading } =
+    useCategories(festivalId);
   const deleteCategory = useDeleteCategory();
-  const { data: students = [], isLoading: isStudentsLoading } = useStudents(festivalId);
+  const { data: students = [], isLoading: isStudentsLoading } =
+    useStudents(festivalId);
   const { isReadOnly } = useFestivalReadOnly();
   const [actionCategory, setActionCategory] = useState<{
     category: any;
@@ -235,7 +233,10 @@ export function CategoriesClient({
             title="Delete Category"
             description="Are you sure you want to delete this category? This will fail if there are programmes in this category."
             onDelete={async () => {
-              await deleteCategory.mutateAsync({ festivalId, categoryId: actionCategory.category.id });
+              await deleteCategory.mutateAsync({
+                festivalId,
+                categoryId: actionCategory.category.id,
+              });
               setActionCategory(null);
             }}
             isDeleting={deleteCategory.isPending}

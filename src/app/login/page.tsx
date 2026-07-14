@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { MagicLinkRequestForm } from "@/components/auth/MagicLinkRequestForm";
 import { getSession } from "@/core/auth/session";
-import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Sign In | Greenroom",

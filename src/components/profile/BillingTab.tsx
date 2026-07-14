@@ -2,7 +2,7 @@
 
 import { format } from "date-fns";
 import { AlertCircle, CheckCircle2, Clock } from "lucide-react";
-
+import { usePaymentStatus } from "@/api/client";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -14,7 +14,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { parseStoredInstant } from "@/core/utils/date-time";
-import { usePaymentStatus } from "@/api/client";
 import { Skeleton } from "../ui/skeleton";
 
 export function BillingTab() {

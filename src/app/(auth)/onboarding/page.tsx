@@ -31,10 +31,12 @@ export default async function OnboardingPage() {
               Personal Account
             </h2>
             <p className="text-sm text-muted-foreground mb-4">
-              For individuals, independent organizers, or personal festival management.
+              For individuals, independent organizers, or personal festival
+              management.
             </p>
             <div className="text-xs text-muted-foreground">
-              Perfect for solo judges, independent event coordinators, or small personal events.
+              Perfect for solo judges, independent event coordinators, or small
+              personal events.
             </div>
           </a>
         </div>
@@ -44,10 +46,12 @@ export default async function OnboardingPage() {
               Institutional Account
             </h2>
             <p className="text-sm text-muted-foreground mb-4">
-              For colleges, madrasas, schools, universities, and other educational institutions.
+              For colleges, madrasas, schools, universities, and other
+              educational institutions.
             </p>
             <div className="text-xs text-muted-foreground">
-              Ideal for campus festivals, inter-college competitions, and madrasa events.
+              Ideal for campus festivals, inter-college competitions, and
+              madrasa events.
             </div>
           </a>
         </div>

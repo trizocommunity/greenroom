@@ -25,7 +25,11 @@ export function useMembers(festivalId: string) {
 
 export function useAddMember() {
   const qc = useQueryClient();
-  return useMutation<Member, Error, { festivalId: string; data: AddMemberInput }>({
+  return useMutation<
+    Member,
+    Error,
+    { festivalId: string; data: AddMemberInput }
+  >({
     mutationFn: async ({ festivalId, data }) => {
       const res = await fetch(
         `${API_BASE}/members?festivalId=${encodeURIComponent(festivalId)}`,

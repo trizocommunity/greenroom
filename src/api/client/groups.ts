@@ -29,7 +29,11 @@ export function useGroups(festivalId: string) {
 
 export function useCreateGroup() {
   const qc = useQueryClient();
-  return useMutation<Group, Error, { festivalId: string; data: CreateGroupInput }>({
+  return useMutation<
+    Group,
+    Error,
+    { festivalId: string; data: CreateGroupInput }
+  >({
     mutationFn: async ({ festivalId, data }) => {
       const res = await fetch(
         `${API_BASE}/groups?festivalId=${encodeURIComponent(festivalId)}`,
@@ -49,7 +53,11 @@ export function useCreateGroup() {
 
 export function useUpdateGroup() {
   const qc = useQueryClient();
-  return useMutation<Group, Error, { festivalId: string; groupId: string; data: UpdateGroupInput }>({
+  return useMutation<
+    Group,
+    Error,
+    { festivalId: string; groupId: string; data: UpdateGroupInput }
+  >({
     mutationFn: async ({ festivalId, groupId, data }) => {
       const res = await fetch(
         `${API_BASE}/groups/${groupId}?festivalId=${encodeURIComponent(festivalId)}`,

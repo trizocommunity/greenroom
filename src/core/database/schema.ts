@@ -165,7 +165,10 @@ export const systemConfig = pgTable(
 // ─── 1. user ──────────────────────────────────────────────────────────────────
 
 export const accountType = pgEnum("AccountType", ["PERSONAL", "INSTITUTIONAL"]);
-export const festivalTypeEnum = pgEnum("FestivalType", ["INSTITUTIONAL", "INDEPENDENT"]);
+export const festivalTypeEnum = pgEnum("FestivalType", [
+  "INSTITUTIONAL",
+  "INDEPENDENT",
+]);
 
 export const institution = pgTable(
   "institution",

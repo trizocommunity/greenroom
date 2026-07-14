@@ -1,8 +1,8 @@
 "use client";
 
 import { CalendarOff } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useJoinedFestivals } from "@/api/client";
+import { Skeleton } from "@/components/ui/skeleton";
 import { JoinedFestivalCard } from "../JoinedFestivalCard";
 
 interface FestivalsTabProps {

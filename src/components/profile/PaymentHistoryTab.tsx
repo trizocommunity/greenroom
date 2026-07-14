@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { AlertCircle, CheckCircle2, Clock, Loader2 } from "lucide-react";
-
+import { usePaymentHistory } from "@/api/client";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -15,7 +15,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { parseStoredInstant } from "@/core/utils/date-time";
-import { usePaymentHistory } from "@/api/client";
 
 export function PaymentHistoryTab() {
   const { data, isLoading } = usePaymentHistory();

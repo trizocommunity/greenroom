@@ -2,15 +2,23 @@
 
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/core/auth/session";
-import { AppError, ERROR_MESSAGES, handleActionError } from "@/core/errors/errors";
+import {
+  AppError,
+  ERROR_MESSAGES,
+  handleActionError,
+} from "@/core/errors/errors";
 import type { ActionResponse } from "@/core/types/actions";
-import { findUserById, updateUser } from "@/features/auth/repositories/user.repository";
+import {
+  findUserById,
+  updateUser,
+} from "@/features/auth/repositories/user.repository";
 import { onboardingSchema } from "@/features/auth/schemas/auth.schema";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 
-export async function completeOnboardingAction(
-  data: { fullName: string; displayName: string },
-): Promise<ActionResponse<null>> {
+export async function completeOnboardingAction(data: {
+  fullName: string;
+  displayName: string;
+}): Promise<ActionResponse<null>> {
   try {
     const session = await getSession();
 

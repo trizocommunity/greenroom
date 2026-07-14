@@ -22,10 +22,7 @@ export default async function PersonalOnboardingPage() {
   }
 
   return (
-    <AuthLayout
-      title="Personal Account"
-      description="Tell us about yourself"
-    >
+    <AuthLayout title="Personal Account" description="Tell us about yourself">
       <PersonalOnboardingForm />
       <div className="mt-4 text-center text-sm text-muted-foreground">
         <Link
