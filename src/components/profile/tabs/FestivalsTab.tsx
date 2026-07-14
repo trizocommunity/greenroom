@@ -2,15 +2,15 @@
 
 import { CalendarOff } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useJoinedFestivals } from "@/features/festivals/hooks/use-joined-festivals";
+import { useJoinedFestivals } from "@/api/client";
 import { JoinedFestivalCard } from "../JoinedFestivalCard";
 
 interface FestivalsTabProps {
   userId: string;
 }
 
-export function FestivalsTab({ userId }: FestivalsTabProps) {
-  const { data: joinedFestivals, isLoading } = useJoinedFestivals(userId);
+export function FestivalsTab({ userId: _userId }: FestivalsTabProps) {
+  const { data: joinedFestivals, isLoading } = useJoinedFestivals();
 
   if (isLoading) {
     return (

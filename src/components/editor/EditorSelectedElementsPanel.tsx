@@ -282,8 +282,8 @@ export function EditorSelectedElementsPanel({
       <div className="space-y-1">
         {unionBounds && selectedIds.length >= 2 && (
           <p className="text-[10px] text-muted-foreground">
-            {selectedIds.length} layers ·{" "}
-            {Math.round(unionBounds.width)}×{Math.round(unionBounds.height)} px
+            {selectedIds.length} layers · {Math.round(unionBounds.width)}×
+            {Math.round(unionBounds.height)} px
           </p>
         )}
         {chipRow}
@@ -328,8 +328,8 @@ export function EditorSelectedElementsPanel({
         <>
           {unionBounds && selectedIds.length >= 2 && (
             <p className="text-[11px] text-muted-foreground">
-              {selectedIds.length} layers ·{" "}
-              {Math.round(unionBounds.width)}×{Math.round(unionBounds.height)} px
+              {selectedIds.length} layers · {Math.round(unionBounds.width)}×
+              {Math.round(unionBounds.height)} px
             </p>
           )}
           {chipRow}

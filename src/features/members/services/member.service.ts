@@ -4,7 +4,6 @@ import {
   createUser,
   findUserByEmail,
 } from "@/features/auth/repositories/user.repository";
-import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { ensureFestivalWritable } from "@/features/festivals/services/festival-context.service";
 import {
   createMember,
@@ -13,10 +12,6 @@ import {
   findMemberById,
   findMembersByFestival,
 } from "@/features/members/repositories/member.repository";
-import {
-  FeatureService,
-  getTierForFeatureCheck,
-} from "@/features/plan-features/services/features";
 
 export const MemberService = {
   async getMembers(festivalId: string) {
@@ -32,21 +27,6 @@ export const MemberService = {
     },
   ) {
     await ensureFestivalWritable(festivalId);
-
-    // 0. Enforce maxTeamMembers (owner + FestivalMembers)
-    const festival = await findFestivalById(festivalId);
-    if (festival) {
-      const maxTeamMembers =
-        FeatureService.getFeatureValue<number>(
-          getTierForFeatureCheck(festival.tier),
-          "maxTeamMembers",
-        ) ?? 1;
-      const existingMembers = await findMembersByFestival(festivalId);
-      const totalSlots = 1 + existingMembers.length; // owner counts as 1
-      if (totalSlots >= maxTeamMembers) {
-        throw new AppError(ERROR_MESSAGES.MEMBER_LIMIT_REACHED);
-      }
-    }
 
     // 1. Check if User exists
     let user = await findUserByEmail(data.email);

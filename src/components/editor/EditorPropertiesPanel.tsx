@@ -95,7 +95,10 @@ export function EditorPropertiesPanel({
   const posX = finiteNumber(selectedElement.x, 0);
   const posY = finiteNumber(selectedElement.y, 0);
   const rotation = finiteNumber(selectedElement.rotation, 0);
-  const opacityPct = safeRound(finiteNumber(selectedElement.opacity, 1) * 100, 100);
+  const opacityPct = safeRound(
+    finiteNumber(selectedElement.opacity, 1) * 100,
+    100,
+  );
 
   const isText = selectedElement.type === "text";
   const isShape =
@@ -105,7 +108,9 @@ export function EditorPropertiesPanel({
     selectedElement.type === "line";
   const hasFill = Boolean(selectedElement.fill);
   const hasStroke =
-    isShape || selectedElement.type === "qr" || selectedElement.type === "image";
+    isShape ||
+    selectedElement.type === "qr" ||
+    selectedElement.type === "image";
   const multi = selectedIds.length > 1;
 
   if (compact && embedded) {
@@ -161,7 +166,9 @@ export function EditorPropertiesPanel({
             </div>
           </EditorSelectionSection>
 
-          <EditorSelectionSection title="Align on page">{alignGrid}</EditorSelectionSection>
+          <EditorSelectionSection title="Align on page">
+            {alignGrid}
+          </EditorSelectionSection>
 
           {multi && (
             <EditorSelectionSection title="Align selection">

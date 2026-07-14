@@ -29,13 +29,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/core/utils/cn";
+import { editorBtnIcon, editorInput, editorInputNarrow } from "./editor-chrome";
 import {
   fontLabelForFamily,
   stepFontSize,
   toggleFontStyle,
 } from "./editor-text-controls";
 import { BUILTIN_FONTS } from "./editor-theme";
-import { editorBtnIcon, editorInput, editorInputNarrow } from "./editor-chrome";
 import type { PosterEditorState } from "./use-poster-editor-state";
 
 function TextColorControl({
@@ -56,7 +56,9 @@ function TextColorControl({
       )}
       title="Text color"
     >
-      <span className="text-[11px] font-bold leading-none text-foreground">A</span>
+      <span className="text-[11px] font-bold leading-none text-foreground">
+        A
+      </span>
       <span
         className="mt-0.5 h-1 w-5 rounded-full"
         style={{ backgroundColor: hex }}
@@ -207,9 +209,7 @@ export function EditorTextToolbar({
           ["left", AlignLeft],
           ["center", AlignCenter],
           ["right", AlignRight],
-          ...(variant === "full"
-            ? ([["justify", AlignJustify]] as const)
-            : []),
+          ...(variant === "full" ? ([["justify", AlignJustify]] as const) : []),
         ] as const
       ).map(([align, Icon]) => (
         <Button

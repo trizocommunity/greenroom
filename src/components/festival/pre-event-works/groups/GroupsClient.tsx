@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import { useGroups } from "@/features/groups/hooks/use-groups";
+import { useDeleteGroup, useGroups } from "@/api/client/groups";
 import { GroupDetailsDialog } from "./GroupDetailsDialog";
 import { GroupDialog } from "./GroupDialog";
 
@@ -32,7 +32,8 @@ interface GroupsClientProps {
 }
 
 export function GroupsClient({ festivalId, children }: GroupsClientProps) {
-  const { groups, isLoading, deleteGroup, isDeleting } = useGroups(festivalId);
+  const { data: groups = [], isLoading } = useGroups(festivalId);
+  const deleteGroup = useDeleteGroup();
   const { isReadOnly } = useFestivalReadOnly();
   const [actionGroup, setActionGroup] = useState<{
     group: any;
@@ -218,10 +219,10 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
           title="Delete Group"
           description="Are you sure you want to delete this group? This will also delete all students in this group."
           onDelete={async () => {
-            await deleteGroup(actionGroup.group.id);
+            await deleteGroup.mutateAsync({ festivalId, groupId: actionGroup.group.id });
             setActionGroup(null);
           }}
-          isDeleting={isDeleting}
+          isDeleting={deleteGroup.isPending}
           open={true}
           onOpenChange={(open) => !open && setActionGroup(null)}
         />

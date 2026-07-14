@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useStudents } from "@/features/students/hooks/use-students";
+import { useStudents } from "@/api/client/students";
 
 interface CategoryDetailsDialogProps {
   festivalId: string;
@@ -42,7 +42,7 @@ export function CategoryDetailsDialog({
   open: controlledOpen,
   onOpenChange: setControlledOpen,
 }: CategoryDetailsDialogProps) {
-  const { students, isLoading } = useStudents(festivalId);
+  const { data: students = [], isLoading } = useStudents(festivalId);
 
   const filteredStudents =
     category.type === "GENERAL"

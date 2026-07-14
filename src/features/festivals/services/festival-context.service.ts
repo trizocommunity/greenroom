@@ -7,7 +7,7 @@ import { parseStoredInstant } from "@/core/utils/date-time";
 import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 
-export type FestivalRole = "ADMIN" | "ANNOUNCER" | "STAGE_MANAGER";
+export type FestivalRole = "ADMIN" | "ANNOUNCER" | "STAGE_MANAGER" | "MEDIA";
 export type FestivalAccessRole =
   | "SUPER_ADMIN"
   | "OWNER"

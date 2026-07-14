@@ -11,6 +11,7 @@ import {
 } from "@/core/database/schema";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getScoringPolicyAction } from "@/features/judgment/actions/judgment.actions";
+import { isBasicTier } from "@/features/plan-features/services/tier";
 
 export const metadata: Metadata = {
   title: "Scoring Policy",
@@ -27,9 +28,6 @@ export default async function ScoringPolicyPage({
     columns: { id: true, name: true, slug: true, tier: true },
   });
   if (!festival) return notFound();
-
-  const tier = festival.tier ?? "STANDARD";
-  if (tier === "BASIC") return notFound();
 
   const session = await getSession();
   const context = await getFestivalContext({
@@ -65,8 +63,10 @@ export default async function ScoringPolicyPage({
           Scoring Policy
         </h1>
         <p className="text-sm text-muted-foreground sm:text-base">
-          Configure grade rules and customizable award points matrix for
-          STANDARD/PRO judging.
+          Configure grade rules and award points for{" "}
+          {isBasicTier(festival.tier)
+            ? "Basic plan scoring (required before entering marks)."
+            : "Standard and Pro judging."}
         </p>
       </div>
       <ScoringPolicyClient

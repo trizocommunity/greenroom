@@ -56,6 +56,12 @@ const roleConfig: Record<
       "bg-indigo-100 text-indigo-700 border-indigo-200 hover:bg-indigo-100",
     icon: Mic2,
   },
+  MEDIA: {
+    label: "Media",
+    className:
+      "bg-violet-50 text-violet-700 border-violet-100 hover:bg-violet-50",
+    icon: UsersRound,
+  },
   ANNOUNCER: {
     label: "Announcer",
     className: "bg-pink-100 text-pink-700 border-pink-200 hover:bg-pink-100",

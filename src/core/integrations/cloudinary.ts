@@ -49,12 +49,17 @@ export async function uploadImageToCloudinary(
 
     const headers = await getCsrfHeaders();
 
-    const res = await fetch("/api/upload", {
+    const res = await fetch("/api/v1/upload", {
       method: "POST",
-      headers,
+      headers: {
+        ...headers,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
-        file: base64Data,
-        folder,
+        data: {
+          file: base64Data,
+          folder,
+        },
       }),
     });
 
@@ -72,8 +77,13 @@ export async function uploadImageToCloudinary(
       return null;
     }
 
-    const data = JSON.parse(await res.text());
-    return data.url ?? null;
+    const json = await res.json();
+    if (!json.success) {
+      const errorMessage = json.error?.message ?? "Upload failed";
+      toast.error(errorMessage);
+      return null;
+    }
+    return json.data?.url ?? null;
   } catch (error) {
     console.error("Upload error:", error);
     return null;

@@ -1,12 +1,12 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
+import { EditorSelectionPanel } from "./EditorSelectionPanel";
+import { EditorSelectionToolbar } from "./EditorSelectionToolbar";
 import {
   EDITOR_SELECTION_PANEL_WIDTH_PX,
   EDITOR_VERTICAL_RULER_WIDTH,
 } from "./editor-chrome";
-import { EditorSelectionPanel } from "./EditorSelectionPanel";
-import { EditorSelectionToolbar } from "./EditorSelectionToolbar";
 import type { PosterEditorState } from "./use-poster-editor-state";
 
 const DIALOG_INSET = 12;

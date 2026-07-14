@@ -22,7 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useFeature } from "@/features/plan-features/hooks/use-feature";
-import { useStudents } from "@/features/students/hooks/use-students";
+import { useStudents } from "@/api/client/students";
 
 interface User {
   id: string;
@@ -38,11 +38,11 @@ interface Member {
 
 interface Student {
   id: string;
-  name: string;
+  name: string | null;
   chestNumber?: string | null;
   category?: { name: string } | null;
   email?: string | null;
-  group?: { id: string };
+  group?: { id: string; name: string } | null;
   groupId?: string | null;
 }
 
@@ -68,7 +68,7 @@ export function GroupDetailsDialog({
   open: controlledOpen,
   onOpenChange: setControlledOpen,
 }: GroupDetailsDialogProps) {
-  const { students, isLoading } = useStudents(festivalId);
+  const { data: students = [], isLoading } = useStudents(festivalId);
   const canAssignTeamLeaders = useFeature("members");
 
   const groupStudents = students.filter(

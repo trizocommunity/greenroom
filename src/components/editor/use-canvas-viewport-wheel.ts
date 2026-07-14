@@ -26,9 +26,7 @@ export function useCanvasViewportWheel(
             : e.deltaMode === WheelEvent.DOM_DELTA_PAGE
               ? e.deltaY * 400
               : e.deltaY;
-        setZoom((prev) =>
-          clampEditorZoom(prev * Math.exp(-delta * 0.008)),
-        );
+        setZoom((prev) => clampEditorZoom(prev * Math.exp(-delta * 0.008)));
         return;
       }
 

@@ -15,6 +15,7 @@ export const PROGRAMME_STATUS_PRIORITY_RANK: Partial<
   // Judging/results
   JUDGED: 3,
   PUBLISHED: 4,
+  ANNOUNCED: 5,
   // Pre-start
   SCHEDULED: 5,
   ASSIGNED: 6,

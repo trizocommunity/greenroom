@@ -14,36 +14,36 @@ import {
   Text,
   Transformer,
 } from "react-konva";
-import {
-  idsInMarquee,
-  normalizeMarqueeBox,
-  type MarqueeBox,
-} from "./editor-marquee-select";
-import { estimateTextWidth, getEditableText } from "./editor-utils";
-import { EDITOR_COLORS } from "./editor-theme";
-import { konvaShadowProps } from "./editor-konva-props";
-import { applyEditorTransformerStyle } from "./konva-transformer-config";
 import { EditorCanvasGuides } from "./EditorCanvasGuides";
 import { EditorTransformHud } from "./EditorTransformHud";
+import { konvaShadowProps } from "./editor-konva-props";
+import {
+  idsInMarquee,
+  type MarqueeBox,
+  normalizeMarqueeBox,
+} from "./editor-marquee-select";
 import {
   computeSnapGuides,
+  type ElementRect,
   elementToRect,
   isValidElementRect,
   rectAtPosition,
-  unionRects,
-  type ElementRect,
   type SnapGuideResult,
+  unionRects,
 } from "./editor-snap-guides";
-import {
-  patchFromTransform,
-  rectFromKonvaNode,
-} from "./editor-transform-sync";
+import { EDITOR_COLORS } from "./editor-theme";
+import { patchFromTransform, rectFromKonvaNode } from "./editor-transform-sync";
+import { estimateTextWidth, getEditableText } from "./editor-utils";
+import { applyEditorTransformerStyle } from "./konva-transformer-config";
 import type { EditorElement } from "./poster-editor-types";
 import {
-  useCanvasElementHover,
   type ElementHoverHandlers,
+  useCanvasElementHover,
 } from "./use-canvas-element-hover";
-import type { PosterEditorState, SelectionBounds } from "./use-poster-editor-state";
+import type {
+  PosterEditorState,
+  SelectionBounds,
+} from "./use-poster-editor-state";
 
 interface PosterEditorCanvasProps {
   editor: PosterEditorState;
@@ -360,12 +360,7 @@ export function PosterEditorCanvas({
 
     const endX = end?.x ?? session.startX;
     const endY = end?.y ?? session.startY;
-    const box = normalizeMarqueeBox(
-      session.startX,
-      session.startY,
-      endX,
-      endY,
-    );
+    const box = normalizeMarqueeBox(session.startX, session.startY, endX, endY);
     const dragged = box.width >= 4 || box.height >= 4;
 
     if (dragged) {
@@ -375,7 +370,6 @@ export function PosterEditorCanvas({
       requestAnimationFrame(reportSelectionBounds);
       return;
     }
-
   }, [doc, getStagePointer, reportSelectionBounds, selectElements]);
 
   const isMarqueeSurfaceTarget = (target: Konva.Node) =>
@@ -651,10 +645,18 @@ export function PosterEditorCanvas({
       );
       setGuideState(snapped);
 
-      if (snapGuidesEnabled && nodes.length === 1 && snapped.snapX !== undefined) {
+      if (
+        snapGuidesEnabled &&
+        nodes.length === 1 &&
+        snapped.snapX !== undefined
+      ) {
         nodes[0].x(snapped.snapX);
       }
-      if (snapGuidesEnabled && nodes.length === 1 && snapped.snapY !== undefined) {
+      if (
+        snapGuidesEnabled &&
+        nodes.length === 1 &&
+        snapped.snapY !== undefined
+      ) {
         nodes[0].y(snapped.snapY);
       }
 
@@ -694,14 +696,11 @@ export function PosterEditorCanvas({
 
   if (!doc) return null;
 
-  const showGuides =
-    interactive && snapGuidesEnabled && selectedIds.length > 0;
+  const showGuides = interactive && snapGuidesEnabled && selectedIds.length > 0;
   const showSnapLines = showGuides;
   const showDistances = showGuides;
   const showHud =
-    showGuides &&
-    selectedIds.length === 1 &&
-    (isDragging || isTransforming);
+    showGuides && selectedIds.length === 1 && (isDragging || isTransforming);
   const hudRotation =
     selectedId && stageRef.current
       ? (stageRef.current.findOne(`#${selectedId}`)?.rotation() ??
@@ -762,288 +761,294 @@ export function PosterEditorCanvas({
               clipWidth={doc.width}
               clipHeight={doc.height}
             >
-            {renderBackground(doc, doc.width, doc.height)}
+              {renderBackground(doc, doc.width, doc.height)}
 
-            {interactive && (
-              <Rect
-                name="marquee-surface"
-                x={0}
-                y={0}
-                width={doc.width}
-                height={doc.height}
-                fill="rgba(0,0,0,0.001)"
-                listening
-                onMouseDown={handleMarqueeSurfacePointerDown}
-                onClick={handleMarqueeSurfaceClick}
-                onTap={handleMarqueeSurfaceClick}
-              />
-            )}
+              {interactive && (
+                <Rect
+                  name="marquee-surface"
+                  x={0}
+                  y={0}
+                  width={doc.width}
+                  height={doc.height}
+                  fill="rgba(0,0,0,0.001)"
+                  listening
+                  onMouseDown={handleMarqueeSurfacePointerDown}
+                  onClick={handleMarqueeSurfaceClick}
+                  onTap={handleMarqueeSurfaceClick}
+                />
+              )}
 
-            {sortedElements.map((el) => {
-              if (!el.visible) return null;
-              const draggable = interactive && !el.locked;
-              const nodeOpacity = el.opacity ?? 1;
-              const dragHandlers = interactive
-                ? makeDragHandlers(el)
-                : NO_DRAG_HANDLERS;
-              const onSelect = interactive
-                ? (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) =>
-                    handleElementSelect(el, e)
-                : undefined;
-              const hoverHandlers = makeHoverHandlers(el);
+              {sortedElements.map((el) => {
+                if (!el.visible) return null;
+                const draggable = interactive && !el.locked;
+                const nodeOpacity = el.opacity ?? 1;
+                const dragHandlers = interactive
+                  ? makeDragHandlers(el)
+                  : NO_DRAG_HANDLERS;
+                const onSelect = interactive
+                  ? (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) =>
+                      handleElementSelect(el, e)
+                  : undefined;
+                const hoverHandlers = makeHoverHandlers(el);
 
-              if (el.type === "text") {
-                const content = displayText(el);
-                const fontSize = el.fontSize ?? 24;
-                const textWidth =
-                  el.width ?? estimateTextWidth(getEditableText(el), fontSize);
-                const deco = el.textDecoration ?? "";
-                const shadow = konvaShadowProps(el);
-                return (
-                  <Group
-                    key={el.id}
-                    id={el.id}
-                    x={el.x}
-                    y={el.y}
-                    scaleX={el.scaleX ?? 1}
-                    scaleY={el.scaleY ?? 1}
-                    opacity={nodeOpacity}
-                    draggable={draggable}
-                    rotation={el.rotation ?? 0}
-                    onClick={onSelect}
-                    onTap={onSelect}
-                    {...hoverHandlers}
-                    onDragStart={dragHandlers.onDragStart}
-                    onDragMove={dragHandlers.onDragMove}
-                    onDragEnd={dragHandlers.onDragEnd}
-                  >
-                    <Text
-                      text={content}
-                      fontSize={fontSize}
-                      fontFamily={el.fontFamily}
-                      fontStyle={el.fontStyle}
-                      fill={el.fill ?? EDITOR_COLORS.foreground}
-                      align={el.align ?? "left"}
-                      width={textWidth}
-                      lineHeight={el.lineHeight ?? 1.2}
-                      letterSpacing={el.letterSpacing ?? 0}
-                      wrap="word"
-                      listening
+                if (el.type === "text") {
+                  const content = displayText(el);
+                  const fontSize = el.fontSize ?? 24;
+                  const textWidth =
+                    el.width ??
+                    estimateTextWidth(getEditableText(el), fontSize);
+                  const deco = el.textDecoration ?? "";
+                  const shadow = konvaShadowProps(el);
+                  return (
+                    <Group
+                      key={el.id}
+                      id={el.id}
+                      x={el.x}
+                      y={el.y}
+                      scaleX={el.scaleX ?? 1}
+                      scaleY={el.scaleY ?? 1}
+                      opacity={nodeOpacity}
+                      draggable={draggable}
+                      rotation={el.rotation ?? 0}
                       onClick={onSelect}
                       onTap={onSelect}
                       {...hoverHandlers}
-                      {...shadow}
-                    />
-                    {deco.includes("underline") && (
-                      <Line
-                        points={[0, fontSize + 4, textWidth, fontSize + 4]}
-                        stroke={el.fill ?? EDITOR_COLORS.foreground}
-                        strokeWidth={2}
-                        listening={false}
+                      onDragStart={dragHandlers.onDragStart}
+                      onDragMove={dragHandlers.onDragMove}
+                      onDragEnd={dragHandlers.onDragEnd}
+                    >
+                      <Text
+                        text={content}
+                        fontSize={fontSize}
+                        fontFamily={el.fontFamily}
+                        fontStyle={el.fontStyle}
+                        fill={el.fill ?? EDITOR_COLORS.foreground}
+                        align={el.align ?? "left"}
+                        width={textWidth}
+                        lineHeight={el.lineHeight ?? 1.2}
+                        letterSpacing={el.letterSpacing ?? 0}
+                        wrap="word"
+                        listening
+                        onClick={onSelect}
+                        onTap={onSelect}
+                        {...hoverHandlers}
+                        {...shadow}
                       />
-                    )}
-                    {deco.includes("line-through") && (
-                      <Line
-                        points={[0, fontSize * 0.55, textWidth, fontSize * 0.55]}
-                        stroke={el.fill ?? EDITOR_COLORS.foreground}
-                        strokeWidth={2}
-                        listening={false}
-                      />
-                    )}
-                  </Group>
-                );
-              }
+                      {deco.includes("underline") && (
+                        <Line
+                          points={[0, fontSize + 4, textWidth, fontSize + 4]}
+                          stroke={el.fill ?? EDITOR_COLORS.foreground}
+                          strokeWidth={2}
+                          listening={false}
+                        />
+                      )}
+                      {deco.includes("line-through") && (
+                        <Line
+                          points={[
+                            0,
+                            fontSize * 0.55,
+                            textWidth,
+                            fontSize * 0.55,
+                          ]}
+                          stroke={el.fill ?? EDITOR_COLORS.foreground}
+                          strokeWidth={2}
+                          listening={false}
+                        />
+                      )}
+                    </Group>
+                  );
+                }
 
-              if (el.type === "rect") {
-                return (
-                  <Rect
-                    key={el.id}
-                    id={el.id}
-                    x={el.x}
-                    y={el.y}
-                    width={el.width ?? 100}
-                    height={el.height ?? 80}
-                    cornerRadius={el.cornerRadius ?? 0}
-                    fill={el.fill}
-                    stroke={el.stroke}
-                    strokeWidth={el.strokeWidth}
-                    opacity={nodeOpacity}
-                    scaleX={el.scaleX ?? 1}
-                    scaleY={el.scaleY ?? 1}
-                    rotation={el.rotation ?? 0}
-                    {...konvaShadowProps(el)}
-                    draggable={draggable}
-                    onClick={onSelect}
-                    onTap={onSelect}
-                    {...hoverHandlers}
-                    onDragStart={dragHandlers.onDragStart}
-                    onDragMove={dragHandlers.onDragMove}
-                    onDragEnd={dragHandlers.onDragEnd}
-                  />
-                );
-              }
-
-              if (el.type === "circle") {
-                return (
-                  <Circle
-                    key={el.id}
-                    id={el.id}
-                    x={el.x}
-                    y={el.y}
-                    radius={el.radius ?? 50}
-                    fill={el.fill}
-                    stroke={el.stroke}
-                    strokeWidth={el.strokeWidth}
-                    opacity={nodeOpacity}
-                    draggable={draggable}
-                    onClick={onSelect}
-                    onTap={onSelect}
-                    {...hoverHandlers}
-                    onDragStart={dragHandlers.onDragStart}
-                    onDragMove={dragHandlers.onDragMove}
-                    onDragEnd={dragHandlers.onDragEnd}
-                  />
-                );
-              }
-
-              if (el.type === "triangle") {
-                return (
-                  <RegularPolygon
-                    key={el.id}
-                    id={el.id}
-                    x={el.x}
-                    y={el.y}
-                    sides={3}
-                    radius={el.radius ?? 60}
-                    fill={el.fill}
-                    stroke={el.stroke}
-                    strokeWidth={el.strokeWidth}
-                    opacity={nodeOpacity}
-                    draggable={draggable}
-                    onClick={onSelect}
-                    onTap={onSelect}
-                    {...hoverHandlers}
-                    onDragStart={dragHandlers.onDragStart}
-                    onDragMove={dragHandlers.onDragMove}
-                    onDragEnd={dragHandlers.onDragEnd}
-                  />
-                );
-              }
-
-              if (el.type === "line") {
-                return (
-                  <Line
-                    key={el.id}
-                    id={el.id}
-                    x={el.x}
-                    y={el.y}
-                    points={el.points ?? [0, 0, 200, 0]}
-                    stroke={el.stroke ?? "#0f172a"}
-                    strokeWidth={el.strokeWidth ?? 4}
-                    opacity={nodeOpacity}
-                    draggable={draggable}
-                    onClick={onSelect}
-                    onTap={onSelect}
-                    {...hoverHandlers}
-                    onDragStart={dragHandlers.onDragStart}
-                    onDragMove={dragHandlers.onDragMove}
-                    onDragEnd={dragHandlers.onDragEnd}
-                  />
-                );
-              }
-
-              if (el.type === "qr") {
-                const qw = el.width ?? 160;
-                const qh = el.height ?? 160;
-                return (
-                  <Group
-                    key={el.id}
-                    id={el.id}
-                    x={el.x}
-                    y={el.y}
-                    opacity={nodeOpacity}
-                    draggable={draggable}
-                    onClick={onSelect}
-                    onTap={onSelect}
-                    {...hoverHandlers}
-                    onDragStart={dragHandlers.onDragStart}
-                    onDragMove={dragHandlers.onDragMove}
-                    onDragEnd={dragHandlers.onDragEnd}
-                  >
+                if (el.type === "rect") {
+                  return (
                     <Rect
-                      width={qw}
-                      height={qh}
-                      fill={el.fill ?? EDITOR_COLORS.white}
-                      stroke={el.stroke ?? EDITOR_COLORS.mutedForeground}
-                      strokeWidth={el.strokeWidth ?? 2}
-                      dash={[8, 6]}
+                      key={el.id}
+                      id={el.id}
+                      x={el.x}
+                      y={el.y}
+                      width={el.width ?? 100}
+                      height={el.height ?? 80}
+                      cornerRadius={el.cornerRadius ?? 0}
+                      fill={el.fill}
+                      stroke={el.stroke}
+                      strokeWidth={el.strokeWidth}
+                      opacity={nodeOpacity}
+                      scaleX={el.scaleX ?? 1}
+                      scaleY={el.scaleY ?? 1}
+                      rotation={el.rotation ?? 0}
+                      {...konvaShadowProps(el)}
+                      draggable={draggable}
                       onClick={onSelect}
                       onTap={onSelect}
                       {...hoverHandlers}
+                      onDragStart={dragHandlers.onDragStart}
+                      onDragMove={dragHandlers.onDragMove}
+                      onDragEnd={dragHandlers.onDragEnd}
                     />
-                    <Text
-                      y={qh / 2 - 10}
-                      width={qw}
-                      align="center"
-                      text={previewMode ? "QR" : "QR CODE"}
-                      fontSize={14}
-                      fill={EDITOR_COLORS.mutedForeground}
-                      listening={false}
+                  );
+                }
+
+                if (el.type === "circle") {
+                  return (
+                    <Circle
+                      key={el.id}
+                      id={el.id}
+                      x={el.x}
+                      y={el.y}
+                      radius={el.radius ?? 50}
+                      fill={el.fill}
+                      stroke={el.stroke}
+                      strokeWidth={el.strokeWidth}
+                      opacity={nodeOpacity}
+                      draggable={draggable}
+                      onClick={onSelect}
+                      onTap={onSelect}
+                      {...hoverHandlers}
+                      onDragStart={dragHandlers.onDragStart}
+                      onDragMove={dragHandlers.onDragMove}
+                      onDragEnd={dragHandlers.onDragEnd}
                     />
-                  </Group>
-                );
-              }
+                  );
+                }
 
-              if (el.type === "image" && el.imageUrl) {
-                return (
-                  <ElementImage
-                    key={el.id}
-                    id={el.id}
-                    url={el.imageUrl}
-                    x={el.x}
-                    y={el.y}
-                    width={el.width ?? 200}
-                    height={el.height ?? 150}
-                    draggable={draggable}
-                    onSelect={onSelect}
-                    hoverHandlers={hoverHandlers}
-                    dragHandlers={dragHandlers}
-                    onBoundsChange={notifyBounds}
-                  />
-                );
-              }
+                if (el.type === "triangle") {
+                  return (
+                    <RegularPolygon
+                      key={el.id}
+                      id={el.id}
+                      x={el.x}
+                      y={el.y}
+                      sides={3}
+                      radius={el.radius ?? 60}
+                      fill={el.fill}
+                      stroke={el.stroke}
+                      strokeWidth={el.strokeWidth}
+                      opacity={nodeOpacity}
+                      draggable={draggable}
+                      onClick={onSelect}
+                      onTap={onSelect}
+                      {...hoverHandlers}
+                      onDragStart={dragHandlers.onDragStart}
+                      onDragMove={dragHandlers.onDragMove}
+                      onDragEnd={dragHandlers.onDragEnd}
+                    />
+                  );
+                }
 
-              return null;
-            })}
+                if (el.type === "line") {
+                  return (
+                    <Line
+                      key={el.id}
+                      id={el.id}
+                      x={el.x}
+                      y={el.y}
+                      points={el.points ?? [0, 0, 200, 0]}
+                      stroke={el.stroke ?? "#0f172a"}
+                      strokeWidth={el.strokeWidth ?? 4}
+                      opacity={nodeOpacity}
+                      draggable={draggable}
+                      onClick={onSelect}
+                      onTap={onSelect}
+                      {...hoverHandlers}
+                      onDragStart={dragHandlers.onDragStart}
+                      onDragMove={dragHandlers.onDragMove}
+                      onDragEnd={dragHandlers.onDragEnd}
+                    />
+                  );
+                }
 
-            {showHoverRing && hoverBox && (
-              <Rect
-                name="element-hover-ring"
-                x={hoverBox.x}
-                y={hoverBox.y}
-                width={hoverBox.width}
-                height={hoverBox.height}
-                stroke={EDITOR_COLORS.selectionBlue}
-                strokeWidth={1}
-                fillEnabled={false}
-                listening={false}
-                perfectDrawEnabled={false}
-              />
-            )}
+                if (el.type === "qr") {
+                  const qw = el.width ?? 160;
+                  const qh = el.height ?? 160;
+                  return (
+                    <Group
+                      key={el.id}
+                      id={el.id}
+                      x={el.x}
+                      y={el.y}
+                      opacity={nodeOpacity}
+                      draggable={draggable}
+                      onClick={onSelect}
+                      onTap={onSelect}
+                      {...hoverHandlers}
+                      onDragStart={dragHandlers.onDragStart}
+                      onDragMove={dragHandlers.onDragMove}
+                      onDragEnd={dragHandlers.onDragEnd}
+                    >
+                      <Rect
+                        width={qw}
+                        height={qh}
+                        fill={el.fill ?? EDITOR_COLORS.white}
+                        stroke={el.stroke ?? EDITOR_COLORS.mutedForeground}
+                        strokeWidth={el.strokeWidth ?? 2}
+                        dash={[8, 6]}
+                        onClick={onSelect}
+                        onTap={onSelect}
+                        {...hoverHandlers}
+                      />
+                      <Text
+                        y={qh / 2 - 10}
+                        width={qw}
+                        align="center"
+                        text={previewMode ? "QR" : "QR CODE"}
+                        fontSize={14}
+                        fill={EDITOR_COLORS.mutedForeground}
+                        listening={false}
+                      />
+                    </Group>
+                  );
+                }
 
-            {interactive && marquee && (
-              <Rect
-                x={marquee.x}
-                y={marquee.y}
-                width={marquee.width}
-                height={marquee.height}
-                fill="rgba(124,58,237,0.1)"
-                stroke={EDITOR_COLORS.primary}
-                strokeWidth={1}
-                dash={[6, 4]}
-                listening={false}
-              />
-            )}
+                if (el.type === "image" && el.imageUrl) {
+                  return (
+                    <ElementImage
+                      key={el.id}
+                      id={el.id}
+                      url={el.imageUrl}
+                      x={el.x}
+                      y={el.y}
+                      width={el.width ?? 200}
+                      height={el.height ?? 150}
+                      draggable={draggable}
+                      onSelect={onSelect}
+                      hoverHandlers={hoverHandlers}
+                      dragHandlers={dragHandlers}
+                      onBoundsChange={notifyBounds}
+                    />
+                  );
+                }
+
+                return null;
+              })}
+
+              {showHoverRing && hoverBox && (
+                <Rect
+                  name="element-hover-ring"
+                  x={hoverBox.x}
+                  y={hoverBox.y}
+                  width={hoverBox.width}
+                  height={hoverBox.height}
+                  stroke={EDITOR_COLORS.selectionBlue}
+                  strokeWidth={1}
+                  fillEnabled={false}
+                  listening={false}
+                  perfectDrawEnabled={false}
+                />
+              )}
+
+              {interactive && marquee && (
+                <Rect
+                  x={marquee.x}
+                  y={marquee.y}
+                  width={marquee.width}
+                  height={marquee.height}
+                  fill="rgba(124,58,237,0.1)"
+                  stroke={EDITOR_COLORS.primary}
+                  strokeWidth={1}
+                  dash={[6, 4]}
+                  listening={false}
+                />
+              )}
             </Group>
 
             {interactive && (
@@ -1058,7 +1063,6 @@ export function PosterEditorCanvas({
           </Layer>
         </Stage>
       </div>
-
     </div>
   );
 }

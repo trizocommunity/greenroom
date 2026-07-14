@@ -2,26 +2,29 @@
 
 import type Konva from "konva";
 import { Plus } from "lucide-react";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
-import type { PosterEditorState } from "./use-poster-editor-state";
-import { toast } from "sonner";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { EditorAutosaveIndicator } from "@/components/festival/posters/EditorAutosaveIndicator";
+import { PublishPosterTemplateDialog } from "@/components/festival/posters/PublishPosterTemplateDialog";
+import { usePosterEditorAutosave } from "@/components/festival/posters/use-poster-editor-autosave";
 import { Button } from "@/components/ui/button";
+import type { PosterBindings } from "@/features/posters/services/poster-bindings.service";
 import { EditorCanvasRulers } from "./EditorCanvasRulers";
 import { EditorContextToolbar } from "./EditorContextToolbar";
 import { EditorDraftTabsBar } from "./EditorDraftTabsBar";
 import { EditorHeaderActions } from "./EditorHeaderActions";
 import { EditorMobileGate } from "./EditorMobileGate";
-import { EditorSidebarToggle } from "./EditorSidebarToggle";
-import { EditorSidebar } from "./EditorSidebar";
 import { EditorPresentButton } from "./EditorPresentButton";
 import { EditorPresentOverlay } from "./EditorPresentOverlay";
 import { EditorSelectionChrome } from "./EditorSelectionChrome";
+import { EditorSidebar } from "./EditorSidebar";
+import { EditorSidebarToggle } from "./EditorSidebarToggle";
 import { EditorToolRail } from "./EditorToolRail";
-import { NewTemplateModal } from "./NewTemplateModal";
-import { PosterEditorCanvas } from "./PosterEditorCanvas";
-import type { PosterTemplateType } from "./poster-editor-config";
-import { SaveTemplateModal } from "./SaveTemplateModal";
-import { TeamCountModal } from "./TeamCountModal";
 import {
   EDITOR_VERTICAL_RULER_WIDTH,
   EDITOR_ZOOM_MAX,
@@ -29,10 +32,64 @@ import {
   EDITOR_ZOOM_STEP,
   editorToolbarBar,
 } from "./editor-chrome";
+import { NewTemplateModal } from "./NewTemplateModal";
+import { PosterEditorCanvas } from "./PosterEditorCanvas";
+import type { PosterTemplateType } from "./poster-editor-config";
+import type { PosterEditorDocument } from "./poster-editor-types";
+import { SaveTemplateModal } from "./SaveTemplateModal";
+import { TeamCountModal } from "./TeamCountModal";
+import type { PosterEditorState } from "./use-poster-editor-state";
 import { usePosterEditorState } from "./use-poster-editor-state";
 
-export default function PosterEditorPlayground() {
-  const editor = usePosterEditorState();
+export type PosterEditorAutosaveConfig = {
+  festivalId: string;
+  templateCode: string;
+  saveDraft: (doc: PosterEditorDocument) => Promise<boolean>;
+  onSaved?: () => void;
+  debounceMs?: number;
+};
+
+export type PublishTemplateConfig = {
+  templateCode: string;
+  onConfirmPublish: (doc: PosterEditorDocument) => Promise<boolean>;
+  pending?: boolean;
+};
+
+export type ResetTemplateConfig = {
+  templateCode: string;
+  /** e.g. clear local autosave backup, refresh preview bindings */
+  onAfterReset?: () => void | Promise<void>;
+};
+
+export default function PosterEditorPlayground({
+  initialDocument,
+  templateCode,
+  onSaveDraft,
+  autosave,
+  headerEnd,
+  sidebarBrandHref,
+  sidebarBrandLabel,
+  publishTemplate,
+  previewBindings,
+  previewDataHint,
+  resetTemplate,
+  saveNowLabel,
+}: {
+  initialDocument?: PosterEditorDocument | null;
+  templateCode?: string;
+  onSaveDraft?: (doc: PosterEditorDocument) => void;
+  autosave?: PosterEditorAutosaveConfig;
+  headerEnd?: ReactNode;
+  sidebarBrandHref?: string;
+  sidebarBrandLabel?: string;
+  publishTemplate?: PublishTemplateConfig;
+  previewBindings?: PosterBindings | null;
+  previewDataHint?: string | null;
+  resetTemplate?: ResetTemplateConfig;
+  /** Custom label for the Save / Save now button */
+  saveNowLabel?: string;
+} = {}) {
+  const editor = usePosterEditorState({ previewBindings });
   const stageRef = useRef<Konva.Stage | null>(null);
   const canvasViewportRef = useRef<HTMLDivElement>(null);
   const [newModalOpen, setNewModalOpen] = useState(false);
@@ -40,6 +97,7 @@ export default function PosterEditorPlayground() {
   const [panelOpen, setPanelOpen] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [presentOpen, setPresentOpen] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
 
   const {
     doc,
@@ -57,7 +115,35 @@ export default function PosterEditorPlayground() {
     setSaveModalOpen,
     saveCurrentTemplate,
     defaultSaveName,
+    loadDocument,
+    isDirty,
+    markDocumentSaved,
   } = editor;
+
+  const autosaveState = usePosterEditorAutosave({
+    enabled: Boolean(autosave),
+    festivalId: autosave?.festivalId ?? "",
+    templateCode: autosave?.templateCode ?? templateCode ?? "",
+    getDocument: () => editor.doc,
+    isDirty: Boolean(autosave && isDirty),
+    saveDraft: autosave?.saveDraft ?? (async () => false),
+    onSaved: () => {
+      markDocumentSaved();
+      autosave?.onSaved?.();
+    },
+    debounceMs: autosave?.debounceMs,
+  });
+
+  /** Avoid re-opening initial doc when user closes the last tab (tabs.length → 0). */
+  const initialLoadKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!initialDocument) return;
+    const loadKey = `${templateCode ?? ""}::${initialDocument.updatedAt}`;
+    if (initialLoadKeyRef.current === loadKey) return;
+    initialLoadKeyRef.current = loadKey;
+    loadDocument(initialDocument, templateCode);
+  }, [initialDocument, templateCode, loadDocument]);
 
   const keyboardRef = useRef<{
     doc: PosterEditorState["doc"];
@@ -160,17 +246,6 @@ export default function PosterEditorPlayground() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const exportPng = () => {
-    const stage = stageRef.current;
-    if (!stage || !doc) return;
-    const uri = stage.toDataURL({ pixelRatio: 2 });
-    const a = document.createElement("a");
-    a.href = uri;
-    a.download = `poster-${doc.templateType.toLowerCase()}.png`;
-    a.click();
-    toast.success("Exported PNG");
-  };
-
   const handleTemplatePick = (
     type: PosterTemplateType,
     mode: "blank" | "background" | "teams",
@@ -197,6 +272,8 @@ export default function PosterEditorPlayground() {
             panelOpen={panelOpen}
             onPanelOpenChange={setPanelOpen}
             onHideSidebar={() => setSidebarOpen(false)}
+            brandHref={sidebarBrandHref}
+            brandLabel={sidebarBrandLabel}
           />
         )}
 
@@ -217,8 +294,44 @@ export default function PosterEditorPlayground() {
               onClose={closeTab}
               onNew={() => setNewModalOpen(true)}
             />
-            <div className="ml-auto flex shrink-0 items-center gap-1">
-              <EditorHeaderActions editor={editor} onExport={exportPng} />
+            <div className="ml-auto flex shrink-0 items-center gap-2">
+              {autosave && (
+                <EditorAutosaveIndicator
+                  status={autosaveState.status}
+                  lastSavedAt={autosaveState.lastSavedAt}
+                  errorMessage={autosaveState.errorMessage}
+                />
+              )}
+              {(onSaveDraft || autosave) && doc && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-7"
+                  onClick={() => {
+                    if (autosave) void autosaveState.saveNow();
+                    else onSaveDraft?.(doc);
+                  }}
+                >
+                  {saveNowLabel ?? (autosave ? "Save now" : "Save to festival")}
+                </Button>
+              )}
+              <EditorHeaderActions
+                editor={editor}
+                previewDataHint={previewDataHint}
+                resetTemplate={resetTemplate}
+              />
+              {publishTemplate && doc && (
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-7"
+                  disabled={publishTemplate.pending}
+                  onClick={() => setPublishOpen(true)}
+                >
+                  Publish template
+                </Button>
+              )}
+              {headerEnd}
             </div>
           </header>
 
@@ -267,34 +380,38 @@ export default function PosterEditorPlayground() {
                       />
                     )}
                     <div className="pointer-events-none absolute bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-0.5 rounded-lg border border-border bg-card px-1 py-0.5 text-[11px] text-foreground shadow-md">
-                  <button
-                    type="button"
-                    className="pointer-events-auto rounded px-2 py-1 hover:bg-muted"
-                    onClick={() =>
-                    setZoom((z) => Math.max(EDITOR_ZOOM_MIN, z - EDITOR_ZOOM_STEP))
-                  }
-                    aria-label="Zoom out"
-                  >
-                    −
-                  </button>
-                  <span className="min-w-[2.5rem] text-center font-medium tabular-nums">
-                    {Math.round(zoom * 100)}%
-                  </span>
-                  <button
-                    type="button"
-                    className="pointer-events-auto rounded px-2 py-1 hover:bg-muted"
-                    onClick={() =>
-                    setZoom((z) => Math.min(EDITOR_ZOOM_MAX, z + EDITOR_ZOOM_STEP))
-                  }
-                    aria-label="Zoom in"
-                  >
-                    +
-                  </button>
-                {doc && (
-                  <span className="hidden border-l border-border pl-2 text-muted-foreground sm:inline">
-                    {doc.width}×{doc.height}
-                  </span>
-                )}
+                      <button
+                        type="button"
+                        className="pointer-events-auto rounded px-2 py-1 hover:bg-muted"
+                        onClick={() =>
+                          setZoom((z) =>
+                            Math.max(EDITOR_ZOOM_MIN, z - EDITOR_ZOOM_STEP),
+                          )
+                        }
+                        aria-label="Zoom out"
+                      >
+                        −
+                      </button>
+                      <span className="min-w-[2.5rem] text-center font-medium tabular-nums">
+                        {Math.round(zoom * 100)}%
+                      </span>
+                      <button
+                        type="button"
+                        className="pointer-events-auto rounded px-2 py-1 hover:bg-muted"
+                        onClick={() =>
+                          setZoom((z) =>
+                            Math.min(EDITOR_ZOOM_MAX, z + EDITOR_ZOOM_STEP),
+                          )
+                        }
+                        aria-label="Zoom in"
+                      >
+                        +
+                      </button>
+                      {doc && (
+                        <span className="hidden border-l border-border pl-2 text-muted-foreground sm:inline">
+                          {doc.width}×{doc.height}
+                        </span>
+                      )}
                     </div>
                   </EditorSelectionChrome>
                 </div>
@@ -344,6 +461,21 @@ export default function PosterEditorPlayground() {
             defaultName={defaultSaveName}
             templateLabel={templateMeta.title}
             onSave={saveCurrentTemplate}
+          />
+        )}
+        {publishTemplate && doc && (
+          <PublishPosterTemplateDialog
+            open={publishOpen}
+            onOpenChange={setPublishOpen}
+            document={doc}
+            templateCode={publishTemplate.templateCode}
+            loading={publishTemplate.pending}
+            previewBindings={previewBindings ?? undefined}
+            previewPlaceholderHint={previewDataHint ?? undefined}
+            onConfirm={async () => {
+              const ok = await publishTemplate.onConfirmPublish(doc);
+              if (ok) setPublishOpen(false);
+            }}
           />
         )}
       </div>

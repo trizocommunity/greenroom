@@ -27,13 +27,17 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { parseStoredInstant } from "@/core/utils/date-time";
-import { useAssignments } from "@/features/assignments/hooks/use-assignments";
-import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useAssignments, useDeleteAssignment } from "@/api/client/assignments";
+import { useCategories } from "@/api/client/categories";
 import { useDeadlineLock } from "@/features/festivals/hooks/use-deadline-lock";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import { useGroups } from "@/features/groups/hooks/use-groups";
-import { useProgrammes } from "@/features/programmes/hooks/use-programmes";
-import { useStudents } from "@/features/students/hooks/use-students";
+import { useGroups } from "@/api/client/groups";
+import { useProgrammes } from "@/api/client/programmes";
+import { useStudents } from "@/api/client/students";
+import {
+  deleteAssignmentAction,
+  deleteTeamAssignmentAction,
+} from "@/features/assignments/actions/assignment.actions";
 import { AssignmentModal } from "./AssignmentModal";
 
 type IndividualAssignmentRow = {
@@ -194,17 +198,14 @@ export function AssignmentsClient({
   children,
 }: AssignmentsClientProps) {
   const {
-    assignments,
+    data: assignments = [],
     isLoading: isAssignmentsLoading,
-    deleteAssignment,
-    deleteTeamAssignment,
-    isDeleting,
-    isDeletingTeam,
   } = useAssignments(festivalId);
-  const { programmes } = useProgrammes(festivalId);
-  const { categories } = useCategories(festivalId);
-  const { groups } = useGroups(festivalId);
-  const { students, isLoading: isStudentsLoading } = useStudents(festivalId);
+  const deleteAssignment = useDeleteAssignment();
+  const { data: programmes = [] } = useProgrammes(festivalId);
+  const { data: categories = [] } = useCategories(festivalId);
+  const { data: groups = [] } = useGroups(festivalId);
+  const { data: students = [], isLoading: isStudentsLoading } = useStudents(festivalId);
 
   const isLoading = isAssignmentsLoading || isStudentsLoading;
 
@@ -426,9 +427,10 @@ export function AssignmentsClient({
       // Group students by groupId to calculated group-wise capacity
       const studentCountByGroup = new Map<string, number>();
       for (const s of eligibleStudents) {
+        const gid = s.groupId ?? "";
         studentCountByGroup.set(
-          s.groupId,
-          (studentCountByGroup.get(s.groupId) || 0) + 1,
+          gid,
+          (studentCountByGroup.get(gid) || 0) + 1,
         );
       }
 
@@ -721,11 +723,11 @@ export function AssignmentsClient({
         }
         onDelete={async () => {
           if (deleteTarget?.kind === "individual") {
-            await deleteAssignment(deleteTarget.assignment.id);
+            await deleteAssignment.mutateAsync({ festivalId, assignmentId: deleteTarget.assignment.id });
             setDeleteTarget(null);
           }
         }}
-        isDeleting={isDeleting}
+        isDeleting={deleteAssignment.isPending}
       />
       <DeleteDialog
         open={deleteTarget?.kind === "team"}
@@ -738,15 +740,16 @@ export function AssignmentsClient({
         }
         onDelete={async () => {
           if (deleteTarget?.kind === "team") {
-            await deleteTeamAssignment({
-              programmeId: deleteTarget.row.programme?.id,
-              groupId: deleteTarget.row.groupId,
-              teamNumber: deleteTarget.row.teamNumber,
-            });
+            await deleteTeamAssignmentAction(
+              festivalId,
+              deleteTarget.row.programme?.id,
+              deleteTarget.row.groupId,
+              deleteTarget.row.teamNumber,
+            );
             setDeleteTarget(null);
           }
         }}
-        isDeleting={isDeletingTeam}
+        isDeleting={false}
       />
 
       {/* Programme Details Dialog */}

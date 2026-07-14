@@ -112,8 +112,8 @@ export function FestivalDashboardSidebar({
         // the stage-management capability.
         if (item.title === "Reporting" && !canUseReporting) return false;
 
-        // "Judgment/Marks" is business-capability routed:
-        // - BASIC: Marks UI
+        // "Judgment/Scoring" is business-capability routed:
+        // - BASIC: Scoring UI (/event-works/marks)
         // - STANDARD/PRO: Judgment UI (external judging)
         // If Super Admin disables the underlying capability(s), hide the link to
         // avoid unreachable redirects.

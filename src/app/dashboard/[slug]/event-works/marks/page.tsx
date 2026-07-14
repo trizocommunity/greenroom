@@ -1,26 +1,31 @@
-import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
-import { Calendar, ClipboardList } from "lucide-react";
+import { asc, desc, eq } from "drizzle-orm";
+import { ClipboardList, ListChecks } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
 import { BasicMarksClient } from "@/components/dashboard/marks/BasicMarksClient";
 import { db } from "@/core/database/client";
 import {
-  programmeAssignment as assignmentTable,
   festival as festivalTable,
   programmeJudgeSession as pjsTable,
   programme as programmeTable,
 } from "@/core/database/schema";
+import { getScoringPolicyAction } from "@/features/judgment/actions/judgment.actions";
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
+import {
+  getResolvedTier,
+  isBasicTier,
+} from "@/features/plan-features/services/tier";
 import {
   filterProgrammesForEventWorks,
   type ProgrammeStatus,
+  syncStaleBasicProgrammeStatuses,
   type Tier,
 } from "@/features/programmes/services/programme-status.service";
 import { enrichProgrammesAssignmentsResultCodeLetters } from "@/features/results/services/results.service";
 
 export const metadata: Metadata = {
-  title: "Results",
+  title: "Scoring",
 };
 
 export default async function MarksRedirectPage({
@@ -59,10 +64,9 @@ export default async function MarksRedirectPage({
     return notFound();
   }
 
-  const tier = (festival.tier ?? "STANDARD") as Tier;
+  const tier = getResolvedTier(festival.tier) as Tier;
 
-  // For Standard/Pro, redirect to the dedicated judgment route.
-  if (tier !== "BASIC") {
+  if (!isBasicTier(tier)) {
     redirect(`/dashboard/${slug}/event-works/judgment`);
   }
 
@@ -74,50 +78,68 @@ export default async function MarksRedirectPage({
     return notFound();
   }
 
-  const judgmentAllowedStatuses: ProgrammeStatus[] =
-    tier === "BASIC" ? [] : ["STARTED", "ENDED", "JUDGED", "PUBLISHED"];
+  const policy = await getScoringPolicyAction(festival.id);
+  if (!policy.isPersisted) {
+    return (
+      <EmptyState
+        title="Set up scoring policy first"
+        description="Save your grade rules and award points on the Scoring Policy page before entering scores."
+        actionLabel="Open Scoring Policy"
+        actionLink={`/dashboard/${slug}/event-works/scoring`}
+        icon={ListChecks}
+      />
+    );
+  }
 
-  const eventWorksProgrammes =
-    tier === "BASIC"
-      ? filterProgrammesForEventWorks(festival.programmes as any, tier)
-      : (festival.programmes as any[]).filter((p) =>
-          judgmentAllowedStatuses.includes(p.status),
-        );
+  await syncStaleBasicProgrammeStatuses(
+    festival.programmes as {
+      id: string;
+      status: ProgrammeStatus;
+      assignments?: readonly unknown[];
+    }[],
+    tier,
+  );
+
+  const eventWorksProgrammes = filterProgrammesForEventWorks(
+    festival.programmes as any,
+    tier,
+  );
+
+  const totalProgrammes = festival.programmes.length;
+  const totalAssignmentsOnFestival = festival.programmes.reduce(
+    (sum, p) => sum + (p.assignments?.length ?? 0),
+    0,
+  );
 
   if (eventWorksProgrammes.length === 0) {
-    if (tier === "BASIC") {
+    if (totalProgrammes === 0) {
+      return (
+        <EmptyState
+          title="No Programmes Found"
+          description="Create programmes in Pre Event Works before entering scores."
+          actionLabel="Create Programmes"
+          actionLink={`/dashboard/${slug}/pre-event-works/programmes`}
+          icon={ClipboardList}
+        />
+      );
+    }
+
+    if (totalAssignmentsOnFestival === 0) {
       return (
         <EmptyState
           title="No Assignments Found"
-          description="Judgment can only be recorded after students are assigned to programmes."
+          description="Assign students to programmes in Pre Event Works before entering scores."
           actionLabel="Go to Assignments"
           actionLink={`/dashboard/${slug}/pre-event-works/assignments`}
           icon={ClipboardList}
         />
       );
     }
+
     return (
       <EmptyState
-        title="No programmes in Event Works yet"
-        description="On Standard and Pro plans, programmes appear here only after they are added to the schedule. Add your programmes to the schedule in Pre Event Works to see them in Judgment, Results, and Leaderboard."
-        actionLabel="Go to Schedule"
-        actionLink={`/dashboard/${slug}/pre-event-works/schedule`}
-        icon={Calendar}
-      />
-    );
-  }
-
-  const progIds = eventWorksProgrammes.map((p: any) => p.id);
-  const [assignmentCountResult] = await db
-    .select({ c: count() })
-    .from(assignmentTable)
-    .where(inArray(assignmentTable.programmeId, progIds));
-
-  if (assignmentCountResult.c === 0) {
-    return (
-      <EmptyState
-        title="No Assignments Found"
-        description="Judgment can only be recorded after students are assigned to programmes."
+        title="Programmes Not Ready for Scoring"
+        description="Assignments exist but programme status could not be updated. Open Assignments and save again, or contact support if this persists."
         actionLabel="Go to Assignments"
         actionLink={`/dashboard/${slug}/pre-event-works/assignments`}
         icon={ClipboardList}
@@ -132,12 +154,16 @@ export default async function MarksRedirectPage({
   return (
     <div className="pt-4 sm:pt-6">
       <BasicMarksClient
-        festival={festival as any}
+        festival={{
+          id: festival.id,
+          slug: festival.slug,
+          name: festival.name,
+        }}
         programmes={eventWorksProgrammes}
         categories={festival.categories}
       >
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-          Results
+          Scoring
         </h1>
       </BasicMarksClient>
     </div>

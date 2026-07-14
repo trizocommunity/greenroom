@@ -1,9 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -12,113 +11,63 @@ import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { resetPasswordAction } from "@/features/auth/actions/auth.actions";
+import { useResetPassword } from "@/features/auth/hooks/use-auth";
 import { resetPasswordSchema } from "@/features/auth/schemas/auth.schema";
 
 type FormData = z.infer<typeof resetPasswordSchema>;
 
-export function ResetPasswordForm() {
+export function ResetPasswordForm({ token }: { token: string }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const token = searchParams.get("token");
+  const { mutate, isPending } = useResetPassword();
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-    setValue,
   } = useForm<FormData>({
     resolver: zodResolver(resetPasswordSchema),
-    defaultValues: {
-      token: token || "",
-    },
   });
 
-  // Ensure token is set if it comes late or changes
-  React.useEffect(() => {
-    if (token) {
-      setValue("token", token);
-    }
-  }, [token, setValue]);
-
-  const { mutate, isPending } = useMutation({
-    mutationFn: async (data: FormData) => {
-      return await resetPasswordAction(data);
-    },
-    onSuccess: (result) => {
-      if (!result.success) {
-        if (result.fields) {
-          Object.entries(result.fields).forEach(([key, message]) => {
-            // @ts-expect-error
-            setError(key as any, { message });
-          });
-          return;
-        }
-        toast.error(result.error);
-        return;
-      }
-
-      toast.success("Password reset successfully");
-      router.push("/login");
-    },
-    onError: () => {
-      toast.error("Something went wrong. Please try again.");
-    },
-  });
-
-  function onSubmit(data: FormData) {
-    if (!data.token) {
-      toast.error("Missing reset token");
-      return;
-    }
-    mutate(data);
-  }
-
-  if (!token) {
-    return (
-      <div className="text-center text-red-500">Invalid or missing token</div>
-    );
-  }
+  const onSubmit = (data: FormData) => {
+    mutate({
+      token,
+      password: data.password,
+      confirmPassword: data.confirmPassword,
+    });
+  };
 
   return (
-    <div className="grid gap-6">
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <input type="hidden" {...register("token")} />
-        <div className="grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="password">New Password</Label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              disabled={isPending}
-              {...register("password")}
-            />
-            {errors.password && (
-              <p className="text-sm text-red-500">{errors.password.message}</p>
-            )}
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              autoComplete="new-password"
-              disabled={isPending}
-              {...register("confirmPassword")}
-            />
-            {errors.confirmPassword && (
-              <p className="text-sm text-red-500">
-                {errors.confirmPassword.message}
-              </p>
-            )}
-          </div>
-          <Button disabled={isPending}>
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Reset Password
-          </Button>
-        </div>
-      </form>
-    </div>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="password">New Password</Label>
+        <Input
+          {...register("password")}
+          id="password"
+          type="password"
+          disabled={isPending}
+        />
+        {errors.password && (
+          <p className="text-sm text-red-500">{errors.password.message}</p>
+        )}
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="confirmPassword">Confirm Password</Label>
+        <Input
+          {...register("confirmPassword")}
+          id="confirmPassword"
+          type="password"
+          disabled={isPending}
+        />
+        {errors.confirmPassword && (
+          <p className="text-sm text-red-500">
+            {errors.confirmPassword.message}
+          </p>
+        )}
+      </div>
+      <Button type="submit" className="w-full" disabled={isPending}>
+        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        Reset Password
+      </Button>
+    </form>
   );
 }

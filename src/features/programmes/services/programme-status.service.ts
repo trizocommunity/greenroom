@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray, or } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   group as groupTable,
@@ -9,6 +9,10 @@ import {
   result as resultTable,
   scheduleEntry as scheduleEntryTable,
 } from "@/core/database/schema";
+import {
+  getResolvedTier,
+  isBasicTier,
+} from "@/features/plan-features/services/tier";
 
 export type ProgrammeStatus =
   | "READY"
@@ -19,7 +23,8 @@ export type ProgrammeStatus =
   | "STARTED"
   | "ENDED"
   | "JUDGED"
-  | "PUBLISHED";
+  | "PUBLISHED"
+  | "ANNOUNCED";
 export type Tier = "BASIC" | "STANDARD" | "PRO";
 
 /**
@@ -31,7 +36,7 @@ export function getEventWorksMinimumStatus(tier: Tier): ProgrammeStatus {
 
 function getAllowedEventWorksStatuses(tier: Tier): Set<ProgrammeStatus> {
   return tier === "BASIC"
-    ? new Set<ProgrammeStatus>(["ASSIGNED", "JUDGED", "PUBLISHED"])
+    ? new Set<ProgrammeStatus>(["ASSIGNED", "JUDGED", "PUBLISHED", "ANNOUNCED"])
     : new Set<ProgrammeStatus>([
         "SCHEDULED",
         "REPORTING",
@@ -39,6 +44,7 @@ function getAllowedEventWorksStatuses(tier: Tier): Set<ProgrammeStatus> {
         "ENDED",
         "JUDGED",
         "PUBLISHED",
+        "ANNOUNCED",
       ]);
 }
 
@@ -55,16 +61,83 @@ export function isProgrammeInEventWorks(
 /**
  * Filter programmes to those that should appear in Event Works (Marks, Results, Leaderboard) for the given tier.
  */
+type ProgrammeForEventWorksFilter = {
+  status: ProgrammeStatus;
+  assignments?: readonly unknown[];
+};
+
 export function filterProgrammesForEventWorks<
-  T extends { status: ProgrammeStatus },
->(programmes: T[], tier: Tier): T[] {
-  return programmes.filter((p) => isProgrammeInEventWorks(p.status, tier));
+  T extends ProgrammeForEventWorksFilter,
+>(programmes: T[], tier: Tier | string | null | undefined): T[] {
+  const resolvedTier = getResolvedTier(tier);
+  return programmes.filter((p) => {
+    if (isProgrammeInEventWorks(p.status, resolvedTier)) return true;
+    // BASIC: programmes with any assignment belong in Marks / Event Works even if
+    // status is still READY (e.g. legacy rows or status not recomputed yet).
+    if (
+      resolvedTier === "BASIC" &&
+      Array.isArray(p.assignments) &&
+      p.assignments.length > 0
+    ) {
+      return true;
+    }
+    return false;
+  });
 }
 
 /**
- * Recomputes programme status from assignments, schedule entries, and results,
- * then updates the Programme record.
- * Order: READY < ASSIGNED < SCHEDULED < ... < JUDGED < PUBLISHED.
+ * Recomputes programme status for BASIC festivals where assignments exist but status
+ * was never promoted to ASSIGNED (common after tier fixes or legacy data).
+ */
+export async function syncStaleBasicProgrammeStatuses(
+  programmes: {
+    id: string;
+    status: ProgrammeStatus;
+    assignments?: readonly unknown[];
+  }[],
+  tier: Tier | string | null | undefined,
+): Promise<void> {
+  if (!isBasicTier(tier)) return;
+
+  const resolvedTier = getResolvedTier(tier);
+  const stale = programmes.filter(
+    (p) =>
+      Array.isArray(p.assignments) &&
+      p.assignments.length > 0 &&
+      !isProgrammeInEventWorks(p.status, resolvedTier),
+  );
+
+  await Promise.all(
+    stale.map(async (p) => {
+      const status = await updateProgrammeStatus(p.id);
+      (p as { status: ProgrammeStatus }).status = status;
+    }),
+  );
+}
+
+type PreWorksStatusInput = {
+  hasAssignments: boolean;
+  hasScheduleEntry: boolean;
+  isFullyAssignedAcrossAllGroups: boolean;
+  isBasic: boolean;
+};
+
+/** READY → ASSIGNED → SCHEDULED from Pre Event Works only. */
+function computePreWorksStatus(input: PreWorksStatusInput): ProgrammeStatus {
+  if (!input.isBasic && input.hasScheduleEntry) return "SCHEDULED";
+  if (input.isBasic && input.hasAssignments) return "ASSIGNED";
+  if (input.hasAssignments && input.isFullyAssignedAcrossAllGroups) {
+    return "ASSIGNED";
+  }
+  return "READY";
+}
+
+/**
+ * Recomputes programme status, then updates the Programme record.
+ *
+ * - Standard/Pro: pre-works (READY/ASSIGNED/SCHEDULED) and live reporting
+ *   (REPORTING/STARTED/ENDED); PUBLISHED/ANNOUNCED only after a closed reporting session.
+ * - Basic: marks flow can reach JUDGED/PUBLISHED/ANNOUNCED from results directly.
  */
 export async function updateProgrammeStatus(
   programmeId: string,
@@ -114,6 +187,7 @@ export async function updateProgrammeStatus(
 
     let reportedScored = 0;
     let reportedPublished = 0;
+    let reportedAnnounced = 0;
 
     if (reportedTotal > 0) {
       const scoredCount = await db
@@ -138,10 +212,24 @@ export async function updateProgrammeStatus(
           ),
         );
       reportedPublished = publishedCount[0].c;
+
+      const announcedCount = await db
+        .select({ c: count() })
+        .from(resultTable)
+        .where(
+          and(
+            eq(resultTable.programmeId, programmeId),
+            inArray(resultTable.assignmentId, reportedAssignmentIds),
+            eq(resultTable.isAnnounced, true),
+          ),
+        );
+      reportedAnnounced = announcedCount[0].c;
     }
 
     let status: ProgrammeStatus = "STARTED";
-    if (reportedTotal > 0 && reportedPublished === reportedTotal) {
+    if (reportedTotal > 0 && reportedAnnounced === reportedTotal) {
+      status = "ANNOUNCED";
+    } else if (reportedTotal > 0 && reportedPublished === reportedTotal) {
       status = "PUBLISHED";
     } else if (reportedTotal > 0 && reportedScored === reportedTotal) {
       status = "ENDED";
@@ -151,7 +239,10 @@ export async function updateProgrammeStatus(
       .update(programmeTable)
       .set({
         status,
-        publishedAt: status === "PUBLISHED" ? new Date().toISOString() : null,
+        publishedAt:
+          status === "PUBLISHED" || status === "ANNOUNCED"
+            ? new Date().toISOString()
+            : null,
         updatedAt: new Date().toISOString(),
       })
       .where(eq(programmeTable.id, programmeId));
@@ -164,6 +255,7 @@ export async function updateProgrammeStatus(
     scheduleEntryCount,
     resultCount,
     publishedResultCount,
+    announcedResultCount,
     groupCountResult,
   ] = await Promise.all([
     db
@@ -194,6 +286,15 @@ export async function updateProgrammeStatus(
       ),
     db
       .select({ c: count() })
+      .from(resultTable)
+      .where(
+        and(
+          eq(resultTable.programmeId, programmeId),
+          eq(resultTable.isAnnounced, true),
+        ),
+      ),
+    db
+      .select({ c: count() })
       .from(groupTable)
       .where(eq(groupTable.festivalId, programme.festivalId)),
   ]);
@@ -215,27 +316,67 @@ export async function updateProgrammeStatus(
     assignmentCount[0].c > 0 && resultCount[0].c >= assignmentCount[0].c;
   const allResultsPublished =
     resultCount[0].c > 0 && publishedResultCount[0].c >= resultCount[0].c;
+  const allResultsAnnounced =
+    resultCount[0].c > 0 && announcedResultCount[0].c >= resultCount[0].c;
 
-  const isBasic = (programme.festival.tier ?? "STANDARD") === "BASIC";
+  const isBasic = isBasicTier(programme.festival.tier);
 
-  let status: ProgrammeStatus = "READY";
-  if (allResultsPublished) {
-    status = "PUBLISHED";
-  } else if (allAssignmentsHaveResult) {
-    status = "JUDGED";
-  } else if (!isBasic && hasScheduleEntry) {
-    status = "SCHEDULED";
-  } else if (isBasic && hasAssignments) {
-    status = "ASSIGNED";
-  } else if (hasAssignments && isFullyAssignedAcrossAllGroups) {
-    status = "ASSIGNED";
+  let status: ProgrammeStatus;
+
+  if (isBasic) {
+    if (allResultsAnnounced) {
+      status = "ANNOUNCED";
+    } else if (allResultsPublished) {
+      status = "PUBLISHED";
+    } else if (allAssignmentsHaveResult) {
+      status = "JUDGED";
+    } else {
+      status = computePreWorksStatus({
+        hasAssignments,
+        hasScheduleEntry,
+        isFullyAssignedAcrossAllGroups,
+        isBasic,
+      });
+    }
+  } else {
+    const activeReportingSession =
+      await db.query.programmeReportingSession.findFirst({
+        where: and(
+          eq(reportingSessionTable.programmeId, programmeId),
+          or(
+            eq(reportingSessionTable.status, "IN_PROGRESS"),
+            eq(reportingSessionTable.status, "RESET"),
+          ),
+        ),
+        orderBy: [desc(reportingSessionTable.updatedAt)],
+        columns: { status: true },
+      });
+
+    if (activeReportingSession?.status === "IN_PROGRESS") {
+      status = "REPORTING";
+    } else if (
+      activeReportingSession?.status === "RESET" &&
+      programme.status === "RESET"
+    ) {
+      status = "RESET";
+    } else {
+      status = computePreWorksStatus({
+        hasAssignments,
+        hasScheduleEntry,
+        isFullyAssignedAcrossAllGroups,
+        isBasic,
+      });
+    }
   }
 
   await db
     .update(programmeTable)
     .set({
       status,
-      publishedAt: status === "PUBLISHED" ? new Date().toISOString() : null,
+      publishedAt:
+        status === "PUBLISHED" || status === "ANNOUNCED"
+          ? new Date().toISOString()
+          : null,
       updatedAt: new Date().toISOString(),
     })
     .where(eq(programmeTable.id, programmeId));
@@ -243,27 +384,39 @@ export async function updateProgrammeStatus(
   return status;
 }
 
+export async function setProgrammeAnnounced(
+  programmeId: string,
+  announced: boolean,
+): Promise<void> {
+  if (!announced) {
+    await db
+      .update(programmeTable)
+      .set({
+        status: "PUBLISHED",
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(programmeTable.id, programmeId));
+    return;
+  }
+  await db
+    .update(programmeTable)
+    .set({
+      status: "ANNOUNCED",
+      publishedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(programmeTable.id, programmeId));
+}
+
 export async function setProgrammePublished(
   programmeId: string,
   published: boolean,
 ): Promise<void> {
   if (!published) {
-    const hasClosedReporting =
-      await db.query.programmeReportingSession.findFirst({
-        where: and(
-          eq(reportingSessionTable.programmeId, programmeId),
-          eq(reportingSessionTable.status, "CLOSED"),
-        ),
-        orderBy: [desc(reportingSessionTable.endedAt)],
-      });
-
+    await updateProgrammeStatus(programmeId);
     await db
       .update(programmeTable)
-      .set({
-        status: hasClosedReporting ? "ENDED" : "JUDGED",
-        publishedAt: null,
-        updatedAt: new Date().toISOString(),
-      })
+      .set({ publishedAt: null })
       .where(eq(programmeTable.id, programmeId));
     return;
   }

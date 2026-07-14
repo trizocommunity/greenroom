@@ -23,15 +23,15 @@ export function EditorPresentOverlay({
     const el = containerRef.current;
     if (!el || !doc) return;
 
-    const fit = () => {
+    const calculateFit = () => {
       const pad = 48;
       const zw = (el.clientWidth - pad) / doc.width;
       const zh = (el.clientHeight - pad) / doc.height;
       setFitZoom(Math.min(zw, zh, 2));
     };
 
-    fit();
-    const ro = new ResizeObserver(fit);
+    calculateFit();
+    const ro = new ResizeObserver(calculateFit);
     ro.observe(el);
     return () => ro.disconnect();
   }, [doc]);
@@ -42,11 +42,7 @@ export function EditorPresentOverlay({
         e.preventDefault();
         onClose();
       }
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        e.altKey &&
-        e.key.toLowerCase() === "p"
-      ) {
+      if ((e.ctrlKey || e.metaKey) && e.altKey && e.key.toLowerCase() === "p") {
         e.preventDefault();
         onClose();
       }

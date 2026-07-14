@@ -1,70 +1,69 @@
+import "server-only";
+
 import crypto from "crypto";
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { z } from "zod";
+import { authContract } from "@/contracts";
 import { hashPassword } from "@/core/auth/password";
-import { formatApiError } from "@/core/http/api-error";
+import { db } from "@/core/database/client";
+import { user as usersTable } from "@/core/database/schema";
 import { checkRateLimit, getClientIP } from "@/core/http/rate-limit";
 import {
   findValidPasswordResetToken,
   updatePasswordResetToken,
 } from "@/features/auth/repositories/password-reset-token.repository";
-import { updateUser } from "@/features/auth/repositories/user.repository";
-import { resetPasswordSchema } from "@/features/auth/schemas/auth.schema";
-import { createAuditLog } from "@/features/auth/services/audit-log.service";
 
-export async function POST(request: Request) {
+export const POST = async (req: Request) => {
   try {
-    // Rate limiting: 3 attempts per 15 minutes per IP
-    const clientIP = getClientIP(request);
-    const rateLimit = checkRateLimit(
-      `reset-password:${clientIP}`,
-      3,
-      15 * 60 * 1000,
-    );
+    const ip = getClientIP(req);
+    const rateLimit = checkRateLimit(`reset-password:${ip}`, 3, 15 * 60 * 1000);
 
     if (!rateLimit.allowed) {
       return NextResponse.json(
-        { error: "Too many attempts. Please try again later." },
+        { success: false, error: "Too many attempts. Please try again later." },
         { status: 429 },
       );
     }
 
-    const body = await request.json();
-    const { token, password } = resetPasswordSchema.parse(body);
+    const body = await req.json();
+    const parsed = authContract.resetPassword.body.safeParse(body);
 
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: "Invalid input" },
+        { status: 400 },
+      );
+    }
+
+    const { token, password } = parsed.data;
     const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
     const resetTokenRecord = await findValidPasswordResetToken(tokenHash);
 
     if (!resetTokenRecord) {
       return NextResponse.json(
-        { error: "Invalid or expired token" },
+        { success: false, error: "Invalid or expired token" },
         { status: 400 },
       );
     }
 
     const hashedPassword = await hashPassword(password);
 
-    await updateUser(resetTokenRecord.userId, {
-      password: hashedPassword,
-    });
+    await db
+      .update(usersTable)
+      .set({ password: hashedPassword })
+      .where(eq(usersTable.id, resetTokenRecord.userId));
 
     await updatePasswordResetToken(resetTokenRecord.id, {
       usedAt: new Date().toISOString(),
     });
 
-    // Audit log password reset
-    await createAuditLog({
-      action: "PASSWORD_RESET",
-      targetType: "USER",
-      targetId: resetTokenRecord.userId,
-      metadata: { ipAddress: clientIP },
-    });
-
     return NextResponse.json({ success: true });
   } catch (error) {
-    const payload = formatApiError(error);
-    const status = error instanceof z.ZodError ? 400 : 500;
-    return NextResponse.json(payload, { status });
+    console.error("[auth/reset-password]", error);
+    return NextResponse.json(
+      { success: false, error: "Internal server error" },
+      { status: 500 },
+    );
   }
-}
+};

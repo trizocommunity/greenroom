@@ -32,7 +32,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useCategories } from "@/features/categories/hooks/use-categories";
+import {
+  useCategories,
+  useCreateCategory,
+  useUpdateCategory,
+} from "@/api/client/categories";
 
 const CategorySchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -70,10 +74,10 @@ export function CategoryDialog({
   const setOpen =
     isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
 
-  const { createCategory, isCreating, updateCategory, isUpdating } =
-    useCategories(festivalId);
+  const createCategory = useCreateCategory();
+  const updateCategory = useUpdateCategory();
   const isEditing = !!category;
-  const isLoading = isCreating || isUpdating;
+  const isLoading = createCategory.isPending || updateCategory.isPending;
 
   const form = useForm({
     resolver: zodResolver(CategorySchema),
@@ -103,9 +107,9 @@ export function CategoryDialog({
   const onSubmit = async (data: CategoryFormValues) => {
     try {
       if (isEditing && category) {
-        await updateCategory({ id: category.id, data });
+        await updateCategory.mutateAsync({ festivalId, categoryId: category.id, data });
       } else {
-        await createCategory(data);
+        await createCategory.mutateAsync({ festivalId, data });
       }
       setOpen(false);
     } catch (error: any) {

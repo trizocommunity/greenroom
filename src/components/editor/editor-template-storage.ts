@@ -1,5 +1,5 @@
-import type { PosterTemplateType } from "./poster-editor-config";
 import { cloneDoc } from "./editor-utils";
+import type { PosterTemplateType } from "./poster-editor-config";
 import type { PosterEditorDocument } from "./poster-editor-types";
 
 const STORAGE_KEY = "greenroom-poster-templates-v1";
@@ -91,4 +91,9 @@ export function deleteSavedTemplate(id: string) {
 
 export function getSavedTemplate(id: string): SavedPosterTemplate | null {
   return listSavedTemplates().find((t) => t.id === id) ?? null;
+}
+
+export function clearAllDevEditorTemplates() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(STORAGE_KEY);
 }

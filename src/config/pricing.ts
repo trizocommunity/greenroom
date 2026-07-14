@@ -41,6 +41,9 @@ export interface TierFeatures {
   advancedAnalytics: boolean;
   customReports: boolean;
 
+  // Design templates (poster editor)
+  designTemplates: boolean;
+
   // Certificates & QR
   qrCodes: boolean;
   autoCertificates: boolean;
@@ -150,6 +153,8 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       advancedAnalytics: false,
       customReports: false,
 
+      designTemplates: true,
+
       // Certificates & QR
       qrCodes: false,
       autoCertificates: false,
@@ -220,8 +225,8 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       stageManagement: true,
       schedule: true,
 
-      // Team & Collaboration — up to 3 members, simple role management
-      maxTeamMembers: 3,
+      // Team & Collaboration — unlimited members
+      maxTeamMembers: -1,
       members: true,
       roleBasedAccess: false, // granular RBAC still a PRO feature
 
@@ -241,6 +246,8 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       // Reporting & Analytics
       advancedAnalytics: false,
       customReports: false,
+
+      designTemplates: true,
 
       // Certificates & QR — QR and auto-certs unlocked
       qrCodes: true,
@@ -312,8 +319,8 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       stageManagement: true,
       schedule: true,
 
-      // Team & Collaboration — up to 10 members with full RBAC
-      maxTeamMembers: 10,
+      // Team & Collaboration — unlimited members with full RBAC
+      maxTeamMembers: -1,
       members: true,
       roleBasedAccess: true,
 
@@ -333,6 +340,8 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       // Reporting & Analytics — advanced unlocked
       advancedAnalytics: true,
       customReports: true,
+
+      designTemplates: true,
 
       // Certificates & QR — fully unlocked with templates + bulk generation
       qrCodes: true,

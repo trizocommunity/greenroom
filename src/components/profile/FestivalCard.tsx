@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { parseStoredInstant } from "@/core/utils/date-time";
-import type { Festival } from "@/features/festivals/hooks/use-festivals";
+import type { Festival } from "@/api/contracts/festivals";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 
 interface FestivalCardProps {

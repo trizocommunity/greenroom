@@ -17,6 +17,13 @@ import {
 } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+const ANNOUNCER_FAQ_IDS = [
+  "announcer-workflow",
+  "announcement-desk",
+  "group-standings-announcer",
+  "leaderboard",
+];
+
 const STAGE_MANAGER_FAQ_IDS = [
   "stage-diff",
   "stage-manage",
@@ -83,17 +90,35 @@ const allFaqs = [
       "Go to 'Pre Event Works' -> 'Assignment'. You can either assign students individually or use the bulk assignment feature.",
   },
   {
+    id: "announcer-workflow",
+    question: "What is the announcer results workflow?",
+    answer:
+      "Publish programme results to the desk from Event Works -> Results. On Announcement, mark each programme as announced on-air — only then do results appear on the public site (when in programme-results mode). After the configured number of results are announced (Settings -> Number of results, e.g. 10, 5, or 2), publish group standings from Group Standings; the public site then shows team standings only until you publish the next batch.",
+  },
+  {
+    id: "announcement-desk",
+    question: "How does Announcement work?",
+    answer:
+      "Event Works -> Announcement lists programmes ready to announce and programmes already announced on-air. Use 'Mark announced' after reading results on the mic. The programme status becomes Announced and results go live on the public page when display mode is programme results.",
+  },
+  {
+    id: "group-standings-announcer",
+    question: "When and how do I publish group standings?",
+    answer:
+      "Open Event Works -> Group Standings after announcing a block of programmes (default: every 10). Preview standings from announced results, then Publish to public. Visitors see team standings only until you publish the next programme to the desk, which resumes programme results on the public site.",
+  },
+  {
     id: "leaderboard",
     question: "How can I view the leaderboard?",
     answer:
-      "The leaderboard is available under 'Event Works' -> 'Leaderboard'. It updates in real-time as results are published. On the Basic plan, this is an internal leaderboard for coordination. Standard and Pro plans allow publishing a snapshot to the public festival page.",
+      "The leaderboard is under Event Works -> Leaderboard. It shows desk totals (published) and what the public sees (announced results or published team standings, depending on display mode). Announcers publish team standings from Group Standings, not from the Leaderboard page.",
   },
   {
     id: "programme-status-event-works",
     question:
-      "Why don't my programmes appear in Event Works (Marks, Results, Leaderboard)?",
+      "Why don't my programmes appear in Event Works (Scoring, Leaderboard)?",
     answer:
-      "Programmes have a status (Ready, Assigned, Scheduled, Judged, Published). On Standard and Pro plans, a programme appears in Event Works only after it is added to the schedule (Scheduled or later). Add your programmes in Pre Event Works -> Schedule to see them in Marks, Results, and Leaderboard. On the Basic plan, programmes appear once they have at least one assignment.",
+      "Programmes have a status that reflects Pre Event Works and the live event. On Standard and Pro, status moves Ready → Assigned → Scheduled from assignments and the schedule; during the event it can become Reporting, Started, or Ended after stage reporting. On Basic, save your scoring policy first, assign students, then open Scoring—programmes appear from Assigned onward. Publish each programme when every participant or team has a saved score. Leaderboard uses published award points from the scoring policy.",
   },
   {
     id: "chest-numbers",
@@ -166,9 +191,12 @@ export default function DocumentationContent({
   role,
 }: DocumentationContentProps) {
   const isStageManager = role === "STAGE_MANAGER";
+  const isAnnouncer = role === "ANNOUNCER";
   const faqs = isStageManager
     ? allFaqs.filter((faq) => STAGE_MANAGER_FAQ_IDS.includes(faq.id))
-    : allFaqs;
+    : isAnnouncer
+      ? allFaqs.filter((faq) => ANNOUNCER_FAQ_IDS.includes(faq.id))
+      : allFaqs;
   const resources = isStageManager ? stageManagerResources : allResources;
 
   return (
@@ -181,7 +209,9 @@ export default function DocumentationContent({
           <p className="text-base sm:text-lg text-muted-foreground mt-2">
             {isStageManager
               ? "Stage Manager guide: stages and schedule."
-              : "Welcome to the Greenroom help center. Here you can find guides, FAQs, and resources to help you manage your festival efficiently."}
+              : isAnnouncer
+                ? "Announcer guide: desk, on-air announcements, and group standings."
+                : "Welcome to the Greenroom help center. Here you can find guides, FAQs, and resources to help you manage your festival efficiently."}
           </p>
         </div>
 

@@ -22,9 +22,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useCategories } from "@/api/client/categories";
+import { useDeleteCategory } from "@/api/client/categories";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import { useStudents } from "@/features/students/hooks/use-students";
+import { useStudents } from "@/api/client/students";
 import { CategoryDetailsDialog } from "./CategoryDetailsDialog";
 import { CategoryDialog } from "./CategoryDialog";
 
@@ -38,12 +39,11 @@ export function CategoriesClient({
   children,
 }: CategoriesClientProps) {
   const {
-    categories,
+    data: categories = [],
     isLoading: isCategoriesLoading,
-    deleteCategory,
-    isDeleting,
   } = useCategories(festivalId);
-  const { students, isLoading: isStudentsLoading } = useStudents(festivalId);
+  const deleteCategory = useDeleteCategory();
+  const { data: students = [], isLoading: isStudentsLoading } = useStudents(festivalId);
   const { isReadOnly } = useFestivalReadOnly();
   const [actionCategory, setActionCategory] = useState<{
     category: any;
@@ -235,10 +235,10 @@ export function CategoriesClient({
             title="Delete Category"
             description="Are you sure you want to delete this category? This will fail if there are programmes in this category."
             onDelete={async () => {
-              await deleteCategory(actionCategory.category.id);
+              await deleteCategory.mutateAsync({ festivalId, categoryId: actionCategory.category.id });
               setActionCategory(null);
             }}
-            isDeleting={isDeleting}
+            isDeleting={deleteCategory.isPending}
             open={true}
             onOpenChange={(open) => !open && setActionCategory(null)}
           />

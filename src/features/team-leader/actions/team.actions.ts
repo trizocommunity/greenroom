@@ -1,7 +1,7 @@
 "use server";
 
 import { randomUUID } from "crypto";
-import { and, count, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { hashPassword } from "@/core/auth/password";
@@ -13,16 +13,12 @@ import {
 } from "@/core/database/schema";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { ensureFestivalWritable } from "@/features/festivals/services/festival-context.service";
-import {
-  FeatureService,
-  getTierForFeatureCheck,
-} from "@/features/plan-features/services/features";
 
 const createMemberSchema = z.object({
   festivalId: z.string(),
   fullName: z.string().min(1, "Full name is required"),
   email: z.string().email("Invalid email address").toLowerCase(),
-  role: z.enum(["ADMIN", "ANNOUNCER", "STAGE_MANAGER"]),
+  role: z.enum(["ADMIN", "ANNOUNCER", "STAGE_MANAGER", "MEDIA"]),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
@@ -39,31 +35,10 @@ export async function createFestivalMember(input: CreateMemberInput) {
   try {
     await ensureFestivalWritable(festivalId);
 
-    const festivalForLimit = await db.query.festival.findFirst({
+    const festival = await db.query.festival.findFirst({
       where: eq(festivalTable.id, festivalId),
-      columns: { tier: true, slug: true },
+      columns: { slug: true },
     });
-
-    if (festivalForLimit) {
-      const maxTeamMembers =
-        FeatureService.getFeatureValue<number>(
-          getTierForFeatureCheck(festivalForLimit.tier as any),
-          "maxTeamMembers",
-        ) ?? 1;
-      const [existingCountResult] = await db
-        .select({ c: count() })
-        .from(festivalMemberTable)
-        .where(eq(festivalMemberTable.festivalId, festivalId));
-
-      const totalSlots = 1 + existingCountResult.c;
-      if (totalSlots >= maxTeamMembers) {
-        return {
-          success: false,
-          error:
-            "Team member limit reached for your plan. Please upgrade to add more.",
-        };
-      }
-    }
 
     let user = await db.query.user.findFirst({
       where: eq(userTable.email, email),
@@ -121,8 +96,7 @@ export async function createFestivalMember(input: CreateMemberInput) {
       metadata: { festivalId, email, fullName, role },
     });
 
-    if (festivalForLimit?.slug)
-      revalidatePath(`/dashboard/${festivalForLimit.slug}/members`);
+    if (festival?.slug) revalidatePath(`/dashboard/${festival.slug}/members`);
 
     return { success: true };
   } catch (error) {

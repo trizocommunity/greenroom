@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Copy, Eye, Loader2, Trash2, User } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -38,27 +39,15 @@ import {
 import type { FestivalRole } from "@/core/types/app-enums";
 import { parseStoredInstant } from "@/core/utils/date-time";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import { useMembers } from "@/features/members/hooks/use-members";
-import {
-  createFestivalMember,
-  revokeFestivalMember,
-} from "@/features/team-leader/actions/team.actions";
+import { useAddMember, useMembers, useRemoveMember } from "@/api/client/members";
 
 interface MembersClientProps {
   festivalId: string;
-  maxTeamMembers: number;
-  totalMemberCount: number;
-  atMemberCap: boolean;
 }
 
-export function MembersClient({
-  festivalId,
-  maxTeamMembers,
-  totalMemberCount,
-  atMemberCap,
-}: MembersClientProps) {
+export function MembersClient({ festivalId }: MembersClientProps) {
   const { isReadOnly } = useFestivalReadOnly();
-  const { members, isLoading } = useMembers(festivalId);
+  const { data: members = [], isLoading } = useMembers(festivalId);
 
   if (isLoading) {
     return (
@@ -74,15 +63,10 @@ export function MembersClient({
         <div>
           <h2 className="text-lg font-semibold">Club Members</h2>
           <p className="text-sm text-muted-foreground">
-            {totalMemberCount} of {maxTeamMembers} members
+            {members.length} {members.length === 1 ? "member" : "members"}
           </p>
         </div>
-        <AddMemberDialog
-          festivalId={festivalId}
-          disabled={atMemberCap || isReadOnly}
-          atMemberCap={atMemberCap}
-          maxTeamMembers={maxTeamMembers}
-        />
+        <AddMemberDialog festivalId={festivalId} disabled={isReadOnly} />
       </div>
 
       <div className="rounded-md border">
@@ -128,7 +112,11 @@ export function MembersClient({
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  <MemberActions member={member} isReadOnly={isReadOnly} />
+                  <MemberActions
+                    member={member}
+                    isReadOnly={isReadOnly}
+                    festivalId={festivalId}
+                  />
                 </TableCell>
               </TableRow>
             ))}
@@ -149,19 +137,17 @@ export function MembersClient({
 function AddMemberDialog({
   festivalId,
   disabled,
-  atMemberCap,
-  maxTeamMembers,
 }: {
   festivalId: string;
   disabled: boolean;
-  atMemberCap: boolean;
-  maxTeamMembers: number;
 }) {
+  const queryClient = useQueryClient();
   const dirtySourceId = `members-add-dialog:${festivalId}`;
   const { registerDirtySource, unregisterDirtySource, setDirty } =
     useUnsavedChanges();
   const festival = useFestival();
   const readOnlyExpired = festival?.readOnlyExpired ?? false;
+  const addMember = useAddMember();
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -185,26 +171,23 @@ function AddMemberDialog({
     e.preventDefault();
     setIsLoading(true);
     try {
-      const result = await createFestivalMember({
+      await addMember.mutateAsync({
         festivalId,
-        ...formData,
-        role: formData.role as "ADMIN" | "ANNOUNCER" | "STAGE_MANAGER",
+        data: {
+          ...formData,
+          role: formData.role as "ADMIN" | "ANNOUNCER" | "STAGE_MANAGER",
+        },
       });
 
-      if (result.success) {
-        toast.success("Member added successfully");
-        setOpen(false);
-        setFormData({
-          fullName: "",
-          email: "",
-          role: "STAGE_MANAGER",
-          password: "",
-        });
-        window.location.reload(); // Simple reload to refresh list
-        setDirty(dirtySourceId, false);
-      } else {
-        toast.error(result.error as string);
-      }
+      toast.success("Member added successfully");
+      setOpen(false);
+      setFormData({
+        fullName: "",
+        email: "",
+        role: "STAGE_MANAGER",
+        password: "",
+      });
+      setDirty(dirtySourceId, false);
     } catch (error) {
       toast.error("Failed to add member");
     } finally {
@@ -229,9 +212,7 @@ function AddMemberDialog({
           title={
             readOnlyExpired
               ? "Festival has expired; read-only access."
-              : atMemberCap
-                ? `Member limit reached (${maxTeamMembers} for your plan). Upgrade to add more.`
-                : undefined
+              : undefined
           }
         >
           <User className="mr-2 h-4 w-4" />
@@ -282,6 +263,7 @@ function AddMemberDialog({
                 <SelectItem value="ADMIN">Admin</SelectItem>
                 <SelectItem value="STAGE_MANAGER">Stage Manager</SelectItem>
                 <SelectItem value="ANNOUNCER">Announcer</SelectItem>
+                <SelectItem value="MEDIA">Media</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -324,23 +306,22 @@ function AddMemberDialog({
 function MemberActions({
   member,
   isReadOnly,
+  festivalId,
 }: {
   member: any;
   isReadOnly: boolean;
+  festivalId: string;
 }) {
+  const queryClient = useQueryClient();
+  const removeMember = useRemoveMember();
   const [isRevoking, setIsRevoking] = useState(false);
 
   const handleRevoke = async () => {
     if (isReadOnly) return;
     setIsRevoking(true);
     try {
-      const result = await revokeFestivalMember(member.id);
-      if (result.success) {
-        toast.success("Member removed");
-        window.location.reload();
-      } else {
-        toast.error("Failed to remove member");
-      }
+      await removeMember.mutateAsync({ festivalId, memberId: member.id });
+      toast.success("Member removed");
     } catch (e) {
       toast.error("Error removing member");
     } finally {

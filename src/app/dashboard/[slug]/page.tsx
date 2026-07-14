@@ -25,6 +25,9 @@ export default async function FestivalDashboardPage({
   if (context?.role === "STAGE_MANAGER") {
     redirect(`/dashboard/${slug}/stage-manager`);
   }
+  if (context?.role === "ANNOUNCER") {
+    redirect(`/dashboard/${slug}/announcer`);
+  }
 
   return (
     <Suspense fallback={<OverviewSkeleton />}>

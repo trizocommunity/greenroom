@@ -1,3 +1,5 @@
+import "server-only";
+
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as relations from "./relations";
 import * as schema from "./schema";
@@ -44,7 +46,7 @@ const poolConfig: PoolConfig = {
   connectionString: effectiveConnectionString,
   max: process.env.NODE_ENV === "production" ? 10 : 5,
   idleTimeoutMillis: 30000,
-  // Hosted Postgres (Neon, Supabase, etc.) often drops idle TCP; allow longer cold starts.
+  // Allow sufficient time for database connection establishment.
   connectionTimeoutMillis: 30000,
   keepAlive: true,
   keepAliveInitialDelayMillis: 10000,

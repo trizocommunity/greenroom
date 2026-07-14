@@ -143,12 +143,13 @@ function extractTeamCodeFromMembers(members: MemberChip[]): string | null {
   return null;
 }
 
-function normalizeMemberReportingLabel(
+function memberReportingChipLabel(
   note: string | null | undefined,
+  programmeType: string,
 ): string | null {
   if (!note) return null;
-  if (note.startsWith("Team code ") || note.startsWith("Code ")) {
-    return "Reported";
+  if (isReportingCodeChipNote(note)) {
+    return formatReportingChipNote(note, programmeType);
   }
   return note;
 }
@@ -261,11 +262,14 @@ function ProgrammeCard({ p }: { p: ProgrammeCardData }) {
                               <span
                                 className={
                                   isReportingCodeChipNote(m.reportingNote)
-                                    ? "ml-1 text-[11px] text-muted-foreground"
+                                    ? "ml-1 rounded border border-blue-500/35 bg-blue-500/10 px-1 font-mono text-[11px] text-blue-900 dark:text-blue-100"
                                     : "ml-1 text-[11px] text-muted-foreground"
                                 }
                               >
-                                {normalizeMemberReportingLabel(m.reportingNote)}
+                                {memberReportingChipLabel(
+                                  m.reportingNote,
+                                  p.type,
+                                )}
                               </span>
                             ) : null}
                           </span>

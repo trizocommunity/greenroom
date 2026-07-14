@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import type { Festival } from "@/features/festivals/hooks/use-festivals";
+import type { Festival } from "@/api/contracts/festivals";
 import {
   FESTIVAL_STATUS_LABELS,
   getDerivedFestivalStatus,

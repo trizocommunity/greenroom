@@ -152,6 +152,26 @@ export async function updateTeamStandings(festivalId: string, standings: any) {
   return result[0];
 }
 
+export async function updateFestivalAnnouncerState(
+  festivalId: string,
+  data: {
+    publicDisplayMode?: "programme_results" | "team_standings";
+    announcedProgrammesSinceStandings?: number;
+    announcerResultsPerStandings?: number;
+    teamStandings?: unknown;
+  },
+) {
+  const result = await db
+    .update(festivals)
+    .set({
+      ...data,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(festivals.id, festivalId))
+    .returning();
+  return result[0];
+}
+
 export type OverviewResultRow = {
   displayName: string;
   subText: string;

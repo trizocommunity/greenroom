@@ -45,6 +45,7 @@ interface ResultsListProps {
   accentColor: string; // We'll essentially use this as the primary active color
   results: Result[];
   teamStandings?: TeamStanding[];
+  publicDisplayMode?: "programme_results" | "team_standings";
   scoringSystem?: "POSITION_BASED" | "SCORE_BASED";
 }
 
@@ -54,9 +55,13 @@ export function ResultsList({
   accentColor,
   results,
   teamStandings: initialTeamStandings,
+  publicDisplayMode = "programme_results",
 }: ResultsListProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"program" | "team">("program");
+  const standingsOnly = publicDisplayMode === "team_standings";
+  const [activeTab, setActiveTab] = useState<"program" | "team">(
+    standingsOnly ? "team" : "program",
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [programTypeFilter, setProgramTypeFilter] = useState<
     "ALL" | "INDIVIDUAL" | "GROUP"
@@ -133,6 +138,10 @@ export function ResultsList({
       }));
     }
 
+    if (standingsOnly) {
+      return [];
+    }
+
     const standings: Record<string, { name: string; points: number }> = {};
 
     results.forEach((r) => {
@@ -149,7 +158,11 @@ export function ResultsList({
     return Object.values(standings)
       .sort((a, b) => b.points - a.points)
       .map((team, index) => ({ ...team, rank: index + 1 }));
-  }, [results, initialTeamStandings]);
+  }, [results, initialTeamStandings, standingsOnly]);
+
+  useEffect(() => {
+    if (standingsOnly) setActiveTab("team");
+  }, [standingsOnly]);
 
   // --- UI Helpers ---
 
@@ -188,22 +201,24 @@ export function ResultsList({
 
           {/* Tabs - Creating custom segmented control look */}
           <div className="flex gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab("program")}
-              className={cn(
-                "px-6 py-2 rounded-lg font-bold text-sm transition-all duration-200 shadow-sm",
-                activeTab === "program"
-                  ? "text-white shadow-md scale-105"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80",
-              )}
-              style={{
-                backgroundColor:
-                  activeTab === "program" ? accentColor : undefined,
-              }}
-            >
-              Program
-            </button>
+            {!standingsOnly && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("program")}
+                className={cn(
+                  "px-6 py-2 rounded-lg font-bold text-sm transition-all duration-200 shadow-sm",
+                  activeTab === "program"
+                    ? "text-white shadow-md scale-105"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80",
+                )}
+                style={{
+                  backgroundColor:
+                    activeTab === "program" ? accentColor : undefined,
+                }}
+              >
+                Program
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setActiveTab("team")}

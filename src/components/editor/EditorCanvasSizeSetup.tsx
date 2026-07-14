@@ -5,14 +5,15 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  clampCanvasDimension,
-  presetsForTemplate,
-} from "./editor-canvas-size";
+import { clampCanvasDimension, presetsForTemplate } from "./editor-canvas-size";
 import { editorInput } from "./editor-chrome";
 import type { PosterEditorState } from "./use-poster-editor-state";
 
-export function EditorCanvasSizeSetup({ editor }: { editor: PosterEditorState }) {
+export function EditorCanvasSizeSetup({
+  editor,
+}: {
+  editor: PosterEditorState;
+}) {
   const { doc, resizeCanvas } = editor;
   const [width, setWidth] = useState(1200);
   const [height, setHeight] = useState(1600);
@@ -50,9 +51,7 @@ export function EditorCanvasSizeSetup({ editor }: { editor: PosterEditorState })
 
   const onHeightChange = (raw: number) => {
     const h = clampCanvasDimension(raw);
-    const w = lockAspect
-      ? clampCanvasDimension(Math.round(h * aspect))
-      : width;
+    const w = lockAspect ? clampCanvasDimension(Math.round(h * aspect)) : width;
     setHeight(h);
     if (lockAspect) setWidth(w);
   };
@@ -72,7 +71,9 @@ export function EditorCanvasSizeSetup({ editor }: { editor: PosterEditorState })
 
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <Label className="text-[10px] text-muted-foreground">Width (px)</Label>
+          <Label className="text-[10px] text-muted-foreground">
+            Width (px)
+          </Label>
           <Input
             type="number"
             className={editorInput}
@@ -85,7 +86,9 @@ export function EditorCanvasSizeSetup({ editor }: { editor: PosterEditorState })
           />
         </div>
         <div>
-          <Label className="text-[10px] text-muted-foreground">Height (px)</Label>
+          <Label className="text-[10px] text-muted-foreground">
+            Height (px)
+          </Label>
           <Input
             type="number"
             className={editorInput}

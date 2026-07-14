@@ -3,7 +3,7 @@
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/core/utils/cn";
-import { isTabDirty, type EditorDraftTab } from "./editor-draft-tab";
+import { type EditorDraftTab, isTabDirty } from "./editor-draft-tab";
 
 export function EditorDraftTabsBar({
   tabs,
@@ -52,7 +52,10 @@ export function EditorDraftTabsBar({
               type="button"
               className="rounded p-0.5 opacity-60 hover:bg-background/80 hover:opacity-100"
               aria-label={`Close ${tab.label}`}
-              onClick={() => onClose(tab.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose(tab.id);
+              }}
             >
               <X className="h-3 w-3" />
             </button>

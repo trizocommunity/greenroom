@@ -3,23 +3,21 @@
 import { Redo2, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EditorEffectsPopover } from "./EditorEffectsPopover";
 import {
   editorBtnIcon,
   editorInputNarrow,
   editorToolbarRow,
 } from "./editor-chrome";
-import { EditorEffectsPopover } from "./EditorEffectsPopover";
 import type { PosterEditorState } from "./use-poster-editor-state";
 
-export function EditorContextToolbar({ editor }: { editor: PosterEditorState }) {
-  const {
-    selectedElement,
-    updateElement,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-  } = editor;
+export function EditorContextToolbar({
+  editor,
+}: {
+  editor: PosterEditorState;
+}) {
+  const { selectedElement, updateElement, undo, redo, canUndo, canRedo } =
+    editor;
 
   const isText = selectedElement?.type === "text";
   const isShape =

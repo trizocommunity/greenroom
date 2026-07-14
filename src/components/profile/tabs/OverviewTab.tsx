@@ -28,11 +28,10 @@ import { PRICING_TIERS } from "@/config/pricing";
 import type { Tier } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
 import { parseStoredInstant } from "@/core/utils/date-time";
-import { useFestivalPayment } from "@/features/festivals/hooks/use-festival-payment";
-import { useMyFestival } from "@/features/festivals/hooks/use-festivals";
-import { useJoinedFestivals } from "@/features/festivals/hooks/use-joined-festivals";
+import { useFestivalPayment } from "@/api/client";
+import { useMyFestivals, useJoinedFestivals } from "@/api/client";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
-import { useUnusedCredit } from "@/features/payments/hooks/use-unused-credit";
+import { useUnusedCredit } from "@/api/client";
 import { FestivalCard } from "../FestivalCard";
 import { JoinedFestivalCard } from "../JoinedFestivalCard";
 
@@ -41,13 +40,14 @@ interface OverviewTabProps {
   userId: string;
 }
 
-export function OverviewTab({ displayName, userId }: OverviewTabProps) {
+export function OverviewTab({ displayName, userId: _userId }: OverviewTabProps) {
   const router = useRouter();
   const [confirmationTier, setConfirmationTier] = useState<Tier | null>(null);
 
-  const { data: festival, isLoading: isFestivalLoading } = useMyFestival();
+  const { data: myFestivalData, isLoading: isFestivalLoading } = useMyFestivals();
+  const festival = myFestivalData?.festival ?? null;
   const { data: joinedFestivals, isLoading: isJoinedLoading } =
-    useJoinedFestivals(userId);
+    useJoinedFestivals();
   const { data: credit, isLoading: isCreditLoading } = useUnusedCredit();
   const { handlePay, loading: isPaymentProcessing } = useFestivalPayment();
 
@@ -147,120 +147,113 @@ export function OverviewTab({ displayName, userId }: OverviewTabProps) {
             </div>
           ) : credit ? (
             <div className="space-y-4">
-                <Card className="border-primary/30 bg-linear-to-br from-primary/10 via-background to-background relative overflow-hidden ring-1 ring-primary/20">
-                  <div className="absolute right-0 top-0 p-4 opacity-10 pointer-events-none">
-                    <Sparkles className="w-32 h-32 text-primary" />
+              <Card className="border-primary/30 bg-linear-to-br from-primary/10 via-background to-background relative overflow-hidden ring-1 ring-primary/20">
+                <div className="absolute right-0 top-0 p-4 opacity-10 pointer-events-none">
+                  <Sparkles className="w-32 h-32 text-primary" />
+                </div>
+                <CardContent className="p-5 sm:p-6 md:p-8">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6">
+                    <div className="flex items-center gap-4 w-full sm:w-auto">
+                      <div className="p-3 sm:p-4 bg-primary/20 rounded-2xl ring-1 ring-primary/30 shrink-0">
+                        <Check className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-lg sm:text-xl font-bold text-foreground flex flex-wrap items-center gap-2">
+                          {credit.tier} Plan Credit
+                          <Badge
+                            variant="secondary"
+                            className="bg-primary/15 text-primary hover:bg-primary/20 border-0 text-[10px] sm:text-xs px-1.5 py-0 sm:py-0.5"
+                          >
+                            Available
+                          </Badge>
+                        </h4>
+                        <p className="text-xs sm:text-sm font-medium text-muted-foreground w-full">
+                          Value: ₹{credit.amount}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="w-full sm:w-auto shrink-0 z-10 pt-2 sm:pt-0">
+                      <Button
+                        size="lg"
+                        onClick={() =>
+                          router.push(`/festival-setup?paymentId=${credit.id}`)
+                        }
+                        className="w-full md:w-auto h-12 text-sm font-bold uppercase tracking-wider rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all"
+                      >
+                        <Plus className="mr-2 h-5 w-5" />
+                        Launch Festival Now
+                      </Button>
+                    </div>
                   </div>
-                  <CardContent className="p-5 sm:p-6 md:p-8">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6">
-                      <div className="flex items-center gap-4 w-full sm:w-auto">
-                        <div className="p-3 sm:p-4 bg-primary/20 rounded-2xl ring-1 ring-primary/30 shrink-0">
-                          <Check className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
-                        </div>
-                        <div className="space-y-1">
-                          <h4 className="text-lg sm:text-xl font-bold text-foreground flex flex-wrap items-center gap-2">
-                            {credit.tier} Plan Credit
-                            <Badge
-                              variant="secondary"
-                              className="bg-primary/15 text-primary hover:bg-primary/20 border-0 text-[10px] sm:text-xs px-1.5 py-0 sm:py-0.5"
+
+                  {/* Expiry Progress Section */}
+                  <div className="mt-8 pt-6 border-t border-border/50">
+                    {(() => {
+                      const start = parseStoredInstant(
+                        credit.validFrom as string | Date,
+                      );
+                      const end = credit.validUntil
+                        ? parseStoredInstant(credit.validUntil as string | Date)
+                        : new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000);
+                      const now = new Date();
+
+                      const totalDuration = end.getTime() - start.getTime();
+                      const elapsed = now.getTime() - start.getTime();
+                      let progress = (elapsed / totalDuration) * 100;
+                      progress = Math.min(100, Math.max(0, progress));
+
+                      const daysLeft = Math.ceil(
+                        (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+                      );
+                      const isExpiringSoon = daysLeft <= 7;
+
+                      return (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium text-muted-foreground flex items-center gap-1.5">
+                              <span className="inline-block w-2 h-2 rounded-full bg-primary animate-pulse" />
+                              Credit Validity
+                            </span>
+                            <span
+                              className={cn(
+                                "font-bold",
+                                isExpiringSoon
+                                  ? "text-destructive"
+                                  : "text-foreground",
+                              )}
                             >
-                              Available
-                            </Badge>
-                          </h4>
-                          <p className="text-xs sm:text-sm font-medium text-muted-foreground w-full">
-                            Value: ₹{credit.amount}
+                              {daysLeft > 0
+                                ? `${daysLeft} days remaining`
+                                : "Expires today"}
+                            </span>
+                          </div>
+                          <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                            <div
+                              className={cn(
+                                "h-full rounded-full transition-all duration-1000",
+                                isExpiringSoon
+                                  ? "bg-destructive"
+                                  : "bg-primary",
+                              )}
+                              style={{ width: `${100 - progress}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Activate your festival before{" "}
+                            {end.toLocaleDateString(undefined, {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            })}{" "}
+                            to use this credit.
                           </p>
                         </div>
-                      </div>
-
-                      <div className="w-full sm:w-auto shrink-0 z-10 pt-2 sm:pt-0">
-                        <Button
-                          size="lg"
-                          onClick={() =>
-                            router.push(
-                              `/festival-setup?paymentId=${credit.id}`,
-                            )
-                          }
-                          className="w-full md:w-auto h-12 text-sm font-bold uppercase tracking-wider rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all"
-                        >
-                          <Plus className="mr-2 h-5 w-5" />
-                          Launch Festival Now
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Expiry Progress Section */}
-                    <div className="mt-8 pt-6 border-t border-border/50">
-                      {(() => {
-                        const start = parseStoredInstant(
-                          credit.validFrom as string | Date,
-                        );
-                        const end = credit.validUntil
-                          ? parseStoredInstant(
-                              credit.validUntil as string | Date,
-                            )
-                          : new Date(
-                              start.getTime() + 30 * 24 * 60 * 60 * 1000,
-                            );
-                        const now = new Date();
-
-                        const totalDuration = end.getTime() - start.getTime();
-                        const elapsed = now.getTime() - start.getTime();
-                        let progress = (elapsed / totalDuration) * 100;
-                        progress = Math.min(100, Math.max(0, progress));
-
-                        const daysLeft = Math.ceil(
-                          (end.getTime() - now.getTime()) /
-                            (1000 * 60 * 60 * 24),
-                        );
-                        const isExpiringSoon = daysLeft <= 7;
-
-                        return (
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="font-medium text-muted-foreground flex items-center gap-1.5">
-                                <span className="inline-block w-2 h-2 rounded-full bg-primary animate-pulse" />
-                                Credit Validity
-                              </span>
-                              <span
-                                className={cn(
-                                  "font-bold",
-                                  isExpiringSoon
-                                    ? "text-destructive"
-                                    : "text-foreground",
-                                )}
-                              >
-                                {daysLeft > 0
-                                  ? `${daysLeft} days remaining`
-                                  : "Expires today"}
-                              </span>
-                            </div>
-                            <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-                              <div
-                                className={cn(
-                                  "h-full rounded-full transition-all duration-1000",
-                                  isExpiringSoon
-                                    ? "bg-destructive"
-                                    : "bg-primary",
-                                )}
-                                style={{ width: `${100 - progress}%` }}
-                              />
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              Activate your festival before{" "}
-                              {end.toLocaleDateString(undefined, {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric",
-                              })}{" "}
-                              to use this credit.
-                            </p>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  </CardContent>
-                </Card>
+                      );
+                    })()}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           ) : (
             <>

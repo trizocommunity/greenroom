@@ -35,7 +35,11 @@ import type {
   ProgrammeStatus,
   ProgrammeType,
 } from "@/core/types/app-enums";
-import { useAssignments } from "@/features/assignments/hooks/use-assignments";
+import {
+  useAssignments,
+  useBulkCreateAssignments,
+  useDeleteAssignment,
+} from "@/api/client/assignments";
 import { useDeadlineLock } from "@/features/festivals/hooks/use-deadline-lock";
 import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
 
@@ -86,15 +90,12 @@ export function AssignProgrammesClient({
   const runtimeIsReadOnly = isReadOnly || isLocked;
 
   const {
-    assignments,
-    bulkCreateAssignment,
-    isBulkCreating,
+    data: assignments = [],
+    isFetching,
     refetch,
-    deleteAssignment,
-    deleteTeamAssignment,
-    isDeleting,
-    isDeletingTeam,
   } = useAssignments(festivalId);
+  const bulkCreateAssignments = useBulkCreateAssignments();
+  const deleteAssignment = useDeleteAssignment();
 
   const sortedProgrammes = useMemo(() => {
     return [...programmes].sort(
@@ -617,7 +618,7 @@ export function AssignProgrammesClient({
     if (runtimeIsReadOnly) return;
     const ok = window.confirm("Remove this assignment?");
     if (!ok) return;
-    await deleteAssignment(assignmentId);
+    await deleteAssignment.mutateAsync({ festivalId, assignmentId });
   };
 
   const onRemoveTeamAssignment = async (params: {
@@ -630,7 +631,20 @@ export function AssignProgrammesClient({
       `Remove Team ${params.teamNumber} from this programme?`,
     );
     if (!ok) return;
-    await deleteTeamAssignment(params);
+    const assignment = (assignments as any[]).find(
+      (a) =>
+        (a.programme?.id ?? a.programmeId) === params.programmeId &&
+        (a.group?.id ?? a.groupId ?? a.student?.groupId ?? a.student?.group?.id) === params.groupId &&
+        a.teamNumber === params.teamNumber,
+    );
+    if (!assignment) {
+      toast.error("Assignment not found");
+      return;
+    }
+    await deleteAssignment.mutateAsync({
+      festivalId,
+      assignmentId: assignment.id,
+    });
   };
 
   const onAssign = async () => {
@@ -675,7 +689,7 @@ export function AssignProgrammesClient({
       }));
     }
 
-    await bulkCreateAssignment(bulkPayload as any);
+    await bulkCreateAssignments.mutateAsync({ festivalId, data: { assignments: bulkPayload as any[] } });
     setSelectedStudentIds([]);
   };
 
@@ -1024,7 +1038,7 @@ export function AssignProgrammesClient({
                                 runtimeIsReadOnly ||
                                 selectedNewCount === 0 ||
                                 isOverLimit ||
-                                isBulkCreating
+                                bulkCreateAssignments.isPending
                               }
                               className={
                                 runtimeIsReadOnly
@@ -1032,7 +1046,7 @@ export function AssignProgrammesClient({
                                   : ""
                               }
                             >
-                              {isBulkCreating && (
+                              {bulkCreateAssignments.isPending && (
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                               )}
                               Assign
@@ -1375,10 +1389,10 @@ export function AssignProgrammesClient({
                               runtimeIsReadOnly ||
                               selectedNewCount === 0 ||
                               isOverLimit ||
-                              isBulkCreating
+                              bulkCreateAssignments.isPending
                             }
                           >
-                            {isBulkCreating && (
+                            {bulkCreateAssignments.isPending && (
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             )}
                             Assign ({selectedNewCount})
@@ -1453,7 +1467,7 @@ export function AssignProgrammesClient({
                                   teamNumber: row.teamNumber,
                                 })
                               }
-                              disabled={runtimeIsReadOnly || isDeletingTeam}
+                              disabled={runtimeIsReadOnly || deleteAssignment.isPending}
                               type="button"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -1515,7 +1529,7 @@ export function AssignProgrammesClient({
                             size="icon"
                             className="h-8 w-8 text-destructive hover:text-destructive"
                             onClick={() => onRemoveIndividualAssignment(a.id)}
-                            disabled={runtimeIsReadOnly || isDeleting}
+                            disabled={runtimeIsReadOnly || deleteAssignment.isPending}
                             type="button"
                           >
                             <Trash2 className="h-4 w-4" />

@@ -39,6 +39,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/core/utils/cn";
+import { publishProgrammeToDesk } from "@/features/announcement/actions/announcement.actions";
 import { bulkPublishProgrammeResults } from "@/features/results/actions/results.actions";
 import { getGradeBadgeColor } from "@/features/results/services/results-calculator";
 
@@ -70,6 +71,7 @@ interface ResultsExploreClientProps {
   programmes: Programme[];
   categories: { id: string; name: string }[];
   initialProgrammeId?: string;
+  festivalRole?: string;
   children?: React.ReactNode;
 }
 
@@ -78,8 +80,11 @@ export function ResultsExploreClient({
   programmes,
   categories,
   initialProgrammeId,
+  festivalRole,
   children,
 }: ResultsExploreClientProps) {
+  const isAnnouncerOnly = festivalRole === "ANNOUNCER";
+  const canUnpublish = festivalRole !== "ANNOUNCER";
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [publishingProgrammeId, setPublishingProgrammeId] = useState<
@@ -109,31 +114,40 @@ export function ResultsExploreClient({
         let publishedCount = assignmentsWithResult.filter(
           (a: any) => a.result?.isPublished,
         ).length;
+        let announcedCount = assignmentsWithResult.filter(
+          (a: any) => a.result?.isAnnounced,
+        ).length;
 
         if (p.type === "GROUP") {
           const allTeams = new Set<string>();
           const publishedTeams = new Set<string>();
+          const announcedTeams = new Set<string>();
 
           assignmentsWithResult.forEach((a: any) => {
             const teamId = getTeamIdentifier(a, "GROUP");
             allTeams.add(teamId);
             if (a.result?.isPublished) publishedTeams.add(teamId);
+            if (a.result?.isAnnounced) announcedTeams.add(teamId);
           });
 
           totalResults = allTeams.size;
           publishedCount = publishedTeams.size;
+          announcedCount = announcedTeams.size;
         }
 
         const hasAnyResult = totalResults > 0;
         const isPublished = hasAnyResult && publishedCount === totalResults;
+        const isAnnounced = hasAnyResult && announcedCount === totalResults;
 
         return {
           ...p,
           _meta: {
             hasAnyResult,
             publishedCount,
+            announcedCount,
             totalResults,
             isPublished,
+            isAnnounced,
           },
         };
       })
@@ -182,19 +196,39 @@ export function ResultsExploreClient({
   }, [initialProgrammeId, programmesWithResults]);
 
   const togglePublishProgramme = (programmeId: string, publish: boolean) => {
+    if (!publish && !canUnpublish) return;
     setPublishingProgrammeId(programmeId);
     startTransition(async () => {
       try {
-        const response = await bulkPublishProgrammeResults(
-          programmeId,
-          publish,
-          festival.slug,
-        );
-        if (!response.success) {
-          toast.error("Failed to update publish state");
-          return;
+        if (isAnnouncerOnly && publish) {
+          const response = await publishProgrammeToDesk(
+            festival.id,
+            programmeId,
+          );
+          if (!response.success) {
+            toast.error(response.error ?? "Failed to publish to desk");
+            return;
+          }
+          if (response.data?.resumedResultsBatch) {
+            toast.info("Public site resumed programme results display");
+          }
+          toast.success("Results published to announcement desk");
+        } else {
+          const response = await bulkPublishProgrammeResults(
+            programmeId,
+            publish,
+            festival.slug,
+          );
+          if (!response.success) {
+            toast.error("Failed to update publish state");
+            return;
+          }
+          toast.success(
+            publish
+              ? "Results published to announcement desk"
+              : "Results unpublished",
+          );
         }
-        toast.success(publish ? "Results published" : "Results unpublished");
         router.refresh();
       } finally {
         setPublishingProgrammeId(null);
@@ -377,22 +411,34 @@ export function ResultsExploreClient({
                   <Badge variant="outline" className="text-[10px]">
                     {prog.type === "GROUP" ? "Group" : "Individual"}
                   </Badge>
-                  <Button
-                    size="sm"
-                    variant={prog._meta.isPublished ? "outline" : "default"}
-                    className="h-6 text-[10px] px-2.5 min-w-0"
-                    disabled={isPending}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      togglePublishProgramme(prog.id, !prog._meta.isPublished);
-                    }}
-                  >
-                    {publishingProgrammeId === prog.id
-                      ? "Updating..."
-                      : prog._meta.isPublished
-                        ? "Unpublish"
-                        : "Publish"}
-                  </Button>
+                  {(canUnpublish || !prog._meta.isPublished) && (
+                    <Button
+                      size="sm"
+                      variant={prog._meta.isPublished ? "outline" : "default"}
+                      className="h-6 text-[10px] px-2.5 min-w-0"
+                      disabled={isPending}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        togglePublishProgramme(
+                          prog.id,
+                          !prog._meta.isPublished,
+                        );
+                      }}
+                    >
+                      {publishingProgrammeId === prog.id
+                        ? "Updating..."
+                        : prog._meta.isPublished
+                          ? canUnpublish
+                            ? "Unpublish"
+                            : "On desk"
+                          : "Publish to desk"}
+                    </Button>
+                  )}
+                  {prog._meta.isAnnounced ? (
+                    <Badge className="text-[10px] bg-emerald-500/15 text-emerald-800">
+                      Announced
+                    </Badge>
+                  ) : null}
                 </div>
               </div>
               <CardContent className="p-4">
@@ -403,7 +449,10 @@ export function ResultsExploreClient({
                     </h3>
                     <p className="text-xs text-muted-foreground mt-1">
                       {prog._meta.publishedCount}/{prog._meta.totalResults}{" "}
-                      published
+                      result slots on desk
+                      {prog._meta.announcedCount > 0
+                        ? ` · ${prog._meta.announcedCount} on-air`
+                        : ""}
                     </p>
                   </div>
                   <div className="rounded-full p-1.5 bg-muted/40 group-hover:bg-primary/10 transition-colors">

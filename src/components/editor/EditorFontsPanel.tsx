@@ -8,10 +8,10 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/core/utils/cn";
 import {
   documentFontsFromElements,
-  filterFonts,
-  FONT_CATEGORY_LABELS,
   type EditorFontEntry,
+  FONT_CATEGORY_LABELS,
   type FontCategory,
+  filterFonts,
 } from "./editor-font-catalog";
 import type { PosterEditorState } from "./use-poster-editor-state";
 
@@ -40,9 +40,7 @@ function FontRow({
       type="button"
       className={cn(
         "flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors",
-        active
-          ? "bg-primary/10 ring-1 ring-primary/30"
-          : "hover:bg-muted/60",
+        active ? "bg-primary/10 ring-1 ring-primary/30" : "hover:bg-muted/60",
       )}
       onClick={onSelect}
     >
@@ -74,9 +72,7 @@ export function EditorFontsPanel({ editor }: { editor: PosterEditorState }) {
   );
 
   const activeFamily =
-    selectedElement?.type === "text"
-      ? selectedElement.fontFamily
-      : undefined;
+    selectedElement?.type === "text" ? selectedElement.fontFamily : undefined;
 
   const applyFont = (font: EditorFontEntry) => {
     if (!selectedElement || selectedElement.type !== "text") {

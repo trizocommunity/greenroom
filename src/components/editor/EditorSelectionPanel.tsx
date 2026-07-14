@@ -3,16 +3,16 @@
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/core/utils/cn";
+import { EditorPropertiesPanel } from "./EditorPropertiesPanel";
+import { EditorSelectedElementsPanel } from "./EditorSelectedElementsPanel";
+import { EditorSelectionQuickActions } from "./EditorSelectionQuickActions";
+import { EditorSelectionTextSection } from "./EditorSelectionTextSection";
 import {
   editorSelectionDialogBase,
   editorSelectionPanelDialog,
   editorSelectionScroll,
   selectionPanelDialogStyle,
 } from "./editor-chrome";
-import { EditorPropertiesPanel } from "./EditorPropertiesPanel";
-import { EditorSelectedElementsPanel } from "./EditorSelectedElementsPanel";
-import { EditorSelectionQuickActions } from "./EditorSelectionQuickActions";
-import { EditorSelectionTextSection } from "./EditorSelectionTextSection";
 import type { PosterEditorState } from "./use-poster-editor-state";
 
 function layerTypeLabel(type: string) {

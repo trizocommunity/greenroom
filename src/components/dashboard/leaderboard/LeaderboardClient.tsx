@@ -4,6 +4,7 @@ import { CheckCircle2, Crown, Loader2, Medal, Trophy, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { AnnouncerBlockProgressBanner } from "@/components/dashboard/announcement/AnnouncerBlockProgressBanner";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { Badge } from "@/components/ui/badge";
@@ -24,9 +25,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { Tier } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
+import type { AnnouncerBlockProgress } from "@/features/announcement/services/announcer-result-count.service";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
+import {
+  isBasicTier as checkBasicTier,
+  getResolvedTier,
+} from "@/features/plan-features/services/tier";
 import { publishTeamStandings } from "@/features/results/actions/results.actions";
+import {
+  filterResultsForLeaderboard,
+  getStudentLeaderboardView,
+  getTeamDeskLeaderboardView,
+  isResultVisibleForLeaderboard,
+  type LeaderboardResultView,
+} from "@/features/results/services/leaderboard-visibility.service";
 
 /** Drizzle returns `programmeAssignment`; older code used `assignment`. */
 function assignmentOf(r: any) {
@@ -35,6 +49,160 @@ function assignmentOf(r: any) {
 
 function resultPointsOf(r: any): number {
   return (r?.awardPoints ?? r?.points ?? 0) as number;
+}
+
+function buildTeamStandings(
+  results: any[],
+  tier: Tier | string | null | undefined,
+  view: LeaderboardResultView,
+  groupFilter: string,
+) {
+  const scopedResults =
+    groupFilter === "all"
+      ? results
+      : results.filter((r: any) => {
+          const a = assignmentOf(r);
+          return a?.group?.id === groupFilter;
+        });
+
+  const visible = filterResultsForLeaderboard(scopedResults, tier, view);
+  const standings: Record<
+    string,
+    { name: string; points: number; isGroup: boolean }
+  > = {};
+  const countedGroupProgrammeTeams = new Set<string>();
+
+  visible.forEach((r) => {
+    let teamName = "Unknown";
+    let isGroup = false;
+    const a = assignmentOf(r);
+    if (!a) return;
+    if (a.group) {
+      teamName = a.group.name;
+      isGroup = true;
+    } else if (a.student) {
+      teamName = a.student.name ?? "Unknown";
+    } else return;
+
+    if (!standings[teamName]) {
+      standings[teamName] = { name: teamName, points: 0, isGroup };
+    }
+    if (r.programme?.type === "GROUP" && a.group?.id) {
+      const teamProgrammeKey = `${r.programme.id}:${a.group.id}:${a.teamNumber ?? 1}`;
+      if (countedGroupProgrammeTeams.has(teamProgrammeKey)) return;
+      countedGroupProgrammeTeams.add(teamProgrammeKey);
+    }
+    standings[teamName].points += resultPointsOf(r);
+  });
+
+  return Object.values(standings)
+    .sort((a, b) => b.points - a.points)
+    .map((team, index) => ({ ...team, rank: index + 1 }));
+}
+
+type TeamStandingRow = {
+  name: string;
+  points: number;
+  rank: number;
+};
+
+function renderTeamStandingsTable(
+  teams: TeamStandingRow[],
+  emptyMessage: string,
+  accent: "primary" | "yellow" | "amber",
+) {
+  const rowHighlight =
+    accent === "primary"
+      ? "bg-primary/5"
+      : accent === "yellow"
+        ? "bg-yellow-50/5"
+        : "bg-amber-50/5";
+  const mobileBorder =
+    accent === "primary"
+      ? "border-primary/25 bg-primary/5"
+      : accent === "yellow"
+        ? "border-yellow-500/25 bg-yellow-500/5"
+        : "border-amber-500/25 bg-amber-500/5";
+
+  return (
+    <>
+      <div className="hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-12 text-center">#</TableHead>
+              <TableHead>Team</TableHead>
+              <TableHead className="text-right">Points</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {teams.length > 0 ? (
+              teams.map((team, idx) => (
+                <TableRow
+                  key={team.name}
+                  className={idx < 3 ? rowHighlight : ""}
+                >
+                  <TableCell className="text-center font-bold text-muted-foreground">
+                    {idx + 1}
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    {team.name}
+                    {idx === 0 && (
+                      <Crown className="inline w-3 h-3 ml-1 text-yellow-500" />
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right font-bold text-lg">
+                    {team.points}
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={3}
+                  className="h-24 text-center text-muted-foreground"
+                >
+                  {emptyMessage}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="md:hidden p-3 space-y-2">
+        {teams.length > 0 ? (
+          teams.map((team, idx) => (
+            <div
+              key={team.name}
+              className={cn(
+                "flex items-center justify-between gap-3 rounded-lg border px-3 py-2",
+                idx < 3 ? mobileBorder : "border-border/70 bg-background",
+              )}
+            >
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-muted-foreground w-5 text-center">
+                    {idx + 1}
+                  </span>
+                  <span className="text-sm font-medium truncate">
+                    {team.name}
+                  </span>
+                  {idx === 0 && <Crown className="w-4 h-4 text-yellow-500" />}
+                </div>
+              </div>
+              <div className="text-sm font-bold tabular-nums">
+                {team.points}
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="text-sm text-muted-foreground text-center py-6">
+            {emptyMessage}
+          </p>
+        )}
+      </div>
+    </>
+  );
 }
 
 // Types matching what's passed from the page
@@ -54,6 +222,10 @@ interface LeaderboardClientProps {
   hideStudentFilters?: boolean;
   readOnly?: boolean;
   hideLiveStandings?: boolean;
+  publicDisplayMode?: "programme_results" | "team_standings";
+  festivalRole?: string;
+  block?: AnnouncerBlockProgress | null;
+  tier?: Tier | string | null;
   children?: React.ReactNode;
 }
 
@@ -68,8 +240,13 @@ export function LeaderboardClient({
   hideStudentFilters = false,
   readOnly = false,
   hideLiveStandings = false,
+  publicDisplayMode = "programme_results",
+  festivalRole,
+  block = null,
+  tier: tierProp,
   children,
 }: LeaderboardClientProps) {
+  const isAnnouncerOnly = festivalRole === "ANNOUNCER";
   const { isReadOnly: lifecycleReadOnly } = useFestivalReadOnly();
   const effectiveReadOnly = readOnly || lifecycleReadOnly;
   const router = useRouter();
@@ -82,65 +259,31 @@ export function LeaderboardClient({
   );
 
   const festivalContext = useFestival();
-  const isBasicTier = festivalContext.tier === "BASIC";
+  const tier = getResolvedTier(tierProp ?? festivalContext.tier);
+  const isBasicTier = checkBasicTier(tier);
+  const showTeamStandingsOnPublic =
+    !isBasicTier &&
+    (publicDisplayMode === "team_standings" ||
+      (block?.canPublishStandings ?? true));
 
-  // --- Leaderboard Calculation (Live Preview) ---
-  const teamStandings = useMemo(() => {
-    const scopedResults =
-      studentFilterGroup === "all"
-        ? results
-        : results.filter((r: any) => {
-            const a = assignmentOf(r);
-            return a?.group?.id === studentFilterGroup;
-          });
+  const teamStandings = useMemo(
+    () =>
+      buildTeamStandings(
+        results,
+        tier,
+        getTeamDeskLeaderboardView(tier),
+        studentFilterGroup,
+      ),
+    [results, tier, studentFilterGroup],
+  );
 
-    const standings: Record<
-      string,
-      { name: string; points: number; isGroup: boolean }
-    > = {};
-    const countedGroupProgrammeTeams = new Set<string>();
-
-    scopedResults.forEach((r) => {
-      let teamName = "Unknown";
-      let isGroup = false;
-
-      // ONLY count published results for the leaderboard snapshot
-      if (!r.isPublished) return;
-
-      const a = assignmentOf(r);
-      if (!a) return;
-
-      if (a.group) {
-        teamName = a.group.name;
-        isGroup = true;
-      } else if (a.student) {
-        // Individual assignment without a school group: bucket by student for team-style totals
-        teamName = a.student.name ?? "Unknown";
-        isGroup = false;
-      } else {
-        return;
-      }
-
-      if (!standings[teamName]) {
-        standings[teamName] = { name: teamName, points: 0, isGroup };
-      }
-
-      // GROUP programmes create one result row per member assignment.
-      // Count once per team per programme to avoid double counting.
-      if (r.programme?.type === "GROUP" && a.group?.id) {
-        const teamNumber = a.teamNumber ?? 1;
-        const teamProgrammeKey = `${r.programme.id}:${a.group.id}:${teamNumber}`;
-        if (countedGroupProgrammeTeams.has(teamProgrammeKey)) return;
-        countedGroupProgrammeTeams.add(teamProgrammeKey);
-      }
-
-      standings[teamName].points += resultPointsOf(r);
-    });
-
-    return Object.values(standings)
-      .sort((a, b) => b.points - a.points)
-      .map((team, index) => ({ ...team, rank: index + 1 }));
-  }, [results, studentFilterGroup]);
+  const announcedTeamStandings = useMemo(
+    () =>
+      isBasicTier
+        ? []
+        : buildTeamStandings(results, tier, "onAir", studentFilterGroup),
+    [results, tier, studentFilterGroup, isBasicTier],
+  );
 
   // Top students by points (published results only), filterable by category and group.
   // Only count points from INDIVIDUAL programmes; exclude GROUP programme points.
@@ -158,9 +301,12 @@ export function LeaderboardClient({
       }
     > = {};
 
+    const studentView = getStudentLeaderboardView(tier);
+
     results.forEach((r) => {
       const a = assignmentOf(r);
-      if (!r.isPublished || !a?.student) return;
+      if (!isResultVisibleForLeaderboard(r, tier, studentView) || !a?.student)
+        return;
       if (r.programme?.type !== "INDIVIDUAL") return;
 
       // Filter by student's category (the category the student belongs to)
@@ -198,7 +344,7 @@ export function LeaderboardClient({
     return Object.values(byStudent)
       .sort((a, b) => b.points - a.points)
       .map((row, index) => ({ ...row, rank: index + 1 }));
-  }, [results, studentFilterCategory, studentFilterGroup]);
+  }, [results, tier, studentFilterCategory, studentFilterGroup]);
 
   const hasStudentFilters =
     studentFilterCategory !== "all" || studentFilterGroup !== "all";
@@ -238,8 +384,32 @@ export function LeaderboardClient({
     return () => window.clearInterval(id);
   }, [router]);
 
+  const publicModeLabel =
+    publicDisplayMode === "team_standings"
+      ? "Team standings only (public site)"
+      : "Programme results (public site)";
+
   return (
     <div className="space-y-4">
+      {!isBasicTier &&
+        (block ? (
+          <AnnouncerBlockProgressBanner
+            block={block}
+            festivalSlug={festival.slug}
+            showStandingsLink={block.canPublishStandings}
+          />
+        ) : (
+          <div className="rounded-lg border bg-muted/30 px-4 py-3 text-sm">
+            <span className="font-medium">Public display: </span>
+            <span className="text-muted-foreground">{publicModeLabel}</span>
+            {isAnnouncerOnly ? (
+              <span className="text-muted-foreground">
+                {" "}
+                — publish standings from Group Standings.
+              </span>
+            ) : null}
+          </div>
+        ))}
       {/* Header row: children left, Publish right — icon only on mobile */}
       <div className="flex flex-row items-center justify-between gap-4">
         {children ?? (
@@ -252,20 +422,24 @@ export function LeaderboardClient({
             </p>
           </div>
         )}
-        {!effectiveReadOnly && !isBasicTier ? (
+        {!effectiveReadOnly && !isBasicTier && !isAnnouncerOnly ? (
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <HowItWorksButton
               title="How Leaderboard works"
               description="Team standings from published programme results."
             >
               <p className="text-sm text-muted-foreground">
-                <strong>Live Standings</strong> show the current totals from all
-                published programme results. They update as you publish or
-                unpublish results from the Marks page.
+                <strong>Desk preview</strong> totals include every published
+                programme result. They update when you publish or unpublish from
+                Marks or the announcement desk.
               </p>
               <p className="text-sm text-muted-foreground">
-                <strong>Publish Standings</strong> copies the live snapshot to
-                the public festival page so visitors can see the leaderboard.
+                <strong>On-air standings</strong> and top students count only
+                results that are both published and announced on-air.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                <strong>Publish Standings</strong> copies the desk snapshot to
+                the public festival page when team standings are shown there.
               </p>
             </HowItWorksButton>
             <Button
@@ -317,142 +491,94 @@ export function LeaderboardClient({
         ) : null}
       </div>
 
-      {/* Standings: Live + Published */}
+      {/* Standings: desk / on-air / published */}
       <section className="space-y-4">
         <div
           className={cn(
             "grid grid-cols-1 gap-4",
-            hideLiveStandings || isBasicTier
+            hideLiveStandings
               ? "md:grid-cols-1"
-              : "md:grid-cols-2",
+              : isBasicTier
+                ? "md:grid-cols-1"
+                : showTeamStandingsOnPublic
+                  ? "md:grid-cols-3"
+                  : "md:grid-cols-2",
           )}
         >
-          {/* Live Standings Column */}
-          {!hideLiveStandings ? (
-            <Card className="p-0 overflow-hidden border-yellow-500/20">
-              <div
-                className={cn(
-                  "p-4 border-b flex items-center justify-between",
-                  isBasicTier
-                    ? "bg-primary/5 border-primary/10"
-                    : "bg-yellow-500/10 border-yellow-500/10",
-                )}
-              >
-                <h3
-                  className={cn(
-                    "font-bold flex items-center gap-2",
-                    isBasicTier
-                      ? "text-foreground"
-                      : "text-yellow-600 dark:text-yellow-500",
-                  )}
-                >
-                  {!isBasicTier && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {isBasicTier ? "Team Standings" : "Live Standings"}
-                </h3>
-                <Badge
-                  variant="outline"
-                  className={
-                    isBasicTier
-                      ? "bg-primary/10 text-primary border-primary/20"
-                      : "bg-yellow-50 text-yellow-700 border-yellow-200"
-                  }
-                >
-                  {isBasicTier ? "Internal Only" : "Dynamic"}
-                </Badge>
-              </div>
-              <div className="hidden md:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12 text-center">#</TableHead>
-                      <TableHead>Team</TableHead>
-                      <TableHead className="text-right">Points</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {teamStandings.length > 0 ? (
-                      teamStandings.map((team, idx) => (
-                        <TableRow
-                          key={team.name}
-                          className={
-                            idx < 3
-                              ? isBasicTier
-                                ? "bg-primary/5"
-                                : "bg-yellow-50/5"
-                              : ""
-                          }
-                        >
-                          <TableCell className="text-center font-bold text-muted-foreground">
-                            {idx + 1}
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {team.name}
-                            {idx === 0 && (
-                              <Crown className="inline w-3 h-3 ml-1 text-yellow-500" />
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right font-bold text-lg">
-                            {team.points}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell
-                          colSpan={3}
-                          className="h-24 text-center text-muted-foreground"
-                        >
-                          No live data yet.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-
-              <div className="md:hidden p-3 space-y-2">
-                {teamStandings.length > 0 ? (
-                  teamStandings.map((team, idx) => (
-                    <div
-                      key={team.name}
-                      className={cn(
-                        "flex items-center justify-between gap-3 rounded-lg border px-3 py-2",
-                        idx < 3
-                          ? isBasicTier
-                            ? "border-primary/25 bg-primary/5"
-                            : "border-yellow-500/25 bg-yellow-500/5"
-                          : "border-border/70 bg-background",
-                      )}
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-muted-foreground w-5 text-center">
-                            {idx + 1}
-                          </span>
-                          <span className="text-sm font-medium truncate">
-                            {team.name}
-                          </span>
-                          {idx === 0 && (
-                            <Crown className="w-4 h-4 text-yellow-500" />
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-sm font-bold tabular-nums">
-                        {team.points}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-6">
-                    No live data yet.
+          {!hideLiveStandings && isBasicTier ? (
+            <Card className="p-0 overflow-hidden border-primary/20">
+              <div className="p-4 border-b flex items-center justify-between bg-primary/5 border-primary/10">
+                <div>
+                  <h3 className="font-bold text-foreground">Team standings</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Published programme results
                   </p>
-                )}
+                </div>
               </div>
+              {renderTeamStandingsTable(
+                teamStandings,
+                "No published results yet.",
+                "primary",
+              )}
             </Card>
           ) : null}
 
-          {/* Published Standings Column */}
-          {!isBasicTier && (
+          {!hideLiveStandings && !isBasicTier ? (
+            <Card className="p-0 overflow-hidden border-yellow-500/20">
+              <div className="bg-yellow-500/10 p-4 border-b border-yellow-500/10 flex items-center justify-between">
+                <h3 className="font-bold flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Desk preview
+                </h3>
+                <Badge
+                  variant="outline"
+                  className="bg-yellow-50 text-yellow-700 border-yellow-200"
+                >
+                  Published
+                </Badge>
+              </div>
+              {renderTeamStandingsTable(
+                teamStandings,
+                "No desk results yet.",
+                "yellow",
+              )}
+            </Card>
+          ) : null}
+
+          {!hideLiveStandings && !isBasicTier && showTeamStandingsOnPublic ? (
+            <Card className="p-0 overflow-hidden border-amber-500/20">
+              <div className="bg-amber-500/10 p-4 border-b border-amber-500/10 flex items-center justify-between">
+                <h3 className="font-bold flex items-center gap-2 text-amber-700 dark:text-amber-500">
+                  On-air standings
+                </h3>
+                <Badge
+                  variant="outline"
+                  className="bg-amber-50 text-amber-800 border-amber-200"
+                >
+                  Published + announced
+                </Badge>
+              </div>
+              {renderTeamStandingsTable(
+                announcedTeamStandings,
+                "No on-air results yet.",
+                "amber",
+              )}
+            </Card>
+          ) : null}
+
+          {!isBasicTier && !showTeamStandingsOnPublic && block ? (
+            <Card className="p-6 border-dashed">
+              <p className="text-sm text-muted-foreground text-center">
+                Group standings on the public site appear after{" "}
+                {block.resultsPerBlock} results are announced on-air (
+                {block.announcedResultsSinceStandings}/{block.resultsPerBlock}{" "}
+                so far).
+              </p>
+            </Card>
+          ) : null}
+
+          {/* Published / public standings — only after Number of results */}
+          {!isBasicTier && showTeamStandingsOnPublic && (
             <Card className="p-0 overflow-hidden border-green-500/20">
               <div className="bg-green-500/10 p-4 border-b border-green-500/10 flex items-center justify-between">
                 <h3 className="font-bold flex items-center gap-2 text-green-600 dark:text-green-500">
@@ -713,7 +839,9 @@ export function LeaderboardClient({
                     >
                       {hasStudentFilters
                         ? "No students match the selected filters."
-                        : "No published student results yet."}
+                        : isBasicTier
+                          ? "No published student results yet."
+                          : "No on-air student results yet."}
                     </TableCell>
                   </TableRow>
                 )}
@@ -783,7 +911,9 @@ export function LeaderboardClient({
               <p className="text-sm text-muted-foreground text-center py-6">
                 {hasStudentFilters
                   ? "No students match the selected filters."
-                  : "No published student results yet."}
+                  : isBasicTier
+                    ? "No published student results yet."
+                    : "No on-air student results yet."}
               </p>
             )}
           </div>

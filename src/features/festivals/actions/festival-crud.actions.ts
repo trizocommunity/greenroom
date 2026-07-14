@@ -165,6 +165,7 @@ export async function updateFestivalSettingsAction(
   data: {
     programmeAssignmentDeadline?: string | null;
     teamLeaderLimit?: number;
+    announcerResultsPerStandings?: number;
     startDate?: string | null;
     endDate?: string | null;
   },
@@ -201,7 +202,8 @@ export async function updateFestivalSettingsAction(
       data.startDate !== undefined || data.endDate !== undefined;
     const hasNonDateField =
       data.programmeAssignmentDeadline !== undefined ||
-      data.teamLeaderLimit !== undefined;
+      data.teamLeaderLimit !== undefined ||
+      data.announcerResultsPerStandings !== undefined;
     const isDateOnlyUpdate = hasDateField && !hasNonDateField;
     await assertFestivalMutationAllowed(festivalId, {
       allowPast: isDateOnlyUpdate,
@@ -240,6 +242,15 @@ export async function updateFestivalSettingsAction(
           teamLeaderLimit: Math.max(
             1,
             Math.min(10, Number(data.teamLeaderLimit) || 2),
+          ),
+        }),
+        ...(data.announcerResultsPerStandings !== undefined && {
+          announcerResultsPerStandings: Math.max(
+            1,
+            Math.min(
+              100,
+              Math.floor(Number(data.announcerResultsPerStandings) || 10),
+            ),
           ),
         }),
         ...(data.startDate !== undefined && {

@@ -73,7 +73,9 @@ export default async function FestivalPage({
 
   // Fetch published results, programmes, and gallery for display
   const [publishedResults, programmes, galleryData] = await Promise.all([
-    getPublicFestivalResults(festival.id),
+    getPublicFestivalResults(festival.id, {
+      publicDisplayMode: festival.publicDisplayMode ?? "programme_results",
+    }),
     fullLandingPage
       ? findProgrammesByFestival(festival.id)
       : Promise.resolve([]),

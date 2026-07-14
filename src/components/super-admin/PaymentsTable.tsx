@@ -28,11 +28,11 @@ import {
 } from "@/components/ui/table";
 import { parseStoredInstant } from "@/core/utils/date-time";
 import {
-  type Payment,
+  type SuperAdminPayment,
   useSuperAdminPayments,
-} from "@/features/payments/hooks/use-super-admin-payments";
+} from "@/api/client";
 
-const columns: ColumnDef<Payment>[] = [
+const columns: ColumnDef<SuperAdminPayment>[] = [
   {
     accessorKey: "createdAt",
     header: ({ column }) => {
@@ -133,7 +133,7 @@ export function PaymentsTable() {
   const { data: payments = [], isLoading } = useSuperAdminPayments();
 
   const table = useReactTable({
-    data: payments,
+    data: payments as SuperAdminPayment[],
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),

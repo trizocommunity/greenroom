@@ -30,8 +30,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { queryKeys } from "@/core/http/query-keys";
-import { useCategories } from "@/features/categories/hooks/use-categories";
-import { useGroups } from "@/features/groups/hooks/use-groups";
+import { useCategories } from "@/api/client/categories";
+import { useGroups } from "@/api/client/groups";
 import {
   bulkCreateStudentsAction,
   validateStudentsAction,
@@ -323,8 +323,8 @@ export function BulkUploadStudentsModal({
   const isBasicTier = festivalContext.tier === "BASIC";
   const queryClient = useQueryClient();
 
-  const { groups, isLoading: loadingGroups } = useGroups(festivalId);
-  const { categories, isLoading: loadingCategories } =
+  const { data: groups = [], isLoading: loadingGroups } = useGroups(festivalId);
+  const { data: categories = [], isLoading: loadingCategories } =
     useCategories(festivalId);
 
   // Parsing Logic defined inside to access hooks

@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { ProgrammeReportingClient } from "@/components/festival/event-works/programme-reporting/ProgrammeReportingClient";
@@ -8,7 +8,6 @@ import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
   festival as festivalTable,
-  programmeReportedParticipant as reportedParticipantTable,
   stage as stageTable,
 } from "@/core/database/schema";
 import type { Tier } from "@/core/types/app-enums";

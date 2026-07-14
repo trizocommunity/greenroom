@@ -71,6 +71,17 @@ async function assertAssignmentCategoryCompatibility(input: {
 }) {
   if (!input.studentId) return;
 
+  // Assignment is validated at create time; allow reporting even if the
+  // student's category was changed later.
+  const existingAssignment = await db.query.programmeAssignment.findFirst({
+    where: and(
+      eq(assignmentTable.programmeId, input.programmeId),
+      eq(assignmentTable.studentId, input.studentId),
+    ),
+    columns: { id: true },
+  });
+  if (existingAssignment) return;
+
   const programme = await db.query.programme.findFirst({
     where: eq(programmeTable.id, input.programmeId),
     columns: { categoryId: true },
@@ -855,7 +866,17 @@ export const ProgrammeReportingService = {
     });
 
     const isGroup = session.programme.type === "GROUP";
-    for (const { studentId, code } of closed.studentCodes) {
+    const issuedLetters = await db.query.programmeCodeLetter.findMany({
+      where: eq(codeLetterTable.reportingSessionId, reportingSessionId),
+      with: { programmeCodeLetterRecipients: true },
+    });
+    const notifyByStudent = new Map<string, string>();
+    for (const letter of issuedLetters) {
+      for (const r of letter.programmeCodeLetterRecipients) {
+        notifyByStudent.set(r.studentId, letter.code);
+      }
+    }
+    for (const [studentId, code] of notifyByStudent) {
       await NotificationService.dispatch({
         eventType: "CODE_LETTER_ISSUED",
         festivalId: session.festivalId,
@@ -871,7 +892,7 @@ export const ProgrammeReportingService = {
             codeLetter: code,
           },
         },
-        channels: ["IN_APP"],
+        channels: ["IN_APP", "EMAIL"],
       });
     }
 

@@ -14,8 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { parseStoredInstant } from "@/core/utils/date-time";
-import { usePaymentHistory } from "@/features/payments/hooks/use-payment-history";
-import { usePaymentStatus } from "@/features/payments/hooks/use-payment-status";
+import { usePaymentHistory, usePaymentStatus } from "@/api/client";
 import { Skeleton } from "../ui/skeleton";
 
 export function BillingTab() {
@@ -45,22 +44,22 @@ export function BillingTab() {
             <div>
               <div className="font-medium">Festival Creation Access</div>
               <div className="text-sm text-muted-foreground mt-1">
-                {paymentStatus?.canCreateFestival
+                {paymentStatus?.status?.canCreateFestival
                   ? "You have active access to create festivals."
                   : "You need to purchase a pass to create festivals."}
               </div>
             </div>
             <Badge
               variant={
-                paymentStatus?.canCreateFestival ? "default" : "secondary"
+                paymentStatus?.status?.canCreateFestival ? "default" : "secondary"
               }
               className={
-                paymentStatus?.canCreateFestival
+                paymentStatus?.status?.canCreateFestival
                   ? "bg-green-500 hover:bg-green-700"
                   : ""
               }
             >
-              {paymentStatus?.canCreateFestival ? "Active" : "Inactive"}
+              {paymentStatus?.status?.canCreateFestival ? "Active" : "Inactive"}
             </Badge>
           </div>
         </CardContent>

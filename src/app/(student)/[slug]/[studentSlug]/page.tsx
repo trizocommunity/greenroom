@@ -1,27 +1,29 @@
 import { format } from "date-fns";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { Download, MapPin, Users } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { QrCodeWithActions } from "@/components/common/QrCodeWithActions";
 import { ReportingEndsInCountdown } from "@/components/programme/ReportingEndsInCountdown";
 import { CopyProfileLinkButton } from "@/components/student/CopyProfileLinkButton";
+import { StudentAssignedProgrammeCards } from "@/components/student/StudentAssignedProgrammeCards";
 import { StudentQrDialogButton } from "@/components/student/StudentQrDialogButton";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_URL } from "@/config/routes";
 import { db } from "@/core/database/client";
 import {
-  programmeCodeLetterRecipient as codeLetterRecipientTable,
-  programmeCodeLetter as codeLetterTable,
   programmeReportingSession as sessionTable,
   student as studentTable,
 } from "@/core/database/schema";
+import type { ProgrammeStatus } from "@/core/types/app-enums";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import {
   FeatureService,
   getTierForFeatureCheck,
 } from "@/features/plan-features/services/features";
+import { indexReportingSessionsByProgramme } from "@/features/programmes/services/programme-reporting-display";
+import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
 import { findStudentByFestivalAndProfileSlug } from "@/features/students/repositories/student.repository";
 import {
   getQrCodeContent,
@@ -92,48 +94,67 @@ export default async function StudentMainPage({
       })
     : [];
 
-  const assignmentProgrammeIds = (student.assignments ?? []).map(
-    (a: any) => a.programmeId,
+  const programmeById = new Map<
+    string,
+    {
+      programmeId: string;
+      name: string;
+      categoryName: string | null;
+      status: ProgrammeStatus;
+      programmeType: string;
+    }
+  >();
+  const assignmentIdByProgrammeId = new Map<string, string>();
+
+  for (const a of student.assignments ?? []) {
+    const p = a.programme;
+    const pid = a.programmeId ?? p?.id;
+    if (!pid || !p?.status) continue;
+    if (!programmeById.has(pid)) {
+      programmeById.set(pid, {
+        programmeId: pid,
+        name: p.name,
+        categoryName: (p as any).category?.name ?? null,
+        status: p.status as ProgrammeStatus,
+        programmeType: p.type,
+      });
+    }
+    assignmentIdByProgrammeId.set(pid, a.id);
+  }
+
+  const assignedProgrammes = Array.from(programmeById.values()).sort(
+    (a, b) =>
+      getProgrammeStatusPriorityRank(a.status) -
+      getProgrammeStatusPriorityRank(b.status),
   );
 
-  const ongoingSessions =
+  const assignmentProgrammeIds = assignedProgrammes.map((p) => p.programmeId);
+
+  const reportingSessions =
     assignmentProgrammeIds.length > 0
       ? await db.query.programmeReportingSession.findMany({
-          where: and(
-            inArray(sessionTable.programmeId, assignmentProgrammeIds),
-            inArray(sessionTable.status, ["IN_PROGRESS", "CLOSED"]),
-          ),
+          where: inArray(sessionTable.programmeId, assignmentProgrammeIds),
           with: {
             programme: { columns: { name: true } },
             stage: { columns: { name: true } },
-            scheduleEntry: { columns: { startTime: true } },
+            programmeReportedParticipants: { columns: { assignmentId: true } },
+            programmeCodeLetters: {
+              with: {
+                programmeCodeLetterRecipients: {
+                  columns: { studentId: true },
+                },
+              },
+            },
           },
           orderBy: [desc(sessionTable.updatedAt)],
-          limit: 5,
         })
       : [];
 
-  // Manual fetching of code letters for each session as Drizzle query builder doesn't support nested where with 'some' easily
-  const sessionsWithCodeLetters = await Promise.all(
-    ongoingSessions.map(async (s) => {
-      const codeLetters = await db.query.programmeCodeLetter.findMany({
-        where: eq(codeLetterTable.reportingSessionId, s.id),
-        with: {
-          programmeCodeLetterRecipients: {
-            where: eq(codeLetterRecipientTable.studentId, student.id),
-          },
-        },
-        orderBy: [desc(codeLetterTable.issuedAt)],
-        limit: 5,
-      });
+  const { latestByProgrammeId, latestClosedByProgrammeId } =
+    indexReportingSessionsByProgramme(reportingSessions);
 
-      return {
-        ...s,
-        codeLetters: codeLetters.filter(
-          (cl) => cl.programmeCodeLetterRecipients.length > 0,
-        ),
-      };
-    }),
+  const ongoingSessions = reportingSessions.filter((s) =>
+    ["IN_PROGRESS", "CLOSED"].includes(s.status),
   );
 
   const profileUrl = getStudentProfileUrl(
@@ -142,7 +163,7 @@ export default async function StudentMainPage({
     student as any,
   );
 
-  const liveSessions = sessionsWithCodeLetters.filter(
+  const liveSessions = ongoingSessions.filter(
     (s) => s.status === "IN_PROGRESS" && !isSessionTimedOut(s),
   );
   const topLiveSession = liveSessions[0];
@@ -360,6 +381,30 @@ export default async function StudentMainPage({
           </CardContent>
         </Card>
       </div>
+
+      {assignedProgrammes.length > 0 ? (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold tracking-tight">
+              Your programmes
+            </h2>
+            <Link
+              href={`/${slug}/${studentSlug}/assigned-programmes`}
+              className="text-sm font-medium underline underline-offset-4"
+            >
+              View all
+            </Link>
+          </div>
+          <StudentAssignedProgrammeCards
+            programmes={assignedProgrammes.slice(0, 6)}
+            latestReportingByProgrammeId={latestByProgrammeId}
+            latestClosedReportingByProgrammeId={latestClosedByProgrammeId}
+            assignmentIdByProgrammeId={assignmentIdByProgrammeId}
+            studentId={student.id}
+            emptyMessage="No assigned programmes yet."
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

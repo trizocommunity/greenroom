@@ -22,11 +22,11 @@ import {
 import { BillingHistorySkeleton } from "@/components/ui/Skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { parseStoredInstant } from "@/core/utils/date-time";
-import { useBillingHistory } from "@/features/billing/hooks/use-billing-history";
+import { usePaymentHistory } from "@/api/client";
 import { PaymentDetailsModal } from "../modals/PaymentDetailsModal";
 
 export function BillingTab() {
-  const { data: payments = [], isLoading } = useBillingHistory();
+  const { data: payments = [], isLoading } = usePaymentHistory();
   const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 

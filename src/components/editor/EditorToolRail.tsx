@@ -3,8 +3,8 @@
 import {
   Copy,
   Droplets,
-  Magnet,
   Lock,
+  Magnet,
   Paintbrush,
   Ruler,
   Trash2,

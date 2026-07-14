@@ -1,0 +1,57 @@
+import { z } from "zod";
+
+export const programmeCategorySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+});
+
+export const programmeAssignmentSchema = z.object({
+  id: z.string(),
+  studentId: z.string().nullable(),
+  groupId: z.string().nullable(),
+  teamNumber: z.number().int().positive().nullable(),
+  assignedAt: z.string().nullable(),
+  student: z
+    .object({
+      id: z.string(),
+      name: z.string().nullable(),
+      chestNumber: z.string().nullable(),
+    })
+    .nullable(),
+});
+
+export const programmeSchema = z.object({
+  id: z.string(),
+  festivalId: z.string(),
+  categoryId: z.string(),
+  name: z.string(),
+  type: z.enum(["INDIVIDUAL", "GROUP"]),
+  stageType: z.enum(["STAGE", "NON_STAGE"]),
+  maxParticipantsPerGroup: z.number().int().positive().nullable(),
+  maxTeamsPerGroup: z.number().int().positive().nullable(),
+  maxStudentsPerTeam: z.number().int().positive().nullable(),
+  maxPoints: z.number().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  category: programmeCategorySchema.nullable().optional(),
+  assignments: z.array(programmeAssignmentSchema).optional(),
+});
+
+export const createProgrammeInput = z.object({
+  name: z.string().min(1),
+  categoryId: z.string().min(1),
+  type: z.enum(["INDIVIDUAL", "GROUP"]),
+  stageType: z.enum(["STAGE", "NON_STAGE"]).default("NON_STAGE"),
+  maxParticipantsPerGroup: z.number().int().positive().optional(),
+  maxTeamsPerGroup: z.number().int().positive().optional(),
+  maxStudentsPerTeam: z.number().int().positive().optional(),
+  maxPoints: z.number().optional(),
+});
+
+export const updateProgrammeInput = createProgrammeInput
+  .partial()
+  .omit({ categoryId: true });
+
+export type Programme = z.infer<typeof programmeSchema>;
+export type CreateProgrammeInput = z.infer<typeof createProgrammeInput>;
+export type UpdateProgrammeInput = z.infer<typeof updateProgrammeInput>;

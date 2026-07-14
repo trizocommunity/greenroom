@@ -1,11 +1,17 @@
-import type { EditorElement, PosterEditorDocument } from "./poster-editor-types";
+import type {
+  EditorElement,
+  PosterEditorDocument,
+} from "./poster-editor-types";
 
 export function cloneDoc(doc: PosterEditorDocument): PosterEditorDocument {
   return JSON.parse(JSON.stringify(doc)) as PosterEditorDocument;
 }
 
 /** Coerce invalid numeric state (e.g. mid-transform) to a safe fallback. */
-export function finiteNumber(value: number | undefined, fallback: number): number {
+export function finiteNumber(
+  value: number | undefined,
+  fallback: number,
+): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
@@ -18,7 +24,10 @@ export function normalizeColor(color?: string): string {
   return color.trim().toLowerCase();
 }
 
-export function applyTextCase(text: string, textCase?: EditorElement["textCase"]) {
+export function applyTextCase(
+  text: string,
+  textCase?: EditorElement["textCase"],
+) {
   if (textCase === "upper") return text.toUpperCase();
   if (textCase === "lower") return text.toLowerCase();
   return text;

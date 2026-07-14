@@ -36,12 +36,14 @@ export function EditorTransformHud({
       <span>
         {Math.round(rect.width)} × {Math.round(rect.height)}
       </span>
-      {rotation !== undefined && Number.isFinite(rotation) && Math.abs(rotation) > 0.5 && (
-        <>
-          <span className="mx-1 text-background/50">·</span>
-          <span>{Math.round(rotation)}°</span>
-        </>
-      )}
+      {rotation !== undefined &&
+        Number.isFinite(rotation) &&
+        Math.abs(rotation) > 0.5 && (
+          <>
+            <span className="mx-1 text-background/50">·</span>
+            <span>{Math.round(rotation)}°</span>
+          </>
+        )}
     </div>
   );
 }

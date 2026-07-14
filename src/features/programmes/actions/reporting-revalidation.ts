@@ -8,6 +8,8 @@ const scopeToPaths: Record<RevalidationScope, (slug: string) => string[]> = {
   "reporting-close": (slug) => [
     `/dashboard/${slug}/event-works/reporting`,
     `/${slug}`,
+    `/${slug}/programmes`,
+    `/${slug}/results`,
   ],
   "reporting-reopen": (slug) => [
     `/dashboard/${slug}/event-works/reporting`,
@@ -28,5 +30,8 @@ export async function revalidateProgrammeReporting(
 
   for (const path of scopeToPaths[scope](festival.slug)) {
     revalidatePath(path);
+  }
+  if (scope === "reporting-close" || scope === "reporting-reopen") {
+    revalidatePath(`/${festival.slug}`, "layout");
   }
 }

@@ -6,14 +6,12 @@ import type { CSSProperties } from "react";
 export const EDITOR_DESKTOP_MIN_PX = 1024;
 
 export const editorBtnIcon = "h-7 w-7 shrink-0";
-export const editorBtnSm =
-  "h-7 shrink-0 gap-1 px-2 text-[11px] font-medium";
+export const editorBtnSm = "h-7 shrink-0 gap-1 px-2 text-[11px] font-medium";
 /** Single combined toolbar strip (context + tools). */
 export const editorToolbarBar =
   "flex shrink-0 items-center gap-0 overflow-x-auto border-b border-border bg-card px-2 py-1 [scrollbar-width:thin]";
 /** Segment inside the toolbar bar (no outer border/background). */
-export const editorToolbarRow =
-  "flex min-w-0 shrink-0 items-center gap-0.5";
+export const editorToolbarRow = "flex min-w-0 shrink-0 items-center gap-0.5";
 export const editorInput = "h-7 text-xs shrink-0";
 export const editorInputNarrow = "h-7 w-12 text-center text-xs shrink-0";
 export const editorNavAside =
@@ -32,8 +30,7 @@ export const editorSelectionSectionLabel =
 /** Ultra-thin scrollbars for selection overlay dialogs */
 export const editorSelectionScroll =
   "[scrollbar-width:thin] [scrollbar-color:color-mix(in_oklch,var(--muted-foreground)_22%,transparent)_transparent] [&::-webkit-scrollbar]:h-[3px] [&::-webkit-scrollbar]:w-[3px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/35";
-export const editorSelectionToolbarDialog =
-  `pointer-events-auto absolute top-3 left-1/2 z-30 flex w-max max-w-[calc(100%-24px)] -translate-x-1/2 items-center gap-1 overflow-x-auto overscroll-contain px-3 py-1.5 ${editorSelectionScroll}`;
+export const editorSelectionToolbarDialog = `pointer-events-auto absolute top-3 left-1/2 z-30 flex w-max max-w-[calc(100%-24px)] -translate-x-1/2 items-center gap-1 overflow-x-auto overscroll-contain px-3 py-1.5 ${editorSelectionScroll}`;
 
 export function selectionPanelDialogStyle(): CSSProperties {
   return {

@@ -31,11 +31,11 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/core/utils/cn";
-import { useAssignments } from "@/features/assignments/hooks/use-assignments";
-import { useCategories } from "@/features/categories/hooks/use-categories";
-import { useGroups } from "@/features/groups/hooks/use-groups";
-import { useProgrammes } from "@/features/programmes/hooks/use-programmes";
-import { useStudents } from "@/features/students/hooks/use-students";
+import { useAssignments, useBulkCreateAssignments } from "@/api/client/assignments";
+import { useCategories } from "@/api/client/categories";
+import { useGroups } from "@/api/client/groups";
+import { useProgrammes } from "@/api/client/programmes";
+import { useStudents } from "@/api/client/students";
 
 interface AssignmentModalProps {
   festivalId: string;
@@ -66,11 +66,12 @@ export function AssignmentModal({
   isReadOnly = false,
 }: AssignmentModalProps) {
   // Data Hooks
-  const { categories } = useCategories(festivalId);
-  const { groups } = useGroups(festivalId);
-  const { programmes } = useProgrammes(festivalId);
-  const { students } = useStudents(festivalId);
-  const { bulkCreateAssignment, assignments } = useAssignments(festivalId);
+  const { data: categories = [] } = useCategories(festivalId);
+  const { data: groups = [] } = useGroups(festivalId);
+  const { data: programmes = [] } = useProgrammes(festivalId);
+  const { data: students = [] } = useStudents(festivalId);
+  const { data: assignments = [] } = useAssignments(festivalId);
+  const bulkCreateAssignment = useBulkCreateAssignments();
 
   // State
   const [view, setView] = useState<ModalView>("SELECTION");
@@ -117,7 +118,7 @@ export function AssignmentModal({
     // If assigned, we mark them differently.
 
     // We also need to consider category filtering IF the programme is not GENERAL.
-    const isGeneralProgramme = selectedProgramme?.category?.type === "GENERAL";
+    const isGeneralProgramme = selectedCategoryId === null || selectedCategoryId === undefined;
 
     // Filter by Category matching if NOT general and strict mode (User said: first Group, then Category - implying filter)
     if (!isGeneralProgramme && selectedCategoryId) {
@@ -152,7 +153,6 @@ export function AssignmentModal({
     selectedGroupId,
     selectedCategoryId,
     selectedProgrammeId,
-    selectedProgramme,
   ]);
 
   // Limits Logic
@@ -402,7 +402,7 @@ export function AssignmentModal({
         programmeId: selectedProgrammeId,
         programmeName: selectedProgramme.name,
         studentId: sId,
-        studentName: student.name,
+        studentName: student.name ?? "",
         groupId: selectedGroupId,
         groupName: selectedGroup?.name,
         teamNumber: assignedTeam, // Auto-assigned
@@ -427,13 +427,16 @@ export function AssignmentModal({
     if (queue.length === 0) return;
     setIsSubmitting(true);
     try {
-      await bulkCreateAssignment(
-        queue.map((item) => ({
-          programmeId: item.programmeId,
-          studentId: item.studentId,
-          teamNumber: item.teamNumber,
-        })),
-      );
+      await bulkCreateAssignment.mutateAsync({
+        festivalId,
+        data: {
+          assignments: queue.map((item) => ({
+            programmeId: item.programmeId,
+            studentId: item.studentId,
+            teamNumber: item.teamNumber,
+          })),
+        },
+      });
       setQueue([]);
       onOpenChange(false);
       // Reset form

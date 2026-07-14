@@ -1,12 +1,13 @@
 "use client";
 
+import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { csrfFetch } from "@/core/http/csrf-fetch";
+import { useRequestOtp, useVerifyOtp } from "@/api/client/team-leader";
 
 export function TeamLeaderLoginClient({
   festivalSlug,
@@ -20,56 +21,56 @@ export function TeamLeaderLoginClient({
   const router = useRouter();
   const [otp, setOtp] = useState("");
   const [requested, setRequested] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [devOtp, setDevOtp] = useState<string | null>(null);
 
-  const requestOtp = async () => {
-    setIsSubmitting(true);
-    try {
-      const res = await csrfFetch("/api/team-leader/request-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ festivalSlug, studentSlug }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to request OTP");
-      setRequested(true);
-      const incomingDevOtp =
-        typeof data.debugOtp === "string" && data.debugOtp.length === 6
-          ? data.debugOtp
-          : null;
-      setDevOtp(incomingDevOtp);
-      toast.success(
-        incomingDevOtp
-          ? "OTP generated (dev mode shown below)."
-          : "OTP sent. Check your email.",
-      );
-    } catch (error: any) {
-      toast.error(error?.message || "Failed to request OTP");
-    } finally {
-      setIsSubmitting(false);
-    }
+  const requestOtpMutation = useRequestOtp();
+  const verifyOtpMutation = useVerifyOtp();
+
+  const requestOtp = () => {
+    requestOtpMutation.mutate(
+      { festivalSlug, studentSlug },
+      {
+        onSuccess: (data) => {
+          setRequested(true);
+          const incomingDevOtp =
+            "debugOtp" in data &&
+            typeof data.debugOtp === "string" &&
+            data.debugOtp.length === 6
+              ? data.debugOtp
+              : null;
+          setDevOtp(incomingDevOtp);
+          toast.success(
+            incomingDevOtp
+              ? "OTP generated (dev mode shown below)."
+              : "OTP sent. Check your email.",
+          );
+        },
+        onError: (error) => {
+          toast.error(
+            (error as { message?: string }).message || "Failed to request OTP",
+          );
+        },
+      },
+    );
   };
 
-  const verifyOtp = async () => {
+  const verifyOtp = () => {
     if (!otp) return;
-    setIsSubmitting(true);
-    try {
-      const res = await csrfFetch("/api/team-leader/verify-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ festivalSlug, studentSlug, otp }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Invalid OTP");
-      toast.success("Login successful");
-      router.push(`/${festivalSlug}/${studentSlug}/leader/dashboard`);
-      router.refresh();
-    } catch (error: any) {
-      toast.error(error?.message || "OTP verification failed");
-    } finally {
-      setIsSubmitting(false);
-    }
+    verifyOtpMutation.mutate(
+      { festivalSlug, studentSlug, otp },
+      {
+        onSuccess: () => {
+          toast.success("Login successful");
+          router.push(`/${festivalSlug}/${studentSlug}/leader/dashboard`);
+          router.refresh();
+        },
+        onError: (error) => {
+          toast.error(
+            (error as { message?: string }).message || "OTP verification failed",
+          );
+        },
+      },
+    );
   };
 
   return (
@@ -85,10 +86,10 @@ export function TeamLeaderLoginClient({
         {!requested ? (
           <Button
             onClick={requestOtp}
-            disabled={isSubmitting}
+            disabled={requestOtpMutation.isPending}
             className="w-full"
           >
-            {isSubmitting ? "Sending..." : "Send OTP"}
+            {requestOtpMutation.isPending ? "Sending..." : "Send OTP"}
           </Button>
         ) : (
           <>
@@ -108,14 +109,14 @@ export function TeamLeaderLoginClient({
               <Button
                 variant="outline"
                 onClick={requestOtp}
-                disabled={isSubmitting}
+                disabled={requestOtpMutation.isPending}
                 className="flex-1"
               >
                 Resend
               </Button>
               <Button
                 onClick={verifyOtp}
-                disabled={isSubmitting || otp.length !== 6}
+                disabled={verifyOtpMutation.isPending || otp.length !== 6}
                 className="flex-1"
               >
                 Verify

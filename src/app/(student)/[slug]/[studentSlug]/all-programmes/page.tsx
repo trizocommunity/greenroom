@@ -13,7 +13,10 @@ import {
   programmeReportingSession as sessionTable,
 } from "@/core/database/schema";
 import { getExpectedAssignmentsTotal } from "@/features/programmes/services/programme-assignment-progress";
-import { getCodeForStudentFromLetters } from "@/features/programmes/services/programme-reporting-code";
+import {
+  getCodeForStudentFromLetters,
+  mapSessionCodeLettersForLookup,
+} from "@/features/programmes/services/programme-reporting-code";
 import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
 import { getTeamLeaderMyStudents } from "@/features/team-leader/services/my-team";
 
@@ -230,10 +233,7 @@ export default async function AllProgrammesPage({
     const code =
       sess.status === "CLOSED" && memberStudentId
         ? getCodeForStudentFromLetters(
-            sess.programmeCodeLetters.map((cl: any) => ({
-              code: cl.code,
-              recipients: cl.programmeCodeLetterRecipients,
-            })),
+            mapSessionCodeLettersForLookup(sess.programmeCodeLetters),
             memberStudentId,
           )
         : null;
@@ -369,7 +369,32 @@ export default async function AllProgrammesPage({
     else if (latestSession?.status === "CLOSED") reportingHighlight = "closed";
     else if (latestSession?.status === "RESET") reportingHighlight = "reset";
 
-    const sessionCodeLetter = null;
+    let sessionCodeLetter: string | null = null;
+    if (latestSession?.status === "CLOSED" && p.type === "GROUP") {
+      for (const team of myGroupTeams) {
+        const teamCode = team.members
+          .map((m) => {
+            if (!m.reportingNote?.startsWith("Team code ")) return null;
+            return m.reportingNote.replace("Team code ", "").trim() || null;
+          })
+          .find(Boolean);
+        if (teamCode) {
+          sessionCodeLetter = teamCode;
+          break;
+        }
+      }
+    } else if (
+      latestSession?.status === "CLOSED" &&
+      myIndividualMembers.length > 0
+    ) {
+      const firstWithCode = myIndividualMembers.find((m) =>
+        m.reportingNote?.startsWith("Code "),
+      );
+      if (firstWithCode?.reportingNote) {
+        sessionCodeLetter =
+          firstWithCode.reportingNote.replace("Code ", "").trim() || null;
+      }
+    }
     const reportingWindowEndsAt =
       latestSession?.status === "IN_PROGRESS" &&
       !isSessionTimedOut(latestSession) &&

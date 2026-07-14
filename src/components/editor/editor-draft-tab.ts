@@ -1,5 +1,5 @@
-import type { PosterEditorDocument } from "./poster-editor-types";
 import { TEMPLATE_TYPES } from "./poster-editor-config";
+import type { PosterEditorDocument } from "./poster-editor-types";
 
 export interface EditorDraftTab {
   id: string;

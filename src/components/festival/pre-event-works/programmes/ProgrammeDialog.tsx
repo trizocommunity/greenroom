@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Plus, User } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
@@ -42,20 +42,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useCategories } from "@/api/client/categories";
 import {
-  useProgrammeDetails,
-  useProgrammes,
-} from "@/features/programmes/hooks/use-programmes";
+  useCreateProgramme,
+  useProgramme,
+  useUpdateProgramme,
+} from "@/api/client/programmes";
 
 const ProgrammeBaseSchema = z.object({
   name: z.string().min(1, "Name is required"),
   categoryId: z.string().min(1, "Category is required"),
   type: z.enum(["INDIVIDUAL", "GROUP"]),
   stageType: z.enum(["STAGE", "NON_STAGE"]),
-  maxParticipantsPerGroup: z.coerce.number().min(0),
-  maxTeamsPerGroup: z.coerce.number().min(0),
-  maxStudentsPerTeam: z.coerce.number().min(0),
+  // Defaults apply when fields are hidden (GROUP vs INDIVIDUAL); missing values become NaN without these.
+  maxParticipantsPerGroup: z.coerce.number().min(0).default(1),
+  maxTeamsPerGroup: z.coerce.number().min(0).default(1),
+  maxStudentsPerTeam: z.coerce.number().min(0).default(1),
 });
 
 const ProgrammeSchema = ProgrammeBaseSchema.superRefine((data, ctx) => {
@@ -110,13 +112,16 @@ export function ProgrammeDialog({
   const setOpen =
     isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
 
-  const { createProgramme, isCreating, updateProgramme, isUpdating } =
-    useProgrammes(festivalId);
-  const { categories } = useCategories(festivalId);
+  const createProgramme = useCreateProgramme();
+  const updateProgramme = useUpdateProgramme();
+  const { data: categories = [] } = useCategories(festivalId);
 
   const form = useForm<ProgrammeFormValues>({
     resolver: zodResolver(ProgrammeSchema as any),
     mode: "onChange",
+    // Keep values for fields hidden when type toggles (GROUP vs INDIVIDUAL).
+    // Otherwise Zod fails on unregistered fields and the submit button stays disabled.
+    shouldUnregister: false,
     defaultValues: {
       name: "",
       categoryId: "",
@@ -129,11 +134,11 @@ export function ProgrammeDialog({
   });
 
   const isEditing = !!programme;
-  const isLoadingAction = isCreating || isUpdating;
+  const isLoadingAction = createProgramme.isPending || updateProgramme.isPending;
+  const { isValid } = form.formState;
 
   // Fetch details if viewing (readOnly)
-  const { programme: details, isLoading: isLoadingDetails } =
-    useProgrammeDetails(
+  const { data: details, isLoading: isLoadingDetails } = useProgramme(
       festivalId,
       open && readOnly ? programme?.id : undefined,
     );
@@ -165,13 +170,42 @@ export function ProgrammeDialog({
     }
   }, [open, programme, form]);
 
+  const programmeType = form.watch("type");
+
+  const syncHiddenLimitFields = useCallback(
+    (type: ProgrammeFormValues["type"]) => {
+      if (type === "GROUP") {
+        const current = form.getValues("maxParticipantsPerGroup");
+        if (current === undefined || Number.isNaN(Number(current))) {
+          form.setValue("maxParticipantsPerGroup", 1, { shouldValidate: true });
+        }
+      } else {
+        const teams = form.getValues("maxTeamsPerGroup");
+        const students = form.getValues("maxStudentsPerTeam");
+        if (teams === undefined || Number.isNaN(Number(teams))) {
+          form.setValue("maxTeamsPerGroup", 1, { shouldValidate: true });
+        }
+        if (students === undefined || Number.isNaN(Number(students))) {
+          form.setValue("maxStudentsPerTeam", 1, { shouldValidate: true });
+        }
+      }
+    },
+    [form],
+  );
+
+  useEffect(() => {
+    if (!open || readOnly) return;
+    syncHiddenLimitFields(programmeType);
+    void form.trigger();
+  }, [programmeType, open, readOnly, form, syncHiddenLimitFields]);
+
   const onSubmit = async (data: ProgrammeFormValues) => {
     if (readOnly) return;
     try {
       if (isEditing && programme) {
-        await updateProgramme({ id: programme.id, data });
+        await updateProgramme.mutateAsync({ festivalId, programmeId: programme.id, data });
       } else {
-        await createProgramme(data);
+        await createProgramme.mutateAsync({ festivalId, data });
       }
       setOpen(false);
     } catch (error: any) {
@@ -397,7 +431,10 @@ export function ProgrammeDialog({
                     <FormItem>
                       <FormLabel>Type</FormLabel>
                       <Select
-                        onValueChange={field.onChange}
+                        onValueChange={(value: ProgrammeFormValues["type"]) => {
+                          field.onChange(value);
+                          syncHiddenLimitFields(value);
+                        }}
                         value={field.value}
                         disabled={isLoadingAction}
                       >
@@ -514,10 +551,7 @@ export function ProgrammeDialog({
                 >
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={!form.formState.isValid || isLoadingAction}
-                >
+                <Button type="submit" disabled={!isValid || isLoadingAction}>
                   {isLoadingAction && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}

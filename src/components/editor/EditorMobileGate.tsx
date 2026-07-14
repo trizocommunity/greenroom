@@ -27,8 +27,9 @@ export function EditorMobileGate() {
             Desktop only
           </h1>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            The poster template editor needs a larger screen, mouse, and keyboard.
-            Open this page on a laptop or desktop (1024px width or wider).
+            The poster template editor needs a larger screen, mouse, and
+            keyboard. Open this page on a laptop or desktop (1024px width or
+            wider).
           </p>
         </div>
         <Button asChild variant="default" size="sm" className="w-full max-w-xs">

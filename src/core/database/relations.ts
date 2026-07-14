@@ -8,6 +8,7 @@ import {
   festivalLifecycleEvent,
   festivalMember,
   festivalNews,
+  festivalPosterTemplate,
   festivalScoringAwardRule,
   festivalScoringPolicy,
   group,
@@ -100,7 +101,18 @@ export const festivalRelations = relations(festival, ({ one, many }) => ({
   judgmentConfigs: many(judgmentConfig),
   scoringPolicies: many(festivalScoringPolicy),
   scoringAwardRules: many(festivalScoringAwardRule),
+  posterTemplates: many(festivalPosterTemplate),
 }));
+
+export const festivalPosterTemplateRelations = relations(
+  festivalPosterTemplate,
+  ({ one }) => ({
+    festival: one(festival, {
+      fields: [festivalPosterTemplate.festivalId],
+      references: [festival.id],
+    }),
+  }),
+);
 
 export const categoryRelations = relations(category, ({ one, many }) => ({
   programmes: many(programme),

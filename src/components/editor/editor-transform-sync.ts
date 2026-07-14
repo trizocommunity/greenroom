@@ -1,14 +1,17 @@
 import type Konva from "konva";
+import type { ElementRect } from "./editor-snap-guides";
 import { estimateTextWidth, finiteNumber } from "./editor-utils";
 import type { EditorElement } from "./poster-editor-types";
-import type { ElementRect } from "./editor-snap-guides";
 
 function resolveRelativeContainer(
   node: Konva.Node,
   relativeTo?: Konva.Node | null,
 ): Konva.Container | undefined {
   const candidate = relativeTo ?? node.getParent();
-  if (candidate && typeof (candidate as Konva.Container).getChildren === "function") {
+  if (
+    candidate &&
+    typeof (candidate as Konva.Container).getChildren === "function"
+  ) {
     return candidate as Konva.Container;
   }
   return undefined;

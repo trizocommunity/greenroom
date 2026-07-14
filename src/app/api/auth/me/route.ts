@@ -1,28 +1,39 @@
+import "server-only";
+
 import { NextResponse } from "next/server";
 import { getSession } from "@/core/auth/session";
 import { findUserById } from "@/features/auth/repositories/user.repository";
 
-export async function GET() {
+export const GET = async () => {
   try {
     const session = await getSession();
 
     if (!session || !session.userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: "Not authenticated" },
+        { status: 401 },
+      );
     }
 
     const user = await findUserById(session.userId);
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json(
+        { success: false, error: "User not found" },
+        { status: 401 },
+      );
     }
 
-    const { password: _, ...userWithoutPassword } = user;
+    const { password: _, festivals: __, ...userWithoutPassword } = user;
+
     return NextResponse.json(userWithoutPassword);
   } catch (error) {
-    console.error("Error fetching current user:", error);
+    console.error("[auth/me]", error);
+    const message =
+      error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json(
-      { error: "Internal server error" },
+      { success: false, error: message },
       { status: 500 },
     );
   }
-}
+};

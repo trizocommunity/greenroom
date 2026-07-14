@@ -23,6 +23,8 @@ export type PublicFestivalData = {
     programmeAssignmentDeadline: string | null;
     scoringSystem: "POSITION_BASED" | "SCORE_BASED";
     teamStandings: any;
+    publicDisplayMode: "programme_results" | "team_standings";
+    announcerResultsPerStandings: number;
   };
   event: {
     startDate: string;
@@ -61,6 +63,8 @@ export async function getPublicFestivalData(
       programmeAssignmentDeadline: true,
       scoringSystem: true,
       teamStandings: true,
+      publicDisplayMode: true,
+      announcerResultsPerStandings: true,
     },
   });
 

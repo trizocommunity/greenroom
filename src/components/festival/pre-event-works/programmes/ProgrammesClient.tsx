@@ -52,9 +52,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { ProgrammeStatus } from "@/core/types/app-enums";
-import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useCategories } from "@/api/client/categories";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import { useProgrammes } from "@/features/programmes/hooks/use-programmes";
+import { useProgrammes } from "@/api/client/programmes";
+import { useDeleteProgramme } from "@/api/client/programmes";
 import {
   getAssignmentProgressLabel,
   getExpectedAssignmentsTotal,
@@ -75,10 +76,10 @@ export function ProgrammesClient({
   groupCount,
   children,
 }: ProgrammesClientProps) {
-  const { programmes, isLoading, deleteProgramme, isDeleting } =
-    useProgrammes(festivalId);
+  const { data: programmes = [], isLoading } = useProgrammes(festivalId);
   const { isReadOnly } = useFestivalReadOnly();
-  const { categories } = useCategories(festivalId);
+  const { data: categories = [] } = useCategories(festivalId);
+  const deleteProgramme = useDeleteProgramme();
 
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
   const [stageTypeFilter, setStageTypeFilter] = useState<string>("ALL");
@@ -594,10 +595,10 @@ export function ProgrammesClient({
             title="Delete Programme"
             description="Are you sure? This will delete all assignments associated with this programme."
             onDelete={async () => {
-              await deleteProgramme(actionProgramme.programme.id);
+              await deleteProgramme.mutateAsync({ festivalId, programmeId: actionProgramme.programme.id });
               setActionProgramme(null);
             }}
-            isDeleting={isDeleting}
+            isDeleting={deleteProgramme.isPending}
             open={true}
             onOpenChange={(open) => !open && setActionProgramme(null)}
           />

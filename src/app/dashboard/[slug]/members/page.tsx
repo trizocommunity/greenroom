@@ -1,6 +1,5 @@
 import { notFound, redirect } from "next/navigation";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
-import { findMembersByFestival } from "@/features/members/repositories/member.repository";
 import {
   FeatureService,
   getTierForFeatureCheck,
@@ -26,29 +25,16 @@ export default async function MembersPage({
     redirect(`/dashboard/${slug}?error=upgrade_required&feature=members`);
   }
 
-  const maxTeamMembers =
-    FeatureService.getFeatureValue<number>(
-      getTierForFeatureCheck(festival.tier),
-      "maxTeamMembers",
-    ) ?? 1;
-  const members = await findMembersByFestival(festival.id);
-  const totalMemberCount = 1 + members.length; // owner + FestivalMembers
-  const atMemberCap = totalMemberCount >= maxTeamMembers;
-
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Members</h1>
         <p className="text-muted-foreground">
-          View all Admins and Team Leaders associated with this festival.
+          Manage staff roles for this festival (Admin, Stage Manager,
+          Announcer).
         </p>
       </div>
-      <MembersClient
-        festivalId={festival.id}
-        maxTeamMembers={maxTeamMembers}
-        totalMemberCount={totalMemberCount}
-        atMemberCap={atMemberCap}
-      />
+      <MembersClient festivalId={festival.id} />
     </div>
   );
 }

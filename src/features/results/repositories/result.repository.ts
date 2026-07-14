@@ -13,6 +13,8 @@ export interface ResultInput {
   grade?: string | null;
   position?: number | null;
   points?: number;
+  awardPoints?: number;
+  scoringPolicyVersion?: number | null;
   remarks?: string | null;
   isPublished?: boolean;
 }
@@ -74,12 +76,33 @@ async function bulkPublishByProgramme(
   programmeId: string,
   isPublished: boolean,
 ) {
+  const now = new Date().toISOString();
   const result = await db
     .update(results)
-    .set({ isPublished })
+    .set(
+      isPublished
+        ? { isPublished: true, updatedAt: now }
+        : {
+            isPublished: false,
+            isAnnounced: false,
+            announcedAt: null,
+            updatedAt: now,
+          },
+    )
     .where(eq(results.programmeId, programmeId))
     .returning();
   return result;
+}
+
+async function bulkAnnounceByProgramme(programmeId: string) {
+  const now = new Date().toISOString();
+  return db
+    .update(results)
+    .set({ isAnnounced: true, announcedAt: now, updatedAt: now })
+    .where(
+      and(eq(results.programmeId, programmeId), eq(results.isPublished, true)),
+    )
+    .returning();
 }
 
 async function bulkPublishByFestival(festivalId: string, isPublished: boolean) {
@@ -102,6 +125,8 @@ async function upsert(_assignmentId: string, data: ResultInput) {
       updatedAt: now,
       ...data,
       points: data.points ?? 0,
+      awardPoints: data.awardPoints ?? 0,
+      scoringPolicyVersion: data.scoringPolicyVersion ?? null,
       isPublished: data.isPublished ?? false,
     })
     .onConflictDoUpdate({
@@ -110,6 +135,8 @@ async function upsert(_assignmentId: string, data: ResultInput) {
         grade: data.grade,
         position: data.position,
         points: data.points ?? 0,
+        awardPoints: data.awardPoints ?? 0,
+        scoringPolicyVersion: data.scoringPolicyVersion ?? null,
         remarks: data.remarks,
         isPublished: data.isPublished ?? false,
       },
@@ -133,6 +160,7 @@ export const ResultModel = {
   findByProgramme,
   togglePublish,
   bulkPublishByProgramme,
+  bulkAnnounceByProgramme,
   bulkPublishByFestival,
   upsert,
 };

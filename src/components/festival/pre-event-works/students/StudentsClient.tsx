@@ -59,11 +59,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { parseStoredInstant } from "@/core/utils/date-time";
-import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useCategories } from "@/api/client/categories";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import { useGroups } from "@/features/groups/hooks/use-groups";
+import { useGroups } from "@/api/client/groups";
 import { useFeature } from "@/features/plan-features/hooks/use-feature";
-import { useStudents } from "@/features/students/hooks/use-students";
+import { useDeleteStudent, useStudents } from "@/api/client/students";
 import {
   getQrCodeContent,
   getStudentProfilePath,
@@ -97,10 +97,10 @@ export function StudentsClient({
   onChestRevalidate,
   children,
 }: StudentsClientProps) {
-  const { students, isLoading, deleteStudent, isDeleting } =
-    useStudents(festivalId);
-  const { groups } = useGroups(festivalId);
-  const { categories } = useCategories(festivalId);
+  const { data: students = [], isLoading } = useStudents(festivalId);
+  const deleteStudent = useDeleteStudent();
+  const { data: groups = [] } = useGroups(festivalId);
+  const { data: categories = [] } = useCategories(festivalId);
   const canViewPublicStudentProfile = useFeature("publicStudentProfile");
   const canViewStudentProfile = useFeature("viewStudentProfile");
   const canUseQR = useFeature("qrCodes");
@@ -895,10 +895,10 @@ export function StudentsClient({
             title="Delete Student"
             description="Are you sure? This will remove the student from all assigned programmes."
             onDelete={async () => {
-              await deleteStudent(actionStudent.student.id);
+              await deleteStudent.mutateAsync({ festivalId, studentId: actionStudent.student.id });
               setActionStudent(null);
             }}
-            isDeleting={isDeleting}
+            isDeleting={deleteStudent.isPending}
             open={true}
             onOpenChange={(open) => !open && setActionStudent(null)}
           />

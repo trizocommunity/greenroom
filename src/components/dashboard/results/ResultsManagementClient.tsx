@@ -32,6 +32,8 @@ import {
 import { toast } from "sonner";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
+import { ProgrammeResultPosterSection } from "@/components/festival/posters/ProgrammeResultPosterSection";
+import { usePublishProgrammeWithPoster } from "@/components/festival/posters/usePublishProgrammeWithPoster";
 import {
   Accordion,
   AccordionContent,
@@ -87,10 +89,12 @@ import { cn } from "@/core/utils/cn";
 import { parseStoredInstant } from "@/core/utils/date-time";
 import { formatCountdownHms } from "@/core/utils/format-countdown";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
+import type { FestivalAccessRole } from "@/features/festivals/services/festival-context.service";
 import {
   useFeature,
   useFeatureTag,
 } from "@/features/plan-features/hooks/use-feature";
+import { canSwapResultPosterOnDashboard } from "@/features/posters/auth/poster-access";
 import { createProgrammeJudgeLinkAction } from "@/features/programmes/actions/programme-judging.actions";
 import { reopenProgrammeReportingByProgrammeAction } from "@/features/programmes/actions/programme-reporting.actions";
 import {
@@ -162,6 +166,8 @@ interface ResultsManagementClientProps {
   programmes: Programme[];
   categories: Category[];
   children?: React.ReactNode;
+  festivalAccessRole?: FestivalAccessRole;
+  isBasicTier?: boolean;
 }
 
 // Judgment entry mode: Basic = manual entry (this UI). Standard/Pro = shareable link
@@ -204,6 +210,8 @@ export function ResultsManagementClient({
   programmes,
   categories,
   children,
+  festivalAccessRole = "ADMIN",
+  isBasicTier = false,
 }: ResultsManagementClientProps) {
   const dirtySourceId = `results-management:${festival.id}`;
   const {
@@ -225,6 +233,16 @@ export function ResultsManagementClient({
   const [publishingProgrammeId, setPublishingProgrammeId] = useState<
     string | null
   >(null);
+  const { requestPublish, dialog: publishPosterDialog } =
+    usePublishProgrammeWithPoster({
+      festivalId: festival.id,
+      festivalSlug: festival.slug,
+      onSuccess: () => router.refresh(),
+    });
+  const canSwapPoster = canSwapResultPosterOnDashboard(
+    festivalAccessRole,
+    isBasicTier,
+  );
   const [reopeningProgrammeId, setReopeningProgrammeId] = useState<
     string | null
   >(null);
@@ -640,20 +658,23 @@ export function ResultsManagementClient({
     isPublished: boolean,
   ) => {
     if (isReadOnly) return;
+    if (isPublished) {
+      setPublishingProgrammeId(programmeId);
+      void requestPublish(programmeId).finally(() =>
+        setPublishingProgrammeId(null),
+      );
+      return;
+    }
     setPublishingProgrammeId(programmeId);
     startTransition(async () => {
       try {
         const response = await bulkPublishProgrammeResults(
           programmeId,
-          isPublished,
+          false,
           festival.slug,
         );
         if (response.success) {
-          toast.success(
-            isPublished
-              ? "Results published successfully"
-              : "Results unpublished successfully",
-          );
+          toast.success("Results unpublished successfully");
           router.refresh();
         } else {
           toast.error("Failed to update status");
@@ -1055,6 +1076,19 @@ export function ResultsManagementClient({
                         </Badge>
                       )}
                     </div>
+
+                    {(currentProgramme.stats?.status === "published" ||
+                      currentProgramme.stats?.publishedCount > 0) && (
+                      <ProgrammeResultPosterSection
+                        programmeId={currentProgramme.id}
+                        festivalSlug={festival.slug}
+                        canSwap={canSwapPoster}
+                        isPublished={
+                          currentProgramme.stats?.status === "published" ||
+                          currentProgramme.stats?.status === "partial-published"
+                        }
+                      />
+                    )}
 
                     <div className="space-y-3 sm:space-y-4">
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 sm:gap-3">
@@ -2023,6 +2057,7 @@ export function ResultsManagementClient({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {publishPosterDialog}
     </div>
   );
 }

@@ -12,8 +12,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/core/utils/cn";
-import { editorBtnIcon } from "./editor-chrome";
 import { EditorSelectionSection } from "./EditorSelectionSection";
+import { editorBtnIcon } from "./editor-chrome";
 import type { PosterEditorState } from "./use-poster-editor-state";
 
 function ToolButton({

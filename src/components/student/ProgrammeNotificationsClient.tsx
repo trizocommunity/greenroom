@@ -4,17 +4,23 @@ import { formatDistanceToNow } from "date-fns";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useProgrammeNotifications } from "@/features/programmes/hooks/use-programme-notifications";
+import {
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+  useNotifications,
+} from "@/api/client";
 
 export function ProgrammeNotificationsClient({
   studentId,
-  festivalId,
+  festivalId: _festivalId,
 }: {
   studentId: string;
   festivalId: string;
 }) {
-  const { notifications, unreadCount, isLoading, markAllRead, markOneRead } =
-    useProgrammeNotifications(studentId, festivalId);
+  const { data: notifications = [], isLoading } = useNotifications(studentId);
+  const markAllReadMutation = useMarkAllNotificationsRead();
+  const markOneReadMutation = useMarkNotificationRead();
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
     <div className="space-y-4">
@@ -27,7 +33,7 @@ export function ProgrammeNotificationsClient({
         </div>
         <Button
           variant="outline"
-          onClick={markAllRead}
+          onClick={() => markAllReadMutation.mutate({ studentId })}
           disabled={unreadCount === 0}
         >
           Mark all read ({unreadCount})
@@ -53,7 +59,7 @@ export function ProgrammeNotificationsClient({
               <button
                 key={n.id}
                 type="button"
-                onClick={() => markOneRead(n.id)}
+                onClick={() => markOneReadMutation.mutate({ studentId, notificationId: n.id })}
                 className={`w-full rounded-lg border p-3 text-left ${
                   n.isRead ? "bg-background" : "bg-primary/5 border-primary/30"
                 }`}

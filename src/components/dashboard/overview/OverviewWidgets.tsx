@@ -140,7 +140,9 @@ export default async function OverviewWidgets({
       label: canUseExternalJudging
         ? "Judgment"
         : canUseMarksUI
-          ? "Marks"
+          ? tier === "BASIC"
+            ? "Scoring"
+            : "Marks"
           : "Judgment",
       icon: Gavel,
       href: canUseExternalJudging
@@ -391,7 +393,8 @@ export default async function OverviewWidgets({
                     href={`/dashboard/${slug}/event-works/marks`}
                     className="w-full flex items-center justify-center py-2 text-sm border rounded-md hover:bg-muted/50 transition-colors"
                   >
-                    View Marks <ArrowRight className="ml-2 h-4 w-4" />
+                    View {tier === "BASIC" ? "Scoring" : "Marks"}{" "}
+                    <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 ) : null}
               </div>

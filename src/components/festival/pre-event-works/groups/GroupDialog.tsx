@@ -26,7 +26,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useGroups } from "@/features/groups/hooks/use-groups";
+import { useCreateGroup, useUpdateGroup } from "@/api/client/groups";
 
 const GroupSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -70,11 +70,11 @@ export function GroupDialog({
   const open = isControlled ? controlledOpen : internalOpen;
   const setOpen =
     isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
-  const { createGroup, isCreating, updateGroup, isUpdating } =
-    useGroups(festivalId);
+  const createGroup = useCreateGroup();
+  const updateGroup = useUpdateGroup();
 
   const isEditing = !!group;
-  const isLoading = isCreating || isUpdating;
+  const isLoading = createGroup.isPending || updateGroup.isPending;
 
   const form = useForm({
     resolver: zodResolver(GroupSchema),
@@ -106,12 +106,13 @@ export function GroupDialog({
   const onSubmit = async (data: GroupFormValues) => {
     try {
       if (isEditing && group) {
-        await updateGroup({
-          id: group.id,
+        await updateGroup.mutateAsync({
+          festivalId,
+          groupId: group.id,
           data,
         });
       } else {
-        await createGroup(data);
+        await createGroup.mutateAsync({ festivalId, data });
       }
       setOpen(false);
     } catch (error: any) {

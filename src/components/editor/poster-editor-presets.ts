@@ -105,6 +105,9 @@ function qrPlaceholder(x: number, y: number, size: number): EditorElement {
   };
 }
 
+/** Default background image bundled in /public/editor/ */
+const DEFAULT_BG_IMAGE_URL = "/editor/default-poster-bg.jpg";
+
 export function createPresetDocument(
   templateType: PosterTemplateType,
   options: CreatePresetOptions = {},
@@ -114,38 +117,60 @@ export function createPresetDocument(
   const elements: EditorElement[] = [];
   const teamCount = Math.min(20, Math.max(1, options.teamCount ?? 8));
   const useColorBg = options.withBackground !== false;
+
+  // For blank RESULT/CANDIDATE_CARD, use the default bundled background image
+  const useDefaultBgImage =
+    !options.backgroundImageUrl &&
+    options.withBackground !== false &&
+    (templateType === "RESULT" || templateType === "CANDIDATE_CARD");
+
   const background: EditorBackground = options.backgroundImageUrl
     ? {
         type: "image",
         color:
           scheme.background.type === "solid"
             ? scheme.background.color
-            : "#ffffff",
+            : "#1a1a1a",
         imageUrl: options.backgroundImageUrl,
       }
-    : templateType === "TEAM_POINTS"
-      ? { type: "solid", color: "#ffffff" }
-      : presetBackground(templateType, useColorBg);
+    : useDefaultBgImage
+      ? {
+          type: "image",
+          color: "#1a1a1a",
+          imageUrl: DEFAULT_BG_IMAGE_URL,
+        }
+      : templateType === "TEAM_POINTS"
+        ? { type: "solid", color: "#ffffff" }
+        : presetBackground(templateType, useColorBg);
+
+  // When using an image background (uploaded or default), use light text colors
+  const hasImageBackground = background.type === "image";
 
   if (templateType === "CANDIDATE_CARD") {
+    const titleFill = hasImageBackground ? "#ffffff" : scheme.titleFill;
+    const accentFill = hasImageBackground ? "#fbbf24" : scheme.accentFill;
+    const bodyFill = hasImageBackground ? "#f1f5f9" : scheme.bodyFill;
+    const mutedFill = hasImageBackground ? "#cbd5e1" : scheme.mutedFill;
+    const highlightFill = hasImageBackground ? "#fbbf24" : scheme.highlightFill;
+
     elements.push(
-      accentBar(0, 12, scheme.highlightFill, meta.width),
+      accentBar(0, 12, highlightFill, meta.width),
       fieldText("studentName", 56, 340, 64, {
         fontStyle: "bold",
-        fill: scheme.titleFill,
+        fill: titleFill,
         fontFamily: scheme.titleFontFamily,
       }),
       fieldText("chestNumber", 56, 420, 36, {
         text: "Chest No: 0000",
-        fill: scheme.accentFill,
+        fill: accentFill,
         fontStyle: "bold",
       }),
       fieldText("teamName", 56, 470, 36, {
         fontStyle: "bold",
-        fill: scheme.bodyFill,
+        fill: bodyFill,
       }),
       fieldText("categoryName", 56, 520, 28, {
-        fill: scheme.mutedFill,
+        fill: mutedFill,
       }),
       qrPlaceholder(760, 280, 240),
     );
@@ -161,82 +186,86 @@ export function createPresetDocument(
     const serif = scheme.titleFontFamily;
     const sans = "Outfit, system-ui, sans-serif";
 
+    const titleFill = hasImageBackground ? "#ffffff" : scheme.titleFill;
+    const accentFill = hasImageBackground ? "#fbbf24" : scheme.accentFill;
+    const bodyFill = hasImageBackground ? "#f8fafc" : scheme.bodyFill;
+    const mutedFill = hasImageBackground ? "#cbd5e1" : scheme.mutedFill;
+    const highlightFill = hasImageBackground ? "#fbbf24" : scheme.highlightFill;
+
     elements.push(
       fieldText("categoryName", pad, headerY, 22, {
         text: "Program Category",
-        fill: scheme.bodyFill,
+        fill: bodyFill,
         fontFamily: serif,
       }),
       fieldText("programmeName", pad, headerY + 40, 56, {
         text: "Item Name",
         fontStyle: "bold",
-        fill: scheme.accentFill,
+        fill: accentFill,
         fontFamily: sans,
       }),
       fieldText("resultLabel", rightX, headerY, 22, {
         text: "Result",
-        fill: scheme.accentFill,
+        fill: accentFill,
         fontFamily: serif,
         align: "right",
         width: rightColW,
       }),
       fieldText("resultNo", rightX, headerY + 32, 120, {
         text: "34",
-        fill: scheme.titleFill,
+        fill: titleFill,
         fontStyle: "bold",
         fontFamily: sans,
         align: "right",
         width: rightColW,
       }),
-      fieldText("winnerName", pad, winnersY, 40, {
+      fieldText("winner1Name", pad, winnersY, 40, {
         name: "Winner 1",
-        text: "SAMPLE WINNER 1",
-        fill: scheme.bodyFill,
+        fill: bodyFill,
         fontStyle: "bold",
         fontFamily: sans,
         textCase: "upper",
       }),
-      fieldText("placeName", pad, winnersY + 52, 22, {
+      fieldText("winner1Team", pad, winnersY + 52, 22, {
         name: "Place 1",
-        text: "Sample Place",
-        fill: scheme.mutedFill,
+        fill: mutedFill,
         fontFamily: serif,
       }),
-      fieldText("winnerName", pad, winnersY + winnerStep, 40, {
+      fieldText("winner2Name", pad, winnersY + winnerStep, 40, {
         name: "Winner 2",
-        text: "SAMPLE WINNER 2",
-        fill: scheme.bodyFill,
+        fill: bodyFill,
         fontStyle: "bold",
         fontFamily: sans,
         textCase: "upper",
       }),
-      fieldText("placeName", pad, winnersY + winnerStep + 52, 22, {
+      fieldText("winner2Team", pad, winnersY + winnerStep + 52, 22, {
         name: "Place 2",
-        text: "Sample Place",
-        fill: scheme.mutedFill,
+        fill: mutedFill,
         fontFamily: serif,
       }),
-      fieldText("winnerName", pad, winnersY + winnerStep * 2, 40, {
+      fieldText("winner3Name", pad, winnersY + winnerStep * 2, 40, {
         name: "Winner 3",
-        text: "SAMPLE WINNER 3",
-        fill: scheme.bodyFill,
+        fill: bodyFill,
         fontStyle: "bold",
         fontFamily: sans,
         textCase: "upper",
       }),
-      fieldText("placeName", pad, winnersY + winnerStep * 2 + 52, 22, {
+      fieldText("winner3Team", pad, winnersY + winnerStep * 2 + 52, 22, {
         name: "Place 3",
-        text: "Sample Place",
-        fill: scheme.mutedFill,
+        fill: mutedFill,
         fontFamily: serif,
       }),
     );
 
-    if (useColorBg) {
+    // Accent bars for non-image backgrounds
+    if (!hasImageBackground && useColorBg) {
       elements.unshift(
-        accentBar(0, 12, scheme.highlightFill, meta.width),
-        accentBar(meta.height - 16, 16, scheme.accentFill, meta.width),
+        accentBar(0, 12, highlightFill, meta.width),
+        accentBar(meta.height - 16, 16, accentFill, meta.width),
       );
+    } else if (hasImageBackground) {
+      // Subtle top accent bar for image backgrounds
+      elements.unshift(accentBar(0, 8, highlightFill, meta.width));
     }
   }
 

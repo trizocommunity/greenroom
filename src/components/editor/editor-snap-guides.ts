@@ -82,7 +82,9 @@ export function rectFromBox(
   };
 }
 
-export function isValidElementRect(rect: ElementRect | null | undefined): rect is ElementRect {
+export function isValidElementRect(
+  rect: ElementRect | null | undefined,
+): rect is ElementRect {
   if (!rect) return false;
   return (
     Number.isFinite(rect.left) &&
@@ -282,7 +284,10 @@ export function collectActiveAlignmentLines(
   return lines;
 }
 
-function mergeSnapLines(primary: SnapLine[], secondary: SnapLine[]): SnapLine[] {
+function mergeSnapLines(
+  primary: SnapLine[],
+  secondary: SnapLine[],
+): SnapLine[] {
   const seen = new Set<string>();
   const out: SnapLine[] = [];
   for (const line of [...primary, ...secondary]) {
@@ -294,12 +299,7 @@ function mergeSnapLines(primary: SnapLine[], secondary: SnapLine[]): SnapLine[] 
   return out;
 }
 
-function overlapMid(
-  a0: number,
-  a1: number,
-  b0: number,
-  b1: number,
-): number {
+function overlapMid(a0: number, a1: number, b0: number, b1: number): number {
   const top = Math.max(a0, b0);
   const bottom = Math.min(a1, b1);
   return (top + bottom) / 2;
@@ -507,13 +507,7 @@ export function computeSnapGuides(
     bottom: Math.max(0, canvasH - rect.bottom),
   };
 
-  const peerGaps = computePeerGaps(
-    canvasW,
-    canvasH,
-    rect,
-    peers,
-    excludeIds,
-  );
+  const peerGaps = computePeerGaps(canvasW, canvasH, rect, peers, excludeIds);
 
   if (!enabled) {
     return {
@@ -555,13 +549,7 @@ export function computeSnapGuides(
 
   const snapLines = mergeSnapLines(
     linesFromCandidates(candidates, threshold, xBest, yBest),
-    collectActiveAlignmentLines(
-      canvasW,
-      canvasH,
-      finalRect,
-      peers,
-      excludeIds,
-    ),
+    collectActiveAlignmentLines(canvasW, canvasH, finalRect, peers, excludeIds),
   );
 
   return {
@@ -573,13 +561,7 @@ export function computeSnapGuides(
       bottom: Math.max(0, canvasH - finalRect.bottom),
     },
     snapLines,
-    peerGaps: computePeerGaps(
-      canvasW,
-      canvasH,
-      finalRect,
-      peers,
-      excludeIds,
-    ),
+    peerGaps: computePeerGaps(canvasW, canvasH, finalRect, peers, excludeIds),
     snapX,
     snapY,
   };

@@ -24,8 +24,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { parseStoredInstant } from "@/core/utils/date-time";
+import { useAssignments } from "@/api/client/assignments";
 import { getProgrammeTeamMembersAction } from "@/features/assignments/actions/assignment.actions";
-import { useAssignments } from "@/features/assignments/hooks/use-assignments";
 import { useFeature } from "@/features/plan-features/hooks/use-feature";
 
 interface StudentDetailsDialogProps {
@@ -43,7 +43,7 @@ export function StudentDetailsDialog({
   open: controlledOpen,
   onOpenChange: setControlledOpen,
 }: StudentDetailsDialogProps) {
-  const { assignments, isLoading } = useAssignments(festivalId);
+  const { data: assignments = [], isLoading } = useAssignments(festivalId);
   const canViewTeamLeaders = useFeature("members");
   const festivalContext = useFestival();
   const isBasicTier = festivalContext.tier === "BASIC";

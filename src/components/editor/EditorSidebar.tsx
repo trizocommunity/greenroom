@@ -13,11 +13,15 @@ export function EditorSidebar({
   panelOpen,
   onPanelOpenChange,
   onHideSidebar,
+  brandHref,
+  brandLabel,
 }: {
   editor: PosterEditorState;
   panelOpen: boolean;
   onPanelOpenChange: (open: boolean) => void;
   onHideSidebar: () => void;
+  brandHref?: string;
+  brandLabel?: string;
 }) {
   const { navPanel, setNavPanel } = editor;
 
@@ -31,53 +35,57 @@ export function EditorSidebar({
   };
 
   return (
-    <aside className="flex h-full shrink-0 overflow-hidden border-r border-border bg-sidebar">
-      <EditorNavRail
-        active={navPanel}
-        onChange={handleNavChange}
-        footer={
-          <div className="flex w-full flex-col items-center gap-1 border-t border-sidebar-border pt-2">
-            <Button
-              type="button"
-              variant={panelOpen ? "secondary" : "ghost"}
-              size="icon"
-              className={editorBtnIcon}
-              title={panelOpen ? "Collapse panel" : "Expand panel"}
-              onClick={() => onPanelOpenChange(!panelOpen)}
-            >
-              {panelOpen ? (
-                <ChevronLeft className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className={editorBtnIcon}
-              title="Hide sidebar"
-              onClick={onHideSidebar}
-            >
-              <PanelLeftClose className="h-4 w-4" />
-            </Button>
-          </div>
-        }
-      />
+    <aside className="flex h-full shrink-0 flex-col overflow-hidden border-r border-border bg-sidebar">
+      <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+        <EditorNavRail
+          active={navPanel}
+          onChange={handleNavChange}
+          brandHref={brandHref}
+          brandLabel={brandLabel}
+          footer={
+            <div className="flex w-full flex-col items-center gap-1 border-t border-sidebar-border pt-2">
+              <Button
+                type="button"
+                variant={panelOpen ? "secondary" : "ghost"}
+                size="icon"
+                className={editorBtnIcon}
+                title={panelOpen ? "Collapse panel" : "Expand panel"}
+                onClick={() => onPanelOpenChange(!panelOpen)}
+              >
+                {panelOpen ? (
+                  <ChevronLeft className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className={editorBtnIcon}
+                title="Hide sidebar"
+                onClick={onHideSidebar}
+              >
+                <PanelLeftClose className="h-4 w-4" />
+              </Button>
+            </div>
+          }
+        />
 
-      <div
-        className={cn(
-          "flex min-h-0 flex-col overflow-hidden border-l border-sidebar-border/80 transition-[width] duration-200 ease-out",
-          panelOpen ? "w-64 lg:w-72 xl:w-80" : "w-0 border-l-0",
-        )}
-      >
-        {panelOpen && (
-          <EditorActivePanel
-            editor={editor}
-            variant="docked"
-            onCollapsePanel={() => onPanelOpenChange(false)}
-          />
-        )}
+        <div
+          className={cn(
+            "flex min-h-0 flex-col overflow-hidden border-l border-sidebar-border/80 transition-[width] duration-200 ease-out",
+            panelOpen ? "w-64 lg:w-72 xl:w-80" : "w-0 border-l-0",
+          )}
+        >
+          {panelOpen && (
+            <EditorActivePanel
+              editor={editor}
+              variant="docked"
+              onCollapsePanel={() => onPanelOpenChange(false)}
+            />
+          )}
+        </div>
       </div>
     </aside>
   );

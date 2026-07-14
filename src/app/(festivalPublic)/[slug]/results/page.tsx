@@ -47,7 +47,14 @@ export default async function ResultsPage({
       : "#000000";
 
   // Fetch published results
-  const results = await getPublicFestivalResults(festival.id);
+  const publicDisplayMode = festival.publicDisplayMode ?? "programme_results";
+  const results = await getPublicFestivalResults(festival.id, {
+    publicDisplayMode,
+  });
+  const teamStandings =
+    publicDisplayMode === "team_standings"
+      ? ((festival.teamStandings as any[]) ?? [])
+      : [];
 
   return (
     <div className="bg-background min-h-screen pt-20">
@@ -56,7 +63,8 @@ export default async function ResultsPage({
         festivalName={festival.name}
         accentColor={accentColor}
         results={results}
-        teamStandings={festival.teamStandings as any[]}
+        teamStandings={teamStandings}
+        publicDisplayMode={publicDisplayMode}
         scoringSystem={festival.scoringSystem || "POSITION_BASED"}
       />
     </div>

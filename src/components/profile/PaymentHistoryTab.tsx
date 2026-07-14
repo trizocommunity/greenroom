@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { parseStoredInstant } from "@/core/utils/date-time";
-import { usePaymentHistory } from "@/features/payments/hooks/use-payment-history";
+import { usePaymentHistory } from "@/api/client";
 
 export function PaymentHistoryTab() {
   const { data: payments, isLoading } = usePaymentHistory();

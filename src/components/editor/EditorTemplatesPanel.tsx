@@ -6,13 +6,16 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { SavedPosterTemplate } from "./editor-template-storage";
-import { TEMPLATE_TYPES, type PosterTemplateType } from "./poster-editor-config";
-import type { PosterEditorState } from "./use-poster-editor-state";
-import { editorPanelAside } from "./editor-chrome";
-import { EditorPanelHeader } from "./EditorSidePanel";
 import { cn } from "@/core/utils/cn";
+import { EditorPanelHeader } from "./EditorSidePanel";
+import { editorPanelAside } from "./editor-chrome";
+import type { SavedPosterTemplate } from "./editor-template-storage";
+import {
+  type PosterTemplateType,
+  TEMPLATE_TYPES,
+} from "./poster-editor-config";
 import { openTemplateBackgroundPicker } from "./template-background-picker";
+import type { PosterEditorState } from "./use-poster-editor-state";
 
 function formatDate(iso: string) {
   try {
@@ -162,7 +165,9 @@ export function EditorTemplatesPanel({
           >
             <ScrollArea className="min-h-0 flex-1">
               <div className="space-y-2 p-2">
-                <p className="text-xs text-muted-foreground">{meta.description}</p>
+                <p className="text-xs text-muted-foreground">
+                  {meta.description}
+                </p>
                 {meta.type === "TEAM_POINTS" ? (
                   <Button
                     variant="outline"
@@ -210,7 +215,9 @@ export function EditorTemplatesPanel({
                 {grouped[meta.type].length === 0 ? (
                   <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center">
                     <FileImage className="mx-auto h-8 w-8 text-muted-foreground/50" />
-                    <p className="mt-2 text-sm font-medium">No saved templates</p>
+                    <p className="mt-2 text-sm font-medium">
+                      No saved templates
+                    </p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       Design a poster, then click Save in the toolbar.
                     </p>

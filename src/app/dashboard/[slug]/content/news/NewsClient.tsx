@@ -37,10 +37,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  isCloudinaryConfigured,
-  uploadImageToCloudinary,
-} from "@/core/integrations/cloudinary";
 import { cn } from "@/core/utils/cn";
 import { parseStoredInstant } from "@/core/utils/date-time";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
@@ -49,6 +45,7 @@ import {
   deleteNewsPostAction,
   updateNewsPostAction,
 } from "@/features/news/actions/news.actions";
+import { useCloudinaryUpload } from "@/api/client";
 
 type NewsPost = {
   id: string;
@@ -89,8 +86,8 @@ export function NewsClient({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
   const [viewDetailsPost, setViewDetailsPost] = useState<NewsPost | null>(null);
+  const uploadMutation = useCloudinaryUpload();
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [initialFormSnapshot, setInitialFormSnapshot] = useState(
     JSON.stringify(emptyForm),
@@ -202,17 +199,18 @@ export function NewsClient({
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !file.type.startsWith("image/")) return;
-    if (!isCloudinaryConfigured()) {
+    if (
+      !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
+      process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME === "demo"
+    ) {
       toast.error("Cloudinary is not configured.");
       return;
     }
-    setUploadingImage(true);
     try {
-      const url = await uploadImageToCloudinary(file, "news");
-      if (url) setForm((f) => ({ ...f, imageUrl: url }));
-      else toast.error("Upload failed.");
-    } finally {
-      setUploadingImage(false);
+      const result = await uploadMutation.mutateAsync({ file, folder: "news" });
+      if (result?.url) setForm((f) => ({ ...f, imageUrl: result.url }));
+    } catch {
+      // Error toast is handled by the hook
     }
   };
 
@@ -482,11 +480,16 @@ export function NewsClient({
                   variant="outline"
                   size="icon"
                   disabled={
-                    isReadOnly || uploadingImage || !isCloudinaryConfigured()
+                    isReadOnly ||
+                    uploadMutation.isPending ||
+                    !(
+                      process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME &&
+                      process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME !== "demo"
+                    )
                   }
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  {uploadingImage ? (
+                  {uploadMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <ImagePlus className="h-4 w-4" />

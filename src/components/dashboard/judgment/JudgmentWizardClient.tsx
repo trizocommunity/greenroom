@@ -501,7 +501,7 @@ export function JudgmentWizardClient({
         </h1>
       </div>
 
-      <section className="space-y-3">
+      <section className="space-y-3 min-h-[60vh]">
         <div className="flex items-center justify-end gap-2">
           <Badge variant="outline" className="text-[10px]">
             {judgeProgrammes.length} programme

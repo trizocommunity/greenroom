@@ -31,7 +31,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { uploadImageToCloudinary } from "@/core/integrations/cloudinary";
 import { cn } from "@/core/utils/cn";
 import { parseStoredInstant, toDateOrNull } from "@/core/utils/date-time";
 import {
@@ -42,6 +41,7 @@ import { updateFestivalAction } from "@/features/festivals/actions/user-festival
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { FeatureService } from "@/features/plan-features/services/features";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
+import { useCloudinaryUpload } from "@/api/client";
 
 interface SettingsFormProps {
   festival: any;
@@ -61,6 +61,7 @@ function serializeSettingsFormData(formData: {
   logo: string;
   programmeAssignmentDeadline: string;
   teamLeaderLimit: number;
+  announcerResultsPerStandings: number;
 }) {
   return JSON.stringify({
     ...formData,
@@ -81,7 +82,6 @@ export function SettingsForm({ festival }: SettingsFormProps) {
 
   const [isSavingGeneral, setIsSavingGeneral] = useState(false);
   const [isSavingFestival, setIsSavingFestival] = useState(false);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoError, setLogoError] = useState<string | null>(null);
 
   // State for all settings
@@ -108,6 +108,9 @@ export function SettingsForm({ festival }: SettingsFormProps) {
       ? parseStoredInstant(festival.programmeAssignmentDeadline).toISOString()
       : "",
     teamLeaderLimit: Number(festival.teamLeaderLimit ?? 2),
+    announcerResultsPerStandings: Number(
+      festival.announcerResultsPerStandings ?? 10,
+    ),
   });
   const [savedSnapshot, setSavedSnapshot] = useState(() =>
     serializeSettingsFormData({
@@ -126,6 +129,9 @@ export function SettingsForm({ festival }: SettingsFormProps) {
         ? parseStoredInstant(festival.programmeAssignmentDeadline).toISOString()
         : "",
       teamLeaderLimit: Number(festival.teamLeaderLimit ?? 2),
+      announcerResultsPerStandings: Number(
+        festival.announcerResultsPerStandings ?? 10,
+      ),
     }),
   );
   const hasChanges = useMemo(
@@ -163,10 +169,11 @@ export function SettingsForm({ festival }: SettingsFormProps) {
     return true;
   };
 
+  const uploadMutation = useCloudinaryUpload();
+
   const uploadToCloudinary = async (file: File) => {
     setLogoError(null);
 
-    // Validate File Type
     const allowedTypes = [
       "image/jpeg",
       "image/png",
@@ -180,7 +187,6 @@ export function SettingsForm({ festival }: SettingsFormProps) {
       return null;
     }
 
-    // Validate File Size
     const maxSizeBytes = 1 * 1024 * 1024;
     if (file.size > maxSizeBytes) {
       const msg = "Logo is too large. Maximum size is 1MB.";
@@ -189,12 +195,12 @@ export function SettingsForm({ festival }: SettingsFormProps) {
       return null;
     }
 
-    const url = await uploadImageToCloudinary(file, "logo");
-    if (!url) {
-      // Specific error already handled in cloudinary helper, but we set a generic one if needed
+    try {
+      const url = await uploadMutation.mutateAsync({ file, folder: "logo" });
+      return url;
+    } catch {
       return null;
     }
-    return url;
   };
 
   const handleSaveGeneral = async (e: React.FormEvent) => {
@@ -252,6 +258,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
         programmeAssignmentDeadline:
           formData.programmeAssignmentDeadline || null,
         teamLeaderLimit: formData.teamLeaderLimit,
+        announcerResultsPerStandings: formData.announcerResultsPerStandings,
       });
 
       if (basicsRes.success && configRes.success) {
@@ -273,13 +280,11 @@ export function SettingsForm({ festival }: SettingsFormProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadingLogo(true);
     const url = await uploadToCloudinary(file);
     if (url) {
       setFormData({ ...formData, logo: url });
       toast.success("Logo uploaded successfully");
     }
-    setUploadingLogo(false);
     // Reset input
     if (logoInputRef.current) logoInputRef.current.value = "";
   };
@@ -359,7 +364,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                         <ImageIcon className="h-10 w-10 text-muted-foreground/40" />
                       )}
 
-                      {uploadingLogo && (
+                      {uploadMutation.isPending && (
                         <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] flex items-center justify-center">
                           <Loader2 className="h-6 w-6 animate-spin text-primary" />
                         </div>
@@ -399,7 +404,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                           logoError && "border-destructive text-destructive",
                         )}
                         onClick={() => logoInputRef.current?.click()}
-                        disabled={uploadingLogo || isReadOnly}
+                        disabled={uploadMutation.isPending || isReadOnly}
                       >
                         <Upload className="h-4 w-4" />
                         {formData.logo ? "Change Logo" : "Upload Logo"}
@@ -714,6 +719,31 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                   />
                   <p className="text-sm text-muted-foreground">
                     Max team leaders per group.
+                  </p>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="announcerResultsPerStandings">
+                    Number of results
+                  </Label>
+                  <Input
+                    id="announcerResultsPerStandings"
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={formData.announcerResultsPerStandings}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        announcerResultsPerStandings: Number(e.target.value),
+                      })
+                    }
+                    disabled={isReadOnly}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    After this many results are announced on-air (per block),
+                    publish group standings to the public site before the next
+                    batch.
                   </p>
                 </div>
 

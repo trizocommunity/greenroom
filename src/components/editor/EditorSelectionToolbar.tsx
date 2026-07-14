@@ -1,12 +1,12 @@
 "use client";
 
 import { cn } from "@/core/utils/cn";
+import { EditorEffectsPopover } from "./EditorEffectsPopover";
+import { EditorTextToolbar } from "./EditorTextToolbar";
 import {
   editorSelectionDialogBase,
   editorSelectionToolbarDialog,
 } from "./editor-chrome";
-import { EditorEffectsPopover } from "./EditorEffectsPopover";
-import { EditorTextToolbar } from "./EditorTextToolbar";
 import type { PosterEditorState } from "./use-poster-editor-state";
 
 /** Absolute rounded dialog — top element toolbar. */

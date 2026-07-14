@@ -64,9 +64,7 @@ export function clampCanvasDimension(value: number) {
 }
 
 export function presetsForTemplate(type: PosterTemplateType) {
-  return CANVAS_SIZE_PRESETS.filter(
-    (p) => !p.types || p.types.includes(type),
-  );
+  return CANVAS_SIZE_PRESETS.filter((p) => !p.types || p.types.includes(type));
 }
 
 /** Stretch full-width accent bars when canvas width/height changes. */

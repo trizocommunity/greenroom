@@ -27,10 +27,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  isCloudinaryConfigured,
-  uploadImageToCloudinary,
-} from "@/core/integrations/cloudinary";
 import { cn } from "@/core/utils/cn";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
@@ -38,6 +34,7 @@ import {
   deleteGalleryImageAction,
   deleteGalleryImagesAction,
 } from "@/features/gallery/actions/gallery.actions";
+import { useCloudinaryUpload } from "@/api/client";
 
 type ImageRecord = { id: string; url: string; order: number };
 
@@ -67,6 +64,7 @@ export function GalleryClient({
     total: 0,
   });
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const uploadMutation = useCloudinaryUpload();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -131,7 +129,10 @@ export function GalleryClient({
 
   const confirmUploadAll = useCallback(async () => {
     if (!pendingUpload?.files.length || isReadOnly) return;
-    if (!isCloudinaryConfigured()) {
+    if (
+      !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
+      process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME === "demo"
+    ) {
       toast.error(
         "Cloudinary is not configured. Set NEXT_PUBLIC_CLOUDINARY_* env.",
       );
@@ -144,8 +145,11 @@ export function GalleryClient({
       const urls: string[] = [];
       for (let i = 0; i < files.length; i++) {
         setUploadProgress({ current: i + 1, total: files.length });
-        const url = await uploadImageToCloudinary(files[i], "gallery");
-        if (url) urls.push(url);
+        const result = await uploadMutation.mutateAsync({
+          file: files[i],
+          folder: "gallery",
+        });
+        if (result?.url) urls.push(result.url);
       }
       if (urls.length === 0) {
         toast.error("Upload failed.");
@@ -182,6 +186,7 @@ export function GalleryClient({
     isReadOnly,
     pendingUpload,
     setDirty,
+    uploadMutation,
   ]);
 
   const handleDelete = useCallback(

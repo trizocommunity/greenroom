@@ -31,11 +31,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useCategories } from "@/features/categories/hooks/use-categories";
-import { useGroups } from "@/features/groups/hooks/use-groups";
+import { useCategories } from "@/api/client/categories";
+import { useGroups } from "@/api/client/groups";
 import { exportStudentsQrPdfAction } from "@/features/students/actions/qr.actions";
-import type { StudentsListItem } from "@/features/students/hooks/use-students";
-import { useStudents } from "@/features/students/hooks/use-students";
+import type { Student } from "@/api/contracts/students";
+import { useStudents } from "@/api/client/students";
 import {
   getQrCodeContent,
   getStudentProfileUrl,
@@ -149,7 +149,7 @@ function roundRect(
   ctx.closePath();
 }
 
-type StudentRow = StudentsListItem;
+type StudentRow = Student;
 
 export function QrCodesClient({
   festivalId,
@@ -157,9 +157,9 @@ export function QrCodesClient({
   festivalName,
   baseUrl: _baseUrl,
 }: QrCodesClientProps) {
-  const { students, isLoading } = useStudents(festivalId);
-  const { categories } = useCategories(festivalId);
-  const { groups } = useGroups(festivalId);
+  const { data: students = [], isLoading } = useStudents(festivalId);
+  const { data: categories = [] } = useCategories(festivalId);
+  const { data: groups = [] } = useGroups(festivalId);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [selectedGroup, setSelectedGroup] = useState<string>("ALL");
@@ -466,7 +466,7 @@ export function QrCodesClient({
                 url={getQrCodeContent(viewStudent.student)}
                 qrContent={getQrCodeContent(viewStudent.student)}
                 size={200}
-                fileName={`${viewStudent.student.name.replace(/\s+/g, "-").toLowerCase()}-chest-${viewStudent.student.chestNumber || "unknown"}.png`}
+                fileName={`${(viewStudent.student.name ?? "").replace(/\s+/g, "-").toLowerCase()}-chest-${viewStudent.student.chestNumber || "unknown"}.png`}
                 shareMessage={`Chest number: ${getQrCodeContent(viewStudent.student)}`}
               />
               <div className="text-center space-y-1">

@@ -2,8 +2,12 @@ import { Calendar } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
+import { AnnouncerBlockProgressBanner } from "@/components/dashboard/announcement/AnnouncerBlockProgressBanner";
 import { ResultsExploreClient } from "@/components/dashboard/event-works/ResultsExploreClient";
+import { getSession } from "@/core/auth/session";
 import type { Tier } from "@/core/types/app-enums";
+import { getAnnouncerBlockProgress } from "@/features/announcement/services/announcer-result-count.service";
+import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
 import { filterProgrammesForEventWorks } from "@/features/programmes/services/programme-status.service";
 import { getFestivalResultsDataBySlug } from "@/features/results/services/results.service";
@@ -24,6 +28,13 @@ export default async function ResultsPage({
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const initialProgrammeId =
     resolvedSearchParams?.programmeId?.trim() || undefined;
+
+  const session = await getSession();
+  const context = await getFestivalContext({
+    slugOrId: slug,
+    userId: session?.userId ?? null,
+    globalRole: session?.role ?? null,
+  });
 
   const { festival } = await getFestivalResultsDataBySlug(slug);
 
@@ -63,8 +74,11 @@ export default async function ResultsPage({
     );
   }
 
+  const block = await getAnnouncerBlockProgress(festival.id);
+
   return (
-    <div className="pt-4 sm:pt-6">
+    <div className="pt-4 sm:pt-6 space-y-4">
+      <AnnouncerBlockProgressBanner block={block} festivalSlug={slug} />
       <ResultsExploreClient
         festival={{
           id: festival.id,
@@ -74,13 +88,14 @@ export default async function ResultsPage({
         programmes={eventWorksProgrammes}
         categories={festival.categories}
         initialProgrammeId={initialProgrammeId}
+        festivalRole={context?.role}
       >
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
             Results
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
-            Explore published results by programme.
+            Publish results to the desk, then announce on-air from Announcement.
           </p>
         </div>
       </ResultsExploreClient>

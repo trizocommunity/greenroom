@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -15,6 +16,7 @@ import {
   YAxis,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useSuperAdminAnalytics } from "@/api/client/admin";
 
 export interface PurchaseSummaryDto {
   userId: string;
@@ -77,25 +79,24 @@ interface AnalyticsChartsProps {
 }
 
 export function AnalyticsCharts({ initialData }: AnalyticsChartsProps) {
-  const [data, setData] = useState<AnalyticsData>(initialData);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-
-  const fetchAnalytics = useCallback(async () => {
-    try {
-      const res = await fetch("/api/super-admin/analytics");
-      if (!res.ok) return;
-      const json = await res.json();
-      setData(json);
-      setLastUpdated(new Date());
-    } catch {
-      // Keep previous data on error
-    }
-  }, []);
+  const { data: fetchedData, dataUpdatedAt, refetch } = useSuperAdminAnalytics(initialData);
+  const data = fetchedData ?? initialData;
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(
+    initialData ? new Date() : null,
+  );
 
   useEffect(() => {
-    const id = setInterval(fetchAnalytics, POLL_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [fetchAnalytics]);
+    const interval = setInterval(() => {
+      refetch();
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [refetch]);
+
+  useEffect(() => {
+    if (dataUpdatedAt) {
+      setLastUpdated(new Date(dataUpdatedAt));
+    }
+  }, [dataUpdatedAt]);
 
   const topSpendersChart = data.purchases.slice(0, 8).map((p) => ({
     name: p.name.split(" ")[0] || p.email.slice(0, 8),

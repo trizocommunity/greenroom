@@ -1,8 +1,8 @@
 import type {
+  CreatePresetOptions,
   EditorElementType,
   PosterTemplateType,
 } from "./poster-editor-config";
-import type { CreatePresetOptions } from "./poster-editor-config";
 
 export interface EditorElement {
   id: string;

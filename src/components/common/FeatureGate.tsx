@@ -141,6 +141,7 @@ function getFeatureLabel(feature: FeaturePath): string {
     // Analytics
     advancedAnalytics: "Advanced Analytics",
     customReports: "Custom Reports",
+    designTemplates: "Design Templates",
 
     // Certificates & QR
     qrCodes: "QR Codes",

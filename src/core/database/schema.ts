@@ -25,6 +25,16 @@ export const festivalRole = pgEnum("FestivalRole", [
   "ADMIN",
   "ANNOUNCER",
   "STAGE_MANAGER",
+  "MEDIA",
+]);
+export const posterTemplateType = pgEnum("PosterTemplateType", [
+  "RESULT",
+  "TEAM_POINTS",
+  "CANDIDATE_CARD",
+]);
+export const posterTemplateStatus = pgEnum("PosterTemplateStatus", [
+  "DRAFT",
+  "PUBLISHED",
 ]);
 export const festivalStatus = pgEnum("FestivalStatus", [
   "READY",
@@ -81,7 +91,12 @@ export const programmeStatus = pgEnum("ProgrammeStatus", [
   "ENDED",
   "JUDGED",
   "PUBLISHED",
+  "ANNOUNCED",
   "RESET",
+]);
+export const publicDisplayMode = pgEnum("PublicDisplayMode", [
+  "programme_results",
+  "team_standings",
 ]);
 export const programmeType = pgEnum("ProgrammeType", ["INDIVIDUAL", "GROUP"]);
 export const realtimeOutboxStatus = pgEnum("RealtimeOutboxStatus", [
@@ -250,6 +265,11 @@ export const festival = pgTable(
     programmesCount: integer().default(0).notNull(),
     chestNumberSettings: jsonb(),
     teamStandings: jsonb(),
+    publicDisplayMode: publicDisplayMode()
+      .default("programme_results")
+      .notNull(),
+    announcerResultsPerStandings: integer().default(10).notNull(),
+    announcedProgrammesSinceStandings: integer().default(0).notNull(),
     scoringSystem: scoringSystem().default("SCORE_BASED").notNull(),
     status: festivalStatus().default("READY").notNull(),
     resultPdfUrl: text(),
@@ -371,6 +391,7 @@ export const programme = pgTable(
     maxStudentsPerTeam: integer().default(1).notNull(),
     status: programmeStatus().default("READY").notNull(),
     publishedAt: timestamp({ precision: 3, mode: "string" }),
+    resultPosterTemplateCode: text("result_poster_template_code"),
   },
   (table) => [
     index("programme_festivalId_createdAt_idx").using(
@@ -758,6 +779,8 @@ export const result = pgTable(
     scoringPolicyVersion: integer("scoring_policy_version"),
     remarks: text(),
     isPublished: boolean().default(false).notNull(),
+    isAnnounced: boolean().default(false).notNull(),
+    announcedAt: timestamp({ precision: 3, mode: "string" }),
     createdAt: timestamp({ precision: 3, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -1885,5 +1908,48 @@ export const realtimeOutbox = pgTable(
     })
       .onUpdate("cascade")
       .onDelete("set null"),
+  ],
+);
+
+// ─── Design templates (poster editor) ─────────────────────────────────────────
+
+export const festivalPosterTemplate = pgTable(
+  "festival_poster_template",
+  {
+    id: text().primaryKey().notNull(),
+    festivalId: text("festival_id").notNull(),
+    type: posterTemplateType().notNull(),
+    code: text().notNull(),
+    status: posterTemplateStatus().default("DRAFT").notNull(),
+    width: integer().notNull(),
+    height: integer().notNull(),
+    konvaJson: jsonb("konva_json").notNull(),
+    backgroundUrl: text("background_url"),
+    meta: jsonb(),
+    createdAt: timestamp("created_at", { precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp("updated_at", { precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("festival_poster_template_festivalId_code_key").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+      table.code.asc().nullsLast(),
+    ),
+    index("festival_poster_template_festivalId_status_idx").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+      table.status.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "festival_poster_template_festivalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
   ],
 );

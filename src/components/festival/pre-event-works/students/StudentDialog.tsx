@@ -27,10 +27,10 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/core/utils/cn";
-import { useCategories } from "@/features/categories/hooks/use-categories";
-import { useGroups } from "@/features/groups/hooks/use-groups";
+import { useCategories } from "@/api/client/categories";
+import { useGroups } from "@/api/client/groups";
+import { useCreateStudent, useUpdateStudent } from "@/api/client/students";
 import { validateStudentsAction } from "@/features/students/actions/student.actions";
-import { useStudents } from "@/features/students/hooks/use-students";
 
 const StudentSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -77,9 +77,10 @@ export function StudentDialog({
     isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
 
   const isEditing = !!studentToEdit;
-  const { groups } = useGroups(festivalId);
-  const { categories } = useCategories(festivalId);
-  const { createStudent, updateStudent } = useStudents(festivalId);
+  const { data: groups = [] } = useGroups(festivalId);
+  const { data: categories = [] } = useCategories(festivalId);
+  const createStudent = useCreateStudent();
+  const updateStudent = useUpdateStudent();
 
   const [isLoading, setIsLoading] = useState(false);
   const festivalContext = useFestival();
@@ -133,8 +134,9 @@ export function StudentDialog({
     setIsLoading(true);
     try {
       if (isEditing && studentToEdit) {
-        await updateStudent({
-          id: studentToEdit.id,
+        await updateStudent.mutateAsync({
+          festivalId,
+          studentId: studentToEdit.id,
           data,
         });
         toast.success("Student updated successfully");
@@ -162,7 +164,7 @@ export function StudentDialog({
           return;
         }
 
-        await createStudent(data);
+        await createStudent.mutateAsync({ festivalId, data });
         toast.success("Student added successfully");
       }
       setOpen(false);

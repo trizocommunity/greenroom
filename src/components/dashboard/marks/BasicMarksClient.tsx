@@ -1,25 +1,21 @@
 "use client";
 
-import { ResultsManagementClient } from "@/components/dashboard/results/ResultsManagementClient";
+import { BasicScoringClient } from "@/components/dashboard/scoring/BasicScoringClient";
 
 export function BasicMarksClient({
   festival,
   programmes,
-  categories,
+  categories: _categories,
   children,
 }: {
-  festival: any;
+  festival: { id: string; slug: string; name: string };
   programmes: any[];
   categories: any[];
   children?: React.ReactNode;
 }) {
   return (
-    <ResultsManagementClient
-      festival={festival}
-      programmes={programmes}
-      categories={categories}
-    >
+    <BasicScoringClient festival={festival} programmes={programmes}>
       {children}
-    </ResultsManagementClient>
+    </BasicScoringClient>
   );
 }

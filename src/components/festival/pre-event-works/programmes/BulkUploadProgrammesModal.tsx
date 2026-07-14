@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { queryKeys } from "@/core/http/query-keys";
-import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useCategories } from "@/api/client/categories";
 import {
   bulkCreateProgrammesAction,
   validateProgrammesAction,
@@ -317,7 +317,7 @@ export function BulkUploadProgrammesModal({
 }: BulkUploadProgrammesModalProps) {
   const queryClient = useQueryClient();
 
-  const { categories, isLoading } = useCategories(festivalId);
+  const { data: categories = [], isLoading } = useCategories(festivalId);
 
   const parseProgrammeRow = (
     row: any[],

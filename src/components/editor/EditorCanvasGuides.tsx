@@ -10,13 +10,7 @@ const GUIDE_COLOR = EDITOR_COLORS.selectionBlue;
 const labelClass =
   "absolute rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white";
 
-function GuideLabel({
-  value,
-  style,
-}: {
-  value: number;
-  style: CSSProperties;
-}) {
+function GuideLabel({ value, style }: { value: number; style: CSSProperties }) {
   if (!Number.isFinite(value)) return null;
   return (
     <span
@@ -28,7 +22,9 @@ function GuideLabel({
   );
 }
 
-function dashedLineStyle(orientation: "horizontal" | "vertical"): CSSProperties {
+function dashedLineStyle(
+  orientation: "horizontal" | "vertical",
+): CSSProperties {
   return orientation === "vertical"
     ? {
         borderLeft: `1px dashed ${GUIDE_COLOR}`,

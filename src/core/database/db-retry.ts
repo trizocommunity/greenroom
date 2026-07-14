@@ -1,6 +1,6 @@
 /**
- * Retries operations when node-postgres / pooler drops the TCP connection mid-flight.
- * Common with Neon, Supabase pooler, and idle timeouts — not a substitute for a correct DATABASE_URL.
+ * Retries operations when node-postgres connection drops mid-flight.
+ * Handles transient network or database connection drops.
  */
 
 const MESSAGE_MARKERS = [

@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/core/utils/cn";
+import { useCurrentUser } from "@/features/auth/hooks/use-current-user";
 
 const navItems = [
   { name: "Home", href: "/" },
@@ -22,6 +23,7 @@ interface NavbarProps {
 }
 
 export default function Navbar({ user: initialUser }: NavbarProps) {
+  const { data: currentUser } = useCurrentUser();
   const [user, setUser] = React.useState<{ id: string } | null | undefined>(
     initialUser ?? undefined,
   );
@@ -32,11 +34,10 @@ export default function Navbar({ user: initialUser }: NavbarProps) {
       setUser(initialUser);
       return;
     }
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setUser(data?.id ? data : null))
-      .catch(() => setUser(null));
-  }, [initialUser]);
+    if (currentUser) {
+      setUser({ id: currentUser.id });
+    }
+  }, [initialUser, currentUser]);
   const pathname = usePathname();
   const isHome = pathname === "/";
   const [scrolled, setScrolled] = React.useState(false);

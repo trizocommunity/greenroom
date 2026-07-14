@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import type { UserProfile } from "@/core/types/app-enums";
-import { updateProfile } from "@/features/auth/actions/profile.actions";
+import { useUpdateProfile } from "@/api/client/profile";
 
 const profileSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
@@ -55,35 +55,23 @@ export function EditProfileDialog({ user, trigger }: EditProfileDialogProps) {
     defaultValues: {
       fullName: user.fullName || "",
       displayName: user.displayName || "",
-      age: user.age ?? "",
+      age: user.age ?? undefined,
     },
   });
 
-  const { mutate, isPending } = useMutation({
-    mutationFn: updateProfile,
-    onSuccess: (result) => {
-      if (!result.success) {
-        if (result.fields) {
-          Object.entries(result.fields).forEach(([key, message]) => {
-            form.setError(key as any, { message });
-          });
-          return;
-        }
-        toast.error(result.error);
-        return;
-      }
-
-      toast.success("Profile updated successfully");
-      router.refresh();
-      setIsOpen(false);
-    },
-    onError: () => {
-      toast.error("Something went wrong.");
-    },
-  });
+  const { mutate, isPending } = useUpdateProfile();
 
   function onSubmit(values: z.infer<typeof profileSchema>) {
-    mutate(values);
+    mutate(values, {
+      onSuccess: () => {
+        toast.success("Profile updated successfully");
+        router.refresh();
+        setIsOpen(false);
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    });
   }
 
   return (

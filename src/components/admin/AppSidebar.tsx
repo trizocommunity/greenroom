@@ -151,12 +151,9 @@ export function AppSidebar() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <LogoutButton>
-                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Log out
-                    </DropdownMenuItem>
-                  </LogoutButton>
+                  <DropdownMenuItem onSelect={() => {}}>
+                    <LogoutButton />
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (

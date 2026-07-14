@@ -36,14 +36,19 @@ export function SaveTemplateModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-serif text-xl">Save template</DialogTitle>
+          <DialogTitle className="font-serif text-xl">
+            Save template
+          </DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
           Save this {templateLabel} design to your template library. You can
           reload it from the Templates tab.
         </p>
         <div className="space-y-2">
-          <Label htmlFor="template-name" className="text-xs font-bold uppercase">
+          <Label
+            htmlFor="template-name"
+            className="text-xs font-bold uppercase"
+          >
             Template name
           </Label>
           <Input

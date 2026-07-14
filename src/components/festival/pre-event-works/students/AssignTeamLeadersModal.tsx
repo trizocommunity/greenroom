@@ -24,9 +24,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useGroups } from "@/features/groups/hooks/use-groups";
+import { useGroups } from "@/api/client/groups";
+import { useUpdateGroup } from "@/api/client/groups";
 import { updateStudentAction } from "@/features/students/actions/student.actions";
-import { useStudents } from "@/features/students/hooks/use-students";
+import { useStudents } from "@/api/client/students";
 
 interface AssignTeamLeadersModalProps {
   festivalId: string;
@@ -61,8 +62,9 @@ export function AssignTeamLeadersModal({
   const [step, setStep] = useState<"select" | "emails">("select");
   const [emailInputs, setEmailInputs] = useState<Record<string, string>>({});
 
-  const { groups, updateGroup, isUpdating } = useGroups(festivalId);
-  const { students } = useStudents(festivalId);
+  const { data: groups = [] } = useGroups(festivalId);
+  const { data: students = [] } = useStudents(festivalId);
+  const updateGroup = useUpdateGroup();
 
   const selectedGroup = useMemo(
     () => groups.find((g: any) => g.id === selectedGroupId),
@@ -81,7 +83,7 @@ export function AssignTeamLeadersModal({
   );
 
   const canSubmit =
-    !!selectedGroupId && selectedLeaderIds.length > 0 && !isUpdating;
+    !!selectedGroupId && selectedLeaderIds.length > 0 && !updateGroup.isPending;
 
   // Get students needing emails (selected students without valid email)
   const studentsNeedingEmail = useMemo(() => {
@@ -173,8 +175,9 @@ export function AssignTeamLeadersModal({
       }
     }
 
-    await updateGroup({
-      id: selectedGroup.id,
+    await updateGroup.mutateAsync({
+      festivalId,
+      groupId: selectedGroup.id,
       data: {
         name: selectedGroup.name,
         seriesStart: Number(selectedGroup.seriesStart ?? 100),
@@ -418,7 +421,7 @@ export function AssignTeamLeadersModal({
               <Button
                 variant="outline"
                 onClick={() => setOpen(false)}
-                disabled={isUpdating}
+                disabled={updateGroup.isPending}
               >
                 Cancel
               </Button>
@@ -435,15 +438,15 @@ export function AssignTeamLeadersModal({
               <Button
                 variant="outline"
                 onClick={() => setStep("select")}
-                disabled={isUpdating}
+                disabled={updateGroup.isPending}
               >
                 Back
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={!canSubmitEmails || isUpdating}
+                disabled={!canSubmitEmails || updateGroup.isPending}
               >
-                {isUpdating && (
+                {updateGroup.isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
                 Save Team Leaders

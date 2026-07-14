@@ -22,15 +22,21 @@ const getResultPoints = (result: {
 }) => result.awardPoints ?? result.points ?? 0;
 
 /**
- * Fetch published results for a festival (public site)
+ * Fetch on-air (announced) results for a festival (public site).
+ * Returns empty when the festival is in team-standings-only display mode.
  */
 export async function getPublicFestivalResults(
   festivalId: string,
+  options?: { publicDisplayMode?: "programme_results" | "team_standings" },
 ): Promise<PublicResult[]> {
+  if (options?.publicDisplayMode === "team_standings") {
+    return [];
+  }
+
   const results = await db.query.result.findMany({
     where: and(
       eq(resultTable.festivalId, festivalId),
-      eq(resultTable.isPublished, true),
+      eq(resultTable.isAnnounced, true),
     ),
     with: {
       programme: {

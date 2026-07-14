@@ -29,7 +29,7 @@ import {
   type Festival,
   useDeleteFestival,
   useFestivals,
-} from "@/features/festivals/hooks/use-festivals";
+} from "@/api/client/festivals";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 
 export function FestivalsTable() {

@@ -23,7 +23,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ERROR_MESSAGES } from "@/core/errors/errors";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import { useJudges } from "@/features/judges/hooks/use-judges";
+import {
+  useCreateJudge,
+  useDeleteJudge,
+  useJudges,
+  useUpdateJudge,
+} from "@/api/client";
 
 type JudgeRow = {
   id: string;
@@ -67,14 +72,10 @@ export function JudgesClient({
   children?: React.ReactNode;
 }) {
   const { isReadOnly } = useFestivalReadOnly();
-  const {
-    judges,
-    isLoading,
-    createJudge,
-    updateJudge,
-    deleteJudge,
-    isDeleting,
-  } = useJudges(festivalId);
+  const { data: judges = [], isLoading } = useJudges(festivalId);
+  const createJudge = useCreateJudge();
+  const updateJudge = useUpdateJudge();
+  const deleteJudge = useDeleteJudge();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<JudgeRow | null>(null);
   const [deleting, setDeleting] = useState<JudgeRow | null>(null);
@@ -161,15 +162,21 @@ export function JudgesClient({
     setIsSaving(true);
     try {
       if (editing) {
-        await updateJudge({
+        await updateJudge.mutateAsync({
+          festivalId,
           judgeId: editing.id,
-          name: trimmedName,
-          description: trimmedDescription || null,
+          data: {
+            name: trimmedName,
+            description: trimmedDescription || undefined,
+          },
         });
       } else {
-        await createJudge({
-          name: trimmedName,
-          description: trimmedDescription || null,
+        await createJudge.mutateAsync({
+          festivalId,
+          data: {
+            name: trimmedName,
+            description: trimmedDescription || undefined,
+          },
         });
       }
       setFormOpen(false);
@@ -260,7 +267,7 @@ export function JudgesClient({
                 Stage highlights
               </p>
               <div className="flex flex-wrap gap-2">
-                {j.stages.length > 0 ? (
+                {j.stages && j.stages.length > 0 ? (
                   j.stages
                     .slice(0, 3)
                     .map((stage) => (
@@ -295,7 +302,7 @@ export function JudgesClient({
             <div className="grid grid-cols-3 gap-2 text-center rounded-xl border bg-muted/20 p-2">
               <div>
                 <p className="text-lg font-semibold leading-none">
-                  {j.activities.length}
+                  {j.activities?.length ?? 0}
                 </p>
                 <p className="text-[11px] text-muted-foreground mt-1">
                   Activities
@@ -303,7 +310,7 @@ export function JudgesClient({
               </div>
               <div>
                 <p className="text-lg font-semibold leading-none">
-                  {j.programmes.length}
+                  {j.programmes?.length ?? 0}
                 </p>
                 <p className="text-[11px] text-muted-foreground mt-1">
                   Programmes
@@ -311,7 +318,7 @@ export function JudgesClient({
               </div>
               <div>
                 <p className="text-lg font-semibold leading-none">
-                  {j.stages.length}
+                  {j.stages?.length ?? 0}
                 </p>
                 <p className="text-[11px] text-muted-foreground mt-1">Stages</p>
               </div>
@@ -533,10 +540,10 @@ export function JudgesClient({
           open={true}
           onOpenChange={(open) => !open && setDeleting(null)}
           onDelete={async () => {
-            await deleteJudge(deleting.id);
+            await deleteJudge.mutateAsync({ festivalId, judgeId: deleting.id });
             setDeleting(null);
           }}
-          isDeleting={isDeleting}
+          isDeleting={deleteJudge.isPending}
         />
       ) : null}
     </div>

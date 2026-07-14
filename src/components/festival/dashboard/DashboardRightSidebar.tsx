@@ -200,12 +200,7 @@ export function DashboardRightSidebar({
         </ScrollArea>
 
         <div className="p-4 border-t mt-auto">
-          <LogoutButton
-            variant="ghost"
-            className="w-full justify-start gap-2 px-2"
-            showText={true}
-            showIcon={true}
-          />
+          <LogoutButton />
         </div>
       </SheetContent>
     </Sheet>

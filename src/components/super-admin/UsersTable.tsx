@@ -215,11 +215,9 @@ export function UsersTable() {
     updateUserMutation.mutate(
       {
         id: selectedUser.id,
-        data: {
-          fullName: editName,
-          email: editEmail,
-          // role update ignored for now as requested UI only had badge
-        },
+        fullName: editName || undefined,
+        // email is not part of updateUserSchema - users can't change email via this UI
+        // role update ignored for now as requested UI only had badge
       },
       {
         onSuccess: () => {
@@ -232,11 +230,14 @@ export function UsersTable() {
   const handleDelete = async () => {
     if (!selectedUser) return;
 
-    deleteUserMutation.mutate(selectedUser.id, {
-      onSuccess: () => {
-        setIsDeleteOpen(false);
+    deleteUserMutation.mutate(
+      { id: selectedUser.id },
+      {
+        onSuccess: () => {
+          setIsDeleteOpen(false);
+        },
       },
-    });
+    );
   };
 
   const isActionLoading =

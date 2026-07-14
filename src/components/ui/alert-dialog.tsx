@@ -10,10 +10,11 @@ const AlertDialog = AlertDialogPrimitive.Root;
 const AlertDialogTrigger = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Trigger>
->(({ className, ...props }, ref) => (
+>(({ className, asChild, ...props }, ref) => (
   <AlertDialogPrimitive.Trigger
     ref={ref}
-    className={cn(buttonVariants(), className)}
+    asChild={asChild}
+    className={cn(!asChild && buttonVariants(), className)}
     suppressHydrationWarning
     {...props}
   />

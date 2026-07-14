@@ -3,14 +3,38 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { v4 as uuid } from "uuid";
+import type { PosterBindings } from "@/features/posters/services/poster-bindings.service";
+import {
+  adaptElementsToCanvasSize,
+  clampCanvasDimension,
+} from "./editor-canvas-size";
+import {
+  defaultDraftTabLabel,
+  type EditorDraftTab,
+  isTabDirty,
+} from "./editor-draft-tab";
+import {
+  alignElementsToCanvas,
+  alignElementsToEachOther,
+  type CanvasAlign,
+  cloneElementsForClipboard,
+  flipElementPatch,
+} from "./editor-element-actions";
+import {
+  getSavedTemplate,
+  listSavedTemplates,
+  deleteSavedTemplate as removeStoredTemplate,
+  type SavedPosterTemplate,
+  savePosterTemplate,
+} from "./editor-template-storage";
+import { EDITOR_COLORS } from "./editor-theme";
 import {
   applyTextCase,
+  type CopiedElementStyle,
   cloneDoc,
   extractStyle,
   normalizeColor,
-  type CopiedElementStyle,
 } from "./editor-utils";
-import { EDITOR_COLORS } from "./editor-theme";
 import {
   type CreatePresetOptions,
   type EditorNavPanel,
@@ -19,29 +43,6 @@ import {
   type PosterTemplateType,
   TEMPLATE_TYPES,
 } from "./poster-editor-config";
-import {
-  deleteSavedTemplate as removeStoredTemplate,
-  getSavedTemplate,
-  listSavedTemplates,
-  savePosterTemplate,
-  type SavedPosterTemplate,
-} from "./editor-template-storage";
-import {
-  defaultDraftTabLabel,
-  isTabDirty,
-  type EditorDraftTab,
-} from "./editor-draft-tab";
-import {
-  adaptElementsToCanvasSize,
-  clampCanvasDimension,
-} from "./editor-canvas-size";
-import {
-  alignElementsToCanvas,
-  alignElementsToEachOther,
-  cloneElementsForClipboard,
-  flipElementPatch,
-  type CanvasAlign,
-} from "./editor-element-actions";
 import { createPresetDocument } from "./poster-editor-presets";
 import type {
   CustomFont,
@@ -59,7 +60,12 @@ export interface SelectionBounds {
 
 const MAX_HISTORY = 50;
 
-export function usePosterEditorState() {
+export function usePosterEditorState(options?: {
+  /** Festival editor: real sample data; dev playground uses MOCK_BINDINGS. */
+  previewBindings?: PosterBindings | null;
+}) {
+  const previewBindings = options?.previewBindings ?? null;
+  const bindingSource = previewBindings ?? MOCK_BINDINGS;
   const [tabs, setTabs] = useState<EditorDraftTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -113,8 +119,7 @@ export function usePosterEditorState() {
   );
 
   const selectedElements = useMemo(
-    () =>
-      doc?.elements.filter((e) => selectedIds.includes(e.id)) ?? [],
+    () => doc?.elements.filter((e) => selectedIds.includes(e.id)) ?? [],
     [doc, selectedIds],
   );
 
@@ -250,6 +255,42 @@ export function usePosterEditorState() {
     [],
   );
 
+  const loadDocument = useCallback(
+    (document: PosterEditorDocument, label?: string) => {
+      const next = cloneDoc(document);
+      const tab: EditorDraftTab = {
+        id: uuid(),
+        label: label ?? defaultDraftTabLabel(next),
+        doc: next,
+        past: [],
+        future: [],
+        savedBaseline: JSON.stringify(next),
+      };
+      setTabs([tab]);
+      setActiveTabId(tab.id);
+      setSelectedIds([]);
+      setPreviewMode(true);
+      setZoom(next.templateType === "CANDIDATE_CARD" ? 0.87 : 0.61);
+    },
+    [],
+  );
+
+  const restoreSavedDraft = useCallback(
+    (document: PosterEditorDocument) => {
+      if (!activeTab) return;
+      const next = cloneDoc(document);
+      patchActiveTab({
+        past: [...activeTab.past, cloneDoc(activeTab.doc)],
+        future: [],
+        doc: next,
+        savedBaseline: JSON.stringify(next),
+        label: defaultDraftTabLabel(next),
+      });
+      setSelectedIds([]);
+    },
+    [activeTab, patchActiveTab],
+  );
+
   const resetDocument = useCallback(() => {
     if (!doc || !activeTab) return;
     const next = createPresetDocument(
@@ -264,7 +305,7 @@ export function usePosterEditorState() {
       label: defaultDraftTabLabel(next),
     });
     setSelectedIds([]);
-    toast.success("Template reset");
+    toast.success("Factory layout applied");
   }, [activeTab, doc, patchActiveTab]);
 
   const closeTemplate = useCallback(() => {
@@ -316,9 +357,17 @@ export function usePosterEditorState() {
       apply((d) => ({
         ...d,
         updatedAt: new Date().toISOString(),
-        elements: d.elements.map((el) =>
-          el.id === id ? { ...el, ...patch } : el,
-        ),
+        elements: d.elements.map((el) => {
+          if (el.id !== id) return el;
+          if (!el.bindingKey) return { ...el, ...patch };
+          const {
+            text: _text,
+            bindingKey: _key,
+            name: _name,
+            ...stylePatch
+          } = patch;
+          return { ...el, ...stylePatch };
+        }),
       }));
     },
     [setDocWithHistory, patchActiveTab],
@@ -456,7 +505,9 @@ export function usePosterEditorState() {
       });
       const ids = matches.map((e) => e.id);
       setSelectedIds(ids);
-      toast.success(`Selected ${ids.length} layer${ids.length === 1 ? "" : "s"}`);
+      toast.success(
+        `Selected ${ids.length} layer${ids.length === 1 ? "" : "s"}`,
+      );
     },
     [doc, selectedElement],
   );
@@ -488,7 +539,7 @@ export function usePosterEditorState() {
       if (!doc) return;
       const field = FEST_ADMIN_FIELDS.find((f) => f.key === bindingKey);
       if (!field) return;
-      const preview = MOCK_BINDINGS[bindingKey] ?? field.preview;
+      const preview = bindingSource[bindingKey] ?? field.preview;
       addElement({
         type: bindingKey === "qrCode" ? "qr" : "text",
         name: field.label,
@@ -598,18 +649,21 @@ export function usePosterEditorState() {
     [addElement],
   );
 
-  const addCustomFont = useCallback((file: File) => {
-    const url = URL.createObjectURL(file);
-    const name = file.name.replace(/\.[^.]+$/, "");
-    setDocWithHistory((d) => {
-      const font: CustomFont = { id: uuid(), name, url };
-      return {
-        ...d,
-        customFonts: [...d.customFonts, font],
-        updatedAt: new Date().toISOString(),
-      };
-    });
-  }, [setDocWithHistory]);
+  const addCustomFont = useCallback(
+    (file: File) => {
+      const url = URL.createObjectURL(file);
+      const name = file.name.replace(/\.[^.]+$/, "");
+      setDocWithHistory((d) => {
+        const font: CustomFont = { id: uuid(), name, url };
+        return {
+          ...d,
+          customFonts: [...d.customFonts, font],
+          updatedAt: new Date().toISOString(),
+        };
+      });
+    },
+    [setDocWithHistory],
+  );
 
   const sortedElements = useMemo(() => {
     if (!doc) return [];
@@ -618,15 +672,16 @@ export function usePosterEditorState() {
 
   const displayText = useCallback(
     (el: EditorElement) => {
-      if (el.type === "qr") return previewMode ? MOCK_BINDINGS.qrCode : "QR";
-      if (!el.text) return "";
-      let text = el.text;
+      if (el.type === "qr")
+        return previewMode ? (bindingSource.qrCode ?? "QR") : "QR";
+      if (!el.text && !el.bindingKey) return "";
+      let text = el.text ?? "";
       if (previewMode && el.bindingKey) {
-        text = MOCK_BINDINGS[el.bindingKey] ?? el.text;
+        text = bindingSource[el.bindingKey] ?? el.text ?? "";
       }
       return applyTextCase(text, el.textCase);
     },
-    [previewMode],
+    [previewMode, bindingSource],
   );
 
   const fieldsForTemplate = useMemo(() => {
@@ -654,7 +709,9 @@ export function usePosterEditorState() {
       if (!selectedElement || selectedElement.type !== "text") return;
       const current = selectedElement.textDecoration ?? "";
       const parts = new Set(
-        current.split(" ").filter(Boolean) as Array<"underline" | "line-through">,
+        current.split(" ").filter(Boolean) as Array<
+          "underline" | "line-through"
+        >,
       );
       if (parts.has(part)) parts.delete(part);
       else parts.add(part);
@@ -680,7 +737,11 @@ export function usePosterEditorState() {
     (name: string) => {
       if (!doc) return;
       try {
-        const saved = savePosterTemplate(name, doc, doc.savedTemplateId ?? null);
+        const saved = savePosterTemplate(
+          name,
+          doc,
+          doc.savedTemplateId ?? null,
+        );
         const nextDoc = cloneDoc(saved.document);
         patchActiveTab({
           doc: nextDoc,
@@ -716,9 +777,7 @@ export function usePosterEditorState() {
       setTabs((list) => [...list, tab]);
       setActiveTabId(tab.id);
       setSelectedIds([]);
-      setZoom(
-        nextDoc.templateType === "CANDIDATE_CARD" ? 0.87 : 0.61,
-      );
+      setZoom(nextDoc.templateType === "CANDIDATE_CARD" ? 0.87 : 0.61);
       setNavPanel("elements");
       toast.success(`Opened “${item.name}”`);
     },
@@ -929,6 +988,13 @@ export function usePosterEditorState() {
     return meta ? `${meta.title} template` : "Untitled template";
   }, [doc]);
 
+  const markDocumentSaved = useCallback(() => {
+    if (!activeTab) return;
+    patchActiveTab({
+      savedBaseline: JSON.stringify(activeTab.doc),
+    });
+  }, [activeTab, patchActiveTab]);
+
   return {
     doc,
     tabs,
@@ -957,7 +1023,9 @@ export function usePosterEditorState() {
     selectionBounds,
     setSelectionBounds,
     startTemplate,
+    loadDocument,
     closeTemplate,
+    restoreSavedDraft,
     resetDocument,
     updateBackground,
     resizeCanvas,
@@ -997,6 +1065,7 @@ export function usePosterEditorState() {
     loadSavedTemplate,
     deleteSavedTemplate,
     isDirty,
+    markDocumentSaved,
     defaultSaveName,
     copySelected,
     pasteClipboard,
