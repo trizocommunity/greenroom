@@ -13,7 +13,7 @@ Required for the app to run:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `DATABASE_URL` | Yes | Supabase **connection pooler** URL for app runtime and seeding (e.g. `postgres://user:password@aws-1-...pooler.supabase.com:6543/postgres?pgbouncer=true`). |
+| `DATABASE_URL` | Yes | PostgreSQL connection string (defaults to local Docker DB: `postgresql://postgres:postgres@localhost:5433/greenroom`). |
 | `JWT_SECRET` | Yes | Secret used to sign/verify session cookies (e.g. a long random string) |
 
 Required for payment (Razorpay):
@@ -29,35 +29,49 @@ Optional (e.g. email, Resend):
 |----------|----------|-------------|
 | `RESEND_API_KEY` | For forgot-password email | Resend API key for sending password reset emails |
 
-Example `.env.local` (Supabase):
+Example `.env` (Docker Local Database):
 
 ```text
-DATABASE_URL="postgres://YOUR_USER:YOUR_PASSWORD@aws-1-YOUR_PROJECT_REF.pooler.supabase.com:6543/postgres?pgbouncer=true"
+DATABASE_URL="postgresql://postgres:postgres@localhost:5433/greenroom"
 JWT_SECRET=your-secret-at-least-32-chars
 RAZORPAY_KEY_ID=rzp_...
 RAZORPAY_KEY_SECRET=...
 ```
 
-## Database Migrations (SQL-Only)
+## Database Setup (Docker PostgreSQL)
 
-This project uses **Supabase** for the database. Migrations are done via SQL files:
+This project uses **PostgreSQL via Docker Compose** for local development.
 
-1. **Generate SQL** from schema changes:
-   ```bash
-   npm run db:generate
-   ```
+Quick All-in-One Setup (start Docker, push schema, and seed data):
+```bash
+npm run db:setup
+```
 
-2. **Apply SQL** manually in Supabase:
-   - Go to [Supabase Dashboard](https://app.supabase.com) → Your Project → SQL Editor
-   - Copy contents from `./drizzle/XXXX_migration_name.sql`
-   - Run the SQL
+Or step-by-step:
+1. **Start Local Docker Database**: `npm run db:start`
+2. **Push Schema to Database**: `npm run db:push`
+3. **Seed Database (optional)**: `npm run db:seed`
+4. **Inspect Database (Drizzle Studio)**: `npm run db:studio`
 
-3. **Seed data** (optional):
-   ```bash
-   npm run db:seed
-   ```
+### Complete Script Reference (`package.json`)
 
-**Note**: No local database or Docker needed. All database operations go directly to Supabase.
+**App & Quality**:
+- `npm run dev` - Start Next.js development server
+- `npm run build` - Build Next.js production bundle
+- `npm run start` - Start Next.js production server
+- `npm run lint` / `npm run format` / `npm run check` - Biome linter/formatter commands
+
+**Database & Docker**:
+- `npm run db:start` - Start PostgreSQL Docker container (`docker compose up -d`)
+- `npm run db:stop` - Stop database container (`docker compose down`)
+- `npm run db:clean` - Erase all tables and data from database (`tsx scripts/clean.ts`)
+- `npm run db:reset` - Clean database, push schema, and re-seed data (`npm run db:clean && npm run db:push && npm run db:seed`)
+- `npm run db:logs` - Tail live PostgreSQL container logs (`docker compose logs -f postgres`)
+- `npm run db:generate` - Generate Drizzle SQL migration files (`drizzle-kit generate`)
+- `npm run db:migrate` / `npm run db:push` - Push Drizzle schema directly to PostgreSQL (`drizzle-kit push`)
+- `npm run db:studio` - Open Drizzle Studio visual database UI (`drizzle-kit studio`)
+- `npm run db:seed` - Seed database with Super Admin (`trizocommunity@gmail.com`), Ahlussuffa IGS Pro Festival (`Ahlussuffa.igs@gmail.com`), member roles, and pre-event data (`tsx scripts/seed.ts`)
+- `npm run db:setup` - All-in-one setup: starts container, pushes Drizzle schema, and seeds database (`npm run db:start && npm run db:push && npm run db:seed`)
 
 ## Deployment Options
 

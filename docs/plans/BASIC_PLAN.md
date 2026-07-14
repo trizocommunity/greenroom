@@ -38,7 +38,7 @@
 ### Included (BASIC)
 
 - **Pre-Works:** Categories, Groups, Students, Programmes, Assignments.
-- **Event-Works:** Chest Numbers, Results.
+- **Event-Works:** Scoring Policy (grade rules + award matrix), Scoring (programme-first marks entry), Chest Numbers, Leaderboard (published award points).
 - **Import/Export:** Student import (CSV/Excel), PDF export only.
 - **Landing:** Basic public page (festival title + results).
 - **Support:** WhatsApp support (config: `supportLevel: "whatsapp"`, `supportResponseTime: 24`).
@@ -50,7 +50,8 @@
 - Bulk upload (students, programmes).
 - Festival settings page, team members (max 1 = owner only).
 - QR codes, stage management, schedule/sessions.
-- Excel export, advanced analytics, live scoreboard/leaderboard.
+- Excel export, advanced analytics, dedicated Results explore / announcer desk.
+- External judging, reporting, schedule, judge PIN links.
 - Certificates (auto/custom/bulk), email/SMS/bulk notifications.
 - Custom URL/domain, custom colors, white-label.
 - Student profile (dashboard and public profile page).
@@ -70,7 +71,7 @@
 ### 3.2 Client (UI) gating
 
 - **Hook:** `useFeature(featurePath)` and `useFeatures()` in `src/hooks/useFeature.ts`. They use `festival.effectiveFeatures` first (so Super Admin overrides apply), then fall back to `FeatureService.isFeatureEnabled(tier, featurePath)`.
-- **Sidebar:** `FestivalDashboardSidebar` uses `useFeatures()` and hides items by feature (e.g. Settings, Members, Stage Management, Schedule, Sessions, QR Codes, Gallery, News, Leaderboard, Analytics). So BASIC sees only: Overview, Pre-Works (Groups, Categories, Students, Programmes, Assignment), Event-Works (Marks, Results), Help & Support.
+- **Sidebar:** `FestivalDashboardSidebar` uses `useFeatures()` and hides items by feature (e.g. Settings, Members, Stage Management, Schedule, Sessions, QR Codes, Gallery, News, Analytics). BASIC Event Works: Scoring Policy, Scoring (`/event-works/marks`), Leaderboard when `liveScoreboard` is enabled.
 - **Components:** Feature gates (e.g. `FeatureGate`, or direct `useFeature` checks) hide bulk upload, Excel export, QR, etc., and can show upgrade prompts where desired.
 
 ### 3.3 Server-side enforcement
@@ -110,7 +111,7 @@
 
 1. **Purchase:** User selects BASIC (₹1,500) → payment → festival created with 30-day validity.
 2. **Setup:** Create categories, groups → import students (CSV) → create programmes (manual) → assign students to programmes.
-3. **Event:** Generate chest numbers → enter results → publish results.
+3. **Event:** Configure scoring policy → assign students → enter scores per programme (0–100) → publish per programme → view leaderboard (award points).
 4. **Public:** Share festival URL → public sees basic page (title + results).
 5. **Expiry:** After 30 days, access redirects to profile; tier-aware cleanup may delete BASIC festival data.
 
