@@ -10,11 +10,9 @@ export const ERROR_MESSAGES = {
   VALIDATION: "Please check your input and try again.",
 
   // ─── Auth ──────────────────────────────────────────────────────────────────
-  INVALID_CREDENTIALS: "Invalid email or password. Please try again.",
   ACCOUNT_INACTIVE:
     "Your account has been deactivated. Please contact support.",
   EMAIL_ALREADY_REGISTERED: "This email address is already registered.",
-  INVALID_RESET_TOKEN: "This password reset link is invalid or has expired.",
   EMAIL_SEND_FAILED: "Failed to send the email. Please try again later.",
 
   // ─── Festival ─────────────────────────────────────────────────────────────

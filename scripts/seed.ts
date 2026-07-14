@@ -1,5 +1,4 @@
 import "dotenv/config";
-import { hash } from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
@@ -38,28 +37,87 @@ const db = drizzle(pool, { schema: dbSchema });
 
 async function getOrCreateUser(
   email: string,
-  passwordPlain: string,
   fullName: string,
   globalRole: "SUPER_ADMIN" | "USER",
+  displayName?: string,
+  accountType?: "PERSONAL" | "INSTITUTIONAL",
+  institutionId?: string,
 ): Promise<string> {
   const now = new Date().toISOString();
+  const emailLower = email.toLowerCase().trim();
   const existing = await db.query.user.findFirst({
-    where: (u, { eq }) => eq(u.email, email),
+    where: (u, { eq }) => eq(u.email, emailLower),
   });
 
   if (existing) {
+    await db
+      .update(schema.user)
+      .set({
+        fullName,
+        displayName: displayName ?? fullName,
+        ...(accountType ? { accountType } : {}),
+        ...(institutionId ? { institutionId } : {}),
+        updatedAt: now,
+      })
+      .where(eq(schema.user.id, existing.id));
     return existing.id;
   }
 
   const id = crypto.randomUUID();
-  const hashedPassword = await hash(passwordPlain, 10);
   await db.insert(schema.user).values({
     id,
-    email,
-    password: hashedPassword,
+    email: emailLower,
     globalRole,
     fullName,
+    displayName: displayName ?? fullName,
+    ...(accountType ? { accountType } : {}),
+    ...(institutionId ? { institutionId } : {}),
     isActive: true,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return id;
+}
+
+async function getOrCreateInstitution(
+  ownerId: string,
+  data: {
+    name: string;
+    type: "COLLEGE" | "MADRASA" | "SCHOOL" | "OTHER" | "UNIVERSITY" | "INSTITUTION" | "CAMPUS" | "DARS";
+    affiliation?: string | null;
+    city?: string | null;
+    sizeRange?: string | null;
+  },
+): Promise<string> {
+  const now = new Date().toISOString();
+  const existing = await db.query.institution.findFirst({
+    where: (i, { eq }) => eq(i.ownerId, ownerId),
+  });
+
+  if (existing) {
+    await db
+      .update(schema.institution)
+      .set({
+        name: data.name,
+        type: data.type,
+        affiliation: data.affiliation ?? null,
+        city: data.city ?? null,
+        sizeRange: data.sizeRange ?? null,
+        updatedAt: now,
+      })
+      .where(eq(schema.institution.id, existing.id));
+    return existing.id;
+  }
+
+  const id = crypto.randomUUID();
+  await db.insert(schema.institution).values({
+    id,
+    ownerId,
+    name: data.name,
+    type: data.type,
+    affiliation: data.affiliation ?? null,
+    city: data.city ?? null,
+    sizeRange: data.sizeRange ?? null,
     createdAt: now,
     updatedAt: now,
   });
@@ -150,10 +208,8 @@ async function seed() {
 
   // 1. Create Super Admin User
   const superAdminEmail = "trizocommunity@gmail.com";
-  const superAdminPass = "trizo786";
   await getOrCreateUser(
     superAdminEmail,
-    superAdminPass,
     "TRIZO Community Admin",
     "SUPER_ADMIN",
   );
@@ -161,13 +217,36 @@ async function seed() {
 
   // 2. Create Festival Owner User (Ahlussuffa.igs@gmail.com)
   const festivalOwnerEmail = "Ahlussuffa.igs@gmail.com";
-  const festivalOwnerPass = "ahlussuffa786";
+
+  // Create user first (getOrCreateUser returns existing id if present)
   const festivalOwnerId = await getOrCreateUser(
     festivalOwnerEmail,
-    festivalOwnerPass,
     "Ahlussuffa IGS Admin",
     "USER",
   );
+
+  // Create institution (idempotent - handles re-runs) and link to user
+  const institutionId = await getOrCreateInstitution(festivalOwnerId, {
+    name: "Ahlussuffa Integrated Graduate Studies",
+    type: "DARS",
+    affiliation: "Jami'athul Hind Al Islamiya",
+    city: "Kannur",
+    sizeRange: "100-500",
+  });
+
+  // Update user with institutional account type and institution link
+  await db
+    .update(schema.user)
+    .set({
+      fullName: "Ahlussuffa IGS Admin",
+      displayName: "Ahlussuffa IGS Admin",
+      accountType: "INSTITUTIONAL",
+      institutionId,
+      updatedAt: now,
+    })
+    .where(eq(schema.user.id, festivalOwnerId));
+
+  console.log(`✅ Institution created: Ahlussuffa IGS`);
   console.log(`✅ Festival Owner verified/created: ${festivalOwnerEmail}`);
 
   // 3. Create Additional Festival Member Users
@@ -176,19 +255,16 @@ async function seed() {
       email: "announcer.ahlussuffa@gmail.com",
       name: "Ustadh Hamza Announcer",
       role: "ANNOUNCER" as const,
-      password: "password123",
     },
     {
       email: "stagemanager.ahlussuffa@gmail.com",
       name: "Tariq Stage Manager",
       role: "STAGE_MANAGER" as const,
-      password: "password123",
     },
     {
       email: "media.ahlussuffa@gmail.com",
       name: "Bilal Media Coord",
       role: "MEDIA" as const,
-      password: "password123",
     },
   ];
 
@@ -200,7 +276,6 @@ async function seed() {
   for (const acc of memberAccounts) {
     const userId = await getOrCreateUser(
       acc.email,
-      acc.password,
       acc.name,
       "USER",
     );
@@ -231,6 +306,8 @@ async function seed() {
   await db.insert(schema.festival).values({
     id: festivalId,
     ownerId: festivalOwnerId,
+    institutionId,
+    festivalType: "INSTITUTIONAL",
     name: "Ahlussuffa IGS Grand Islamic Arts Festival 2026",
     slug: festivalSlug,
     category: "Inter-Collegiate Islamic Arts Fest",
@@ -917,19 +994,19 @@ async function seed() {
   console.log("──────────────────────────────────────────────────────────");
   console.log("ACCOUNTS VERIFIED / CREATED:");
   console.log(
-    `  Super Admin    : ${superAdminEmail} (Password: ${superAdminPass})`,
+    `  Super Admin    : ${superAdminEmail} (Magic link auth)`,
   );
   console.log(
-    `  Festival Owner : ${festivalOwnerEmail} (Password: ${festivalOwnerPass})`,
+    `  Festival Owner : ${festivalOwnerEmail} (Magic link auth)`,
   );
   console.log(
-    `  Announcer      : announcer.ahlussuffa@gmail.com (Password: password123)`,
+    `  Announcer      : announcer.ahlussuffa@gmail.com (Magic link auth)`,
   );
   console.log(
-    `  Stage Manager  : stagemanager.ahlussuffa@gmail.com (Password: password123)`,
+    `  Stage Manager  : stagemanager.ahlussuffa@gmail.com (Magic link auth)`,
   );
   console.log(
-    `  Media Coord    : media.ahlussuffa@gmail.com (Password: password123)`,
+    `  Media Coord    : media.ahlussuffa@gmail.com (Magic link auth)`,
   );
   console.log("──────────────────────────────────────────────────────────");
   console.log(

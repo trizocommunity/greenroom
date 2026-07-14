@@ -24,8 +24,16 @@ export function useJoinedFestivals() {
   return useQuery<JoinedFestival[]>({
     queryKey: ["my-festival", "joined"],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/my-festival/joined`);
-      return handleResponse<JoinedFestival[]>(res);
+      const res = await fetch(`${API_BASE}/my-festival`);
+      const data = await handleResponse<MyFestivalResponse>(res);
+      if (!data.festival) return [];
+      return [
+        {
+          ...data.festival,
+          memberRole: "OWNER" as const,
+          memberSince: data.festival.createdAt,
+        },
+      ];
     },
     staleTime: 30 * 1000,
   });

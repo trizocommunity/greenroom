@@ -81,7 +81,7 @@ export function PricingCard({ tier, index }: PricingCardProps) {
 
         {/* CTA */}
         <div className="pt-4 mt-auto border-t border-border/50">
-          <Link href="/register" className="block">
+          <Link href="/login" className="block">
             <Button
               variant={isPopular ? "default" : "outline"}
               size="lg"

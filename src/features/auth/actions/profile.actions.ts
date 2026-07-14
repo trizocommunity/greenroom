@@ -40,7 +40,6 @@ export async function updateProfile(
       .set({
         fullName: parsedData.fullName,
         displayName: parsedData.displayName,
-        age: parsedData.age,
         updatedAt: new Date().toISOString(),
       })
       .where(eq(userTable.id, session.userId));

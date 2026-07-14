@@ -59,7 +59,7 @@ export default function Hero() {
           transition={{ duration: 0.6, delay: 1 }}
           className="flex flex-col sm:flex-row gap-4 items-center"
         >
-          <Link href="/register">
+          <Link href="/login">
             <Button
               size="lg"
               className="h-14 px-10 text-lg font-semibold rounded-full shadow-[0_10px_28px_rgba(124,58,237,0.25)] hover:scale-105 transition-transform"

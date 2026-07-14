@@ -56,6 +56,7 @@ export const InstitutionType = {
   MADRASA: "MADRASA",
   SCHOOL: "SCHOOL",
   OTHER: "OTHER",
+  DARS: "DARS",
 } as const;
 export type InstitutionType =
   (typeof InstitutionType)[keyof typeof InstitutionType];
@@ -174,6 +175,6 @@ export type Tier = (typeof Tier)[keyof typeof Tier];
 export interface UserProfile {
   fullName: string | null;
   displayName: string | null;
-  age: number | null;
   email: string;
+  accountType?: "PERSONAL" | "INSTITUTIONAL" | null;
 }

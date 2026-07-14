@@ -76,6 +76,28 @@ export function ProfileSidebarContent({
         </div>
       </div>
 
+      {/* Account Type Badge */}
+      {user.accountType && (
+        <div className="px-4 mb-4">
+          <Badge
+            variant="outline"
+            className={cn(
+              "text-xs font-medium",
+              user.accountType === "INSTITUTIONAL"
+                ? "bg-primary/10 text-primary border-primary/20"
+                : "bg-muted text-muted-foreground",
+            )}
+          >
+            {user.accountType}
+          </Badge>
+          {user.accountType === "PERSONAL" && (
+            <p className="text-[10px] text-muted-foreground mt-1.5">
+              Upgrade to Institutional for campus features
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Edit Profile Button */}
       <div className="px-4 mb-8">
         <EditProfileDialog user={user} />

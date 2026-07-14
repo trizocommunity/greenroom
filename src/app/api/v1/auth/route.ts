@@ -1,13 +1,15 @@
 import "server-only";
 
-import { loginInput } from "@/api/contracts/auth";
 import { badRequest, createHandler, ok, unauthorized } from "@/api/lib";
-import { verifyPassword } from "@/core/auth/password";
+import { createMagicLinkToken, consumeMagicLinkToken } from "@/core/auth/magic-link";
 import { createSession, deleteSession, getSession } from "@/core/auth/session";
-import {
-  findUserByEmail,
-  findUserById,
-} from "@/features/auth/repositories/user.repository";
+import { sendMagicLinkEmail } from "@/core/integrations/email";
+import { db } from "@/core/database/client";
+import { user as userTable } from "@/core/database/schema";
+import { eq, sql } from "drizzle-orm";
+import { findUserById } from "@/features/auth/repositories/user.repository";
+
+const MAGIC_LINK_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
 
 const handler = createHandler({
   async GET({ user }) {
@@ -16,8 +18,8 @@ const handler = createHandler({
     const dbUser = await findUserById(user.userId);
     if (!dbUser) return unauthorized();
 
-    const { password: _, festivals: __, ...userWithoutPassword } = dbUser;
-    return ok(userWithoutPassword);
+    const { festivals: _, ...userWithoutRelations } = dbUser;
+    return ok(userWithoutRelations);
   },
 
   async POST({ request }) {
@@ -29,40 +31,87 @@ const handler = createHandler({
       return ok({});
     }
 
-    if (action !== "login") {
-      return badRequest(
-        "INVALID_ACTION",
-        "Missing or invalid action. Use ?action=login or ?action=logout",
-      );
+    if (action === "magic-link") {
+      const body = await request.json();
+      const { email } = body;
+
+      if (!email || typeof email !== "string") {
+        return badRequest("INVALID_INPUT", "Email is required");
+      }
+
+      const token = await createMagicLinkToken(email, MAGIC_LINK_EXPIRY_MS);
+
+      // Always log in dev mode — before send attempt, so it's visible for new users too
+      if (process.env.NODE_ENV !== "production") {
+        const magicLinkUrl = `http://localhost:3000/login/verify/${token}`;
+        console.log(`[DEV] Magic link: ${magicLinkUrl}`);
+      }
+
+      const user = await db.query.user.findFirst({
+        where: eq(userTable.email, email.toLowerCase()),
+      });
+
+      if (user) {
+        try {
+          await sendMagicLinkEmail(email, token);
+        } catch {
+          // Send failed — URL already logged above, return success to avoid enumeration
+        }
+      }
+
+      return ok({ message: "Magic link sent" });
     }
 
-    const body = await request.json();
-    const parsed = loginInput.safeParse(body);
+    if (action === "verify-magic-link") {
+      const body = await request.json();
+      const { token } = body;
 
-    if (!parsed.success) {
-      return badRequest("INVALID_INPUT", parsed.error.message);
+      if (!token || typeof token !== "string") {
+        return badRequest("INVALID_INPUT", "Token is required");
+      }
+
+      const record = await consumeMagicLinkToken(token);
+
+      if (!record) {
+        return badRequest("INVALID_TOKEN", "Invalid or expired magic link");
+      }
+
+      // Find or create stub user (case-insensitive email lookup)
+      let dbUser = await db.query.user.findFirst({
+        where: sql`lower(${userTable.email}) = ${record.email}`,
+      });
+
+      if (!dbUser) {
+        const { randomUUID } = await import("crypto");
+        const result = await db
+          .insert(userTable)
+          .values({
+            id: randomUUID(),
+            email: record.email,
+            globalRole: "USER",
+          })
+          .returning();
+        dbUser = result[0];
+      }
+
+      if (!dbUser) {
+        return badRequest("USER_CREATION_FAILED", "Could not create user");
+      }
+
+      await createSession(dbUser.id, dbUser.globalRole as "USER" | "SUPER_ADMIN");
+
+      const requiresOnboarding = !dbUser.fullName;
+
+      return ok({
+        role: dbUser.globalRole,
+        requiresOnboarding,
+      });
     }
 
-    const { email, password } = parsed.data;
-    const user = await findUserByEmail(email);
-
-    if (!user) {
-      return badRequest("INVALID_CREDENTIALS", "Invalid email or password");
-    }
-
-    if (!user.isActive) {
-      return unauthorized("Account is inactive");
-    }
-
-    const isValid = await verifyPassword(password, user.password);
-
-    if (!isValid) {
-      return badRequest("INVALID_CREDENTIALS", "Invalid email or password");
-    }
-
-    await createSession(user.id, user.globalRole as "USER" | "SUPER_ADMIN");
-
-    return ok({ role: user.globalRole });
+    return badRequest(
+      "INVALID_ACTION",
+      "Missing or invalid action. Use ?action=magic-link, ?action=verify-magic-link, or ?action=logout",
+    );
   },
 });
 

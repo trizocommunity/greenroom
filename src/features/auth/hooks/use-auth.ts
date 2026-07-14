@@ -6,27 +6,37 @@ import { toast } from "sonner";
 
 import { api } from "@/lib/api-client";
 
-export const useLogin = () => {
+export const useSendMagicLink = () => {
+  return useMutation({
+    mutationFn: (data: { email: string }) => api.auth.sendMagicLink(data),
+    onSuccess: () => {
+      toast.success("Check your email for a magic link");
+    },
+    onError: (error: any) => {
+      console.error("Magic link error:", error);
+      toast.error(error?.body?.error?.message || error?.body?.error || error?.message || "Failed to send magic link");
+    },
+  });
+};
+
+export const useVerifyMagicLink = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { email: string; password: string }) =>
-      api.auth.login(data),
+    mutationFn: (data: { token: string }) => api.auth.verifyMagicLink(data),
     onSuccess: (data) => {
-      toast.success("Logged in successfully");
       queryClient.invalidateQueries({ queryKey: ["me"] });
-      if (data.body.role === "SUPER_ADMIN") {
-        router.push("/super-admin");
+      if (data.body.requiresOnboarding) {
+        router.push("/onboarding");
       } else {
         router.push("/profile");
       }
       router.refresh();
     },
     onError: (error: any) => {
-      console.error("Login error:", error);
-      const errorMessage =
-        error?.body?.error || error?.message || "Login failed";
+      console.error("Verify magic link error:", error);
+      const errorMessage = error?.body?.error?.message || error?.body?.error || error?.message || "Invalid or expired link";
       toast.error(errorMessage);
     },
   });
@@ -37,7 +47,7 @@ export const useLogout = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => api.auth.logout(),
+    mutationFn: () => api.auth.v1Logout(),
     onSuccess: () => {
       queryClient.clear();
       router.push("/login");
@@ -45,62 +55,7 @@ export const useLogout = () => {
     },
     onError: (error: any) => {
       console.error("Logout error:", error);
-      toast.error(error?.body?.error || error?.message || "Logout failed");
-    },
-  });
-};
-
-export const useRegister = () => {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: { email: string; password: string }) =>
-      api.auth.register(data),
-    onSuccess: () => {
-      toast.success("Registration successful");
-      queryClient.invalidateQueries({ queryKey: ["me"] });
-      router.push("/profile");
-      router.refresh();
-    },
-    onError: (error: any) => {
-      console.error("Register error:", error);
-      toast.error(
-        error?.body?.error || error?.message || "Registration failed",
-      );
-    },
-  });
-};
-
-export const useForgotPassword = () => {
-  return useMutation({
-    mutationFn: (data: { email: string }) => api.auth.forgotPassword(data),
-    onSuccess: () => {
-      toast.success("Password reset email sent");
-    },
-    onError: (error: any) => {
-      console.error("Forgot password error:", error);
-      toast.error(error?.body?.error || error?.message || "Request failed");
-    },
-  });
-};
-
-export const useResetPassword = () => {
-  const router = useRouter();
-
-  return useMutation({
-    mutationFn: (data: {
-      token: string;
-      password: string;
-      confirmPassword: string;
-    }) => api.auth.resetPassword(data),
-    onSuccess: () => {
-      toast.success("Password reset successful");
-      router.push("/login");
-    },
-    onError: (error: any) => {
-      console.error("Reset password error:", error);
-      toast.error(error?.body?.error || error?.message || "Reset failed");
+      toast.error(error?.body?.error?.message || error?.body?.error || error?.message || "Logout failed");
     },
   });
 };
@@ -115,12 +70,65 @@ export const useCompleteOnboarding = () => {
     onSuccess: () => {
       toast.success("Onboarding complete");
       queryClient.invalidateQueries({ queryKey: ["me"] });
-      router.push("/dashboard");
+      router.push("/profile");
       router.refresh();
     },
     onError: (error: any) => {
       console.error("Complete onboarding error:", error);
-      toast.error(error?.body?.error || error?.message || "Onboarding failed");
+      toast.error(error?.body?.error?.message || error?.body?.error || error?.message || "Onboarding failed");
+    },
+  });
+};
+
+export const useCompletePersonalOnboarding = () => {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      fullName: string;
+      displayName: string;
+      userRole: string;
+    }) =>
+      api.auth.completePersonalOnboarding(data),
+    onSuccess: () => {
+      toast.success("Onboarding complete");
+      queryClient.invalidateQueries({ queryKey: ["me"] });
+      router.push("/profile");
+      router.refresh();
+    },
+    onError: (error: any) => {
+      console.error("Complete onboarding error:", error);
+      toast.error(error?.body?.error?.message || error?.body?.error || error?.message || "Onboarding failed");
+    },
+  });
+};
+
+export const useCompleteInstitutionalOnboarding = () => {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      fullName: string;
+      displayName: string;
+      userRole: string;
+      institutionName: string;
+      institutionType: string;
+      affiliation?: string | null;
+      city?: string | null;
+      sizeRange?: string | null;
+    }) =>
+      api.auth.completeInstitutionalOnboarding(data),
+    onSuccess: () => {
+      toast.success("Onboarding complete");
+      queryClient.invalidateQueries({ queryKey: ["me"] });
+      router.push("/profile");
+      router.refresh();
+    },
+    onError: (error: any) => {
+      console.error("Complete onboarding error:", error);
+      toast.error(error?.body?.error?.message || error?.body?.error || error?.message || "Onboarding failed");
     },
   });
 };

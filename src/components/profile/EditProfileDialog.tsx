@@ -31,10 +31,6 @@ import { useUpdateProfile } from "@/api/client/profile";
 const profileSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
   displayName: z.string().min(2, "Display name must be at least 2 characters"),
-  age: z.coerce
-    .number()
-    .min(13, "You must be at least 13 years old")
-    .max(120, "Invalid age"),
 });
 
 interface EditProfileDialogProps {
@@ -55,7 +51,6 @@ export function EditProfileDialog({ user, trigger }: EditProfileDialogProps) {
     defaultValues: {
       fullName: user.fullName || "",
       displayName: user.displayName || "",
-      age: user.age ?? undefined,
     },
   });
 
@@ -113,24 +108,6 @@ export function EditProfileDialog({ user, trigger }: EditProfileDialogProps) {
                   <FormLabel>Display Name</FormLabel>
                   <FormControl>
                     <Input placeholder="janedoe" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="age"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Age</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="25"
-                      {...field}
-                      value={(field.value ?? "") as string | number}
-                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

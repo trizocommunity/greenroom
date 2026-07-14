@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm/relations";
 import {
+  accountType,
   category,
   expiredFestivalResult,
   festival,
@@ -11,14 +12,17 @@ import {
   festivalPosterTemplate,
   festivalScoringAwardRule,
   festivalScoringPolicy,
+  festivalTypeEnum,
   group,
+  institution,
   judge,
   judgmentConfig,
   judgmentConfigJudge,
   judgmentLink,
   judgmentScore,
-  passwordResetToken,
+  magicLinkToken,
   payment,
+  pendingInvitation,
   programme,
   programmeAssignment,
   programmeCodeLetter,
@@ -39,18 +43,11 @@ import {
   userPurchaseSummary,
 } from "./schema";
 
-export const passwordResetTokenRelations = relations(
-  passwordResetToken,
-  ({ one }) => ({
-    user: one(user, {
-      fields: [passwordResetToken.userId],
-      references: [user.id],
-    }),
+export const userRelations = relations(user, ({ one, many }) => ({
+  institution: one(institution, {
+    fields: [user.institutionId],
+    references: [institution.id],
   }),
-);
-
-export const userRelations = relations(user, ({ many }) => ({
-  passwordResetTokens: many(passwordResetToken),
   payments: many(payment),
   festivalMembers: many(festivalMember),
   festivals: many(festival),
@@ -59,6 +56,7 @@ export const userRelations = relations(user, ({ many }) => ({
   festivalCategoryPreferences: many(festivalCategoryPreference),
   programmeNotifications: many(programmeNotification),
   realtimeOutboxes: many(realtimeOutbox),
+  pendingInvitations: many(pendingInvitation),
 }));
 
 export const paymentRelations = relations(payment, ({ one }) => ({
@@ -86,6 +84,10 @@ export const festivalRelations = relations(festival, ({ one, many }) => ({
     fields: [festival.ownerId],
     references: [user.id],
   }),
+  institution: one(institution, {
+    fields: [festival.institutionId],
+    references: [institution.id],
+  }),
   results: many(result),
   stages: many(stage),
   scheduleEntries: many(scheduleEntry),
@@ -102,6 +104,7 @@ export const festivalRelations = relations(festival, ({ one, many }) => ({
   scoringPolicies: many(festivalScoringPolicy),
   scoringAwardRules: many(festivalScoringAwardRule),
   posterTemplates: many(festivalPosterTemplate),
+  pendingInvitations: many(pendingInvitation),
 }));
 
 export const festivalPosterTemplateRelations = relations(
@@ -571,6 +574,28 @@ export const realtimeOutboxRelations = relations(realtimeOutbox, ({ one }) => ({
   }),
   user: one(user, {
     fields: [realtimeOutbox.actorUserId],
+    references: [user.id],
+  }),
+}));
+
+export const institutionRelations = relations(institution, ({ one, many }) => ({
+  owner: one(user, {
+    fields: [institution.ownerId],
+    references: [user.id],
+  }),
+  users: many(user),
+  festivals: many(festival),
+}));
+
+export const magicLinkTokenRelations = relations(magicLinkToken, () => ({}));
+
+export const pendingInvitationRelations = relations(pendingInvitation, ({ one }) => ({
+  festival: one(festival, {
+    fields: [pendingInvitation.festivalId],
+    references: [festival.id],
+  }),
+  inviter: one(user, {
+    fields: [pendingInvitation.invitedBy],
     references: [user.id],
   }),
 }));

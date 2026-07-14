@@ -8,7 +8,8 @@ export const myFestivalSchema = z.object({
   startDate: z.string().nullable(),
   endDate: z.string().nullable(),
   location: z.string().nullable(),
-  isPublic: z.boolean(),
+  publicSiteEnabled: z.boolean(),
+  isLocked: z.boolean().optional(),
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED", "EXPIRED"]),
   ownerId: z.string(),
   expiresAt: z.string().nullable(),
@@ -23,7 +24,7 @@ export const myFestivalResponse = z.object({
 });
 
 export const joinedFestivalSchema = myFestivalSchema.extend({
-  memberRole: z.enum(["ADMIN", "ANNOUNCER", "STAGE_MANAGER"]),
+  memberRole: z.enum(["ADMIN", "ANNOUNCER", "STAGE_MANAGER", "OWNER"]),
   memberSince: z.string(),
 });
 

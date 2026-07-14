@@ -1,172 +1,15 @@
 "use server";
 
-import crypto from "crypto";
 import { revalidatePath } from "next/cache";
-import type { z } from "zod";
-import { hashPassword, verifyPassword } from "@/core/auth/password";
-import { createSession, getSession } from "@/core/auth/session";
-import { db } from "@/core/database/client";
-import { userLoginEvent as userLoginEvents } from "@/core/database/schema";
-import {
-  AppError,
-  ERROR_MESSAGES,
-  handleActionError,
-} from "@/core/errors/errors";
-import { sendPasswordResetEmail } from "@/core/integrations/email";
+import { getSession } from "@/core/auth/session";
+import { AppError, ERROR_MESSAGES, handleActionError } from "@/core/errors/errors";
 import type { ActionResponse } from "@/core/types/actions";
-import {
-  createPasswordResetToken,
-  findValidPasswordResetToken,
-  updatePasswordResetToken,
-} from "@/features/auth/repositories/password-reset-token.repository";
-import {
-  createUser,
-  findUserByEmail,
-  findUserById,
-  updateUser,
-} from "@/features/auth/repositories/user.repository";
-import {
-  forgotPasswordSchema,
-  loginSchema,
-  onboardingSchema,
-  registerSchema,
-  resetPasswordSchema,
-} from "@/features/auth/schemas/auth.schema";
+import { findUserById, updateUser } from "@/features/auth/repositories/user.repository";
+import { onboardingSchema } from "@/features/auth/schemas/auth.schema";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 
-export async function loginAction(
-  data: z.infer<typeof loginSchema>,
-): Promise<ActionResponse<{ role: string }>> {
-  try {
-    const { email, password } = loginSchema.parse(data);
-
-    const user = await findUserByEmail(email);
-
-    if (!user || user.isActive === false) {
-      throw new AppError(ERROR_MESSAGES.ACCOUNT_INACTIVE);
-    }
-
-    const isValid = await verifyPassword(password, user.password);
-
-    if (!isValid) {
-      throw new AppError(ERROR_MESSAGES.INVALID_CREDENTIALS);
-    }
-
-    await createSession(user.id, user.globalRole);
-
-    const { randomUUID } = await import("crypto");
-    await db
-      .insert(userLoginEvents)
-      .values({ id: randomUUID(), userId: user.id });
-
-    return { success: true, data: { role: user.globalRole } };
-  } catch (error) {
-    // For security, if it's an Auth error we might want to be vague in production,
-    // but the requirement is "User-friendly".
-    // "Invalid credentials" is safe enough.
-    return handleActionError(error);
-  }
-}
-
-export async function registerAction(
-  data: z.infer<typeof registerSchema>,
-): Promise<ActionResponse<Record<string, unknown>>> {
-  try {
-    const { email, password } = registerSchema.parse(data);
-
-    const existingUser = await findUserByEmail(email);
-
-    if (existingUser) {
-      throw new AppError(ERROR_MESSAGES.EMAIL_ALREADY_REGISTERED);
-    }
-
-    const hashedPassword = await hashPassword(password);
-
-    const user = await createUser({
-      email,
-      password: hashedPassword,
-    });
-
-    await createSession(user.id, user.globalRole);
-
-    const { password: _, ...userWithoutPassword } = user;
-
-    return { success: true, data: userWithoutPassword };
-  } catch (error) {
-    return handleActionError(error);
-  }
-}
-
-export async function forgotPasswordAction(
-  data: z.infer<typeof forgotPasswordSchema>,
-): Promise<ActionResponse<null>> {
-  try {
-    const { email } = forgotPasswordSchema.parse(data);
-
-    const user = await findUserByEmail(email);
-
-    if (!user) {
-      // Don't reveal user existence, return success
-      return { success: true, data: null };
-    }
-
-    // Generate secure token
-    const resetToken = crypto.randomBytes(32).toString("hex");
-    const tokenHash = crypto
-      .createHash("sha256")
-      .update(resetToken)
-      .digest("hex");
-
-    const expiresAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
-
-    await createPasswordResetToken({
-      userId: user.id,
-      token: tokenHash,
-      expires: expiresAt.toISOString(),
-    });
-
-    // BUG-2 FIX: Actually send the password reset email via Resend.
-    // sendPasswordResetEmail handles RESEND_API_KEY absence gracefully in dev.
-    await sendPasswordResetEmail(user.email, resetToken);
-
-    return { success: true, data: null };
-  } catch (error) {
-    return handleActionError(error);
-  }
-}
-
-export async function resetPasswordAction(
-  data: z.infer<typeof resetPasswordSchema>,
-): Promise<ActionResponse<null>> {
-  try {
-    const { token, password } = resetPasswordSchema.parse(data);
-
-    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-
-    const resetTokenRecord = await findValidPasswordResetToken(tokenHash);
-
-    if (!resetTokenRecord) {
-      throw new AppError(ERROR_MESSAGES.INVALID_RESET_TOKEN);
-    }
-
-    const hashedPassword = await hashPassword(password);
-
-    await updateUser(resetTokenRecord.userId, {
-      password: hashedPassword,
-    });
-
-    await updatePasswordResetToken(resetTokenRecord.id, {
-      usedAt: new Date().toISOString(),
-    });
-
-    return { success: true, data: null };
-  } catch (error) {
-    return handleActionError(error);
-  }
-}
-
 export async function completeOnboardingAction(
-  data: z.infer<typeof onboardingSchema>,
+  data: { fullName: string; displayName: string },
 ): Promise<ActionResponse<null>> {
   try {
     const session = await getSession();
@@ -189,7 +32,6 @@ export async function completeOnboardingAction(
       metadata: { fullName, displayName },
     });
 
-    // Revalidate relevant paths
     revalidatePath("/profile");
     revalidatePath("/dashboard");
 

@@ -1,0 +1,27 @@
+import type { Metadata } from "next";
+import { AuthLayout } from "@/components/auth/AuthLayout";
+import { MagicLinkRequestForm } from "@/components/auth/MagicLinkRequestForm";
+import { getSession } from "@/core/auth/session";
+import { redirect } from "next/navigation";
+
+export const metadata: Metadata = {
+  title: "Sign In | Greenroom",
+  description: "Sign in to your Greenroom account",
+};
+
+export default async function MagicLinkPage() {
+  const session = await getSession();
+
+  if (session?.userId) {
+    redirect("/profile");
+  }
+
+  return (
+    <AuthLayout
+      title="Sign in to Greenroom"
+      description="Enter your email to receive a magic link"
+    >
+      <MagicLinkRequestForm />
+    </AuthLayout>
+  );
+}

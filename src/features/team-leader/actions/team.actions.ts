@@ -4,7 +4,8 @@ import { randomUUID } from "crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { hashPassword } from "@/core/auth/password";
+import { createMagicLinkToken } from "@/core/auth/magic-link";
+import { sendMagicLinkEmail } from "@/core/integrations/email";
 import { db } from "@/core/database/client";
 import {
   festivalMember as festivalMemberTable,
@@ -19,10 +20,11 @@ const createMemberSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
   email: z.string().email("Invalid email address").toLowerCase(),
   role: z.enum(["ADMIN", "ANNOUNCER", "STAGE_MANAGER", "MEDIA"]),
-  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 export type CreateMemberInput = z.infer<typeof createMemberSchema>;
+
+const MAGIC_LINK_EXPIRY_MS = 15 * 60 * 1000;
 
 export async function createFestivalMember(input: CreateMemberInput) {
   const result = createMemberSchema.safeParse(input);
@@ -30,7 +32,7 @@ export async function createFestivalMember(input: CreateMemberInput) {
     return { success: false, error: result.error.issues[0].message };
   }
 
-  const { festivalId, fullName, email, role, password } = result.data;
+  const { festivalId, fullName, email, role } = result.data;
 
   try {
     await ensureFestivalWritable(festivalId);
@@ -45,14 +47,13 @@ export async function createFestivalMember(input: CreateMemberInput) {
     });
 
     const now = new Date().toISOString();
+    let isNewUser = false;
 
     if (!user) {
-      const hashedPassword = await hashPassword(password);
       const newUserId = randomUUID();
       await db.insert(userTable).values({
         id: newUserId,
         email,
-        password: hashedPassword,
         fullName,
         globalRole: "USER",
         updatedAt: now,
@@ -60,6 +61,7 @@ export async function createFestivalMember(input: CreateMemberInput) {
       user = await db.query.user.findFirst({
         where: eq(userTable.id, newUserId),
       });
+      isNewUser = true;
     }
 
     if (!user) throw new Error("Failed to resolve user");
@@ -83,11 +85,13 @@ export async function createFestivalMember(input: CreateMemberInput) {
       festivalId,
       userId: user.id,
       role: role as any,
-      metadata: {
-        initialPassword: password,
-      },
       updatedAt: now,
     });
+
+    if (isNewUser) {
+      const token = await createMagicLinkToken(email, MAGIC_LINK_EXPIRY_MS);
+      await sendMagicLinkEmail(email, token).catch(() => {});
+    }
 
     await createAuditLog({
       action: "CREATE_MEMBER",
@@ -136,10 +140,6 @@ export async function getFestivalMembers(
       email: m.user.email,
       role: m.role,
       status: m.isActive ? "Active" : "Disabled",
-      initialPassword:
-        ((m.metadata as Record<string, unknown>)?.initialPassword as
-          | string
-          | null) || null,
       createdAt: m.createdAt,
     }));
   } catch (error) {

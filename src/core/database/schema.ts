@@ -58,6 +58,7 @@ export const institutionType = pgEnum("InstitutionType", [
   "UNIVERSITY",
   "INSTITUTION",
   "CAMPUS",
+  "DARS",
 ]);
 export const paymentPurpose = pgEnum("PaymentPurpose", ["FESTIVAL_CREATION"]);
 export const paymentStatus = pgEnum("PaymentStatus", [
@@ -163,16 +164,104 @@ export const systemConfig = pgTable(
 
 // ─── 1. user ──────────────────────────────────────────────────────────────────
 
+export const accountType = pgEnum("AccountType", ["PERSONAL", "INSTITUTIONAL"]);
+export const festivalTypeEnum = pgEnum("FestivalType", ["INSTITUTIONAL", "INDEPENDENT"]);
+
+export const institution = pgTable(
+  "institution",
+  {
+    id: text().primaryKey().notNull(),
+    name: text().notNull(),
+    type: institutionType().notNull(),
+    affiliation: text(),
+    city: text(),
+    sizeRange: text(),
+    ownerId: text().notNull(),
+    createdAt: timestamp({ precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp({ precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("institution_ownerId_key").using(
+      "btree",
+      table.ownerId.asc().nullsLast(),
+    ),
+  ],
+);
+
+export const magicLinkToken = pgTable(
+  "magic_link_token",
+  {
+    id: text().primaryKey().notNull(),
+    email: text().notNull(),
+    token: text().notNull().unique(),
+    expiresAt: timestamp({ precision: 3, mode: "string" }).notNull(),
+    usedAt: timestamp({ precision: 3, mode: "string" }),
+    createdAt: timestamp({ precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    index("magic_link_token_email_idx").using(
+      "btree",
+      table.email.asc().nullsLast(),
+    ),
+  ],
+);
+
+export const pendingInvitation = pgTable(
+  "pending_invitation",
+  {
+    id: text().primaryKey().notNull(),
+    email: text().notNull(),
+    festivalId: text().notNull(),
+    festivalRole: festivalRole().notNull(),
+    invitedBy: text().notNull(),
+    expiresAt: timestamp({ precision: 3, mode: "string" }).notNull(),
+    acceptedAt: timestamp({ precision: 3, mode: "string" }),
+    createdAt: timestamp({ precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("pending_invitation_token_key").using(
+      "btree",
+      table.id.asc().nullsLast(),
+    ),
+    index("pending_invitation_festivalId_idx").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "pending_invitation_festivalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.invitedBy],
+      foreignColumns: [user.id],
+      name: "pending_invitation_invitedBy_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("restrict"),
+  ],
+);
+
 export const user = pgTable(
   "user",
   {
     id: text().primaryKey().notNull(),
     email: text().notNull(),
-    password: text().notNull(),
     globalRole: globalRole().default("USER").notNull(),
     fullName: text(),
     displayName: text(),
-    age: integer(),
+    accountType: accountType(),
+    institutionId: text(),
     isActive: boolean().default(true).notNull(),
     createdAt: timestamp({ precision: 3, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -183,38 +272,13 @@ export const user = pgTable(
   },
   (table) => [
     uniqueIndex("user_email_key").using("btree", table.email.asc().nullsLast()),
-  ],
-);
-
-// ─── 2. password_reset_token (depends on: user) ───────────────────────────────
-
-export const passwordResetToken = pgTable(
-  "password_reset_token",
-  {
-    id: text().primaryKey().notNull(),
-    token: text().notNull(),
-    expires: timestamp({ precision: 3, mode: "string" }).notNull(),
-    userId: text().notNull(),
-    usedAt: timestamp({ precision: 3, mode: "string" }),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-  },
-  (table) => [
-    uniqueIndex("password_reset_token_token_key").using(
-      "btree",
-      table.token.asc().nullsLast(),
-    ),
     foreignKey({
-      columns: [table.userId],
-      foreignColumns: [user.id],
-      name: "password_reset_token_userId_fkey",
+      columns: [table.institutionId],
+      foreignColumns: [institution.id],
+      name: "user_institutionId_fkey",
     })
       .onUpdate("cascade")
-      .onDelete("cascade"),
+      .onDelete("set null"),
   ],
 );
 
@@ -274,6 +338,8 @@ export const festival = pgTable(
     status: festivalStatus().default("READY").notNull(),
     resultPdfUrl: text(),
     expiredAt: timestamp({ precision: 3, mode: "string" }),
+    institutionId: text(),
+    festivalType: festivalTypeEnum().default("INDEPENDENT").notNull(),
   },
   (table) => [
     index("festival_expiresAt_idx").using(
@@ -295,6 +361,13 @@ export const festival = pgTable(
     })
       .onUpdate("cascade")
       .onDelete("restrict"),
+    foreignKey({
+      columns: [table.institutionId],
+      foreignColumns: [institution.id],
+      name: "festival_institutionId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("set null"),
   ],
 );
 

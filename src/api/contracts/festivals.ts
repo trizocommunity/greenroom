@@ -8,7 +8,7 @@ export const festivalSchema = z.object({
   startDate: z.string().nullable(),
   endDate: z.string().nullable(),
   location: z.string().nullable(),
-  isPublic: z.boolean(),
+  publicSiteEnabled: z.boolean(),
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED", "EXPIRED"]),
   ownerId: z.string(),
   expiresAt: z.string().nullable(),
@@ -27,7 +27,7 @@ export const createFestivalInput = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   location: z.string().optional(),
-  isPublic: z.boolean().optional(),
+  publicSiteEnabled: z.boolean().optional(),
 });
 
 export const updateFestivalInput = z.object({
@@ -37,7 +37,7 @@ export const updateFestivalInput = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   location: z.string().optional(),
-  isPublic: z.boolean().optional(),
+  publicSiteEnabled: z.boolean().optional(),
   slug: z.string().optional(),
 });
 

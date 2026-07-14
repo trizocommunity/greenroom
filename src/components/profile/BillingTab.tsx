@@ -14,15 +14,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { parseStoredInstant } from "@/core/utils/date-time";
-import { usePaymentHistory, usePaymentStatus } from "@/api/client";
+import { usePaymentStatus } from "@/api/client";
 import { Skeleton } from "../ui/skeleton";
 
 export function BillingTab() {
-  const { data: paymentStatus, isLoading: isStatusLoading } =
-    usePaymentStatus();
-  const { data: payments, isLoading: isHistoryLoading } = usePaymentHistory();
+  const { data: paymentData, isLoading } = usePaymentStatus();
+  const payments = paymentData?.history ?? [];
 
-  if (isStatusLoading || isHistoryLoading) {
+  if (isLoading) {
     return (
       <div className="w-full flex justify-center p-8">
         <div className="flex justify-center">
@@ -44,22 +43,22 @@ export function BillingTab() {
             <div>
               <div className="font-medium">Festival Creation Access</div>
               <div className="text-sm text-muted-foreground mt-1">
-                {paymentStatus?.status?.canCreateFestival
+                {paymentData?.status?.canCreateFestival
                   ? "You have active access to create festivals."
                   : "You need to purchase a pass to create festivals."}
               </div>
             </div>
             <Badge
               variant={
-                paymentStatus?.status?.canCreateFestival ? "default" : "secondary"
+                paymentData?.status?.canCreateFestival ? "default" : "secondary"
               }
               className={
-                paymentStatus?.status?.canCreateFestival
+                paymentData?.status?.canCreateFestival
                   ? "bg-green-500 hover:bg-green-700"
                   : ""
               }
             >
-              {paymentStatus?.status?.canCreateFestival ? "Active" : "Inactive"}
+              {paymentData?.status?.canCreateFestival ? "Active" : "Inactive"}
             </Badge>
           </div>
         </CardContent>

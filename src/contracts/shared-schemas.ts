@@ -15,9 +15,7 @@ export const userSchema = z.object({
 });
 export type User = z.infer<typeof userSchema>;
 
-export const userWithoutPasswordSchema = userSchema.omit({
-  isActive: true,
-});
+export const userWithoutPasswordSchema = userSchema;
 export type UserWithoutPassword = z.infer<typeof userWithoutPasswordSchema>;
 
 export const actionResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>

@@ -18,7 +18,8 @@ import { parseStoredInstant } from "@/core/utils/date-time";
 import { usePaymentHistory } from "@/api/client";
 
 export function PaymentHistoryTab() {
-  const { data: payments, isLoading } = usePaymentHistory();
+  const { data, isLoading } = usePaymentHistory();
+  const payments = data?.history ?? [];
 
   if (isLoading) {
     return (

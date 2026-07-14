@@ -64,11 +64,11 @@ export function useVerifyPayment() {
 }
 
 export function usePaymentHistory() {
-  return useQuery<PaymentHistoryItem[]>({
+  return useQuery<{ status: UserStatus; history: PaymentHistoryItem[] }>({
     queryKey: ["payments", "history"],
     queryFn: async () => {
       const res = await fetch(`${API_BASE}/payments`);
-      return handleResponse<PaymentHistoryItem[]>(res);
+      return handleResponse<{ status: UserStatus; history: PaymentHistoryItem[] }>(res);
     },
     staleTime: 30 * 1000,
   });

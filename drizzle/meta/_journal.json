@@ -36,6 +36,13 @@
       "when": 1783771550187,
       "tag": "0004_futuristic_blob",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1718000000000,
+      "tag": "0010_add_dars_enum",
+      "breakpoints": false
     }
   ]
 }

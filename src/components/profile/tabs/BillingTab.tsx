@@ -26,7 +26,8 @@ import { usePaymentHistory } from "@/api/client";
 import { PaymentDetailsModal } from "../modals/PaymentDetailsModal";
 
 export function BillingTab() {
-  const { data: payments = [], isLoading } = usePaymentHistory();
+  const { data, isLoading } = usePaymentHistory();
+  const payments = data?.history ?? [];
   const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 

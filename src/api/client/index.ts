@@ -1,7 +1,7 @@
 export type { QueryClient } from "./_query-client";
 export { CACHE_TAGS, makeQueryClient } from "./_query-client";
 
-export { useLogin, useLogout, useMe, useRegister } from "./auth";
+export { useLogout } from "./auth";
 export {
   useCreateFestival,
   useDeleteFestival,
