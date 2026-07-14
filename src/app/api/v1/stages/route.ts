@@ -17,7 +17,7 @@ const handler = createProtectedHandler({
     const stages = await db.query.stage.findMany({
       where: eq(stage.festivalId, festivalId),
     });
-    return ok(stages);
+    return ok(stages, "public, max-age=60, stale-while-revalidate=300");
   },
 
   async POST({ user, request }) {

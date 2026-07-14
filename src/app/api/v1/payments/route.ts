@@ -20,14 +20,17 @@ const handler = createProtectedHandler({
       with: { festival: { columns: { name: true, slug: true } } },
     });
 
-    return ok({
-      status,
-      history: payments.map((p) => ({
-        ...p,
-        razorpayOrderId: p.providerId,
-        razorpayId: p.providerId,
-      })),
-    });
+    return ok(
+      {
+        status,
+        history: payments.map((p) => ({
+          ...p,
+          razorpayOrderId: p.providerId,
+          razorpayId: p.providerId,
+        })),
+      },
+      "private, max-age=10",
+    );
   },
 
   async POST({ user, request }) {

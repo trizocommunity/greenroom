@@ -2,8 +2,11 @@ export type ApiResponse<T> =
   | { success: true; data: T }
   | { success: false; error: { code: string; message: string } };
 
-export function ok<T>(data: T): Response {
-  return Response.json({ success: true, data });
+export function ok<T>(data: T, cacheControl?: string): Response {
+  const headers: HeadersInit = cacheControl
+    ? { "Cache-Control": cacheControl }
+    : {};
+  return Response.json({ success: true, data }, { status: 200, headers });
 }
 
 export function err(code: string, message: string): ApiResponse<never> {

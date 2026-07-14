@@ -36,7 +36,7 @@ const handler = createProtectedHandler({
       orderBy: [desc(festivalNews.publishedAt)],
     });
 
-    return ok(posts);
+    return ok(posts, "public, max-age=60, stale-while-revalidate=300");
   },
 
   async POST({ user, request }) {

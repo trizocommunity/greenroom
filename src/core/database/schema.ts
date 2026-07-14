@@ -321,6 +321,10 @@ export const category = pgTable(
       table.festivalId.asc().nullsLast(),
       table.name.asc().nullsLast(),
     ),
+    index("category_festivalId_idx").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+    ),
     foreignKey({
       columns: [table.festivalId],
       foreignColumns: [festival.id],
@@ -802,6 +806,11 @@ export const result = pgTable(
       "btree",
       table.programmeId.asc().nullsLast(),
       table.position.asc().nullsLast(),
+    ),
+    index("result_programmeId_isPublished_idx").using(
+      "btree",
+      table.programmeId.asc().nullsLast(),
+      table.isPublished.asc().nullsLast(),
     ),
     foreignKey({
       columns: [table.festivalId],

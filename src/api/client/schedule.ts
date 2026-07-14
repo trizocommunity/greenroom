@@ -24,6 +24,7 @@ export function useSchedule(festivalId: string, typeFilter?: "PROGRAMME" | "SESS
     },
     enabled: !!festivalId,
     staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
   });
 }
 

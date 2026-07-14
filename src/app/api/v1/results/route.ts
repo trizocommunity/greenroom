@@ -39,7 +39,7 @@ const handler = createProtectedHandler({
         })
       : await ResultModel.findByFestival(festivalId);
 
-    return ok(results);
+    return ok(results, "public, max-age=30");
   },
 
   async POST({ user, request }) {

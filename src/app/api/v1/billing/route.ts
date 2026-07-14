@@ -6,7 +6,7 @@ import { getUnusedPayment } from "@/features/billing/services/billing.service";
 const handler = createProtectedHandler({
   async GET({ user }) {
     const unusedCredit = await getUnusedPayment(user!.userId);
-    return ok(unusedCredit ?? null);
+    return ok(unusedCredit ?? null, "private, max-age=10");
   },
 });
 

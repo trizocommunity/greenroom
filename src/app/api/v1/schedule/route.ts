@@ -28,7 +28,7 @@ const handler = createProtectedHandler({
       orderBy: [asc(scheduleEntry.startTime), asc(scheduleEntry.order)],
     });
 
-    return ok(entries);
+    return ok(entries, "public, max-age=30, stale-while-revalidate=60");
   },
 
   async POST({ user, request }) {

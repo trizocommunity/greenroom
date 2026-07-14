@@ -12,7 +12,7 @@ const handler = createProtectedHandler({
     await assertFestivalAccess(user, festivalId);
     const categoryId = url.searchParams.get("categoryId") ?? undefined;
     const data = await ProgrammeService.getAll(festivalId, categoryId);
-    return ok(data);
+    return ok(data, "public, max-age=60, stale-while-revalidate=300");
   },
 
   async POST({ user, request }) {

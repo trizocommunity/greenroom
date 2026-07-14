@@ -23,7 +23,9 @@ export function useNotifications(studentId: string) {
       return handleResponse<Notification[]>(res);
     },
     enabled: !!studentId,
-    staleTime: 30 * 1000,
+    staleTime: 10 * 1000,
+    refetchInterval: 30 * 1000,
+    refetchOnWindowFocus: true,
   });
 }
 

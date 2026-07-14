@@ -14,9 +14,12 @@ const handler = createProtectedHandler({
       return forbidden("Team leader access required");
     }
 
-    return ok({
-      isTeamLeader: true,
-    });
+    return ok(
+      {
+        isTeamLeader: true,
+      },
+      "public, max-age=30",
+    );
   },
 });
 

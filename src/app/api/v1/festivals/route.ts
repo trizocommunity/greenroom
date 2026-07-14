@@ -17,7 +17,7 @@ const handler = createProtectedHandler({
         : eq(festivalsTable.ownerId, user!.userId);
 
     const festivals = await findAllFestivals(where);
-    return ok(festivals);
+    return ok(festivals, "public, max-age=60, stale-while-revalidate=300");
   },
 
   async POST({ user, request }) {

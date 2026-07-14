@@ -24,7 +24,7 @@ const handler = createProtectedHandler({
       limit: 50,
     });
 
-    return ok(notifications);
+    return ok(notifications, "private, max-age=10");
   },
 
   async POST({ request }) {

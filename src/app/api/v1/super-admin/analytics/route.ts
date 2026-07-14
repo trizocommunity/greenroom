@@ -20,13 +20,16 @@ const handler = createAdminHandler({
         getRevenueByDay(14),
       ]);
 
-    return ok({
-      purchases,
-      logins,
-      topCategories,
-      loginsByDay,
-      revenueByDay,
-    });
+    return ok(
+      {
+        purchases,
+        logins,
+        topCategories,
+        loginsByDay,
+        revenueByDay,
+      },
+      "private, max-age=10",
+    );
   },
 });
 

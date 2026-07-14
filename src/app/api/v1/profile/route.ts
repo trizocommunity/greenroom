@@ -11,7 +11,7 @@ const handler = createProtectedHandler({
     if (!user) {
       return badRequest("UNAUTHORIZED", "Not authenticated");
     }
-    return ok(user);
+    return ok(user, "private, max-age=10");
   },
 
   async PUT({ user: sessionUser, request }) {

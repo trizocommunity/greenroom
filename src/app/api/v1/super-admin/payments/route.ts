@@ -12,7 +12,7 @@ const handler = createAdminHandler({
       with: { user: true },
     });
 
-    return ok(payments);
+    return ok(payments, "private, max-age=10");
   },
 });
 
