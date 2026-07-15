@@ -11,6 +11,7 @@ export const updateProfileInput = z.object({
   displayName: z.string().min(2).optional(),
   phone: z.string().optional(),
   age: z.number().optional(),
+  userRole: z.string().optional(),
 });
 
 export const getExpiredResultsPdfInput = z.object({

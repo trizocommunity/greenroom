@@ -6,6 +6,7 @@ import { ProfileSidebarContent } from "./ProfileSidebarContent";
 import { BillingTab } from "./tabs/BillingTab";
 import { FestivalsTab } from "./tabs/FestivalsTab";
 import { OverviewTab } from "./tabs/OverviewTab";
+import { SettingsTab } from "./tabs/SettingsTab";
 
 interface UserWithProfile extends UserProfile {
   id: string;
@@ -36,6 +37,7 @@ export function ProfileView({ user }: ProfileViewProps) {
         )}
         {activeTab === "billing" && <BillingTab />}
         {activeTab === "festivals" && <FestivalsTab userId={user.id} />}
+        {activeTab === "settings" && <SettingsTab userId={user.id} />}
       </main>
     </div>
   );

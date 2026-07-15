@@ -22,7 +22,6 @@ interface DeadlinesDialogProps {
   festival: {
     id: string;
     programmeAssignmentDeadline?: Date | string | null;
-    studentCreationDeadline?: Date | string | null;
     startDate?: Date | string | null;
     createdAt?: Date | string | null;
   };
@@ -42,12 +41,6 @@ export function DeadlinesDialog({
     useState<Date | null>(
       festival.programmeAssignmentDeadline
         ? parseStoredInstant(festival.programmeAssignmentDeadline)
-        : null,
-    );
-  const [studentCreationDeadline, setStudentCreationDeadline] =
-    useState<Date | null>(
-      festival.studentCreationDeadline
-        ? parseStoredInstant(festival.studentCreationDeadline)
         : null,
     );
   const [isSaving, setIsSaving] = useState(false);
@@ -72,7 +65,6 @@ export function DeadlinesDialog({
     try {
       const res = await updateFestivalSettingsAction(festival.id, {
         programmeAssignmentDeadline: programmeAssignmentDeadline ?? null,
-        studentCreationDeadline: studentCreationDeadline ?? null,
       });
 
       if (res.success) {
@@ -103,28 +95,11 @@ export function DeadlinesDialog({
         <DialogHeader>
           <DialogTitle>Deadlines</DialogTitle>
           <DialogDescription>
-            Set deadlines for student creation and programme assignments.
+            Set deadlines for programme assignments.
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="studentCreationDeadline">
-              Student Creation Deadline
-            </Label>
-            <DateTimePicker
-              id="studentCreationDeadline"
-              value={studentCreationDeadline}
-              onChange={setStudentCreationDeadline}
-              placeholder="Pick deadline"
-              from={durationStart}
-              to={festivalStartDate ?? undefined}
-            />
-            <p className="text-sm text-muted-foreground">
-              Team Leaders cannot create students after this time.
-            </p>
-          </div>
-
           {isFeatureEnabled && (
             <div className="space-y-2">
               <Label htmlFor="programmeAssignmentDeadline">

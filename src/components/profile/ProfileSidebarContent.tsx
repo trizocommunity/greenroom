@@ -1,13 +1,12 @@
 "use client";
 
-import { CreditCard, LayoutDashboard, Pencil, Tent } from "lucide-react";
+import { CreditCard, LayoutDashboard, Settings, Tent } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import type { UserProfile } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
-import { EditProfileDialog } from "./EditProfileDialog";
-import { LogoutButton } from "@/components/auth/LogoutButton";
 
 interface ProfileSidebarContentProps {
   user: UserProfile;
@@ -61,34 +60,23 @@ export function ProfileSidebarContent({
       value: "festivals",
       icon: Tent,
     },
+    {
+      label: "Settings",
+      value: "settings",
+      icon: Settings,
+    },
   ];
 
   return (
     <div className={cn("flex flex-col h-full", className)}>
       {/* User Info & Avatar Header */}
       <div className="flex flex-col items-start gap-4 mb-6 px-4 md:px-0">
-        {/* Avatar with Edit Button overlay at bottom right */}
-        <div className="relative inline-block">
-          <Avatar className="h-20 w-20 border border-border shadow-sm">
-            <AvatarImage src="" />
-            <AvatarFallback className="text-xl font-bold bg-primary/10 text-primary">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
-
-          <EditProfileDialog
-            user={user}
-            trigger={
-              <button
-                type="button"
-                title="Edit Profile"
-                className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-primary text-primary-foreground shadow-md hover:bg-primary/90 transition-all flex items-center justify-center border-2 border-background"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </button>
-            }
-          />
-        </div>
+        <Avatar className="h-20 w-20 border border-border shadow-sm">
+          <AvatarImage src="" />
+          <AvatarFallback className="text-xl font-bold bg-primary/10 text-primary">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
 
         {/* Name, Email & Badge */}
         <div className="space-y-1 w-full">

@@ -6,7 +6,13 @@ import { useState } from "react";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { ProfileSidebarContent } from "@/components/profile/ProfileSidebarContent";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import type { UserProfile } from "@/core/types/app-enums";
 
 interface DashboardNavbarProps {

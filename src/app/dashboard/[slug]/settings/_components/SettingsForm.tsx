@@ -102,7 +102,10 @@ export function SettingsForm({ festival }: SettingsFormProps) {
             </CardContent>
           </Card>
 
-          <FestivalStatusCard key={`status-${refreshKey}`} festival={festival} />
+          <FestivalStatusCard
+            key={`status-${refreshKey}`}
+            festival={festival}
+          />
 
           <UsageLimitsCard key={`usage-${refreshKey}`} festival={festival} />
 
@@ -173,8 +176,7 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                 <div>
                   <CardTitle className="text-lg">Deadlines</CardTitle>
                   <CardDescription>
-                    Set deadlines for student creation and programme
-                    assignments.
+                    Set deadlines for programme assignments.
                   </CardDescription>
                 </div>
                 <DeadlinesDialog
@@ -186,19 +188,6 @@ export function SettingsForm({ festival }: SettingsFormProps) {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground text-xs mb-1">
-                    Student Creation
-                  </p>
-                  <p className="font-medium">
-                    {festival.studentCreationDeadline
-                      ? format(
-                          new Date(festival.studentCreationDeadline),
-                          "dd/MM/yyyy HH:mm",
-                        )
-                      : "—"}
-                  </p>
-                </div>
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">
                     Programme Assignment
