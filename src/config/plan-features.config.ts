@@ -62,7 +62,6 @@ export const PLAN_FEATURE_LABELS: Record<FeaturePath, string> = {
   results: "Results",
   stageManagement: "Stage Management",
   schedule: "Schedule",
-  maxTeamMembers: "Max Team Members",
   members: "Members",
   roleBasedAccess: "Role-based Access",
   studentImport: "Student Import",

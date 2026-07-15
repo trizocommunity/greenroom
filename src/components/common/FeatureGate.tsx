@@ -122,7 +122,6 @@ function getFeatureLabel(feature: FeaturePath): string {
 
     // Team
     members: "Team Members",
-    maxTeamMembers: "Team Member Limit",
     roleBasedAccess: "Role-Based Access",
 
     // Import/Export

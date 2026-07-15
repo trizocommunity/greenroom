@@ -78,7 +78,7 @@
 
 - **Routes:** Pages under `/dashboard/[slug]/settings`, `/dashboard/[slug]/members`, `/dashboard/[slug]/content/gallery`, `/dashboard/[slug]/content/news`, `/dashboard/[slug]/pre-works/stage-management`, `/dashboard/[slug]/pre-works/schedule`, `/dashboard/[slug]/pre-works/sessions`, `/dashboard/[slug]/pre-works/qr-codes`, `/dashboard/[slug]/event-works/leaderboard`, and student profile routes check feature access (via `getEffectiveFeatureEnabled` or `FeatureService.isFeatureEnabled`) and redirect or `notFound()` for BASIC where the feature is disabled.
 - **Actions:** Relevant server actions (e.g. Excel export, gallery, news, schedule, QR, team members) validate tier/feature (and limits) before performing mutations or exports.
-- **Limits:** Student/programme/event/stage/category limits are enforced using `TIER_CONFIG[tier].limits` and services such as `usage-counter.service.ts` and `student.service.ts`; team size is capped by `maxTeamMembers` (BASIC: 1).
+- **Limits:** Student/programme/event/stage/category limits are enforced using `TIER_CONFIG[tier].limits` and services such as `usage-counter.service.ts` and `student.service.ts`.
 
 ### 3.4 Public landing page
 

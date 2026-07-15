@@ -20,7 +20,6 @@ export interface TierFeatures {
   schedule: boolean;
 
   // Team & Collaboration
-  maxTeamMembers: number;
   members: boolean;
   roleBasedAccess: boolean;
 
@@ -132,7 +131,6 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       schedule: false,
 
       // Team & Collaboration
-      maxTeamMembers: 1, // Owner only, no additional members
       members: false,
       roleBasedAccess: false,
 
@@ -226,7 +224,6 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       schedule: true,
 
       // Team & Collaboration — unlimited members
-      maxTeamMembers: -1,
       members: true,
       roleBasedAccess: false, // granular RBAC still a PRO feature
 
@@ -320,7 +317,6 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       schedule: true,
 
       // Team & Collaboration — unlimited members with full RBAC
-      maxTeamMembers: -1,
       members: true,
       roleBasedAccess: true,
 
@@ -449,7 +445,7 @@ export const PRICING_TIERS: PricingTier[] = [
       "Certificate Builder & Bulk Generation",
       "White-label + Custom Domain",
       "API Access & Webhooks",
-      "Up to 10 Team Members with RBAC",
+      "Team Members with RBAC",
     ],
     isPopular: false,
   },

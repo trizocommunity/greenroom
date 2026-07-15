@@ -9,7 +9,7 @@
  * const canExport = FeatureService.isFeatureEnabled('BASIC', 'excelExport');
  *
  * // Get a feature value
- * const maxMembers = FeatureService.getFeatureValue<number>('BASIC', 'maxTeamMembers');
+ * const supportLevel = FeatureService.getFeatureValue<string>('BASIC', 'supportLevel');
  */
 
 import type { TierFeatures } from "@/config/pricing";
@@ -103,14 +103,6 @@ function hasSupportLevel(
   return tierLevelIndex >= requiredLevelIndex;
 }
 
-function getMaxTeamMembers(tier: Tier): number {
-  return getFeatureValue<number>(tier, "maxTeamMembers") ?? 0;
-}
-
-function hasUnlimitedTeamMembers(tier: Tier): boolean {
-  return getMaxTeamMembers(tier) === -1;
-}
-
 function getPostExpiryAccess(tier: Tier): "readonly" | "delete" {
   return (
     getFeatureValue<"readonly" | "delete">(tier, "postExpiryAccess") ??
@@ -123,7 +115,5 @@ export const FeatureService = {
   isFeatureEnabled,
   getFeatureValue,
   hasSupportLevel,
-  getMaxTeamMembers,
-  hasUnlimitedTeamMembers,
   getPostExpiryAccess,
 };

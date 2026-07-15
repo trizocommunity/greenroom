@@ -83,7 +83,7 @@ STANDARD does **not** include (PRO only): roleBasedAccess, custom domain, white-
 ### 3.3 Server-side enforcement
 
 - **Pages:** Routes for settings, members, gallery, news, stage-management, schedule, sessions, qr-codes, leaderboard, and student profile (dashboard and public) check access via `getEffectiveFeatureEnabled(festival.tier, feature)` or `FeatureService.isFeatureEnabled(festival.tier, feature)` and redirect or `notFound()` when disabled.
-- **Actions:** Excel export (`student.actions.ts`), gallery, news, schedule, QR, team/member actions validate tier/feature and limits. Team member count is enforced against `maxTeamMembers` (e.g. from `FeatureService.getFeatureValue(tier, "maxTeamMembers")` or equivalent).
+- **Actions:** Excel export (`student.actions.ts`), gallery, news, schedule, QR, team/member actions validate tier/feature and limits.
 - **Limits:** Students, programmes, events, stages, categories use `TIER_CONFIG[tier].limits` and services such as `usage-counter.service.ts`, `student.service.ts`, `category.service.ts`.
 
 ### 3.4 Consistency note: two sources of truth
@@ -100,8 +100,8 @@ STANDARD does **not** include (PRO only): roleBasedAccess, custom domain, white-
 |------|-----------|
 | Sidebar (Stage, Schedule, QR, Settings, Members, Gallery, News, Leaderboard) | `FestivalDashboardSidebar` + `useFeatures()` from context (`effectiveFeatures`) |
 | Pages (QR, Stage, Schedule, Gallery, News, Leaderboard, Student profile) | Server: `getEffectiveFeatureEnabled(tier, feature)` or `FeatureService.isFeatureEnabled` → redirect/notFound |
-| Actions (Excel, Gallery, News, Schedule, Events, Team/Members) | Server: feature check + limits (e.g. `maxTeamMembers`) |
-| Limits (students, programmes, members, etc.) | `TIER_CONFIG.STANDARD.limits` / `getFeatureValue("maxTeamMembers")` in services/actions |
+| Actions (Excel, Gallery, News, Schedule, Events, Team/Members) | Server: feature check + limits |
+| Limits (students, programmes, etc.) | `TIER_CONFIG.STANDARD.limits` in services/actions |
 
 ---
 
