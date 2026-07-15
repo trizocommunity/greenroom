@@ -164,10 +164,18 @@ export async function updateFestivalSettingsAction(
   festivalId: string,
   data: {
     programmeAssignmentDeadline?: string | null;
+    studentCreationDeadline?: string | null;
     teamLeaderLimit?: number;
     announcerResultsPerStandings?: number;
     startDate?: string | null;
     endDate?: string | null;
+    scoringSystem?: "POSITION_BASED" | "SCORE_BASED" | null;
+    publicDisplayMode?: "programme_results" | "team_standings" | null;
+    chestNumberSettings?: {
+      autoGenerate?: boolean;
+      prefix?: string;
+      padding?: number;
+    } | null;
   },
 ) {
   try {
@@ -238,6 +246,11 @@ export async function updateFestivalSettingsAction(
             ? new Date(data.programmeAssignmentDeadline).toISOString()
             : null,
         }),
+        ...(data.studentCreationDeadline !== undefined && {
+          studentCreationDeadline: data.studentCreationDeadline
+            ? new Date(data.studentCreationDeadline).toISOString()
+            : null,
+        }),
         ...(data.teamLeaderLimit !== undefined && {
           teamLeaderLimit: Math.max(
             1,
@@ -260,6 +273,15 @@ export async function updateFestivalSettingsAction(
         }),
         ...(data.endDate !== undefined && {
           endDate: data.endDate ? new Date(data.endDate).toISOString() : null,
+        }),
+        ...(data.scoringSystem !== undefined && {
+          scoringSystem: data.scoringSystem,
+        }),
+        ...(data.publicDisplayMode !== undefined && {
+          publicDisplayMode: data.publicDisplayMode,
+        }),
+        ...(data.chestNumberSettings !== undefined && {
+          chestNumberSettings: data.chestNumberSettings,
         }),
         updatedAt: new Date().toISOString(),
       })
