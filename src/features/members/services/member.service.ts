@@ -26,7 +26,7 @@ export const MemberService = {
     data: {
       fullName: string;
       email: string;
-      role: "ADMIN" | "ANNOUNCER" | "STAGE_MANAGER";
+      role: "ADMIN" | "ANNOUNCER" | "STAGE_MANAGER" | "MEDIA";
     },
   ) {
     await ensureFestivalWritable(festivalId);

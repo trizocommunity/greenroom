@@ -172,7 +172,13 @@ export const GET = async (req: Request) => {
       ),
     });
 
-    return NextResponse.json({ success: true, data: invitations });
+    const now = new Date();
+    const invitationsWithStatus = invitations.map((inv) => ({
+      ...inv,
+      status: new Date(inv.expiresAt) < now ? "expired" : "pending",
+    }));
+
+    return NextResponse.json({ success: true, data: invitationsWithStatus });
   } catch (error) {
     console.error("[invitations GET]", error);
     return NextResponse.json(

@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-export const memberRoleEnum = z.enum(["ADMIN", "ANNOUNCER", "STAGE_MANAGER"]);
+export const memberRoleEnum = z.enum([
+  "ADMIN",
+  "ANNOUNCER",
+  "STAGE_MANAGER",
+  "MEDIA",
+]);
 
 export const memberSchema = z.object({
   id: z.string(),

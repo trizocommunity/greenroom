@@ -1,5 +1,7 @@
 import { notFound, redirect } from "next/navigation";
+import { getSession } from "@/core/auth/session";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import {
   FeatureService,
   getTierForFeatureCheck,
@@ -12,8 +14,20 @@ export default async function MembersPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const session = await getSession();
+  if (!session?.userId) redirect("/login");
+
   const festival = await findFestivalBySlug(slug);
   if (!festival) return notFound();
+
+  const festivalContext = await getFestivalContext({
+    slugOrId: slug,
+    userId: session.userId,
+    globalRole: session.role,
+  });
+
+  if (!festivalContext) return notFound();
+  const { role: userRole } = festivalContext;
 
   // Feature Access Check
   if (
@@ -34,7 +48,7 @@ export default async function MembersPage({
           Announcer).
         </p>
       </div>
-      <MembersClient festivalId={festival.id} />
+      <MembersClient festivalId={festival.id} userRole={userRole} />
     </div>
   );
 }
