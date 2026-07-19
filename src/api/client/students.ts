@@ -50,7 +50,8 @@ export function useCreateStudent() {
   return useMutation<
     Student,
     Error,
-    { festivalId: string; data: CreateStudentInput }
+    { festivalId: string; data: CreateStudentInput },
+    { prev: Student[] | undefined }
   >({
     mutationFn: async ({ festivalId, data }) => {
       const res = await fetch(
@@ -63,8 +64,48 @@ export function useCreateStudent() {
       );
       return handleResponse<Student>(res);
     },
+    onMutate: async ({ festivalId, data }) => {
+      await qc.cancelQueries({ queryKey: ["students", festivalId] });
+      const prev = qc.getQueryData<Student[]>(["students", festivalId]);
+      const tempId = `temp-${Date.now()}`;
+      const optimisticStudent: Student = {
+        id: tempId,
+        festivalId,
+        name: data.name,
+        email: data.email || null,
+        phone: data.phone || null,
+        groupId: data.groupId,
+        categoryId: data.categoryId,
+        gender: data.gender ?? "MALE",
+        age: data.age ?? null,
+        standard: data.standard ?? null,
+        chestNumber: null,
+        profileSlug: null,
+        isTeamLeader: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        group: null,
+        category: null,
+      };
+      qc.setQueryData<Student[]>(["students", festivalId], (old) =>
+        old ? [...old, optimisticStudent] : [optimisticStudent],
+      );
+      return { prev };
+    },
     onSuccess: (_data, { festivalId }) => {
       qc.invalidateQueries({ queryKey: ["students", festivalId] });
+      qc.invalidateQueries({ queryKey: ["assignments", festivalId] });
+      qc.invalidateQueries({ queryKey: ["groups", festivalId] });
+    },
+    onError: (_err, { festivalId }, ctx) => {
+      if (ctx?.prev) {
+        qc.setQueryData(["students", festivalId], ctx.prev);
+      }
+    },
+    onSettled: (_data, _err, { festivalId }) => {
+      qc.invalidateQueries({ queryKey: ["students", festivalId] });
+      qc.invalidateQueries({ queryKey: ["assignments", festivalId] });
+      qc.invalidateQueries({ queryKey: ["groups", festivalId] });
     },
   });
 }
@@ -74,7 +115,8 @@ export function useUpdateStudent() {
   return useMutation<
     Student,
     Error,
-    { festivalId: string; studentId: string; data: UpdateStudentInput }
+    { festivalId: string; studentId: string; data: UpdateStudentInput },
+    { prev: Student[] | undefined }
   >({
     mutationFn: async ({ festivalId, studentId, data }) => {
       const res = await fetch(
@@ -87,8 +129,31 @@ export function useUpdateStudent() {
       );
       return handleResponse<Student>(res);
     },
-    onSuccess: (_data, { festivalId }) => {
+    onMutate: async ({ festivalId, studentId, data }) => {
+      await qc.cancelQueries({ queryKey: ["students", festivalId] });
+      const prev = qc.getQueryData<Student[]>(["students", festivalId]);
+      qc.setQueryData<Student[]>(["students", festivalId], (old) =>
+        old?.map((s) =>
+          s.id === studentId
+            ? {
+                ...s,
+                ...data,
+                updatedAt: new Date().toISOString(),
+              }
+            : s,
+        ),
+      );
+      return { prev };
+    },
+    onError: (_err, { festivalId }, ctx) => {
+      if (ctx?.prev) {
+        qc.setQueryData(["students", festivalId], ctx.prev);
+      }
+    },
+    onSettled: (_data, _err, { festivalId }) => {
       qc.invalidateQueries({ queryKey: ["students", festivalId] });
+      qc.invalidateQueries({ queryKey: ["groups", festivalId] });
+      qc.invalidateQueries({ queryKey: ["assignments", festivalId] });
     },
   });
 }
@@ -123,6 +188,8 @@ export function useDeleteStudent() {
     },
     onSettled: (_data, _err, { festivalId }) => {
       qc.invalidateQueries({ queryKey: ["students", festivalId] });
+      qc.invalidateQueries({ queryKey: ["assignments", festivalId] });
+      qc.invalidateQueries({ queryKey: ["groups", festivalId] });
     },
   });
 }
@@ -147,6 +214,8 @@ export function useBulkCreateStudents() {
     },
     onSuccess: (_data, { festivalId }) => {
       qc.invalidateQueries({ queryKey: ["students", festivalId] });
+      qc.invalidateQueries({ queryKey: ["assignments", festivalId] });
+      qc.invalidateQueries({ queryKey: ["groups", festivalId] });
     },
   });
 }

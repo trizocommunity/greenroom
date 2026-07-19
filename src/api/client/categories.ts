@@ -32,7 +32,8 @@ export function useCreateCategory() {
   return useMutation<
     Category,
     Error,
-    { festivalId: string; data: CreateCategoryInput }
+    { festivalId: string; data: CreateCategoryInput },
+    { prev: Category[] | undefined }
   >({
     mutationFn: async ({ festivalId, data }) => {
       const res = await fetch(
@@ -45,8 +46,34 @@ export function useCreateCategory() {
       );
       return handleResponse<Category>(res);
     },
-    onSuccess: (_data, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["categories", festivalId] });
+    onMutate: async ({ festivalId, data }) => {
+      await qc.cancelQueries({ queryKey: ["categories", festivalId] });
+      const prev = qc.getQueryData<Category[]>(["categories", festivalId]);
+      const tempId = `temp-${Date.now()}`;
+      const optimisticCategory: Category = {
+        id: tempId,
+        festivalId,
+        name: data.name,
+        description: data.description ?? null,
+        type: data.type ?? "SINGLE",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      qc.setQueryData<Category[]>(["categories", festivalId], (old) =>
+        old ? [...old, optimisticCategory] : [optimisticCategory],
+      );
+      return { prev };
+    },
+    onError: (_err, { festivalId }, ctx) => {
+      if (ctx?.prev) {
+        qc.setQueryData(["categories", festivalId], ctx.prev);
+      }
+    },
+    onSettled: (_data, _err, { festivalId }) => {
+      qc.invalidateQueries({
+        queryKey: ["categories", festivalId],
+        refetchType: "none",
+      });
     },
   });
 }
@@ -56,7 +83,8 @@ export function useUpdateCategory() {
   return useMutation<
     Category,
     Error,
-    { festivalId: string; categoryId: string; data: UpdateCategoryInput }
+    { festivalId: string; categoryId: string; data: UpdateCategoryInput },
+    { prev: Category[] | undefined }
   >({
     mutationFn: async ({ festivalId, categoryId, data }) => {
       const res = await fetch(
@@ -69,8 +97,32 @@ export function useUpdateCategory() {
       );
       return handleResponse<Category>(res);
     },
-    onSuccess: (_data, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["categories", festivalId] });
+    onMutate: async ({ festivalId, categoryId, data }) => {
+      await qc.cancelQueries({ queryKey: ["categories", festivalId] });
+      const prev = qc.getQueryData<Category[]>(["categories", festivalId]);
+      qc.setQueryData<Category[]>(["categories", festivalId], (old) =>
+        old?.map((c) =>
+          c.id === categoryId
+            ? {
+                ...c,
+                ...data,
+                updatedAt: new Date().toISOString(),
+              }
+            : c,
+        ),
+      );
+      return { prev };
+    },
+    onError: (_err, { festivalId }, ctx) => {
+      if (ctx?.prev) {
+        qc.setQueryData(["categories", festivalId], ctx.prev);
+      }
+    },
+    onSettled: (_data, _err, { festivalId }) => {
+      qc.invalidateQueries({
+        queryKey: ["categories", festivalId],
+        refetchType: "none",
+      });
     },
   });
 }
@@ -106,7 +158,10 @@ export function useDeleteCategory() {
       }
     },
     onSettled: (_data, _err, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["categories", festivalId] });
+      qc.invalidateQueries({
+        queryKey: ["categories", festivalId],
+        refetchType: "none",
+      });
     },
   });
 }

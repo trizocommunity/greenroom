@@ -4,6 +4,7 @@ import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useDeleteFestival } from "@/api/client/festivals";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +19,6 @@ import {
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { deleteFestivalAdmin } from "@/features/admin/actions/admin.actions";
 
 interface DeleteFestivalButtonProps {
   festivalId: string;
@@ -32,10 +32,10 @@ export function DeleteFestivalButton({
   asMenuItem,
 }: DeleteFestivalButtonProps) {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [reason, setReason] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const router = useRouter();
+  const deleteFestival = useDeleteFestival();
 
   const Trigger = asMenuItem ? (
     <DropdownMenuItem
@@ -68,16 +68,16 @@ export function DeleteFestivalButton({
       return;
     }
 
-    setLoading(true);
     try {
-      await deleteFestivalAdmin(festivalId, reason);
+      await deleteFestival.mutateAsync({
+        id: festivalId,
+        reason: reason.trim(),
+      });
       toast.success("Festival deleted successfully");
       setOpen(false);
       router.refresh();
     } catch (error) {
       toast.error("Failed to delete festival");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -133,10 +133,12 @@ export function DeleteFestivalButton({
             variant="destructive"
             onClick={handleDelete}
             disabled={
-              loading || !reason.trim() || confirmation !== festivalName
+              deleteFestival.isPending ||
+              !reason.trim() ||
+              confirmation !== festivalName
             }
           >
-            {loading ? "Deleting..." : "Delete Festival"}
+            {deleteFestival.isPending ? "Deleting..." : "Delete Festival"}
           </Button>
         </DialogFooter>
       </DialogContent>

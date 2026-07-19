@@ -3,6 +3,7 @@
 import { Loader2, Pencil } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useUpdateFestival } from "@/api/client/festivals";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
@@ -18,7 +19,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toDateOrNull } from "@/core/utils/date-time";
-import { updateFestivalAction } from "@/features/festivals/actions/user-festival.actions";
 
 interface FestivalDetailsDialogProps {
   festival: {
@@ -50,7 +50,7 @@ export function FestivalDetailsDialog({
   const [endDate, setEndDate] = useState<Date | null>(
     toDateOrNull(festival.endDate),
   );
-  const [isSaving, setIsSaving] = useState(false);
+  const updateFestival = useUpdateFestival();
 
   const durationStart = festival.createdAt
     ? (toDateOrNull(festival.createdAt) ?? new Date())
@@ -75,27 +75,20 @@ export function FestivalDetailsDialog({
     }
     if (!validateDates()) return;
 
-    setIsSaving(true);
     try {
-      const res = await updateFestivalAction(festival.id, {
+      await updateFestival.mutateAsync({
+        id: festival.id,
         name: name.trim(),
-        description: description.trim() || null,
-        location: location.trim() || null,
-        startDate,
-        endDate,
+        description: description.trim() || undefined,
+        location: location.trim() || undefined,
+        startDate: startDate ? startDate.toISOString() : undefined,
+        endDate: endDate ? endDate.toISOString() : undefined,
       });
-
-      if (res.success) {
-        toast.success("Festival details updated");
-        setOpen(false);
-        onSuccess?.();
-      } else {
-        toast.error("Failed to update festival details");
-      }
+      toast.success("Festival details updated");
+      setOpen(false);
+      onSuccess?.();
     } catch {
-      toast.error("Something went wrong");
-    } finally {
-      setIsSaving(false);
+      toast.error("Failed to update festival details");
     }
   };
 
@@ -177,8 +170,10 @@ export function FestivalDetailsDialog({
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button onClick={handleSave} disabled={updateFestival.isPending}>
+            {updateFestival.isPending && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
             Save Changes
           </Button>
         </DialogFooter>

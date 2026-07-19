@@ -32,13 +32,12 @@ const handler = createProtectedHandler({
   async DELETE({ user, request }) {
     const url = new URL(request.url);
     const festivalId = url.searchParams.get("festivalId");
+    const assignmentId = url.searchParams.get("assignmentId");
     if (!festivalId)
       return badRequest("MISSING_PARAM", "festivalId is required");
-    await assertFestivalAccess(user, festivalId);
-    const body = await request.json().catch(() => ({}));
-    const assignmentId = body.data?.assignmentId ?? body.assignmentId;
     if (!assignmentId)
       return badRequest("MISSING_PARAM", "assignmentId is required");
+    await assertFestivalAccess(user, festivalId);
     const result = await AssignmentService.delete(assignmentId, festivalId);
     return ok(result);
   },

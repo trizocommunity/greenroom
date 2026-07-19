@@ -116,8 +116,8 @@ export function useDeleteAssignment() {
         );
         return handleResponse<void>(res);
       },
-      onSuccess: () => {
-        qc.invalidateQueries({ queryKey: ["assignments"] });
+      onSuccess: (_data, { festivalId }) => {
+        qc.invalidateQueries({ queryKey: ["assignments", festivalId] });
       },
     },
   );

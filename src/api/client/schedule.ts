@@ -36,7 +36,8 @@ export function useCreateScheduleItem() {
   return useMutation<
     ScheduleEntry,
     Error,
-    { festivalId: string; data: CreateScheduleEntryInput }
+    { festivalId: string; data: CreateScheduleEntryInput },
+    { prev: ScheduleEntry[] | undefined }
   >({
     mutationFn: async ({ festivalId, data }) => {
       const res = await fetch(
@@ -49,8 +50,43 @@ export function useCreateScheduleItem() {
       );
       return handleResponse<ScheduleEntry>(res);
     },
-    onSuccess: (_data, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["schedule", festivalId] });
+    onMutate: async ({ festivalId, data }) => {
+      await qc.cancelQueries({ queryKey: ["schedule", festivalId] });
+      const prev = qc.getQueryData<ScheduleEntry[]>(["schedule", festivalId]);
+      const tempId = `temp-${Date.now()}`;
+      const optimisticEntry: ScheduleEntry = {
+        id: tempId,
+        festivalId,
+        type: data.type,
+        programmeId: data.programmeId ?? null,
+        stageId: data.stageId ?? null,
+        title: data.title ?? null,
+        description: data.description ?? null,
+        speakers: data.speakers ?? null,
+        sessionType: data.sessionType ?? null,
+        startTime: data.startTime,
+        endTime: data.endTime ?? null,
+        order: data.order ?? 0,
+        scheduleDayKey: data.scheduleDayKey ?? null,
+        createdBy: null,
+        updatedBy: null,
+        updatedAt: new Date().toISOString(),
+      };
+      qc.setQueryData<ScheduleEntry[]>(["schedule", festivalId], (old) =>
+        old ? [...old, optimisticEntry] : [optimisticEntry],
+      );
+      return { prev };
+    },
+    onError: (_err, { festivalId }, ctx) => {
+      if (ctx?.prev) {
+        qc.setQueryData(["schedule", festivalId], ctx.prev);
+      }
+    },
+    onSettled: (_data, _err, { festivalId }) => {
+      qc.invalidateQueries({
+        queryKey: ["schedule", festivalId],
+        refetchType: "none",
+      });
     },
   });
 }
@@ -60,7 +96,8 @@ export function useUpdateScheduleItem() {
   return useMutation<
     ScheduleEntry,
     Error,
-    { festivalId: string; entryId: string; data: UpdateScheduleEntryInput }
+    { festivalId: string; entryId: string; data: UpdateScheduleEntryInput },
+    { prev: ScheduleEntry[] | undefined }
   >({
     mutationFn: async ({ festivalId, entryId, data }) => {
       const res = await fetch(
@@ -73,8 +110,32 @@ export function useUpdateScheduleItem() {
       );
       return handleResponse<ScheduleEntry>(res);
     },
-    onSuccess: (_data, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["schedule", festivalId] });
+    onMutate: async ({ festivalId, entryId, data }) => {
+      await qc.cancelQueries({ queryKey: ["schedule", festivalId] });
+      const prev = qc.getQueryData<ScheduleEntry[]>(["schedule", festivalId]);
+      qc.setQueryData<ScheduleEntry[]>(["schedule", festivalId], (old) =>
+        old?.map((e) =>
+          e.id === entryId
+            ? {
+                ...e,
+                ...data,
+                updatedAt: new Date().toISOString(),
+              }
+            : e,
+        ),
+      );
+      return { prev };
+    },
+    onError: (_err, { festivalId }, ctx) => {
+      if (ctx?.prev) {
+        qc.setQueryData(["schedule", festivalId], ctx.prev);
+      }
+    },
+    onSettled: (_data, _err, { festivalId }) => {
+      qc.invalidateQueries({
+        queryKey: ["schedule", festivalId],
+        refetchType: "none",
+      });
     },
   });
 }
@@ -110,7 +171,10 @@ export function useDeleteScheduleItem() {
       }
     },
     onSettled: (_data, _err, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["schedule", festivalId] });
+      qc.invalidateQueries({
+        queryKey: ["schedule", festivalId],
+        refetchType: "none",
+      });
     },
   });
 }

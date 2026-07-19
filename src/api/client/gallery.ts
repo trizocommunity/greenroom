@@ -64,8 +64,8 @@ export function useDeleteGalleryItem() {
       );
       return handleResponse<void>(res);
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["gallery"] });
+    onSuccess: (_data, { festivalId }) => {
+      qc.invalidateQueries({ queryKey: ["gallery", festivalId] });
     },
   });
 }

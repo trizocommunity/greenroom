@@ -28,7 +28,8 @@ export function useCreateStage() {
   return useMutation<
     Stage,
     Error,
-    { festivalId: string; data: StageDataInput }
+    { festivalId: string; data: StageDataInput },
+    { prev: Stage[] | undefined }
   >({
     mutationFn: async ({ festivalId, data }) => {
       const res = await fetch(
@@ -41,8 +42,34 @@ export function useCreateStage() {
       );
       return handleResponse<Stage>(res);
     },
-    onSuccess: (_data, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["stages", festivalId] });
+    onMutate: async ({ festivalId, data }) => {
+      await qc.cancelQueries({ queryKey: ["stages", festivalId] });
+      const prev = qc.getQueryData<Stage[]>(["stages", festivalId]);
+      const tempId = `temp-${Date.now()}`;
+      const optimisticStage: Stage = {
+        id: tempId,
+        festivalId,
+        name: data.name,
+        description: data.description ?? null,
+        createdBy: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      qc.setQueryData<Stage[]>(["stages", festivalId], (old) =>
+        old ? [...old, optimisticStage] : [optimisticStage],
+      );
+      return { prev };
+    },
+    onError: (_err, { festivalId }, ctx) => {
+      if (ctx?.prev) {
+        qc.setQueryData(["stages", festivalId], ctx.prev);
+      }
+    },
+    onSettled: (_data, _err, { festivalId }) => {
+      qc.invalidateQueries({
+        queryKey: ["stages", festivalId],
+        refetchType: "none",
+      });
     },
   });
 }
@@ -52,7 +79,8 @@ export function useUpdateStage() {
   return useMutation<
     Stage,
     Error,
-    { festivalId: string; stageId: string; data: StageDataInput }
+    { festivalId: string; stageId: string; data: StageDataInput },
+    { prev: Stage[] | undefined }
   >({
     mutationFn: async ({ festivalId, stageId, data }) => {
       const res = await fetch(
@@ -65,8 +93,32 @@ export function useUpdateStage() {
       );
       return handleResponse<Stage>(res);
     },
-    onSuccess: (_data, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["stages", festivalId] });
+    onMutate: async ({ festivalId, stageId, data }) => {
+      await qc.cancelQueries({ queryKey: ["stages", festivalId] });
+      const prev = qc.getQueryData<Stage[]>(["stages", festivalId]);
+      qc.setQueryData<Stage[]>(["stages", festivalId], (old) =>
+        old?.map((s) =>
+          s.id === stageId
+            ? {
+                ...s,
+                ...data,
+                updatedAt: new Date().toISOString(),
+              }
+            : s,
+        ),
+      );
+      return { prev };
+    },
+    onError: (_err, { festivalId }, ctx) => {
+      if (ctx?.prev) {
+        qc.setQueryData(["stages", festivalId], ctx.prev);
+      }
+    },
+    onSettled: (_data, _err, { festivalId }) => {
+      qc.invalidateQueries({
+        queryKey: ["stages", festivalId],
+        refetchType: "none",
+      });
     },
   });
 }
@@ -100,7 +152,10 @@ export function useDeleteStage() {
       }
     },
     onSettled: (_data, _err, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["stages", festivalId] });
+      qc.invalidateQueries({
+        queryKey: ["stages", festivalId],
+        refetchType: "none",
+      });
     },
   });
 }

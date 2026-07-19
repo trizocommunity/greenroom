@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
+import { useCreateStage, useUpdateStage } from "@/api/client/stages";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,10 +26,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  createStage,
-  updateStage,
-} from "@/features/stages/actions/stage.actions";
 
 const StageSchema = z.object({
   name: z.string().min(1, "Stage name is required"),
@@ -52,7 +49,9 @@ export function StageDialog({
   onOpenChange,
   onSuccess,
 }: StageDialogProps) {
-  const [isLoading, setIsLoading] = useState(false);
+  const createStage = useCreateStage();
+  const updateStage = useUpdateStage();
+  const isLoading = createStage.isPending || updateStage.isPending;
 
   const form = useForm({
     resolver: zodResolver(StageSchema),
@@ -82,12 +81,15 @@ export function StageDialog({
 
   const onSubmit = async (data: StageFormValues) => {
     try {
-      setIsLoading(true);
       if (stageToEdit) {
-        await updateStage(stageToEdit.id, data);
+        await updateStage.mutateAsync({
+          festivalId,
+          stageId: stageToEdit.id,
+          data,
+        });
         toast.success("Stage updated successfully");
       } else {
-        await createStage(festivalId, data);
+        await createStage.mutateAsync({ festivalId, data });
         toast.success("Stage created successfully");
       }
       onSuccess();
@@ -99,8 +101,6 @@ export function StageDialog({
       } else {
         toast.error(message);
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 

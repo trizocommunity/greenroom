@@ -34,13 +34,11 @@ const handler = createProtectedHandler({
   async DELETE({ user, request }) {
     const url = new URL(request.url);
     const festivalId = url.searchParams.get("festivalId");
+    const memberId = url.searchParams.get("memberId");
     if (!festivalId)
       return badRequest("MISSING_PARAM", "festivalId is required");
-    await assertFestivalAccess(user, festivalId, { requireWritable: true });
-
-    const body = await request.json();
-    const memberId = body.memberId;
     if (!memberId) return badRequest("MISSING_PARAM", "memberId is required");
+    await assertFestivalAccess(user, festivalId, { requireWritable: true });
 
     const result = await MemberService.removeMember(festivalId, memberId);
     return ok(result);

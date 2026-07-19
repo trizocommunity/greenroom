@@ -269,10 +269,14 @@ export async function updateFestivalSettingsAction(
           endDate: data.endDate ? new Date(data.endDate).toISOString() : null,
         }),
         ...(data.scoringSystem !== undefined && {
-          scoringSystem: data.scoringSystem,
+          scoringSystem:
+            data.scoringSystem === null ? undefined : data.scoringSystem,
         }),
         ...(data.publicDisplayMode !== undefined && {
-          publicDisplayMode: data.publicDisplayMode,
+          publicDisplayMode:
+            data.publicDisplayMode === null
+              ? undefined
+              : data.publicDisplayMode,
         }),
         ...(data.chestNumberSettings !== undefined && {
           chestNumberSettings: data.chestNumberSettings,

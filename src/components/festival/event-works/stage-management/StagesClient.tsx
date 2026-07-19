@@ -11,6 +11,7 @@ interface Stage {
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { useDeleteStage } from "@/api/client/stages";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import {
   AlertDialog,
@@ -30,7 +31,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import { deleteStage } from "@/features/stages/actions/stage.actions";
 import { StageDialog } from "./StageDialog";
 
 interface StagesClientProps {
@@ -45,7 +45,7 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
     undefined,
   );
   const [stageToDelete, setStageToDelete] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const deleteStage = useDeleteStage();
 
   const handleCreate = () => {
     if (isReadOnly) return;
@@ -63,14 +63,11 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
     if (!stageToDelete) return;
     if (isReadOnly) return;
     try {
-      setIsDeleting(true);
-      await deleteStage(stageToDelete);
+      await deleteStage.mutateAsync({ festivalId, stageId: stageToDelete });
       toast.success("Stage deleted successfully");
       setStageToDelete(null);
     } catch (error: any) {
       toast.error(error.message || "Failed to delete stage");
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -198,9 +195,9 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
               <AlertDialogAction
                 className="bg-destructive hover:bg-destructive/90"
                 onClick={handleDelete}
-                disabled={isDeleting}
+                disabled={deleteStage.isPending}
               >
-                {isDeleting ? "Deleting..." : "Delete"}
+                {deleteStage.isPending ? "Deleting..." : "Delete"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

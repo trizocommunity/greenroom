@@ -64,7 +64,7 @@ export function ChestNumberSetup({
 
   const invalidateStudentsAndNotify = () => {
     queryClient.invalidateQueries({
-      queryKey: queryKeys.students.list(festivalId),
+      queryKey: ["students", festivalId],
     });
     onGenerated();
   };
@@ -262,6 +262,12 @@ export function ChestNumberSetup({
         const result = await generateChestNumbers(festivalId);
         toast.success(result.message);
       } else {
+        await saveChestNumberSettings(festivalId, {
+          prefix: prefixToSave,
+          categories: categoryConfig,
+          categoryCodes: codesToSave,
+          numberingStyle: numberingStyle,
+        });
         await updateAllChestNumbers(
           festivalId,
           prefixToSave,

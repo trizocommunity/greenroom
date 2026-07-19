@@ -15,6 +15,12 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useCloudinaryUpload } from "@/api/client";
+import {
+  useCreateNews,
+  useDeleteNews,
+  useNews,
+  useUpdateNews,
+} from "@/api/client/news";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { Button } from "@/components/ui/button";
@@ -41,11 +47,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/core/utils/cn";
 import { parseStoredInstant } from "@/core/utils/date-time";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import {
-  createNewsPostAction,
-  deleteNewsPostAction,
-  updateNewsPostAction,
-} from "@/features/news/actions/news.actions";
 
 type NewsPost = {
   id: string;
@@ -82,6 +83,10 @@ export function NewsClient({
     useUnsavedChanges();
   const { isReadOnly } = useFestivalReadOnly();
   const [posts, setPosts] = useState<NewsPost[]>(initialPosts);
+  const { refetch: refetchNews } = useNews(festivalId);
+  const createNews = useCreateNews();
+  const updateNews = useUpdateNews();
+  const deleteNews = useDeleteNews();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -135,33 +140,36 @@ export function NewsClient({
     setSaving(true);
     try {
       if (editingId) {
-        const res = await updateNewsPostAction(festivalId, editingId, {
-          title: form.title.trim(),
-          excerpt: form.excerpt.trim() || null,
-          content: form.content.trim(),
-          imageUrl: form.imageUrl.trim() || null,
-          publishedAt: form.published ? new Date() : null,
+        await updateNews.mutateAsync({
+          festivalId,
+          postId: editingId,
+          data: {
+            title: form.title.trim(),
+            excerpt: form.excerpt.trim() || null,
+            content: form.content.trim(),
+            imageUrl: form.imageUrl.trim() || null,
+            publishedAt: form.published ? new Date().toISOString() : null,
+          },
         });
-        if (res.success) {
-          toast.success("News updated.");
-          setDirty(dirtySourceId, false);
-          setDialogOpen(false);
-          window.location.reload();
-        } else toast.error(res.error ?? "Failed to update.");
+        toast.success("News updated.");
+        setDirty(dirtySourceId, false);
+        setDialogOpen(false);
+        refetchNews();
       } else {
-        const res = await createNewsPostAction(festivalId, {
-          title: form.title.trim(),
-          excerpt: form.excerpt.trim() || null,
-          content: form.content.trim(),
-          imageUrl: form.imageUrl.trim() || null,
-          publishedAt: form.published ? new Date() : null,
+        await createNews.mutateAsync({
+          festivalId,
+          data: {
+            title: form.title.trim(),
+            excerpt: form.excerpt.trim() || null,
+            content: form.content.trim(),
+            imageUrl: form.imageUrl.trim() || null,
+            publishedAt: form.published ? new Date().toISOString() : null,
+          },
         });
-        if (res.success) {
-          toast.success("News post created.");
-          setDirty(dirtySourceId, false);
-          setDialogOpen(false);
-          window.location.reload();
-        } else toast.error(res.error ?? "Failed to create.");
+        toast.success("News post created.");
+        setDirty(dirtySourceId, false);
+        setDialogOpen(false);
+        refetchNews();
       }
     } catch {
       toast.error("Something went wrong.");
@@ -185,13 +193,15 @@ export function NewsClient({
 
   const handleDelete = async (id: string) => {
     if (isReadOnly) return;
-    const res = await deleteNewsPostAction(festivalId, id);
-    if (res.success) {
+    try {
+      await deleteNews.mutateAsync({ festivalId, postId: id });
       setDeleteConfirmId(null);
       setPosts((p) => p.filter((x) => x.id !== id));
       toast.success("News post deleted.");
-      window.location.reload();
-    } else toast.error(res.error ?? "Failed to delete.");
+      refetchNews();
+    } catch {
+      toast.error("Failed to delete.");
+    }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

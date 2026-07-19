@@ -74,10 +74,12 @@ export function useUpdateFestival() {
 
 export function useDeleteFestival() {
   const qc = useQueryClient();
-  return useMutation<void, Error, string>({
-    mutationFn: async (id) => {
+  return useMutation<void, Error, { id: string; reason?: string }>({
+    mutationFn: async ({ id, reason }) => {
       const res = await fetch(`${API_BASE}/festivals/${id}`, {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: reason ? JSON.stringify({ reason }) : undefined,
       });
       return handleResponse<void>(res);
     },

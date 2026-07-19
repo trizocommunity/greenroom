@@ -106,13 +106,13 @@ export function StudentDialog({
       if (studentToEdit) {
         form.reset({
           name: studentToEdit.name,
-          email: studentToEdit.email || "",
-          phone: studentToEdit.phone || "",
+          email: studentToEdit.email ?? "",
+          phone: studentToEdit.phone ?? "",
           groupId: studentToEdit.group.id,
           categoryId: studentToEdit.category.id,
           gender: studentToEdit.gender || "MALE",
-          age: studentToEdit.age,
-          standard: studentToEdit.standard || "",
+          age: studentToEdit.age ?? undefined,
+          standard: studentToEdit.standard ?? "",
         });
       } else {
         form.reset({

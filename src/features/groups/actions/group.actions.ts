@@ -57,7 +57,7 @@ export async function updateGroupAction(
         columns: { tier: true },
       });
 
-      const tier = getTierForFeatureCheck(festival?.tier as any);
+      const tier = getTierForFeatureCheck(festival?.tier);
       if (!FeatureService.isFeatureEnabled(tier, "members")) {
         return { success: false, error: ERROR_MESSAGES.FORBIDDEN };
       }

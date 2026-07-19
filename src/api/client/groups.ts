@@ -32,7 +32,8 @@ export function useCreateGroup() {
   return useMutation<
     Group,
     Error,
-    { festivalId: string; data: CreateGroupInput }
+    { festivalId: string; data: CreateGroupInput },
+    { prev: Group[] | undefined }
   >({
     mutationFn: async ({ festivalId, data }) => {
       const res = await fetch(
@@ -45,8 +46,32 @@ export function useCreateGroup() {
       );
       return handleResponse<Group>(res);
     },
-    onSuccess: (_data, { festivalId }) => {
+    onMutate: async ({ festivalId, data }) => {
+      await qc.cancelQueries({ queryKey: ["groups", festivalId] });
+      const prev = qc.getQueryData<Group[]>(["groups", festivalId]);
+      const tempId = `temp-${Date.now()}`;
+      const optimisticGroup: Group = {
+        id: tempId,
+        festivalId,
+        name: data.name,
+        seriesStart: data.seriesStart ?? null,
+        color: data.color ?? null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      qc.setQueryData<Group[]>(["groups", festivalId], (old) =>
+        old ? [...old, optimisticGroup] : [optimisticGroup],
+      );
+      return { prev };
+    },
+    onError: (_err, { festivalId }, ctx) => {
+      if (ctx?.prev) {
+        qc.setQueryData(["groups", festivalId], ctx.prev);
+      }
+    },
+    onSettled: (_data, _err, { festivalId }) => {
       qc.invalidateQueries({ queryKey: ["groups", festivalId] });
+      qc.invalidateQueries({ queryKey: ["students", festivalId] });
     },
   });
 }
@@ -56,7 +81,8 @@ export function useUpdateGroup() {
   return useMutation<
     Group,
     Error,
-    { festivalId: string; groupId: string; data: UpdateGroupInput }
+    { festivalId: string; groupId: string; data: UpdateGroupInput },
+    { prev: Group[] | undefined }
   >({
     mutationFn: async ({ festivalId, groupId, data }) => {
       const res = await fetch(
@@ -69,8 +95,30 @@ export function useUpdateGroup() {
       );
       return handleResponse<Group>(res);
     },
-    onSuccess: (_data, { festivalId }) => {
+    onMutate: async ({ festivalId, groupId, data }) => {
+      await qc.cancelQueries({ queryKey: ["groups", festivalId] });
+      const prev = qc.getQueryData<Group[]>(["groups", festivalId]);
+      qc.setQueryData<Group[]>(["groups", festivalId], (old) =>
+        old?.map((g) =>
+          g.id === groupId
+            ? {
+                ...g,
+                ...data,
+                updatedAt: new Date().toISOString(),
+              }
+            : g,
+        ),
+      );
+      return { prev };
+    },
+    onError: (_err, { festivalId }, ctx) => {
+      if (ctx?.prev) {
+        qc.setQueryData(["groups", festivalId], ctx.prev);
+      }
+    },
+    onSettled: (_data, _err, { festivalId }) => {
       qc.invalidateQueries({ queryKey: ["groups", festivalId] });
+      qc.invalidateQueries({ queryKey: ["students", festivalId] });
     },
   });
 }

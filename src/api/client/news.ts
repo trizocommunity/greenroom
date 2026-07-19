@@ -90,8 +90,8 @@ export function useDeleteNews() {
       );
       return handleResponse<void>(res);
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["news"] });
+    onSuccess: (_data, { festivalId }) => {
+      qc.invalidateQueries({ queryKey: ["news", festivalId] });
     },
   });
 }

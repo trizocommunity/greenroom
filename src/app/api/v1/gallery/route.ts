@@ -65,12 +65,10 @@ const handler = createProtectedHandler({
   async DELETE({ user, request }) {
     const url = new URL(request.url);
     const festivalId = url.searchParams.get("festivalId");
+    const imageId = url.searchParams.get("imageId");
     if (!festivalId) {
       return badRequest("MISSING_PARAM", "festivalId is required");
     }
-
-    const body = await request.json();
-    const { imageId } = body;
     if (!imageId) {
       return badRequest("MISSING_PARAM", "imageId is required");
     }

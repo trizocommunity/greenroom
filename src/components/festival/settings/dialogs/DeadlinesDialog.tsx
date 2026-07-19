@@ -64,7 +64,9 @@ export function DeadlinesDialog({
     setIsSaving(true);
     try {
       const res = await updateFestivalSettingsAction(festival.id, {
-        programmeAssignmentDeadline: programmeAssignmentDeadline ?? null,
+        programmeAssignmentDeadline: programmeAssignmentDeadline
+          ? programmeAssignmentDeadline.toISOString()
+          : null,
       });
 
       if (res.success) {

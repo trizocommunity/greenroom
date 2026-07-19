@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowRight,
@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { useCreateFestival } from "@/api/client/festivals";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
@@ -30,7 +31,6 @@ import {
 import { queryKeys } from "@/core/http/query-keys";
 import { InstitutionType } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
-import { createFestival } from "@/features/festivals/actions/festival-crud.actions";
 import {
   type CreateFestivalInput,
   createFestivalSchema,
@@ -83,6 +83,7 @@ export function FestivalSetupForm({
   const [currentStep, setCurrentStep] = useState<Step>("basics");
   const [direction, setDirection] = useState(1);
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
+  const createFestival = useCreateFestival();
 
   const {
     register,
@@ -119,58 +120,6 @@ export function FestivalSetupForm({
     }
   }, [festivalName, setValue, isSlugManuallyEdited]);
 
-  const { mutate } = useMutation({
-    mutationFn: async (data: FormData) => {
-      const slug =
-        data.festivalSlug ||
-        data.festivalName
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-+|-+$/g, "");
-
-      const validData = data as CreateFestivalInput;
-      return await createFestival({
-        ...validData,
-        festivalSlug: slug,
-        paymentId,
-      });
-    },
-    onSuccess: (result) => {
-      if (!result.success) {
-        const errorResult = result as any;
-        if (errorResult.fields) {
-          if (errorResult.fields.slug || errorResult.fields.festivalSlug) {
-            toast.error(
-              "This subdomain is already taken. Please choose another.",
-            );
-          } else {
-            toast.error("Please check the form for errors.");
-          }
-        } else {
-          toast.error(errorResult.error || "Failed to create festival");
-        }
-        goTo("basics"); // Revert if failed
-        return;
-      }
-
-      queryClient.invalidateQueries({ queryKey: queryKeys.festivals.all() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.payments.all() });
-
-      // Artificial delay for loading phase to feel "hard at work"
-      setTimeout(() => {
-        goTo("done");
-        setTimeout(() => {
-          // Use window.location.href for full navigation to ensure query param is preserved
-          window.location.href = `/dashboard/${result.data.slug}?celebrate=1`;
-        }, 2200);
-      }, 1500);
-    },
-    onError: () => {
-      toast.error("An unexpected error occurred. Please try again.");
-      goTo("basics");
-    },
-  });
-
   const stepIndex = STEPS.indexOf(currentStep);
 
   function goTo(step: Step) {
@@ -191,7 +140,44 @@ export function FestivalSetupForm({
       goTo("dates");
     } else if (currentStep === "dates") {
       goTo("loading");
-      mutate(getValues());
+      const data = getValues();
+      const slug =
+        data.festivalSlug ||
+        data.festivalName
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+      try {
+        const festival = await createFestival.mutateAsync({
+          name: data.festivalName,
+          slug,
+          location: data.location || undefined,
+          startDate: data.startDate?.toString(),
+          endDate: data.endDate?.toString(),
+        });
+        queryClient.invalidateQueries({ queryKey: queryKeys.festivals.all() });
+        queryClient.invalidateQueries({ queryKey: queryKeys.payments.all() });
+        setTimeout(() => {
+          goTo("done");
+          setTimeout(() => {
+            window.location.href = `/dashboard/${festival.slug}?celebrate=1`;
+          }, 2200);
+        }, 1500);
+      } catch (error: any) {
+        const message = error?.message || "";
+        if (
+          message.toLowerCase().includes("subdomain") ||
+          message.toLowerCase().includes("slug") ||
+          message.toLowerCase().includes("taken")
+        ) {
+          toast.error(
+            "This subdomain is already taken. Please choose another.",
+          );
+        } else {
+          toast.error(message || "Failed to create festival");
+        }
+        goTo("basics");
+      }
     }
   }
 

@@ -15,6 +15,10 @@ import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useCloudinaryUpload } from "@/api/client";
+import {
+  useCreateGalleryItem,
+  useDeleteGalleryItem,
+} from "@/api/client/gallery";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { Button } from "@/components/ui/button";
@@ -30,11 +34,6 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/core/utils/cn";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import {
-  addGalleryImagesAction,
-  deleteGalleryImageAction,
-  deleteGalleryImagesAction,
-} from "@/features/gallery/actions/gallery.actions";
 
 type ImageRecord = { id: string; url: string; order: number };
 
@@ -68,6 +67,8 @@ export function GalleryClient({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const createGalleryItem = useCreateGalleryItem();
+  const deleteGalleryItem = useDeleteGalleryItem();
 
   // Revoke object URLs when pending upload is cleared or component unmounts
   useEffect(() => {
@@ -157,8 +158,15 @@ export function GalleryClient({
         closeUploadModal();
         return;
       }
-      const res = await addGalleryImagesAction(festivalId, urls);
-      if (res.success) {
+      try {
+        await Promise.all(
+          urls.map((url) =>
+            createGalleryItem.mutateAsync({
+              festivalId,
+              data: { festivalId, url },
+            }),
+          ),
+        );
         toast.success(
           urls.length === 1 ? "Photo added." : `${urls.length} photos added.`,
         );
@@ -170,9 +178,8 @@ export function GalleryClient({
         setPendingUpload(null);
         setUploadModalUploading(false);
         setDirty(dirtySourceId, false);
-        window.location.reload();
-      } else {
-        toast.error(res.error ?? "Failed to add photos.");
+      } catch {
+        toast.error("Failed to add photos.");
         setUploadModalUploading(false);
       }
     } catch {
@@ -192,8 +199,8 @@ export function GalleryClient({
   const handleDelete = useCallback(
     async (id: string) => {
       if (isReadOnly) return;
-      const res = await deleteGalleryImageAction(festivalId, id);
-      if (res.success) {
+      try {
+        await deleteGalleryItem.mutateAsync({ festivalId, imageId: id });
         setImages((prev) => prev.filter((i) => i.id !== id));
         setSelectedIds((s) => {
           const next = new Set(s);
@@ -208,9 +215,8 @@ export function GalleryClient({
           setLightboxIndex(next);
         }
         toast.success("Photo removed.");
-        window.location.reload();
-      } else {
-        toast.error(res.error ?? "Failed to remove.");
+      } catch {
+        toast.error("Failed to remove.");
       }
     },
     [festivalId, lightboxIndex, images.length, isReadOnly],
@@ -222,17 +228,18 @@ export function GalleryClient({
     if (ids.length === 0) return;
     setDeletingIds(new Set(ids));
     try {
-      const res = await deleteGalleryImagesAction(festivalId, ids);
-      if (res.success) {
-        setImages((prev) => prev.filter((i) => !selectedIds.has(i.id)));
-        setSelectedIds(new Set());
-        toast.success(
-          ids.length === 1 ? "Photo removed." : `${ids.length} photos removed.`,
-        );
-        window.location.reload();
-      } else {
-        toast.error(res.error ?? "Failed to remove.");
-      }
+      await Promise.all(
+        ids.map((id) =>
+          deleteGalleryItem.mutateAsync({ festivalId, imageId: id }),
+        ),
+      );
+      setImages((prev) => prev.filter((i) => !selectedIds.has(i.id)));
+      setSelectedIds(new Set());
+      toast.success(
+        ids.length === 1 ? "Photo removed." : `${ids.length} photos removed.`,
+      );
+    } catch {
+      toast.error("Failed to remove.");
     } finally {
       setDeletingIds(new Set());
     }

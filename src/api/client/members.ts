@@ -61,8 +61,8 @@ export function useRemoveMember() {
       );
       return handleResponse<void>(res);
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["members"] });
+    onSuccess: (_data, { festivalId }) => {
+      qc.invalidateQueries({ queryKey: ["members", festivalId] });
     },
   });
 }

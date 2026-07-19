@@ -9,6 +9,7 @@ import {
   HelpCircle,
   Loader2,
   Mail,
+  MoreVertical,
   Trash2,
   User,
   UserPlus,
@@ -34,6 +35,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Form,
   FormControl,
@@ -200,7 +207,7 @@ export function MembersClient({ festivalId, userRole }: MembersClientProps) {
           <h3 className="text-sm font-medium text-muted-foreground">
             Pending Invitations
           </h3>
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {invitations.map((invitation: PendingInvitation) => (
               <PendingInvitationCard
                 key={invitation.id}
@@ -221,7 +228,7 @@ export function MembersClient({ festivalId, userRole }: MembersClientProps) {
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {members.map((member: Member) => (
             <MemberCard
               key={member.id}
@@ -264,63 +271,82 @@ function PendingInvitationCard({
   const createdAt = parseStoredInstant(invitation.createdAt);
 
   return (
-    <div className="flex flex-col justify-between rounded-xl border border-dashed bg-card p-5 shadow-sm transition-colors hover:border-foreground/20">
-      <div>
-        <div className="flex items-start justify-between gap-3">
-          <Avatar className="h-11 w-11 border bg-muted">
-            <AvatarFallback className="font-medium text-muted-foreground">
+    <div className="rounded-2xl border border-dashed bg-card p-4 flex flex-col gap-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <Avatar className="h-10 w-10 shrink-0 rounded-full border bg-muted/50 flex items-center justify-center text-xs font-semibold">
+            <AvatarFallback className="bg-transparent text-muted-foreground">
               <Mail className="h-4 w-4" />
             </AvatarFallback>
           </Avatar>
+          <div className="min-w-0">
+            <h3 className="text-base font-semibold truncate tracking-wide">
+              {invitation.email}
+            </h3>
+            <p className="text-sm text-muted-foreground truncate mt-1">
+              Pending Invitation
+            </p>
+          </div>
+        </div>
+        {!isOwner ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={handleCancel}
+                disabled={isCancelling}
+              >
+                {isCancelling ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4 mr-2" />
+                )}
+                Cancel Invitation
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+      </div>
 
+      <div>
+        <p className="text-xs font-medium text-muted-foreground mb-2">
+          Role & status
+        </p>
+        <div className="flex flex-wrap gap-2 items-center">
+          <FestivalRoleBadge festivalRole={invitation.festivalRole as any} />
           <Badge
-            variant="secondary"
-            className={`font-normal text-xs ${
+            variant="outline"
+            className={
               isExpired
-                ? "border-destructive/20 bg-destructive/10 text-destructive"
-                : "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400"
-            }`}
+                ? "bg-destructive/10 text-destructive border-destructive/30"
+                : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
+            }
           >
             {isExpired ? "Expired" : "Pending"}
           </Badge>
         </div>
-
-        <div className="mt-4">
-          <h4 className="line-clamp-1 font-semibold text-base text-foreground tracking-tight">
-            {invitation.email}
-          </h4>
-          <div className="mt-3 flex items-center gap-2">
-            <FestivalRoleBadge festivalRole={invitation.festivalRole as any} />
-          </div>
-        </div>
       </div>
 
-      <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1.5">
-          <Clock className="h-3.5 w-3.5 text-muted-foreground/70" />
-          <span>
-            {isExpired
-              ? `Expired ${format(expiresAt, "MMM d")}`
-              : `Expires ${format(expiresAt, "MMM d")}`}
-          </span>
+      <div className="grid grid-cols-2 gap-2 text-center rounded-xl border bg-muted/20 p-2">
+        <div>
+          <p className="text-sm font-semibold leading-none mt-0.5">
+            {format(createdAt, "MMM d, yyyy")}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-1">Invited</p>
         </div>
-
-        {!isOwner && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2.5 text-xs font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-            onClick={handleCancel}
-            disabled={isCancelling}
-          >
-            {isCancelling ? (
-              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <X className="mr-1.5 h-3.5 w-3.5" />
-            )}
-            Cancel
-          </Button>
-        )}
+        <div>
+          <p className="text-sm font-semibold leading-none mt-0.5">
+            {format(expiresAt, "MMM d, yyyy")}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            {isExpired ? "Expired On" : "Expires"}
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -368,73 +394,91 @@ function MemberCard({
       .toUpperCase() || "U";
 
   return (
-    <div className="flex flex-col justify-between rounded-xl border bg-card p-5 shadow-sm transition-all hover:border-foreground/20 hover:shadow-md">
-      <div>
-        <div className="flex items-start justify-between gap-3">
-          <Avatar className="h-11 w-11 border bg-muted">
+    <div className="rounded-2xl border bg-card p-4 flex flex-col gap-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <Avatar className="h-10 w-10 shrink-0 rounded-full border bg-muted/50 flex items-center justify-center text-xs font-semibold">
             {avatarUrl && <AvatarImage src={avatarUrl} alt={fullName} />}
-            <AvatarFallback className="font-medium text-foreground">
+            <AvatarFallback className="bg-transparent text-xs font-semibold text-foreground">
               {initials}
             </AvatarFallback>
           </Avatar>
+          <div className="min-w-0">
+            <h3 className="text-base font-semibold truncate tracking-wide">
+              {fullName}
+            </h3>
+            <p className="text-sm text-muted-foreground truncate mt-1">
+              {email}
+            </p>
+          </div>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={() => setShowDetails(true)}>
+              <Eye className="h-4 w-4 mr-2" />
+              View Details
+            </DropdownMenuItem>
+            {!isOwner && !isReadOnly ? (
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={handleRevoke}
+                disabled={isRevoking}
+              >
+                {isRevoking ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4 mr-2" />
+                )}
+                Remove Member
+              </DropdownMenuItem>
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
+      <div>
+        <p className="text-xs font-medium text-muted-foreground mb-2">
+          Role & status
+        </p>
+        <div className="flex flex-wrap gap-2 items-center">
+          <FestivalRoleBadge festivalRole={member.role as any} />
           <Badge
-            variant="secondary"
-            className="flex items-center gap-1.5 font-normal text-xs"
+            variant="outline"
+            className={
+              member.isActive
+                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+            }
           >
             <span
-              className={`h-1.5 w-1.5 rounded-full ${
+              className={`mr-1.5 h-1.5 w-1.5 rounded-full ${
                 member.isActive ? "bg-emerald-500" : "bg-amber-500"
               }`}
             />
             {member.isActive ? "Active" : "Inactive"}
           </Badge>
         </div>
-
-        <div className="mt-4">
-          <h4 className="line-clamp-1 font-semibold text-base text-foreground tracking-tight">
-            {fullName}
-          </h4>
-          <p className="mt-0.5 truncate text-sm text-muted-foreground">
-            {email}
-          </p>
-          <div className="mt-3 flex items-center gap-2">
-            <FestivalRoleBadge festivalRole={member.role as any} />
-          </div>
-        </div>
       </div>
 
-      <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1.5">
-          <Calendar className="h-3.5 w-3.5 text-muted-foreground/70" />
-          <span>Joined {format(joinedAt, "MMM d, yyyy")}</span>
+      <div className="grid grid-cols-2 gap-2 text-center rounded-xl border bg-muted/20 p-2">
+        <div>
+          <p className="text-sm font-semibold leading-none mt-0.5">
+            {format(joinedAt, "MMM d, yyyy")}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-1">Joined</p>
         </div>
-
-        <div className="flex items-center gap-1.5">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 px-3 text-xs font-medium"
-            onClick={() => setShowDetails(true)}
-          >
-            View details
-          </Button>
-          {!isOwner && !isReadOnly && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-              onClick={handleRevoke}
-              disabled={isRevoking}
-              title="Remove member"
-            >
-              {isRevoking ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Trash2 className="h-3.5 w-3.5" />
-              )}
-            </Button>
-          )}
+        <div>
+          <p className="text-sm font-semibold leading-none mt-0.5">
+            {member.isActive ? "Full Access" : "Disabled"}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Access Status
+          </p>
         </div>
       </div>
 

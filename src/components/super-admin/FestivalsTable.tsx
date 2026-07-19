@@ -48,12 +48,15 @@ export function FestivalsTable() {
 
   const handleDelete = () => {
     if (!festivalToDelete) return;
-    deleteMutation.mutate(festivalToDelete.id, {
-      onSuccess: () => {
-        setFestivalToDelete(null);
-        toast.success("Festival terminated successfully");
+    deleteMutation.mutate(
+      { id: festivalToDelete.id },
+      {
+        onSuccess: () => {
+          setFestivalToDelete(null);
+          toast.success("Festival terminated successfully");
+        },
       },
-    });
+    );
   };
 
   if (isLoading) {

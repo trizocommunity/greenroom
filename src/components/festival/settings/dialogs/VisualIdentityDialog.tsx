@@ -86,9 +86,9 @@ export function VisualIdentityDialog({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const url = await uploadToCloudinary(file);
-    if (url) {
-      setLogo(url);
+    const result = await uploadToCloudinary(file);
+    if (result) {
+      setLogo(result.url);
       toast.success("Logo uploaded successfully");
     }
     if (logoInputRef.current) logoInputRef.current.value = "";

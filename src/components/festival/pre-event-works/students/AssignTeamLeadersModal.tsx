@@ -4,7 +4,7 @@ import { Crown, Loader2, Mail } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useGroups, useUpdateGroup } from "@/api/client/groups";
-import { useStudents } from "@/api/client/students";
+import { useStudents, useUpdateStudent } from "@/api/client/students";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,7 +26,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { updateStudentAction } from "@/features/students/actions/student.actions";
 
 interface AssignTeamLeadersModalProps {
   festivalId: string;
@@ -64,6 +63,7 @@ export function AssignTeamLeadersModal({
   const { data: groups = [] } = useGroups(festivalId);
   const { data: students = [] } = useStudents(festivalId);
   const updateGroup = useUpdateGroup();
+  const updateStudent = useUpdateStudent();
 
   const selectedGroup = useMemo(
     () => groups.find((g: any) => g.id === selectedGroupId),
@@ -82,7 +82,10 @@ export function AssignTeamLeadersModal({
   );
 
   const canSubmit =
-    !!selectedGroupId && selectedLeaderIds.length > 0 && !updateGroup.isPending;
+    !!selectedGroupId &&
+    selectedLeaderIds.length > 0 &&
+    !updateGroup.isPending &&
+    !updateStudent.isPending;
 
   // Get students needing emails (selected students without valid email)
   const studentsNeedingEmail = useMemo(() => {
@@ -162,14 +165,16 @@ export function AssignTeamLeadersModal({
         String(newEmail).includes("@")
       ) {
         try {
-          await updateStudentAction(festivalId, student.id, {
-            email: newEmail,
+          await updateStudent.mutateAsync({
+            festivalId,
+            studentId: student.id,
+            data: { email: newEmail },
           });
           toast.success(`Email updated for ${student.name}`);
         } catch (error) {
           console.error(`Failed to update email for ${student.name}:`, error);
           toast.error(`Failed to update email for ${student.name}`);
-          return; // Stop the process if email update fails
+          return;
         }
       }
     }

@@ -57,7 +57,10 @@ export async function createStudentWithServiceAction(
     .where(eq(categoryTable.festivalId, festivalId));
 
   if (groupCountResult.c === 0 || categoryCountResult.c === 0) {
-    throw new Error("Create groups & categories first.");
+    throw new AppError(
+      "Create groups and categories before adding students.",
+      "GROUPS_OR_CATEGORIES_MISSING",
+    );
   }
 
   const newStudent = await StudentService.create(festivalId, {

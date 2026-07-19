@@ -10,6 +10,7 @@ import {
   useTransition,
 } from "react";
 import { toast } from "sonner";
+import { useCreateJudge } from "@/api/client/judges";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import {
   Accordion,
@@ -37,7 +38,6 @@ import {
   formatStoredDateTime,
   parseStoredInstant,
 } from "@/core/utils/date-time";
-import { createJudgeAction } from "@/features/judges/actions/judge.actions";
 import {
   createJudgmentConfigurationAction,
   getJudgmentDashboardDataAction,
@@ -215,6 +215,7 @@ export function JudgmentWizardClient({
   const [lastCreatedConfigId, setLastCreatedConfigId] = useState<string | null>(
     null,
   );
+  const createJudge = useCreateJudge();
   const dashboardQuery = useQuery<JudgmentDashboardQueryData>({
     queryKey: queryKeys.judgment.dashboard(festivalId),
     queryFn: () =>
@@ -375,7 +376,7 @@ export function JudgmentWizardClient({
     );
   };
 
-  const onInlineCreateJudge = () => {
+  const onInlineCreateJudge = async () => {
     const trimmedName = newJudgeName.trim();
     if (!trimmedName) {
       setInlineJudgeError(ERROR_MESSAGES.JUDGE_NAME_REQUIRED);
@@ -390,26 +391,24 @@ export function JudgmentWizardClient({
       return;
     }
     setInlineJudgeError(null);
-    startTransition(async () => {
-      try {
-        await createJudgeAction(festivalId, {
+    try {
+      await createJudge.mutateAsync({
+        festivalId,
+        data: {
           name: trimmedName,
-          description: newJudgeDescription || null,
-        });
-        await queryClient.invalidateQueries({
-          queryKey: queryKeys.judgment.dashboard(festivalId),
-        });
-        await queryClient.invalidateQueries({
-          queryKey: queryKeys.judges.list(festivalId),
-        });
-        toast.success("Judge created.");
-        setNewJudgeName("");
-        setNewJudgeDescription("");
-        setInlineJudgeError(null);
-      } catch (error: any) {
-        setInlineJudgeError(error?.message ?? ERROR_MESSAGES.DEFAULT);
-      }
-    });
+          description: newJudgeDescription || undefined,
+        },
+      });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.judgment.dashboard(festivalId),
+      });
+      toast.success("Judge created.");
+      setNewJudgeName("");
+      setNewJudgeDescription("");
+      setInlineJudgeError(null);
+    } catch (error: any) {
+      setInlineJudgeError(error?.message ?? ERROR_MESSAGES.DEFAULT);
+    }
   };
 
   const onGenerate = () => {
@@ -1035,7 +1034,7 @@ export function JudgmentWizardClient({
                       type="button"
                       className="h-8 px-2.5 text-xs"
                       onClick={onInlineCreateJudge}
-                      disabled={!newJudgeName.trim() || isPending}
+                      disabled={!newJudgeName.trim() || createJudge.isPending}
                     >
                       <Plus className="h-4 w-4 mr-1" />
                       Add

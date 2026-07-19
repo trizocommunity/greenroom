@@ -1,13 +1,16 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useCategories } from "@/api/client/categories";
 import { useGroups } from "@/api/client/groups";
+import {
+  useBulkCreateStudents,
+  useValidateStudents,
+} from "@/api/client/students";
 import {
   BulkUploadFlow,
   type ParsedItem,
@@ -31,11 +34,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { queryKeys } from "@/core/http/query-keys";
-import {
-  bulkCreateStudentsAction,
-  validateStudentsAction,
-} from "@/features/students/actions/student.actions";
 
 // --- Types & Schema ---
 
@@ -321,11 +319,12 @@ export function BulkUploadStudentsModal({
 }: BulkUploadStudentsModalProps) {
   const festivalContext = useFestival();
   const isBasicTier = festivalContext.tier === "BASIC";
-  const queryClient = useQueryClient();
 
   const { data: groups = [], isLoading: loadingGroups } = useGroups(festivalId);
   const { data: categories = [], isLoading: loadingCategories } =
     useCategories(festivalId);
+  const bulkCreateStudents = useBulkCreateStudents();
+  const validateStudents = useValidateStudents();
 
   // Parsing Logic defined inside to access hooks
   const parseStudentRow = (
@@ -447,10 +446,9 @@ export function BulkUploadStudentsModal({
       }));
 
     if (candidatesToCheck.length > 0) {
-      const conflicts = await validateStudentsAction(
-        festivalId,
-        candidatesToCheck,
-      );
+      const conflicts = await validateStudents.mutateAsync({
+        candidates: candidatesToCheck,
+      });
 
       return items.map((p) => {
         const name = p.data.name?.trim().toLowerCase();
@@ -504,27 +502,22 @@ export function BulkUploadStudentsModal({
       name: s.name,
       groupId: s.groupId!,
       categoryId: s.categoryId!,
-      gender: s.gender,
+      gender: s.gender as "MALE" | "FEMALE" | "OTHER",
       email: s.email,
       phone: s.phone,
       age: s.age,
       standard: s.standard,
     }));
 
-    const result = await bulkCreateStudentsAction(festivalId, studentsToCreate);
+    const result = await bulkCreateStudents.mutateAsync({
+      festivalId,
+      data: { students: studentsToCreate },
+    });
 
-    if (result.successCount > 0) {
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.students.list(festivalId),
-      });
-    }
-
-    const success = result.errors.length === 0;
     return {
-      success,
-      count: result.successCount,
-      error:
-        result.errors.length > 0 ? "Some items failed to import" : undefined,
+      success: true,
+      count: result.length,
+      error: undefined,
     };
   };
 

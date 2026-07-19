@@ -43,6 +43,13 @@
       "when": 1718000000000,
       "tag": "0010_add_dars_enum",
       "breakpoints": false
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1752595200000,
+      "tag": "0011_add_team_leader_limit",
+      "breakpoints": true
     }
   ]
 }

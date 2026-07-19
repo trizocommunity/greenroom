@@ -324,6 +324,7 @@ export const festival = pgTable(
     tier: tier().default("STANDARD").notNull(),
     tierLabel: text().default("Standard").notNull(),
     studentCreationDeadline: timestamp({ precision: 3, mode: "string" }),
+    teamLeaderLimit: integer().default(2).notNull(),
     studentsCount: integer().default(0).notNull(),
     publicSiteEnabled: boolean().default(false).notNull(),
     stagesCount: integer().default(0).notNull(),

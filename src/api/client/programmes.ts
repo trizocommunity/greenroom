@@ -46,7 +46,8 @@ export function useCreateProgramme() {
   return useMutation<
     Programme,
     Error,
-    { festivalId: string; data: CreateProgrammeInput }
+    { festivalId: string; data: CreateProgrammeInput },
+    { prev: Programme[] | undefined }
   >({
     mutationFn: async ({ festivalId, data }) => {
       const res = await fetch(
@@ -59,8 +60,40 @@ export function useCreateProgramme() {
       );
       return handleResponse<Programme>(res);
     },
-    onSuccess: (_data, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["programmes", festivalId] });
+    onMutate: async ({ festivalId, data }) => {
+      await qc.cancelQueries({ queryKey: ["programmes", festivalId] });
+      const prev = qc.getQueryData<Programme[]>(["programmes", festivalId]);
+      const tempId = `temp-${Date.now()}`;
+      const optimisticProgramme: Programme = {
+        id: tempId,
+        festivalId,
+        name: data.name,
+        categoryId: data.categoryId,
+        type: data.type,
+        stageType: data.stageType,
+        maxParticipantsPerGroup: data.maxParticipantsPerGroup ?? 1,
+        maxTeamsPerGroup: data.maxTeamsPerGroup ?? 1,
+        maxStudentsPerTeam: data.maxStudentsPerTeam ?? 1,
+        maxPoints: data.maxPoints ?? null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      qc.setQueryData<Programme[]>(["programmes", festivalId], (old) =>
+        old ? [...old, optimisticProgramme] : [optimisticProgramme],
+      );
+      return { prev };
+    },
+    onError: (_err, { festivalId }, ctx) => {
+      if (ctx?.prev) {
+        qc.setQueryData(["programmes", festivalId], ctx.prev);
+      }
+    },
+    onSettled: (_data, _err, { festivalId }) => {
+      qc.invalidateQueries({
+        queryKey: ["programmes", festivalId],
+        refetchType: "none",
+      });
+      qc.invalidateQueries({ queryKey: ["schedule", festivalId] });
     },
   });
 }
@@ -70,7 +103,8 @@ export function useUpdateProgramme() {
   return useMutation<
     Programme,
     Error,
-    { festivalId: string; programmeId: string; data: UpdateProgrammeInput }
+    { festivalId: string; programmeId: string; data: UpdateProgrammeInput },
+    { prev: Programme[] | undefined }
   >({
     mutationFn: async ({ festivalId, programmeId, data }) => {
       const res = await fetch(
@@ -83,8 +117,33 @@ export function useUpdateProgramme() {
       );
       return handleResponse<Programme>(res);
     },
-    onSuccess: (_data, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["programmes", festivalId] });
+    onMutate: async ({ festivalId, programmeId, data }) => {
+      await qc.cancelQueries({ queryKey: ["programmes", festivalId] });
+      const prev = qc.getQueryData<Programme[]>(["programmes", festivalId]);
+      qc.setQueryData<Programme[]>(["programmes", festivalId], (old) =>
+        old?.map((p) =>
+          p.id === programmeId
+            ? {
+                ...p,
+                ...data,
+                updatedAt: new Date().toISOString(),
+              }
+            : p,
+        ),
+      );
+      return { prev };
+    },
+    onError: (_err, { festivalId }, ctx) => {
+      if (ctx?.prev) {
+        qc.setQueryData(["programmes", festivalId], ctx.prev);
+      }
+    },
+    onSettled: (_data, _err, { festivalId }) => {
+      qc.invalidateQueries({
+        queryKey: ["programmes", festivalId],
+        refetchType: "none",
+      });
+      qc.invalidateQueries({ queryKey: ["schedule", festivalId] });
     },
   });
 }
@@ -120,7 +179,11 @@ export function useDeleteProgramme() {
       }
     },
     onSettled: (_data, _err, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["programmes", festivalId] });
+      qc.invalidateQueries({
+        queryKey: ["programmes", festivalId],
+        refetchType: "none",
+      });
+      qc.invalidateQueries({ queryKey: ["schedule", festivalId] });
     },
   });
 }

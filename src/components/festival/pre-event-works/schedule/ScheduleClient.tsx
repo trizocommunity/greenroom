@@ -20,6 +20,11 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import {
+  useCreateScheduleItem,
+  useDeleteScheduleItem,
+  useUpdateScheduleItem,
+} from "@/api/client/schedule";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { Button } from "@/components/ui/button";
 import {
@@ -66,12 +71,9 @@ import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-rea
 import {
   type ConflictParts,
   checkScheduleConflict,
-  createScheduleEntry,
-  deleteScheduleEntry,
   getScheduleEntries,
   reorderScheduleEntries,
   type ScheduleEntryWithRelations,
-  updateScheduleEntry,
 } from "@/features/schedule/actions/schedule.actions";
 import {
   localWallClockToDate,
@@ -162,6 +164,10 @@ export function ScheduleClient({
   const hasFestivalDates = dateOptions.length > 0;
   const canAdd = hasStages && hasProgrammes && hasFestivalDates && !isReadOnly;
 
+  const createScheduleItem = useCreateScheduleItem();
+  const updateScheduleItem = useUpdateScheduleItem();
+  const deleteScheduleItem = useDeleteScheduleItem();
+
   const refresh = useCallback(async () => {
     const data = await getScheduleEntries(festivalId);
     setEntries(data);
@@ -201,23 +207,23 @@ export function ScheduleClient({
     setSaving(true);
     try {
       if (isReadOnly) return;
-      const res = await createScheduleEntry(festivalId, {
-        type: "PROGRAMME",
-        programmeId: data.programmeId || null,
-        stageId: data.stageId || null,
-        startTime: data.startTime,
-        endTime: data.endTime ?? null,
-        scheduleDayKey: data.scheduleDayKey,
+      await createScheduleItem.mutateAsync({
+        festivalId,
+        data: {
+          type: "PROGRAMME",
+          programmeId: data.programmeId || null,
+          stageId: data.stageId || null,
+          startTime: data.startTime.toISOString(),
+          endTime: data.endTime ? data.endTime.toISOString() : null,
+          scheduleDayKey: data.scheduleDayKey,
+        },
       });
-      if (res.success) {
-        toast.success("Added to schedule.");
-        setAddOpen(false);
-        refresh();
-      } else {
-        setAddFormError(res.error);
-        setAddFormConflictParts(res.conflictParts ?? null);
-        toast.error(res.error);
-      }
+      toast.success("Added to schedule.");
+      setAddOpen(false);
+      refresh();
+    } catch (error: any) {
+      setAddFormError(error?.message);
+      toast.error(error?.message);
     } finally {
       setSaving(false);
     }
@@ -235,12 +241,21 @@ export function ScheduleClient({
     setSaving(true);
     try {
       if (isReadOnly) return;
-      const res = await updateScheduleEntry(festivalId, id, data);
-      if (res.success) {
-        toast.success("Schedule updated.");
-        setEditEntry(null);
-        refresh();
-      } else toast.error(res.error);
+      await updateScheduleItem.mutateAsync({
+        festivalId,
+        entryId: id,
+        data: {
+          stageId: data.stageId,
+          startTime: data.startTime ? data.startTime.toISOString() : undefined,
+          endTime: data.endTime ? data.endTime.toISOString() : null,
+          scheduleDayKey: data.scheduleDayKey,
+        },
+      });
+      toast.success("Schedule updated.");
+      setEditEntry(null);
+      refresh();
+    } catch (error: any) {
+      toast.error(error?.message);
     } finally {
       setSaving(false);
     }
@@ -250,12 +265,12 @@ export function ScheduleClient({
     setDeletingId(id);
     try {
       if (isReadOnly) return;
-      const res = await deleteScheduleEntry(festivalId, id);
-      if (res.success) {
-        toast.success("Removed from schedule.");
-        setEntries((prev) => prev.filter((e) => e.id !== id));
-        refresh();
-      } else toast.error(res.error);
+      await deleteScheduleItem.mutateAsync({ festivalId, entryId: id });
+      toast.success("Removed from schedule.");
+      setEntries((prev) => prev.filter((e) => e.id !== id));
+      refresh();
+    } catch (error: any) {
+      toast.error(error?.message);
     } finally {
       setDeletingId(null);
     }

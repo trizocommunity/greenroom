@@ -25,7 +25,12 @@ export function useJudges(festivalId: string) {
 
 export function useCreateJudge() {
   const qc = useQueryClient();
-  return useMutation<Judge, Error, { festivalId: string; data: JudgeInput }>({
+  return useMutation<
+    Judge,
+    Error,
+    { festivalId: string; data: JudgeInput },
+    { prev: Judge[] | undefined }
+  >({
     mutationFn: async ({ festivalId, data }) => {
       const res = await fetch(
         `${API_BASE}/judges?festivalId=${encodeURIComponent(festivalId)}`,
@@ -37,8 +42,33 @@ export function useCreateJudge() {
       );
       return handleResponse<Judge>(res);
     },
-    onSuccess: (_data, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["judges", festivalId] });
+    onMutate: async ({ festivalId, data }) => {
+      await qc.cancelQueries({ queryKey: ["judges", festivalId] });
+      const prev = qc.getQueryData<Judge[]>(["judges", festivalId]);
+      const tempId = `temp-${Date.now()}`;
+      const optimisticJudge: Judge = {
+        id: tempId,
+        festivalId,
+        name: data.name,
+        description: data.description ?? null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      qc.setQueryData<Judge[]>(["judges", festivalId], (old) =>
+        old ? [...old, optimisticJudge] : [optimisticJudge],
+      );
+      return { prev };
+    },
+    onError: (_err, { festivalId }, ctx) => {
+      if (ctx?.prev) {
+        qc.setQueryData(["judges", festivalId], ctx.prev);
+      }
+    },
+    onSettled: (_data, _err, { festivalId }) => {
+      qc.invalidateQueries({
+        queryKey: ["judges", festivalId],
+        refetchType: "none",
+      });
     },
   });
 }
@@ -48,7 +78,8 @@ export function useUpdateJudge() {
   return useMutation<
     Judge,
     Error,
-    { festivalId: string; judgeId: string; data: JudgeInput }
+    { festivalId: string; judgeId: string; data: JudgeInput },
+    { prev: Judge[] | undefined }
   >({
     mutationFn: async ({ festivalId, judgeId, data }) => {
       const res = await fetch(
@@ -61,8 +92,32 @@ export function useUpdateJudge() {
       );
       return handleResponse<Judge>(res);
     },
-    onSuccess: (_data, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["judges", festivalId] });
+    onMutate: async ({ festivalId, judgeId, data }) => {
+      await qc.cancelQueries({ queryKey: ["judges", festivalId] });
+      const prev = qc.getQueryData<Judge[]>(["judges", festivalId]);
+      qc.setQueryData<Judge[]>(["judges", festivalId], (old) =>
+        old?.map((j) =>
+          j.id === judgeId
+            ? {
+                ...j,
+                ...data,
+                updatedAt: new Date().toISOString(),
+              }
+            : j,
+        ),
+      );
+      return { prev };
+    },
+    onError: (_err, { festivalId }, ctx) => {
+      if (ctx?.prev) {
+        qc.setQueryData(["judges", festivalId], ctx.prev);
+      }
+    },
+    onSettled: (_data, _err, { festivalId }) => {
+      qc.invalidateQueries({
+        queryKey: ["judges", festivalId],
+        refetchType: "none",
+      });
     },
   });
 }
@@ -96,7 +151,10 @@ export function useDeleteJudge() {
       }
     },
     onSettled: (_data, _err, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["judges", festivalId] });
+      qc.invalidateQueries({
+        queryKey: ["judges", festivalId],
+        refetchType: "none",
+      });
     },
   });
 }

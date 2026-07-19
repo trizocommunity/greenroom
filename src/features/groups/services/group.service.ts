@@ -71,10 +71,7 @@ export const GroupService = {
     if (data.teamLeaderIds !== undefined) {
       const festival = await findFestivalById(festivalId);
       if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
-      const leaderLimit = Math.max(
-        1,
-        Number((festival as any).teamLeaderLimit ?? 2),
-      );
+      const leaderLimit = Math.max(1, Number(festival.teamLeaderLimit ?? 2));
       if (data.teamLeaderIds.length > leaderLimit) {
         throw new AppError(
           `Team leader limit exceeded. Maximum allowed is ${leaderLimit}.`,

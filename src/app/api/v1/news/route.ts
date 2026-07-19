@@ -37,17 +37,17 @@ const handler = createProtectedHandler({
   },
 
   async POST({ user, request }) {
+    const url = new URL(request.url);
+    const festivalId = url.searchParams.get("festivalId");
+    if (!festivalId) {
+      return badRequest("MISSING_PARAM", "festivalId is required");
+    }
     const body = await request.json();
     const data = body.data ?? body;
     const parsed = createNewsPostInput.safeParse(data);
 
     if (!parsed.success) {
       return badRequest("INVALID_INPUT", parsed.error.message);
-    }
-
-    const festivalId = body.festivalId;
-    if (!festivalId) {
-      return badRequest("MISSING_PARAM", "festivalId is required");
     }
 
     await assertFestivalAccess(user, festivalId, { requireWritable: true });
@@ -85,8 +85,9 @@ const handler = createProtectedHandler({
   },
 
   async PUT({ user, request }) {
-    const body = await request.json();
-    const { festivalId, postId, data } = body;
+    const url = new URL(request.url);
+    const festivalId = url.searchParams.get("festivalId");
+    const postId = url.searchParams.get("postId");
 
     if (!festivalId) {
       return badRequest("MISSING_PARAM", "festivalId is required");
@@ -94,6 +95,9 @@ const handler = createProtectedHandler({
     if (!postId) {
       return badRequest("MISSING_PARAM", "postId is required");
     }
+
+    const body = await request.json();
+    const data = body.data ?? body;
 
     const parsed = updateNewsPostInput.safeParse(data);
     if (!parsed.success) {
@@ -151,8 +155,9 @@ const handler = createProtectedHandler({
   },
 
   async DELETE({ user, request }) {
-    const body = await request.json();
-    const { festivalId, postId } = body;
+    const url = new URL(request.url);
+    const festivalId = url.searchParams.get("festivalId");
+    const postId = url.searchParams.get("postId");
 
     if (!festivalId) {
       return badRequest("MISSING_PARAM", "festivalId is required");
