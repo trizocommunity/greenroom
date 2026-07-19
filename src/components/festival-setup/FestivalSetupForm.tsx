@@ -70,13 +70,15 @@ const transition = {
 interface FestivalSetupFormProps {
   paymentId: string;
   planExpiresAt: string;
-  planValidFrom?: string; // When the plan becomes active (payment createdAt)
+  planValidFrom?: string;
+  accountType?: "PERSONAL" | "INSTITUTIONAL";
 }
 
 export function FestivalSetupForm({
   paymentId,
   planExpiresAt,
   planValidFrom,
+  accountType,
 }: FestivalSetupFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -84,6 +86,8 @@ export function FestivalSetupForm({
   const [direction, setDirection] = useState(1);
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
   const createFestival = useCreateFestival();
+
+  const showInstitutionStep = accountType !== "INSTITUTIONAL";
 
   const {
     register,
@@ -135,7 +139,7 @@ export function FestivalSetupForm({
     }
 
     if (currentStep === "basics") {
-      goTo("institution");
+      goTo(showInstitutionStep ? "institution" : "dates");
     } else if (currentStep === "institution") {
       goTo("dates");
     } else if (currentStep === "dates") {
@@ -152,8 +156,16 @@ export function FestivalSetupForm({
           name: data.festivalName,
           slug,
           location: data.location || undefined,
-          startDate: data.startDate?.toString(),
-          endDate: data.endDate?.toString(),
+          startDate:
+            data.startDate instanceof Date
+              ? data.startDate.toISOString()
+              : data.startDate,
+          endDate:
+            data.endDate instanceof Date
+              ? data.endDate.toISOString()
+              : data.endDate,
+          institutionName: data.institutionName || undefined,
+          institutionType: data.institutionType || undefined,
         });
         queryClient.invalidateQueries({ queryKey: queryKeys.festivals.all() });
         queryClient.invalidateQueries({ queryKey: queryKeys.payments.all() });
@@ -566,7 +578,7 @@ export function FestivalSetupForm({
                     </Button>
                     <Button
                       type="button"
-                      onClick={() => goTo("institution")}
+                      onClick={() => goTo(showInstitutionStep ? "institution" : "basics")}
                       className="text-xs text-muted-foreground hover:text-foreground py-1 mt-2"
                     >
                       ← Back
@@ -655,19 +667,28 @@ export function FestivalSetupForm({
       {/* Step dots (not shown on loading/done screens) */}
       {currentStep !== "done" && currentStep !== "loading" && (
         <div className="relative z-10 flex items-center justify-center gap-2 pb-10">
-          {(["basics", "institution", "dates"] as Step[]).map((step, i) => (
-            <div
-              key={step}
-              className={cn(
-                "rounded-full transition-all duration-300",
-                currentStep === step
-                  ? "w-6 h-1.5 bg-primary"
-                  : stepIndex > i
-                    ? "w-1.5 h-1.5 bg-primary/40"
-                    : "w-1.5 h-1.5 bg-border",
-              )}
-            />
-          ))}
+          {(showInstitutionStep
+            ? (["basics", "institution", "dates"] as Step[])
+            : (["basics", "dates"] as Step[])
+          ).map((step, i) => {
+            const visibleSteps = showInstitutionStep
+              ? (["basics", "institution", "dates"] as Step[])
+              : (["basics", "dates"] as Step[]);
+            const stepIdx = visibleSteps.indexOf(currentStep);
+            return (
+              <div
+                key={step}
+                className={cn(
+                  "rounded-full transition-all duration-300",
+                  currentStep === step
+                    ? "w-6 h-1.5 bg-primary"
+                    : stepIdx > i
+                      ? "w-1.5 h-1.5 bg-primary/40"
+                      : "w-1.5 h-1.5 bg-border",
+                )}
+              />
+            );
+          })}
         </div>
       )}
     </div>

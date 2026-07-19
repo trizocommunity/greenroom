@@ -5,7 +5,7 @@ import { FestivalSetupForm } from "@/components/festival-setup/FestivalSetupForm
 import { TIER_CONFIG } from "@/config/pricing";
 import { getCurrentUser } from "@/core/auth/current-user";
 import { db } from "@/core/database/client";
-import { payment as paymentTable } from "@/core/database/schema";
+import { payment as paymentTable, user as userTable } from "@/core/database/schema";
 
 export const metadata: Metadata = {
   title: "Launch Festival | Greenroom",
@@ -38,6 +38,11 @@ export default async function FestivalSetupPage({ searchParams }: PageProps) {
     redirect("/profile");
   }
 
+  const userAccount = await db.query.user.findFirst({
+    where: eq(userTable.id, user!.id),
+    columns: { accountType: true },
+  });
+
   const tierConfig = TIER_CONFIG[payment.tier as keyof typeof TIER_CONFIG];
 
   const expiresAtStr =
@@ -55,6 +60,7 @@ export default async function FestivalSetupPage({ searchParams }: PageProps) {
       paymentId={paymentId}
       planExpiresAt={expiresAtStr}
       planValidFrom={payment.createdAt ?? undefined}
+      accountType={userAccount?.accountType ?? "PERSONAL"}
     />
   );
 }
