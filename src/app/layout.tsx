@@ -3,6 +3,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 import QueryProvider from "@/components/providers/QueryProvider";
+import { RazorpayInit } from "@/components/razorpay/RazorpayInit";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -34,6 +35,7 @@ export default function RootLayout({
         className={`${outfit.variable} antialiased bg-background text-foreground flex flex-col min-h-screen`}
       >
         <QueryProvider>
+          <RazorpayInit />
           <main className="flex-1">{children}</main>
           <Toaster />
           <Analytics />
