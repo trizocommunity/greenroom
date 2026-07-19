@@ -28,6 +28,8 @@ export const createFestivalInput = z.object({
   endDate: z.string().optional(),
   location: z.string().optional(),
   publicSiteEnabled: z.boolean().optional(),
+  institutionName: z.string().optional(),
+  institutionType: z.string().optional(),
 });
 
 export const updateFestivalInput = z.object({

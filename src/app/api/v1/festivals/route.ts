@@ -28,8 +28,10 @@ const handler = createProtectedHandler({
       return badRequest("INVALID_INPUT", parsed.error.message);
     }
 
+    const { institutionType, ...rest } = parsed.data;
     const festival = await createFestival({
-      ...parsed.data,
+      ...rest,
+      institutionType: institutionType as (typeof festivalsTable.institutionType.enumValues)[number] | undefined,
       ownerId: user!.userId,
     });
 
