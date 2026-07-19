@@ -26,11 +26,11 @@ async function getStoredOverrides(): Promise<PlanFeatureOverrides> {
   }
 }
 
-export async function getPlanFeatureOverrides(): Promise<PlanFeatureOverrides> {
+async function getPlanFeatureOverrides(): Promise<PlanFeatureOverrides> {
   return getStoredOverrides();
 }
 
-export function getEffectiveFeatureMatrix(): Record<
+function getEffectiveFeatureMatrix(): Record<
   Tier,
   Partial<Record<FeaturePath, boolean>>
 > {

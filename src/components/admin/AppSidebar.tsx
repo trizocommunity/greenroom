@@ -26,6 +26,7 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SUPER_ADMIN_SIDEBAR_ITEMS } from "@/config/sidebar.config";
 import { useCurrentUser } from "@/features/auth/hooks/use-current-user";
 
@@ -35,7 +36,7 @@ const items = SUPER_ADMIN_SIDEBAR_ITEMS;
 export function AppSidebar() {
   const pathname = usePathname();
   const { isMobile } = useSidebar();
-  const { data: user, isLoading } = useCurrentUser();
+  const { data: user, isLoading, isError, error } = useCurrentUser();
 
   // Get user initials for avatar fallback
   const getInitials = (name: string | null | undefined) => {
@@ -106,7 +107,19 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            {mounted ? (
+            {isLoading ? (
+              <div className="flex items-center gap-2 px-2">
+                <Skeleton className="h-8 w-8 rounded-lg" />
+                <div className="grid flex-1 gap-1">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+              </div>
+            ) : isError ? (
+              <div className="px-2 text-sm text-destructive">
+                Failed to load user
+              </div>
+            ) : mounted ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton

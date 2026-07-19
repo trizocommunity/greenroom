@@ -1,25 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import type {
   CreateGalleryImageInput,
   GalleryImage,
 } from "@/api/contracts/gallery";
-
-const API_BASE = "/api/v1";
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error.message);
-  return json.data;
-}
+import type { ApiResponse } from "@/lib/api-client";
+import { apiClient, handleApiResponse } from "@/lib/api-client";
+import { queryKeys } from "./_query-keys";
 
 export function useGallery(festivalId: string) {
   return useQuery<GalleryImage[]>({
-    queryKey: ["gallery", festivalId],
+    queryKey: queryKeys.gallery.all(festivalId),
     queryFn: async () => {
-      const res = await fetch(
-        `${API_BASE}/gallery?festivalId=${encodeURIComponent(festivalId)}`,
+      const response = await apiClient.get<ApiResponse<GalleryImage[]>>(
+        `/gallery?festivalId=${encodeURIComponent(festivalId)}`,
       );
-      return handleResponse<GalleryImage[]>(res);
+      return handleApiResponse(response.data);
     },
     enabled: !!festivalId,
     staleTime: 30 * 1000,
@@ -31,41 +27,84 @@ export function useCreateGalleryItem() {
   return useMutation<
     GalleryImage,
     Error,
-    { festivalId: string; data: CreateGalleryImageInput }
+    { festivalId: string; data: CreateGalleryImageInput },
+    { prev: GalleryImage[] | undefined }
   >({
     mutationFn: async ({ festivalId, data }) => {
-      const res = await fetch(
-        `${API_BASE}/gallery?festivalId=${encodeURIComponent(festivalId)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data }),
-        },
+      const response = await apiClient.post<ApiResponse<GalleryImage>>(
+        `/gallery?festivalId=${encodeURIComponent(festivalId)}`,
+        { data },
       );
-      return handleResponse<GalleryImage>(res);
+      return handleApiResponse(response.data);
+    },
+    onMutate: async ({ festivalId, data }) => {
+      await qc.cancelQueries({ queryKey: queryKeys.gallery.all(festivalId) });
+      const prev = qc.getQueryData<GalleryImage[]>(
+        queryKeys.gallery.all(festivalId),
+      );
+      const tempImage: GalleryImage = {
+        id: `temp-${Date.now()}`,
+        ...data,
+        festivalId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as GalleryImage;
+      qc.setQueryData<GalleryImage[]>(
+        queryKeys.gallery.all(festivalId),
+        (old) => [...(old || []), tempImage],
+      );
+      return { prev };
+    },
+    onError: (_err, { festivalId }, ctx) => {
+      toast.error(_err.message);
+      if (ctx?.prev) {
+        qc.setQueryData(queryKeys.gallery.all(festivalId), ctx.prev);
+      }
     },
     onSuccess: (_data, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["gallery", festivalId] });
+      return qc.invalidateQueries({
+        queryKey: queryKeys.gallery.all(festivalId),
+      });
     },
   });
 }
 
 export function useDeleteGalleryItem() {
   const qc = useQueryClient();
-  return useMutation<void, Error, { festivalId: string; imageId: string }>({
+  return useMutation<
+    void,
+    Error,
+    { festivalId: string; imageId: string },
+    { prev: GalleryImage[] | undefined }
+  >({
     mutationFn: async ({ festivalId, imageId }) => {
-      const res = await fetch(
-        `${API_BASE}/gallery?festivalId=${encodeURIComponent(festivalId)}`,
-        {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageId }),
-        },
+      const response = await apiClient.delete<ApiResponse<void>>(
+        `/gallery?festivalId=${encodeURIComponent(festivalId)}`,
+        { data: { imageId } },
       );
-      return handleResponse<void>(res);
+      return handleApiResponse(response.data);
+    },
+    onMutate: async ({ festivalId, imageId }) => {
+      await qc.cancelQueries({ queryKey: queryKeys.gallery.all(festivalId) });
+      const prev = qc.getQueryData<GalleryImage[]>(
+        queryKeys.gallery.all(festivalId),
+      );
+      qc.setQueryData<GalleryImage[]>(
+        queryKeys.gallery.all(festivalId),
+        (old) => (old || []).filter((i) => i.id !== imageId),
+      );
+      return { prev };
+    },
+    onError: (_err, { festivalId }, ctx) => {
+      toast.error(_err.message);
+      if (ctx?.prev) {
+        qc.setQueryData(queryKeys.gallery.all(festivalId), ctx.prev);
+      }
     },
     onSuccess: (_data, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["gallery", festivalId] });
+      return qc.invalidateQueries({
+        queryKey: queryKeys.gallery.all(festivalId),
+      });
     },
   });
 }

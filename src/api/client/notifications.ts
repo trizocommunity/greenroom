@@ -1,26 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import type {
   MarkAllReadInput,
   MarkReadInput,
   Notification,
 } from "@/api/contracts/notifications";
-
-const API_BASE = "/api/v1";
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error.message);
-  return json.data;
-}
+import type { ApiResponse } from "@/lib/api-client";
+import { apiClient, handleApiResponse } from "@/lib/api-client";
+import { queryKeys } from "./_query-keys";
 
 export function useNotifications(studentId: string) {
   return useQuery<Notification[]>({
-    queryKey: ["notifications", studentId],
+    queryKey: queryKeys.notifications.all(studentId),
     queryFn: async () => {
-      const res = await fetch(
-        `${API_BASE}/notifications?studentId=${encodeURIComponent(studentId)}`,
+      const response = await apiClient.get<ApiResponse<Notification[]>>(
+        `/notifications?studentId=${encodeURIComponent(studentId)}`,
       );
-      return handleResponse<Notification[]>(res);
+      return handleApiResponse(response.data);
     },
     enabled: !!studentId,
     staleTime: 10 * 1000,
@@ -38,21 +34,21 @@ export function useMarkNotificationRead() {
     { prev: Notification[] | undefined }
   >({
     mutationFn: async (data) => {
-      const res = await fetch(`${API_BASE}/notifications/mark-read`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data }),
-      });
-      return handleResponse<void>(res);
+      const response = await apiClient.post<ApiResponse<void>>(
+        "/notifications/mark-read",
+        { data },
+      );
+      return handleApiResponse(response.data);
     },
     onMutate: async ({ studentId, notificationId }) => {
-      await qc.cancelQueries({ queryKey: ["notifications", studentId] });
-      const prev = qc.getQueryData<Notification[]>([
-        "notifications",
-        studentId,
-      ]);
+      await qc.cancelQueries({
+        queryKey: queryKeys.notifications.all(studentId),
+      });
+      const prev = qc.getQueryData<Notification[]>(
+        queryKeys.notifications.all(studentId),
+      );
       qc.setQueryData(
-        ["notifications", studentId],
+        queryKeys.notifications.all(studentId),
         (old: Notification[] | undefined) =>
           old?.map((n) =>
             n.id === notificationId ? { ...n, isRead: true } : n,
@@ -60,13 +56,16 @@ export function useMarkNotificationRead() {
       );
       return { prev };
     },
-    onError: (_err, { studentId }, ctx) => {
+    onError: (error, { studentId }, ctx) => {
+      toast.error(error.message);
       if (ctx?.prev) {
-        qc.setQueryData(["notifications", studentId], ctx.prev);
+        qc.setQueryData(queryKeys.notifications.all(studentId), ctx.prev);
       }
     },
     onSettled: (_data, _err, { studentId }) => {
-      qc.invalidateQueries({ queryKey: ["notifications", studentId] });
+      return qc.invalidateQueries({
+        queryKey: queryKeys.notifications.all(studentId),
+      });
     },
   });
 }
@@ -80,33 +79,36 @@ export function useMarkAllNotificationsRead() {
     { prev: Notification[] | undefined }
   >({
     mutationFn: async (data) => {
-      const res = await fetch(`${API_BASE}/notifications/mark-all-read`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data }),
-      });
-      return handleResponse<void>(res);
+      const response = await apiClient.post<ApiResponse<void>>(
+        "/notifications/mark-all-read",
+        { data },
+      );
+      return handleApiResponse(response.data);
     },
     onMutate: async ({ studentId }) => {
-      await qc.cancelQueries({ queryKey: ["notifications", studentId] });
-      const prev = qc.getQueryData<Notification[]>([
-        "notifications",
-        studentId,
-      ]);
+      await qc.cancelQueries({
+        queryKey: queryKeys.notifications.all(studentId),
+      });
+      const prev = qc.getQueryData<Notification[]>(
+        queryKeys.notifications.all(studentId),
+      );
       qc.setQueryData(
-        ["notifications", studentId],
+        queryKeys.notifications.all(studentId),
         (old: Notification[] | undefined) =>
           old?.map((n) => ({ ...n, isRead: true })),
       );
       return { prev };
     },
-    onError: (_err, { studentId }, ctx) => {
+    onError: (error, { studentId }, ctx) => {
+      toast.error(error.message);
       if (ctx?.prev) {
-        qc.setQueryData(["notifications", studentId], ctx.prev);
+        qc.setQueryData(queryKeys.notifications.all(studentId), ctx.prev);
       }
     },
     onSettled: (_data, _err, { studentId }) => {
-      qc.invalidateQueries({ queryKey: ["notifications", studentId] });
+      return qc.invalidateQueries({
+        queryKey: queryKeys.notifications.all(studentId),
+      });
     },
   });
 }

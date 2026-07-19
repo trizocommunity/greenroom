@@ -1,22 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import type { AddMemberInput, Member } from "@/api/contracts/members";
-
-const API_BASE = "/api/v1";
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error.message);
-  return json.data;
-}
+import type { ApiResponse } from "@/lib/api-client";
+import { apiClient, handleApiResponse } from "@/lib/api-client";
+import { queryKeys } from "./_query-keys";
 
 export function useMembers(festivalId: string) {
   return useQuery<Member[]>({
-    queryKey: ["members", festivalId],
+    queryKey: queryKeys.members.all(festivalId),
     queryFn: async () => {
-      const res = await fetch(
-        `${API_BASE}/members?festivalId=${encodeURIComponent(festivalId)}`,
+      const response = await apiClient.get<ApiResponse<Member[]>>(
+        `/members?festivalId=${encodeURIComponent(festivalId)}`,
       );
-      return handleResponse<Member[]>(res);
+      return handleApiResponse(response.data);
     },
     enabled: !!festivalId,
     staleTime: 30 * 1000,
@@ -28,41 +24,79 @@ export function useAddMember() {
   return useMutation<
     Member,
     Error,
-    { festivalId: string; data: AddMemberInput }
+    { festivalId: string; data: AddMemberInput },
+    { prev: Member[] | undefined }
   >({
     mutationFn: async ({ festivalId, data }) => {
-      const res = await fetch(
-        `${API_BASE}/members?festivalId=${encodeURIComponent(festivalId)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data }),
-        },
+      const response = await apiClient.post<ApiResponse<Member>>(
+        `/members?festivalId=${encodeURIComponent(festivalId)}`,
+        { data },
       );
-      return handleResponse<Member>(res);
+      return handleApiResponse(response.data);
+    },
+    onMutate: async ({ festivalId, data }) => {
+      await qc.cancelQueries({ queryKey: queryKeys.members.all(festivalId) });
+      const prev = qc.getQueryData<Member[]>(queryKeys.members.all(festivalId));
+      const tempMember: Member = {
+        id: `temp-${Date.now()}`,
+        ...data,
+        festivalId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as Member;
+      qc.setQueryData<Member[]>(queryKeys.members.all(festivalId), (old) => [
+        ...(old || []),
+        tempMember,
+      ]);
+      return { prev };
+    },
+    onError: (_err, { festivalId }, ctx) => {
+      toast.error(_err.message);
+      if (ctx?.prev) {
+        qc.setQueryData(queryKeys.members.all(festivalId), ctx.prev);
+      }
     },
     onSuccess: (_data, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["members", festivalId] });
+      return qc.invalidateQueries({
+        queryKey: queryKeys.members.all(festivalId),
+      });
     },
   });
 }
 
 export function useRemoveMember() {
   const qc = useQueryClient();
-  return useMutation<void, Error, { festivalId: string; memberId: string }>({
+  return useMutation<
+    void,
+    Error,
+    { festivalId: string; memberId: string },
+    { prev: Member[] | undefined }
+  >({
     mutationFn: async ({ festivalId, memberId }) => {
-      const res = await fetch(
-        `${API_BASE}/members?festivalId=${encodeURIComponent(festivalId)}`,
-        {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ memberId }),
-        },
+      const response = await apiClient.delete<ApiResponse<void>>(
+        `/members?festivalId=${encodeURIComponent(festivalId)}`,
+        { data: { memberId } },
       );
-      return handleResponse<void>(res);
+      return handleApiResponse(response.data);
+    },
+    onMutate: async ({ festivalId, memberId }) => {
+      await qc.cancelQueries({ queryKey: queryKeys.members.all(festivalId) });
+      const prev = qc.getQueryData<Member[]>(queryKeys.members.all(festivalId));
+      qc.setQueryData<Member[]>(queryKeys.members.all(festivalId), (old) =>
+        (old || []).filter((m) => m.id !== memberId),
+      );
+      return { prev };
+    },
+    onError: (_err, { festivalId }, ctx) => {
+      toast.error(_err.message);
+      if (ctx?.prev) {
+        qc.setQueryData(queryKeys.members.all(festivalId), ctx.prev);
+      }
     },
     onSuccess: (_data, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["members", festivalId] });
+      return qc.invalidateQueries({
+        queryKey: queryKeys.members.all(festivalId),
+      });
     },
   });
 }

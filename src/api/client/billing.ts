@@ -1,20 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import type { UnusedCredit } from "@/api/contracts/billing";
-
-const API_BASE = "/api/v1";
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error.message);
-  return json.data;
-}
+import type { ApiResponse } from "@/lib/api-client";
+import { apiClient, handleApiResponse } from "@/lib/api-client";
+import { queryKeys } from "./_query-keys";
 
 export function useUnusedCredit() {
   return useQuery<UnusedCredit | null>({
-    queryKey: ["billing", "unusedCredit"],
+    queryKey: queryKeys.billing.unusedCredit,
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/billing`);
-      return handleResponse<UnusedCredit | null>(res);
+      const response =
+        await apiClient.get<ApiResponse<UnusedCredit | null>>("/billing");
+      return handleApiResponse(response.data);
     },
     staleTime: 30 * 1000,
   });

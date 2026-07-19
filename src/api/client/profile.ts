@@ -1,14 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { z } from "zod";
 import type { UpdateProfileInput } from "@/api/contracts/profile";
-
-const API_BASE = "/api/v1";
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error.message);
-  return json.data;
-}
+import type { ApiResponse } from "@/lib/api-client";
+import { apiClient, handleApiResponse } from "@/lib/api-client";
+import { queryKeys } from "./_query-keys";
 
 export interface UserWithInstitution {
   id: string;
@@ -36,10 +32,11 @@ export interface UserWithInstitution {
 
 export function useProfile() {
   return useQuery<UserWithInstitution>({
-    queryKey: ["profile"],
+    queryKey: queryKeys.profile.all,
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/profile`);
-      return handleResponse<UserWithInstitution>(res);
+      const response =
+        await apiClient.get<ApiResponse<UserWithInstitution>>("/profile");
+      return handleApiResponse(response.data);
     },
     staleTime: 30 * 1000,
   });
@@ -47,17 +44,35 @@ export function useProfile() {
 
 export function useUpdateProfile() {
   const qc = useQueryClient();
-  return useMutation<UserWithInstitution, Error, UpdateProfileInput>({
+  return useMutation<
+    UserWithInstitution,
+    Error,
+    UpdateProfileInput,
+    { prev: UserWithInstitution | undefined }
+  >({
     mutationFn: async (data) => {
-      const res = await fetch(`${API_BASE}/profile`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data }),
-      });
-      return handleResponse<UserWithInstitution>(res);
+      const response = await apiClient.put<ApiResponse<UserWithInstitution>>(
+        "/profile",
+        { data },
+      );
+      return handleApiResponse(response.data);
+    },
+    onMutate: async (data) => {
+      await qc.cancelQueries({ queryKey: queryKeys.profile.all });
+      const prev = qc.getQueryData<UserWithInstitution>(queryKeys.profile.all);
+      qc.setQueryData<UserWithInstitution>(queryKeys.profile.all, (old) =>
+        old ? { ...old, ...data } : old,
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      toast.error(_err.message);
+      if (ctx?.prev) {
+        qc.setQueryData(queryKeys.profile.all, ctx.prev);
+      }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["profile"] });
+      return qc.invalidateQueries({ queryKey: queryKeys.profile.all });
     },
   });
 }
@@ -75,18 +90,39 @@ export function useUpdateInstitution() {
   return useMutation<
     UserWithInstitution,
     Error,
-    z.infer<typeof updateInstitutionInput>
+    z.infer<typeof updateInstitutionInput>,
+    { prev: UserWithInstitution | undefined }
   >({
     mutationFn: async (data) => {
-      const res = await fetch(`${API_BASE}/profile/institution`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data }),
-      });
-      return handleResponse<UserWithInstitution>(res);
+      const response = await apiClient.put<ApiResponse<UserWithInstitution>>(
+        "/profile/institution",
+        { data },
+      );
+      return handleApiResponse(response.data);
+    },
+    onMutate: async (data) => {
+      await qc.cancelQueries({ queryKey: queryKeys.profile.all });
+      const prev = qc.getQueryData<UserWithInstitution>(queryKeys.profile.all);
+      qc.setQueryData<UserWithInstitution>(queryKeys.profile.all, (old) =>
+        old
+          ? {
+              ...old,
+              institution: old.institution
+                ? { ...old.institution, ...data }
+                : null,
+            }
+          : old,
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      toast.error(_err.message);
+      if (ctx?.prev) {
+        qc.setQueryData(queryKeys.profile.all, ctx.prev);
+      }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["profile"] });
+      return qc.invalidateQueries({ queryKey: queryKeys.profile.all });
     },
   });
 }

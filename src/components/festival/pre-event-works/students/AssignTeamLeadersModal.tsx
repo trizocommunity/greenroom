@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface AssignTeamLeadersModalProps {
   festivalId: string;
@@ -61,7 +62,8 @@ export function AssignTeamLeadersModal({
   const [emailInputs, setEmailInputs] = useState<Record<string, string>>({});
 
   const { data: groups = [] } = useGroups(festivalId);
-  const { data: students = [] } = useStudents(festivalId);
+  const { data: students = [], isLoading: studentsLoading } =
+    useStudents(festivalId);
   const updateGroup = useUpdateGroup();
   const updateStudent = useUpdateStudent();
 
@@ -195,6 +197,26 @@ export function AssignTeamLeadersModal({
     setStep("select");
     setEmailInputs({});
   };
+
+  if (studentsLoading) {
+    return (
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button size="sm" variant="outline">
+              <Crown className="h-4 w-4 sm:mr-2 text-amber-600" />
+              <span className="hidden sm:inline">Assign Team Leaders</span>
+            </Button>
+          )}
+        </DialogTrigger>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-4xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+          <div className="flex items-center justify-center py-12">
+            <Skeleton className="h-8 w-8 rounded-full" />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

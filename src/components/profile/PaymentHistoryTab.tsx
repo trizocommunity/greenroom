@@ -17,7 +17,7 @@ import {
 import { parseStoredInstant } from "@/core/utils/date-time";
 
 export function PaymentHistoryTab() {
-  const { data, isLoading } = usePaymentHistory();
+  const { data, isLoading, isError, error } = usePaymentHistory();
   const payments = data?.history ?? [];
 
   if (isLoading) {
@@ -25,6 +25,21 @@ export function PaymentHistoryTab() {
       <div className="flex justify-center p-8">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Payment History</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-destructive">
+            Error: {error.message}
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 

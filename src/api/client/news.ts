@@ -1,27 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import type {
   CreateNewsPostInput,
   DeleteNewsPostInput,
   NewsPost,
   UpdateNewsPostInput,
 } from "@/api/contracts/news";
-
-const API_BASE = "/api/v1";
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error.message);
-  return json.data;
-}
+import type { ApiResponse } from "@/lib/api-client";
+import { apiClient, handleApiResponse } from "@/lib/api-client";
+import { queryKeys } from "./_query-keys";
 
 export function useNews(festivalId: string) {
   return useQuery<NewsPost[]>({
-    queryKey: ["news", festivalId],
+    queryKey: queryKeys.news.all(festivalId),
     queryFn: async () => {
-      const res = await fetch(
-        `${API_BASE}/news?festivalId=${encodeURIComponent(festivalId)}`,
+      const response = await apiClient.get<ApiResponse<NewsPost[]>>(
+        `/news?festivalId=${encodeURIComponent(festivalId)}`,
       );
-      return handleResponse<NewsPost[]>(res);
+      return handleApiResponse(response.data);
     },
     enabled: !!festivalId,
     staleTime: 30 * 1000,
@@ -33,21 +29,40 @@ export function useCreateNews() {
   return useMutation<
     NewsPost,
     Error,
-    { festivalId: string; data: CreateNewsPostInput }
+    { festivalId: string; data: CreateNewsPostInput },
+    { prev: NewsPost[] | undefined }
   >({
     mutationFn: async ({ festivalId, data }) => {
-      const res = await fetch(
-        `${API_BASE}/news?festivalId=${encodeURIComponent(festivalId)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data }),
-        },
+      const response = await apiClient.post<ApiResponse<NewsPost>>(
+        `/news?festivalId=${encodeURIComponent(festivalId)}`,
+        { data },
       );
-      return handleResponse<NewsPost>(res);
+      return handleApiResponse(response.data);
+    },
+    onMutate: async ({ festivalId, data }) => {
+      await qc.cancelQueries({ queryKey: queryKeys.news.all(festivalId) });
+      const prev = qc.getQueryData<NewsPost[]>(queryKeys.news.all(festivalId));
+      const tempPost: NewsPost = {
+        id: `temp-${Date.now()}`,
+        ...data,
+        festivalId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as NewsPost;
+      qc.setQueryData<NewsPost[]>(queryKeys.news.all(festivalId), (old) => [
+        ...(old || []),
+        tempPost,
+      ]);
+      return { prev };
+    },
+    onError: (_err, { festivalId }, ctx) => {
+      toast.error(_err.message);
+      if (ctx?.prev) {
+        qc.setQueryData(queryKeys.news.all(festivalId), ctx.prev);
+      }
     },
     onSuccess: (_data, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["news", festivalId] });
+      return qc.invalidateQueries({ queryKey: queryKeys.news.all(festivalId) });
     },
   });
 }
@@ -57,41 +72,67 @@ export function useUpdateNews() {
   return useMutation<
     NewsPost,
     Error,
-    { festivalId: string; postId: string; data: UpdateNewsPostInput }
+    { festivalId: string; postId: string; data: UpdateNewsPostInput },
+    { prev: NewsPost[] | undefined }
   >({
     mutationFn: async ({ festivalId, postId, data }) => {
-      const res = await fetch(
-        `${API_BASE}/news?festivalId=${encodeURIComponent(festivalId)}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ festivalId, postId, data }),
-        },
+      const response = await apiClient.put<ApiResponse<NewsPost>>(
+        `/news?festivalId=${encodeURIComponent(festivalId)}`,
+        { festivalId, postId, data },
       );
-      return handleResponse<NewsPost>(res);
+      return handleApiResponse(response.data);
+    },
+    onMutate: async ({ festivalId, postId, data }) => {
+      await qc.cancelQueries({ queryKey: queryKeys.news.all(festivalId) });
+      const prev = qc.getQueryData<NewsPost[]>(queryKeys.news.all(festivalId));
+      qc.setQueryData<NewsPost[]>(queryKeys.news.all(festivalId), (old) =>
+        (old || []).map((p) => (p.id === postId ? { ...p, ...data } : p)),
+      );
+      return { prev };
+    },
+    onError: (_err, { festivalId }, ctx) => {
+      toast.error(_err.message);
+      if (ctx?.prev) {
+        qc.setQueryData(queryKeys.news.all(festivalId), ctx.prev);
+      }
     },
     onSuccess: (_data, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["news", festivalId] });
+      return qc.invalidateQueries({ queryKey: queryKeys.news.all(festivalId) });
     },
   });
 }
 
 export function useDeleteNews() {
   const qc = useQueryClient();
-  return useMutation<void, Error, DeleteNewsPostInput>({
+  return useMutation<
+    void,
+    Error,
+    DeleteNewsPostInput,
+    { prev: NewsPost[] | undefined }
+  >({
     mutationFn: async (data) => {
-      const res = await fetch(
-        `${API_BASE}/news?festivalId=${encodeURIComponent(data.festivalId)}`,
-        {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        },
+      const response = await apiClient.delete<ApiResponse<void>>(
+        `/news?festivalId=${encodeURIComponent(data.festivalId)}`,
+        { data },
       );
-      return handleResponse<void>(res);
+      return handleApiResponse(response.data);
+    },
+    onMutate: async ({ festivalId, postId }) => {
+      await qc.cancelQueries({ queryKey: queryKeys.news.all(festivalId) });
+      const prev = qc.getQueryData<NewsPost[]>(queryKeys.news.all(festivalId));
+      qc.setQueryData<NewsPost[]>(queryKeys.news.all(festivalId), (old) =>
+        (old || []).filter((p) => p.id !== postId),
+      );
+      return { prev };
+    },
+    onError: (_err, { festivalId }, ctx) => {
+      toast.error(_err.message);
+      if (ctx?.prev) {
+        qc.setQueryData(queryKeys.news.all(festivalId), ctx.prev);
+      }
     },
     onSuccess: (_data, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["news", festivalId] });
+      return qc.invalidateQueries({ queryKey: queryKeys.news.all(festivalId) });
     },
   });
 }

@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/core/utils/cn";
 
 interface AssignmentModalProps {
@@ -71,10 +72,14 @@ export function AssignmentModal({
   // Data Hooks
   const { data: categories = [] } = useCategories(festivalId);
   const { data: groups = [] } = useGroups(festivalId);
-  const { data: programmes = [] } = useProgrammes(festivalId);
-  const { data: students = [] } = useStudents(festivalId);
+  const { data: programmes = [], isLoading: programmesLoading } =
+    useProgrammes(festivalId);
+  const { data: students = [], isLoading: studentsLoading } =
+    useStudents(festivalId);
   const { data: assignments = [] } = useAssignments(festivalId);
   const bulkCreateAssignment = useBulkCreateAssignments();
+
+  const isLoading = programmesLoading || studentsLoading;
 
   // State
   const [view, setView] = useState<ModalView>("SELECTION");
@@ -478,6 +483,18 @@ export function AssignmentModal({
     setSelectedProgrammeId("");
     setSelectedStudentIds(new Set());
   };
+
+  if (isLoading) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-none w-[calc(100%-1rem)] sm:w-[95vw] h-[95vh] max-h-dvh flex flex-col p-0 gap-0 border rounded-lg sm:rounded-xl mx-auto my-auto ring-0 outline-none overflow-hidden">
+          <div className="flex items-center justify-center h-full">
+            <Skeleton className="h-8 w-8 rounded-full" />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -92,6 +92,12 @@ export async function createInvitationAction(data: {
 
     const inviteUrl = `/invite/${token}`;
 
+    if (process.env.NODE_ENV !== "production") {
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      console.log(`[DEV] Member invite link: ${baseUrl}${inviteUrl}`);
+    }
+
     try {
       await sendInvitationEmail(
         data.email,
@@ -100,7 +106,7 @@ export async function createInvitationAction(data: {
         data.festivalRole,
       );
     } catch {
-      // Dev mode logs to terminal via sendInvitationEmail
+      // Email failed — invite URL already logged above in dev mode
     }
 
     return { success: true, data: { invitationId: result[0].id } };

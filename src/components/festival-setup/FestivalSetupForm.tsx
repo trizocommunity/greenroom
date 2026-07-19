@@ -578,7 +578,9 @@ export function FestivalSetupForm({
                     </Button>
                     <Button
                       type="button"
-                      onClick={() => goTo(showInstitutionStep ? "institution" : "basics")}
+                      onClick={() =>
+                        goTo(showInstitutionStep ? "institution" : "basics")
+                      }
                       className="text-xs text-muted-foreground hover:text-foreground py-1 mt-2"
                     >
                       ← Back

@@ -194,6 +194,7 @@ export function GalleryClient({
     pendingUpload,
     setDirty,
     uploadMutation,
+    createGalleryItem.mutateAsync,
   ]);
 
   const handleDelete = useCallback(
@@ -219,7 +220,13 @@ export function GalleryClient({
         toast.error("Failed to remove.");
       }
     },
-    [festivalId, lightboxIndex, images.length, isReadOnly],
+    [
+      festivalId,
+      lightboxIndex,
+      images.length,
+      isReadOnly,
+      deleteGalleryItem.mutateAsync,
+    ],
   );
 
   const handleBulkDelete = useCallback(async () => {
@@ -243,7 +250,7 @@ export function GalleryClient({
     } finally {
       setDeletingIds(new Set());
     }
-  }, [festivalId, selectedIds, isReadOnly]);
+  }, [festivalId, selectedIds, isReadOnly, deleteGalleryItem.mutateAsync]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((s) => {

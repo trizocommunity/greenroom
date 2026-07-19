@@ -122,6 +122,15 @@ export function MembersClient({ festivalId, userRole }: MembersClientProps) {
     );
   }
 
+  if (invitationsData?.error || (invitationsData as any)?.isError) {
+    const err = (invitationsData as any).error || (invitationsData as any);
+    return (
+      <div className="text-center py-8 text-destructive">
+        Error: {err.message || "Failed to load invitations"}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -213,6 +222,7 @@ export function MembersClient({ festivalId, userRole }: MembersClientProps) {
                 key={invitation.id}
                 invitation={invitation}
                 isOwner={isOwner}
+                festivalId={festivalId}
               />
             ))}
           </div>
@@ -247,9 +257,11 @@ export function MembersClient({ festivalId, userRole }: MembersClientProps) {
 function PendingInvitationCard({
   invitation,
   isOwner,
+  festivalId,
 }: {
   invitation: PendingInvitation;
   isOwner: boolean;
+  festivalId: string;
 }) {
   const cancelInvitation = useCancelInvitation();
   const [isCancelling, setIsCancelling] = useState(false);
@@ -257,7 +269,10 @@ function PendingInvitationCard({
   const handleCancel = async () => {
     setIsCancelling(true);
     try {
-      await cancelInvitation.mutateAsync({ invitationId: invitation.id });
+      await cancelInvitation.mutateAsync({
+        invitationId: invitation.id,
+        festivalId,
+      });
       toast.success("Invitation cancelled");
     } catch (e) {
       toast.error("Failed to cancel invitation");

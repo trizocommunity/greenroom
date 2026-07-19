@@ -31,7 +31,9 @@ const handler = createProtectedHandler({
     const { institutionType, ...rest } = parsed.data;
     const festival = await createFestival({
       ...rest,
-      institutionType: institutionType as (typeof festivalsTable.institutionType.enumValues)[number] | undefined,
+      institutionType: institutionType as
+        | (typeof festivalsTable.institutionType.enumValues)[number]
+        | undefined,
       ownerId: user!.userId,
     });
 

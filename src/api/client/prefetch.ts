@@ -1,19 +1,15 @@
 import { getQueryClient } from "@/components/providers/QueryProvider";
+import type { ApiResponse } from "@/lib/api-client";
+import { apiClient, handleApiResponse } from "@/lib/api-client";
 import { queryKeys } from "./_query-keys";
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error.message);
-  return json.data;
-}
 
 export async function prefetchFestivals() {
   const queryClient = getQueryClient();
   await queryClient.prefetchQuery({
     queryKey: queryKeys.festivals.all,
     queryFn: async () => {
-      const res = await fetch("/api/v1/festivals");
-      return handleResponse<unknown>(res);
+      const response = await apiClient.get<ApiResponse<unknown>>("/festivals");
+      return handleApiResponse(response.data);
     },
     staleTime: 60 * 1000,
   });
@@ -24,8 +20,10 @@ export async function prefetchFestival(id: string) {
   await queryClient.prefetchQuery({
     queryKey: queryKeys.festivals.detail(id),
     queryFn: async () => {
-      const res = await fetch(`/api/v1/festivals/${id}`);
-      return handleResponse<unknown>(res);
+      const response = await apiClient.get<ApiResponse<unknown>>(
+        `/festivals/${id}`,
+      );
+      return handleApiResponse(response.data);
     },
     staleTime: 60 * 1000,
   });
@@ -36,10 +34,10 @@ export async function prefetchStudents(festivalId: string) {
   await queryClient.prefetchQuery({
     queryKey: queryKeys.students.all(festivalId),
     queryFn: async () => {
-      const res = await fetch(
-        `/api/v1/students?festivalId=${encodeURIComponent(festivalId)}`,
+      const response = await apiClient.get<ApiResponse<unknown>>(
+        `/students?festivalId=${encodeURIComponent(festivalId)}`,
       );
-      return handleResponse<unknown>(res);
+      return handleApiResponse(response.data);
     },
     staleTime: 30 * 1000,
   });
@@ -55,8 +53,10 @@ export async function prefetchSchedule(
   await queryClient.prefetchQuery({
     queryKey: queryKeys.schedule.all(festivalId, typeFilter),
     queryFn: async () => {
-      const res = await fetch(`/api/v1/schedule?${params}`);
-      return handleResponse<unknown>(res);
+      const response = await apiClient.get<ApiResponse<unknown>>(
+        `/schedule?${params}`,
+      );
+      return handleApiResponse(response.data);
     },
     staleTime: 30 * 1000,
   });
@@ -67,10 +67,10 @@ export async function prefetchCategories(festivalId: string) {
   await queryClient.prefetchQuery({
     queryKey: queryKeys.categories.all(festivalId),
     queryFn: async () => {
-      const res = await fetch(
-        `/api/v1/categories?festivalId=${encodeURIComponent(festivalId)}`,
+      const response = await apiClient.get<ApiResponse<unknown>>(
+        `/categories?festivalId=${encodeURIComponent(festivalId)}`,
       );
-      return handleResponse<unknown>(res);
+      return handleApiResponse(response.data);
     },
     staleTime: 60 * 1000,
   });
@@ -81,10 +81,10 @@ export async function prefetchGroups(festivalId: string) {
   await queryClient.prefetchQuery({
     queryKey: queryKeys.groups.all(festivalId),
     queryFn: async () => {
-      const res = await fetch(
-        `/api/v1/groups?festivalId=${encodeURIComponent(festivalId)}`,
+      const response = await apiClient.get<ApiResponse<unknown>>(
+        `/groups?festivalId=${encodeURIComponent(festivalId)}`,
       );
-      return handleResponse<unknown>(res);
+      return handleApiResponse(response.data);
     },
     staleTime: 60 * 1000,
   });
@@ -100,8 +100,10 @@ export async function prefetchProgrammes(
   await queryClient.prefetchQuery({
     queryKey: queryKeys.programmes.all(festivalId, categoryId),
     queryFn: async () => {
-      const res = await fetch(`/api/v1/programmes?${params}`);
-      return handleResponse<unknown>(res);
+      const response = await apiClient.get<ApiResponse<unknown>>(
+        `/programmes?${params}`,
+      );
+      return handleApiResponse(response.data);
     },
     staleTime: 60 * 1000,
   });
@@ -112,10 +114,10 @@ export async function prefetchJudges(festivalId: string) {
   await queryClient.prefetchQuery({
     queryKey: queryKeys.judges.all(festivalId),
     queryFn: async () => {
-      const res = await fetch(
-        `/api/v1/judges?festivalId=${encodeURIComponent(festivalId)}`,
+      const response = await apiClient.get<ApiResponse<unknown>>(
+        `/judges?festivalId=${encodeURIComponent(festivalId)}`,
       );
-      return handleResponse<unknown>(res);
+      return handleApiResponse(response.data);
     },
     staleTime: 60 * 1000,
   });
@@ -131,8 +133,10 @@ export async function prefetchResults(
   await queryClient.prefetchQuery({
     queryKey: queryKeys.results.all(festivalId, programmeId),
     queryFn: async () => {
-      const res = await fetch(`/api/v1/results?${params}`);
-      return handleResponse<unknown>(res);
+      const response = await apiClient.get<ApiResponse<unknown>>(
+        `/results?${params}`,
+      );
+      return handleApiResponse(response.data);
     },
     staleTime: 30 * 1000,
   });
@@ -143,8 +147,9 @@ export async function prefetchMyFestival() {
   await queryClient.prefetchQuery({
     queryKey: queryKeys.myFestival.all,
     queryFn: async () => {
-      const res = await fetch("/api/v1/my-festival");
-      return handleResponse<unknown>(res);
+      const response =
+        await apiClient.get<ApiResponse<unknown>>("/my-festival");
+      return handleApiResponse(response.data);
     },
     staleTime: 60 * 1000,
   });

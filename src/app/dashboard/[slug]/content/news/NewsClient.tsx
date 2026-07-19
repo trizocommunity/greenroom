@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/core/utils/cn";
 import { parseStoredInstant } from "@/core/utils/date-time";
@@ -83,7 +84,13 @@ export function NewsClient({
     useUnsavedChanges();
   const { isReadOnly } = useFestivalReadOnly();
   const [posts, setPosts] = useState<NewsPost[]>(initialPosts);
-  const { refetch: refetchNews } = useNews(festivalId);
+  const {
+    data: newsData,
+    isLoading,
+    isError,
+    error,
+    refetch: refetchNews,
+  } = useNews(festivalId);
   const createNews = useCreateNews();
   const updateNews = useUpdateNews();
   const deleteNews = useDeleteNews();
@@ -224,6 +231,58 @@ export function NewsClient({
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+              News
+            </h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Posts appear on your public news page.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-1/2 mt-2" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-4 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+              News
+            </h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Posts appear on your public news page.
+            </p>
+          </div>
+        </div>
+        <div className="text-center py-8 text-destructive">
+          Error: {error.message}
+        </div>
+      </div>
+    );
+  }
+
+  const displayPosts = newsData ?? posts;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -257,7 +316,7 @@ export function NewsClient({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {posts.map((post) => (
+        {displayPosts.map((post) => (
           <Card
             key={post.id}
             className={cn(

@@ -1,14 +1,8 @@
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { UploadInput, UploadResponse } from "@/api/contracts/upload";
-
-const API_BASE = "/api/v1";
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error.message);
-  return json.data;
-}
+import type { ApiResponse } from "@/lib/api-client";
+import { apiClient, handleApiResponse } from "@/lib/api-client";
 
 async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -23,12 +17,13 @@ export function useCloudinaryUpload() {
   return useMutation<UploadResponse, Error, { file: File; folder: string }>({
     mutationFn: async ({ file, folder }) => {
       const base64Data = await fileToBase64(file);
-      const res = await fetch(`${API_BASE}/upload`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: { file: base64Data, folder } }),
-      });
-      return handleResponse<UploadResponse>(res);
+      const response = await apiClient.post<ApiResponse<UploadResponse>>(
+        "/upload",
+        {
+          data: { file: base64Data, folder },
+        },
+      );
+      return handleApiResponse(response.data);
     },
     onError: (error: { message?: string }) => {
       toast.error(error.message || "Upload failed");
@@ -39,12 +34,14 @@ export function useCloudinaryUpload() {
 export function useUploadFile() {
   return useMutation<UploadResponse, Error, UploadInput>({
     mutationFn: async (data) => {
-      const res = await fetch(`${API_BASE}/upload`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data }),
-      });
-      return handleResponse<UploadResponse>(res);
+      const response = await apiClient.post<ApiResponse<UploadResponse>>(
+        "/upload",
+        { data },
+      );
+      return handleApiResponse(response.data);
+    },
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 }
@@ -52,12 +49,13 @@ export function useUploadFile() {
 export function useDeleteFile() {
   return useMutation<void, Error, { publicId: string }>({
     mutationFn: async ({ publicId }) => {
-      const res = await fetch(`${API_BASE}/upload`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ publicId }),
+      const response = await apiClient.delete<ApiResponse<void>>("/upload", {
+        data: { publicId },
       });
-      return handleResponse<void>(res);
+      return handleApiResponse(response.data);
+    },
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 }

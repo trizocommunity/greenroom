@@ -9,32 +9,22 @@ import type {
 } from "@/api/contracts/payments";
 import { loadRazorpay } from "@/core/integrations/razorpay";
 import type { Tier } from "@/core/types/app-enums";
-
-const API_BASE = "/api/v1";
-
-interface InitiatePaymentResult {
-  paymentId: string;
-  orderId: string;
-  amount: number;
-  currency: string;
-  key: string | undefined;
-}
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error.message);
-  return json.data;
-}
+import type { ApiResponse } from "@/lib/api-client";
+import { apiClient, handleApiResponse } from "@/lib/api-client";
+import { queryKeys } from "./_query-keys";
 
 export function usePaymentStatus() {
   return useQuery<{ status: UserStatus; history: PaymentHistoryItem[] }>({
-    queryKey: ["payments", "status"],
+    queryKey: queryKeys.payments.status,
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/payments`);
-      return handleResponse<{
-        status: UserStatus;
-        history: PaymentHistoryItem[];
-      }>(res);
+      const response =
+        await apiClient.get<
+          ApiResponse<{
+            status: UserStatus;
+            history: PaymentHistoryItem[];
+          }>
+        >("/payments");
+      return handleApiResponse(response.data);
     },
     staleTime: 30 * 1000,
   });
@@ -43,12 +33,10 @@ export function usePaymentStatus() {
 export function useInitiatePayment() {
   return useMutation<InitiatePaymentResponse, Error, InitiatePaymentInput>({
     mutationFn: async (data) => {
-      const res = await fetch(`${API_BASE}/payments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data }),
-      });
-      return handleResponse<InitiatePaymentResponse>(res);
+      const response = await apiClient.post<
+        ApiResponse<InitiatePaymentResponse>
+      >("/payments", { data });
+      return handleApiResponse(response.data);
     },
   });
 }
@@ -56,25 +44,27 @@ export function useInitiatePayment() {
 export function useVerifyPayment() {
   return useMutation<VerifyPaymentResponse, Error, VerifyPaymentInput>({
     mutationFn: async (data) => {
-      const res = await fetch(`${API_BASE}/payments/verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data }),
-      });
-      return handleResponse<VerifyPaymentResponse>(res);
+      const response = await apiClient.post<ApiResponse<VerifyPaymentResponse>>(
+        "/payments/verify",
+        { data },
+      );
+      return handleApiResponse(response.data);
     },
   });
 }
 
 export function usePaymentHistory() {
   return useQuery<{ status: UserStatus; history: PaymentHistoryItem[] }>({
-    queryKey: ["payments", "history"],
+    queryKey: queryKeys.payments.history,
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/payments`);
-      return handleResponse<{
-        status: UserStatus;
-        history: PaymentHistoryItem[];
-      }>(res);
+      const response =
+        await apiClient.get<
+          ApiResponse<{
+            status: UserStatus;
+            history: PaymentHistoryItem[];
+          }>
+        >("/payments");
+      return handleApiResponse(response.data);
     },
     staleTime: 30 * 1000,
   });

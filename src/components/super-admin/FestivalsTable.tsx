@@ -33,7 +33,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 
 export function FestivalsTable() {
-  const { data: festivals = [], isLoading } = useFestivals();
+  const { data: festivals = [], isLoading, isError, error } = useFestivals();
   const deleteMutation = useDeleteFestival();
   const [festivalToDelete, setFestivalToDelete] = useState<Festival | null>(
     null,
@@ -73,6 +73,14 @@ export function FestivalsTable() {
             </CardContent>
           </Card>
         ))}
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="text-center py-8 text-destructive">
+        Error: {error.message}
       </div>
     );
   }

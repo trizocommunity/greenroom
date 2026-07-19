@@ -17,7 +17,7 @@ import { parseStoredInstant } from "@/core/utils/date-time";
 import { Skeleton } from "../ui/skeleton";
 
 export function BillingTab() {
-  const { data: paymentData, isLoading } = usePaymentStatus();
+  const { data: paymentData, isLoading, isError, error } = usePaymentStatus();
   const payments = paymentData?.history ?? [];
 
   if (isLoading) {
@@ -26,6 +26,14 @@ export function BillingTab() {
         <div className="flex justify-center">
           <Skeleton className="h-8 w-8 rounded-full" />
         </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="text-center py-8 text-destructive">
+        Error: {error.message}
       </div>
     );
   }

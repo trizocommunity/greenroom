@@ -1,48 +1,48 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import type {
   PublishResultInput,
   Result,
   SaveResultInput,
 } from "@/api/contracts/results";
-
-const API_BASE = "/api/v1";
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error.message);
-  return json.data;
-}
+import type { ApiResponse } from "@/lib/api-client";
+import { apiClient, handleApiResponse } from "@/lib/api-client";
+import { createUpdateMutation } from "./_mutation-factory";
+import { queryKeys } from "./_query-keys";
 
 export function useResults(festivalId: string, programmeId?: string) {
   return useQuery<Result[]>({
-    queryKey: ["results", festivalId, programmeId],
+    queryKey: queryKeys.results.all(festivalId, programmeId),
     queryFn: async () => {
       const params = new URLSearchParams({ festivalId });
       if (programmeId) params.set("programmeId", programmeId);
-      const res = await fetch(`${API_BASE}/results?${params}`);
-      return handleResponse<Result[]>(res);
+      const response = await apiClient.get<ApiResponse<Result[]>>(
+        `/results?${params}`,
+      );
+      return handleApiResponse(response.data);
     },
     enabled: !!festivalId,
     staleTime: 30 * 1000,
   });
 }
 
-export function useSaveResult() {
-  const qc = useQueryClient();
-  return useMutation<Result, Error, SaveResultInput>({
-    mutationFn: async (data) => {
-      const res = await fetch(`${API_BASE}/results`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data }),
-      });
-      return handleResponse<Result>(res);
-    },
-    onSuccess: (_data, vars) => {
-      qc.invalidateQueries({ queryKey: ["results", vars.festivalId] });
-    },
-  });
-}
+export const useSaveResult = createUpdateMutation<Result, SaveResultInput>({
+  getQueryKey: (data) => queryKeys.results.all(data.festivalId),
+  mutationFn: async (data) => {
+    const response = await apiClient.post<ApiResponse<Result>>("/results", {
+      data,
+    });
+    return handleApiResponse(response.data);
+  },
+  updateOptimisticItem: (item, data) =>
+    ({
+      ...item,
+      ...data,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }) as Result,
+  getItemId: (item) => item.id,
+});
 
 export function usePublishResults() {
   const qc = useQueryClient();
@@ -53,24 +53,21 @@ export function usePublishResults() {
     { prev: Result[] | undefined }
   >({
     mutationFn: async (data) => {
-      const res = await fetch(`${API_BASE}/results/publish`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data }),
-      });
-      return handleResponse<void>(res);
+      const response = await apiClient.post<ApiResponse<void>>(
+        "/results/publish",
+        { data },
+      );
+      return handleApiResponse(response.data);
     },
     onMutate: async ({ festivalId, programmeId }) => {
       await qc.cancelQueries({
-        queryKey: ["results", festivalId, programmeId],
+        queryKey: queryKeys.results.all(festivalId, programmeId),
       });
-      const prev = qc.getQueryData<Result[]>([
-        "results",
-        festivalId,
-        programmeId,
-      ]);
+      const prev = qc.getQueryData<Result[]>(
+        queryKeys.results.all(festivalId, programmeId),
+      );
       qc.setQueryData(
-        ["results", festivalId, programmeId],
+        queryKeys.results.all(festivalId, programmeId),
         (old: Result[] | undefined) =>
           old?.map((r) =>
             r.programmeId === programmeId ? { ...r, isPublished: true } : r,
@@ -78,13 +75,26 @@ export function usePublishResults() {
       );
       return { prev };
     },
-    onError: (_err, { festivalId, programmeId }, ctx) => {
+    onError: (error, { festivalId, programmeId }, ctx) => {
+      toast.error(error.message);
       if (ctx?.prev) {
-        qc.setQueryData(["results", festivalId, programmeId], ctx.prev);
+        qc.setQueryData(
+          queryKeys.results.all(festivalId, programmeId),
+          ctx.prev,
+        );
       }
     },
-    onSettled: (_data, _err, { festivalId, programmeId }) => {
-      qc.invalidateQueries({ queryKey: ["results", festivalId, programmeId] });
+    onSuccess: (_data, { festivalId, programmeId }) => {
+      qc.setQueryData<Result[]>(
+        queryKeys.results.all(festivalId, programmeId),
+        (old) =>
+          old?.map((r) =>
+            r.programmeId === programmeId ? { ...r, isPublished: true } : r,
+          ),
+      );
+      qc.invalidateQueries({
+        queryKey: queryKeys.results.all(festivalId, programmeId),
+      });
     },
   });
 }
@@ -98,24 +108,21 @@ export function useUnpublishResults() {
     { prev: Result[] | undefined }
   >({
     mutationFn: async (data) => {
-      const res = await fetch(`${API_BASE}/results/unpublish`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data }),
-      });
-      return handleResponse<void>(res);
+      const response = await apiClient.post<ApiResponse<void>>(
+        "/results/unpublish",
+        { data },
+      );
+      return handleApiResponse(response.data);
     },
     onMutate: async ({ festivalId, programmeId }) => {
       await qc.cancelQueries({
-        queryKey: ["results", festivalId, programmeId],
+        queryKey: queryKeys.results.all(festivalId, programmeId),
       });
-      const prev = qc.getQueryData<Result[]>([
-        "results",
-        festivalId,
-        programmeId,
-      ]);
+      const prev = qc.getQueryData<Result[]>(
+        queryKeys.results.all(festivalId, programmeId),
+      );
       qc.setQueryData(
-        ["results", festivalId, programmeId],
+        queryKeys.results.all(festivalId, programmeId),
         (old: Result[] | undefined) =>
           old?.map((r) =>
             r.programmeId === programmeId ? { ...r, isPublished: false } : r,
@@ -123,13 +130,26 @@ export function useUnpublishResults() {
       );
       return { prev };
     },
-    onError: (_err, { festivalId, programmeId }, ctx) => {
+    onError: (error, { festivalId, programmeId }, ctx) => {
+      toast.error(error.message);
       if (ctx?.prev) {
-        qc.setQueryData(["results", festivalId, programmeId], ctx.prev);
+        qc.setQueryData(
+          queryKeys.results.all(festivalId, programmeId),
+          ctx.prev,
+        );
       }
     },
-    onSettled: (_data, _err, { festivalId, programmeId }) => {
-      qc.invalidateQueries({ queryKey: ["results", festivalId, programmeId] });
+    onSuccess: (_data, { festivalId, programmeId }) => {
+      qc.setQueryData<Result[]>(
+        queryKeys.results.all(festivalId, programmeId),
+        (old) =>
+          old?.map((r) =>
+            r.programmeId === programmeId ? { ...r, isPublished: false } : r,
+          ),
+      );
+      qc.invalidateQueries({
+        queryKey: queryKeys.results.all(festivalId, programmeId),
+      });
     },
   });
 }

@@ -1,20 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import type { AnalyticsData } from "@/components/super-admin/AnalyticsCharts";
-
-const API_BASE = "/api/v1";
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error.message);
-  return json.data;
-}
+import type { ApiResponse } from "@/lib/api-client";
+import { apiClient, handleApiResponse } from "@/lib/api-client";
+import { queryKeys } from "./_query-keys";
 
 export function useSuperAdminAnalytics(initialData?: AnalyticsData) {
   return useQuery<AnalyticsData>({
-    queryKey: ["super-admin", "analytics"],
+    queryKey: queryKeys.superAdmin.analytics,
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/super-admin/analytics`);
-      return handleResponse<AnalyticsData>(res);
+      const response = await apiClient.get<ApiResponse<AnalyticsData>>(
+        "/super-admin/analytics",
+      );
+      return handleApiResponse(response.data);
     },
     initialData,
     staleTime: 30 * 1000,
@@ -38,10 +35,12 @@ export interface SuperAdminPayment {
 
 export function useSuperAdminPayments() {
   return useQuery<SuperAdminPayment[]>({
-    queryKey: ["super-admin", "payments"],
+    queryKey: queryKeys.superAdmin.payments,
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/super-admin/payments`);
-      return handleResponse<SuperAdminPayment[]>(res);
+      const response = await apiClient.get<ApiResponse<SuperAdminPayment[]>>(
+        "/super-admin/payments",
+      );
+      return handleApiResponse(response.data);
     },
     staleTime: 2 * 60 * 1000,
   });

@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import type {
   RequestOtpInput,
   RequestOtpResponse,
@@ -6,21 +7,17 @@ import type {
   VerifyOtpInput,
   VerifyOtpResponse,
 } from "@/api/contracts/team-leader";
-
-const API_BASE = "/api/v1";
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error.message);
-  return json.data;
-}
+import type { ApiResponse } from "@/lib/api-client";
+import { apiClient, handleApiResponse } from "@/lib/api-client";
+import { queryKeys } from "./_query-keys";
 
 export function useTeamLeaderFestivals() {
   return useQuery<unknown>({
-    queryKey: ["team-leader", "festivals"],
+    queryKey: queryKeys.teamLeader.festivals,
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/team-leader`);
-      return handleResponse<unknown>(res);
+      const response =
+        await apiClient.get<ApiResponse<unknown>>("/team-leader");
+      return handleApiResponse(response.data);
     },
     staleTime: 30 * 1000,
   });
@@ -28,10 +25,12 @@ export function useTeamLeaderFestivals() {
 
 export function useTeamLeaderDashboard() {
   return useQuery<unknown>({
-    queryKey: ["team-leader", "dashboard"],
+    queryKey: queryKeys.teamLeader.dashboard,
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/team-leader/dashboard`);
-      return handleResponse<unknown>(res);
+      const response = await apiClient.get<ApiResponse<unknown>>(
+        "/team-leader/dashboard",
+      );
+      return handleApiResponse(response.data);
     },
     staleTime: 30 * 1000,
   });
@@ -39,10 +38,12 @@ export function useTeamLeaderDashboard() {
 
 export function useTeamLeaderStudents() {
   return useQuery<unknown>({
-    queryKey: ["team-leader", "students"],
+    queryKey: queryKeys.teamLeader.students,
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/team-leader/students`);
-      return handleResponse<unknown>(res);
+      const response = await apiClient.get<ApiResponse<unknown>>(
+        "/team-leader/students",
+      );
+      return handleApiResponse(response.data);
     },
     staleTime: 30 * 1000,
   });
@@ -51,12 +52,14 @@ export function useTeamLeaderStudents() {
 export function useRequestOtp() {
   return useMutation<RequestOtpResponse, Error, RequestOtpInput>({
     mutationFn: async (data) => {
-      const res = await fetch(`${API_BASE}/team-leader/request-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data }),
-      });
-      return handleResponse<RequestOtpResponse>(res);
+      const response = await apiClient.post<ApiResponse<RequestOtpResponse>>(
+        "/team-leader/request-otp",
+        { data },
+      );
+      return handleApiResponse(response.data);
+    },
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 }
@@ -64,12 +67,14 @@ export function useRequestOtp() {
 export function useVerifyOtp() {
   return useMutation<VerifyOtpResponse, Error, VerifyOtpInput>({
     mutationFn: async (data) => {
-      const res = await fetch(`${API_BASE}/team-leader/verify-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data }),
-      });
-      return handleResponse<VerifyOtpResponse>(res);
+      const response = await apiClient.post<ApiResponse<VerifyOtpResponse>>(
+        "/team-leader/verify-otp",
+        { data },
+      );
+      return handleApiResponse(response.data);
+    },
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 }
@@ -77,10 +82,13 @@ export function useVerifyOtp() {
 export function useTeamLeaderLogout() {
   return useMutation<TeamLeaderLogoutResponse, Error, void>({
     mutationFn: async () => {
-      const res = await fetch(`${API_BASE}/team-leader/logout`, {
-        method: "POST",
-      });
-      return handleResponse<TeamLeaderLogoutResponse>(res);
+      const response = await apiClient.post<
+        ApiResponse<TeamLeaderLogoutResponse>
+      >("/team-leader/logout");
+      return handleApiResponse(response.data);
+    },
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 }

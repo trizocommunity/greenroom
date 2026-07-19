@@ -1,19 +1,21 @@
 import "client-only";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api } from "@/lib/api-client";
 
 export const useCreateInvitation = () => {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: {
       email: string;
       festivalId: string;
       festivalRole: "ADMIN" | "ANNOUNCER" | "STAGE_MANAGER" | "MEDIA";
     }) => api.invitations.create(data),
-    onSuccess: () => {
+    onSuccess: (_data, input) => {
       toast.success("Invitation sent");
+      qc.invalidateQueries({ queryKey: ["invitations", input.festivalId] });
     },
     onError: (error: any) => {
       console.error("Create invitation error:", error);
@@ -48,11 +50,13 @@ export const usePendingInvitations = (festivalId: string | null) => {
 };
 
 export const useCancelInvitation = () => {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { invitationId: string }) =>
+    mutationFn: (data: { invitationId: string; festivalId: string }) =>
       api.invitations.cancel(data),
-    onSuccess: () => {
+    onSuccess: (_data, input) => {
       toast.success("Invitation cancelled");
+      qc.invalidateQueries({ queryKey: ["invitations", input.festivalId] });
     },
     onError: (error: any) => {
       console.error("Cancel invitation error:", error);

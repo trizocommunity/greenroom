@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/core/utils/cn";
 import { useCurrentUser } from "@/features/auth/hooks/use-current-user";
 
@@ -23,7 +24,7 @@ interface NavbarProps {
 }
 
 export default function Navbar({ user: initialUser }: NavbarProps) {
-  const { data: currentUser } = useCurrentUser();
+  const { data: currentUser, isLoading, isError } = useCurrentUser();
   const [user, setUser] = React.useState<{ id: string } | null | undefined>(
     initialUser ?? undefined,
   );
@@ -104,7 +105,12 @@ export default function Navbar({ user: initialUser }: NavbarProps) {
 
         {/* CTA */}
         <div className="hidden md:flex items-center gap-4">
-          {user ? (
+          {isLoading ? (
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-9 w-20 rounded-full" />
+              <Skeleton className="h-9 w-24 rounded-full" />
+            </div>
+          ) : isError ? null : user ? (
             <Link href="/profile">
               <Button
                 size="sm"
@@ -173,7 +179,12 @@ export default function Navbar({ user: initialUser }: NavbarProps) {
                 </Link>
               ))}
               <div className="flex flex-col gap-3 mt-4">
-                {user ? (
+                {isLoading ? (
+                  <>
+                    <Skeleton className="h-10 w-full rounded-full" />
+                    <Skeleton className="h-10 w-full rounded-full" />
+                  </>
+                ) : isError ? null : user ? (
                   <Link href="/profile" onClick={() => setIsOpen(false)}>
                     <Button className="w-full justify-center gap-2 rounded-full font-bold uppercase">
                       <User size={16} />

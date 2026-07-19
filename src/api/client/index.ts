@@ -61,7 +61,7 @@ export {
   usePaymentStatus,
   useVerifyPayment,
 } from "./payments";
-export { useProfile, useUpdateProfile } from "./profile";
+export { useProfile, useUpdateInstitution, useUpdateProfile } from "./profile";
 export {
   useCreateProgramme,
   useDeleteProgramme,
@@ -81,6 +81,43 @@ export {
   useSchedule,
   useUpdateScheduleItem,
 } from "./schedule";
+export {
+  useAssignCodeLettersWithSpin,
+  useBulkCreateProgrammes,
+  useClearAllPosterTemplates,
+  useCloseProgrammeReporting,
+  useCreateProgrammeJudgeLink,
+  useCreateScheduleEntry,
+  useDeletePosterTemplateDraft,
+  useDeleteScheduleEntry,
+  useDeleteTeamAssignment,
+  useEditorPreviewBindings,
+  useExportStudentsQrPdf,
+  useListPosterTemplates,
+  useMarkProgrammeAssignmentsBulk,
+  useMarkProgrammeParticipant,
+  usePosterTemplate,
+  usePreviewJudgeSubmission,
+  usePublishedResultTemplates,
+  usePublishPosterTemplate,
+  useReopenProgrammeReporting,
+  useReopenProgrammeReportingSession,
+  useReorderScheduleEntries,
+  useReportingStats,
+  useResetProgrammeReporting,
+  useResetSpinCodeLetters,
+  useSaveBasicProgrammeScores,
+  useSavePosterTemplateDraft,
+  useScanAndReportStudent,
+  useStartProgrammeReporting,
+  useSubmitGroupJudgeScores,
+  useSubmitJudgeScores,
+  useUnpublishPosterTemplate,
+  useUpdateFestivalBranding,
+  useUpdateFestivalSettings,
+  useUpdateScheduleEntry,
+  useVerifyJudgmentLinkPin,
+} from "./server-actions";
 export {
   useCreateStage,
   useDeleteStage,

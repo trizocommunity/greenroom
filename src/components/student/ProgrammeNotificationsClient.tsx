@@ -17,7 +17,12 @@ export function ProgrammeNotificationsClient({
   studentId: string;
   festivalId: string;
 }) {
-  const { data: notifications = [], isLoading } = useNotifications(studentId);
+  const {
+    data: notifications = [],
+    isLoading,
+    isError,
+    error,
+  } = useNotifications(studentId);
   const markAllReadMutation = useMarkAllNotificationsRead();
   const markOneReadMutation = useMarkNotificationRead();
   const unreadCount = notifications.filter((n) => !n.isRead).length;
@@ -49,6 +54,10 @@ export function ProgrammeNotificationsClient({
             <p className="text-sm text-muted-foreground">
               Loading notifications...
             </p>
+          ) : isError ? (
+            <div className="text-sm text-destructive">
+              Error: {error.message}
+            </div>
           ) : notifications.length === 0 ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Bell className="h-4 w-4" />

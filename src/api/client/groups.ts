@@ -1,26 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import type {
   CreateGroupInput,
   Group,
   UpdateGroupInput,
 } from "@/api/contracts/groups";
-
-const API_BASE = "/api/v1";
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error.message);
-  return json.data;
-}
+import type { ApiResponse } from "@/lib/api-client";
+import { apiClient, handleApiResponse } from "@/lib/api-client";
+import { queryKeys } from "./_query-keys";
 
 export function useGroups(festivalId: string) {
   return useQuery<Group[]>({
-    queryKey: ["groups", festivalId],
+    queryKey: queryKeys.groups.all(festivalId),
     queryFn: async () => {
-      const res = await fetch(
-        `${API_BASE}/groups?festivalId=${encodeURIComponent(festivalId)}`,
+      const response = await apiClient.get<ApiResponse<Group[]>>(
+        `/groups?festivalId=${encodeURIComponent(festivalId)}`,
       );
-      return handleResponse<Group[]>(res);
+      return handleApiResponse(response.data);
     },
     enabled: !!festivalId,
     staleTime: 30 * 1000,
@@ -36,19 +32,15 @@ export function useCreateGroup() {
     { prev: Group[] | undefined }
   >({
     mutationFn: async ({ festivalId, data }) => {
-      const res = await fetch(
-        `${API_BASE}/groups?festivalId=${encodeURIComponent(festivalId)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data }),
-        },
+      const response = await apiClient.post<ApiResponse<Group>>(
+        `/groups?festivalId=${encodeURIComponent(festivalId)}`,
+        { data },
       );
-      return handleResponse<Group>(res);
+      return handleApiResponse(response.data);
     },
     onMutate: async ({ festivalId, data }) => {
-      await qc.cancelQueries({ queryKey: ["groups", festivalId] });
-      const prev = qc.getQueryData<Group[]>(["groups", festivalId]);
+      await qc.cancelQueries({ queryKey: queryKeys.groups.all(festivalId) });
+      const prev = qc.getQueryData<Group[]>(queryKeys.groups.all(festivalId));
       const tempId = `temp-${Date.now()}`;
       const optimisticGroup: Group = {
         id: tempId,
@@ -59,19 +51,21 @@ export function useCreateGroup() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      qc.setQueryData<Group[]>(["groups", festivalId], (old) =>
+      qc.setQueryData<Group[]>(queryKeys.groups.all(festivalId), (old) =>
         old ? [...old, optimisticGroup] : [optimisticGroup],
       );
       return { prev };
     },
     onError: (_err, { festivalId }, ctx) => {
+      toast.error(_err.message);
       if (ctx?.prev) {
-        qc.setQueryData(["groups", festivalId], ctx.prev);
+        qc.setQueryData(queryKeys.groups.all(festivalId), ctx.prev);
       }
     },
     onSettled: (_data, _err, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["groups", festivalId] });
-      qc.invalidateQueries({ queryKey: ["students", festivalId] });
+      return qc.invalidateQueries({
+        queryKey: queryKeys.groups.all(festivalId),
+      });
     },
   });
 }
@@ -85,20 +79,16 @@ export function useUpdateGroup() {
     { prev: Group[] | undefined }
   >({
     mutationFn: async ({ festivalId, groupId, data }) => {
-      const res = await fetch(
-        `${API_BASE}/groups/${groupId}?festivalId=${encodeURIComponent(festivalId)}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data }),
-        },
+      const response = await apiClient.put<ApiResponse<Group>>(
+        `/groups/${groupId}?festivalId=${encodeURIComponent(festivalId)}`,
+        { data },
       );
-      return handleResponse<Group>(res);
+      return handleApiResponse(response.data);
     },
     onMutate: async ({ festivalId, groupId, data }) => {
-      await qc.cancelQueries({ queryKey: ["groups", festivalId] });
-      const prev = qc.getQueryData<Group[]>(["groups", festivalId]);
-      qc.setQueryData<Group[]>(["groups", festivalId], (old) =>
+      await qc.cancelQueries({ queryKey: queryKeys.groups.all(festivalId) });
+      const prev = qc.getQueryData<Group[]>(queryKeys.groups.all(festivalId));
+      qc.setQueryData<Group[]>(queryKeys.groups.all(festivalId), (old) =>
         old?.map((g) =>
           g.id === groupId
             ? {
@@ -112,13 +102,15 @@ export function useUpdateGroup() {
       return { prev };
     },
     onError: (_err, { festivalId }, ctx) => {
+      toast.error(_err.message);
       if (ctx?.prev) {
-        qc.setQueryData(["groups", festivalId], ctx.prev);
+        qc.setQueryData(queryKeys.groups.all(festivalId), ctx.prev);
       }
     },
     onSettled: (_data, _err, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["groups", festivalId] });
-      qc.invalidateQueries({ queryKey: ["students", festivalId] });
+      return qc.invalidateQueries({
+        queryKey: queryKeys.groups.all(festivalId),
+      });
     },
   });
 }
@@ -132,27 +124,30 @@ export function useDeleteGroup() {
     { prev: Group[] | undefined }
   >({
     mutationFn: async ({ festivalId, groupId }) => {
-      const res = await fetch(
-        `${API_BASE}/groups/${groupId}?festivalId=${encodeURIComponent(festivalId)}`,
-        { method: "DELETE" },
+      const response = await apiClient.delete<ApiResponse<void>>(
+        `/groups/${groupId}?festivalId=${encodeURIComponent(festivalId)}`,
       );
-      return handleResponse<void>(res);
+      return handleApiResponse(response.data);
     },
     onMutate: async ({ festivalId, groupId }) => {
-      await qc.cancelQueries({ queryKey: ["groups", festivalId] });
-      const prev = qc.getQueryData<Group[]>(["groups", festivalId]);
-      qc.setQueryData(["groups", festivalId], (old: Group[] | undefined) =>
-        old?.filter((g) => g.id !== groupId),
+      await qc.cancelQueries({ queryKey: queryKeys.groups.all(festivalId) });
+      const prev = qc.getQueryData<Group[]>(queryKeys.groups.all(festivalId));
+      qc.setQueryData(
+        queryKeys.groups.all(festivalId),
+        (old: Group[] | undefined) => old?.filter((g) => g.id !== groupId),
       );
       return { prev };
     },
     onError: (_err, { festivalId }, ctx) => {
+      toast.error(_err.message);
       if (ctx?.prev) {
-        qc.setQueryData(["groups", festivalId], ctx.prev);
+        qc.setQueryData(queryKeys.groups.all(festivalId), ctx.prev);
       }
     },
     onSettled: (_data, _err, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: ["groups", festivalId] });
+      return qc.invalidateQueries({
+        queryKey: queryKeys.groups.all(festivalId),
+      });
     },
   });
 }

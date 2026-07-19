@@ -3,21 +3,17 @@ import type {
   JoinedFestival,
   MyFestivalResponse,
 } from "@/api/contracts/my-festival";
-
-const API_BASE = "/api/v1";
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error.message);
-  return json.data;
-}
+import type { ApiResponse } from "@/lib/api-client";
+import { apiClient, handleApiResponse } from "@/lib/api-client";
+import { queryKeys } from "./_query-keys";
 
 export function useMyFestivals() {
   return useQuery<MyFestivalResponse>({
-    queryKey: ["my-festival"],
+    queryKey: queryKeys.myFestival.all,
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/my-festival`);
-      return handleResponse<MyFestivalResponse>(res);
+      const response =
+        await apiClient.get<ApiResponse<MyFestivalResponse>>("/my-festival");
+      return handleApiResponse(response.data);
     },
     staleTime: 30 * 1000,
   });
@@ -25,10 +21,11 @@ export function useMyFestivals() {
 
 export function useJoinedFestivals() {
   return useQuery<JoinedFestival[]>({
-    queryKey: ["my-festival", "joined"],
+    queryKey: queryKeys.myFestival.joined,
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/my-festival`);
-      const data = await handleResponse<MyFestivalResponse>(res);
+      const response =
+        await apiClient.get<ApiResponse<MyFestivalResponse>>("/my-festival");
+      const data = await handleApiResponse(response.data);
       if (!data.festival) return [];
       return [
         {

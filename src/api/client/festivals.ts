@@ -1,26 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import type {
   CreateFestivalInput,
   Festival,
   UpdateFestivalInput,
 } from "@/api/contracts/festivals";
+import type { ApiResponse } from "@/lib/api-client";
+import { apiClient, handleApiResponse } from "@/lib/api-client";
+import { queryKeys } from "./_query-keys";
 
 export type { Festival };
 
-const API_BASE = "/api/v1";
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error.message);
-  return json.data;
-}
-
 export function useFestivals() {
   return useQuery<Festival[]>({
-    queryKey: ["festivals"],
+    queryKey: queryKeys.festivals.all,
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/festivals`);
-      return handleResponse<Festival[]>(res);
+      const response =
+        await apiClient.get<ApiResponse<Festival[]>>("/festivals");
+      return handleApiResponse(response.data);
     },
     staleTime: 30 * 1000,
   });
@@ -28,10 +25,12 @@ export function useFestivals() {
 
 export function useFestival(id: string) {
   return useQuery<Festival>({
-    queryKey: ["festivals", id],
+    queryKey: queryKeys.festivals.detail(id),
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/festivals/${id}`);
-      return handleResponse<Festival>(res);
+      const response = await apiClient.get<ApiResponse<Festival>>(
+        `/festivals/${id}`,
+      );
+      return handleApiResponse(response.data);
     },
     enabled: !!id,
     staleTime: 30 * 1000,
@@ -40,51 +39,113 @@ export function useFestival(id: string) {
 
 export function useCreateFestival() {
   const qc = useQueryClient();
-  return useMutation<Festival, Error, CreateFestivalInput>({
+  return useMutation<
+    Festival,
+    Error,
+    CreateFestivalInput,
+    { prev: Festival[] | undefined }
+  >({
     mutationFn: async (data) => {
-      const res = await fetch(`${API_BASE}/festivals`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data }),
-      });
-      return handleResponse<Festival>(res);
+      const response = await apiClient.post<ApiResponse<Festival>>(
+        "/festivals",
+        { data },
+      );
+      return handleApiResponse(response.data);
+    },
+    onMutate: async (data) => {
+      await qc.cancelQueries({ queryKey: queryKeys.festivals.all });
+      const prev = qc.getQueryData<Festival[]>(queryKeys.festivals.all);
+      qc.setQueryData<Festival[]>(queryKeys.festivals.all, (old) => [
+        ...(old || []),
+        {
+          ...data,
+          id: `temp-${Date.now()}`,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as Festival,
+      ]);
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) {
+        qc.setQueryData(queryKeys.festivals.all, ctx.prev);
+      }
+      toast.error(_err.message);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["festivals"] });
+      return qc.invalidateQueries({ queryKey: queryKeys.festivals.all });
     },
   });
 }
 
 export function useUpdateFestival() {
   const qc = useQueryClient();
-  return useMutation<Festival, Error, UpdateFestivalInput>({
+  return useMutation<
+    Festival,
+    Error,
+    UpdateFestivalInput,
+    { prev: Festival[] | undefined }
+  >({
     mutationFn: async (data) => {
-      const res = await fetch(`${API_BASE}/festivals`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data }),
-      });
-      return handleResponse<Festival>(res);
+      const response = await apiClient.put<ApiResponse<Festival>>(
+        "/festivals",
+        { data },
+      );
+      return handleApiResponse(response.data);
     },
-    onSuccess: (_data, _vars, _ctx) => {
-      qc.invalidateQueries({ queryKey: ["festivals"] });
+    onMutate: async (data) => {
+      await qc.cancelQueries({ queryKey: queryKeys.festivals.all });
+      const prev = qc.getQueryData<Festival[]>(queryKeys.festivals.all);
+      qc.setQueryData<Festival[]>(queryKeys.festivals.all, (old) =>
+        (old || []).map((f) => (f.id === data.id ? { ...f, ...data } : f)),
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) {
+        qc.setQueryData(queryKeys.festivals.all, ctx.prev);
+      }
+      toast.error(_err.message);
+    },
+    onSuccess: () => {
+      return qc.invalidateQueries({ queryKey: queryKeys.festivals.all });
     },
   });
 }
 
 export function useDeleteFestival() {
   const qc = useQueryClient();
-  return useMutation<void, Error, { id: string; reason?: string }>({
+  return useMutation<
+    void,
+    Error,
+    { id: string; reason?: string },
+    { prev: Festival[] | undefined }
+  >({
     mutationFn: async ({ id, reason }) => {
-      const res = await fetch(`${API_BASE}/festivals/${id}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: reason ? JSON.stringify({ reason }) : undefined,
-      });
-      return handleResponse<void>(res);
+      const response = await apiClient.delete<ApiResponse<void>>(
+        `/festivals/${id}`,
+        {
+          data: reason ? { reason } : undefined,
+        },
+      );
+      return handleApiResponse(response.data);
+    },
+    onMutate: async ({ id }) => {
+      await qc.cancelQueries({ queryKey: queryKeys.festivals.all });
+      const prev = qc.getQueryData<Festival[]>(queryKeys.festivals.all);
+      qc.setQueryData<Festival[]>(queryKeys.festivals.all, (old) =>
+        (old || []).filter((f) => f.id !== id),
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) {
+        qc.setQueryData(queryKeys.festivals.all, ctx.prev);
+      }
+      toast.error(_err.message);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["festivals"] });
+      return qc.invalidateQueries({ queryKey: queryKeys.festivals.all });
     },
   });
 }

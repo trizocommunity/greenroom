@@ -1,160 +1,80 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import type { Judge, JudgeInput } from "@/api/contracts/judges";
-
-const API_BASE = "/api/v1";
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error.message);
-  return json.data;
-}
+import type { ApiResponse } from "@/lib/api-client";
+import { apiClient, handleApiResponse } from "@/lib/api-client";
+import {
+  createCreateMutation,
+  createDeleteMutation,
+  createUpdateMutation,
+} from "./_mutation-factory";
+import { queryKeys } from "./_query-keys";
 
 export function useJudges(festivalId: string) {
   return useQuery<Judge[]>({
-    queryKey: ["judges", festivalId],
+    queryKey: queryKeys.judges.all(festivalId),
     queryFn: async () => {
-      const res = await fetch(
-        `${API_BASE}/judges?festivalId=${encodeURIComponent(festivalId)}`,
+      const response = await apiClient.get<ApiResponse<Judge[]>>(
+        `/judges?festivalId=${encodeURIComponent(festivalId)}`,
       );
-      return handleResponse<Judge[]>(res);
+      return handleApiResponse(response.data);
     },
     enabled: !!festivalId,
     staleTime: 30 * 1000,
   });
 }
 
-export function useCreateJudge() {
-  const qc = useQueryClient();
-  return useMutation<
-    Judge,
-    Error,
-    { festivalId: string; data: JudgeInput },
-    { prev: Judge[] | undefined }
-  >({
-    mutationFn: async ({ festivalId, data }) => {
-      const res = await fetch(
-        `${API_BASE}/judges?festivalId=${encodeURIComponent(festivalId)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data }),
-        },
-      );
-      return handleResponse<Judge>(res);
-    },
-    onMutate: async ({ festivalId, data }) => {
-      await qc.cancelQueries({ queryKey: ["judges", festivalId] });
-      const prev = qc.getQueryData<Judge[]>(["judges", festivalId]);
-      const tempId = `temp-${Date.now()}`;
-      const optimisticJudge: Judge = {
-        id: tempId,
-        festivalId,
-        name: data.name,
-        description: data.description ?? null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      qc.setQueryData<Judge[]>(["judges", festivalId], (old) =>
-        old ? [...old, optimisticJudge] : [optimisticJudge],
-      );
-      return { prev };
-    },
-    onError: (_err, { festivalId }, ctx) => {
-      if (ctx?.prev) {
-        qc.setQueryData(["judges", festivalId], ctx.prev);
-      }
-    },
-    onSettled: (_data, _err, { festivalId }) => {
-      qc.invalidateQueries({
-        queryKey: ["judges", festivalId],
-        refetchType: "none",
-      });
-    },
-  });
-}
+export const useCreateJudge = createCreateMutation<
+  Judge,
+  { festivalId: string; data: JudgeInput }
+>({
+  getQueryKey: ({ festivalId }) => queryKeys.judges.all(festivalId),
+  mutationFn: async ({ festivalId, data }) => {
+    const response = await apiClient.post<ApiResponse<Judge>>(
+      `/judges?festivalId=${encodeURIComponent(festivalId)}`,
+      { data },
+    );
+    return handleApiResponse(response.data);
+  },
+  createOptimisticItem: ({ festivalId, data }, tempId) => ({
+    id: tempId,
+    festivalId,
+    name: data.name,
+    description: data.description ?? null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }),
+});
 
-export function useUpdateJudge() {
-  const qc = useQueryClient();
-  return useMutation<
-    Judge,
-    Error,
-    { festivalId: string; judgeId: string; data: JudgeInput },
-    { prev: Judge[] | undefined }
-  >({
-    mutationFn: async ({ festivalId, judgeId, data }) => {
-      const res = await fetch(
-        `${API_BASE}/judges/${judgeId}?festivalId=${encodeURIComponent(festivalId)}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data }),
-        },
-      );
-      return handleResponse<Judge>(res);
-    },
-    onMutate: async ({ festivalId, judgeId, data }) => {
-      await qc.cancelQueries({ queryKey: ["judges", festivalId] });
-      const prev = qc.getQueryData<Judge[]>(["judges", festivalId]);
-      qc.setQueryData<Judge[]>(["judges", festivalId], (old) =>
-        old?.map((j) =>
-          j.id === judgeId
-            ? {
-                ...j,
-                ...data,
-                updatedAt: new Date().toISOString(),
-              }
-            : j,
-        ),
-      );
-      return { prev };
-    },
-    onError: (_err, { festivalId }, ctx) => {
-      if (ctx?.prev) {
-        qc.setQueryData(["judges", festivalId], ctx.prev);
-      }
-    },
-    onSettled: (_data, _err, { festivalId }) => {
-      qc.invalidateQueries({
-        queryKey: ["judges", festivalId],
-        refetchType: "none",
-      });
-    },
-  });
-}
+export const useUpdateJudge = createUpdateMutation<
+  Judge,
+  { festivalId: string; judgeId: string; data: JudgeInput }
+>({
+  getQueryKey: ({ festivalId }) => queryKeys.judges.all(festivalId),
+  mutationFn: async ({ festivalId, judgeId, data }) => {
+    const response = await apiClient.put<ApiResponse<Judge>>(
+      `/judges/${judgeId}?festivalId=${encodeURIComponent(festivalId)}`,
+      { data },
+    );
+    return handleApiResponse(response.data);
+  },
+  updateOptimisticItem: (item, { data }) => ({
+    ...item,
+    ...data,
+    updatedAt: new Date().toISOString(),
+  }),
+  getItemId: (item) => item.id,
+});
 
-export function useDeleteJudge() {
-  const qc = useQueryClient();
-  return useMutation<
-    void,
-    Error,
-    { festivalId: string; judgeId: string },
-    { prev: Judge[] | undefined }
-  >({
-    mutationFn: async ({ festivalId, judgeId }) => {
-      const res = await fetch(
-        `${API_BASE}/judges/${judgeId}?festivalId=${encodeURIComponent(festivalId)}`,
-        { method: "DELETE" },
-      );
-      return handleResponse<void>(res);
-    },
-    onMutate: async ({ festivalId, judgeId }) => {
-      await qc.cancelQueries({ queryKey: ["judges", festivalId] });
-      const prev = qc.getQueryData<Judge[]>(["judges", festivalId]);
-      qc.setQueryData(["judges", festivalId], (old: Judge[] | undefined) =>
-        old?.filter((j) => j.id !== judgeId),
-      );
-      return { prev };
-    },
-    onError: (_err, { festivalId }, ctx) => {
-      if (ctx?.prev) {
-        qc.setQueryData(["judges", festivalId], ctx.prev);
-      }
-    },
-    onSettled: (_data, _err, { festivalId }) => {
-      qc.invalidateQueries({
-        queryKey: ["judges", festivalId],
-        refetchType: "none",
-      });
-    },
-  });
-}
+export const useDeleteJudge = createDeleteMutation<
+  Judge,
+  { festivalId: string; judgeId: string }
+>({
+  getQueryKey: ({ festivalId }) => queryKeys.judges.all(festivalId),
+  mutationFn: async ({ festivalId, judgeId }) => {
+    const response = await apiClient.delete<ApiResponse<void>>(
+      `/judges/${judgeId}?festivalId=${encodeURIComponent(festivalId)}`,
+    );
+    return handleApiResponse(response.data);
+  },
+  getItemId: ({ judgeId }) => judgeId,
+});

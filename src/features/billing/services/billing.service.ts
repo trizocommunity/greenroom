@@ -21,7 +21,7 @@ export async function getUnusedPayment(
   });
 }
 
-export async function consumePayment(
+async function consumePayment(
   paymentId: string,
   metadata: { festivalId?: string } = {},
 ) {
