@@ -27,7 +27,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { queryKeys } from "@/core/http/query-keys";
+import { queryKeys } from "@/api/client/_query-keys";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
   generateChestNumbers,

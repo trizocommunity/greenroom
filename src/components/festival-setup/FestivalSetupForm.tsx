@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { queryKeys } from "@/core/http/query-keys";
+import { queryKeys } from "@/api/client/_query-keys";
 import { InstitutionType } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
 import {
@@ -167,8 +167,8 @@ export function FestivalSetupForm({
           institutionName: data.institutionName || undefined,
           institutionType: data.institutionType || undefined,
         });
-        queryClient.invalidateQueries({ queryKey: queryKeys.festivals.all() });
-        queryClient.invalidateQueries({ queryKey: queryKeys.payments.all() });
+        queryClient.invalidateQueries({ queryKey: queryKeys.festivals.all });
+        queryClient.invalidateQueries({ queryKey: queryKeys.payments.all });
         setTimeout(() => {
           goTo("done");
           setTimeout(() => {

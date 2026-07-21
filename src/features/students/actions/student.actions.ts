@@ -213,7 +213,12 @@ export async function deleteStudentWithServiceAction(
   const session = await getSession();
   await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
-  return StudentService.delete(id, festivalId);
+  const result = await StudentService.delete(id, festivalId);
+  const festival = await findFestivalById(festivalId);
+  if (festival) {
+    revalidatePath(`/dashboard/${festival.slug}/pre-event-works/students`);
+  }
+  return result;
 }
 
 export async function updateStudentAction(
@@ -233,7 +238,7 @@ export async function updateStudentAction(
   const session = await getSession();
   await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
-  return StudentService.update(id, festivalId, {
+  const result = await StudentService.update(id, festivalId, {
     name: data.name,
     groupId: data.groupId,
     categoryId: data.categoryId,
@@ -243,6 +248,11 @@ export async function updateStudentAction(
     age: data.age,
     standard: data.standard,
   });
+  const festival = await findFestivalById(festivalId);
+  if (festival) {
+    revalidatePath(`/dashboard/${festival.slug}/pre-event-works/students`);
+  }
+  return result;
 }
 
 export async function exportStudentsToExcelAction(

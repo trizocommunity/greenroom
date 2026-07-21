@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { queryKeys } from "@/core/http/query-keys";
+import { queryKeys } from "@/api/client/_query-keys";
 import {
   bulkCreateProgrammesAction,
   validateProgrammesAction,
@@ -480,7 +480,7 @@ export function BulkUploadProgrammesModal({
 
     if (result.success) {
       queryClient.invalidateQueries({
-        queryKey: queryKeys.programmes.list(festivalId),
+        queryKey: queryKeys.programmes.all(festivalId),
       });
     }
     // Narrow the result type to access .error safely across all union branches

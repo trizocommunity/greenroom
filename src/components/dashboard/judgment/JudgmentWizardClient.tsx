@@ -32,7 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ERROR_MESSAGES } from "@/core/errors/errors";
-import { queryKeys } from "@/core/http/query-keys";
+import { queryKeys } from "@/api/client/_query-keys";
 import type { ProgrammeJudgmentStatus } from "@/core/types/app-enums";
 import {
   formatStoredDateTime,

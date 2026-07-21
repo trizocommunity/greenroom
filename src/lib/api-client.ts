@@ -61,7 +61,7 @@ export const api = {
       return handleRes(res);
     },
     me: async () => {
-      const res = await fetch(`${noBaseURL}/api/auth/me`, {
+      const res = await fetch(`${noBaseURL}/api/v1/auth`, {
         credentials: "include",
       });
       return handleRes(res);

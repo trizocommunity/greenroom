@@ -334,6 +334,64 @@ async function seed() {
     updatedAt: now,
   });
 
+  // 5b. Create PRO tier payment record
+  const validUntil = new Date();
+  validUntil.setDate(validUntil.getDate() + 30);
+
+  await db.insert(schema.payment).values({
+    id: crypto.randomUUID(),
+    amount: 6000,
+    currency: "INR",
+    providerId: "SEED_PAYMENT",
+    userId: festivalOwnerId,
+    festivalId,
+    purpose: "FESTIVAL_CREATION",
+    status: "PAID",
+    used: false,
+    validUntil: validUntil.toISOString(),
+    tier: "PRO",
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  // 5c. Upsert user purchase summary
+  const existingSummary = await db.query.userPurchaseSummary.findFirst({
+    where: (s, { eq }) => eq(s.userId, festivalOwnerId),
+  });
+
+  if (existingSummary) {
+    await db
+      .update(schema.userPurchaseSummary)
+      .set({
+        totalSpend: existingSummary.totalSpend + 6000,
+        festivalsCount: existingSummary.festivalsCount + 1,
+        festivalIds: [
+          ...((existingSummary.festivalIds as string[]) || []),
+          festivalId,
+        ],
+        planCountsByTier: {
+          ...((existingSummary.planCountsByTier as Record<string, number>) ||
+            {}),
+          PRO:
+            ((existingSummary.planCountsByTier as Record<string, number>)
+              ?.PRO || 0) + 1,
+        },
+        lastPurchaseAt: now,
+        updatedAt: now,
+      })
+      .where(eq(schema.userPurchaseSummary.userId, festivalOwnerId));
+  } else {
+    await db.insert(schema.userPurchaseSummary).values({
+      userId: festivalOwnerId,
+      totalSpend: 6000,
+      festivalsCount: 1,
+      festivalIds: [festivalId],
+      planCountsByTier: { PRO: 1 },
+      lastPurchaseAt: now,
+      updatedAt: now,
+    });
+  }
+
   // 6. Add Owner & Members to festival_member table
   await db.insert(schema.festivalMember).values({
     id: crypto.randomUUID(),
@@ -984,6 +1042,18 @@ async function seed() {
   }
 
   const leadersCount = createdStudents.filter((s) => s.isTeamLeader).length;
+
+  // 14. Update festival usage counts to reflect seeded data
+  await db
+    .update(schema.festival)
+    .set({
+      studentsCount: createdStudents.length,
+      programmesCount: scheduledProgrammesCount,
+      stagesCount: createdStages.length,
+      storageUsedMb: 0,
+      updatedAt: now,
+    })
+    .where(eq(schema.festival.id, festivalId));
 
   console.log("\n✨ AHLUSSUFFA IGS PRO TIER FESTIVAL SUCCESSFULLY SEEDED!");
   console.log("──────────────────────────────────────────────────────────");
