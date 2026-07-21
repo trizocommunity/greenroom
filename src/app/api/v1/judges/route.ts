@@ -15,7 +15,7 @@ const handler = createProtectedHandler({
       return badRequest("MISSING_PARAM", "festivalId is required");
     await assertFestivalAccess(user, festivalId);
     const data = await listFestivalJudgesWithAssignments(festivalId);
-    return ok(data, "public, max-age=60, stale-while-revalidate=300");
+    return ok(data);
   },
 
   async POST({ user, request }) {

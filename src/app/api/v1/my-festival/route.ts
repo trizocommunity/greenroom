@@ -6,7 +6,7 @@ import { findFestivalByOwnerId } from "@/features/festivals/repositories/festiva
 const handler = createProtectedHandler({
   async GET({ user }) {
     const festival = await findFestivalByOwnerId(user!.userId);
-    return ok({ festival }, "public, max-age=60, stale-while-revalidate=300");
+    return ok({ festival });
   },
 });
 

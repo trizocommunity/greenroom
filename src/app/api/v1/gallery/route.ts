@@ -23,7 +23,7 @@ const handler = createProtectedHandler({
       where: eq(festivalGalleryImage.festivalId, festivalId),
       orderBy: (t, { asc }) => [asc(t.order)],
     });
-    return ok(images, "public, max-age=60, stale-while-revalidate=300");
+    return ok(images);
   },
 
   async POST({ user, request }) {
