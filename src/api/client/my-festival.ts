@@ -6,6 +6,7 @@ import type {
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
 import { queryKeys } from "./_query-keys";
+import { STALE_TIME } from "@/lib/query-utils";
 
 export function useMyFestivals() {
   return useQuery<MyFestivalResponse>({
@@ -15,7 +16,7 @@ export function useMyFestivals() {
         await apiClient.get<ApiResponse<MyFestivalResponse>>("/my-festival");
       return handleApiResponse(response.data);
     },
-    staleTime: 30 * 1000,
+    staleTime: STALE_TIME.standard,
   });
 }
 
@@ -35,6 +36,6 @@ export function useJoinedFestivals() {
         },
       ];
     },
-    staleTime: 30 * 1000,
+    staleTime: STALE_TIME.standard,
   });
 }

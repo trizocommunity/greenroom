@@ -5,6 +5,7 @@ import type { UpdateProfileInput } from "@/api/contracts/profile";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
 import { queryKeys } from "./_query-keys";
+import { STALE_TIME } from "@/lib/query-utils";
 
 export interface UserWithInstitution {
   id: string;
@@ -38,18 +39,13 @@ export function useProfile() {
         await apiClient.get<ApiResponse<UserWithInstitution>>("/profile");
       return handleApiResponse(response.data);
     },
-    staleTime: 30 * 1000,
+    staleTime: STALE_TIME.standard,
   });
 }
 
 export function useUpdateProfile() {
   const qc = useQueryClient();
-  return useMutation<
-    UserWithInstitution,
-    Error,
-    UpdateProfileInput,
-    { prev: UserWithInstitution | undefined }
-  >({
+  return useMutation<UserWithInstitution, Error, UpdateProfileInput>({
     mutationFn: async (data) => {
       const response = await apiClient.put<ApiResponse<UserWithInstitution>>(
         "/profile",
@@ -57,22 +53,11 @@ export function useUpdateProfile() {
       );
       return handleApiResponse(response.data);
     },
-    onMutate: async (data) => {
-      await qc.cancelQueries({ queryKey: queryKeys.profile.all });
-      const prev = qc.getQueryData<UserWithInstitution>(queryKeys.profile.all);
-      qc.setQueryData<UserWithInstitution>(queryKeys.profile.all, (old) =>
-        old ? { ...old, ...data } : old,
-      );
-      return { prev };
-    },
-    onError: (_err, _vars, ctx) => {
-      toast.error(_err.message);
-      if (ctx?.prev) {
-        qc.setQueryData(queryKeys.profile.all, ctx.prev);
-      }
-    },
     onSuccess: () => {
-      return qc.invalidateQueries({ queryKey: queryKeys.profile.all });
+      qc.invalidateQueries({ queryKey: queryKeys.profile.all });
+    },
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 }
@@ -87,12 +72,7 @@ export const updateInstitutionInput = z.object({
 
 export function useUpdateInstitution() {
   const qc = useQueryClient();
-  return useMutation<
-    UserWithInstitution,
-    Error,
-    z.infer<typeof updateInstitutionInput>,
-    { prev: UserWithInstitution | undefined }
-  >({
+  return useMutation<UserWithInstitution, Error, z.infer<typeof updateInstitutionInput>>({
     mutationFn: async (data) => {
       const response = await apiClient.put<ApiResponse<UserWithInstitution>>(
         "/profile/institution",
@@ -100,29 +80,11 @@ export function useUpdateInstitution() {
       );
       return handleApiResponse(response.data);
     },
-    onMutate: async (data) => {
-      await qc.cancelQueries({ queryKey: queryKeys.profile.all });
-      const prev = qc.getQueryData<UserWithInstitution>(queryKeys.profile.all);
-      qc.setQueryData<UserWithInstitution>(queryKeys.profile.all, (old) =>
-        old
-          ? {
-              ...old,
-              institution: old.institution
-                ? { ...old.institution, ...data }
-                : null,
-            }
-          : old,
-      );
-      return { prev };
-    },
-    onError: (_err, _vars, ctx) => {
-      toast.error(_err.message);
-      if (ctx?.prev) {
-        qc.setQueryData(queryKeys.profile.all, ctx.prev);
-      }
-    },
     onSuccess: () => {
-      return qc.invalidateQueries({ queryKey: queryKeys.profile.all });
+      qc.invalidateQueries({ queryKey: queryKeys.profile.all });
+    },
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 }

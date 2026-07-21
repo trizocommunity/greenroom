@@ -43,10 +43,15 @@ export const queryKeys = {
     all: (festivalId: string, programmeId?: string) =>
       ["results", festivalId, programmeId] as const,
   },
+  judgment: {
+    dashboard: (festivalId: string) =>
+      ["judgment", "dashboard", festivalId] as const,
+  },
   notifications: {
     all: (studentId: string) => ["notifications", studentId] as const,
   },
   payments: {
+    all: ["payments"] as const,
     status: ["payments", "status"] as const,
     history: ["payments", "history"] as const,
   },

@@ -12,6 +12,7 @@ import type { Tier } from "@/core/types/app-enums";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
 import { queryKeys } from "./_query-keys";
+import { STALE_TIME } from "@/lib/query-utils";
 
 export function usePaymentStatus() {
   return useQuery<{ status: UserStatus; history: PaymentHistoryItem[] }>({
@@ -26,7 +27,7 @@ export function usePaymentStatus() {
         >("/payments");
       return handleApiResponse(response.data);
     },
-    staleTime: 30 * 1000,
+    staleTime: STALE_TIME.standard,
   });
 }
 
@@ -66,7 +67,7 @@ export function usePaymentHistory() {
         >("/payments");
       return handleApiResponse(response.data);
     },
-    staleTime: 30 * 1000,
+    staleTime: STALE_TIME.standard,
   });
 }
 

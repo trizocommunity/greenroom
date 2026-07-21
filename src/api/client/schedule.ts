@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import type {
   CreateScheduleEntryInput,
   ScheduleEntry,
@@ -6,12 +7,8 @@ import type {
 } from "@/api/contracts/schedule";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
-import {
-  createCreateMutation,
-  createDeleteMutation,
-  createUpdateMutation,
-} from "./_mutation-factory";
 import { queryKeys } from "./_query-keys";
+import { STALE_TIME } from "@/lib/query-utils";
 
 export function useSchedule(
   festivalId: string,
@@ -28,73 +25,63 @@ export function useSchedule(
       return handleApiResponse(response.data);
     },
     enabled: !!festivalId,
-    staleTime: 30 * 1000,
+    staleTime: STALE_TIME.standard,
     refetchInterval: 60 * 1000,
   });
 }
 
-export const useCreateScheduleItem = createCreateMutation<
-  ScheduleEntry,
-  { festivalId: string; data: CreateScheduleEntryInput }
->({
-  getQueryKey: ({ festivalId }) => queryKeys.schedule.all(festivalId),
-  mutationFn: async ({ festivalId, data }) => {
-    const response = await apiClient.post<ApiResponse<ScheduleEntry>>(
-      `/schedule?festivalId=${encodeURIComponent(festivalId)}`,
-      { data },
-    );
-    return handleApiResponse(response.data);
-  },
-  createOptimisticItem: ({ festivalId, data }, tempId) => ({
-    id: tempId,
-    festivalId,
-    type: data.type,
-    programmeId: data.programmeId ?? null,
-    stageId: data.stageId ?? null,
-    title: data.title ?? null,
-    description: data.description ?? null,
-    speakers: data.speakers ?? null,
-    sessionType: data.sessionType ?? null,
-    startTime: data.startTime,
-    endTime: data.endTime ?? null,
-    order: data.order ?? 0,
-    scheduleDayKey: data.scheduleDayKey ?? null,
-    createdBy: null,
-    updatedBy: null,
-    updatedAt: new Date().toISOString(),
-  }),
-});
+export function useCreateScheduleItem() {
+  const qc = useQueryClient();
+  return useMutation<ScheduleEntry, Error, { festivalId: string; data: CreateScheduleEntryInput }>({
+    mutationFn: async ({ festivalId, data }) => {
+      const response = await apiClient.post<ApiResponse<ScheduleEntry>>(
+        `/schedule?festivalId=${encodeURIComponent(festivalId)}`,
+        { data },
+      );
+      return handleApiResponse(response.data);
+    },
+    onSuccess: (_data, { festivalId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.schedule.all(festivalId) });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+}
 
-export const useUpdateScheduleItem = createUpdateMutation<
-  ScheduleEntry,
-  { festivalId: string; entryId: string; data: UpdateScheduleEntryInput }
->({
-  getQueryKey: ({ festivalId }) => queryKeys.schedule.all(festivalId),
-  mutationFn: async ({ festivalId, entryId, data }) => {
-    const response = await apiClient.put<ApiResponse<ScheduleEntry>>(
-      `/schedule/${entryId}?festivalId=${encodeURIComponent(festivalId)}`,
-      { data },
-    );
-    return handleApiResponse(response.data);
-  },
-  updateOptimisticItem: (item, { data }) => ({
-    ...item,
-    ...data,
-    updatedAt: new Date().toISOString(),
-  }),
-  getItemId: (item) => item.id,
-});
+export function useUpdateScheduleItem() {
+  const qc = useQueryClient();
+  return useMutation<ScheduleEntry, Error, { festivalId: string; entryId: string; data: UpdateScheduleEntryInput }>({
+    mutationFn: async ({ festivalId, entryId, data }) => {
+      const response = await apiClient.put<ApiResponse<ScheduleEntry>>(
+        `/schedule/${entryId}?festivalId=${encodeURIComponent(festivalId)}`,
+        { data },
+      );
+      return handleApiResponse(response.data);
+    },
+    onSuccess: (_data, { festivalId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.schedule.all(festivalId) });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+}
 
-export const useDeleteScheduleItem = createDeleteMutation<
-  ScheduleEntry,
-  { festivalId: string; entryId: string }
->({
-  getQueryKey: ({ festivalId }) => queryKeys.schedule.all(festivalId),
-  mutationFn: async ({ festivalId, entryId }) => {
-    const response = await apiClient.delete<ApiResponse<void>>(
-      `/schedule/${entryId}?festivalId=${encodeURIComponent(festivalId)}`,
-    );
-    return handleApiResponse(response.data);
-  },
-  getItemId: ({ entryId }) => entryId,
-});
+export function useDeleteScheduleItem() {
+  const qc = useQueryClient();
+  return useMutation<void, Error, { festivalId: string; entryId: string }>({
+    mutationFn: async ({ festivalId, entryId }) => {
+      const response = await apiClient.delete<ApiResponse<void>>(
+        `/schedule/${entryId}?festivalId=${encodeURIComponent(festivalId)}`,
+      );
+      return handleApiResponse(response.data);
+    },
+    onSuccess: (_data, { festivalId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.schedule.all(festivalId) });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+}

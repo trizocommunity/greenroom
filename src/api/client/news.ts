@@ -9,6 +9,7 @@ import type {
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
 import { queryKeys } from "./_query-keys";
+import { STALE_TIME } from "@/lib/query-utils";
 
 export function useNews(festivalId: string) {
   return useQuery<NewsPost[]>({
@@ -20,18 +21,13 @@ export function useNews(festivalId: string) {
       return handleApiResponse(response.data);
     },
     enabled: !!festivalId,
-    staleTime: 30 * 1000,
+    staleTime: STALE_TIME.standard,
   });
 }
 
 export function useCreateNews() {
   const qc = useQueryClient();
-  return useMutation<
-    NewsPost,
-    Error,
-    { festivalId: string; data: CreateNewsPostInput },
-    { prev: NewsPost[] | undefined }
-  >({
+  return useMutation<NewsPost, Error, { festivalId: string; data: CreateNewsPostInput }>({
     mutationFn: async ({ festivalId, data }) => {
       const response = await apiClient.post<ApiResponse<NewsPost>>(
         `/news?festivalId=${encodeURIComponent(festivalId)}`,
@@ -39,42 +35,18 @@ export function useCreateNews() {
       );
       return handleApiResponse(response.data);
     },
-    onMutate: async ({ festivalId, data }) => {
-      await qc.cancelQueries({ queryKey: queryKeys.news.all(festivalId) });
-      const prev = qc.getQueryData<NewsPost[]>(queryKeys.news.all(festivalId));
-      const tempPost: NewsPost = {
-        id: `temp-${Date.now()}`,
-        ...data,
-        festivalId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      } as NewsPost;
-      qc.setQueryData<NewsPost[]>(queryKeys.news.all(festivalId), (old) => [
-        ...(old || []),
-        tempPost,
-      ]);
-      return { prev };
-    },
-    onError: (_err, { festivalId }, ctx) => {
-      toast.error(_err.message);
-      if (ctx?.prev) {
-        qc.setQueryData(queryKeys.news.all(festivalId), ctx.prev);
-      }
-    },
     onSuccess: (_data, { festivalId }) => {
-      return qc.invalidateQueries({ queryKey: queryKeys.news.all(festivalId) });
+      qc.invalidateQueries({ queryKey: queryKeys.news.all(festivalId) });
+    },
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 }
 
 export function useUpdateNews() {
   const qc = useQueryClient();
-  return useMutation<
-    NewsPost,
-    Error,
-    { festivalId: string; postId: string; data: UpdateNewsPostInput },
-    { prev: NewsPost[] | undefined }
-  >({
+  return useMutation<NewsPost, Error, { festivalId: string; postId: string; data: UpdateNewsPostInput }>({
     mutationFn: async ({ festivalId, postId, data }) => {
       const response = await apiClient.put<ApiResponse<NewsPost>>(
         `/news?festivalId=${encodeURIComponent(festivalId)}`,
@@ -82,34 +54,18 @@ export function useUpdateNews() {
       );
       return handleApiResponse(response.data);
     },
-    onMutate: async ({ festivalId, postId, data }) => {
-      await qc.cancelQueries({ queryKey: queryKeys.news.all(festivalId) });
-      const prev = qc.getQueryData<NewsPost[]>(queryKeys.news.all(festivalId));
-      qc.setQueryData<NewsPost[]>(queryKeys.news.all(festivalId), (old) =>
-        (old || []).map((p) => (p.id === postId ? { ...p, ...data } : p)),
-      );
-      return { prev };
-    },
-    onError: (_err, { festivalId }, ctx) => {
-      toast.error(_err.message);
-      if (ctx?.prev) {
-        qc.setQueryData(queryKeys.news.all(festivalId), ctx.prev);
-      }
-    },
     onSuccess: (_data, { festivalId }) => {
-      return qc.invalidateQueries({ queryKey: queryKeys.news.all(festivalId) });
+      qc.invalidateQueries({ queryKey: queryKeys.news.all(festivalId) });
+    },
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 }
 
 export function useDeleteNews() {
   const qc = useQueryClient();
-  return useMutation<
-    void,
-    Error,
-    DeleteNewsPostInput,
-    { prev: NewsPost[] | undefined }
-  >({
+  return useMutation<void, Error, DeleteNewsPostInput>({
     mutationFn: async (data) => {
       const response = await apiClient.delete<ApiResponse<void>>(
         `/news?festivalId=${encodeURIComponent(data.festivalId)}`,
@@ -117,22 +73,11 @@ export function useDeleteNews() {
       );
       return handleApiResponse(response.data);
     },
-    onMutate: async ({ festivalId, postId }) => {
-      await qc.cancelQueries({ queryKey: queryKeys.news.all(festivalId) });
-      const prev = qc.getQueryData<NewsPost[]>(queryKeys.news.all(festivalId));
-      qc.setQueryData<NewsPost[]>(queryKeys.news.all(festivalId), (old) =>
-        (old || []).filter((p) => p.id !== postId),
-      );
-      return { prev };
-    },
-    onError: (_err, { festivalId }, ctx) => {
-      toast.error(_err.message);
-      if (ctx?.prev) {
-        qc.setQueryData(queryKeys.news.all(festivalId), ctx.prev);
-      }
-    },
     onSuccess: (_data, { festivalId }) => {
-      return qc.invalidateQueries({ queryKey: queryKeys.news.all(festivalId) });
+      qc.invalidateQueries({ queryKey: queryKeys.news.all(festivalId) });
+    },
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 }

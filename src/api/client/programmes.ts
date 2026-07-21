@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import type {
   CreateProgrammeInput,
   Programme,
@@ -6,12 +7,8 @@ import type {
 } from "@/api/contracts/programmes";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
-import {
-  createCreateMutation,
-  createDeleteMutation,
-  createUpdateMutation,
-} from "./_mutation-factory";
 import { queryKeys } from "./_query-keys";
+import { STALE_TIME } from "@/lib/query-utils";
 
 export function useProgrammes(festivalId: string, categoryId?: string) {
   return useQuery<Programme[]>({
@@ -25,7 +22,7 @@ export function useProgrammes(festivalId: string, categoryId?: string) {
       return handleApiResponse(response.data);
     },
     enabled: !!festivalId,
-    staleTime: 30 * 1000,
+    staleTime: STALE_TIME.standard,
   });
 }
 
@@ -39,68 +36,64 @@ export function useProgramme(festivalId: string, programmeId: string) {
       return handleApiResponse(response.data);
     },
     enabled: !!festivalId && !!programmeId,
-    staleTime: 30 * 1000,
+    staleTime: STALE_TIME.standard,
   });
 }
 
-export const useCreateProgramme = createCreateMutation<
-  Programme,
-  { festivalId: string; data: CreateProgrammeInput }
->({
-  getQueryKey: ({ festivalId }) => queryKeys.programmes.all(festivalId),
-  mutationFn: async ({ festivalId, data }) => {
-    const response = await apiClient.post<ApiResponse<Programme>>(
-      `/programmes?festivalId=${encodeURIComponent(festivalId)}`,
-      { data },
-    );
-    return handleApiResponse(response.data);
-  },
-  createOptimisticItem: ({ festivalId, data }, tempId) => ({
-    id: tempId,
-    festivalId,
-    name: data.name,
-    categoryId: data.categoryId,
-    type: data.type,
-    stageType: data.stageType,
-    maxParticipantsPerGroup: data.maxParticipantsPerGroup ?? 1,
-    maxTeamsPerGroup: data.maxTeamsPerGroup ?? 1,
-    maxStudentsPerTeam: data.maxStudentsPerTeam ?? 1,
-    maxPoints: data.maxPoints ?? null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }),
-});
+export function useCreateProgramme() {
+  const qc = useQueryClient();
+  return useMutation<Programme, Error, { festivalId: string; data: CreateProgrammeInput }>({
+    mutationFn: async ({ festivalId, data }) => {
+      const response = await apiClient.post<ApiResponse<Programme>>(
+        `/programmes?festivalId=${encodeURIComponent(festivalId)}`,
+        { data },
+      );
+      return handleApiResponse(response.data);
+    },
+    onSuccess: (_data, { festivalId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.programmes.all(festivalId) });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+}
 
-export const useUpdateProgramme = createUpdateMutation<
-  Programme,
-  { festivalId: string; programmeId: string; data: UpdateProgrammeInput }
->({
-  getQueryKey: ({ festivalId }) => queryKeys.programmes.all(festivalId),
-  mutationFn: async ({ festivalId, programmeId, data }) => {
-    const response = await apiClient.put<ApiResponse<Programme>>(
-      `/programmes/${programmeId}?festivalId=${encodeURIComponent(festivalId)}`,
-      { data },
-    );
-    return handleApiResponse(response.data);
-  },
-  updateOptimisticItem: (item, { data }) => ({
-    ...item,
-    ...data,
-    updatedAt: new Date().toISOString(),
-  }),
-  getItemId: (item) => item.id,
-});
+export function useUpdateProgramme() {
+  const qc = useQueryClient();
+  return useMutation<Programme, Error, { festivalId: string; programmeId: string; data: UpdateProgrammeInput }>({
+    mutationFn: async ({ festivalId, programmeId, data }) => {
+      const response = await apiClient.put<ApiResponse<Programme>>(
+        `/programmes/${programmeId}?festivalId=${encodeURIComponent(festivalId)}`,
+        { data },
+      );
+      return handleApiResponse(response.data);
+    },
+    onSuccess: (_data, { festivalId, programmeId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.programmes.detail(festivalId, programmeId) });
+      qc.invalidateQueries({ queryKey: queryKeys.programmes.all(festivalId) });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+}
 
-export const useDeleteProgramme = createDeleteMutation<
-  Programme,
-  { festivalId: string; programmeId: string }
->({
-  getQueryKey: ({ festivalId }) => queryKeys.programmes.all(festivalId),
-  mutationFn: async ({ festivalId, programmeId }) => {
-    const response = await apiClient.delete<ApiResponse<void>>(
-      `/programmes/${programmeId}?festivalId=${encodeURIComponent(festivalId)}`,
-    );
-    return handleApiResponse(response.data);
-  },
-  getItemId: ({ programmeId }) => programmeId,
-});
+export function useDeleteProgramme() {
+  const qc = useQueryClient();
+  return useMutation<void, Error, { festivalId: string; programmeId: string }>({
+    mutationFn: async ({ festivalId, programmeId }) => {
+      const response = await apiClient.delete<ApiResponse<void>>(
+        `/programmes/${programmeId}?festivalId=${encodeURIComponent(festivalId)}`,
+      );
+      return handleApiResponse(response.data);
+    },
+    onSuccess: (_data, { festivalId, programmeId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.programmes.detail(festivalId, programmeId) });
+      qc.invalidateQueries({ queryKey: queryKeys.programmes.all(festivalId) });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+}

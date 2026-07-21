@@ -10,6 +10,7 @@ import type {
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
 import { queryKeys } from "./_query-keys";
+import { STALE_TIME } from "@/lib/query-utils";
 
 export function useAssignments(festivalId: string) {
   return useQuery<Assignment[]>({
@@ -21,18 +22,13 @@ export function useAssignments(festivalId: string) {
       return handleApiResponse(response.data);
     },
     enabled: !!festivalId,
-    staleTime: 30 * 1000,
+    staleTime: STALE_TIME.standard,
   });
 }
 
 export function useCreateAssignment() {
   const qc = useQueryClient();
-  return useMutation<
-    Assignment,
-    Error,
-    { festivalId: string; data: CreateAssignmentInput },
-    { prev: Assignment[] | undefined }
-  >({
+  return useMutation<Assignment, Error, { festivalId: string; data: CreateAssignmentInput }>({
     mutationFn: async ({ festivalId, data }) => {
       const response = await apiClient.post<ApiResponse<Assignment>>(
         `/assignments?festivalId=${encodeURIComponent(festivalId)}`,
@@ -40,36 +36,11 @@ export function useCreateAssignment() {
       );
       return handleApiResponse(response.data);
     },
-    onMutate: async ({ festivalId, data }) => {
-      await qc.cancelQueries({
-        queryKey: queryKeys.assignments.all(festivalId),
-      });
-      const prev = qc.getQueryData<Assignment[]>(
-        queryKeys.assignments.all(festivalId),
-      );
-      const tempAssignment: Assignment = {
-        id: `temp-${Date.now()}`,
-        ...data,
-        festivalId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      } as Assignment;
-      qc.setQueryData<Assignment[]>(
-        queryKeys.assignments.all(festivalId),
-        (old) => [...(old || []), tempAssignment],
-      );
-      return { prev };
-    },
-    onError: (_err, { festivalId }, ctx) => {
-      toast.error(_err.message);
-      if (ctx?.prev) {
-        qc.setQueryData(queryKeys.assignments.all(festivalId), ctx.prev);
-      }
-    },
     onSuccess: (_data, { festivalId }) => {
-      return qc.invalidateQueries({
-        queryKey: queryKeys.assignments.all(festivalId),
-      });
+      qc.invalidateQueries({ queryKey: queryKeys.assignments.all(festivalId) });
+    },
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 }
@@ -89,7 +60,7 @@ export function useBulkCreateAssignments() {
       return handleApiResponse(response.data);
     },
     onSuccess: (_data, { festivalId }) => {
-      return qc.invalidateQueries({
+      qc.invalidateQueries({
         queryKey: queryKeys.assignments.all(festivalId),
       });
     },
@@ -101,12 +72,7 @@ export function useBulkCreateAssignments() {
 
 export function useUpdateAssignment() {
   const qc = useQueryClient();
-  return useMutation<
-    Assignment,
-    Error,
-    { festivalId: string; assignmentId: string; data: UpdateAssignmentInput },
-    { prev: Assignment[] | undefined }
-  >({
+  return useMutation<Assignment, Error, { festivalId: string; assignmentId: string; data: UpdateAssignmentInput }>({
     mutationFn: async ({ festivalId, assignmentId, data }) => {
       const response = await apiClient.put<ApiResponse<Assignment>>(
         `/assignments/${assignmentId}?festivalId=${encodeURIComponent(festivalId)}`,
@@ -114,44 +80,18 @@ export function useUpdateAssignment() {
       );
       return handleApiResponse(response.data);
     },
-    onMutate: async ({ festivalId, assignmentId, data }) => {
-      await qc.cancelQueries({
-        queryKey: queryKeys.assignments.all(festivalId),
-      });
-      const prev = qc.getQueryData<Assignment[]>(
-        queryKeys.assignments.all(festivalId),
-      );
-      qc.setQueryData<Assignment[]>(
-        queryKeys.assignments.all(festivalId),
-        (old) =>
-          (old || []).map((a) =>
-            a.id === assignmentId ? { ...a, ...data } : a,
-          ),
-      );
-      return { prev };
-    },
-    onError: (_err, { festivalId }, ctx) => {
-      toast.error(_err.message);
-      if (ctx?.prev) {
-        qc.setQueryData(queryKeys.assignments.all(festivalId), ctx.prev);
-      }
-    },
     onSuccess: (_data, { festivalId }) => {
-      return qc.invalidateQueries({
-        queryKey: queryKeys.assignments.all(festivalId),
-      });
+      qc.invalidateQueries({ queryKey: queryKeys.assignments.all(festivalId) });
+    },
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 }
 
 export function useDeleteAssignment() {
   const qc = useQueryClient();
-  return useMutation<
-    void,
-    Error,
-    { festivalId: string; assignmentId: string },
-    { prev: Assignment[] | undefined }
-  >({
+  return useMutation<void, Error, { festivalId: string; assignmentId: string }>({
     mutationFn: async ({ festivalId, assignmentId }) => {
       const response = await apiClient.delete<ApiResponse<void>>(
         `/assignments?festivalId=${encodeURIComponent(festivalId)}`,
@@ -159,29 +99,11 @@ export function useDeleteAssignment() {
       );
       return handleApiResponse(response.data);
     },
-    onMutate: async ({ festivalId, assignmentId }) => {
-      await qc.cancelQueries({
-        queryKey: queryKeys.assignments.all(festivalId),
-      });
-      const prev = qc.getQueryData<Assignment[]>(
-        queryKeys.assignments.all(festivalId),
-      );
-      qc.setQueryData<Assignment[]>(
-        queryKeys.assignments.all(festivalId),
-        (old) => (old || []).filter((a) => a.id !== assignmentId),
-      );
-      return { prev };
-    },
-    onError: (_err, { festivalId }, ctx) => {
-      toast.error(_err.message);
-      if (ctx?.prev) {
-        qc.setQueryData(queryKeys.assignments.all(festivalId), ctx.prev);
-      }
-    },
     onSuccess: (_data, { festivalId }) => {
-      return qc.invalidateQueries({
-        queryKey: queryKeys.assignments.all(festivalId),
-      });
+      qc.invalidateQueries({ queryKey: queryKeys.assignments.all(festivalId) });
+    },
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 }

@@ -3,6 +3,7 @@ import type { AnalyticsData } from "@/components/super-admin/AnalyticsCharts";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
 import { queryKeys } from "./_query-keys";
+import { STALE_TIME } from "@/lib/query-utils";
 
 export function useSuperAdminAnalytics(initialData?: AnalyticsData) {
   return useQuery<AnalyticsData>({
@@ -14,7 +15,7 @@ export function useSuperAdminAnalytics(initialData?: AnalyticsData) {
       return handleApiResponse(response.data);
     },
     initialData,
-    staleTime: 30 * 1000,
+    staleTime: STALE_TIME.standard,
   });
 }
 
@@ -42,6 +43,6 @@ export function useSuperAdminPayments() {
       );
       return handleApiResponse(response.data);
     },
-    staleTime: 2 * 60 * 1000,
+    staleTime: STALE_TIME.stable,
   });
 }

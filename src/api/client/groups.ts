@@ -8,6 +8,7 @@ import type {
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
 import { queryKeys } from "./_query-keys";
+import { STALE_TIME } from "@/lib/query-utils";
 
 export function useGroups(festivalId: string) {
   return useQuery<Group[]>({
@@ -19,7 +20,7 @@ export function useGroups(festivalId: string) {
       return handleApiResponse(response.data);
     },
     enabled: !!festivalId,
-    staleTime: 30 * 1000,
+    staleTime: STALE_TIME.standard,
   });
 }
 
@@ -28,8 +29,7 @@ export function useCreateGroup() {
   return useMutation<
     Group,
     Error,
-    { festivalId: string; data: CreateGroupInput },
-    { prev: Group[] | undefined }
+    { festivalId: string; data: CreateGroupInput }
   >({
     mutationFn: async ({ festivalId, data }) => {
       const response = await apiClient.post<ApiResponse<Group>>(
@@ -38,34 +38,11 @@ export function useCreateGroup() {
       );
       return handleApiResponse(response.data);
     },
-    onMutate: async ({ festivalId, data }) => {
-      await qc.cancelQueries({ queryKey: queryKeys.groups.all(festivalId) });
-      const prev = qc.getQueryData<Group[]>(queryKeys.groups.all(festivalId));
-      const tempId = `temp-${Date.now()}`;
-      const optimisticGroup: Group = {
-        id: tempId,
-        festivalId,
-        name: data.name,
-        seriesStart: data.seriesStart ?? null,
-        color: data.color ?? null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      qc.setQueryData<Group[]>(queryKeys.groups.all(festivalId), (old) =>
-        old ? [...old, optimisticGroup] : [optimisticGroup],
-      );
-      return { prev };
+    onSuccess: (_data, { festivalId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.groups.all(festivalId) });
     },
-    onError: (_err, { festivalId }, ctx) => {
-      toast.error(_err.message);
-      if (ctx?.prev) {
-        qc.setQueryData(queryKeys.groups.all(festivalId), ctx.prev);
-      }
-    },
-    onSettled: (_data, _err, { festivalId }) => {
-      return qc.invalidateQueries({
-        queryKey: queryKeys.groups.all(festivalId),
-      });
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 }
@@ -75,8 +52,7 @@ export function useUpdateGroup() {
   return useMutation<
     Group,
     Error,
-    { festivalId: string; groupId: string; data: UpdateGroupInput },
-    { prev: Group[] | undefined }
+    { festivalId: string; groupId: string; data: UpdateGroupInput }
   >({
     mutationFn: async ({ festivalId, groupId, data }) => {
       const response = await apiClient.put<ApiResponse<Group>>(
@@ -85,69 +61,29 @@ export function useUpdateGroup() {
       );
       return handleApiResponse(response.data);
     },
-    onMutate: async ({ festivalId, groupId, data }) => {
-      await qc.cancelQueries({ queryKey: queryKeys.groups.all(festivalId) });
-      const prev = qc.getQueryData<Group[]>(queryKeys.groups.all(festivalId));
-      qc.setQueryData<Group[]>(queryKeys.groups.all(festivalId), (old) =>
-        old?.map((g) =>
-          g.id === groupId
-            ? {
-                ...g,
-                ...data,
-                updatedAt: new Date().toISOString(),
-              }
-            : g,
-        ),
-      );
-      return { prev };
+    onSuccess: ({ festivalId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.groups.all(festivalId) });
     },
-    onError: (_err, { festivalId }, ctx) => {
-      toast.error(_err.message);
-      if (ctx?.prev) {
-        qc.setQueryData(queryKeys.groups.all(festivalId), ctx.prev);
-      }
-    },
-    onSettled: (_data, _err, { festivalId }) => {
-      return qc.invalidateQueries({
-        queryKey: queryKeys.groups.all(festivalId),
-      });
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 }
 
 export function useDeleteGroup() {
   const qc = useQueryClient();
-  return useMutation<
-    void,
-    Error,
-    { festivalId: string; groupId: string },
-    { prev: Group[] | undefined }
-  >({
+  return useMutation<void, Error, { festivalId: string; groupId: string }>({
     mutationFn: async ({ festivalId, groupId }) => {
       const response = await apiClient.delete<ApiResponse<void>>(
         `/groups/${groupId}?festivalId=${encodeURIComponent(festivalId)}`,
       );
       return handleApiResponse(response.data);
     },
-    onMutate: async ({ festivalId, groupId }) => {
-      await qc.cancelQueries({ queryKey: queryKeys.groups.all(festivalId) });
-      const prev = qc.getQueryData<Group[]>(queryKeys.groups.all(festivalId));
-      qc.setQueryData(
-        queryKeys.groups.all(festivalId),
-        (old: Group[] | undefined) => old?.filter((g) => g.id !== groupId),
-      );
-      return { prev };
+    onSuccess: (_data, { festivalId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.groups.all(festivalId) });
     },
-    onError: (_err, { festivalId }, ctx) => {
-      toast.error(_err.message);
-      if (ctx?.prev) {
-        qc.setQueryData(queryKeys.groups.all(festivalId), ctx.prev);
-      }
-    },
-    onSettled: (_data, _err, { festivalId }) => {
-      return qc.invalidateQueries({
-        queryKey: queryKeys.groups.all(festivalId),
-      });
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 }

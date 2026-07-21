@@ -8,6 +8,7 @@ import type {
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
 import { queryKeys } from "./_query-keys";
+import { STALE_TIME } from "@/lib/query-utils";
 
 export function useNotifications(studentId: string) {
   return useQuery<Notification[]>({
@@ -19,7 +20,7 @@ export function useNotifications(studentId: string) {
       return handleApiResponse(response.data);
     },
     enabled: !!studentId,
-    staleTime: 10 * 1000,
+    staleTime: STALE_TIME.realtime,
     refetchInterval: 30 * 1000,
     refetchOnWindowFocus: true,
   });
@@ -27,12 +28,7 @@ export function useNotifications(studentId: string) {
 
 export function useMarkNotificationRead() {
   const qc = useQueryClient();
-  return useMutation<
-    void,
-    Error,
-    MarkReadInput,
-    { prev: Notification[] | undefined }
-  >({
+  return useMutation<void, Error, MarkReadInput>({
     mutationFn: async (data) => {
       const response = await apiClient.post<ApiResponse<void>>(
         "/notifications/mark-read",
@@ -40,44 +36,18 @@ export function useMarkNotificationRead() {
       );
       return handleApiResponse(response.data);
     },
-    onMutate: async ({ studentId, notificationId }) => {
-      await qc.cancelQueries({
-        queryKey: queryKeys.notifications.all(studentId),
-      });
-      const prev = qc.getQueryData<Notification[]>(
-        queryKeys.notifications.all(studentId),
-      );
-      qc.setQueryData(
-        queryKeys.notifications.all(studentId),
-        (old: Notification[] | undefined) =>
-          old?.map((n) =>
-            n.id === notificationId ? { ...n, isRead: true } : n,
-          ),
-      );
-      return { prev };
+    onSuccess: (_data, { studentId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.notifications.all(studentId) });
     },
-    onError: (error, { studentId }, ctx) => {
+    onError: (error) => {
       toast.error(error.message);
-      if (ctx?.prev) {
-        qc.setQueryData(queryKeys.notifications.all(studentId), ctx.prev);
-      }
-    },
-    onSettled: (_data, _err, { studentId }) => {
-      return qc.invalidateQueries({
-        queryKey: queryKeys.notifications.all(studentId),
-      });
     },
   });
 }
 
 export function useMarkAllNotificationsRead() {
   const qc = useQueryClient();
-  return useMutation<
-    void,
-    Error,
-    MarkAllReadInput,
-    { prev: Notification[] | undefined }
-  >({
+  return useMutation<void, Error, MarkAllReadInput>({
     mutationFn: async (data) => {
       const response = await apiClient.post<ApiResponse<void>>(
         "/notifications/mark-all-read",
@@ -85,30 +55,11 @@ export function useMarkAllNotificationsRead() {
       );
       return handleApiResponse(response.data);
     },
-    onMutate: async ({ studentId }) => {
-      await qc.cancelQueries({
-        queryKey: queryKeys.notifications.all(studentId),
-      });
-      const prev = qc.getQueryData<Notification[]>(
-        queryKeys.notifications.all(studentId),
-      );
-      qc.setQueryData(
-        queryKeys.notifications.all(studentId),
-        (old: Notification[] | undefined) =>
-          old?.map((n) => ({ ...n, isRead: true })),
-      );
-      return { prev };
+    onSuccess: (_data, { studentId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.notifications.all(studentId) });
     },
-    onError: (error, { studentId }, ctx) => {
+    onError: (error) => {
       toast.error(error.message);
-      if (ctx?.prev) {
-        qc.setQueryData(queryKeys.notifications.all(studentId), ctx.prev);
-      }
-    },
-    onSettled: (_data, _err, { studentId }) => {
-      return qc.invalidateQueries({
-        queryKey: queryKeys.notifications.all(studentId),
-      });
     },
   });
 }
