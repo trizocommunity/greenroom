@@ -22,14 +22,18 @@ export default async function PersonalOnboardingPage() {
   }
 
   return (
-    <AuthLayout title="Personal Account" description="Tell us about yourself">
+    <AuthLayout
+      title="Personal Account"
+      description="Complete your basic profile"
+      variant="centered"
+    >
       <PersonalOnboardingForm />
-      <div className="mt-4 text-center text-sm text-muted-foreground">
+      <div className="mt-3 text-center text-xs text-muted-foreground">
         <Link
           href="/onboarding"
           className="underline underline-offset-4 hover:text-primary"
         >
-          Back to account type selection
+          Back to account selection
         </Link>
       </div>
     </AuthLayout>

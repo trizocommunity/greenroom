@@ -24,15 +24,16 @@ export default async function InstitutionalOnboardingPage() {
   return (
     <AuthLayout
       title="Institutional Account"
-      description="Set up your institution and profile"
+      description="Enter institution & profile details"
+      variant="centered"
     >
       <InstitutionalOnboardingForm />
-      <div className="mt-4 text-center text-sm text-muted-foreground">
+      <div className="mt-3 text-center text-xs text-muted-foreground">
         <Link
           href="/onboarding"
           className="underline underline-offset-4 hover:text-primary"
         >
-          Back to account type selection
+          Back to account selection
         </Link>
       </div>
     </AuthLayout>

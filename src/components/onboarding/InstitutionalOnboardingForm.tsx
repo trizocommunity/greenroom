@@ -88,126 +88,215 @@ export function InstitutionalOnboardingForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="fullName">Your Full Name</Label>
-        <Input
-          {...register("fullName")}
-          id="fullName"
-          placeholder="John Doe"
-          disabled={isPending}
-        />
-        {errors.fullName && (
-          <p className="text-sm text-red-500">{errors.fullName.message}</p>
-        )}
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="space-y-3 sm:space-y-3.5"
+    >
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1 sm:space-y-1.5">
+          <Label
+            htmlFor="fullName"
+            className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase block"
+          >
+            Full Name
+          </Label>
+          <Input
+            {...register("fullName")}
+            id="fullName"
+            placeholder="John Doe"
+            inputSize="m"
+            disabled={isPending}
+            className="rounded-lg sm:rounded-xl border-border/60 bg-secondary/20 dark:bg-secondary/30 text-foreground h-10 sm:h-11 px-3.5 text-xs sm:text-sm w-full"
+          />
+          {errors.fullName && (
+            <p className="text-[11px] text-destructive font-medium mt-1">
+              {errors.fullName.message}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-1 sm:space-y-1.5">
+          <Label
+            htmlFor="displayName"
+            className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase block"
+          >
+            Display Name
+          </Label>
+          <Input
+            {...register("displayName")}
+            id="displayName"
+            placeholder="johnd"
+            inputSize="m"
+            disabled={isPending}
+            className="rounded-lg sm:rounded-xl border-border/60 bg-secondary/20 dark:bg-secondary/30 text-foreground h-10 sm:h-11 px-3.5 text-xs sm:text-sm w-full"
+          />
+          {errors.displayName && (
+            <p className="text-[11px] text-destructive font-medium mt-1">
+              {errors.displayName.message}
+            </p>
+          )}
+        </div>
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="displayName">Your Display Name</Label>
-        <Input
-          {...register("displayName")}
-          id="displayName"
-          placeholder="johnd"
-          disabled={isPending}
-        />
-        {errors.displayName && (
-          <p className="text-sm text-red-500">{errors.displayName.message}</p>
-        )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1 sm:space-y-1.5">
+          <Label
+            htmlFor="userRole"
+            className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase block"
+          >
+            Your Role
+          </Label>
+          <Select
+            onValueChange={(value) => setValue("userRole", value)}
+            disabled={isPending}
+          >
+            <SelectTrigger className="rounded-lg sm:rounded-xl border-border/60 bg-secondary/20 dark:bg-secondary/30 text-foreground h-10 sm:h-11 px-3.5 text-xs sm:text-sm w-full">
+              <SelectValue placeholder="Select role" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border-border/60">
+              {USER_ROLES.map((role) => (
+                <SelectItem
+                  key={role.value}
+                  value={role.value}
+                  className="text-xs sm:text-sm"
+                >
+                  {role.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.userRole && (
+            <p className="text-[11px] text-destructive font-medium mt-1">
+              {errors.userRole.message}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-1 sm:space-y-1.5">
+          <Label
+            htmlFor="institutionType"
+            className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase block"
+          >
+            Institution Type
+          </Label>
+          <Select
+            onValueChange={(value) => setValue("institutionType", value)}
+            disabled={isPending}
+          >
+            <SelectTrigger className="rounded-lg sm:rounded-xl border-border/60 bg-secondary/20 dark:bg-secondary/30 text-foreground h-10 sm:h-11 px-3.5 text-xs sm:text-sm w-full">
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border-border/60">
+              {INSTITUTION_TYPES.map((type) => (
+                <SelectItem
+                  key={type.value}
+                  value={type.value}
+                  className="text-xs sm:text-sm"
+                >
+                  {type.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.institutionType && (
+            <p className="text-[11px] text-destructive font-medium mt-1">
+              {errors.institutionType.message}
+            </p>
+          )}
+        </div>
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="userRole">Your Role</Label>
-        <Select
-          onValueChange={(value) => setValue("userRole", value)}
-          disabled={isPending}
+
+      <div className="space-y-1 sm:space-y-1.5">
+        <Label
+          htmlFor="institutionName"
+          className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase block"
         >
-          <SelectTrigger>
-            <SelectValue placeholder="Select your role" />
-          </SelectTrigger>
-          <SelectContent>
-            {USER_ROLES.map((role) => (
-              <SelectItem key={role.value} value={role.value}>
-                {role.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {errors.userRole && (
-          <p className="text-sm text-red-500">{errors.userRole.message}</p>
-        )}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="institutionName">Institution Name</Label>
+          Institution Name
+        </Label>
         <Input
           {...register("institutionName")}
           id="institutionName"
           placeholder="Islamic College of Excellence"
+          inputSize="m"
           disabled={isPending}
+          className="rounded-lg sm:rounded-xl border-border/60 bg-secondary/20 dark:bg-secondary/30 text-foreground h-10 sm:h-11 px-3.5 text-xs sm:text-sm w-full"
         />
         {errors.institutionName && (
-          <p className="text-sm text-red-500">
+          <p className="text-[11px] text-destructive font-medium mt-1">
             {errors.institutionName.message}
           </p>
         )}
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="institutionType">Institution Type</Label>
-        <Select
-          onValueChange={(value) => setValue("institutionType", value)}
-          disabled={isPending}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select institution type" />
-          </SelectTrigger>
-          <SelectContent>
-            {INSTITUTION_TYPES.map((type) => (
-              <SelectItem key={type.value} value={type.value}>
-                {type.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {errors.institutionType && (
-          <p className="text-sm text-red-500">
-            {errors.institutionType.message}
-          </p>
-        )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="space-y-1 sm:space-y-1.5">
+          <Label
+            htmlFor="affiliation"
+            className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase block"
+          >
+            Affiliation
+          </Label>
+          <Input
+            {...register("affiliation")}
+            id="affiliation"
+            placeholder="Optional"
+            inputSize="m"
+            disabled={isPending}
+            className="rounded-lg sm:rounded-xl border-border/60 bg-secondary/20 dark:bg-secondary/30 text-foreground h-10 sm:h-11 px-3 text-xs sm:text-sm w-full"
+          />
+        </div>
+
+        <div className="space-y-1 sm:space-y-1.5">
+          <Label
+            htmlFor="city"
+            className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase block"
+          >
+            City
+          </Label>
+          <Input
+            {...register("city")}
+            id="city"
+            placeholder="Mumbai"
+            inputSize="m"
+            disabled={isPending}
+            className="rounded-lg sm:rounded-xl border-border/60 bg-secondary/20 dark:bg-secondary/30 text-foreground h-10 sm:h-11 px-3 text-xs sm:text-sm w-full"
+          />
+        </div>
+
+        <div className="space-y-1 sm:space-y-1.5">
+          <Label
+            htmlFor="sizeRange"
+            className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase block"
+          >
+            Size Range
+          </Label>
+          <Select
+            onValueChange={(value) => setValue("sizeRange", value)}
+            disabled={isPending}
+          >
+            <SelectTrigger className="rounded-lg sm:rounded-xl border-border/60 bg-secondary/20 dark:bg-secondary/30 text-foreground h-10 sm:h-11 px-3 text-xs sm:text-sm w-full">
+              <SelectValue placeholder="Students" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border-border/60">
+              {SIZE_RANGES.map((size) => (
+                <SelectItem
+                  key={size.value}
+                  value={size.value}
+                  className="text-xs sm:text-sm"
+                >
+                  {size.label} students
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="affiliation">Affiliation (Optional)</Label>
-        <Input
-          {...register("affiliation")}
-          id="affiliation"
-          placeholder="Board of Education"
-          disabled={isPending}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="city">City</Label>
-        <Input
-          {...register("city")}
-          id="city"
-          placeholder="Mumbai"
-          disabled={isPending}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="sizeRange">Institution Size</Label>
-        <Select
-          onValueChange={(value) => setValue("sizeRange", value)}
-          disabled={isPending}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select size range" />
-          </SelectTrigger>
-          <SelectContent>
-            {SIZE_RANGES.map((size) => (
-              <SelectItem key={size.value} value={size.value}>
-                {size.label} students
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <Button type="submit" className="w-full" disabled={isPending}>
+
+      <Button
+        type="submit"
+        className="w-full h-10 sm:h-11 rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm shadow-md shadow-primary/20 mt-2"
+        disabled={isPending}
+      >
         {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         Complete Setup
       </Button>

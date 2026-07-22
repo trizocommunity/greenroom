@@ -18,8 +18,9 @@ export default async function MagicLinkPage() {
 
   return (
     <AuthLayout
-      title="Sign in to Greenroom"
-      description="Enter your email to receive a magic link"
+      title="Sign in or register"
+      description="Enter your email to receive a secure sign-in link."
+      variant="centered"
     >
       <MagicLinkRequestForm />
     </AuthLayout>

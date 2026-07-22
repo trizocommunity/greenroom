@@ -8,8 +8,15 @@ export const useCurrentUser = () => {
   return useQuery({
     queryKey: ["me"],
     queryFn: async () => {
-      const result = await api.auth.me();
-      return result.body;
+      try {
+        const result = await api.auth.me();
+        return result.body;
+      } catch (error: unknown) {
+        if ((error as { status?: number })?.status === 401) {
+          return null;
+        }
+        throw error;
+      }
     },
     staleTime: 1000 * 60 * 5,
     retry: 1,

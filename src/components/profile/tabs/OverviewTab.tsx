@@ -58,8 +58,6 @@ export function OverviewTab({
   const { data: credit, isLoading: isCreditLoading } = useUnusedCredit();
   const { handlePay, loading: isPaymentProcessing } = useFestivalPayment();
 
-  const basicTier = PRICING_TIERS.find((t) => t.id === "BASIC");
-  const standardTier = PRICING_TIERS.find((t) => t.id === "STANDARD");
   const proTier = PRICING_TIERS.find((t) => t.id === "PRO");
 
   const handlePayClick = (tierId: Tier) => {
@@ -73,7 +71,7 @@ export function OverviewTab({
     }
   };
 
-  if (!basicTier) return null;
+  if (!proTier) return null;
 
   // Render Joined Festivals Section (Loading or Data)
   const renderJoinedSection = () => {
@@ -283,54 +281,10 @@ export function OverviewTab({
                   )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* BASIC PLAN */}
-                <Card className="flex flex-col hover:border-primary/20 transition-all duration-300 border-border/50 overflow-hidden">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-xl font-bold">
-                      {basicTier.name}
-                    </CardTitle>
-                    <CardDescription className="text-sm mt-0.5 line-clamp-2">
-                      {basicTier.description}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex flex-col flex-1 space-y-4 pt-0">
-                    <div className="text-2xl font-bold">
-                      ₹{basicTier.price}
-                      <span className="text-xs font-normal text-muted-foreground ml-1">
-                        /festival
-                      </span>
-                    </div>
-                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5 text-xs text-muted-foreground flex-1 min-h-0">
-                      {basicTier.features.map((feature, i) => (
-                        <li key={i} className="flex items-center gap-1.5">
-                          <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-                          <span className="truncate" title={feature}>
-                            {feature}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                    <Button
-                      size="sm"
-                      className="w-full font-medium mt-auto"
-                      variant="outline"
-                      onClick={() => handlePayClick(basicTier.id)}
-                      disabled={isPaymentProcessing}
-                    >
-                      {isPaymentProcessing &&
-                      confirmationTier === basicTier.id ? (
-                        <Loader2 className="animate-spin mr-2 h-3.5 w-3.5" />
-                      ) : null}
-                      Pay to Proceed
-                      <ArrowRight className="ml-1.5 w-3.5 h-3.5" />
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                {/* STANDARD PLAN - Highlighted */}
-                {standardTier && (
-                  <Card className="flex flex-col hover:border-primary/30 transition-all duration-300 border-primary/20 bg-linear-to-br from-primary/5 via-background to-background relative overflow-hidden md:ring-2 md:ring-primary/20 md:-mt-1 md:mb-1 md:scale-[1.02]">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* PRO PLAN - Highlighted */}
+                {proTier && (
+                  <Card className="flex flex-col hover:border-primary/30 transition-all duration-300 border-primary/20 bg-linear-to-br from-primary/5 via-background to-background relative overflow-hidden md:ring-2 md:ring-primary/20">
                     <div className="absolute top-0 right-0 p-2 opacity-40">
                       <Sparkles className="w-14 h-14 text-primary/10" />
                     </div>
@@ -338,51 +292,6 @@ export function OverviewTab({
                       <Badge className="w-fit mb-1.5 text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20 font-medium">
                         Recommended
                       </Badge>
-                      <CardTitle className="text-xl font-bold">
-                        {standardTier.name}
-                      </CardTitle>
-                      <CardDescription className="text-sm mt-0.5 line-clamp-2">
-                        {standardTier.description}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex flex-col flex-1 space-y-4 pt-0">
-                      <div className="text-2xl font-bold">
-                        ₹{standardTier.price}
-                        <span className="text-xs font-normal text-muted-foreground ml-1">
-                          /festival
-                        </span>
-                      </div>
-                      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5 text-xs text-muted-foreground flex-1 min-h-0">
-                        {standardTier.features.map((feature, i) => (
-                          <li key={i} className="flex items-center gap-1.5">
-                            <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-                            <span className="truncate" title={feature}>
-                              {feature}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                      <Button
-                        size="sm"
-                        className="w-full font-medium mt-auto shadow-md shadow-primary/20"
-                        onClick={() => handlePayClick(standardTier.id)}
-                        disabled={isPaymentProcessing}
-                      >
-                        {isPaymentProcessing &&
-                        confirmationTier === standardTier.id ? (
-                          <Loader2 className="animate-spin mr-2 h-3.5 w-3.5" />
-                        ) : null}
-                        Pay to Proceed
-                        <ArrowRight className="ml-1.5 w-3.5 h-3.5" />
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* PRO PLAN */}
-                {proTier && (
-                  <Card className="flex flex-col hover:border-primary/20 transition-all duration-300 border-border/50 overflow-hidden">
-                    <CardHeader className="pb-2">
                       <CardTitle className="text-xl font-bold">
                         {proTier.name}
                       </CardTitle>
@@ -409,8 +318,7 @@ export function OverviewTab({
                       </ul>
                       <Button
                         size="sm"
-                        className="w-full font-medium mt-auto"
-                        variant="outline"
+                        className="w-full font-medium mt-auto shadow-md shadow-primary/20"
                         onClick={() => handlePayClick(proTier.id)}
                         disabled={isPaymentProcessing}
                       >

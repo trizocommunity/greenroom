@@ -1,4 +1,6 @@
+import { ArrowRight, Building2, User } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { getCurrentUser } from "@/core/auth/current-user";
@@ -21,40 +23,50 @@ export default async function OnboardingPage() {
 
   return (
     <AuthLayout
-      title="Choose Your Account Type"
-      description="Select how you'll use Greenroom"
+      title="Choose Account Type"
+      description="Select how you will use Greenroom"
+      variant="centered"
     >
-      <div className="space-y-4">
-        <div className="rounded-lg border p-6 hover:border-primary transition-colors">
-          <a href="/onboarding/personal" className="block">
-            <h2 className="text-lg font-semibold text-foreground mb-2">
-              Personal Account
-            </h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              For individuals, independent organizers, or personal festival
-              management.
-            </p>
-            <div className="text-xs text-muted-foreground">
-              Perfect for solo judges, independent event coordinators, or small
-              personal events.
+      <div className="space-y-3">
+        <Link
+          href="/onboarding/personal"
+          className="group flex items-center justify-between p-4 sm:p-4.5 rounded-xl border border-border/60 bg-secondary/15 hover:bg-secondary/30 hover:border-primary transition-all text-left"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+              <User className="h-5 w-5 text-primary" />
             </div>
-          </a>
-        </div>
-        <div className="rounded-lg border p-6 hover:border-primary transition-colors">
-          <a href="/onboarding/institutional" className="block">
-            <h2 className="text-lg font-semibold text-foreground mb-2">
-              Institutional Account
-            </h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              For colleges, madrasas, schools, universities, and other
-              educational institutions.
-            </p>
-            <div className="text-xs text-muted-foreground">
-              Ideal for campus festivals, inter-college competitions, and
-              madrasa events.
+            <div>
+              <h2 className="text-sm sm:text-base font-medium text-foreground tracking-tight">
+                Personal Account
+              </h2>
+              <p className="text-xs text-muted-foreground leading-normal mt-0.5">
+                For individuals, organizers, or judges.
+              </p>
             </div>
-          </a>
-        </div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-transform group-hover:translate-x-1 shrink-0 ml-2" />
+        </Link>
+
+        <Link
+          href="/onboarding/institutional"
+          className="group flex items-center justify-between p-4 sm:p-4.5 rounded-xl border border-border/60 bg-secondary/15 hover:bg-secondary/30 hover:border-primary transition-all text-left"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+              <Building2 className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-sm sm:text-base font-medium text-foreground tracking-tight">
+                Institutional Account
+              </h2>
+              <p className="text-xs text-muted-foreground leading-normal mt-0.5">
+                For colleges, schools, universities & campus events.
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-transform group-hover:translate-x-1 shrink-0 ml-2" />
+        </Link>
       </div>
     </AuthLayout>
   );

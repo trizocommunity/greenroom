@@ -83,9 +83,9 @@ export const useCompleteOnboarding = () => {
   return useMutation({
     mutationFn: (data: { fullName: string; displayName: string }) =>
       api.auth.completeOnboarding(data),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Onboarding complete");
-      queryClient.invalidateQueries({ queryKey: ["me"] });
+      await queryClient.invalidateQueries({ queryKey: ["me"] });
       router.push("/profile");
       router.refresh();
     },
@@ -111,9 +111,9 @@ export const useCompletePersonalOnboarding = () => {
       displayName: string;
       userRole: string;
     }) => api.auth.completePersonalOnboarding(data),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Onboarding complete");
-      queryClient.invalidateQueries({ queryKey: ["me"] });
+      await queryClient.invalidateQueries({ queryKey: ["me"] });
       router.push("/profile");
       router.refresh();
     },
@@ -144,9 +144,9 @@ export const useCompleteInstitutionalOnboarding = () => {
       city?: string | null;
       sizeRange?: string | null;
     }) => api.auth.completeInstitutionalOnboarding(data),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Onboarding complete");
-      queryClient.invalidateQueries({ queryKey: ["me"] });
+      await queryClient.invalidateQueries({ queryKey: ["me"] });
       router.push("/profile");
       router.refresh();
     },
