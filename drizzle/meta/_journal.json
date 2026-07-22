@@ -50,6 +50,13 @@
       "when": 1752595200000,
       "tag": "0011_add_team_leader_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784691099652,
+      "tag": "0007_funny_whizzer",
+      "breakpoints": true
     }
   ]
 }
