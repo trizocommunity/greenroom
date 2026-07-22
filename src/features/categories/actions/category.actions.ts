@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
-import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { CategoryService } from "@/features/categories/services/category.service";
+import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 
 export async function getCategoriesAction(festivalId: string) {
   const session = await getSession();

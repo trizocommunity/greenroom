@@ -64,26 +64,20 @@ export async function createFestival(input: CreateFestivalInput) {
         (data.endDate.getTime() - data.startDate.getTime()) /
           (1000 * 60 * 60 * 24),
       );
-      if (diffDays > tierConfig.durationDays) {
+      if (diffDays > tierConfig.festivalDurationDays) {
         return {
           success: false,
-          error: `Your ${tier} plan allows a maximum festival duration of ${tierConfig.durationDays} days. Please adjust your dates.`,
+          error: `Your ${tier} plan allows a maximum festival duration of ${tierConfig.festivalDurationDays} days. Please adjust your dates.`,
         } as any;
       }
     }
 
     // 3. Atomic Transaction
-    const expiresAt =
-      payment.validUntil ??
-      (() => {
-        const base = payment.createdAt
-          ? new Date(payment.createdAt)
-          : new Date();
-        const days = tierConfig.durationDays || 40;
-        const d = new Date(base);
-        d.setDate(d.getDate() + days);
-        return d.toISOString();
-      })();
+    const festivalCreatedAt = new Date();
+    const expiresAt = new Date(
+      festivalCreatedAt.getTime() +
+        tierConfig.festivalDurationDays * 24 * 60 * 60 * 1000,
+    ).toISOString();
 
     const result = await db.transaction(async (tx) => {
       // Create Festival
@@ -219,7 +213,11 @@ export async function updateFestivalSettingsAction(
     const incomingStart = data.startDate ? new Date(data.startDate) : null;
     const incomingEnd = data.endDate ? new Date(data.endDate) : null;
     const planStart = new Date(festival.createdAt);
-    const planEnd = festival.expiresAt ? new Date(festival.expiresAt) : null;
+    const tierConfig = TIER_CONFIG[festival.tier as keyof typeof TIER_CONFIG];
+    const planEnd = new Date(
+      planStart.getTime() +
+        (tierConfig?.festivalDurationDays ?? 90) * 24 * 60 * 60 * 1000,
+    );
 
     if (incomingStart && Number.isNaN(incomingStart.getTime())) {
       throw new AppError("Invalid start date");
@@ -233,7 +231,7 @@ export async function updateFestivalSettingsAction(
     if (incomingStart && incomingStart < planStart) {
       throw new AppError("Start date must be on/after plan created date");
     }
-    if (incomingEnd && planEnd && incomingEnd > planEnd) {
+    if (incomingEnd && incomingEnd > planEnd) {
       throw new AppError("End date must be on/before plan expiry date");
     }
 

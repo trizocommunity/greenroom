@@ -82,9 +82,6 @@ export async function initiatePayment(
 
     // Create Payment Record (Pending)
     const now = new Date();
-    const validUntil = new Date(
-      now.getTime() + config.durationDays * 24 * 60 * 60 * 1000,
-    ).toISOString();
 
     const paymentId = randomUUID();
     await db.insert(paymentTable).values({
@@ -97,7 +94,6 @@ export async function initiatePayment(
       purpose,
       tier,
       used: false,
-      validUntil,
       updatedAt: now.toISOString(),
     });
 
@@ -201,7 +197,6 @@ export async function checkUnusedCredit() {
         purpose: payment.purpose,
         tier: payment.tier,
         validFrom: payment.createdAt,
-        validUntil: payment.validUntil,
       }
     : null;
 }

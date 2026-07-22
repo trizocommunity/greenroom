@@ -1,10 +1,10 @@
 /**
- * Festival expiration: snapshot results, delete non-retained data, set EXPIRED.
- * All plans use fixed 30-day duration; no read-only after expiry.
+ * Festival expiration: snapshot all data for Manual Book, delete live data, set EXPIRED.
+ * Festival duration is 90 days from creation. After 90 days + 7 grace = data deleted.
  *
  * Lifecycle:
  *   READY/ONGOING/PAST → pre-archival (7 days before expiresAt)
- *   pre-archival → EXPIRED → deleted (via cron at/after expiresAt)
+ *   pre-archival → EXPIRED → data deleted, Manual Book available for download
  */
 
 import { eq, lt, ne } from "drizzle-orm";
@@ -12,6 +12,7 @@ import { jsPDF } from "jspdf";
 import { db } from "@/core/database/client";
 import {
   category as categories,
+  expiredFestivalManualBook,
   expiredFestivalResult,
   festivalGalleryImage,
   festivalLifecycleEvent,
@@ -120,7 +121,7 @@ export const FestivalExpirationService = {
   },
 
   /**
-   * Run expiration for one festival: snapshot results, delete non-retained data, set EXPIRED.
+   * Run expiration for one festival: snapshot all data to Manual Book, delete live data, set EXPIRED.
    */
   async expireFestival(festivalId: string): Promise<void> {
     const { randomUUID } = await import("crypto");
@@ -129,10 +130,98 @@ export const FestivalExpirationService = {
     });
     if (!festival || festival.status === "EXPIRED") return;
 
+    const [
+      studentsData,
+      programmesData,
+      categoriesData,
+      groupsData,
+      stagesData,
+      scheduleData,
+      resultsData,
+    ] = await Promise.all([
+      db.query.student.findMany({ where: eq(student.festivalId, festivalId) }),
+      db.query.programme.findMany({
+        where: eq(programmes.festivalId, festivalId),
+      }),
+      db.query.category.findMany({
+        where: eq(categories.festivalId, festivalId),
+      }),
+      db.query.group.findMany({ where: eq(groups.festivalId, festivalId) }),
+      db.query.stage.findMany({ where: eq(stages.festivalId, festivalId) }),
+      db.query.scheduleEntry.findMany({
+        where: eq(scheduleEntry.festivalId, festivalId),
+      }),
+      db.query.result.findMany({ where: eq(results.festivalId, festivalId) }),
+    ]);
+
     const publishedResults = await getPublicFestivalResults(festivalId);
 
+    const manualBookData = {
+      festival: {
+        id: festival.id,
+        name: festival.name,
+        slug: festival.slug,
+        tier: festival.tier,
+        tierLabel: festival.tierLabel,
+        createdAt: festival.createdAt,
+        startDate: festival.startDate,
+        endDate: festival.endDate,
+        status: festival.status,
+      },
+      students: studentsData.map((s) => ({
+        name: s.name,
+        email: s.email,
+        phone: s.phone,
+        gender: s.gender,
+        chestNumber: s.chestNumber,
+        age: s.age,
+        standard: s.standard,
+        isTeamLeader: s.isTeamLeader,
+      })),
+      programmes: programmesData.map((p) => ({
+        name: p.name,
+        category: p.category,
+      })),
+      categories: categoriesData.map((c) => ({
+        name: c.name,
+        type: c.type,
+      })),
+      groups: groupsData.map((g) => ({
+        name: g.name,
+        category: g.category,
+      })),
+      stages: stagesData.map((s) => ({
+        name: s.name,
+        location: s.location,
+      })),
+      schedule: scheduleData.map((s) => ({
+        date: s.date,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        programme: s.programme,
+        stage: s.stage,
+        event: s.event,
+      })),
+      results: resultsData.map((r) => ({
+        participantName: r.participantName,
+        programme: r.programme,
+        category: r.category,
+        position: r.position,
+        grade: r.grade,
+        score: r.score,
+        points: r.points,
+      })),
+    };
+
     await db.transaction(async (tx) => {
-      // 1. Snapshot to ExpiredFestivalResult
+      // 1. Store Manual Book data
+      await tx.insert(expiredFestivalManualBook).values({
+        id: randomUUID(),
+        festivalId,
+        data: manualBookData as any,
+      });
+
+      // 2. Snapshot to ExpiredFestivalResult (for backward compatibility)
       for (const r of publishedResults) {
         await tx.insert(expiredFestivalResult).values({
           id: randomUUID(),
@@ -147,7 +236,7 @@ export const FestivalExpirationService = {
         } as any);
       }
 
-      // 2. Delete in order (respect FKs)
+      // 3. Delete in order (respect FKs)
       await tx.delete(results).where(eq(results.festivalId, festivalId));
       await tx
         .delete(programmeAssignment)
@@ -170,15 +259,18 @@ export const FestivalExpirationService = {
         .delete(festivalMember)
         .where(eq(festivalMember.festivalId, festivalId));
 
-      // 3. Lifecycle event
+      // 4. Lifecycle event
       await tx.insert(festivalLifecycleEvent).values({
         id: randomUUID(),
         festivalId,
         event: "EXPIRED",
-        metadata: { snapshotCount: publishedResults.length },
+        metadata: {
+          snapshotCount: publishedResults.length,
+          manualBookArchived: true,
+        },
       } as any);
 
-      // 4. Update festival — resultPdfUrl intentionally left null so
+      // 5. Update festival — resultPdfUrl intentionally left null so
       // on-demand PDF generation is used (avoids stale stored PDFs)
       const now = new Date();
       await tx

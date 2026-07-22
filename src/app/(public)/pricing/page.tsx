@@ -31,11 +31,13 @@ export default function PricingPage() {
           {/* Pricing Cards */}
           <div className="flex flex-col md:flex-row justify-center gap-8 mb-16 relative">
             <div className="absolute inset-x-0 top-10 bottom-10 bg-linear-to-r from-transparent via-primary/5 to-transparent blur-3xl -z-10" />
-            {PRICING_TIERS.map((tier, index) => (
-              <div key={tier.id} className="w-full max-w-sm">
-                <PricingCard tier={tier} index={index} />
-              </div>
-            ))}
+            {PRICING_TIERS.filter((tier) => tier.id === "PRO").map(
+              (tier, index) => (
+                <div key={tier.id} className="w-full max-w-md">
+                  <PricingCard tier={tier} index={index} />
+                </div>
+              ),
+            )}
           </div>
 
           <div className="text-center mb-16">

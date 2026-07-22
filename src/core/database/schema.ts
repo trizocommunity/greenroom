@@ -225,6 +225,7 @@ export const pendingInvitation = pgTable(
     invitedBy: text().notNull(),
     expiresAt: timestamp({ precision: 3, mode: "string" }).notNull(),
     acceptedAt: timestamp({ precision: 3, mode: "string" }),
+    status: text().default("pending").notNull(),
     createdAt: timestamp({ precision: 3, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -1720,6 +1721,33 @@ export const expiredFestivalResult = pgTable(
       columns: [table.festivalId],
       foreignColumns: [festival.id],
       name: "expired_festival_result_festivalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
+// ─── 24b. expired_festival_manual_book (depends on: festival) ──────────────────
+
+export const expiredFestivalManualBook = pgTable(
+  "expired_festival_manual_book",
+  {
+    id: text().primaryKey().notNull(),
+    festivalId: text().notNull(),
+    data: jsonb().notNull(),
+    createdAt: timestamp({ precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    index("expired_festival_manual_book_festivalId_idx").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "expired_festival_manual_book_festivalId_fkey",
     })
       .onUpdate("cascade")
       .onDelete("cascade"),
