@@ -7,8 +7,8 @@ import type {
 } from "@/api/contracts/groups";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
-import { queryKeys } from "./_query-keys";
 import { STALE_TIME } from "@/lib/query-utils";
+import { queryKeys } from "./_query-keys";
 
 export function useGroups(festivalId: string) {
   return useQuery<Group[]>({

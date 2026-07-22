@@ -7,8 +7,8 @@ import type {
 } from "@/api/contracts/results";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
-import { queryKeys } from "./_query-keys";
 import { STALE_TIME } from "@/lib/query-utils";
+import { queryKeys } from "./_query-keys";
 
 export function useResults(festivalId: string, programmeId?: string) {
   return useQuery<Result[]>({
@@ -36,7 +36,9 @@ export function useSaveResult() {
       return handleApiResponse(response.data);
     },
     onSuccess: (_data, { festivalId, programmeId }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.results.all(festivalId, programmeId) });
+      qc.invalidateQueries({
+        queryKey: queryKeys.results.all(festivalId, programmeId),
+      });
     },
     onError: (error) => {
       toast.error(error.message);
@@ -55,7 +57,9 @@ export function usePublishResults() {
       return handleApiResponse(response.data);
     },
     onSuccess: (_data, { festivalId, programmeId }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.results.all(festivalId, programmeId) });
+      qc.invalidateQueries({
+        queryKey: queryKeys.results.all(festivalId, programmeId),
+      });
     },
     onError: (error) => {
       toast.error(error.message);
@@ -74,7 +78,9 @@ export function useUnpublishResults() {
       return handleApiResponse(response.data);
     },
     onSuccess: (_data, { festivalId, programmeId }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.results.all(festivalId, programmeId) });
+      qc.invalidateQueries({
+        queryKey: queryKeys.results.all(festivalId, programmeId),
+      });
     },
     onError: (error) => {
       toast.error(error.message);

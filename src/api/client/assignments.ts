@@ -9,8 +9,8 @@ import type {
 } from "@/api/contracts/assignments";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
-import { queryKeys } from "./_query-keys";
 import { STALE_TIME } from "@/lib/query-utils";
+import { queryKeys } from "./_query-keys";
 
 export function useAssignments(festivalId: string) {
   return useQuery<Assignment[]>({
@@ -28,7 +28,11 @@ export function useAssignments(festivalId: string) {
 
 export function useCreateAssignment() {
   const qc = useQueryClient();
-  return useMutation<Assignment, Error, { festivalId: string; data: CreateAssignmentInput }>({
+  return useMutation<
+    Assignment,
+    Error,
+    { festivalId: string; data: CreateAssignmentInput }
+  >({
     mutationFn: async ({ festivalId, data }) => {
       const response = await apiClient.post<ApiResponse<Assignment>>(
         `/assignments?festivalId=${encodeURIComponent(festivalId)}`,
@@ -72,7 +76,11 @@ export function useBulkCreateAssignments() {
 
 export function useUpdateAssignment() {
   const qc = useQueryClient();
-  return useMutation<Assignment, Error, { festivalId: string; assignmentId: string; data: UpdateAssignmentInput }>({
+  return useMutation<
+    Assignment,
+    Error,
+    { festivalId: string; assignmentId: string; data: UpdateAssignmentInput }
+  >({
     mutationFn: async ({ festivalId, assignmentId, data }) => {
       const response = await apiClient.put<ApiResponse<Assignment>>(
         `/assignments/${assignmentId}?festivalId=${encodeURIComponent(festivalId)}`,
@@ -91,19 +99,23 @@ export function useUpdateAssignment() {
 
 export function useDeleteAssignment() {
   const qc = useQueryClient();
-  return useMutation<void, Error, { festivalId: string; assignmentId: string }>({
-    mutationFn: async ({ festivalId, assignmentId }) => {
-      const response = await apiClient.delete<ApiResponse<void>>(
-        `/assignments?festivalId=${encodeURIComponent(festivalId)}`,
-        { data: { assignmentId } },
-      );
-      return handleApiResponse(response.data);
+  return useMutation<void, Error, { festivalId: string; assignmentId: string }>(
+    {
+      mutationFn: async ({ festivalId, assignmentId }) => {
+        const response = await apiClient.delete<ApiResponse<void>>(
+          `/assignments?festivalId=${encodeURIComponent(festivalId)}`,
+          { data: { assignmentId } },
+        );
+        return handleApiResponse(response.data);
+      },
+      onSuccess: (_data, { festivalId }) => {
+        qc.invalidateQueries({
+          queryKey: queryKeys.assignments.all(festivalId),
+        });
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
     },
-    onSuccess: (_data, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.assignments.all(festivalId) });
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
+  );
 }

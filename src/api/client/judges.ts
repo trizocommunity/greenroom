@@ -3,8 +3,8 @@ import { toast } from "sonner";
 import type { Judge, JudgeInput } from "@/api/contracts/judges";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
-import { queryKeys } from "./_query-keys";
 import { STALE_TIME } from "@/lib/query-utils";
+import { queryKeys } from "./_query-keys";
 
 export function useJudges(festivalId: string) {
   return useQuery<Judge[]>({
@@ -41,7 +41,11 @@ export function useCreateJudge() {
 
 export function useUpdateJudge() {
   const qc = useQueryClient();
-  return useMutation<Judge, Error, { festivalId: string; judgeId: string; data: JudgeInput }>({
+  return useMutation<
+    Judge,
+    Error,
+    { festivalId: string; judgeId: string; data: JudgeInput }
+  >({
     mutationFn: async ({ festivalId, judgeId, data }) => {
       const response = await apiClient.put<ApiResponse<Judge>>(
         `/judges/${judgeId}?festivalId=${encodeURIComponent(festivalId)}`,

@@ -4,8 +4,8 @@ import { z } from "zod";
 import type { UpdateProfileInput } from "@/api/contracts/profile";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
-import { queryKeys } from "./_query-keys";
 import { STALE_TIME } from "@/lib/query-utils";
+import { queryKeys } from "./_query-keys";
 
 export interface UserWithInstitution {
   id: string;
@@ -72,7 +72,11 @@ export const updateInstitutionInput = z.object({
 
 export function useUpdateInstitution() {
   const qc = useQueryClient();
-  return useMutation<UserWithInstitution, Error, z.infer<typeof updateInstitutionInput>>({
+  return useMutation<
+    UserWithInstitution,
+    Error,
+    z.infer<typeof updateInstitutionInput>
+  >({
     mutationFn: async (data) => {
       const response = await apiClient.put<ApiResponse<UserWithInstitution>>(
         "/profile/institution",

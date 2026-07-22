@@ -3,8 +3,8 @@ import { toast } from "sonner";
 import type { AddMemberInput, Member } from "@/api/contracts/members";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
-import { queryKeys } from "./_query-keys";
 import { STALE_TIME } from "@/lib/query-utils";
+import { queryKeys } from "./_query-keys";
 
 export function useMembers(festivalId: string) {
   return useQuery<Member[]>({
@@ -22,7 +22,11 @@ export function useMembers(festivalId: string) {
 
 export function useAddMember() {
   const qc = useQueryClient();
-  return useMutation<Member, Error, { festivalId: string; data: AddMemberInput }>({
+  return useMutation<
+    Member,
+    Error,
+    { festivalId: string; data: AddMemberInput }
+  >({
     mutationFn: async ({ festivalId, data }) => {
       const response = await apiClient.post<ApiResponse<Member>>(
         `/members?festivalId=${encodeURIComponent(festivalId)}`,

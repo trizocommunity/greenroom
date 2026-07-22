@@ -6,8 +6,8 @@ import type {
 } from "@/api/contracts/gallery";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
-import { queryKeys } from "./_query-keys";
 import { STALE_TIME } from "@/lib/query-utils";
+import { queryKeys } from "./_query-keys";
 
 export function useGallery(festivalId: string) {
   return useQuery<GalleryImage[]>({
@@ -25,7 +25,11 @@ export function useGallery(festivalId: string) {
 
 export function useCreateGalleryItem() {
   const qc = useQueryClient();
-  return useMutation<GalleryImage, Error, { festivalId: string; data: CreateGalleryImageInput }>({
+  return useMutation<
+    GalleryImage,
+    Error,
+    { festivalId: string; data: CreateGalleryImageInput }
+  >({
     mutationFn: async ({ festivalId, data }) => {
       const response = await apiClient.post<ApiResponse<GalleryImage>>(
         `/gallery?festivalId=${encodeURIComponent(festivalId)}`,

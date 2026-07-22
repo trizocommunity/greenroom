@@ -3,8 +3,8 @@ import { toast } from "sonner";
 import type { Stage, StageDataInput } from "@/api/contracts/stages";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
-import { queryKeys } from "./_query-keys";
 import { STALE_TIME } from "@/lib/query-utils";
+import { queryKeys } from "./_query-keys";
 
 export function useStages(festivalId: string) {
   return useQuery<Stage[]>({
@@ -22,7 +22,11 @@ export function useStages(festivalId: string) {
 
 export function useCreateStage() {
   const qc = useQueryClient();
-  return useMutation<Stage, Error, { festivalId: string; data: StageDataInput }>({
+  return useMutation<
+    Stage,
+    Error,
+    { festivalId: string; data: StageDataInput }
+  >({
     mutationFn: async ({ festivalId, data }) => {
       const response = await apiClient.post<ApiResponse<Stage>>(
         `/stages?festivalId=${encodeURIComponent(festivalId)}`,
@@ -41,7 +45,11 @@ export function useCreateStage() {
 
 export function useUpdateStage() {
   const qc = useQueryClient();
-  return useMutation<Stage, Error, { festivalId: string; stageId: string; data: StageDataInput }>({
+  return useMutation<
+    Stage,
+    Error,
+    { festivalId: string; stageId: string; data: StageDataInput }
+  >({
     mutationFn: async ({ festivalId, stageId, data }) => {
       const response = await apiClient.put<ApiResponse<Stage>>(
         `/stages/${stageId}?festivalId=${encodeURIComponent(festivalId)}`,

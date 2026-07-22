@@ -7,8 +7,8 @@ import type {
 } from "@/api/contracts/programmes";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
-import { queryKeys } from "./_query-keys";
 import { STALE_TIME } from "@/lib/query-utils";
+import { queryKeys } from "./_query-keys";
 
 export function useProgrammes(festivalId: string, categoryId?: string) {
   return useQuery<Programme[]>({
@@ -42,7 +42,11 @@ export function useProgramme(festivalId: string, programmeId: string) {
 
 export function useCreateProgramme() {
   const qc = useQueryClient();
-  return useMutation<Programme, Error, { festivalId: string; data: CreateProgrammeInput }>({
+  return useMutation<
+    Programme,
+    Error,
+    { festivalId: string; data: CreateProgrammeInput }
+  >({
     mutationFn: async ({ festivalId, data }) => {
       const response = await apiClient.post<ApiResponse<Programme>>(
         `/programmes?festivalId=${encodeURIComponent(festivalId)}`,
@@ -61,7 +65,11 @@ export function useCreateProgramme() {
 
 export function useUpdateProgramme() {
   const qc = useQueryClient();
-  return useMutation<Programme, Error, { festivalId: string; programmeId: string; data: UpdateProgrammeInput }>({
+  return useMutation<
+    Programme,
+    Error,
+    { festivalId: string; programmeId: string; data: UpdateProgrammeInput }
+  >({
     mutationFn: async ({ festivalId, programmeId, data }) => {
       const response = await apiClient.put<ApiResponse<Programme>>(
         `/programmes/${programmeId}?festivalId=${encodeURIComponent(festivalId)}`,
@@ -70,7 +78,9 @@ export function useUpdateProgramme() {
       return handleApiResponse(response.data);
     },
     onSuccess: (_data, { festivalId, programmeId }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.programmes.detail(festivalId, programmeId) });
+      qc.invalidateQueries({
+        queryKey: queryKeys.programmes.detail(festivalId, programmeId),
+      });
       qc.invalidateQueries({ queryKey: queryKeys.programmes.all(festivalId) });
     },
     onError: (error) => {
@@ -89,7 +99,9 @@ export function useDeleteProgramme() {
       return handleApiResponse(response.data);
     },
     onSuccess: (_data, { festivalId, programmeId }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.programmes.detail(festivalId, programmeId) });
+      qc.invalidateQueries({
+        queryKey: queryKeys.programmes.detail(festivalId, programmeId),
+      });
       qc.invalidateQueries({ queryKey: queryKeys.programmes.all(festivalId) });
     },
     onError: (error) => {

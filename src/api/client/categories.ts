@@ -7,8 +7,8 @@ import type {
 } from "@/api/contracts/categories";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
-import { queryKeys } from "./_query-keys";
 import { STALE_TIME } from "@/lib/query-utils";
+import { queryKeys } from "./_query-keys";
 
 export function useCategories(festivalId: string) {
   return useQuery<Category[]>({
@@ -26,7 +26,11 @@ export function useCategories(festivalId: string) {
 
 export function useCreateCategory() {
   const qc = useQueryClient();
-  return useMutation<Category, Error, { festivalId: string; data: CreateCategoryInput }>({
+  return useMutation<
+    Category,
+    Error,
+    { festivalId: string; data: CreateCategoryInput }
+  >({
     mutationFn: async ({ festivalId, data }) => {
       const response = await apiClient.post<ApiResponse<Category>>(
         `/categories?festivalId=${encodeURIComponent(festivalId)}`,
@@ -45,7 +49,11 @@ export function useCreateCategory() {
 
 export function useUpdateCategory() {
   const qc = useQueryClient();
-  return useMutation<Category, Error, { festivalId: string; categoryId: string; data: UpdateCategoryInput }>({
+  return useMutation<
+    Category,
+    Error,
+    { festivalId: string; categoryId: string; data: UpdateCategoryInput }
+  >({
     mutationFn: async ({ festivalId, categoryId, data }) => {
       const response = await apiClient.put<ApiResponse<Category>>(
         `/categories/${categoryId}?festivalId=${encodeURIComponent(festivalId)}`,

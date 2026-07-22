@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import type { AnalyticsData } from "@/components/super-admin/AnalyticsCharts";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
-import { queryKeys } from "./_query-keys";
 import { STALE_TIME } from "@/lib/query-utils";
+import { queryKeys } from "./_query-keys";
 
 export function useSuperAdminAnalytics(initialData?: AnalyticsData) {
   return useQuery<AnalyticsData>({

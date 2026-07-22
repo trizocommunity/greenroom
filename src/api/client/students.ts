@@ -11,8 +11,8 @@ import type {
 } from "@/api/contracts/students";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
-import { queryKeys } from "./_query-keys";
 import { STALE_TIME } from "@/lib/query-utils";
+import { queryKeys } from "./_query-keys";
 
 export function useStudents(festivalId: string) {
   return useQuery<Student[]>({
@@ -44,7 +44,11 @@ export function useStudent(festivalId: string, studentId: string) {
 
 export function useCreateStudent() {
   const qc = useQueryClient();
-  return useMutation<Student, Error, { festivalId: string; data: CreateStudentInput }>({
+  return useMutation<
+    Student,
+    Error,
+    { festivalId: string; data: CreateStudentInput }
+  >({
     mutationFn: async ({ festivalId, data }) => {
       const response = await apiClient.post<ApiResponse<Student>>(
         `/students?festivalId=${encodeURIComponent(festivalId)}`,
@@ -63,7 +67,11 @@ export function useCreateStudent() {
 
 export function useUpdateStudent() {
   const qc = useQueryClient();
-  return useMutation<Student, Error, { festivalId: string; studentId: string; data: UpdateStudentInput }>({
+  return useMutation<
+    Student,
+    Error,
+    { festivalId: string; studentId: string; data: UpdateStudentInput }
+  >({
     mutationFn: async ({ festivalId, studentId, data }) => {
       const response = await apiClient.put<ApiResponse<Student>>(
         `/students/${studentId}?festivalId=${encodeURIComponent(festivalId)}`,
@@ -72,7 +80,9 @@ export function useUpdateStudent() {
       return handleApiResponse(response.data);
     },
     onSuccess: (_data, { festivalId, studentId }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.students.detail(festivalId, studentId) });
+      qc.invalidateQueries({
+        queryKey: queryKeys.students.detail(festivalId, studentId),
+      });
       qc.invalidateQueries({ queryKey: queryKeys.students.all(festivalId) });
     },
     onError: (error) => {
@@ -91,7 +101,9 @@ export function useDeleteStudent() {
       return handleApiResponse(response.data);
     },
     onSuccess: (_data, { festivalId, studentId }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.students.detail(festivalId, studentId) });
+      qc.invalidateQueries({
+        queryKey: queryKeys.students.detail(festivalId, studentId),
+      });
       qc.invalidateQueries({ queryKey: queryKeys.students.all(festivalId) });
     },
     onError: (error) => {

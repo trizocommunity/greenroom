@@ -7,8 +7,8 @@ import type {
 } from "@/api/contracts/schedule";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
-import { queryKeys } from "./_query-keys";
 import { STALE_TIME } from "@/lib/query-utils";
+import { queryKeys } from "./_query-keys";
 
 export function useSchedule(
   festivalId: string,
@@ -32,7 +32,11 @@ export function useSchedule(
 
 export function useCreateScheduleItem() {
   const qc = useQueryClient();
-  return useMutation<ScheduleEntry, Error, { festivalId: string; data: CreateScheduleEntryInput }>({
+  return useMutation<
+    ScheduleEntry,
+    Error,
+    { festivalId: string; data: CreateScheduleEntryInput }
+  >({
     mutationFn: async ({ festivalId, data }) => {
       const response = await apiClient.post<ApiResponse<ScheduleEntry>>(
         `/schedule?festivalId=${encodeURIComponent(festivalId)}`,
@@ -51,7 +55,11 @@ export function useCreateScheduleItem() {
 
 export function useUpdateScheduleItem() {
   const qc = useQueryClient();
-  return useMutation<ScheduleEntry, Error, { festivalId: string; entryId: string; data: UpdateScheduleEntryInput }>({
+  return useMutation<
+    ScheduleEntry,
+    Error,
+    { festivalId: string; entryId: string; data: UpdateScheduleEntryInput }
+  >({
     mutationFn: async ({ festivalId, entryId, data }) => {
       const response = await apiClient.put<ApiResponse<ScheduleEntry>>(
         `/schedule/${entryId}?festivalId=${encodeURIComponent(festivalId)}`,

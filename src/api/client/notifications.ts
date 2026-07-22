@@ -7,8 +7,8 @@ import type {
 } from "@/api/contracts/notifications";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
-import { queryKeys } from "./_query-keys";
 import { STALE_TIME } from "@/lib/query-utils";
+import { queryKeys } from "./_query-keys";
 
 export function useNotifications(studentId: string) {
   return useQuery<Notification[]>({
@@ -37,7 +37,9 @@ export function useMarkNotificationRead() {
       return handleApiResponse(response.data);
     },
     onSuccess: (_data, { studentId }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.notifications.all(studentId) });
+      qc.invalidateQueries({
+        queryKey: queryKeys.notifications.all(studentId),
+      });
     },
     onError: (error) => {
       toast.error(error.message);
@@ -56,7 +58,9 @@ export function useMarkAllNotificationsRead() {
       return handleApiResponse(response.data);
     },
     onSuccess: (_data, { studentId }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.notifications.all(studentId) });
+      qc.invalidateQueries({
+        queryKey: queryKeys.notifications.all(studentId),
+      });
     },
     onError: (error) => {
       toast.error(error.message);

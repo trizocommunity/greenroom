@@ -8,8 +8,8 @@ import type {
 } from "@/api/contracts/news";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
-import { queryKeys } from "./_query-keys";
 import { STALE_TIME } from "@/lib/query-utils";
+import { queryKeys } from "./_query-keys";
 
 export function useNews(festivalId: string) {
   return useQuery<NewsPost[]>({
@@ -27,7 +27,11 @@ export function useNews(festivalId: string) {
 
 export function useCreateNews() {
   const qc = useQueryClient();
-  return useMutation<NewsPost, Error, { festivalId: string; data: CreateNewsPostInput }>({
+  return useMutation<
+    NewsPost,
+    Error,
+    { festivalId: string; data: CreateNewsPostInput }
+  >({
     mutationFn: async ({ festivalId, data }) => {
       const response = await apiClient.post<ApiResponse<NewsPost>>(
         `/news?festivalId=${encodeURIComponent(festivalId)}`,
@@ -46,7 +50,11 @@ export function useCreateNews() {
 
 export function useUpdateNews() {
   const qc = useQueryClient();
-  return useMutation<NewsPost, Error, { festivalId: string; postId: string; data: UpdateNewsPostInput }>({
+  return useMutation<
+    NewsPost,
+    Error,
+    { festivalId: string; postId: string; data: UpdateNewsPostInput }
+  >({
     mutationFn: async ({ festivalId, postId, data }) => {
       const response = await apiClient.put<ApiResponse<NewsPost>>(
         `/news?festivalId=${encodeURIComponent(festivalId)}`,

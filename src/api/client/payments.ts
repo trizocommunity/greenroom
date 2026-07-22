@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   InitiatePaymentInput,
   InitiatePaymentResponse,
@@ -11,8 +11,8 @@ import { loadRazorpay } from "@/core/integrations/razorpay";
 import type { Tier } from "@/core/types/app-enums";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
-import { queryKeys } from "./_query-keys";
 import { STALE_TIME } from "@/lib/query-utils";
+import { queryKeys } from "./_query-keys";
 
 export function usePaymentStatus() {
   return useQuery<{ status: UserStatus; history: PaymentHistoryItem[] }>({
@@ -43,6 +43,8 @@ export function useInitiatePayment() {
 }
 
 export function useVerifyPayment() {
+  const queryClient = useQueryClient();
+
   return useMutation<VerifyPaymentResponse, Error, VerifyPaymentInput>({
     mutationFn: async (data) => {
       const response = await apiClient.post<ApiResponse<VerifyPaymentResponse>>(
@@ -50,6 +52,14 @@ export function useVerifyPayment() {
         { data },
       );
       return handleApiResponse(response.data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.billing.unusedCredit,
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.payments.status });
+      queryClient.invalidateQueries({ queryKey: queryKeys.payments.history });
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.me });
     },
   });
 }
