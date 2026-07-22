@@ -5,6 +5,7 @@ import { Pool } from "pg";
 import * as relations from "../src/core/database/relations";
 import * as schema from "../src/core/database/schema";
 import { generateProfileSlug } from "../src/core/utils/slug";
+import { TIER_CONFIG } from "../src/config/pricing";
 
 const dbSchema = { ...schema, ...relations };
 
@@ -134,7 +135,12 @@ async function getOrCreateInstitution(
 
 // Daily Timetable Slot Allocator (9:00 AM to 10:00 PM with Prayer/Food breaks)
 class FestivalScheduler {
-  private days = ["2026-08-15", "2026-08-16", "2026-08-17", "2026-08-18"];
+  private days = [
+    "2026-08-15",
+    "2026-08-16",
+    "2026-08-17",
+    "2026-08-18",
+  ];
   private currentDayIdx = 0;
   private currentMinutes = 9 * 60; // Start at 09:00 AM (540 minutes)
 
@@ -304,7 +310,11 @@ async function seed() {
   // 5. Create PRO TIER Festival with start & end dates + chest number settings
   const festivalId = crypto.randomUUID();
   const startDate = "2026-08-15T09:00:00.000Z";
-  const endDate = "2026-08-16T21:30:00.000Z";
+  const endDate = "2026-08-18T21:30:00.000Z";
+  const expiresAt = new Date(
+    new Date(startDate).getTime() +
+      TIER_CONFIG.PRO.festivalDurationDays * 24 * 60 * 60 * 1000,
+  ).toISOString();
 
   console.log("👑 Creating Pro Tier Festival with start & end dates...");
   await db.insert(schema.festival).values({
@@ -325,6 +335,7 @@ async function seed() {
     isLocked: false,
     startDate,
     endDate,
+    expiresAt,
     chestNumberSettings: {
       autoGenerate: true,
       prefix: "AHL-",
@@ -399,6 +410,7 @@ async function seed() {
     userId: festivalOwnerId,
     role: "ADMIN",
     isActive: true,
+    metadata: {},
     createdAt: now,
     updatedAt: now,
   });
@@ -410,6 +422,7 @@ async function seed() {
       userId: mem.userId,
       role: mem.role,
       isActive: true,
+      metadata: {},
       createdAt: now,
       updatedAt: now,
     });
