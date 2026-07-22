@@ -115,4 +115,12 @@
 4. **Public:** Share festival URL → public sees basic page (title + results).
 5. **Expiry:** After 30 days, access redirects to profile; tier-aware cleanup may delete BASIC festival data.
 
+---
+
+## 6. Related Documentation
+
+- [TIER.md](../TIER.md) - Unified tier comparison
+- [STANDARD_PLAN.md](./STANDARD_PLAN.md) - Mid-tier plan
+- [PRO_PLAN.md](./PRO_PLAN.md) - Enterprise plan
+
 This document reflects the current architecture: single source for BASIC plan spec and enforcement.

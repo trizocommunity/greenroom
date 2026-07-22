@@ -128,4 +128,12 @@ Same as BASIC, plus any STANDARD-specific action or page that gates on tier/feat
 2. **Read-only enforcement:** If read-only is reintroduced, call `ensureFestivalWritable(festivalId)` (or equivalent) in all mutation actions (students, programmes, results, schedule, gallery, news, events) so that during the read-only window no creates/updates/deletes are allowed.
 3. **Unify feature checks:** Prefer one effective-feature source (e.g. `getEffectiveFeatureEnabled`) for all feature gating so Super Admin overrides apply consistently (including Excel export and student profile).
 
+---
+
+## 7. Related Documentation
+
+- [TIER.md](../TIER.md) - Unified tier comparison
+- [BASIC_PLAN.md](./BASIC_PLAN.md) - Entry-level plan
+- [PRO_PLAN.md](./PRO_PLAN.md) - Enterprise plan
+
 This document reflects the current architecture and config; it can be updated when post-expiry or feature-resolution behavior changes.
