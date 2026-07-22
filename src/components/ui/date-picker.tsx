@@ -1,16 +1,16 @@
 "use client";
 
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, ChevronDownIcon, Clock } from "lucide-react";
+import { Calendar as CalendarIcon, Clock } from "lucide-react";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { TimePicker } from "@/components/ui/time-picker";
 import { cn } from "@/core/utils/cn";
 
 interface DatePickerProps {
@@ -52,17 +52,18 @@ export function DatePicker({
         <PopoverTrigger asChild>
           <Button
             type="button"
+            variant="outline"
             id={id}
             disabled={disabled}
             data-empty={isEmpty || undefined}
             className={cn(
-              // Match Input visual style / sizing
-              "flex h-12 w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm shadow-sm transition-colors justify-between text-left font-normal data-[empty=true]:text-muted-foreground",
+              "w-full justify-start text-left font-normal",
+              !date && "text-muted-foreground",
               className,
             )}
           >
+            <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
             {date ? format(date, "PPP") : <span>{placeholder}</span>}
-            <ChevronDownIcon className="ml-2 h-4 w-4 opacity-70" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
@@ -137,20 +138,21 @@ export function DateTimePicker({
       <PopoverTrigger asChild>
         <Button
           type="button"
+          variant="outline"
           id={id}
           disabled={disabled}
           data-empty={isEmpty || undefined}
           className={cn(
-            // Match Input visual style / sizing
-            "flex h-12 w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm shadow-sm transition-colors justify-between text-left font-normal data-[empty=true]:text-muted-foreground",
+            "w-full justify-start text-left font-normal",
+            !value && "text-muted-foreground",
           )}
         >
+          <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
           {value ? (
             <span>{format(value, "PPP, HH:mm")}</span>
           ) : (
             <span>{placeholder}</span>
           )}
-          <CalendarIcon className="ml-2 h-4 w-4 opacity-70" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-3 space-y-3" align="start">
@@ -168,17 +170,15 @@ export function DateTimePicker({
               : undefined
           }
         />
-        <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-muted-foreground" />
-          <Input
-            type="time"
+        <div className="flex items-center gap-2 border-t pt-3">
+          <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+          <TimePicker
             value={time}
-            onChange={(e) => {
-              const next = e.target.value || "00:00";
+            onChange={(next) => {
               setTime(next);
               commit(internalDate, next);
             }}
-            className="h-8 w-[110px]"
+            className="h-8 text-xs"
           />
         </div>
       </PopoverContent>
