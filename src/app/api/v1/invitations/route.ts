@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
@@ -92,6 +92,7 @@ export const POST = async (req: Request) => {
         festivalRole,
         invitedBy: session.userId,
         expiresAt,
+        status: "pending",
       })
       .returning();
 
@@ -165,20 +166,24 @@ export const GET = async (req: Request) => {
       );
     }
 
+    const now = new Date();
+
+    await db
+      .update(pendingInvitation)
+      .set({ status: "expired" })
+      .where(
+        and(
+          eq(pendingInvitation.festivalId, festivalId),
+          eq(pendingInvitation.status, "pending"),
+          lt(pendingInvitation.expiresAt, now.toISOString()),
+        )
+      );
+
     const invitations = await db.query.pendingInvitation.findMany({
-      where: and(
-        eq(pendingInvitation.festivalId, festivalId),
-        eq(pendingInvitation.acceptedAt, null as any),
-      ),
+      where: eq(pendingInvitation.festivalId, festivalId),
     });
 
-    const now = new Date();
-    const invitationsWithStatus = invitations.map((inv) => ({
-      ...inv,
-      status: new Date(inv.expiresAt) < now ? "expired" : "pending",
-    }));
-
-    return NextResponse.json({ success: true, data: invitationsWithStatus });
+    return NextResponse.json({ success: true, data: invitations });
   } catch (error) {
     console.error("[invitations GET]", error);
     return NextResponse.json(

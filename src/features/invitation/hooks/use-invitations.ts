@@ -13,9 +13,9 @@ export const useCreateInvitation = () => {
       festivalId: string;
       festivalRole: "ADMIN" | "ANNOUNCER" | "STAGE_MANAGER" | "MEDIA";
     }) => api.invitations.create(data),
-    onSuccess: (_data, input) => {
-      toast.success("Invitation sent");
-      qc.invalidateQueries({ queryKey: ["invitations", input.festivalId] });
+    onSuccess: async (_data, input) => {
+      await qc.invalidateQueries({ queryKey: ["invitations", input.festivalId] });
+      await qc.fetchQuery({ queryKey: ["invitations", input.festivalId] });
     },
     onError: (error: any) => {
       console.error("Create invitation error:", error);

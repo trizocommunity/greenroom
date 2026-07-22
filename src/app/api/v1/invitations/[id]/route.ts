@@ -65,7 +65,10 @@ export const DELETE = async (
       );
     }
 
-    await db.delete(pendingInvitation).where(eq(pendingInvitation.id, id));
+    await db
+      .update(pendingInvitation)
+      .set({ status: "cancelled" })
+      .where(eq(pendingInvitation.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {

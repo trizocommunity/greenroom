@@ -34,7 +34,7 @@ export const POST = async (req: Request) => {
     const invitation = await db.query.pendingInvitation.findFirst({
       where: and(
         eq(pendingInvitation.id, token),
-        eq(pendingInvitation.acceptedAt, null as any),
+        eq(pendingInvitation.status, "pending"),
       ),
     });
 
@@ -78,7 +78,7 @@ export const POST = async (req: Request) => {
 
     await db
       .update(pendingInvitation)
-      .set({ acceptedAt: now.toISOString() })
+      .set({ acceptedAt: now.toISOString(), status: "accepted" })
       .where(eq(pendingInvitation.id, token));
 
     const festivalRecord = await db.query.festival.findFirst({
