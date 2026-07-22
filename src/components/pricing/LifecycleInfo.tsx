@@ -6,15 +6,15 @@ import { Archive, Calendar, Clock, Info } from "lucide-react";
 const lifecyclePoints = [
   {
     icon: Clock,
-    text: "Festival remains active for 30 days after creation",
+    text: "Festival remains active for 90 days after creation",
   },
   {
     icon: Calendar,
-    text: "Manage your festival anytime during the validity period",
+    text: "Manage your festival anytime during the active period",
   },
   {
     icon: Archive,
-    text: "After expiry, festival becomes read-only",
+    text: "After expiry, download your complete festival data anytime",
   },
   {
     icon: Info,

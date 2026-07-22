@@ -10,6 +10,7 @@ import {
   useTransition,
 } from "react";
 import { toast } from "sonner";
+import { queryKeys } from "@/api/client/_query-keys";
 import { useCreateJudge } from "@/api/client/judges";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import {
@@ -32,7 +33,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ERROR_MESSAGES } from "@/core/errors/errors";
-import { queryKeys } from "@/api/client/_query-keys";
 import type { ProgrammeJudgmentStatus } from "@/core/types/app-enums";
 import {
   formatStoredDateTime,

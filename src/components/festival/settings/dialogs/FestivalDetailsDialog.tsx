@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useUpdateFestival } from "@/api/client/festivals";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import {
   Dialog,
   DialogContent,
@@ -44,24 +45,35 @@ export function FestivalDetailsDialog({
   const [name, setName] = useState(festival.name || "");
   const [description, setDescription] = useState(festival.description || "");
   const [location, setLocation] = useState(festival.location || "");
-  const [startDate, setStartDate] = useState<Date | null>(
-    toDateOrNull(festival.startDate),
-  );
-  const [endDate, setEndDate] = useState<Date | null>(
-    toDateOrNull(festival.endDate),
-  );
-  const updateFestival = useUpdateFestival();
+  const [dateRange, setDateRange] = useState<{
+    from: Date | undefined;
+    to: Date | undefined;
+  }>({
+    from: toDateOrNull(festival.startDate) ?? undefined,
+    to: toDateOrNull(festival.endDate) ?? undefined,
+  });
+  const updateFestival = useUpdateFestival(festival.id);
 
   const durationStart = festival.createdAt
     ? (toDateOrNull(festival.createdAt) ?? new Date())
     : new Date();
 
+  const existingEndDate = festival.endDate
+    ? toDateOrNull(festival.endDate)
+    : null;
+
+  const durationEnd = existingEndDate
+    ? new Date(existingEndDate.getTime() + 30 * 24 * 60 * 60 * 1000)
+    : dateRange.from
+      ? new Date(dateRange.from.getTime() + 180 * 24 * 60 * 60 * 1000)
+      : undefined;
+
   const validateDates = () => {
-    if (!startDate || !endDate) {
+    if (!dateRange.from || !dateRange.to) {
       toast.error("Please select valid start and end dates.");
       return false;
     }
-    if (startDate > endDate) {
+    if (dateRange.from > dateRange.to) {
       toast.error("Start date must be before end date.");
       return false;
     }
@@ -81,8 +93,8 @@ export function FestivalDetailsDialog({
         name: name.trim(),
         description: description.trim() || undefined,
         location: location.trim() || undefined,
-        startDate: startDate ? startDate.toISOString() : undefined,
-        endDate: endDate ? endDate.toISOString() : undefined,
+        startDate: dateRange.from ? dateRange.from.toISOString() : undefined,
+        endDate: dateRange.to ? dateRange.to.toISOString() : undefined,
       });
       toast.success("Festival details updated");
       setOpen(false);
@@ -132,27 +144,16 @@ export function FestivalDetailsDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="startDate">Start Date</Label>
-              <DatePicker
-                id="startDate"
-                date={startDate ?? undefined}
-                onChange={(date) => setStartDate(date ?? null)}
-                placeholder="Pick start date"
-                from={durationStart}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="endDate">End Date</Label>
-              <DatePicker
-                id="endDate"
-                date={endDate ?? undefined}
-                onChange={(date) => setEndDate(date ?? null)}
-                placeholder="Pick end date"
-                from={startDate || durationStart}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="dateRange">Festival Dates</Label>
+            <DateRangePicker
+              id="dateRange"
+              value={dateRange}
+              onChange={setDateRange}
+              placeholder="Select date range"
+              from={durationStart}
+              to={durationEnd}
+            />
           </div>
 
           <div className="space-y-2">

@@ -78,10 +78,6 @@ export interface TierFeatures {
   // Support
   supportLevel: "whatsapp" | "email" | "priority" | "dedicated";
   supportResponseTime: number; // hours
-
-  // Post-Expiry Behavior
-  postExpiryAccess: "delete" | "readonly" | "full";
-  dataRetentionDays: number;
 }
 
 export interface TierLimits {
@@ -96,16 +92,18 @@ export interface TierLimits {
 export interface TierConfig {
   price: number;
   label: string;
-  durationDays: number;
+  festivalDurationDays: number;
   limits: TierLimits;
   features: TierFeatures;
 }
+
+export const GRACE_PERIOD_DAYS = 7;
 
 export const TIER_CONFIG: Record<Tier, TierConfig> = {
   BASIC: {
     price: 1500,
     label: "Basic",
-    durationDays: 30,
+    festivalDurationDays: 90,
     limits: {
       students: 250,
       programmes: 100,
@@ -188,17 +186,13 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       // Support
       supportLevel: "whatsapp",
       supportResponseTime: 24,
-
-      // Post-Expiry Behavior
-      postExpiryAccess: "delete",
-      dataRetentionDays: 0,
     },
   },
 
   STANDARD: {
     price: 3000,
     label: "Standard",
-    durationDays: 30, // Fixed 30 days for all plans; no read-only after expiry
+    festivalDurationDays: 90,
     limits: {
       students: 500,
       programmes: 250,
@@ -281,17 +275,13 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       // Support — email support with faster response
       supportLevel: "email",
       supportResponseTime: 12,
-
-      // Post-Expiry Behavior — no read-only; expired = full lock
-      postExpiryAccess: "delete",
-      dataRetentionDays: 0,
     },
   },
 
   PRO: {
     price: 6000,
     label: "Pro",
-    durationDays: 30, // Fixed 30 days for all plans
+    festivalDurationDays: 90,
     limits: {
       students: 2000,
       programmes: 1000,
@@ -374,10 +364,6 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       // Support — priority support with 4h SLA
       supportLevel: "priority",
       supportResponseTime: 4,
-
-      // Post-Expiry Behavior — no read-only; expired = full lock
-      postExpiryAccess: "delete",
-      dataRetentionDays: 0,
     },
   },
 };
@@ -404,7 +390,7 @@ export const PRICING_TIERS: PricingTier[] = [
       `${TIER_CONFIG.BASIC.limits.events} Public Events`,
       `${TIER_CONFIG.BASIC.limits.stages} Stages`,
       "0.5 GB Storage",
-      `${TIER_CONFIG.BASIC.durationDays} Days Active Duration`,
+      `${TIER_CONFIG.BASIC.festivalDurationDays} Days Active Duration`,
       "Data deleted on expiry",
     ],
     isPopular: false,
@@ -420,7 +406,7 @@ export const PRICING_TIERS: PricingTier[] = [
       `${TIER_CONFIG.STANDARD.limits.events} Public Events`,
       `${TIER_CONFIG.STANDARD.limits.stages} Stages`,
       "2 GB Storage",
-      `${TIER_CONFIG.STANDARD.durationDays} Days Active Duration`,
+      `${TIER_CONFIG.STANDARD.festivalDurationDays} Days Active Duration`,
       "Stage Management & Scheduling",
       "Bulk Upload (Students & Programmes)",
       "QR Codes & Auto Certificates",
@@ -439,7 +425,7 @@ export const PRICING_TIERS: PricingTier[] = [
       `${TIER_CONFIG.PRO.limits.events} Public Events`,
       "50 Stages",
       "10 GB Storage",
-      `${TIER_CONFIG.PRO.durationDays} Days Active Duration`,
+      `${TIER_CONFIG.PRO.festivalDurationDays} Days Active Duration`,
       "Advanced Analytics & Custom Reports",
       "Live Scoreboard & Live Results",
       "Certificate Builder & Bulk Generation",

@@ -46,22 +46,9 @@ export default async function FestivalSetupPage({ searchParams }: PageProps) {
     columns: { accountType: true },
   });
 
-  const tierConfig = TIER_CONFIG[payment.tier as keyof typeof TIER_CONFIG];
-
-  const expiresAtStr =
-    payment.validUntil ??
-    (() => {
-      const base = payment.createdAt ? new Date(payment.createdAt) : new Date();
-      const days = tierConfig.durationDays || 30;
-      const d = new Date(base);
-      d.setDate(d.getDate() + days);
-      return d.toISOString();
-    })();
-
   return (
     <FestivalSetupForm
       paymentId={paymentId}
-      planExpiresAt={expiresAtStr}
       planValidFrom={payment.createdAt ?? undefined}
       accountType={userAccount?.accountType ?? "PERSONAL"}
     />

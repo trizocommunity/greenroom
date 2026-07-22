@@ -40,15 +40,14 @@ export default async function MembersPage({
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Members</h1>
-        <p className="text-muted-foreground">
-          Manage staff roles for this festival (Admin, Stage Manager,
-          Announcer).
-        </p>
-      </div>
-      <MembersClient festivalId={festival.id} userRole={userRole} />
+    <div className="pt-4 sm:pt-6">
+      <MembersClient festivalId={festival.id} userRole={userRole}>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            Members
+          </h1>
+        </div>
+      </MembersClient>
     </div>
   );
 }

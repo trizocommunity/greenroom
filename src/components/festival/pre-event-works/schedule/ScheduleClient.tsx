@@ -59,6 +59,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TimePicker } from "@/components/ui/time-picker";
 import {
   Tooltip,
   TooltipContent,
@@ -993,11 +994,10 @@ function AddEntryDialog({
               <Label htmlFor="add-start" className="text-xs">
                 Start
               </Label>
-              <Input
+              <TimePicker
                 id="add-start"
-                type="time"
                 value={startTimeStr}
-                onChange={(e) => setStartTimeStr(e.target.value)}
+                onChange={setStartTimeStr}
                 className="h-9 text-sm w-full"
               />
             </div>
@@ -1006,11 +1006,10 @@ function AddEntryDialog({
                 End{" "}
                 <span className="text-muted-foreground font-normal">(opt)</span>
               </Label>
-              <Input
+              <TimePicker
                 id="add-end"
-                type="time"
                 value={endTimeStr}
-                onChange={(e) => setEndTimeStr(e.target.value)}
+                onChange={setEndTimeStr}
                 className="h-9 text-sm w-full"
               />
             </div>
@@ -1253,21 +1252,19 @@ function EditEntryDialog({
             </div>
             <div className="space-y-2">
               <Label>Start time</Label>
-              <input
-                type="time"
+              <TimePicker
                 value={startTimeStr}
-                onChange={(e) => setStartTimeStr(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                onChange={setStartTimeStr}
+                className="h-9 text-sm w-full"
               />
             </div>
           </div>
           <div className="space-y-2">
             <Label>End time (optional)</Label>
-            <input
-              type="time"
+            <TimePicker
               value={endTimeStr}
-              onChange={(e) => setEndTimeStr(e.target.value)}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+              onChange={setEndTimeStr}
+              className="h-9 text-sm w-full"
             />
           </div>
           {conflictError && (

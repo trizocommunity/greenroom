@@ -47,6 +47,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TimePicker } from "@/components/ui/time-picker";
 import type { SessionType } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
 import { parseStoredInstant } from "@/core/utils/date-time";
@@ -845,11 +846,10 @@ function AddSessionDialog({
               <Label htmlFor="add-session-start" className="text-xs">
                 Start
               </Label>
-              <Input
+              <TimePicker
                 id="add-session-start"
-                type="time"
                 value={startTimeStr}
-                onChange={(e) => setStartTimeStr(e.target.value)}
+                onChange={setStartTimeStr}
                 className="h-9 text-sm w-full"
               />
             </div>
@@ -858,11 +858,10 @@ function AddSessionDialog({
                 End{" "}
                 <span className="text-muted-foreground font-normal">(opt)</span>
               </Label>
-              <Input
+              <TimePicker
                 id="add-session-end"
-                type="time"
                 value={endTimeStr}
-                onChange={(e) => setEndTimeStr(e.target.value)}
+                onChange={setEndTimeStr}
                 className="h-9 text-sm w-full"
               />
             </div>
@@ -1160,11 +1159,10 @@ function EditSessionDialog({
               <Label htmlFor="edit-session-start" className="text-xs">
                 Start
               </Label>
-              <Input
+              <TimePicker
                 id="edit-session-start"
-                type="time"
                 value={startTimeStr}
-                onChange={(e) => setStartTimeStr(e.target.value)}
+                onChange={setStartTimeStr}
                 className="h-9 text-sm w-full"
               />
             </div>
@@ -1173,11 +1171,10 @@ function EditSessionDialog({
                 End{" "}
                 <span className="text-muted-foreground font-normal">(opt)</span>
               </Label>
-              <Input
+              <TimePicker
                 id="edit-session-end"
-                type="time"
                 value={endTimeStr}
-                onChange={(e) => setEndTimeStr(e.target.value)}
+                onChange={setEndTimeStr}
                 className="h-9 text-sm w-full"
               />
             </div>

@@ -15,10 +15,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-
+import { queryKeys } from "@/api/client/_query-keys";
 import { useCreateFestival } from "@/api/client/festivals";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -28,7 +29,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { queryKeys } from "@/api/client/_query-keys";
 import { InstitutionType } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
 import {
@@ -69,14 +69,12 @@ const transition = {
 
 interface FestivalSetupFormProps {
   paymentId: string;
-  planExpiresAt: string;
   planValidFrom?: string;
   accountType?: "PERSONAL" | "INSTITUTIONAL";
 }
 
 export function FestivalSetupForm({
   paymentId,
-  planExpiresAt,
   planValidFrom,
   accountType,
 }: FestivalSetupFormProps) {
@@ -84,6 +82,14 @@ export function FestivalSetupForm({
   const queryClient = useQueryClient();
   const [currentStep, setCurrentStep] = useState<Step>("basics");
   const [direction, setDirection] = useState(1);
+
+  const planExpiryDate = planValidFrom
+    ? (() => {
+        const d = new Date(planValidFrom);
+        d.setDate(d.getDate() + 90);
+        return d;
+      })()
+    : undefined;
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
   const createFestival = useCreateFestival();
 
@@ -456,11 +462,16 @@ export function FestivalSetupForm({
                   </h2>
                   <p className="text-muted-foreground text-sm">
                     Set the physical location and schedule for the festival.
-                    Your scheduling is available until{" "}
-                    <span className="text-foreground font-medium">
-                      {new Date(planExpiresAt).toLocaleDateString()}
-                    </span>
-                    .
+                    {planExpiryDate && (
+                      <>
+                        {" "}
+                        Your scheduling is available until{" "}
+                        <span className="text-foreground font-medium">
+                          {planExpiryDate.toLocaleDateString()}
+                        </span>
+                        .
+                      </>
+                    )}
                   </p>
                 </div>
 
@@ -497,73 +508,45 @@ export function FestivalSetupForm({
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">
-                          Start Date
-                        </Label>
-                        <DatePicker
-                          date={
-                            watch("startDate") instanceof Date
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">
+                        Festival Dates
+                      </Label>
+                      <DateRangePicker
+                        value={{
+                          from: watch("startDate")
+                            ? watch("startDate") instanceof Date
                               ? (watch("startDate") as Date)
-                              : watch("startDate")
-                                ? new Date(watch("startDate") as any)
-                                : undefined
-                          }
-                          onChange={(date) => {
-                            setValue("startDate", date);
-                            // Auto-cap endDate if it's before new start date
-                            if (date) {
-                              const currentEnd = getValues("endDate");
-                              if (
-                                currentEnd &&
-                                new Date(currentEnd as any) < date
-                              ) {
-                                setValue("endDate", date);
-                              }
-                            }
-                          }}
-                          placeholder="Select date"
-                          from={
-                            planValidFrom ? new Date(planValidFrom) : undefined
-                          }
-                          to={new Date(planExpiresAt)}
-                          showValidityHint
-                        />
-                        {errors.startDate && (
-                          <p className="text-xs text-destructive">
-                            {errors.startDate.message}
-                          </p>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">End Date</Label>
-                        <DatePicker
-                          date={
-                            watch("endDate") instanceof Date
+                              : new Date(watch("startDate") as any)
+                            : undefined,
+                          to: watch("endDate")
+                            ? watch("endDate") instanceof Date
                               ? (watch("endDate") as Date)
-                              : watch("endDate")
-                                ? new Date(watch("endDate") as any)
-                                : undefined
-                          }
-                          onChange={(date) => setValue("endDate", date)}
-                          placeholder="Select date"
-                          from={
-                            watch("startDate")
-                              ? new Date(watch("startDate") as any)
-                              : planValidFrom
-                                ? new Date(planValidFrom)
-                                : undefined
-                          }
-                          to={new Date(planExpiresAt)}
-                          showValidityHint
-                        />
-                        {errors.endDate && (
-                          <p className="text-xs text-destructive">
-                            {errors.endDate.message}
-                          </p>
-                        )}
-                      </div>
+                              : new Date(watch("endDate") as any)
+                            : undefined,
+                        }}
+                        onChange={(range) => {
+                          setValue("startDate", range.from);
+                          setValue("endDate", range.to);
+                        }}
+                        placeholder="Select date range"
+                        from={
+                          planValidFrom ? new Date(planValidFrom) : undefined
+                        }
+                        to={planExpiryDate}
+                        showValidityHint
+                        className="h-12 rounded-xl border-border/60 bg-background/60 backdrop-blur-sm"
+                      />
+                      {errors.startDate && (
+                        <p className="text-xs text-destructive">
+                          {errors.startDate.message}
+                        </p>
+                      )}
+                      {errors.endDate && (
+                        <p className="text-xs text-destructive">
+                          {errors.endDate.message}
+                        </p>
+                      )}
                     </div>
                   </div>
 

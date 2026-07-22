@@ -102,9 +102,14 @@ interface Member {
 interface MembersClientProps {
   festivalId: string;
   userRole: string;
+  children?: React.ReactNode;
 }
 
-export function MembersClient({ festivalId, userRole }: MembersClientProps) {
+export function MembersClient({
+  festivalId,
+  userRole,
+  children,
+}: MembersClientProps) {
   const { isReadOnly } = useFestivalReadOnly();
   const { data: members = [], isLoading: membersLoading } =
     useMembers(festivalId);
@@ -122,7 +127,7 @@ export function MembersClient({ festivalId, userRole }: MembersClientProps) {
     );
   }
 
-  if (invitationsData?.error || (invitationsData as any)?.isError) {
+  if ((invitationsData as any)?.error || (invitationsData as any)?.isError) {
     const err = (invitationsData as any).error || (invitationsData as any);
     return (
       <div className="text-center py-8 text-destructive">
@@ -132,17 +137,16 @@ export function MembersClient({ festivalId, userRole }: MembersClientProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Club Members</h2>
-          <p className="text-sm text-muted-foreground">
-            {members.length} {members.length === 1 ? "member" : "members"}
-            {invitations.length > 0 &&
-              ` • ${invitations.length} pending invitation${invitations.length === 1 ? "" : "s"}`}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <div className="space-y-6 pt-2">
+      <div className="flex flex-row items-center justify-between gap-4">
+        {children || (
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+              Members
+            </h1>
+          </div>
+        )}
+        <div className="flex items-center gap-2 shrink-0">
           <HowItWorksButton
             title="How it Works"
             description="Learn how to add members to your festival"
@@ -211,24 +215,6 @@ export function MembersClient({ festivalId, userRole }: MembersClientProps) {
         </div>
       </div>
 
-      {invitations.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-sm font-medium text-muted-foreground">
-            Pending Invitations
-          </h3>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {invitations.map((invitation: PendingInvitation) => (
-              <PendingInvitationCard
-                key={invitation.id}
-                invitation={invitation}
-                isOwner={isOwner}
-                festivalId={festivalId}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
       {members.length === 0 && invitations.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
           <User className="mb-4 h-12 w-12 text-muted-foreground" />
@@ -239,15 +225,30 @@ export function MembersClient({ festivalId, userRole }: MembersClientProps) {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {members.map((member: Member) => (
-            <MemberCard
-              key={member.id}
-              member={member}
-              festivalId={festivalId}
-              isOwner={isOwner}
-              isReadOnly={isReadOnly}
-            />
-          ))}
+          {[...members, ...invitations]
+            .sort(
+              (a, b) =>
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime(),
+            )
+            .map((item) =>
+              "isActive" in item ? (
+                <MemberCard
+                  key={item.id}
+                  member={item}
+                  festivalId={festivalId}
+                  isOwner={isOwner}
+                  isReadOnly={isReadOnly}
+                />
+              ) : (
+                <PendingInvitationCard
+                  key={item.id}
+                  invitation={item as PendingInvitation}
+                  isOwner={isOwner}
+                  festivalId={festivalId}
+                />
+              ),
+            )}
         </div>
       )}
     </div>
@@ -614,7 +615,7 @@ function AddMemberDialog({
 }) {
   const createInvitation = useCreateInvitation();
   const festival = useFestival();
-  const readOnlyExpired = festival?.readOnlyExpired ?? false;
+  const readOnlyExpired = (festival as any)?.readOnlyExpired ?? false;
   const [open, setOpen] = useState(false);
 
   const form = useForm<InviteMemberFormValues>({
@@ -674,6 +675,7 @@ function AddMemberDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
+          size={"sm"}
           disabled={disabled || readOnlyExpired}
           title={
             readOnlyExpired
