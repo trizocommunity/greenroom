@@ -90,7 +90,10 @@ export function MemberCard({
               >
                 {fullName}
               </h3>
-              <p className="text-xs text-muted-foreground truncate mt-0.5 font-medium" title={email}>
+              <p
+                className="text-xs text-muted-foreground truncate mt-0.5 font-medium"
+                title={email}
+              >
                 {email}
               </p>
             </div>
@@ -107,8 +110,14 @@ export function MemberCard({
                 <span className="sr-only">Actions</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-lg border-border/80">
-              <DropdownMenuItem onSelect={() => setShowDetails(true)} className="cursor-pointer font-medium">
+            <DropdownMenuContent
+              align="end"
+              className="w-44 rounded-xl shadow-lg border-border/80"
+            >
+              <DropdownMenuItem
+                onSelect={() => setShowDetails(true)}
+                className="cursor-pointer font-medium"
+              >
                 <Eye className="h-4 w-4 mr-2.5 text-muted-foreground" />
                 View Details
               </DropdownMenuItem>

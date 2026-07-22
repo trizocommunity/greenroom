@@ -96,7 +96,10 @@ export function PendingInvitationCard({
                   <span className="sr-only">Actions</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-lg border-border/80">
+              <DropdownMenuContent
+                align="end"
+                className="w-44 rounded-xl shadow-lg border-border/80"
+              >
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive cursor-pointer font-medium"
                   onSelect={handleCancel}

@@ -1,7 +1,6 @@
 "use client";
 
 import { format } from "date-fns";
-import { parseStoredInstant } from "@/core/utils/date-time";
 import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import type { Member } from "./types";
 
 interface MemberDetailsDialogProps {

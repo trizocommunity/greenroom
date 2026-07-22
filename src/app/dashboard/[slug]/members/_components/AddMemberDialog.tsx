@@ -5,6 +5,7 @@ import { Loader2, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { useFestival } from "@/components/festival/FestivalContext";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,7 +31,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useFestival } from "@/features/festivals/hooks/use-festivals";
 import { useCreateInvitation } from "@/features/invitation/hooks/use-invitations";
 import { type InviteMemberFormValues, InviteMemberSchema } from "./types";
 
