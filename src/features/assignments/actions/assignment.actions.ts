@@ -257,13 +257,26 @@ export async function bulkCreateAssignmentAction(
     actor,
     { teamLeadsByTeam, appointer },
   );
-  await createAuditLog({
-    action: "ASSIGN_STUDENTS",
-    targetType: "PROGRAMME_ASSIGNMENT",
-    targetId: festivalId,
-    metadata: { count: created.length },
-    actor: auditActorForContext(actorContext),
-  }).catch((err) => console.error("[AuditLog] ASSIGN_STUDENTS failed", err));
+  const countByProgramme = new Map<string, number>();
+  for (const row of created) {
+    countByProgramme.set(
+      row.programmeId,
+      (countByProgramme.get(row.programmeId) ?? 0) + 1,
+    );
+  }
+  await Promise.all(
+    Array.from(countByProgramme.entries()).map(([programmeId, count]) =>
+      createAuditLog({
+        action: "ASSIGN_STUDENTS",
+        targetType: "PROGRAMME_ASSIGNMENT",
+        targetId: programmeId,
+        metadata: { programmeId, count },
+        actor: auditActorForContext(actorContext),
+      }).catch((err) =>
+        console.error("[AuditLog] ASSIGN_STUDENTS failed", err),
+      ),
+    ),
+  );
   return created;
 }
 

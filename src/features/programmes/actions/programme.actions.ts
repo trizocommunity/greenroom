@@ -6,6 +6,7 @@ import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
   category as categoryTable,
+  festival as festivalTable,
   programme as programmeTable,
   user as userTable,
 } from "@/core/database/schema";
@@ -15,6 +16,8 @@ import {
   handleActionError,
 } from "@/core/errors/errors";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
+import { isProTier } from "@/features/plan-features/services/tier";
+import { getProgrammeDetailForDrawer } from "@/features/programmes/loaders/programme-detail.loader";
 import { ProgrammeService } from "@/features/programmes/services/programme.service";
 
 async function getActorForCreatedBy(userId: string) {
@@ -127,7 +130,11 @@ export async function createProgrammeAction(
     action: "CREATE_PROGRAMME",
     targetType: "PROGRAMME",
     targetId: created.id,
-    metadata: { name: data.name, categoryId: data.categoryId },
+    metadata: {
+      programmeId: created.id,
+      name: data.name,
+      categoryId: data.categoryId,
+    },
   }).catch((err) => console.error("[AuditLog] CREATE_PROGRAMME failed", err));
 
   return created;
@@ -174,7 +181,7 @@ export async function deleteProgrammeAction(festivalId: string, id: string) {
     action: "DELETE_PROGRAMME",
     targetType: "PROGRAMME",
     targetId: id,
-    metadata: { festivalId },
+    metadata: { festivalId, programmeId: id },
   }).catch((err) => console.error("[AuditLog] DELETE_PROGRAMME failed", err));
   return deleted;
 }
@@ -214,8 +221,33 @@ export async function updateProgrammeAction(
     action: "UPDATE_PROGRAMME",
     targetType: "PROGRAMME",
     targetId: id,
-    metadata: { changes: data },
+    metadata: { programmeId: id, changes: data },
   }).catch((err) => console.error("[AuditLog] UPDATE_PROGRAMME failed", err));
 
   return updated;
+}
+
+/**
+ * Programme drawer data. Panel A (summary/counts) is available on every
+ * tier; teamLeads/auditTimeline (Panels B/C) are PRO-only and stripped
+ * here rather than left to the frontend to hide.
+ */
+export async function getProgrammeDetailForDrawerAction(
+  festivalId: string,
+  programmeId: string,
+) {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
+
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.id, festivalId),
+    columns: { tier: true },
+  });
+
+  const detail = await getProgrammeDetailForDrawer(programmeId);
+
+  if (!isProTier(festival?.tier)) {
+    return { ...detail, teamLeads: {}, auditTimeline: [] };
+  }
+  return detail;
 }

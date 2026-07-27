@@ -20,6 +20,14 @@ import {
 import { revalidateProgrammeReporting } from "@/features/programmes/actions/reporting-revalidation";
 import { ProgrammeReportingService } from "@/features/programmes/services/programme-reporting.service";
 
+async function getProgrammeIdForReportingSession(reportingSessionId: string) {
+  const session = await db.query.programmeReportingSession.findFirst({
+    where: eq(prsTable.id, reportingSessionId),
+    columns: { programmeId: true },
+  });
+  return session?.programmeId;
+}
+
 export async function getProgrammeReportingBoardAction(festivalId: string) {
   const actor = await getSession();
   if (actor?.userId) {
@@ -40,7 +48,7 @@ export async function startProgrammeReportingAction(
     action: "OPEN_REPORTING",
     targetType: "REPORTING_SESSION",
     targetId: res.id,
-    metadata: { festivalId, scheduleEntryId },
+    metadata: { festivalId, scheduleEntryId, programmeId: res.programmeId },
   }).catch((err) => console.error("[AuditLog] OPEN_REPORTING failed", err));
   await revalidateProgrammeReporting(festivalId, "reporting");
   return { success: true, data: res };
@@ -73,11 +81,19 @@ export async function markProgrammeParticipantAction(
     actorName,
   );
   if (isReported) {
+    const assignment = await db.query.programmeAssignment.findFirst({
+      where: eq(assignmentTable.id, assignmentId),
+      columns: { programmeId: true },
+    });
     await createAuditLog({
       action: "MARK_REPORTED",
       targetType: "PROGRAMME_ASSIGNMENT",
       targetId: assignmentId,
-      metadata: { festivalId, reportingSessionId },
+      metadata: {
+        festivalId,
+        reportingSessionId,
+        programmeId: assignment?.programmeId,
+      },
     }).catch((err) => console.error("[AuditLog] MARK_REPORTED failed", err));
   }
   await revalidateProgrammeReporting(festivalId, "reporting");
@@ -98,11 +114,18 @@ export async function markProgrammeAssignmentsBulkAction(
     actorName,
   );
   if (isReported) {
+    const programmeId =
+      await getProgrammeIdForReportingSession(reportingSessionId);
     await createAuditLog({
       action: "MARK_REPORTED",
       targetType: "PROGRAMME_ASSIGNMENT",
       targetId: reportingSessionId,
-      metadata: { festivalId, reportingSessionId, count: assignmentIds.length },
+      metadata: {
+        festivalId,
+        reportingSessionId,
+        programmeId,
+        count: assignmentIds.length,
+      },
     }).catch((err) => console.error("[AuditLog] MARK_REPORTED failed", err));
   }
   await revalidateProgrammeReporting(festivalId, "reporting");
@@ -122,7 +145,10 @@ export async function closeProgrammeReportingAction(
     action: "CLOSE_REPORTING",
     targetType: "REPORTING_SESSION",
     targetId: reportingSessionId,
-    metadata: { festivalId },
+    metadata: {
+      festivalId,
+      programmeId: await getProgrammeIdForReportingSession(reportingSessionId),
+    },
   }).catch((err) => console.error("[AuditLog] CLOSE_REPORTING failed", err));
   await revalidateProgrammeReporting(festivalId, "reporting-close");
   return { success: true, data: res };
@@ -423,7 +449,11 @@ export async function assignCodeLettersWithSpinAction(
     action: "ISSUE_CODE_LETTER",
     targetType: "REPORTING_SESSION",
     targetId: reportingSessionId,
-    metadata: { festivalId, count: codeAssignments.length },
+    metadata: {
+      festivalId,
+      count: codeAssignments.length,
+      programmeId: await getProgrammeIdForReportingSession(reportingSessionId),
+    },
   }).catch((err) => console.error("[AuditLog] ISSUE_CODE_LETTER failed", err));
   await revalidateProgrammeReporting(festivalId, "reporting");
 
