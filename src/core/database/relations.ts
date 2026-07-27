@@ -32,13 +32,11 @@ import {
   programmeNotification,
   programmeReportedParticipant,
   programmeReportingSession,
-  realtimeOutbox,
+  programmeTeamLead,
   result,
   scheduleEntry,
   stage,
   student,
-  teamLeaderOtp,
-  teamLeaderSession,
   user,
   userLoginEvent,
   userPurchaseSummary,
@@ -56,7 +54,6 @@ export const userRelations = relations(user, ({ one, many }) => ({
   userPurchaseSummaries: many(userPurchaseSummary),
   festivalCategoryPreferences: many(festivalCategoryPreference),
   programmeNotifications: many(programmeNotification),
-  realtimeOutboxes: many(realtimeOutbox),
   pendingInvitations: many(pendingInvitation),
 }));
 
@@ -95,11 +92,9 @@ export const festivalRelations = relations(festival, ({ one, many }) => ({
   expiredFestivalResults: many(expiredFestivalResult),
   expiredFestivalManualBooks: many(expiredFestivalManualBook),
   festivalLifecycleEvents: many(festivalLifecycleEvent),
-  teamLeaderSessions: many(teamLeaderSession),
   programmeReportingSessions: many(programmeReportingSession),
   programmeCodeLetters: many(programmeCodeLetter),
   programmeNotifications: many(programmeNotification),
-  realtimeOutboxes: many(realtimeOutbox),
   programmeJudgeSessions: many(programmeJudgeSession),
   judges: many(judge),
   judgmentConfigs: many(judgmentConfig),
@@ -138,6 +133,7 @@ export const groupRelations = relations(group, ({ one, many }) => ({
   students: many(student),
   assignments: many(programmeAssignment),
   programmeReportedParticipants: many(programmeReportedParticipant),
+  programmeTeamLeads: many(programmeTeamLead),
 }));
 
 export const programmeRelations = relations(programme, ({ one, many }) => ({
@@ -156,6 +152,7 @@ export const programmeRelations = relations(programme, ({ one, many }) => ({
   programmeCodeLetters: many(programmeCodeLetter),
   programmeJudgeSessions: many(programmeJudgeSession),
   judgmentConfigs: many(judgmentConfig),
+  programmeTeamLeads: many(programmeTeamLead),
 }));
 
 export const studentRelations = relations(student, ({ one, many }) => ({
@@ -171,14 +168,13 @@ export const studentRelations = relations(student, ({ one, many }) => ({
     fields: [student.categoryId],
     references: [category.id],
   }),
-assignments: many(programmeAssignment),
-  teamLeaderOtps: many(teamLeaderOtp),
-  teamLeaderSessions: many(teamLeaderSession),
+  assignments: many(programmeAssignment),
   programmeReportedParticipants: many(programmeReportedParticipant),
   programmeCodeLetterRecipients: many(programmeCodeLetterRecipient),
   programmeNotifications: many(programmeNotification),
   participantOtps: many(participantOtp),
   participantSessions: many(participantSession),
+  programmeTeamLeads: many(programmeTeamLead),
 }));
 
 export const stageRelations = relations(stage, ({ one, many }) => ({
@@ -542,27 +538,6 @@ export const festivalLifecycleEventRelations = relations(
   }),
 );
 
-export const teamLeaderOtpRelations = relations(teamLeaderOtp, ({ one }) => ({
-  student: one(student, {
-    fields: [teamLeaderOtp.studentId],
-    references: [student.id],
-  }),
-}));
-
-export const teamLeaderSessionRelations = relations(
-  teamLeaderSession,
-  ({ one }) => ({
-    student: one(student, {
-      fields: [teamLeaderSession.studentId],
-      references: [student.id],
-    }),
-    festival: one(festival, {
-      fields: [teamLeaderSession.festivalId],
-      references: [festival.id],
-    }),
-  }),
-);
-
 export const programmeNotificationRelations = relations(
   programmeNotification,
   ({ one }) => ({
@@ -580,17 +555,6 @@ export const programmeNotificationRelations = relations(
     }),
   }),
 );
-
-export const realtimeOutboxRelations = relations(realtimeOutbox, ({ one }) => ({
-  festival: one(festival, {
-    fields: [realtimeOutbox.festivalId],
-    references: [festival.id],
-  }),
-  user: one(user, {
-    fields: [realtimeOutbox.actorUserId],
-    references: [user.id],
-  }),
-}));
 
 export const institutionRelations = relations(institution, ({ one, many }) => ({
   owner: one(user, {
@@ -617,7 +581,7 @@ export const pendingInvitationRelations = relations(
   }),
 );
 
-import { participantSession, participantOtp } from "./schema";
+import { participantOtp, participantSession } from "./schema";
 
 export const participantSessionRelations = relations(
   participantSession,
@@ -633,12 +597,9 @@ export const participantSessionRelations = relations(
   }),
 );
 
-export const participantOtpRelations = relations(
-  participantOtp,
-  ({ one }) => ({
-    student: one(student, {
-      fields: [participantOtp.studentId],
-      references: [student.id],
-    }),
+export const participantOtpRelations = relations(participantOtp, ({ one }) => ({
+  student: one(student, {
+    fields: [participantOtp.studentId],
+    references: [student.id],
   }),
-);
+}));
