@@ -1,12 +1,13 @@
+import { generateId } from "../../src/core/database/ids";
 import * as schema from "../../src/core/database/schema";
 import { generateProfileSlug } from "../../src/core/utils/slug";
 import {
+  dateOfBirthFor,
   ISLAMIC_FEMALE_NAMES,
   ISLAMIC_MALE_NAMES,
   STUDENTS_PER_CATEGORY_PER_GROUP,
   TEAM_LEADER_DOB_BY_GROUP,
   TEAM_LEADERS_PER_GROUP,
-  dateOfBirthFor,
 } from "./config";
 import type { DB } from "./db";
 import type { CreatedCategory, CreatedGroup } from "./taxonomies";
@@ -45,14 +46,15 @@ export async function createStudents(
 
     for (const cat of specificCategories) {
       for (let i = 0; i < STUDENTS_PER_CATEGORY_PER_GROUP; i++) {
-        const studentId = crypto.randomUUID();
+        const studentId = generateId();
         const chestNumber = `${group.start + chestCount}`;
         const isFemale = i % 2 === 1;
         const studentName = isFemale
           ? ISLAMIC_FEMALE_NAMES[(globalIdx >> 1) % ISLAMIC_FEMALE_NAMES.length]
           : ISLAMIC_MALE_NAMES[(globalIdx >> 1) % ISLAMIC_MALE_NAMES.length];
 
-        const isLeader = leadersAssignedForGroup < TEAM_LEADERS_PER_GROUP && i === 0;
+        const isLeader =
+          leadersAssignedForGroup < TEAM_LEADERS_PER_GROUP && i === 0;
         if (isLeader) leadersAssignedForGroup++;
 
         // First team leader of each group gets the deterministic showcase DOB

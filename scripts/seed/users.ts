@@ -1,6 +1,13 @@
 import { eq } from "drizzle-orm";
+import { generateId } from "../../src/core/database/ids";
 import * as schema from "../../src/core/database/schema";
-import { FESTIVAL_OWNER_EMAIL, FESTIVAL_OWNER_NAME, INSTITUTION, SUPER_ADMIN_EMAIL, SUPER_ADMIN_NAME } from "./config";
+import {
+  FESTIVAL_OWNER_EMAIL,
+  FESTIVAL_OWNER_NAME,
+  INSTITUTION,
+  SUPER_ADMIN_EMAIL,
+  SUPER_ADMIN_NAME,
+} from "./config";
 import type { DB } from "./db";
 
 type AccountType = "PERSONAL" | "INSTITUTIONAL";
@@ -34,7 +41,7 @@ export async function getOrCreateUser(
     return existing.id;
   }
 
-  const id = crypto.randomUUID();
+  const id = generateId();
   await db.insert(schema.user).values({
     id,
     email: emailLower,
@@ -75,7 +82,7 @@ export async function getOrCreateInstitution(
     return existing.id;
   }
 
-  const id = crypto.randomUUID();
+  const id = generateId();
   await db.insert(schema.institution).values({
     id,
     ownerId,

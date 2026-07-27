@@ -8,6 +8,7 @@ import {
 } from "@/core/auth/magic-link";
 import { createSession, deleteSession, getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
+import { generateId } from "@/core/database/ids";
 import { user as userTable } from "@/core/database/schema";
 import { sendMagicLinkEmail } from "@/core/integrations/email";
 import { findUserById } from "@/features/auth/repositories/user.repository";
@@ -85,11 +86,10 @@ const handler = createHandler({
       });
 
       if (!dbUser) {
-        const { randomUUID } = await import("crypto");
         const result = await db
           .insert(userTable)
           .values({
-            id: randomUUID(),
+            id: generateId(),
             email: record.email,
             globalRole: "USER",
           })
