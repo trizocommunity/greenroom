@@ -2,13 +2,13 @@ import { desc, eq, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { DeadlinesCard } from "@/components/festival/pre-event-works/DeadlinesCard";
 import { AssignProgrammesClient } from "@/components/student/team-leader/AssignProgrammesClient";
-import { requireTeamLeaderSession } from "@/core/auth/team-leader-guard";
+import { requireParticipantAuth } from "@/core/auth/participant-guard";
 import { db } from "@/core/database/client";
 import {
   group as groupTable,
   programme as programmeTable,
 } from "@/core/database/schema";
-import { getTeamLeaderGroupStudentsForSelection } from "@/features/team-leader/services/my-team";
+import { getTeamLeaderGroupStudentsForSelection } from "@/features/participants/services/my-team";
 
 export default async function AssignProgrammesPage({
   params,
@@ -16,10 +16,11 @@ export default async function AssignProgrammesPage({
   params: Promise<{ slug: string; studentSlug: string }>;
 }) {
   const { slug, studentSlug } = await params;
-  const { festival, student } = await requireTeamLeaderSession({
+  const { festival, student } = await requireParticipantAuth(
     slug,
     studentSlug,
-  });
+    true,
+  );
 
   const deadline = festival.programmeAssignmentDeadline;
   const isReadOnly = deadline ? new Date() > new Date(deadline) : false;

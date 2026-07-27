@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, inArray, isNotNull, not, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { AllProgrammesClient } from "@/components/student/team-leader/AllProgrammesClient";
-import { requireTeamLeaderSession } from "@/core/auth/team-leader-guard";
+import { requireParticipantAuth } from "@/core/auth/participant-guard";
 import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
@@ -18,7 +18,7 @@ import {
   mapSessionCodeLettersForLookup,
 } from "@/features/programmes/services/programme-reporting-code";
 import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
-import { getTeamLeaderMyStudents } from "@/features/team-leader/services/my-team";
+import { getTeamLeaderMyStudents } from "@/features/participants/services/my-team";
 
 function isSessionTimedOut(session: any): boolean {
   return Boolean(
@@ -35,10 +35,11 @@ export default async function AllProgrammesPage({
 }) {
   const { slug, studentSlug } = await params;
 
-  const { festival, student } = await requireTeamLeaderSession({
+  const { festival, student } = await requireParticipantAuth(
     slug,
     studentSlug,
-  });
+    true,
+  );
 
   const { myStudents } = await getTeamLeaderMyStudents(festival.id, student.id);
   const myStudentIds = myStudents.map((s) => s.id);

@@ -123,6 +123,15 @@ export function FestivalNavbar({
 
         {/* Right Side - Auth */}
         <div className="hidden md:flex items-center gap-3">
+          <Link href={`/${festival.slug}/login`}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 rounded-full font-medium border-border"
+            >
+              Participant Login
+            </Button>
+          </Link>
           {isLoggedIn ? (
             <Link href={`/dashboard/${festival.slug}`}>
               <Button size="sm" className="gap-2 rounded-full font-medium">
@@ -184,7 +193,18 @@ export function FestivalNavbar({
                   </Link>
                 );
               })}
-              <div className="border-t border-border pt-4 mt-2">
+              <div className="border-t border-border pt-4 mt-2 flex flex-col gap-2">
+                <Link
+                  href={`/${festival.slug}/login`}
+                  onClick={() => setIsOpen(false)}
+                >
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2 rounded-full font-medium border-border"
+                  >
+                    Participant Login
+                  </Button>
+                </Link>
                 {isLoggedIn ? (
                   <Button
                     className="w-full gap-2 rounded-full font-medium"

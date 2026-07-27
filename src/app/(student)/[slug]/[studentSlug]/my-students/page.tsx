@@ -1,7 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { MyStudentsClient } from "@/components/student/team-leader/MyStudentsClient";
-import { requireTeamLeaderSession } from "@/core/auth/team-leader-guard";
+import { requireParticipantAuth } from "@/core/auth/participant-guard";
 import { db } from "@/core/database/client";
 import { student as studentTable } from "@/core/database/schema";
 
@@ -12,10 +12,11 @@ export default async function MyStudentsPage({
 }) {
   const { slug, studentSlug } = await params;
 
-  const { festival, student } = await requireTeamLeaderSession({
+  const { festival, student } = await requireParticipantAuth(
     slug,
     studentSlug,
-  });
+    true
+  );
 
   const groupStudents = await db.query.student.findMany({
     where: and(

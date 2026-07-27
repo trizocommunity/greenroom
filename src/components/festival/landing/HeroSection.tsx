@@ -92,10 +92,19 @@ export function HeroSection({ festival, basicMode = false }: HeroSectionProps) {
 
             {/* CTAs */}
             <div className="flex gap-3 pt-2 justify-center md:justify-start">
-              <Link href={resultsHref}>
+              <Link href={`${basePath}/login`}>
                 <Button
                   size="sm"
                   className="rounded-full h-10 px-6 font-medium shadow-primary-glow hover:opacity-90 transition-opacity"
+                >
+                  Participant Login
+                </Button>
+              </Link>
+              <Link href={resultsHref}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-full h-10 px-6 font-medium bg-card border-border text-foreground hover:bg-muted"
                 >
                   View results
                 </Button>

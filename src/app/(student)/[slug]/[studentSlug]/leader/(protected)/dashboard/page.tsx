@@ -4,12 +4,12 @@ import { MapPin, Trophy, Users } from "lucide-react";
 import Link from "next/link";
 import { QrViewButton } from "@/components/common/QrViewButton";
 import { ReportingEndsInCountdown } from "@/components/programme/ReportingEndsInCountdown";
-import { TeamLeaderLogoutButton } from "@/components/student/team-leader/TeamLeaderLogoutButton";
+import { ParticipantLogoutButton } from "@/components/festival/public/ParticipantLogoutButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_URL } from "@/config/routes";
-import { requireTeamLeaderSession } from "@/core/auth/team-leader-guard";
+import { requireParticipantAuth } from "@/core/auth/participant-guard";
 import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
@@ -21,7 +21,7 @@ import {
   getQrCodeContent,
   getStudentProfileUrl,
 } from "@/features/students/services/student-profile-url";
-import { getTeamLeaderMyStudents } from "@/features/team-leader/services/my-team";
+import { getTeamLeaderMyStudents } from "@/features/participants/services/my-team";
 
 export default async function TeamLeaderDashboardPage({
   params,
@@ -29,10 +29,7 @@ export default async function TeamLeaderDashboardPage({
   params: Promise<{ slug: string; studentSlug: string }>;
 }) {
   const { slug, studentSlug } = await params;
-  const { festival, student } = await requireTeamLeaderSession({
-    slug,
-    studentSlug,
-  });
+  const { festival, student } = await requireParticipantAuth(slug, studentSlug, true);
   const base = `/${slug}/${studentSlug}/leader`;
 
   const startDate = festival.startDate ?? festival.createdAt;
@@ -209,9 +206,7 @@ export default async function TeamLeaderDashboardPage({
             qrContent={getQrCodeContent(student as any)}
             studentName={student.name}
           />
-          <TeamLeaderLogoutButton
-            redirectTo={`/${slug}/${studentSlug}/leader`}
-          />
+          <ParticipantLogoutButton festivalSlug={slug} />
         </div>
       </div>
 
