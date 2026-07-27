@@ -28,31 +28,30 @@ const roleConfig: Record<
   },
   ADMIN: {
     label: "Admin",
-    className: "bg-red-50 text-red-600 border-red-100 hover:bg-red-50",
+    className:
+      "bg-primary/10 text-primary border-primary/20 hover:bg-primary/10",
     icon: Crown,
   },
   OWNER: {
     label: "Owner",
     className:
-      "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100",
+      "bg-warning/10 text-warning border-warning/20 hover:bg-warning/10",
     icon: Crown,
   },
   "TEAM-LEADER": {
     label: "Team Leader",
     className:
-      "bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-100",
+      "bg-secondary/10 text-secondary border-secondary/20 hover:bg-secondary/10",
     icon: UsersRound,
   },
   "STAGE-MANAGER": {
     label: "Stage Manager",
-    className:
-      "bg-indigo-100 text-indigo-700 border-indigo-200 hover:bg-indigo-100",
+    className: "bg-info/10 text-info border-info/20 hover:bg-info/10",
     icon: Mic2,
   },
   STAGE_MANAGER: {
     label: "Stage Manager",
-    className:
-      "bg-indigo-100 text-indigo-700 border-indigo-200 hover:bg-indigo-100",
+    className: "bg-info/10 text-info border-info/20 hover:bg-info/10",
     icon: Mic2,
   },
   MEDIA: {
@@ -62,7 +61,7 @@ const roleConfig: Record<
   },
   ANNOUNCER: {
     label: "Announcer",
-    className: "bg-pink-100 text-pink-700 border-pink-200 hover:bg-pink-100",
+    className: "bg-pink/10 text-pink border-pink/20 hover:bg-pink/10",
     icon: Mic2,
   },
 };
@@ -74,7 +73,7 @@ export function FestivalRoleBadge({
 }: FestivalRoleBadgeProps) {
   const config = roleConfig[festivalRole] || {
     label: festivalRole,
-    className: "bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-100",
+    className: "bg-muted text-muted-foreground border-border hover:bg-muted",
     icon: User,
   };
 

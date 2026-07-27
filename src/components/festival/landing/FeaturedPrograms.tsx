@@ -68,7 +68,7 @@ export function FeaturedPrograms({
                   <Badge
                     className={
                       programme.stageType === "STAGE"
-                        ? "bg-blue-500 hover:bg-blue-600"
+                        ? "bg-info hover:bg-info/90"
                         : "bg-muted"
                     }
                   >

@@ -48,29 +48,29 @@ export function FestivalsTab() {
               </div>
             </div>
           ) : (
-            <div className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-linear-to-br from-zinc-900 via-zinc-900 to-black shadow-2xl animate-in fade-in zoom-in-95 duration-500">
+            <div className="relative w-full overflow-hidden rounded-2xl border border-border bg-card shadow-xl animate-in fade-in zoom-in-95 duration-500">
               {/* Ambient Background Glows */}
               <div className="absolute top-0 right-0 -mr-20 -mt-20 h-[400px] w-[400px] rounded-full bg-primary/10 blur-3xl pointer-events-none" />
-              <div className="absolute bottom-0 left-0 -ml-20 -mb-20 h-[300px] w-[300px] rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
+              <div className="absolute bottom-0 left-0 -ml-20 -mb-20 h-[300px] w-[300px] rounded-full bg-info/10 blur-3xl pointer-events-none" />
 
               <div className="relative z-10 p-6 md:p-8 flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
                 {/* Left Content */}
                 <div className="space-y-6 flex-1">
                   <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-500/10 text-green-400 border border-green-500/20">
+                    <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-success/10 text-success border border-success/20">
                       <Sparkles className="w-3 h-3" />
                       Your Festival
                     </span>
-                    <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-zinc-800 text-zinc-400 border border-zinc-700">
+                    <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-muted text-muted-foreground border border-border">
                       Owner
                     </span>
                   </div>
 
                   <div className="space-y-2">
-                    <h3 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
+                    <h3 className="text-3xl md:text-5xl font-extrabold tracking-tight text-heading leading-tight">
                       {festival.name}
                     </h3>
-                    <div className="flex items-center gap-2 text-zinc-400 font-medium text-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground font-medium text-sm">
                       <span className="opacity-70">{festival.slug}</span>
                     </div>
                   </div>
@@ -90,7 +90,7 @@ export function FestivalsTab() {
                       asChild
                       variant="ghost"
                       size="lg"
-                      className="h-12 hover:bg-white/5 text-zinc-400 hover:text-white"
+                      className="h-12 hover:bg-muted text-muted-foreground hover:text-foreground"
                     >
                       <Link href={`/dashboard/${festival.slug}/festival-live`}>
                         Manage Details
@@ -102,8 +102,8 @@ export function FestivalsTab() {
 
                 {/* Right Content / Illustration */}
                 <div className="hidden lg:block relative opacity-80 pointer-events-none">
-                  <div className="absolute inset-0 bg-linear-to-l from-zinc-900 to-transparent z-10" />
-                  <LayoutDashboard className="w-48 h-48 text-white/5 -rotate-12 transform translate-x-12" />
+                  <div className="absolute inset-0 bg-linear-to-l from-card to-transparent z-10" />
+                  <LayoutDashboard className="w-48 h-48 text-muted-foreground/5 -rotate-12 transform translate-x-12" />
                 </div>
               </div>
             </div>
