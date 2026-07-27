@@ -208,7 +208,8 @@ export function StudentDialog({
             <div className="flex-1 overflow-y-auto min-h-0 space-y-3 sm:space-y-4 py-1">
               {!isEditing && groups.length === 0 && (
                 <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm font-medium flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin shrink-0" /> Please create groups first.
+                  <Loader2 className="h-4 w-4 animate-spin shrink-0" /> Please
+                  create groups first.
                 </div>
               )}
 
@@ -240,7 +241,8 @@ export function StudentDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-1.5">
-                        <Users className="h-3.5 w-3.5 text-muted-foreground" /> Group <span className="text-destructive">*</span>
+                        <Users className="h-3.5 w-3.5 text-muted-foreground" />{" "}
+                        Group <span className="text-destructive">*</span>
                       </FormLabel>
                       <Select
                         onValueChange={field.onChange}
@@ -271,7 +273,8 @@ export function StudentDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-1.5">
-                        <Tag className="h-3.5 w-3.5 text-muted-foreground" /> Category <span className="text-destructive">*</span>
+                        <Tag className="h-3.5 w-3.5 text-muted-foreground" />{" "}
+                        Category <span className="text-destructive">*</span>
                       </FormLabel>
                       <Select
                         onValueChange={field.onChange}

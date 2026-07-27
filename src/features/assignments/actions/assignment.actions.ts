@@ -3,7 +3,7 @@
 import { and, count, eq, inArray } from "drizzle-orm";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
-import { getTeamLeaderSessionFromCookie } from "@/core/auth/team-leader-session";
+import { getParticipantSessionFromCookie } from "@/core/auth/participant-session";
 import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
@@ -60,7 +60,7 @@ async function resolveAssignmentActorContext(
     return { type: "user", userId: session.userId };
   }
 
-  const tlSession = await getTeamLeaderSessionFromCookie();
+  const tlSession = await getParticipantSessionFromCookie();
   if (
     !tlSession ||
     tlSession.revokedAt ||
@@ -351,7 +351,7 @@ export async function getProgrammeTeamMembersAction(
     );
   }
 
-  const tlSession = await getTeamLeaderSessionFromCookie();
+  const tlSession = await getParticipantSessionFromCookie();
   if (
     !tlSession ||
     tlSession.revokedAt ||

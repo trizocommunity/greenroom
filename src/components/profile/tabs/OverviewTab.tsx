@@ -133,9 +133,11 @@ export function OverviewTab({
   return (
     <div className="space-y-12 animate-in fade-in duration-500">
       <div className="space-y-2">
-        <h2 className="text-3xl uppercase tracking-tighter text-foreground">
-          <span className="font-medium">Welcome Back, </span>
-          <span className="text-primary font-black">{displayName}</span>
+        <h2 className="text-3xl font-semibold tracking-tight text-heading">
+          Welcome back,{" "}
+          <span className="font-display italic font-normal text-primary">
+            {displayName}
+          </span>
         </h2>
       </div>
 
@@ -152,27 +154,27 @@ export function OverviewTab({
             </div>
           ) : credit ? (
             <div className="space-y-4">
-              <Card className="border-primary/30 bg-linear-to-br from-primary/10 via-background to-background relative overflow-hidden ring-1 ring-primary/20">
-                <div className="absolute right-0 top-0 p-4 opacity-10 pointer-events-none">
+              <Card className="border-primary/20 bg-card relative overflow-hidden shadow-premium">
+                <div className="absolute right-0 top-0 p-4 opacity-[0.06] pointer-events-none">
                   <Sparkles className="w-32 h-32 text-primary" />
                 </div>
                 <CardContent className="p-5 sm:p-6 md:p-8">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6">
                     <div className="flex items-center gap-4 w-full sm:w-auto">
-                      <div className="p-3 sm:p-4 bg-primary/20 rounded-2xl ring-1 ring-primary/30 shrink-0">
+                      <div className="p-3 sm:p-4 bg-primary/8 rounded-2xl shrink-0">
                         <Check className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
                       </div>
                       <div className="space-y-1">
-                        <h4 className="text-lg sm:text-xl font-bold text-foreground flex flex-wrap items-center gap-2">
-                          {credit.tier} Plan Credit
+                        <h4 className="text-lg sm:text-xl font-semibold tracking-tight text-heading flex flex-wrap items-center gap-2">
+                          {credit.tier} plan credit
                           <Badge
                             variant="secondary"
-                            className="bg-primary/15 text-primary hover:bg-primary/20 border-0 text-[10px] sm:text-xs px-1.5 py-0 sm:py-0.5"
+                            className="bg-primary/10 text-primary hover:bg-primary/15 border-0 text-[10px] sm:text-xs px-1.5 py-0 sm:py-0.5"
                           >
                             Available
                           </Badge>
                         </h4>
-                        <p className="text-xs sm:text-sm font-medium text-muted-foreground w-full">
+                        <p className="text-xs sm:text-sm text-muted-foreground w-full">
                           Value: ₹{credit.amount}
                         </p>
                       </div>
@@ -184,16 +186,16 @@ export function OverviewTab({
                         onClick={() =>
                           router.push(`/festival-setup?paymentId=${credit.id}`)
                         }
-                        className="w-full md:w-auto h-12 text-sm font-bold uppercase tracking-wider rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all"
+                        className="w-full md:w-auto h-12 text-sm font-medium rounded-full shadow-primary-glow hover:opacity-90 transition-opacity"
                       >
                         <Plus className="mr-2 h-5 w-5" />
-                        Launch Festival Now
+                        Launch festival now
                       </Button>
                     </div>
                   </div>
 
                   {/* Expiry Progress Section */}
-                  <div className="mt-8 pt-6 border-t border-border/50">
+                  <div className="mt-8 pt-6 border-t border-border">
                     {(() => {
                       const start = parseStoredInstant(
                         credit.validFrom as string | Date,
@@ -284,15 +286,15 @@ export function OverviewTab({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* PRO PLAN - Highlighted */}
                 {proTier && (
-                  <Card className="flex flex-col hover:border-primary/30 transition-all duration-300 border-primary/20 bg-linear-to-br from-primary/5 via-background to-background relative overflow-hidden md:ring-2 md:ring-primary/20">
-                    <div className="absolute top-0 right-0 p-2 opacity-40">
-                      <Sparkles className="w-14 h-14 text-primary/10" />
+                  <Card className="flex flex-col hover:border-primary/30 transition-all duration-300 border-primary/20 bg-card relative overflow-hidden shadow-premium">
+                    <div className="absolute top-0 right-0 p-2 opacity-[0.06]">
+                      <Sparkles className="w-14 h-14 text-primary" />
                     </div>
                     <CardHeader className="pb-2">
                       <Badge className="w-fit mb-1.5 text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20 font-medium">
                         Recommended
                       </Badge>
-                      <CardTitle className="text-xl font-bold">
+                      <CardTitle className="text-xl font-semibold tracking-tight text-heading">
                         {proTier.name}
                       </CardTitle>
                       <CardDescription className="text-sm mt-0.5 line-clamp-2">
@@ -300,7 +302,7 @@ export function OverviewTab({
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-col flex-1 space-y-4 pt-0">
-                      <div className="text-2xl font-bold">
+                      <div className="text-2xl font-semibold tracking-tight text-heading">
                         ₹{proTier.price}
                         <span className="text-xs font-normal text-muted-foreground ml-1">
                           /festival
@@ -318,7 +320,7 @@ export function OverviewTab({
                       </ul>
                       <Button
                         size="sm"
-                        className="w-full font-medium mt-auto shadow-md shadow-primary/20"
+                        className="w-full font-medium mt-auto rounded-full shadow-primary-glow hover:opacity-90 transition-opacity"
                         onClick={() => handlePayClick(proTier.id)}
                         disabled={isPaymentProcessing}
                       >
@@ -326,7 +328,7 @@ export function OverviewTab({
                         confirmationTier === proTier.id ? (
                           <Loader2 className="animate-spin mr-2 h-3.5 w-3.5" />
                         ) : null}
-                        Pay to Proceed
+                        Pay to proceed
                         <ArrowRight className="ml-1.5 w-3.5 h-3.5" />
                       </Button>
                     </CardContent>

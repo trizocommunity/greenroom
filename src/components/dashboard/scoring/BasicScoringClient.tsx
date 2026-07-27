@@ -252,7 +252,9 @@ export function BasicScoringClient({
       );
       setPublishingId(null);
       if (res.success) {
-        toast.success(publish ? "Programme published." : "Programme unpublished.");
+        toast.success(
+          publish ? "Programme published." : "Programme unpublished.",
+        );
         router.refresh();
       } else {
         toast.error(res.error);

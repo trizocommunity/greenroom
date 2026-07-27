@@ -158,9 +158,7 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
                     <DropdownMenuContent align="end" className="w-44">
                       {!isReadOnly && (
                         <>
-                          <DropdownMenuItem
-                            onSelect={() => handleEdit(stage)}
-                          >
+                          <DropdownMenuItem onSelect={() => handleEdit(stage)}>
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
                           </DropdownMenuItem>

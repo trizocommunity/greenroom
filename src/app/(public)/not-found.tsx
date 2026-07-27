@@ -30,13 +30,11 @@ export default function PublicNotFound() {
         </div>
 
         {/* Label */}
-        <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-primary">
-          Error 404
-        </span>
+        <span className="text-eyebrow">Error 404</span>
 
         <div className="space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight text-heading">
-            Page Not Found
+          <h1 className="text-4xl font-semibold tracking-tight text-heading">
+            Page not found
           </h1>
           <p className="max-w-md text-muted-foreground leading-relaxed">
             We looked everywhere, but couldn&apos;t find that page. It may have
@@ -47,15 +45,15 @@ export default function PublicNotFound() {
         <div className="flex flex-col sm:flex-row items-center gap-3 mt-2">
           <Link
             href="/"
-            className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:bg-primary-hover"
+            className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground shadow-primary-glow transition-opacity hover:opacity-90"
           >
-            Back to Home
+            Back to home
           </Link>
           <Link
             href="/features"
-            className="inline-flex items-center justify-center rounded-lg border border-border bg-card px-6 py-2.5 text-sm font-semibold text-foreground backdrop-blur-sm transition-all hover:bg-muted"
+            className="inline-flex items-center justify-center rounded-full border border-border bg-card px-6 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
           >
-            Browse Features
+            Browse features
           </Link>
         </div>
       </div>

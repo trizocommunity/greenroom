@@ -739,8 +739,13 @@ export function JudgmentWizardClient({
                           {item.programmeName}
                         </h3>
                         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                          {(item.programmeStatus ?? "").toUpperCase().includes("PUBLISHED") ? (
-                            <Badge variant="outline" className="border-purple/60 text-purple bg-purple/10 text-[10px]">
+                          {(item.programmeStatus ?? "")
+                            .toUpperCase()
+                            .includes("PUBLISHED") ? (
+                            <Badge
+                              variant="outline"
+                              className="border-purple/60 text-purple bg-purple/10 text-[10px]"
+                            >
                               Published
                             </Badge>
                           ) : null}
@@ -795,9 +800,11 @@ export function JudgmentWizardClient({
                           {item.completionSummary}
                         </span>
                       </div>
-                      {item.judgingMode === "SINGLE" && item.pendingJudgeNames.length > 0 ? (
+                      {item.judgingMode === "SINGLE" &&
+                      item.pendingJudgeNames.length > 0 ? (
                         <p className="text-sm text-muted-foreground">
-                          <span className="font-medium">Pending:</span> {item.pendingJudgeNames.join(", ")}
+                          <span className="font-medium">Pending:</span>{" "}
+                          {item.pendingJudgeNames.join(", ")}
                         </p>
                       ) : null}
                     </div>
@@ -809,7 +816,10 @@ export function JudgmentWizardClient({
                           <span className="font-semibold text-foreground">
                             {item.totalJudgments}
                           </span>
-                          <span className="text-muted-foreground"> entries</span>
+                          <span className="text-muted-foreground">
+                            {" "}
+                            entries
+                          </span>
                         </span>
                       </div>
                       <div className="flex items-center gap-2 border-l border-border pl-4">

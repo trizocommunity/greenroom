@@ -107,13 +107,17 @@ export function UpdateProfileDialog({ user }: UpdateProfileDialogProps) {
   return (
     <Drawer open={isOpen} onOpenChange={setIsOpen}>
       <DrawerTrigger asChild>
-        <Button variant="outline" size="sm">
-          Update Profile
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-full font-medium border-border hover:bg-muted"
+        >
+          Update profile
         </Button>
       </DrawerTrigger>
       <DrawerContent>
         <DrawerHeader>
-          <DrawerTitle>Update Profile</DrawerTitle>
+          <DrawerTitle>Update profile</DrawerTitle>
           <DrawerDescription>
             Update your personal information. Email cannot be changed.
           </DrawerDescription>
@@ -177,19 +181,21 @@ export function UpdateProfileDialog({ user }: UpdateProfileDialogProps) {
               <Button
                 type="button"
                 variant="outline"
+                className="rounded-full font-medium border-border hover:bg-muted"
                 onClick={() => setIsOpen(false)}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
+                className="rounded-full font-medium shadow-primary-glow hover:opacity-90 transition-opacity"
                 disabled={
                   !form.formState.isDirty ||
                   !form.formState.isValid ||
                   isPending
                 }
               >
-                {isPending ? "Saving..." : "Save Changes"}
+                {isPending ? "Saving..." : "Save changes"}
               </Button>
             </div>
           </form>

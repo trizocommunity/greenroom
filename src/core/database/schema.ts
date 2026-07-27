@@ -618,6 +618,7 @@ export const student = pgTable(
       .notNull(),
     chestNumber: text(),
     age: integer(),
+    dateOfBirth: timestamp({ precision: 3, mode: "string" }),
     standard: text(),
     profileSlug: text(),
   },
@@ -1870,6 +1871,100 @@ export const teamLeaderSession = pgTable(
       columns: [table.festivalId],
       foreignColumns: [festival.id],
       name: "team_leader_session_festivalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
+// ─── participant_otp ─────────────────────────────────────────────────────────
+
+export const participantOtp = pgTable(
+  "participant_otp",
+  {
+    id: text().primaryKey().notNull(),
+    studentId: text().notNull(),
+    codeHash: text().notNull(),
+    expiresAt: timestamp({ precision: 3, mode: "string" }).notNull(),
+    attempts: integer().default(0).notNull(),
+    consumedAt: timestamp({ precision: 3, mode: "string" }),
+    createdAt: timestamp({ precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp({ precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    index("participant_otp_expiresAt_idx").using(
+      "btree",
+      table.expiresAt.asc().nullsLast(),
+    ),
+    index("participant_otp_studentId_expiresAt_idx").using(
+      "btree",
+      table.studentId.asc().nullsLast(),
+      table.expiresAt.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.studentId],
+      foreignColumns: [student.id],
+      name: "participant_otp_studentId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
+// ─── participant_session ─────────────────────────────────────────────────────
+
+export const participantSession = pgTable(
+  "participant_session",
+  {
+    id: text().primaryKey().notNull(),
+    studentId: text().notNull(),
+    festivalId: text().notNull(),
+    tokenHash: text().notNull(),
+    expiresAt: timestamp({ precision: 3, mode: "string" }).notNull(),
+    revokedAt: timestamp({ precision: 3, mode: "string" }),
+    ipAddress: text(),
+    userAgent: text(),
+    createdAt: timestamp({ precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp({ precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    index("participant_session_expiresAt_idx").using(
+      "btree",
+      table.expiresAt.asc().nullsLast(),
+    ),
+    index("participant_session_festivalId_expiresAt_idx").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+      table.expiresAt.asc().nullsLast(),
+    ),
+    index("participant_session_studentId_expiresAt_idx").using(
+      "btree",
+      table.studentId.asc().nullsLast(),
+      table.expiresAt.asc().nullsLast(),
+    ),
+    uniqueIndex("participant_session_tokenHash_key").using(
+      "btree",
+      table.tokenHash.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.studentId],
+      foreignColumns: [student.id],
+      name: "participant_session_studentId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "participant_session_festivalId_fkey",
     })
       .onUpdate("cascade")
       .onDelete("cascade"),

@@ -30,8 +30,7 @@ export function ReportingBoardList({
       return "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
     if (status === "NOT_STARTED")
       return "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300";
-    if (status === "CLOSED")
-      return "border-purple/30 bg-purple/10 text-purple";
+    if (status === "CLOSED") return "border-purple/30 bg-purple/10 text-purple";
     return "border-border bg-muted/40 text-muted-foreground";
   };
 

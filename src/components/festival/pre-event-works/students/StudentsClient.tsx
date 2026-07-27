@@ -186,7 +186,7 @@ export function StudentsClient({
   return (
     <div className="space-y-4 pt-2">
       {/* Header row: title (children) + actions — Create icon only on mobile */}
-      <div className="flex mb-10 flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+      <div className="flex mb-10 flex-wrap items-start lg:items-center justify-between gap-4">
         {children}
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <HowItWorksButton

@@ -34,7 +34,9 @@ export function ResultPosterActions({
 }) {
   const stageRef = useRef<Konva.Stage | null>(null);
   const firstCode = payload.publishedTemplateCodes[0] ?? "RESULT-A";
-  const [activeCode, setActiveCode] = useState(initialTemplateCode ?? firstCode);
+  const [activeCode, setActiveCode] = useState(
+    initialTemplateCode ?? firstCode,
+  );
 
   const template = useMemo(
     () =>

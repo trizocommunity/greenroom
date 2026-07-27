@@ -46,15 +46,15 @@ export default async function ExpiredFestivalPage({ params }: Props) {
   const hasSnapshot = Number(snapshotCount.count) > 0;
 
   return (
-    <div className="container max-w-2xl py-8 space-y-6">
-      <Button variant="ghost" size="sm" asChild>
+    <div className="container max-w-2xl py-12 space-y-6">
+      <Button variant="ghost" size="sm" className="rounded-full" asChild>
         <Link href="/profile" className="gap-2">
           <ArrowLeft className="h-4 w-4" />
-          Back to Profile
+          Back to profile
         </Link>
       </Button>
 
-      <Card>
+      <Card className="border border-border rounded-2xl bg-card shadow-premium">
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="destructive">Expired</Badge>
@@ -62,7 +62,9 @@ export default async function ExpiredFestivalPage({ params }: Props) {
               This festival has ended. Results are available only via PDF.
             </span>
           </div>
-          <CardTitle className="text-2xl mt-2">{festival.name}</CardTitle>
+          <CardTitle className="text-2xl font-semibold tracking-tight text-heading mt-2">
+            {festival.name}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {festival.description && (
@@ -74,42 +76,54 @@ export default async function ExpiredFestivalPage({ params }: Props) {
             {festival.startDate && (
               <>
                 <dt className="text-muted-foreground">Start</dt>
-                <dd>{new Date(festival.startDate).toLocaleDateString()}</dd>
+                <dd className="text-heading">
+                  {new Date(festival.startDate).toLocaleDateString()}
+                </dd>
               </>
             )}
             {festival.endDate && (
               <>
                 <dt className="text-muted-foreground">End</dt>
-                <dd>{new Date(festival.endDate).toLocaleDateString()}</dd>
+                <dd className="text-heading">
+                  {new Date(festival.endDate).toLocaleDateString()}
+                </dd>
               </>
             )}
             {festival.expiredAt && (
               <>
                 <dt className="text-muted-foreground">Archived on</dt>
-                <dd>{new Date(festival.expiredAt).toLocaleDateString()}</dd>
+                <dd className="text-heading">
+                  {new Date(festival.expiredAt).toLocaleDateString()}
+                </dd>
               </>
             )}
           </dl>
 
-          <div className="pt-4 border-t">
-            <p className="font-semibold text-sm mb-2">Result document</p>
+          <div className="pt-4 border-t border-border">
+            <p className="font-semibold tracking-tight text-heading text-sm mb-2">
+              Result document
+            </p>
             <p className="text-muted-foreground text-sm mb-3">
               Results are not shown in the UI. Download the PDF to view final
               results.
             </p>
             {hasPdf || hasSnapshot ? (
-              <Button variant="outline" className="gap-2" asChild>
+              <Button
+                variant="outline"
+                className="gap-2 rounded-full font-medium border-border hover:bg-muted"
+                asChild
+              >
                 <Link
                   href={`/api/profile/festivals/${festival.slug}/expired-results-pdf`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   <FileDown className="h-4 w-4" />
-                  Download Results PDF
+                  Download results PDF
                 </Link>
               </Button>
             ) : (
-              <p className="text-sm text-amber-600">
+              <p className="text-sm text-warning">
                 No results document is available for this festival.
               </p>
             )}

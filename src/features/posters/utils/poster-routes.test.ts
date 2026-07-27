@@ -4,7 +4,10 @@ import { festivalEditorPath, festivalTemplatesPath } from "./poster-routes";
 
 describe("festivalEditorPath", () => {
   it("returns /{slug}/editor with no code", () => {
-    assert.equal(festivalEditorPath("greenroom-fest"), "/greenroom-fest/editor");
+    assert.equal(
+      festivalEditorPath("greenroom-fest"),
+      "/greenroom-fest/editor",
+    );
   });
 
   it("appends ?code= when a code is provided", () => {

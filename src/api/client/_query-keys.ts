@@ -80,4 +80,7 @@ export const queryKeys = {
     analytics: ["super-admin", "analytics"] as const,
     payments: ["super-admin", "payments"] as const,
   },
+  participantLogin: {
+    session: ["participant-login", "session"] as const,
+  },
 } as const;

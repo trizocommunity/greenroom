@@ -59,7 +59,7 @@ export function PlanFeaturesClient({ tagMatrix }: { tagMatrix: TagMatrix }) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border bg-card overflow-hidden">
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50 hover:bg-muted/50">

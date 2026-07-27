@@ -44,7 +44,10 @@ const sslConfig: PoolConfig["ssl"] =
 
 const poolConfig: PoolConfig = {
   connectionString: effectiveConnectionString,
-  max: process.env.NODE_ENV === "production" ? 10 : 5,
+  // Neon's pooled endpoint already multiplexes connections (PgBouncer) across
+  // serverless invocations, so the app-level pool only needs to cover a
+  // single instance's own concurrency, not fan out to the underlying Postgres.
+  max: 5,
   idleTimeoutMillis: 30000,
   // Allow sufficient time for database connection establishment.
   connectionTimeoutMillis: 30000,

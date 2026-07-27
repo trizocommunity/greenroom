@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
-import { getPublicFestivalStudentOrNotFound } from "@/core/auth/team-leader-guard";
-import { getTeamLeaderSessionFromCookie } from "@/core/auth/team-leader-session";
+import { getParticipantSessionFromCookie } from "@/core/auth/participant-session";
+import { findStudentByFestivalAndProfileSlug } from "@/features/students/repositories/student.repository";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 
 export default async function TeamLeaderRootPage({
   params,
@@ -8,12 +9,17 @@ export default async function TeamLeaderRootPage({
   params: Promise<{ slug: string; studentSlug: string }>;
 }) {
   const { slug, studentSlug } = await params;
-  const { festival, student } = await getPublicFestivalStudentOrNotFound(
-    slug,
+
+  const festival = await findFestivalBySlug(slug);
+  if (!festival) redirect(`/${slug}/login`);
+
+  const student = await findStudentByFestivalAndProfileSlug(
+    festival.id,
     studentSlug,
   );
+  if (!student?.isTeamLeader) redirect(`/${slug}/login`);
 
-  const session = await getTeamLeaderSessionFromCookie();
+  const session = await getParticipantSessionFromCookie();
   const isValidSession =
     Boolean(session) &&
     !session?.revokedAt &&
@@ -26,5 +32,5 @@ export default async function TeamLeaderRootPage({
   if (isValidSession) {
     redirect(`/${slug}/${studentSlug}/leader/dashboard`);
   }
-  redirect(`/${slug}/${studentSlug}/leader/login`);
+  redirect(`/${slug}/login`);
 }

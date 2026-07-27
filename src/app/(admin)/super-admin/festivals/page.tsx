@@ -30,7 +30,7 @@ export default async function AdminFestivalsPage({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Festivals</h2>
+          <h2 className="text-3xl font-semibold tracking-tight">Festivals</h2>
           <p className="text-muted-foreground">
             Governance and oversight of all festivals
           </p>
@@ -42,11 +42,11 @@ export default async function AdminFestivalsPage({
 
       {festivals.length === 0 ? (
         <AdminEmptyState
-          icon={<LayoutGrid className="h-10 w-10 text-primary animate-pulse" />}
+          icon={<LayoutGrid className="h-8 w-8 text-primary" />}
           title={
             statusFilter === "EXPIRED"
-              ? "No Expired Festivals"
-              : "No Festivals Found"
+              ? "No expired festivals"
+              : "No festivals found"
           }
           description={
             statusFilter === "EXPIRED"

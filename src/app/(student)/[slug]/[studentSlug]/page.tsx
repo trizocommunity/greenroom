@@ -29,6 +29,8 @@ import {
   getQrCodeContent,
   getStudentProfileUrl,
 } from "@/features/students/services/student-profile-url";
+import { getParticipantSessionFromCookie } from "@/core/auth/participant-session";
+import { ParticipantLogoutButton } from "@/components/festival/public/ParticipantLogoutButton";
 
 const RESERVED_SLUGS = new Set([
   "results",
@@ -69,7 +71,16 @@ export default async function StudentMainPage({
     studentSlug,
   );
   if (!student) notFound();
-  if (student.isTeamLeader) redirect(`/${festival.slug}/${studentSlug}/leader`);
+
+  const session = await getParticipantSessionFromCookie();
+  const isOwnerSession =
+    !!session &&
+    session.studentId === student.id &&
+    session.festivalId === festival.id;
+
+  if (student.isTeamLeader && !isOwnerSession) {
+    redirect(`/${festival.slug}/${studentSlug}/leader`);
+  }
 
   const startDate = festival.startDate ?? festival.createdAt;
   const endDate =
@@ -248,14 +259,19 @@ export default async function StudentMainPage({
         </div>
       ) : null}
 
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">
           {student.name}
         </h1>
-        <StudentQrDialogButton
-          qrContent={getQrCodeContent(student as any)}
-          studentName={student.name}
-        />
+        <div className="flex items-center gap-2">
+          <StudentQrDialogButton
+            qrContent={getQrCodeContent(student as any)}
+            studentName={student.name}
+          />
+          {isOwnerSession ? (
+            <ParticipantLogoutButton festivalSlug={slug} />
+          ) : null}
+        </div>
       </div>
 
       <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">

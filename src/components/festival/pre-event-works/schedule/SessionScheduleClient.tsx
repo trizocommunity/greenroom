@@ -490,7 +490,7 @@ export function SessionScheduleClient({
                         </DropdownMenu>
                       </div>
                     </div>
-                    
+
                     <div className="flex-1 min-h-4" />
 
                     <div className="mx-5 mb-5 mt-4 flex flex-col gap-2 rounded-lg bg-muted/40 px-3 py-2.5 border border-border/40">

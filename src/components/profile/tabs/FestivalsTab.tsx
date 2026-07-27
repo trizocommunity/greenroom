@@ -23,11 +23,13 @@ export function FestivalsTab({ userId: _userId }: FestivalsTabProps) {
 
   if (!joinedFestivals || joinedFestivals.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center animate-in fade-in duration-500 border rounded-lg bg-muted/10 border-dashed">
+      <div className="flex flex-col items-center justify-center py-16 text-center animate-in fade-in duration-500 border border-dashed border-border rounded-2xl bg-muted/20">
         <div className="bg-muted p-4 rounded-full mb-4">
           <CalendarOff className="h-8 w-8 text-muted-foreground" />
         </div>
-        <h3 className="text-lg font-semibold">No Festivals Found</h3>
+        <h3 className="text-lg font-semibold tracking-tight text-heading">
+          No festivals found
+        </h3>
         <p className="text-muted-foreground max-w-sm mt-2">
           You haven't joined any festivals as a team member yet. Contact a
           festival admin to get added.
@@ -39,12 +41,14 @@ export function FestivalsTab({ userId: _userId }: FestivalsTabProps) {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">My Festivals</h2>
+        <h2 className="text-3xl font-semibold tracking-tight text-heading">
+          My festivals
+        </h2>
         <p className="text-muted-foreground">
           Manage festivals you are a part of.
         </p>
       </div>
-      <div className="grid gap-4">
+      <div className="grid gap-6">
         {joinedFestivals.map((festival: any) => (
           <JoinedFestivalCard key={festival.id} festival={festival} />
         ))}

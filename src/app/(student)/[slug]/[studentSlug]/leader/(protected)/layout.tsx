@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { requireTeamLeaderSession } from "@/core/auth/team-leader-guard";
+import { requireParticipantAuth } from "@/core/auth/participant-guard";
 
 export default async function TeamLeaderProtectedLayout({
   children,
@@ -9,6 +9,6 @@ export default async function TeamLeaderProtectedLayout({
   params: Promise<{ slug: string; studentSlug: string }>;
 }) {
   const { slug, studentSlug } = await params;
-  await requireTeamLeaderSession({ slug, studentSlug });
+  await requireParticipantAuth(slug, studentSlug, true);
   return children;
 }

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { LeaderboardClient } from "@/components/dashboard/leaderboard/LeaderboardClient";
-import { requireTeamLeaderSession } from "@/core/auth/team-leader-guard";
+import { requireParticipantAuth } from "@/core/auth/participant-guard";
 import type { Tier } from "@/core/types/app-enums";
 import { isProgrammeInEventWorks } from "@/features/programmes/services/programme-status.service";
 import { getFestivalLeaderboardDataBySlug } from "@/features/results/services/leaderboard.service";
@@ -12,10 +12,11 @@ export default async function StudentLeaderboardPage({
 }) {
   const { slug, studentSlug } = await params;
 
-  const { festival, student } = await requireTeamLeaderSession({
+  const { festival, student } = await requireParticipantAuth(
     slug,
     studentSlug,
-  });
+    true
+  );
 
   const leaderGroupId = student.groupId;
   const leaderCategoryId = student.categoryId;

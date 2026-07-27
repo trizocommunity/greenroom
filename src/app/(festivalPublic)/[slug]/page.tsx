@@ -127,9 +127,10 @@ export default async function FestivalPage({
 
       {/* About Section */}
       {fullLandingPage && displayData.description && (
-        <section className="py-12 px-4 bg-background border-t border-border">
+        <section className="py-16 md:py-20 px-4 bg-background border-t border-border">
           <div className="max-w-3xl mx-auto text-center space-y-4">
-            <h2 className="text-2xl md:text-4xl font-bold uppercase tracking-tight text-foreground">
+            <p className="text-eyebrow justify-center">About</p>
+            <h2 className="text-2xl md:text-4xl font-semibold tracking-tight text-heading">
               {festival.name}
             </h2>
             <p className="text-base text-muted-foreground leading-relaxed">

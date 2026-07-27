@@ -171,12 +171,14 @@ export const studentRelations = relations(student, ({ one, many }) => ({
     fields: [student.categoryId],
     references: [category.id],
   }),
-  assignments: many(programmeAssignment),
+assignments: many(programmeAssignment),
   teamLeaderOtps: many(teamLeaderOtp),
   teamLeaderSessions: many(teamLeaderSession),
   programmeReportedParticipants: many(programmeReportedParticipant),
   programmeCodeLetterRecipients: many(programmeCodeLetterRecipient),
   programmeNotifications: many(programmeNotification),
+  participantOtps: many(participantOtp),
+  participantSessions: many(participantSession),
 }));
 
 export const stageRelations = relations(stage, ({ one, many }) => ({
@@ -611,6 +613,32 @@ export const pendingInvitationRelations = relations(
     inviter: one(user, {
       fields: [pendingInvitation.invitedBy],
       references: [user.id],
+    }),
+  }),
+);
+
+import { participantSession, participantOtp } from "./schema";
+
+export const participantSessionRelations = relations(
+  participantSession,
+  ({ one }) => ({
+    student: one(student, {
+      fields: [participantSession.studentId],
+      references: [student.id],
+    }),
+    festival: one(festival, {
+      fields: [participantSession.festivalId],
+      references: [festival.id],
+    }),
+  }),
+);
+
+export const participantOtpRelations = relations(
+  participantOtp,
+  ({ one }) => ({
+    student: one(student, {
+      fields: [participantOtp.studentId],
+      references: [student.id],
     }),
   }),
 );

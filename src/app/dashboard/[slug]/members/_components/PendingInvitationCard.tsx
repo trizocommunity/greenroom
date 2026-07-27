@@ -145,7 +145,9 @@ export function PendingInvitationCard({
           </div>
           <div className="flex items-center gap-2 border-l border-border pl-4">
             <span className="text-sm whitespace-nowrap">
-              <span className="text-muted-foreground">{isExpired ? "Expired On: " : "Expires: "}</span>
+              <span className="text-muted-foreground">
+                {isExpired ? "Expired On: " : "Expires: "}
+              </span>
               <span className="font-medium text-foreground">
                 {format(expiresAt, "MMM d, yyyy")}
               </span>
