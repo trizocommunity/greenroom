@@ -6,13 +6,13 @@ import { useStudents } from "@/api/client/students";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
@@ -82,27 +82,27 @@ export function GroupDetailsDialog({
     isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Drawer open={open} onOpenChange={setOpen}>
       {!isControlled && (
-        <DialogTrigger asChild>
+        <DrawerTrigger asChild>
           {trigger ?? (
             <Button variant="ghost" size="icon" className="h-8 w-8">
               <Eye className="h-4 w-4" />
             </Button>
           )}
-        </DialogTrigger>
+        </DrawerTrigger>
       )}
-      <DialogContent className="w-[calc(100%-2rem)] max-w-4xl max-h-[85vh] flex flex-col p-4 sm:p-6">
-        <DialogHeader className="pr-8 sm:pr-0">
+      <DrawerContent>
+        <DrawerHeader className="pr-8 sm:pr-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
-              <DialogTitle className="text-lg sm:text-xl truncate">
+              <DrawerTitle className="text-lg sm:text-xl truncate">
                 {group.name}
-              </DialogTitle>
+              </DrawerTitle>
             </div>
           </div>
-          <DialogDescription>{groupStudents.length} Students</DialogDescription>
-        </DialogHeader>
+          <DrawerDescription>{groupStudents.length} Students</DrawerDescription>
+        </DrawerHeader>
 
         <div className="flex-1 overflow-hidden mt-4 min-h-0">
           <div className="flex flex-col gap-4 overflow-hidden h-full">
@@ -201,7 +201,7 @@ export function GroupDetailsDialog({
             </ScrollArea>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }

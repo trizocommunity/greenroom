@@ -9,12 +9,12 @@ import { TeamStudentsDialog } from "@/components/festival/pre-event-works/assign
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
@@ -110,22 +110,22 @@ export function StudentDetailsDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Drawer open={open} onOpenChange={setOpen}>
       {!isControlled && (
-        <DialogTrigger asChild>
+        <DrawerTrigger asChild>
           {trigger ?? (
             <Button variant="ghost" size="icon" className="h-8 w-8">
               <Eye className="h-4 w-4" />
             </Button>
           )}
-        </DialogTrigger>
+        </DrawerTrigger>
       )}
-      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] flex flex-col p-4 sm:p-5">
-        <DialogHeader className="shrink-0 pb-2">
-          <DialogTitle className="text-base sm:text-lg truncate pr-8">
+      <DrawerContent>
+        <DrawerHeader className="shrink-0 pb-2">
+          <DrawerTitle className="text-base sm:text-lg truncate pr-8">
             {student.name}
-          </DialogTitle>
-        </DialogHeader>
+          </DrawerTitle>
+        </DrawerHeader>
 
         <ScrollArea className="flex-1 min-h-0 -mx-1 px-1">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
@@ -322,7 +322,7 @@ export function StudentDetailsDialog({
             </div>
           </div>
         </ScrollArea>
-      </DialogContent>
+      </DrawerContent>
 
       <TeamStudentsDialog
         open={teamDialog.open}
@@ -332,6 +332,6 @@ export function StudentDetailsDialog({
         groupName={teamDialog.groupName}
         students={teamDialog.students}
       />
-    </Dialog>
+    </Drawer>
   );
 }

@@ -134,8 +134,8 @@ export const getFestivalDashboardSidebarConfig = (
           icon: LayoutDashboard,
         },
         {
-          title: "Design Templates",
-          href: `${basePath}/design-templates`,
+          title: "Templates",
+          href: `${basePath}/templates`,
           icon: LayoutTemplate,
           allowedRoles: [
             "ADMIN",

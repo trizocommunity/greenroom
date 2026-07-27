@@ -16,11 +16,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -751,17 +751,17 @@ export function AssignmentsClient({
         isDeleting={false}
       />
 
-      {/* Programme Details Dialog */}
-      <Dialog
+      {/* Programme Details Drawer */}
+      <Drawer
         open={Boolean(selectedProgrammeCard)}
         onOpenChange={(open) => {
           if (!open) setSelectedProgrammeCard(null);
         }}
       >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Programme details</DialogTitle>
-          </DialogHeader>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Programme details</DrawerTitle>
+          </DrawerHeader>
           {selectedProgrammeCard ? (
             <div className="space-y-4">
               <div className="grid gap-2 sm:grid-cols-2 text-sm">
@@ -1079,8 +1079,8 @@ export function AssignmentsClient({
               )}
             </div>
           ) : null}
-        </DialogContent>
-      </Dialog>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

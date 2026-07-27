@@ -1147,10 +1147,10 @@ export function ProgrammeReportingClient({
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      <Card className="overflow-hidden border-violet-200/40 bg-linear-to-r from-violet-500/10 via-indigo-500/5 to-background">
+      <Card className="overflow-hidden border-purple/20 bg-linear-to-r from-purple/10 via-purple/5 to-background">
         <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
           <div className="space-y-1">
-            <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-700 dark:text-violet-300">
+            <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-purple">
               <Sparkles className="h-3.5 w-3.5" />
               Programme Reporting
             </p>
@@ -1435,7 +1435,7 @@ export function ProgrammeReportingClient({
                             session?.isLocked ||
                             assignmentsWithReported.length === 0
                           }
-                          className="rounded-lg bg-linear-to-r from-violet-600 via-purple-600 to-fuchsia-600 px-6 font-semibold text-white shadow-md shadow-violet-900/20 hover:brightness-110"
+                          className="rounded-lg bg-linear-to-r from-primary to-secondary px-6 font-semibold text-white shadow-md shadow-primary/20 hover:brightness-110"
                         >
                           {activeAction === "start" ? (
                             <span className="inline-flex items-center gap-2">
@@ -1820,7 +1820,7 @@ export function ProgrammeReportingClient({
                                   className="rounded-md border border-border/70 bg-linear-to-br from-background via-background to-muted/30 px-2.5 py-2"
                                 >
                                   <div className="flex items-start gap-2">
-                                    <span className="inline-flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full border border-violet-400/40 bg-violet-500/10 text-[9px] font-semibold text-violet-700 dark:text-violet-300">
+                                    <span className="inline-flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full border border-purple/40 bg-purple/10 text-[9px] font-semibold text-purple">
                                       {index + 1}
                                     </span>
                                     <div className="min-w-0">
@@ -1865,7 +1865,7 @@ export function ProgrammeReportingClient({
                                             {entry.chestOrTeam} • {entry.group}
                                           </p>
                                         </div>
-                                        <span className="rounded border bg-violet-500/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-violet-700 dark:text-violet-300">
+                                        <span className="rounded border bg-purple/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-purple">
                                           {entry.code}
                                         </span>
                                       </div>

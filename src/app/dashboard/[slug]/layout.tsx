@@ -122,7 +122,7 @@ export default async function FestivalDashboardLayout({
           <FestivalDashboardSidebar festival={festivalData} role={userRole} />
 
           <SidebarInset>
-            <header className="sticky top-0 z-10 w-full flex h-14 shrink-0 items-center justify-between border-b bg-background/95 backdrop-blur px-4 md:px-8 shadow-sm">
+            <header className="sticky top-0 z-10 w-full flex h-14 shrink-0 items-center justify-between border-b bg-card/95 backdrop-blur px-2 md:px-8 shadow-sm">
               <div className="flex items-center gap-2">
                 <SidebarTrigger className="h-8 w-8" />
                 <div className="mr-2 h-4 w-px bg-border hidden lg:block" />

@@ -769,7 +769,7 @@ export function ScoringPolicyClient({
                 key={`matrix-row-${idx}`}
                 className={
                   row.criteriaType === "PROGRAMME_SET"
-                    ? "rounded-md border border-violet-500/60 bg-violet-500/5 p-2 ring-1 ring-violet-500/20"
+                    ? "rounded-md border border-purple/60 bg-purple/5 p-2 ring-1 ring-purple/20"
                     : "rounded-md border p-2"
                 }
               >
@@ -787,7 +787,7 @@ export function ScoringPolicyClient({
                       : "Participant Row"}
                   </Badge>
                   {row.criteriaType === "PROGRAMME_SET" && (
-                    <span className="text-[11px] text-violet-200/90">
+                    <span className="text-[11px] text-purple/90">
                       Applies to selected programmes only
                     </span>
                   )}
@@ -877,7 +877,7 @@ export function ScoringPolicyClient({
                 </div>
 
                 {row.criteriaType === "PROGRAMME_SET" ? (
-                  <details className="mt-2 rounded-md border border-violet-500/30 bg-violet-500/10 p-2">
+                  <details className="mt-2 rounded-md border border-purple/30 bg-purple/10 p-2">
                     <summary className="cursor-pointer text-xs font-medium">
                       Advanced options
                     </summary>

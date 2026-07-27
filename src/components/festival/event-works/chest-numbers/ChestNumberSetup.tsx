@@ -18,13 +18,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -415,15 +415,15 @@ export function ChestNumberSetup({
           </>
         )}
       </div>
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Chest Number Configuration</DialogTitle>
-            <DialogDescription>
+      <Drawer open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Chest Number Configuration</DrawerTitle>
+            <DrawerDescription>
               Define the format for chest numbers. Choose style and set
               sequences.
-            </DialogDescription>
-          </DialogHeader>
+            </DrawerDescription>
+          </DrawerHeader>
           <div className="py-2 space-y-6">
             <Tabs
               value={numberingStyle}
@@ -517,7 +517,7 @@ export function ChestNumberSetup({
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <DrawerFooter>
             <Button variant="outline" onClick={() => setIsEditOpen(false)}>
               Cancel
             </Button>
@@ -530,9 +530,9 @@ export function ChestNumberSetup({
               )}
               {isConfigured ? "Update All" : "Save & Generate"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

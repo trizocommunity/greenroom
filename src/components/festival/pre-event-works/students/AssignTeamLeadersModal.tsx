@@ -9,14 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -200,43 +200,43 @@ export function AssignTeamLeadersModal({
 
   if (studentsLoading) {
     return (
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
+      <Drawer open={open} onOpenChange={setOpen}>
+        <DrawerTrigger asChild>
           {trigger ?? (
             <Button size="sm" variant="outline">
               <Crown className="h-4 w-4 sm:mr-2 text-amber-600" />
               <span className="hidden sm:inline">Assign Team Leaders</span>
             </Button>
           )}
-        </DialogTrigger>
-        <DialogContent className="w-[calc(100%-2rem)] max-w-4xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+        </DrawerTrigger>
+        <DrawerContent>
           <div className="flex items-center justify-center py-12">
             <Skeleton className="h-8 w-8 rounded-full" />
           </div>
-        </DialogContent>
-      </Dialog>
+        </DrawerContent>
+      </Drawer>
     );
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+    <Drawer open={open} onOpenChange={setOpen}>
+      <DrawerTrigger asChild>
         {trigger ?? (
           <Button size="sm" variant="outline">
             <Crown className="h-4 w-4 sm:mr-2 text-amber-600" />
             <span className="hidden sm:inline">Assign Team Leaders</span>
           </Button>
         )}
-      </DialogTrigger>
-      <DialogContent className="w-[calc(100%-2rem)] max-w-4xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
-        <DialogHeader>
-          <DialogTitle>Assign Team Leaders</DialogTitle>
-          <DialogDescription>
+      </DrawerTrigger>
+      <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle>Assign Team Leaders</DrawerTitle>
+          <DrawerDescription>
             {step === "select"
               ? `Select a group, then choose up to ${effectiveLimit} team leaders.`
               : "Enter email addresses for students who need them."}
-          </DialogDescription>
-        </DialogHeader>
+          </DrawerDescription>
+        </DrawerHeader>
 
         {/* Progress Indicator */}
         <div className="flex items-center gap-2 py-3">
@@ -441,7 +441,7 @@ export function AssignTeamLeadersModal({
           )}
         </div>
 
-        <DialogFooter>
+        <DrawerFooter>
           {step === "select" ? (
             <>
               <Button
@@ -479,8 +479,8 @@ export function AssignTeamLeadersModal({
               </Button>
             </>
           )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
   );
 }

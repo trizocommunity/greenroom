@@ -174,7 +174,7 @@ export function StudentNavbar({
                   <Menu className="h-4 w-4" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="p-0">
+              <SheetContent>
                 <div className="p-4 border-b">
                   <div className="text-sm font-semibold">Menu</div>
                   <div className="text-xs text-muted-foreground mt-1">

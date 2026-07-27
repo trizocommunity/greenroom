@@ -4,16 +4,16 @@ import { AlertTriangle, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import { freezeFestivalAdmin } from "@/features/admin/actions/admin.actions";
 
 interface FreezeFestivalModalProps {
@@ -57,23 +57,23 @@ export function FreezeFestivalModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md border-purple-900/50 bg-slate-950">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-purple-500">
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent>
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle className="flex items-center gap-2 text-destructive">
             <AlertTriangle className="h-5 w-5" />
             Freeze Festival
-          </DialogTitle>
-          <DialogDescription>
+          </ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
             Are you sure you want to freeze <strong>{festivalName}</strong>?
             This will lock the festival and prevent any further updates by the
             owner.
             <br />
-            <span className="text-xs text-purple-400 font-semibold">
+            <span className="text-xs text-destructive font-semibold">
               This action requires a reason.
             </span>
-          </DialogDescription>
-        </DialogHeader>
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="reason">Reason for Freezing</Label>
@@ -82,11 +82,11 @@ export function FreezeFestivalModal({
               placeholder="e.g. Terms of Service violation..."
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="bg-slate-900 border-slate-700 focus:border-purple-500"
+              className="focus:border-destructive"
             />
           </div>
         </div>
-        <DialogFooter>
+        <ResponsiveDialogFooter>
           <Button
             variant="ghost"
             onClick={() => onOpenChange(false)}
@@ -95,7 +95,7 @@ export function FreezeFestivalModal({
             Cancel
           </Button>
           <Button
-            className="bg-purple-600 hover:bg-purple-700 text-white"
+            variant="destructive"
             onClick={handleFreeze}
             disabled={loading || !reason.trim()}
           >
@@ -108,8 +108,8 @@ export function FreezeFestivalModal({
               "Freeze Festival"
             )}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveDialogFooter>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

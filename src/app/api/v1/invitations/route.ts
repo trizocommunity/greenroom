@@ -176,7 +176,7 @@ export const GET = async (req: Request) => {
           eq(pendingInvitation.festivalId, festivalId),
           eq(pendingInvitation.status, "pending"),
           lt(pendingInvitation.expiresAt, now.toISOString()),
-        )
+        ),
       );
 
     const invitations = await db.query.pendingInvitation.findMany({

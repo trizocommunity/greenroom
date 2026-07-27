@@ -57,7 +57,7 @@ export function CompactHistoryList({
                     </span>
                   ) : null}
                   {item.tinyBadge ? (
-                    <span className="shrink-0 rounded border border-violet-400/60 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300">
+                    <span className="shrink-0 rounded border border-purple/60 px-1.5 py-0.5 text-[10px] font-medium text-purple">
                       {item.tinyBadge}
                     </span>
                   ) : null}

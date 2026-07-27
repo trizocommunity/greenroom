@@ -450,13 +450,13 @@ A live view (`/dashboard/[slug]/festival-live`) for displaying real-time results
 
 - Service: `src/features/festivals/services/festival-public-validation.service.ts`
 
-### 4.6 Design Templates (Poster Editor)
+### 4.6 Templates (Poster Editor)
 
-A Konva-based canvas editor (`/editor`) allows organizers to create branded event posters. Templates are stored as JSON (`festival_poster_template.konva_json`) with `type` (`PosterTemplateType`) and status (`DRAFT`/`ACTIVE`).
+A Konva-based canvas editor (`/editor`) allows organizers to create branded event posters. Templates are stored as JSON (`festival_poster_template.konva_json`) with `type` (`PosterTemplateType`) and status (`DRAFT`/`PUBLISHED`).
 
-Templates can be fetched and rendered on the public portal for display.
+Published result posters are available for every announced result on the public portal, where visitors can preview, download and share them.
 
-- Route: `/editor` and `/dashboard/[slug]/design-templates`
+- Route: `/editor` and `/dashboard/[slug]/templates`
 - Frontend: React-Konva (`react-konva`, `konva`)
 - Storage: `festival_poster_template` table
 
@@ -712,7 +712,7 @@ User registration creates an account immediately. Email verification (sending a 
 | Notifications | `src/features/notifications/services/notification.service.ts` |
 | Admin | `src/features/admin/services/admin.service.ts` |
 | Admin analytics | `src/features/admin/services/analytics.service.ts` |
-| Design templates | `src/features/design-templates/services/template.service.ts` |
+| Templates | `src/features/posters/services/poster-editor-preview.service.ts` |
 | Storage | `src/features/festivals/services/storage-usage.service.ts` |
 | Audit log | `src/features/auth/services/audit-log.service.ts` |
 | Public festival | `src/features/festivals/services/festival-public-validation.service.ts` |

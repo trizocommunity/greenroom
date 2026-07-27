@@ -2025,7 +2025,7 @@ export const realtimeOutbox = pgTable(
   ],
 );
 
-// ─── Design templates (poster editor) ─────────────────────────────────────────
+// ─── Templates (poster editor) ────────────────────────────────────────────────
 
 export const festivalPosterTemplate = pgTable(
   "festival_poster_template",

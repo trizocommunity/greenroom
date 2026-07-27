@@ -199,7 +199,7 @@ export function EditorPropertiesPanel({
                 value={
                   selectedElement.fill?.startsWith("#")
                     ? selectedElement.fill
-                    : "#7c3aed"
+                    : "#d72626"
                 }
                 onChange={(e) =>
                   updateElement(selectedElement.id, { fill: e.target.value })
@@ -317,7 +317,7 @@ export function EditorPropertiesPanel({
               value={
                 selectedElement.fill?.startsWith("#")
                   ? selectedElement.fill
-                  : "#7c3aed"
+                  : "#d72626"
               }
               onChange={(e) =>
                 updateElement(selectedElement.id, { fill: e.target.value })
@@ -611,7 +611,7 @@ export function EditorPropertiesPanel({
                 value={
                   selectedElement.fill?.startsWith("#")
                     ? selectedElement.fill
-                    : "#7c3aed"
+                    : "#d72626"
                 }
                 onChange={(e) =>
                   updateElement(selectedElement.id, { fill: e.target.value })

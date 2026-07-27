@@ -56,7 +56,7 @@ export function FeaturedPrograms({
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
               viewport={{ once: true }}
-              className="p-6 rounded-3xl border border-white/10 hover:border-primary/50 hover:shadow-[0_10px_30px_rgba(124,58,237,0.1)] transition-all bg-card/40 backdrop-blur-sm group"
+              className="p-6 rounded-3xl border border-border hover:border-primary/50 hover:shadow-[0_10px_30px_rgba(215,38,38,0.1)] transition-all bg-card/60 backdrop-blur-sm group"
             >
               <div className="flex justify-between items-start mb-4">
                 {programme.category && (

@@ -1135,7 +1135,7 @@ export function AssignProgrammesClient({
                           </Button>
                         </SheetTrigger>
 
-                        <SheetContent side="bottom" className="p-4">
+                        <SheetContent className="p-4">
                           <div className="flex items-center justify-between gap-3 mb-3">
                             <div>
                               <div className="font-semibold">Programmes</div>

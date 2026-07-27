@@ -6,14 +6,14 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DateTimePicker } from "@/components/ui/date-picker";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import { Label } from "@/components/ui/label";
 import { parseStoredInstant, toDateOrNull } from "@/core/utils/date-time";
 import { updateFestivalSettingsAction } from "@/features/festivals/actions/festival-crud.actions";
@@ -91,15 +91,15 @@ export function DeadlinesDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger ?? defaultTrigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Deadlines</DialogTitle>
-          <DialogDescription>
+    <Drawer open={open} onOpenChange={setOpen}>
+      <DrawerTrigger asChild>{trigger ?? defaultTrigger}</DrawerTrigger>
+      <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle>Deadlines</DrawerTitle>
+          <DrawerDescription>
             Set deadlines for programme assignments.
-          </DialogDescription>
-        </DialogHeader>
+          </DrawerDescription>
+        </DrawerHeader>
 
         <div className="grid gap-4 py-4">
           {isFeatureEnabled && (
@@ -127,7 +127,7 @@ export function DeadlinesDialog({
           )}
         </div>
 
-        <DialogFooter>
+        <DrawerFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>
@@ -135,8 +135,8 @@ export function DeadlinesDialog({
             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Changes
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
   );
 }

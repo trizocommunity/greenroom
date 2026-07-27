@@ -62,14 +62,16 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/super-admin">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-2xl bg-linear-to-br from-primary to-orange-400 text-white shadow-[0_6px_18px_rgba(124,58,237,0.35)]">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-2xl gradient-brand text-white shadow-[0_6px_18px_rgba(215,38,38,0.35)]">
                   <GalleryVerticalEnd className="size-4" />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold text-slate-50">
+                  <span className="font-semibold text-foreground">
                     Super Admin
                   </span>
-                  <span className="text-xs text-slate-400">Dashboard</span>
+                  <span className="text-xs text-muted-foreground">
+                    Dashboard
+                  </span>
                 </div>
               </Link>
             </SidebarMenuButton>

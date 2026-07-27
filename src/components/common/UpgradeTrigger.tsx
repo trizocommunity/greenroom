@@ -71,8 +71,8 @@ export function UpgradeTrigger({
     PRO: {
       name: "Pro",
       icon: "🏆",
-      color: "text-purple-600 dark:text-purple-400",
-      bgColor: "bg-purple-500",
+      color: "text-purple",
+      bgColor: "bg-purple",
     },
   };
 
@@ -84,7 +84,7 @@ export function UpgradeTrigger({
       <div className={cn("relative group", className)}>
         <div className="opacity-60 pointer-events-none">{children}</div>
 
-        <div className="absolute inset-0 flex items-center justify-center bg-black/5 dark:bg-white/5 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute inset-0 flex items-center justify-center bg-black/5 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity">
           <Button
             size="sm"
             className={cn("shadow-lg", tier.bgColor, "hover:opacity-90")}

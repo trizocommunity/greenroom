@@ -2,7 +2,6 @@
 
 import { FileImage, Plus, Trash2, Upload } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -124,6 +123,10 @@ export function EditorTemplatesPanel({
     return map;
   }, [savedTemplates]);
 
+  const displayableTypes = TEMPLATE_TYPES.filter(
+    (meta) => meta.type !== "TEAM_POINTS",
+  );
+
   return (
     <aside
       className={cn(
@@ -141,7 +144,7 @@ export function EditorTemplatesPanel({
         className="flex min-h-0 flex-1 flex-col"
       >
         <TabsList className="mx-2 mt-2 grid h-auto w-auto grid-cols-1 gap-0.5 bg-muted/50 p-1">
-          {TEMPLATE_TYPES.map((meta) => (
+          {displayableTypes.map((meta) => (
             <TabsTrigger
               key={meta.type}
               value={meta.type}
@@ -157,7 +160,7 @@ export function EditorTemplatesPanel({
           ))}
         </TabsList>
 
-        {TEMPLATE_TYPES.map((meta) => (
+        {displayableTypes.map((meta) => (
           <TabsContent
             key={meta.type}
             value={meta.type}
@@ -168,49 +171,35 @@ export function EditorTemplatesPanel({
                 <p className="text-xs text-muted-foreground">
                   {meta.description}
                 </p>
-                {meta.type === "TEAM_POINTS" ? (
+                <div className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full"
-                    onClick={() => {
-                      toast.message("Use + New for team count setup");
-                    }}
+                    className="flex-1"
+                    onClick={() =>
+                      startTemplate(meta.type, { withBackground: false })
+                    }
                   >
-                    <Plus className="mr-2 h-4 w-4" />
-                    New {meta.title}
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    Blank
                   </Button>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() =>
-                        startTemplate(meta.type, { withBackground: false })
-                      }
-                    >
-                      <Plus className="mr-1.5 h-4 w-4" />
-                      Blank
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() =>
-                        openTemplateBackgroundPicker((url) =>
-                          startTemplate(meta.type, {
-                            withBackground: true,
-                            backgroundImageUrl: url,
-                          }),
-                        )
-                      }
-                    >
-                      <Upload className="mr-1.5 h-4 w-4" />
-                      With background
-                    </Button>
-                  </div>
-                )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() =>
+                      openTemplateBackgroundPicker((url) =>
+                        startTemplate(meta.type, {
+                          withBackground: true,
+                          backgroundImageUrl: url,
+                        }),
+                      )
+                    }
+                  >
+                    <Upload className="mr-1.5 h-4 w-4" />
+                    With background
+                  </Button>
+                </div>
 
                 {grouped[meta.type].length === 0 ? (
                   <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center">

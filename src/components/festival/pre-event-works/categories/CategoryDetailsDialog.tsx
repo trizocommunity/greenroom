@@ -6,13 +6,13 @@ import { useStudents } from "@/api/client/students";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import {
   Table,
   TableBody,
@@ -56,32 +56,32 @@ export function CategoryDetailsDialog({
     isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Drawer open={open} onOpenChange={setOpen}>
       {!isControlled && (
-        <DialogTrigger asChild>
+        <DrawerTrigger asChild>
           {trigger ?? (
             <Button variant="ghost" size="icon" className="h-8 w-8">
               <Eye className="h-4 w-4" />
             </Button>
           )}
-        </DialogTrigger>
+        </DrawerTrigger>
       )}
-      <DialogContent className="w-[calc(100%-2rem)] max-w-3xl max-h-[85vh] flex flex-col overflow-hidden p-4 sm:p-6">
-        <DialogHeader className="pr-8 sm:pr-0 text-left shrink-0">
+      <DrawerContent>
+        <DrawerHeader className="pr-8 sm:pr-0 text-left shrink-0">
           <div className="flex flex-wrap items-center gap-2">
-            <DialogTitle className="text-lg sm:text-xl text-left">
+            <DrawerTitle className="text-lg sm:text-xl text-left">
               {category.name}
-            </DialogTitle>
+            </DrawerTitle>
             <Badge
               variant={category.type === "GENERAL" ? "default" : "outline"}
             >
               {category.type}
             </Badge>
           </div>
-          <DialogDescription className="text-left">
+          <DrawerDescription className="text-left">
             {category.description || "No description provided."}
-          </DialogDescription>
-        </DialogHeader>
+          </DrawerDescription>
+        </DrawerHeader>
 
         <div className="flex-1 flex flex-col gap-4 mt-4 min-h-0 overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-left shrink-0">
@@ -170,7 +170,7 @@ export function CategoryDetailsDialog({
             )}
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }

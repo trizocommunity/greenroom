@@ -38,8 +38,7 @@ const statusConfig: Record<
   READY: {
     icon: Clock,
     variant: "secondary",
-    className:
-      "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100",
+    className: "bg-muted text-muted-foreground border-border hover:bg-muted",
   },
   ONGOING: {
     icon: CheckCircle,

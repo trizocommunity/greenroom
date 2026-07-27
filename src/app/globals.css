@@ -11,6 +11,7 @@
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-destructive: var(--destructive);
@@ -23,6 +24,13 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-purple: var(--purple);
+  --color-pink: var(--pink);
+  --color-heading: var(--heading);
+  --color-text: var(--text);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -30,57 +38,63 @@
 }
 
 :root {
-  /* Premium Dark Palette */
-  --color-primary-base: #7c3aed; /* Vibrant purple */
-  --color-primary-light: #a855f7;
-  --color-heading: #ffffff; 
-  --color-text: #e2e8f0; /* Slate 200 */
-  --color-bg-main: #020617; /* Deepest Slate/Black */
-  --color-bg-soft: #0f172a; /* Slate 900 */
-  --color-white: #ffffff;
-  --color-border-base: #1e293b; /* Slate 800 */
-  --color-black: #000000;
+  /* Brand palette */
+  --primary: #d72626;
+  --primary-hover: #b91c1c;
+  --secondary: #f25c05;
 
-  /* Semantic Mapping - Dark Theme Default */
-  --background: #020617;
-  --foreground: var(--color-text);
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --border: #e5e7eb;
 
-  --primary: var(--color-primary-base);
-  --primary-foreground: var(--color-white);
+  --text: #1f2937;
+  --text-muted: #6b7280;
+  --heading: #111827;
 
-  --secondary: var(--color-bg-soft);
-  --secondary-foreground: var(--color-primary-base);
+  --success: #10b981;
+  --warning: #f59e0b;
+  --info: #3b82f6;
+  --purple: #8b5cf6;
+  --pink: #ec4899;
 
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8;
+  /* Semantic mapping */
+  --background: var(--bg);
+  --foreground: var(--text);
 
-  --accent: var(--color-bg-soft);
-  --accent-foreground: var(--color-primary-base);
+  --primary-foreground: #ffffff;
+  --secondary-foreground: #ffffff;
 
-  --destructive: #7f1d1d;
-  --destructive-foreground: var(--color-white);
+  --muted: #f3f4f6;
+  --muted-foreground: var(--text-muted);
 
-  --border: var(--color-border-base);
-  --input: var(--color-border-base);
-  --ring: var(--color-primary-base);
+  --accent: #f3f4f6;
+  --accent-foreground: var(--text);
 
-  --card: #0f172a; /* Slate 900 */
-  --card-foreground: var(--color-white);
+  /* No dedicated danger color in the palette — reuse the darker primary shade
+     so destructive actions read distinctly from primary CTAs. */
+  --destructive: var(--primary-hover);
+  --destructive-foreground: #ffffff;
 
-  --popover: #0f172a;
-  --popover-foreground: var(--color-white);
+  --input: var(--border);
+  --ring: var(--primary);
+
+  --card: var(--surface);
+  --card-foreground: var(--heading);
+
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
 
   --radius: 0.5rem;
 
   /* Sidebar theme */
-  --sidebar: #020617;
-  --sidebar-foreground: #e5e7eb;
-  --sidebar-primary: #7c3aed;
-  --sidebar-primary-foreground: #f9fafb;
-  --sidebar-accent: rgba(148, 163, 184, 0.16);
-  --sidebar-accent-foreground: #e5e7eb;
-  --sidebar-border: rgba(15, 23, 42, 0.8);
-  --sidebar-ring: #a855f7;
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--text);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(215, 38, 38, 0.08);
+  --sidebar-accent-foreground: var(--primary);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--primary);
 }
 
 body {
@@ -104,17 +118,6 @@ h6 {
   .text-balance {
     text-wrap: balance;
   }
-}
-
-.dark {
-  --sidebar: hsl(240 5.9% 10%);
-  --sidebar-foreground: hsl(240 4.8% 95.9%);
-  --sidebar-primary: hsl(224.3 76.3% 48%);
-  --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(240 3.7% 15.9%);
-  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
-  --sidebar-border: hsl(240 3.7% 15.9%);
-  --sidebar-ring: hsl(217.2 91.2% 59.8%);
 }
 
 @theme inline {
@@ -148,7 +151,7 @@ h6 {
   }
 
   .gradient-brand {
-    background-image: linear-gradient(135deg, #7c3aed, #f97316);
+    background-image: linear-gradient(135deg, var(--primary), var(--secondary));
   }
 
   .gradient-soft {
@@ -170,7 +173,7 @@ h6 {
 @layer base {
   /* Custom Scrollbar */
   ::-webkit-scrollbar {
-    width: 6px;
+    width: 0px;
     height: 6px;
   }
 

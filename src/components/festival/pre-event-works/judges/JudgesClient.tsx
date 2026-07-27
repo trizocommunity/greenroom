@@ -12,13 +12,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -333,14 +333,14 @@ export function JudgesClient({
         </div>
       ) : null}
 
-      <Dialog open={formOpen} onOpenChange={handleFormOpenChange}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editing ? "Edit Judge" : "Create Judge"}</DialogTitle>
-            <DialogDescription>
+      <Drawer open={formOpen} onOpenChange={handleFormOpenChange}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>{editing ? "Edit Judge" : "Create Judge"}</DrawerTitle>
+            <DrawerDescription>
               Keep judge profile details updated for judging workflows.
-            </DialogDescription>
-          </DialogHeader>
+            </DrawerDescription>
+          </DrawerHeader>
           <div className="space-y-3">
             <Input
               value={name}
@@ -384,7 +384,7 @@ export function JudgesClient({
               </p>
             </div>
           </div>
-          <DialogFooter>
+          <DrawerFooter>
             <Button
               variant="outline"
               onClick={() => handleFormOpenChange(false)}
@@ -401,23 +401,23 @@ export function JudgesClient({
             >
               {isSaving ? "Saving..." : editing ? "Update" : "Create"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
 
-      <Dialog
+      <Drawer
         open={!!viewingActivities}
         onOpenChange={(open) => !open && setViewingActivities(null)}
       >
-        <DialogContent className="max-w-3xl">
+        <DrawerContent>
           {viewingActivities ? (
             <>
-              <DialogHeader>
-                <DialogTitle>{viewingActivities.name} - Activities</DialogTitle>
-                <DialogDescription>
+              <DrawerHeader>
+                <DrawerTitle>{viewingActivities.name} - Activities</DrawerTitle>
+                <DrawerDescription>
                   Assigned judging activities and scoring progress.
-                </DialogDescription>
-              </DialogHeader>
+                </DrawerDescription>
+              </DrawerHeader>
 
               <div className="space-y-2">
                 <div className="space-y-2 max-h-72 overflow-auto pr-1">
@@ -455,22 +455,22 @@ export function JudgesClient({
               </div>
             </>
           ) : null}
-        </DialogContent>
-      </Dialog>
+        </DrawerContent>
+      </Drawer>
 
-      <Dialog
+      <Drawer
         open={!!viewingProgrammes}
         onOpenChange={(open) => !open && setViewingProgrammes(null)}
       >
-        <DialogContent className="max-w-3xl">
+        <DrawerContent>
           {viewingProgrammes ? (
             <>
-              <DialogHeader>
-                <DialogTitle>{viewingProgrammes.name} - Programmes</DialogTitle>
-                <DialogDescription>
+              <DrawerHeader>
+                <DrawerTitle>{viewingProgrammes.name} - Programmes</DrawerTitle>
+                <DrawerDescription>
                   Programme-wise judging points and score averages.
-                </DialogDescription>
-              </DialogHeader>
+                </DrawerDescription>
+              </DrawerHeader>
 
               <div className="space-y-2">
                 <div className="space-y-2 max-h-72 overflow-auto pr-1">
@@ -530,8 +530,8 @@ export function JudgesClient({
               </div>
             </>
           ) : null}
-        </DialogContent>
-      </Dialog>
+        </DrawerContent>
+      </Drawer>
 
       {deleting ? (
         <DeleteDialog

@@ -41,7 +41,7 @@ export async function sendMagicLinkEmail(
               Click the button below to sign in to your Greenroom account. This link expires in <strong style="color:#fff">15 minutes</strong>.
             </p>
             <a href="${magicLinkUrl}"
-               style="display: inline-block; background: #7c3aed; color: #fff; text-decoration: none;
+               style="display: inline-block; background: #d72626; color: #fff; text-decoration: none;
                       padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 15px;">
               Sign In
             </a>
@@ -96,7 +96,7 @@ export async function sendInvitationEmail(
               You've been invited to join <strong style="color:#fff">${festivalName}</strong> as <strong style="color:#fff">${role}</strong>.
             </p>
             <a href="${inviteUrl}"
-               style="display: inline-block; background: #7c3aed; color: #fff; text-decoration: none;
+               style="display: inline-block; background: #d72626; color: #fff; text-decoration: none;
                       padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 15px;">
               Accept Invitation
             </a>
@@ -148,7 +148,7 @@ export async function sendTeamLeaderOtpEmail(
               Use this OTP code to sign in to your Team Leader panel for <strong style="color:#fff">${festivalName}</strong>.
               This code expires in <strong style="color:#fff">10 minutes</strong>.
             </p>
-            <div style="display:inline-block;background:#7c3aed;color:#fff;padding:10px 16px;border-radius:8px;font-weight:700;font-size:22px;letter-spacing:4px;">
+            <div style="display:inline-block;background:#d72626;color:#fff;padding:10px 16px;border-radius:8px;font-weight:700;font-size:22px;letter-spacing:4px;">
               ${otpCode}
             </div>
             <p style="margin-top: 32px; color: #6b7280; font-size: 13px;">

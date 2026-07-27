@@ -25,16 +25,16 @@ export function HeroSection({ festival, basicMode = false }: HeroSectionProps) {
         className="absolute inset-0 z-0 opacity-80"
         style={{
           background: `
-            radial-gradient(circle at 0% 0%, #3b82f622, transparent 55%),
-            radial-gradient(circle at 100% 100%, #3b82f633, transparent 55%),
-            linear-gradient(to bottom, #020617, #020617 40%, #000000)
+            radial-gradient(circle at 0% 0%, rgba(59,130,246,0.13), transparent 55%),
+            radial-gradient(circle at 100% 100%, rgba(59,130,246,0.2), transparent 55%),
+            linear-gradient(to bottom, var(--background), var(--muted) 60%, var(--background))
           `,
         }}
       />
 
       {/* Floating accent orbs */}
       <div className="pointer-events-none absolute -left-24 top-24 h-48 w-48 rounded-full bg-primary/20 blur-3xl" />
-      <div className="pointer-events-none absolute -right-24 bottom-10 h-48 w-48 rounded-full bg-blue-500/25 blur-3xl" />
+      <div className="pointer-events-none absolute -right-24 bottom-10 h-48 w-48 rounded-full bg-info/25 blur-3xl" />
 
       <div className="relative z-10 max-w-5xl mx-auto px-4 md:px-6">
         <motion.div
@@ -55,9 +55,9 @@ export function HeroSection({ festival, basicMode = false }: HeroSectionProps) {
             </p>
 
             {/* Meta badges */}
-            <div className="flex flex-wrap gap-2 text-xs text-slate-200/80 justify-center md:justify-start">
+            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground justify-center md:justify-start">
               {startDate && endDate && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1">
                   <CalendarDays className="h-3.5 w-3.5" />
                   {startDate.toLocaleDateString("en-US", {
                     month: "short",
@@ -71,13 +71,13 @@ export function HeroSection({ festival, basicMode = false }: HeroSectionProps) {
                 </span>
               )}
               {festival.location && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1">
                   <MapPin className="h-3.5 w-3.5" />
                   {festival.location}
                 </span>
               )}
               {festival.studentsCount != null && festival.studentsCount > 0 && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1">
                   <Users className="h-3.5 w-3.5" />
                   {festival.studentsCount.toLocaleString()} students
                 </span>
@@ -90,7 +90,7 @@ export function HeroSection({ festival, basicMode = false }: HeroSectionProps) {
                 <Button
                   size="sm"
                   className="rounded-full h-9 px-5"
-                  style={{ backgroundColor: "#3b82f6" }}
+                  style={{ backgroundColor: "var(--info)" }}
                 >
                   View Results
                 </Button>
@@ -100,7 +100,7 @@ export function HeroSection({ festival, basicMode = false }: HeroSectionProps) {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="rounded-full h-9 px-5 bg-white/5 border-white/15 text-slate-100"
+                    className="rounded-full h-9 px-5 bg-card border-border text-foreground"
                   >
                     Programs <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                   </Button>

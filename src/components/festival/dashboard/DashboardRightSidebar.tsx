@@ -88,10 +88,7 @@ export function DashboardRightSidebar({
       >
         <Menu className="h-5 w-5" />
       </SheetTrigger>
-      <SheetContent
-        side="right"
-        className="w-full sm:w-[350px] p-0 flex flex-col"
-      >
+      <SheetContent className="w-full sm:w-[350px] flex flex-col">
         <SheetHeader className="h-16 flex flex-row items-center border-b px-4 space-y-0">
           <div className="flex items-center gap-3 w-full">
             <Avatar className="h-9 w-9">

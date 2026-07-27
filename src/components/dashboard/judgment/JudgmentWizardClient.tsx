@@ -641,7 +641,7 @@ export function JudgmentWizardClient({
                           </Button>
                         </div>
                         {url ? (
-                          <div className="space-y-1 rounded-md border border-violet-400/40 bg-violet-500/10 px-2 py-1.5">
+                          <div className="space-y-1 rounded-md border border-purple/40 bg-purple/10 px-2 py-1.5">
                             <p
                               className="truncate font-mono text-[9px] text-foreground sm:text-[10px]"
                               title={url}
@@ -653,7 +653,7 @@ export function JudgmentWizardClient({
                                 <span className="text-muted-foreground">
                                   Pincode{" "}
                                 </span>
-                                <span className="font-semibold tracking-wider text-violet-600 dark:text-violet-300">
+                                <span className="font-semibold tracking-wider text-purple">
                                   {pin}
                                 </span>
                               </p>
@@ -735,7 +735,7 @@ export function JudgmentWizardClient({
                         {(item.programmeStatus ?? "")
                           .toUpperCase()
                           .includes("PUBLISHED") ? (
-                          <span className="rounded border border-violet-400/60 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300">
+                          <span className="rounded border border-purple/60 px-1.5 py-0.5 text-[10px] font-medium text-purple">
                             Published
                           </span>
                         ) : null}
@@ -992,7 +992,7 @@ export function JudgmentWizardClient({
                         key={j.id}
                         className={`flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs transition-colors sm:text-sm ${
                           selectedJudgeIds.includes(j.id)
-                            ? "border-violet-400/60 bg-violet-500/10"
+                            ? "border-purple/60 bg-purple/10"
                             : "bg-background"
                         }`}
                       >
@@ -1067,7 +1067,7 @@ export function JudgmentWizardClient({
                   <div className="grid gap-2 sm:grid-cols-2">
                     <button
                       type="button"
-                      className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${judgingMode === "SINGLE" ? "border-violet-400/60 bg-violet-500/10" : "bg-background hover:bg-muted/40"}`}
+                      className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${judgingMode === "SINGLE" ? "border-purple/60 bg-purple/10" : "bg-background hover:bg-muted/40"}`}
                       onClick={() => setJudgingMode("SINGLE")}
                     >
                       <p className="font-medium">Single</p>
@@ -1077,7 +1077,7 @@ export function JudgmentWizardClient({
                     </button>
                     <button
                       type="button"
-                      className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${judgingMode === "GROUP" ? "border-violet-400/60 bg-violet-500/10" : "bg-background hover:bg-muted/40"}`}
+                      className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${judgingMode === "GROUP" ? "border-purple/60 bg-purple/10" : "bg-background hover:bg-muted/40"}`}
                       onClick={() => setJudgingMode("GROUP")}
                     >
                       <p className="font-medium">Group</p>
@@ -1170,8 +1170,8 @@ export function JudgmentWizardClient({
                   stored in plain text.
                 </p>
                 {dialogGeneratedUrl ? (
-                  <div className="space-y-2 rounded-lg border border-violet-400/40 bg-violet-500/10 p-3 text-xs shadow-sm">
-                    <div className="rounded-md border border-violet-300/30 bg-background/70 p-2">
+                  <div className="space-y-2 rounded-lg border border-purple/40 bg-purple/10 p-3 text-xs shadow-sm">
+                    <div className="rounded-md border border-purple/20 bg-background/70 p-2">
                       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
                         Judge link
                       </p>
@@ -1180,11 +1180,11 @@ export function JudgmentWizardClient({
                       </p>
                     </div>
                     {dialogGeneratedPin ? (
-                      <div className="rounded-md border border-violet-300/30 bg-background/70 p-2">
+                      <div className="rounded-md border border-purple/20 bg-background/70 p-2">
                         <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
                           Pincode
                         </p>
-                        <p className="mt-1 font-mono text-base font-bold tracking-widest text-violet-600 dark:text-violet-300">
+                        <p className="mt-1 font-mono text-base font-bold tracking-widest text-purple">
                           {dialogGeneratedPin}
                         </p>
                       </div>
@@ -1340,7 +1340,7 @@ export function JudgmentWizardClient({
                               className="rounded-md border border-border/70 bg-linear-to-br from-background via-background to-muted/30 px-2.5 py-2"
                             >
                               <div className="flex items-start gap-2">
-                                <span className="inline-flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full border border-violet-400/40 bg-violet-500/10 text-[9px] font-semibold text-violet-700 dark:text-violet-300">
+                                <span className="inline-flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full border border-purple/40 bg-purple/10 text-[9px] font-semibold text-purple">
                                   {index + 1}
                                 </span>
                                 <div className="min-w-0">

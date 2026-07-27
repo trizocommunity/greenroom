@@ -443,7 +443,7 @@ export function AnnouncementDeskClient({
                                 {gradeBadge}
                               </TableCell>
                               <TableCell className="align-middle">
-                                <Badge className="bg-violet-500/10 text-violet-600 dark:text-violet-400 hover:bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap">
+                                <Badge className="bg-purple/10 text-purple hover:bg-purple/10 border border-purple/20 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap">
                                   {r.points} pts
                                 </Badge>
                               </TableCell>

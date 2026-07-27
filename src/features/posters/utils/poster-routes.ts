@@ -5,6 +5,6 @@ export function festivalEditorPath(slug: string, code?: string) {
   return `${base}?code=${encodeURIComponent(code)}`;
 }
 
-export function festivalDesignTemplatesPath(slug: string) {
-  return `/dashboard/${slug}/design-templates`;
+export function festivalTemplatesPath(slug: string) {
+  return `/dashboard/${slug}/templates`;
 }

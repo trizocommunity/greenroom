@@ -24,18 +24,17 @@ export function ResultPosterActions({
   festivalSlug,
   canSwap,
   publicMode = false,
+  initialTemplateCode,
 }: {
   payload: ResultPosterExportPayload;
   festivalSlug: string;
   canSwap: boolean;
   publicMode?: boolean;
+  initialTemplateCode?: string;
 }) {
   const stageRef = useRef<Konva.Stage | null>(null);
-  const defaultCode =
-    payload.defaultTemplateCode ??
-    payload.publishedTemplateCodes[0] ??
-    "RESULT-A";
-  const [activeCode, setActiveCode] = useState(defaultCode);
+  const firstCode = payload.publishedTemplateCodes[0] ?? "RESULT-A";
+  const [activeCode, setActiveCode] = useState(initialTemplateCode ?? firstCode);
 
   const template = useMemo(
     () =>
@@ -49,16 +48,34 @@ export function ResultPosterActions({
     [payload.bindings],
   );
 
-  const download = useCallback(() => {
-    if (!template) return;
-    exportStagePng(
-      stageRef.current,
-      `result-poster-${payload.programmeName.replace(/\s+/g, "-").toLowerCase()}-${activeCode}.png`,
-    );
-    toast.success("Poster downloaded");
-  }, [activeCode, payload.programmeName, template]);
+  const posterFilename = useMemo(() => {
+    const safeProgramme = payload.programmeName
+      .replace(/\s+/g, "-")
+      .toLowerCase();
+    return `result-poster-${safeProgramme}-${activeCode}.png`;
+  }, [payload.programmeName, activeCode]);
 
-  const share = useCallback(async () => {
+  const stageToBlob = useCallback(async (): Promise<Blob | null> => {
+    const stage = stageRef.current;
+    if (!stage) return null;
+    const dataUrl = stage.toDataURL({ pixelRatio: 2 });
+    const res = await fetch(dataUrl);
+    return res.blob();
+  }, []);
+
+  const download = useCallback(async () => {
+    const blob = await stageToBlob();
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = posterFilename;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Poster downloaded");
+  }, [posterFilename, stageToBlob]);
+
+  const copyShareLink = useCallback(async () => {
     const url = `${window.location.origin}/${festivalSlug}/results?programmeId=${payload.programmeId}&template=${activeCode}`;
     try {
       await navigator.clipboard.writeText(url);
@@ -66,8 +83,45 @@ export function ResultPosterActions({
     } catch {
       toast.error("Could not copy link");
     }
-    download();
-  }, [activeCode, download, festivalSlug, payload.programmeId]);
+  }, [activeCode, festivalSlug, payload.programmeId]);
+
+  const share = useCallback(async () => {
+    const blob = await stageToBlob();
+    const url = `${window.location.origin}/${festivalSlug}/results?programmeId=${payload.programmeId}&template=${activeCode}`;
+    const canNativeShare =
+      typeof navigator !== "undefined" &&
+      typeof navigator.share === "function" &&
+      typeof navigator.canShare === "function" &&
+      blob instanceof Blob;
+    try {
+      if (canNativeShare) {
+        const file = new File([blob], posterFilename, { type: "image/png" });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: payload.programmeName,
+            text: `${payload.programmeName} — result poster`,
+            url,
+          });
+          return;
+        }
+      }
+      if (blob) await download();
+      else copyShareLink();
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
+      copyShareLink();
+    }
+  }, [
+    activeCode,
+    copyShareLink,
+    download,
+    festivalSlug,
+    payload.programmeId,
+    payload.programmeName,
+    posterFilename,
+    stageToBlob,
+  ]);
 
   if (!template) return null;
 
@@ -90,7 +144,7 @@ export function ResultPosterActions({
           </SelectContent>
         </Select>
       )}
-      {!canSwap && (
+      {!canSwap && payload.publishedTemplateCodes.length > 1 && (
         <span className="text-xs text-muted-foreground">{activeCode}</span>
       )}
       <Button type="button" size="sm" variant="outline" onClick={download}>
@@ -101,7 +155,7 @@ export function ResultPosterActions({
         <Share2 className="mr-1 h-3.5 w-3.5" />
         Share
       </Button>
-      {canSwap && !publicMode && (
+      {canSwap && !publicMode && payload.publishedTemplateCodes.length > 1 && (
         <Button
           type="button"
           size="sm"

@@ -151,7 +151,7 @@ export function FestivalDashboardSidebar({
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton isActive={true} size="lg" asChild>
+            <SidebarMenuButton size="lg" asChild>
               <Link
                 href={dashboardPath}
                 onClick={(e) => onNavClick(e, dashboardPath)}

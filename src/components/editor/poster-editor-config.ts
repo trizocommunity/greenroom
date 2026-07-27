@@ -53,15 +53,6 @@ export const TEMPLATE_TYPES: TemplateTypeMeta[] = [
     height: 1600,
   },
   {
-    type: "TEAM_POINTS",
-    emoji: "🏅",
-    title: "Team Points Poster",
-    description:
-      "Leaderboard-style poster showing team names and their total points. Saved separately from result posters.",
-    width: 1200,
-    height: 1600,
-  },
-  {
     type: "CANDIDATE_CARD",
     emoji: "🪪",
     title: "Candidate Card",

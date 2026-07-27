@@ -2,13 +2,13 @@ import Link from "next/link";
 
 export default function Footer() {
   return (
-    <footer className="mt-auto text-foreground border-t border-white/10 bg-background/50 backdrop-blur-2xl">
+    <footer className="mt-auto text-foreground border-t border-border bg-background/50 backdrop-blur-2xl">
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-12 md:py-20">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
             <Link href="/" className="flex items-center gap-3 mb-4">
-              <div className="w-7 h-7 rounded-2xl bg-linear-to-br from-primary to-orange-400 text-white flex items-center justify-center font-bold text-xs shadow-[0_6px_18px_rgba(124,58,237,0.3)]">
+              <div className="w-7 h-7 rounded-2xl bg-linear-to-br from-primary to-orange-400 text-white flex items-center justify-center font-bold text-xs shadow-[0_6px_18px_rgba(215,38,38,0.3)]">
                 G
               </div>
               <span className="font-black uppercase tracking-tighter text-xl">
@@ -78,7 +78,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-white/10 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-muted-foreground font-bold uppercase tracking-widest">
+        <div className="border-t border-border mt-12 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-muted-foreground font-bold uppercase tracking-widest">
           <p>
             &copy; {new Date().getFullYear()} Greenroom. All rights reserved.
           </p>

@@ -53,7 +53,7 @@ export function EditorNavRail({
       {brandHref ? (
         <Link
           href={brandHref}
-          title={`Back to design templates — ${brandContent}`}
+          title={`Back to templates — ${brandContent}`}
           className="mb-2 flex min-h-8 w-full max-w-[3.25rem] shrink-0 items-center justify-center rounded-md bg-primary/20 px-0.5 py-1 text-center text-[9px] font-bold leading-tight text-primary transition-colors hover:bg-primary/30"
         >
           <span className="line-clamp-3 break-words">{brandContent}</span>

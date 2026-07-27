@@ -43,7 +43,7 @@ export function DeleteFestivalButton({
         e.preventDefault();
         setOpen(true);
       }}
-      className="text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer"
+      className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
     >
       <Trash2 className="mr-2 h-4 w-4" />
       Delete Festival
@@ -52,7 +52,7 @@ export function DeleteFestivalButton({
     <Button
       variant="ghost"
       size="icon"
-      className="text-red-500 hover:text-red-600 hover:bg-red-50"
+      className="text-destructive hover:text-destructive hover:bg-destructive/10"
     >
       <Trash2 className="h-4 w-4" />
     </Button>
@@ -86,7 +86,7 @@ export function DeleteFestivalButton({
       <DialogTrigger asChild>{Trigger}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="text-red-600">
+          <DialogTitle className="text-destructive">
             DANGER: Delete Festival
           </DialogTitle>
           <DialogDescription>

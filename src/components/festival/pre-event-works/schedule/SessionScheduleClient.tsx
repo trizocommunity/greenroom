@@ -24,13 +24,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -688,15 +688,14 @@ function AddSessionDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-4 sm:p-5 gap-0">
-        <DialogHeader className="pb-3">
-          <DialogTitle className="text-base">Add session</DialogTitle>
-          <DialogDescription className="text-xs">
-            Title, stage, and time. Same time on the same stage will show an
-            error; different stages can use the same time.
-          </DialogDescription>
-        </DialogHeader>
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="p-4 sm:p-5 gap-0">
+        <DrawerHeader className="pb-3">
+          <DrawerTitle className="text-base">Add session</DrawerTitle>
+          <DrawerDescription className="text-xs">
+            Title, stage, and time. Conflicts are checked live.
+          </DrawerDescription>
+        </DrawerHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
           {(formError || conflictError) && (
@@ -867,7 +866,7 @@ function AddSessionDialog({
             </div>
           </div>
 
-          <DialogFooter className="pt-3 pb-0 gap-2">
+          <DrawerFooter className="pt-3 pb-0 gap-2">
             <Button
               type="button"
               variant="outline"
@@ -886,10 +885,10 @@ function AddSessionDialog({
               )}
               Add
             </Button>
-          </DialogFooter>
+          </DrawerFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }
 
@@ -1037,14 +1036,14 @@ function EditSessionDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-4 sm:p-5 gap-0">
-        <DialogHeader className="pb-3">
-          <DialogTitle className="text-base">Edit session</DialogTitle>
-          <DialogDescription className="text-xs">
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="p-4 sm:p-5 gap-0">
+        <DrawerHeader className="pb-3">
+          <DrawerTitle className="text-base">Edit session</DrawerTitle>
+          <DrawerDescription className="text-xs">
             {getEntryLabel(entry)}
-          </DialogDescription>
-        </DialogHeader>
+          </DrawerDescription>
+        </DrawerHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <div className="space-y-3">
@@ -1207,7 +1206,7 @@ function EditSessionDialog({
             </div>
           )}
 
-          <DialogFooter className="pt-3 pb-0 gap-2">
+          <DrawerFooter className="pt-3 pb-0 gap-2">
             <Button
               type="button"
               variant="outline"
@@ -1226,9 +1225,9 @@ function EditSessionDialog({
               )}
               Update
             </Button>
-          </DialogFooter>
+          </DrawerFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }

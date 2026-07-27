@@ -41,16 +41,16 @@ export default function Benefits() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-4 border-t border-b border-white/10 rounded-4xl overflow-hidden bg-card/30 backdrop-blur-2xl shadow-2xl">
+        <div className="grid md:grid-cols-4 border-t border-b border-border rounded-4xl overflow-hidden bg-card/60 backdrop-blur-2xl shadow-2xl">
           {benefits.map((benefit, i) => (
             <div
               key={i}
               className={`${benefit.colSpan} p-10 group relative ${
-                benefit.hasBorderRight ? "md:border-r border-white/10" : ""
+                benefit.hasBorderRight ? "md:border-r border-border" : ""
               }`}
             >
               <div
-                className={`h-px w-full bg-white/10 absolute bottom-0 left-0`}
+                className={`h-px w-full bg-border absolute bottom-0 left-0`}
               />
               <motion.div
                 initial={{ y: 12, opacity: 0 }}

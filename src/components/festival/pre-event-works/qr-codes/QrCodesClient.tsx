@@ -14,11 +14,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -452,14 +452,14 @@ export function QrCodesClient({
         </CardContent>
       </Card>
 
-      <Dialog
+      <Drawer
         open={!!viewStudent}
         onOpenChange={(open) => !open && setViewStudent(null)}
       >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Chest Number QR Code</DialogTitle>
-          </DialogHeader>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Chest Number QR Code</DrawerTitle>
+          </DrawerHeader>
           {viewStudent && (
             <div className="flex flex-col items-center gap-4">
               <QrCodeWithActions
@@ -480,8 +480,8 @@ export function QrCodesClient({
               </div>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </DrawerContent>
+      </Drawer>
     </>
   );
 }

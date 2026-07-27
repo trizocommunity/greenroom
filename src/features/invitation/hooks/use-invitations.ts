@@ -14,7 +14,9 @@ export const useCreateInvitation = () => {
       festivalRole: "ADMIN" | "ANNOUNCER" | "STAGE_MANAGER" | "MEDIA";
     }) => api.invitations.create(data),
     onSuccess: async (_data, input) => {
-      await qc.invalidateQueries({ queryKey: ["invitations", input.festivalId] });
+      await qc.invalidateQueries({
+        queryKey: ["invitations", input.festivalId],
+      });
       await qc.fetchQuery({ queryKey: ["invitations", input.festivalId] });
     },
     onError: (error: any) => {

@@ -13,7 +13,6 @@ import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { ProgrammeResultPosterSection } from "@/components/festival/posters/ProgrammeResultPosterSection";
-import { usePublishProgrammeWithPoster } from "@/components/festival/posters/usePublishProgrammeWithPoster";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -113,15 +112,6 @@ export function BasicScoringClient({
   const [scores, setScores] = useState<Record<string, string>>({});
   const [isPending, startTransition] = useTransition();
   const [publishingId, setPublishingId] = useState<string | null>(null);
-  const {
-    requestPublish,
-    dialog: publishPosterDialog,
-    pending: publishPending,
-  } = usePublishProgrammeWithPoster({
-    festivalId: festival.id,
-    festivalSlug: festival.slug,
-    onSuccess: () => router.refresh(),
-  });
   const canSwapPoster = !isReadOnly;
 
   const selected = useMemo(
@@ -253,21 +243,16 @@ export function BasicScoringClient({
 
   const handlePublish = (programmeId: string, publish: boolean) => {
     if (isReadOnly) return;
-    if (publish) {
-      setPublishingId(programmeId);
-      void requestPublish(programmeId).finally(() => setPublishingId(null));
-      return;
-    }
     setPublishingId(programmeId);
     startTransition(async () => {
       const res = await bulkPublishProgrammeResults(
         programmeId,
-        false,
+        publish,
         festival.slug,
       );
       setPublishingId(null);
       if (res.success) {
-        toast.success("Programme unpublished.");
+        toast.success(publish ? "Programme published." : "Programme unpublished.");
         router.refresh();
       } else {
         toast.error(res.error);
@@ -439,7 +424,6 @@ export function BasicScoringClient({
             )}
           </CardContent>
         </Card>
-        {publishPosterDialog}
       </div>
     );
   }

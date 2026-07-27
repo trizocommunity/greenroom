@@ -8,13 +8,13 @@ import { toast } from "sonner";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import {
   Form,
   FormControl,
@@ -104,8 +104,8 @@ export function AddMemberDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+    <Drawer open={open} onOpenChange={setOpen}>
+      <DrawerTrigger asChild>
         <Button
           size="sm"
           disabled={disabled || readOnlyExpired}
@@ -119,17 +119,17 @@ export function AddMemberDialog({
           <UserPlus className="mr-2 h-4 w-4" />
           Add Member
         </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md rounded-2xl border border-border/80 bg-card shadow-xl">
-        <DialogHeader className="border-b border-border/60 pb-4">
-          <DialogTitle className="text-xl font-bold tracking-tight">
+      </DrawerTrigger>
+      <DrawerContent>
+        <DrawerHeader className="border-b border-border/60 pb-4">
+          <DrawerTitle className="text-xl font-bold tracking-tight">
             Invite New Member
-          </DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground mt-1">
+          </DrawerTitle>
+          <DrawerDescription className="text-sm text-muted-foreground mt-1">
             Enter the member&apos;s email and select their role. An invitation
             email will be sent automatically.
-          </DialogDescription>
-        </DialogHeader>
+          </DrawerDescription>
+        </DrawerHeader>
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(handleSubmit)}
@@ -208,7 +208,7 @@ export function AddMemberDialog({
             </div>
           </form>
         </Form>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }

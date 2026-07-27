@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 export default function CTASection() {
   return (
-    <section className="py-32 text-foreground text-center border-t border-white/10 relative overflow-hidden">
+    <section className="py-32 text-foreground text-center border-t border-border relative overflow-hidden">
       {/* Background glow */}
       <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-96 bg-primary/5 blur-[100px] -z-10" />
 
@@ -23,7 +23,7 @@ export default function CTASection() {
           <Link href="/contact">
             <Button
               size="lg"
-              className="h-14 px-10 text-lg font-semibold rounded-full shadow-[0_10px_28px_rgba(124,58,237,0.25)] hover:scale-105 transition-transform"
+              className="h-14 px-10 text-lg font-semibold rounded-full shadow-[0_10px_28px_rgba(215,38,38,0.25)] hover:scale-105 transition-transform"
             >
               Get Started <ArrowRight className="ml-3" />
             </Button>
@@ -32,7 +32,7 @@ export default function CTASection() {
             <Button
               variant="outline"
               size="lg"
-              className="h-14 px-10 text-lg font-semibold rounded-full bg-background/50 border-white/10 hover:bg-white/10 hover:text-foreground hover:scale-105 transition-transform backdrop-blur-xl"
+              className="h-14 px-10 text-lg font-semibold rounded-full bg-background/50 border-border hover:bg-muted hover:text-foreground hover:scale-105 transition-transform backdrop-blur-xl"
             >
               Demonstration
             </Button>

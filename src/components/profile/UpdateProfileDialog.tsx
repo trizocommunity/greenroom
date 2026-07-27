@@ -10,13 +10,13 @@ import { z } from "zod";
 import { useUpdateProfile } from "@/api/client/profile";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import {
   Form,
   FormControl,
@@ -105,19 +105,19 @@ export function UpdateProfileDialog({ user }: UpdateProfileDialogProps) {
     user.accountType === "INSTITUTIONAL" ? INSTITUTIONAL_ROLES : PERSONAL_ROLES;
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
+    <Drawer open={isOpen} onOpenChange={setIsOpen}>
+      <DrawerTrigger asChild>
         <Button variant="outline" size="sm">
           Update Profile
         </Button>
-      </DialogTrigger>
-      <DialogContent className="w-full sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Update Profile</DialogTitle>
-          <DialogDescription>
+      </DrawerTrigger>
+      <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle>Update Profile</DrawerTitle>
+          <DrawerDescription>
             Update your personal information. Email cannot be changed.
-          </DialogDescription>
-        </DialogHeader>
+          </DrawerDescription>
+        </DrawerHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -194,7 +194,7 @@ export function UpdateProfileDialog({ user }: UpdateProfileDialogProps) {
             </div>
           </form>
         </Form>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }

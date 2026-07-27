@@ -18,13 +18,13 @@ export default function FeaturesPage() {
     <div className="min-h-screen relative overflow-hidden bg-background">
       {/* Background blobs */}
       <div className="absolute inset-x-0 top-0 h-96 bg-primary/10 blur-[120px] -z-10" />
-      <div className="absolute right-0 bottom-0 h-96 w-96 bg-fuchsia-500/10 blur-[120px] -z-10" />
+      <div className="absolute right-0 bottom-0 h-96 w-96 bg-secondary/10 blur-[120px] -z-10" />
 
-      <div className="py-24 text-center border-b border-white/10 relative">
+      <div className="py-24 text-center border-b border-border relative">
         <div className="container max-w-7xl mx-auto px-4">
           <h1 className="text-6xl md:text-8xl font-black uppercase tracking-tighter mb-6 text-foreground">
             System <br />
-            <span className="text-transparent bg-clip-text bg-linear-to-r from-primary via-fuchsia-500 to-orange-400">
+            <span className="text-transparent bg-clip-text bg-linear-to-r from-primary via-secondary to-orange-400">
               Features
             </span>
           </h1>

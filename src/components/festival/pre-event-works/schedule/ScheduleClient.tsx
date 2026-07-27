@@ -36,13 +36,13 @@ import {
 } from "@/components/ui/card";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -858,16 +858,16 @@ function AddEntryDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-4 sm:p-5 gap-0">
-        <DialogHeader className="pb-3">
-          <DialogTitle className="text-base">
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="p-4 sm:p-5 gap-0">
+        <DrawerHeader className="pb-3">
+          <DrawerTitle className="text-base">
             Add programme to schedule
-          </DialogTitle>
-          <DialogDescription className="text-xs">
+          </DrawerTitle>
+          <DrawerDescription className="text-xs">
             Programme, stage, and time. Sessions are on the Sessions page.
-          </DialogDescription>
-        </DialogHeader>
+          </DrawerDescription>
+        </DrawerHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <div className="grid grid-cols-1 gap-1">
@@ -1042,7 +1042,7 @@ function AddEntryDialog({
             </div>
           )}
 
-          <DialogFooter className="pt-3 pb-0 gap-2">
+          <DrawerFooter className="pt-3 pb-0 gap-2">
             <Button
               type="button"
               variant="outline"
@@ -1067,10 +1067,10 @@ function AddEntryDialog({
               )}
               Add
             </Button>
-          </DialogFooter>
+          </DrawerFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }
 
@@ -1200,12 +1200,12 @@ function EditEntryDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Edit schedule entry</DialogTitle>
-          <DialogDescription>{getEntryLabel(entry)}</DialogDescription>
-        </DialogHeader>
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle>Edit schedule entry</DrawerTitle>
+          <DrawerDescription>{getEntryLabel(entry)}</DrawerDescription>
+        </DrawerHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Stage</Label>
@@ -1290,7 +1290,7 @@ function EditEntryDialog({
               </span>
             </div>
           )}
-          <DialogFooter>
+          <DrawerFooter>
             <Button
               type="button"
               variant="outline"
@@ -1305,9 +1305,9 @@ function EditEntryDialog({
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Update
             </Button>
-          </DialogFooter>
+          </DrawerFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }

@@ -55,9 +55,9 @@ type NewsPost = {
   excerpt: string | null;
   content: string;
   imageUrl: string | null;
-  publishedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 interface NewsClientProps {

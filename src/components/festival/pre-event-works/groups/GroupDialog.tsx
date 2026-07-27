@@ -9,14 +9,14 @@ import * as z from "zod";
 import { useCreateGroup, useUpdateGroup } from "@/api/client/groups";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import {
   Form,
   FormControl,
@@ -126,85 +126,90 @@ export function GroupDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Drawer open={open} onOpenChange={setOpen}>
       {!isControlled && (
-        <DialogTrigger asChild>
+        <DrawerTrigger asChild>
           {trigger ?? (
             <Button>
               <Plus className="mr-2 h-4 w-4" />
               Create Group
             </Button>
           )}
-        </DialogTrigger>
+        </DrawerTrigger>
       )}
-      <DialogContent className="w-[calc(100%-2rem)] max-w-md max-h-[85vh] overflow-y-auto p-4 sm:p-6">
-        <DialogHeader>
-          <DialogTitle>
+      <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle>
             {readOnly
               ? "Group Details"
               : isEditing
                 ? "Edit Group"
                 : "Create Group"}
-          </DialogTitle>
-          <DialogDescription>
+          </DrawerTitle>
+          <DrawerDescription>
             {readOnly
               ? "View group details."
               : isEditing
                 ? "Update group details."
                 : "Add a new group (School/College)."}
-          </DialogDescription>
-        </DialogHeader>
+          </DrawerDescription>
+        </DrawerHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Group Name</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="e.g. Model School"
-                      disabled={readOnly || isLoading}
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="color"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Group Color</FormLabel>
-                  <div className="flex flex-wrap gap-2">
-                    {COLORS.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-col flex-1 min-h-0"
+          >
+            <div className="flex-1 overflow-y-auto min-h-0 space-y-3 sm:space-y-4 py-1">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Group Name</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g. Model School"
                         disabled={readOnly || isLoading}
-                        onClick={() => field.onChange(c)}
-                        className={`h-8 w-8 rounded-full border-2 transition-all ${
-                          field.value === c
-                            ? "border-primary scale-110 shadow-sm"
-                            : "border-transparent hover:scale-105"
-                        }`}
-                        style={{ backgroundColor: c }}
-                        aria-label={`Select color ${c}`}
+                        {...field}
+                        value={field.value ?? ""}
                       />
-                    ))}
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <DialogFooter>
+              <FormField
+                control={form.control}
+                name="color"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Group Color</FormLabel>
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                      {COLORS.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          disabled={readOnly || isLoading}
+                          onClick={() => field.onChange(c)}
+                          className={`h-7 w-7 sm:h-8 sm:w-8 rounded-full border-2 transition-all ${
+                            field.value === c
+                              ? "border-primary scale-110 shadow-sm"
+                              : "border-transparent hover:scale-105"
+                          }`}
+                          style={{ backgroundColor: c }}
+                          aria-label={`Select color ${c}`}
+                        />
+                      ))}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <DrawerFooter>
               <Button
                 type="button"
                 variant="outline"
@@ -224,10 +229,10 @@ export function GroupDialog({
                   {isEditing ? "Save Changes" : "Create"}
                 </Button>
               )}
-            </DialogFooter>
+            </DrawerFooter>
           </form>
         </Form>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }

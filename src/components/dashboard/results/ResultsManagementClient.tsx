@@ -33,7 +33,7 @@ import { toast } from "sonner";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { ProgrammeResultPosterSection } from "@/components/festival/posters/ProgrammeResultPosterSection";
-import { usePublishProgrammeWithPoster } from "@/components/festival/posters/usePublishProgrammeWithPoster";
+
 import {
   Accordion,
   AccordionContent,
@@ -233,12 +233,6 @@ export function ResultsManagementClient({
   const [publishingProgrammeId, setPublishingProgrammeId] = useState<
     string | null
   >(null);
-  const { requestPublish, dialog: publishPosterDialog } =
-    usePublishProgrammeWithPoster({
-      festivalId: festival.id,
-      festivalSlug: festival.slug,
-      onSuccess: () => router.refresh(),
-    });
   const canSwapPoster = canSwapResultPosterOnDashboard(
     festivalAccessRole,
     isBasicTier,
@@ -658,23 +652,20 @@ export function ResultsManagementClient({
     isPublished: boolean,
   ) => {
     if (isReadOnly) return;
-    if (isPublished) {
-      setPublishingProgrammeId(programmeId);
-      void requestPublish(programmeId).finally(() =>
-        setPublishingProgrammeId(null),
-      );
-      return;
-    }
     setPublishingProgrammeId(programmeId);
     startTransition(async () => {
       try {
         const response = await bulkPublishProgrammeResults(
           programmeId,
-          false,
+          isPublished,
           festival.slug,
         );
         if (response.success) {
-          toast.success("Results unpublished successfully");
+          toast.success(
+            isPublished
+              ? "Programme results published"
+              : "Results unpublished successfully",
+          );
           router.refresh();
         } else {
           toast.error("Failed to update status");
@@ -2057,7 +2048,6 @@ export function ResultsManagementClient({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {publishPosterDialog}
     </div>
   );
 }

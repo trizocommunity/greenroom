@@ -7,13 +7,13 @@ import type { PosterEditorDocument } from "@/components/editor/poster-editor-typ
 import { PosterExportCanvas } from "@/components/festival/posters/PosterExportCanvas";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import type { PosterBindings } from "@/features/posters/services/poster-bindings.service";
 
 const PREVIEW_MAX_WIDTH = 520;
@@ -72,15 +72,15 @@ export function PublishPosterTemplateDialog({
 }) {
   const bindings = previewBindings ?? (MOCK_BINDINGS as PosterBindings);
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Publish {templateCode}?</DialogTitle>
-          <DialogDescription>
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent>
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>Publish {templateCode}?</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
             Preview how the poster will look with sample data. Publishing makes
             this template available for programmes and results.
-          </DialogDescription>
-        </DialogHeader>
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
 
         <PosterTemplatePreview doc={document} bindings={bindings} />
 
@@ -93,7 +93,7 @@ export function PublishPosterTemplateDialog({
           · {document.width}×{document.height} px
         </p>
 
-        <DialogFooter>
+        <ResponsiveDialogFooter>
           <Button
             type="button"
             variant="outline"
@@ -109,8 +109,8 @@ export function PublishPosterTemplateDialog({
           >
             {loading ? "Publishing…" : "Confirm publish"}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveDialogFooter>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

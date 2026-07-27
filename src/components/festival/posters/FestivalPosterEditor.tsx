@@ -24,7 +24,7 @@ import {
 } from "@/features/posters/actions/poster-template.actions";
 import type { PosterBindings } from "@/features/posters/services/poster-bindings.service";
 import type { PosterTemplateStatus } from "@/features/posters/types/poster-template.types";
-import { festivalDesignTemplatesPath } from "@/features/posters/utils/poster-routes";
+import { festivalTemplatesPath } from "@/features/posters/utils/poster-routes";
 import {
   defaultCodeForType,
   templateTypeFromCode,
@@ -86,28 +86,17 @@ function TemplatePicker({
                 </p>
 
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {t.type === "TEAM_POINTS" ? (
-                    <Button
-                      size="sm"
-                      onClick={() => onPick("TEAM_POINTS", "blank")}
-                    >
-                      + Create
-                    </Button>
-                  ) : (
-                    <>
-                      <Button size="sm" onClick={() => onPick(t.type, "blank")}>
-                        + Blank
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => pickWithBackground(t.type)}
-                      >
-                        <Upload className="mr-1.5 h-4 w-4" />
-                        With background image
-                      </Button>
-                    </>
-                  )}
+                  <Button size="sm" onClick={() => onPick(t.type, "blank")}>
+                    + Blank
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => pickWithBackground(t.type)}
+                  >
+                    <Upload className="mr-1.5 h-4 w-4" />
+                    With background image
+                  </Button>
                 </div>
               </div>
             </div>
@@ -332,7 +321,7 @@ export function FestivalPosterEditor({
             pending: publishing,
             onConfirmPublish: confirmPublish,
           }}
-          sidebarBrandHref={festivalDesignTemplatesPath(festivalSlug)}
+          sidebarBrandHref={festivalTemplatesPath(festivalSlug)}
           sidebarBrandLabel={festivalName}
           resetTemplate={{
             templateCode,

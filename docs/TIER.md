@@ -97,7 +97,7 @@
 
 | Feature | BASIC | STANDARD | PRO |
 |---------|:-----:|:--------:|:---:|
-| Design Templates | ✅ | ✅ | ✅ |
+| Templates | ✅ | ✅ | ✅ |
 | QR Codes | ❌ | ✅ | ✅ |
 | Auto Certificates | ❌ | ✅ | ✅ |
 | Custom Certificate Templates | ❌ | ❌ | ✅ |

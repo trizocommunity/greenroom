@@ -5,13 +5,13 @@ import { Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ViewDetailsDialogProps {
@@ -28,8 +28,8 @@ export function ViewDetailsDialog({
   type: _type = "default",
 }: ViewDetailsDialogProps) {
   return (
-    <Dialog>
-      <DialogTrigger asChild>
+    <Drawer>
+      <DrawerTrigger asChild>
         <Button
           variant="ghost"
           size="icon"
@@ -38,12 +38,12 @@ export function ViewDetailsDialog({
           <Eye className="h-4 w-4" />
           <span className="sr-only">View Details</span>
         </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-xl max-h-[85vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          {description && <DialogDescription>{description}</DialogDescription>}
-        </DialogHeader>
+      </DrawerTrigger>
+      <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle>{title}</DrawerTitle>
+          {description && <DrawerDescription>{description}</DrawerDescription>}
+        </DrawerHeader>
         <ScrollArea className="flex-1 -mr-4 pr-4">
           <div className="space-y-6 py-4">
             {Object.entries(data).map(([key, value]) => {
@@ -89,8 +89,8 @@ export function ViewDetailsDialog({
             })}
           </div>
         </ScrollArea>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }
 

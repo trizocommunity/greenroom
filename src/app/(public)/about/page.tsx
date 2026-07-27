@@ -8,7 +8,7 @@ export default function AboutPage() {
     <div className="min-h-screen relative overflow-hidden bg-background">
       {/* Background blobs */}
       <div className="absolute inset-x-0 top-0 h-96 bg-primary/10 blur-[120px] -z-10" />
-      <div className="absolute right-0 bottom-0 h-96 w-96 bg-fuchsia-500/10 blur-[120px] -z-10" />
+      <div className="absolute right-0 bottom-0 h-96 w-96 bg-secondary/10 blur-[120px] -z-10" />
 
       {/* Hero / Intro */}
       <section className="py-24 min-h-[90vh] flex items-center container max-w-7xl px-4 md:px-6 mx-auto">
@@ -16,7 +16,7 @@ export default function AboutPage() {
           <div className="max-w-4xl">
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-black uppercase tracking-tighter mb-8 leading-tight text-foreground">
               We are{" "}
-              <span className="text-transparent bg-clip-text bg-linear-to-r from-primary via-fuchsia-500 to-orange-400">
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-primary via-secondary to-orange-400">
                 Greenroom
               </span>
             </h1>
@@ -28,7 +28,7 @@ export default function AboutPage() {
               <Link href="/contact">
                 <Button
                   size="lg"
-                  className="h-14 px-10 text-lg font-semibold rounded-full shadow-[0_10px_28px_rgba(124,58,237,0.25)] hover:scale-105 transition-transform"
+                  className="h-14 px-10 text-lg font-semibold rounded-full shadow-[0_10px_28px_rgba(215,38,38,0.25)] hover:scale-105 transition-transform"
                 >
                   Join the Revolution
                 </Button>
@@ -42,7 +42,7 @@ export default function AboutPage() {
       <Values />
 
       {/* Origin Story */}
-      <section className="py-32 text-foreground border-y border-white/10 relative">
+      <section className="py-32 text-foreground border-y border-border relative">
         <div className="absolute inset-0 bg-primary/5 -z-10" />
         <div className="container max-w-7xl px-4 md:px-6 mx-auto text-center">
           <p className="text-2xl md:text-4xl font-bold uppercase leading-tight tracking-tight text-foreground max-w-4xl mx-auto">

@@ -58,9 +58,9 @@ export function AdminFestivalCard({ festival }: AdminFestivalCardProps) {
               }
               className={
                 festival.status === "EXPIRED"
-                  ? "bg-red-500/90 text-white px-2 h-5 text-[10px] font-black uppercase tracking-wider"
+                  ? "bg-destructive text-destructive-foreground px-2 h-5 text-[10px] font-black uppercase tracking-wider"
                   : festival.status === "ONGOING"
-                    ? "bg-green-500 hover:bg-green-600 shadow-lg shadow-green-500/20 px-2 h-5 text-[10px] font-black uppercase tracking-wider"
+                    ? "bg-success hover:bg-success/90 text-white shadow-lg shadow-success/20 px-2 h-5 text-[10px] font-black uppercase tracking-wider"
                     : "px-2 h-5 text-[10px] font-black uppercase tracking-wider"
               }
             >

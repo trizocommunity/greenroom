@@ -134,7 +134,7 @@ export function ProgrammesClient({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Header row: title (children) + Create — icon only on mobile */}
       <div className="flex flex-row items-center justify-between gap-4">
         {children ?? (

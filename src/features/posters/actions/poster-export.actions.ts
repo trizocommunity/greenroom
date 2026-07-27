@@ -32,7 +32,6 @@ export interface ResultPosterExportPayload {
   programmeName: string;
   categoryName: string;
   festivalName: string;
-  defaultTemplateCode: string | null;
   publishedTemplateCodes: string[];
   bindings: ResultPosterBindingInput;
   templates: PosterTemplateRecord[];
@@ -49,7 +48,6 @@ export async function getResultPosterExportPayloadAction(
         id: true,
         name: true,
         festivalId: true,
-        resultPosterTemplateCode: true,
       },
     });
     if (!programme) throw new AppError(ERROR_MESSAGES.PROGRAMME_NOT_FOUND);
@@ -153,7 +151,6 @@ export async function getResultPosterExportPayloadAction(
         programmeName: programme.name,
         categoryName,
         festivalName: festival.name,
-        defaultTemplateCode: programme.resultPosterTemplateCode,
         publishedTemplateCodes: published.map((p) => p.code),
         bindings: bindingInput,
         templates: published,
@@ -168,6 +165,41 @@ export async function getPublicResultPosterPayloadAction(
   programmeId: string,
   festivalSlug: string,
 ): Promise<ActionResponse<ResultPosterExportPayload | null>> {
-  void festivalSlug;
-  return getResultPosterExportPayloadAction(programmeId);
+  try {
+    void festivalSlug;
+    const programme = await db.query.programme.findFirst({
+      where: eq(programmeTable.id, programmeId),
+      columns: { id: true, name: true, festivalId: true },
+    });
+    if (!programme) return { success: true, data: null };
+
+    const festival = await db.query.festival.findFirst({
+      where: eq(festivalTable.id, programme.festivalId),
+      columns: { id: true, name: true },
+    });
+    if (!festival) return { success: true, data: null };
+
+    const hasAnnounced = await db
+      .select({ id: resultTable.id })
+      .from(resultTable)
+      .innerJoin(
+        programmeAssignment,
+        eq(resultTable.assignmentId, programmeAssignment.id),
+      )
+      .where(
+        and(
+          eq(programmeAssignment.programmeId, programmeId),
+          eq(resultTable.isAnnounced, true),
+        ),
+      )
+      .limit(1);
+
+    if (hasAnnounced.length === 0) {
+      return { success: true, data: null };
+    }
+
+    return getResultPosterExportPayloadAction(programmeId);
+  } catch (error) {
+    return handleActionError(error);
+  }
 }

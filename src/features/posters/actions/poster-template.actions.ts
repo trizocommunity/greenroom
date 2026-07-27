@@ -1,14 +1,11 @@
 "use server";
 
 import { randomUUID } from "crypto";
-import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { PosterEditorDocument } from "@/components/editor/poster-editor-types";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
-import { db } from "@/core/database/client";
-import { programme as programmeTable } from "@/core/database/schema";
 import {
   AppError,
   ERROR_MESSAGES,
@@ -19,7 +16,7 @@ import {
   ensureFestivalWritable,
   getFestivalContext,
 } from "@/features/festivals/services/festival-context.service";
-import { canManageDesignTemplates } from "@/features/posters/auth/poster-access";
+import { canManageTemplates } from "@/features/posters/auth/poster-access";
 import * as PosterTemplateRepo from "@/features/posters/repositories/poster-template.repository";
 import {
   type EditorPreviewBindingsPayload,
@@ -45,7 +42,7 @@ const saveDraftSchema = z.object({
   meta: z.record(z.string(), z.unknown()).optional(),
 });
 
-async function assertDesignTemplateAccess(festivalId: string) {
+async function assertTemplatesAccess(festivalId: string) {
   const session = await getSession();
   if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
   await assertFestivalAccess(session, festivalId, { requireWritable: true });
@@ -56,15 +53,17 @@ async function assertDesignTemplateAccess(festivalId: string) {
     userId: session.userId,
     globalRole: session.role,
   });
-  if (!ctx || !canManageDesignTemplates(ctx.role)) {
+  if (!ctx || !canManageTemplates(ctx.role)) {
     throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
   }
   return session;
 }
 
 function revalidatePosterPaths(slug: string) {
-  revalidatePath(`/dashboard/${slug}/design-templates`);
+  revalidatePath(`/dashboard/${slug}/templates`);
   revalidatePath(`/${slug}/editor`);
+  revalidatePath(`/${slug}/results`);
+  revalidatePath(`/${slug}`);
 }
 
 export async function getEditorPreviewBindingsAction(
@@ -72,7 +71,7 @@ export async function getEditorPreviewBindingsAction(
   templateType: PosterTemplateType,
 ): Promise<ActionResponse<EditorPreviewBindingsPayload>> {
   try {
-    await assertDesignTemplateAccess(festivalId);
+    await assertTemplatesAccess(festivalId);
     const payload = await getFestivalEditorPreviewBindings(
       festivalId,
       templateType,
@@ -95,7 +94,7 @@ export async function listPosterTemplatesAction(
       userId: session.userId,
       globalRole: session.role,
     });
-    if (!ctx || !canManageDesignTemplates(ctx.role)) {
+    if (!ctx || !canManageTemplates(ctx.role)) {
       throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
     }
     const rows = await PosterTemplateRepo.listByFestival(festivalId);
@@ -121,7 +120,7 @@ export async function getPosterTemplateAction(
       userId: session.userId,
       globalRole: session.role,
     });
-    if (!ctx || !canManageDesignTemplates(ctx.role)) {
+    if (!ctx || !canManageTemplates(ctx.role)) {
       throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
     }
     const row = await PosterTemplateRepo.findByFestivalAndCode(
@@ -160,13 +159,19 @@ export async function savePosterTemplateDraftAction(
 ): Promise<ActionResponse<{ id: string; code: string }>> {
   try {
     const parsed = saveDraftSchema.parse(input);
-    await assertDesignTemplateAccess(parsed.festivalId);
+    await assertTemplatesAccess(parsed.festivalId);
 
     const codeError = validateTemplateCode(parsed.code);
     if (codeError) return { success: false, error: codeError };
 
     const type = templateTypeFromCode(parsed.code);
     if (!type) return { success: false, error: "Invalid template code" };
+    if (type === "TEAM_POINTS") {
+      return {
+        success: false,
+        error: "Team points templates are no longer supported.",
+      };
+    }
 
     const doc = parsed.document;
     const existing = await PosterTemplateRepo.findByFestivalAndCode(
@@ -200,7 +205,7 @@ export async function publishPosterTemplateAction(
   festivalSlug: string,
 ): Promise<ActionResponse<void>> {
   try {
-    await assertDesignTemplateAccess(festivalId);
+    await assertTemplatesAccess(festivalId);
     const codeError = validateTemplateCode(code);
     if (codeError) return { success: false, error: codeError };
 
@@ -210,6 +215,13 @@ export async function publishPosterTemplateAction(
     );
     if (!existing) {
       return { success: false, error: "Save a draft before publishing" };
+    }
+
+    if (existing.type === "TEAM_POINTS") {
+      return {
+        success: false,
+        error: "Team points templates are no longer supported.",
+      };
     }
 
     if (existing.type === "RESULT" && isResultSlotCode(code)) {
@@ -239,7 +251,7 @@ export async function unpublishPosterTemplateAction(
   festivalSlug: string,
 ): Promise<ActionResponse<void>> {
   try {
-    await assertDesignTemplateAccess(festivalId);
+    await assertTemplatesAccess(festivalId);
     await PosterTemplateRepo.updateStatus(festivalId, code, "DRAFT");
     revalidatePosterPaths(festivalSlug);
     return { success: true, data: undefined };
@@ -254,7 +266,7 @@ export async function deletePosterTemplateDraftAction(
   festivalSlug: string,
 ): Promise<ActionResponse<void>> {
   try {
-    await assertDesignTemplateAccess(festivalId);
+    await assertTemplatesAccess(festivalId);
     const existing = await PosterTemplateRepo.findByFestivalAndCode(
       festivalId,
       code,
@@ -280,17 +292,10 @@ export async function clearAllPosterTemplatesAction(
   festivalSlug: string,
 ): Promise<ActionResponse<{ deletedCount: number }>> {
   try {
-    await assertDesignTemplateAccess(festivalId);
+    await assertTemplatesAccess(festivalId);
     const existing = await PosterTemplateRepo.listByFestival(festivalId);
     const count = existing.length;
     await PosterTemplateRepo.deleteAllByFestival(festivalId);
-    await db
-      .update(programmeTable)
-      .set({
-        resultPosterTemplateCode: null,
-        updatedAt: new Date().toISOString(),
-      })
-      .where(eq(programmeTable.festivalId, festivalId));
     revalidatePosterPaths(festivalSlug);
     return { success: true, data: { deletedCount: count } };
   } catch (error) {

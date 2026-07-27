@@ -2,12 +2,12 @@
 
 import { Users } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import {
   Table,
   TableBody,
@@ -42,18 +42,18 @@ export function TeamStudentsDialog({
   students,
 }: TeamStudentsDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
             Team members
-          </DialogTitle>
-          <DialogDescription>
+          </DrawerTitle>
+          <DrawerDescription>
             Students in <span className="font-medium">{teamLabel}</span> for{" "}
             <span className="font-medium">{programmeName}</span> ({groupName})
-          </DialogDescription>
-        </DialogHeader>
+          </DrawerDescription>
+        </DrawerHeader>
         <div className="border rounded-lg overflow-hidden">
           <Table>
             <TableHeader>
@@ -89,7 +89,7 @@ export function TeamStudentsDialog({
             </TableBody>
           </Table>
         </div>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }

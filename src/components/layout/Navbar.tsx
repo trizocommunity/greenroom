@@ -64,7 +64,7 @@ export default function Navbar({ user: initialUser }: NavbarProps) {
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-colors duration-300 bg-transparent",
         scrolled
-          ? "bg-background/80 backdrop-blur-2xl border-b border-white/10"
+          ? "bg-background/80 backdrop-blur-2xl border-b border-border"
           : "bg-transparent border-transparent",
       )}
     >
@@ -160,7 +160,7 @@ export default function Navbar({ user: initialUser }: NavbarProps) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-background/95 backdrop-blur-2xl border-b border-white/10 overflow-hidden"
+            className="md:hidden bg-background/95 backdrop-blur-2xl border-b border-border overflow-hidden"
           >
             <div className="p-6 flex flex-col gap-4">
               {navItems.map((item) => (
@@ -169,7 +169,7 @@ export default function Navbar({ user: initialUser }: NavbarProps) {
                   href={item.href}
                   onClick={() => setIsOpen(false)}
                   className={cn(
-                    "text-base font-bold uppercase tracking-widest py-4 border-b border-white/5 last:border-0",
+                    "text-base font-bold uppercase tracking-widest py-4 border-b border-border last:border-0",
                     pathname === item.href
                       ? "text-primary pl-2 border-l-4 border-primary"
                       : "text-muted-foreground",
@@ -196,7 +196,7 @@ export default function Navbar({ user: initialUser }: NavbarProps) {
                     <Link href="/login" onClick={() => setIsOpen(false)}>
                       <Button
                         variant="outline"
-                        className="w-full justify-center rounded-full font-bold uppercase border-white/10 hover:bg-white/10"
+                        className="w-full justify-center rounded-full font-bold uppercase border-border hover:bg-muted"
                       >
                         Log In
                       </Button>

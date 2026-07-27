@@ -56,8 +56,8 @@ export interface AnalyticsData {
 }
 
 const CHART_COLORS = {
-  primary: "#7c3aed",
-  primaryLight: "#a855f7",
+  primary: "#d72626",
+  primaryLight: "#f25c05",
   accent: "#22d3ee",
   accent2: "#34d399",
   muted: "#64748b",

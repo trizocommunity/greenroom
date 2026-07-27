@@ -1,6 +1,6 @@
 import type { FestivalAccessRole } from "@/features/festivals/services/festival-context.service";
 
-const DESIGN_TEMPLATE_ROLES = new Set([
+const TEMPLATE_ROLES = new Set([
   "SUPER_ADMIN",
   "OWNER",
   "ADMIN",
@@ -17,8 +17,8 @@ const DASHBOARD_POSTER_SWAP_ROLES = new Set([
 
 const BASIC_POSTER_SWAP_ROLES = new Set(["SUPER_ADMIN", "OWNER", "ADMIN"]);
 
-export function canManageDesignTemplates(role: FestivalAccessRole): boolean {
-  return DESIGN_TEMPLATE_ROLES.has(role);
+export function canManageTemplates(role: FestivalAccessRole): boolean {
+  return TEMPLATE_ROLES.has(role);
 }
 
 export function canSwapResultPosterOnDashboard(

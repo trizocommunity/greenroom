@@ -9,7 +9,7 @@ interface FestivalFooterProps {
 
 export function FestivalFooter({ festival }: FestivalFooterProps) {
   return (
-    <footer className="mt-auto border-t border-white/10 bg-slate-950">
+    <footer className="mt-auto border-t border-border bg-card">
       <div className="mx-auto max-w-7xl px-4 md:px-6 py-6">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -26,39 +26,39 @@ export function FestivalFooter({ festival }: FestivalFooterProps) {
                 {festival.name.charAt(0)}
               </div>
             )}
-            <span className="font-medium text-sm text-slate-200">
+            <span className="font-medium text-sm text-heading">
               {festival.name}
             </span>
           </div>
-          <nav className="flex flex-wrap justify-center gap-4 text-xs text-slate-400">
+          <nav className="flex flex-wrap justify-center gap-4 text-xs text-muted-foreground">
             <Link
               href={`/${festival.slug}/about`}
-              className="hover:text-slate-100"
+              className="hover:text-foreground"
             >
               About
             </Link>
             <Link
               href={`/${festival.slug}/sessions`}
-              className="hover:text-slate-100"
+              className="hover:text-foreground"
             >
               Sessions
             </Link>
             <Link
               href={`/${festival.slug}/results`}
-              className="hover:text-slate-100"
+              className="hover:text-foreground"
             >
               Results
             </Link>
             <Link
               href={`/${festival.slug}/gallery`}
-              className="hover:text-slate-100"
+              className="hover:text-foreground"
             >
               Gallery
             </Link>
           </nav>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             © {new Date().getFullYear()} · Powered by{" "}
-            <Link href="/" className="hover:text-slate-300">
+            <Link href="/" className="hover:text-foreground">
               Greenroom
             </Link>
           </p>

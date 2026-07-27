@@ -6,12 +6,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { parseStoredInstant } from "@/core/utils/date-time";
 import type { Member } from "./types";
 
@@ -41,9 +41,9 @@ export function MemberDetailsDialog({
       .toUpperCase() || "U";
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md overflow-hidden border border-border/80 bg-card shadow-xl rounded-2xl">
-        <DialogHeader className="flex flex-row items-center gap-4 border-b border-border/60 pb-5 pt-1">
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent>
+        <DrawerHeader className="flex flex-row items-center gap-4 border-b border-border/60 pb-5 pt-1">
           <Avatar className="h-16 w-16 shrink-0 border-2 border-background shadow-md ring-2 ring-primary/20 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
             {avatarUrl && <AvatarImage src={avatarUrl} alt={fullName} />}
             <AvatarFallback className="bg-transparent text-lg font-bold text-primary">
@@ -51,14 +51,14 @@ export function MemberDetailsDialog({
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <DialogTitle className="truncate text-xl font-bold tracking-tight text-foreground">
+            <DrawerTitle className="truncate text-xl font-bold tracking-tight text-foreground">
               {fullName}
-            </DialogTitle>
-            <DialogDescription className="truncate text-sm text-muted-foreground mt-0.5">
+            </DrawerTitle>
+            <DrawerDescription className="truncate text-sm text-muted-foreground mt-0.5">
               {email}
-            </DialogDescription>
+            </DrawerDescription>
           </div>
-        </DialogHeader>
+        </DrawerHeader>
 
         <div className="space-y-5 py-3">
           <div className="grid grid-cols-2 gap-4">
@@ -116,7 +116,7 @@ export function MemberDetailsDialog({
             Close
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }

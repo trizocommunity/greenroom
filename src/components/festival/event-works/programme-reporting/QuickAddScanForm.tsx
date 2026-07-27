@@ -51,7 +51,7 @@ export function QuickAddScanForm({
           type="submit"
           size="sm"
           disabled={busy || !manualInput.trim()}
-          className="h-8 shrink-0 px-3 bg-violet-600 hover:bg-violet-500"
+          className="h-8 shrink-0 px-3 bg-purple hover:bg-purple/90"
         >
           Add
         </Button>

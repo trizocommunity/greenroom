@@ -23,7 +23,7 @@ export default function DashboardNavbar({ user }: DashboardNavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 backdrop-blur-2xl border-b border-white/10 bg-background/80">
+    <header className="fixed top-0 left-0 right-0 z-40 backdrop-blur-2xl border-b border-border bg-background/80">
       <div className="mx-auto max-w-7xl px-6 h-20 flex items-center justify-between">
         <Link
           href={"/profile"}
@@ -38,7 +38,7 @@ export default function DashboardNavbar({ user }: DashboardNavbarProps) {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0">
+            <SheetContent className="w-[300px] sm:w-[400px]">
               <SheetHeader className="sr-only">
                 <SheetTitle>Navigation Menu</SheetTitle>
               </SheetHeader>

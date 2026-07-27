@@ -55,7 +55,7 @@ export default function ServicesPage() {
         <div className="max-w-4xl mx-auto mb-20 text-center">
           <h1 className="text-6xl md:text-8xl font-black uppercase tracking-tighter mb-6 text-foreground">
             Our{" "}
-            <span className="text-transparent bg-clip-text bg-linear-to-r from-primary via-fuchsia-500 to-orange-400">
+            <span className="text-transparent bg-clip-text bg-linear-to-r from-primary via-secondary to-orange-400">
               Services
             </span>
           </h1>
@@ -64,7 +64,7 @@ export default function ServicesPage() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-0 border border-white/10 rounded-3xl overflow-hidden bg-card/20 backdrop-blur-sm shadow-2xl">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-0 border border-border rounded-3xl overflow-hidden bg-card/60 backdrop-blur-sm shadow-2xl">
           {services.map((service, index) => (
             <ServiceCard key={index} {...service} index={index} />
           ))}

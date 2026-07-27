@@ -6,6 +6,24 @@ import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { ProgrammeService } from "@/features/programmes/services/programme.service";
 
+export const GET = async (
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) => {
+  const session = await getSession();
+  if (!session?.userId) return unauthorized();
+
+  const { id } = await params;
+  const url = new URL(req.url);
+  const festivalId = url.searchParams.get("festivalId");
+  if (!festivalId) return badRequest("MISSING_PARAM", "festivalId is required");
+
+  await assertFestivalAccess(session, festivalId);
+
+  const result = await ProgrammeService.getDetails(id, festivalId);
+  return ok(result);
+};
+
 export const PUT = async (
   req: Request,
   { params }: { params: Promise<{ id: string }> },

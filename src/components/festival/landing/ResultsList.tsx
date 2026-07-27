@@ -2,8 +2,8 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronRight, Crown, Medal, Search, Trophy } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { PublicResultPosterSection } from "@/components/festival/posters/PublicResultPosterSection";
 import { cn } from "@/core/utils/cn";
 
 export interface Result {
@@ -42,6 +43,7 @@ export interface TeamStanding {
 interface ResultsListProps {
   festivalId?: string;
   festivalName: string;
+  festivalSlug?: string;
   accentColor: string; // We'll essentially use this as the primary active color
   results: Result[];
   teamStandings?: TeamStanding[];
@@ -56,8 +58,10 @@ export function ResultsList({
   results,
   teamStandings: initialTeamStandings,
   publicDisplayMode = "programme_results",
+  festivalSlug,
 }: ResultsListProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const standingsOnly = publicDisplayMode === "team_standings";
   const [activeTab, setActiveTab] = useState<"program" | "team">(
     standingsOnly ? "team" : "program",
@@ -67,6 +71,17 @@ export function ResultsList({
     "ALL" | "INDIVIDUAL" | "GROUP"
   >("ALL");
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
+  const [selectedTemplateCode, setSelectedTemplateCode] = useState<string | null>(
+    null,
+  );
+
+  const openProgramDialog = useCallback(
+    (programmeId: string, templateCode?: string | null) => {
+      setSelectedProgram(programmeId);
+      setSelectedTemplateCode(templateCode ?? null);
+    },
+    [],
+  );
 
   // Polling refresh every 15 seconds for updates
   useEffect(() => {
@@ -76,6 +91,15 @@ export function ResultsList({
     }, 15000);
     return () => window.clearInterval(id);
   }, [festivalId, router]);
+
+  // Honour ?programmeId&template deep links from shared posters
+  useEffect(() => {
+    if (standingsOnly) return;
+    const programmeId = searchParams.get("programmeId");
+    if (!programmeId) return;
+    const template = searchParams.get("template");
+    openProgramDialog(programmeId, template);
+  }, [searchParams, openProgramDialog, standingsOnly]);
 
   // --- Data Processing ---
 
@@ -292,7 +316,7 @@ export function ResultsList({
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: idx * 0.05 }}
-                      onClick={() => setSelectedProgram(program.id)}
+                      onClick={() => openProgramDialog(program.id)}
                       className="group relative bg-card hover:bg-accent/5 cursor-pointer border rounded-xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-all duration-300 border-l-4"
                       style={{
                         borderLeftColor:
@@ -360,7 +384,7 @@ export function ResultsList({
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto items-end">
                     {/* 2nd Place (Silver) */}
                     {teamStandings[1] && (
-                      <div className="order-2 md:order-1 bg-gradient-to-b from-gray-100 to-gray-200 dark:from-slate-800 dark:to-slate-900 border-t-4 border-gray-400 rounded-2xl p-6 shadow-lg transform hover:-translate-y-2 transition-transform duration-300">
+                      <div className="order-2 md:order-1 bg-gradient-to-b from-muted to-muted/60 border-t-4 border-border rounded-2xl p-6 shadow-lg transform hover:-translate-y-2 transition-transform duration-300">
                         <div className="flex justify-center mb-4">
                           <Medal className="w-10 h-10 text-gray-500" />
                         </div>
@@ -453,7 +477,12 @@ export function ResultsList({
         {/* Program Details Modal */}
         <Dialog
           open={!!selectedProgram}
-          onOpenChange={(open) => !open && setSelectedProgram(null)}
+          onOpenChange={(open) => {
+                    if (!open) {
+                      setSelectedProgram(null);
+                      setSelectedTemplateCode(null);
+                    }
+                  }}
         >
           <DialogContent className="max-w-md md:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0">
             {(() => {
@@ -489,6 +518,15 @@ export function ResultsList({
 
                   <ScrollArea className="flex-1 overflow-y-auto p-6 bg-card">
                     <div className="space-y-3">
+                      {festivalSlug && (
+                        <PublicResultPosterSection
+                          programmeId={program.id}
+                          festivalSlug={festivalSlug}
+                          initialTemplateCode={
+                            selectedTemplateCode ?? undefined
+                          }
+                        />
+                      )}
                       {program.results.map((result, _idx) => {
                         const isTop3 = result.position <= 3;
                         return (

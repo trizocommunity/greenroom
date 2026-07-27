@@ -37,7 +37,7 @@ export default function Hero() {
             initial={{ clipPath: "polygon(0 0, 0 100%, 0 100%, 0 0)" }}
             animate={{ clipPath: "polygon(0 0, 0 100%, 100% 100%, 100% 0)" }}
             transition={{ delay: 0.5, duration: 0.8, ease: "circOut" }}
-            className="text-transparent bg-clip-text bg-linear-to-r from-primary via-fuchsia-500 to-orange-400 inline-block"
+            className="text-transparent bg-clip-text bg-linear-to-r from-primary via-secondary to-orange-400 inline-block"
           >
             management
           </motion.span>
@@ -62,7 +62,7 @@ export default function Hero() {
           <Link href="/login">
             <Button
               size="lg"
-              className="h-14 px-10 text-lg font-semibold rounded-full shadow-[0_10px_28px_rgba(124,58,237,0.25)] hover:scale-105 transition-transform"
+              className="h-14 px-10 text-lg font-semibold rounded-full shadow-[0_10px_28px_rgba(215,38,38,0.25)] hover:scale-105 transition-transform"
             >
               Get Started <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
@@ -71,7 +71,7 @@ export default function Hero() {
             <Button
               variant="outline"
               size="lg"
-              className="h-14 px-10 text-lg font-semibold rounded-full bg-background/50 backdrop-blur-xl border-white/10 hover:bg-white/10 hover:text-foreground hover:scale-105 transition-transform"
+              className="h-14 px-10 text-lg font-semibold rounded-full bg-background/50 backdrop-blur-xl border-border hover:bg-muted hover:text-foreground hover:scale-105 transition-transform"
             >
               Demonstration
             </Button>

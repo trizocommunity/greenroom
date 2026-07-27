@@ -5,11 +5,11 @@ import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import type { PosterTemplateType } from "./poster-editor-config";
 import { TEMPLATE_TYPES } from "./poster-editor-config";
 
@@ -47,13 +47,13 @@ export function NewTemplateModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="font-serif text-2xl">
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle className="font-serif text-2xl">
             Start a new template
-          </DialogTitle>
-        </DialogHeader>
+          </DrawerTitle>
+        </DrawerHeader>
 
         <div className="space-y-4">
           {TEMPLATE_TYPES.map((t) => (
@@ -70,67 +70,26 @@ export function NewTemplateModal({
               </p>
 
               <div className="mt-3 flex flex-wrap gap-2">
-                {t.type === "RESULT" ? (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        onPick("RESULT", "blank");
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    onPick(t.type, "blank");
 
-                        onOpenChange(false);
-                      }}
-                    >
-                      + Blank
-                    </Button>
+                    onOpenChange(false);
+                  }}
+                >
+                  + Blank
+                </Button>
 
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => pickWithBackground("RESULT", "background")}
-                    >
-                      <Upload className="mr-1.5 h-4 w-4" />
-                      With background
-                    </Button>
-                  </>
-                ) : t.type === "TEAM_POINTS" ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      onPick("TEAM_POINTS", "teams");
-
-                      onOpenChange(false);
-                    }}
-                  >
-                    + Create
-                  </Button>
-                ) : (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        onPick("CANDIDATE_CARD", "blank");
-
-                        onOpenChange(false);
-                      }}
-                    >
-                      + Blank
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        pickWithBackground("CANDIDATE_CARD", "background")
-                      }
-                    >
-                      <Upload className="mr-1.5 h-4 w-4" />
-                      With background
-                    </Button>
-                  </>
-                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => pickWithBackground(t.type, "background")}
+                >
+                  <Upload className="mr-1.5 h-4 w-4" />
+                  With background
+                </Button>
               </div>
             </div>
           ))}
@@ -141,7 +100,7 @@ export function NewTemplateModal({
             Cancel
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }

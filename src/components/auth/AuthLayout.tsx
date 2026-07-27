@@ -56,7 +56,7 @@ export function AuthLayout({
           {/* Concentric rings and glowing gradient background inspired by reference */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden z-0">
             <div className="absolute w-[700px] h-[700px] bg-primary/10 rounded-full blur-[140px] -top-32" />
-            <div className="absolute w-[500px] h-[500px] bg-orange-500/5 dark:bg-purple-500/10 rounded-full blur-[120px] bottom-10" />
+            <div className="absolute w-[500px] h-[500px] bg-secondary/5 rounded-full blur-[120px] bottom-10" />
 
             <svg
               className="absolute w-[1300px] h-[1300px] sm:w-[1500px] sm:h-[1500px] text-border/40 dark:text-border/20 opacity-75 stroke-current fill-none pointer-events-none -top-[350px] sm:-top-[380px]"
@@ -81,7 +81,7 @@ export function AuthLayout({
             <div className="flex flex-col items-center justify-center mb-4 sm:mb-5 relative z-10">
               <Link
                 href="/"
-                className="flex items-center gap-2 font-black text-2xl sm:text-3xl tracking-tighter uppercase bg-gradient-to-r from-primary via-purple-400 to-primary/80 bg-clip-text text-transparent hover:opacity-90 transition-opacity"
+                className="flex items-center gap-2 font-black text-2xl sm:text-3xl tracking-tighter uppercase bg-gradient-to-r from-primary via-secondary to-primary/80 bg-clip-text text-transparent hover:opacity-90 transition-opacity"
               >
                 Greenroom
               </Link>

@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { FestivalPosterEditor } from "@/components/festival/posters/FestivalPosterEditor";
 import { getSession } from "@/core/auth/session";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
-import { canManageDesignTemplates } from "@/features/posters/auth/poster-access";
+import { canManageTemplates } from "@/features/posters/auth/poster-access";
 
 export default async function FestivalEditorPage({
   params,
@@ -19,7 +19,7 @@ export default async function FestivalEditorPage({
     globalRole: session.role,
   });
   if (!ctx) notFound();
-  if (!canManageDesignTemplates(ctx.role)) notFound();
+  if (!canManageTemplates(ctx.role)) notFound();
 
   return (
     <FestivalPosterEditor

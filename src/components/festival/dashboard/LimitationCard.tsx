@@ -81,7 +81,7 @@ export function LimitationCard({
       )}
     >
       {!minimal && (
-        <CardHeader className="pb-3 border-b border-white/5 bg-white/5">
+        <CardHeader className="pb-3 border-b border-border bg-muted/50">
           <CardTitle className="text-sm font-medium tracking-wide text-muted-foreground uppercase flex items-center justify-between">
             <span>Festival Limits</span>
             <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-100 border border-zinc-700 font-bold">

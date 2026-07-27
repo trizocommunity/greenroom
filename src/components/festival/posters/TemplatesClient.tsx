@@ -42,7 +42,6 @@ import { festivalEditorPath } from "@/features/posters/utils/poster-routes";
 
 const TYPE_LABELS: Record<string, string> = {
   RESULT: "Result poster",
-  TEAM_POINTS: "Team points",
   CANDIDATE_CARD: "Candidate card",
 };
 
@@ -79,7 +78,7 @@ function sortTemplates(items: PosterTemplateListItem[]) {
   });
 }
 
-export function DesignTemplatesClient({
+export function TemplatesClient({
   festivalId,
   festivalSlug,
   initialTemplates,
@@ -137,9 +136,7 @@ export function DesignTemplatesClient({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Design Templates
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Templates</h1>
           <p className="text-sm text-muted-foreground">
             All poster layouts — drafts and published — in one place.
           </p>
@@ -157,8 +154,8 @@ export function DesignTemplatesClient({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Clear all editor data?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This removes every design template for this festival from
-                    the database, clears autosave backups in this browser, and
+                    This removes every template for this festival from the
+                    database, clears autosave backups in this browser, and
                     clears the dev /editor playground cache. This cannot be
                     undone.
                   </AlertDialogDescription>

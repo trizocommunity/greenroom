@@ -28,7 +28,7 @@ const audiences = [
 
 export default function TargetAudience() {
   return (
-    <section className="py-32 bg-transparent border-t border-white/10">
+    <section className="py-32 bg-transparent border-t border-border">
       <div className="container max-w-7xl px-4 md:px-6 mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-end mb-24 gap-8">
           <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter max-w-2xl text-foreground">
@@ -48,9 +48,9 @@ export default function TargetAudience() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: i * 0.08 }}
-              className="group border border-white/10 bg-card/20 backdrop-blur-xl p-7 rounded-3xl hover:-translate-y-1 hover:border-primary/30 hover:bg-card/40 transition-all duration-400"
+              className="group border border-border bg-card/60 backdrop-blur-xl p-7 rounded-3xl hover:-translate-y-1 hover:border-primary/30 hover:bg-card transition-all duration-400"
             >
-              <div className="mb-5 p-4 border border-white/10 bg-muted/20 rounded-2xl inline-block group-hover:border-primary/50 group-hover:bg-primary/20 group-hover:text-primary transition-colors">
+              <div className="mb-5 p-4 border border-border bg-muted/40 rounded-2xl inline-block group-hover:border-primary/50 group-hover:bg-primary/20 group-hover:text-primary transition-colors">
                 <item.icon size={32} strokeWidth={1} />
               </div>
               <h3 className="text-xl font-bold uppercase tracking-tight mb-2 text-foreground">

@@ -8,7 +8,7 @@ export default function ContactPage() {
     <div className="min-h-screen py-20 bg-background text-foreground relative overflow-hidden">
       {/* Background blobs */}
       <div className="absolute left-0 top-0 h-96 w-96 bg-primary/10 blur-[120px] -z-10" />
-      <div className="absolute bottom-0 right-1/4 h-80 w-80 bg-fuchsia-500/10 blur-[100px] -z-10" />
+      <div className="absolute bottom-0 right-1/4 h-80 w-80 bg-secondary/10 blur-[100px] -z-10" />
 
       <div className="container max-w-7xl px-4 md:px-6 mx-auto">
         <div className="grid lg:grid-cols-2 gap-24">
@@ -16,7 +16,7 @@ export default function ContactPage() {
           <div>
             <h1 className="text-6xl md:text-8xl font-black uppercase tracking-tighter mb-8 text-foreground">
               Let's{" "}
-              <span className="text-transparent bg-clip-text bg-linear-to-r from-primary via-fuchsia-500 to-orange-400">
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-primary via-secondary to-orange-400">
                 Talk
               </span>
             </h1>
@@ -26,7 +26,7 @@ export default function ContactPage() {
 
             <div className="space-y-12">
               <div className="flex items-start gap-8 group">
-                <div className="p-4 border border-white/10 bg-white/5 rounded-xl group-hover:bg-primary/20 group-hover:text-primary transition-colors">
+                <div className="p-4 border border-border bg-card rounded-xl group-hover:bg-primary/20 group-hover:text-primary transition-colors">
                   <Mail className="w-8 h-8" />
                 </div>
                 <div>
@@ -40,7 +40,7 @@ export default function ContactPage() {
               </div>
 
               <div className="flex items-start gap-8 group">
-                <div className="p-4 border border-white/10 bg-white/5 rounded-xl group-hover:bg-primary/20 group-hover:text-primary transition-colors">
+                <div className="p-4 border border-border bg-card rounded-xl group-hover:bg-primary/20 group-hover:text-primary transition-colors">
                   <Phone className="w-8 h-8" />
                 </div>
                 <div>
@@ -54,7 +54,7 @@ export default function ContactPage() {
               </div>
 
               <div className="flex items-start gap-8 group">
-                <div className="p-4 border border-white/10 bg-white/5 rounded-xl group-hover:bg-primary/20 group-hover:text-primary transition-colors">
+                <div className="p-4 border border-border bg-card rounded-xl group-hover:bg-primary/20 group-hover:text-primary transition-colors">
                   <MapPin className="w-8 h-8" />
                 </div>
                 <div>
@@ -70,7 +70,7 @@ export default function ContactPage() {
           </div>
 
           {/* Right Column: Form */}
-          <div className="bg-card/30 backdrop-blur-xl text-foreground p-8 md:p-12 border border-white/10 shadow-2xl rounded-3xl relative">
+          <div className="bg-card/80 backdrop-blur-xl text-foreground p-8 md:p-12 border border-border shadow-2xl rounded-3xl relative">
             <div className="absolute inset-0 bg-primary/5 rounded-3xl -z-10" />
             <ContactForm />
           </div>

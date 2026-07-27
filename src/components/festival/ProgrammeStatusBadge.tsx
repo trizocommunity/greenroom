@@ -29,22 +29,16 @@ const STATUS_LABELS: Record<ProgrammeStatus, string> = {
  */
 const STATUS_STYLES: Record<ProgrammeStatus, string> = {
   READY: "border-transparent bg-muted text-muted-foreground hover:bg-muted/80",
-  ASSIGNED:
-    "border-transparent bg-slate-500/15 text-slate-700 dark:text-slate-300 dark:bg-slate-500/20",
+  ASSIGNED: "border-transparent bg-muted text-muted-foreground",
   SCHEDULED:
     "border-transparent bg-primary text-primary-foreground shadow hover:bg-primary/80",
-  REPORTING:
-    "border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-300 dark:bg-amber-500/20",
-  STARTED:
-    "border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-300 dark:bg-amber-500/20",
+  REPORTING: "border-transparent bg-warning/15 text-warning",
+  STARTED: "border-transparent bg-warning/15 text-warning",
   ENDED: "border-transparent bg-muted text-muted-foreground hover:bg-muted/80",
-  JUDGED: "border-transparent bg-primary/15 text-primary dark:bg-primary/20",
-  PUBLISHED:
-    "border-transparent bg-green-500/15 text-green-700 dark:text-green-400 dark:bg-green-500/20",
-  ANNOUNCED:
-    "border-transparent bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 dark:bg-emerald-500/20",
-  RESET:
-    "border-transparent bg-red-500/15 text-red-700 dark:text-red-400 dark:bg-red-500/20",
+  JUDGED: "border-transparent bg-primary/15 text-primary",
+  PUBLISHED: "border-transparent bg-success/15 text-success",
+  ANNOUNCED: "border-transparent bg-success/15 text-success",
+  RESET: "border-transparent bg-destructive/15 text-destructive",
 };
 
 interface ProgrammeStatusBadgeProps {

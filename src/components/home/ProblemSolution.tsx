@@ -19,7 +19,7 @@ const solutions = [
 
 export default function ProblemSolution() {
   return (
-    <section className="py-28 bg-transparent text-foreground overflow-hidden border-t border-white/10">
+    <section className="py-28 bg-transparent text-foreground overflow-hidden border-t border-border">
       <div className="container max-w-7xl px-4 md:px-6 mx-auto">
         <div className="text-center mb-20">
           <motion.h2
@@ -36,13 +36,13 @@ export default function ProblemSolution() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 relative group gap-0 border border-white/10 rounded-[2.25rem] bg-card/30 backdrop-blur-2xl overflow-hidden">
+        <div className="grid md:grid-cols-2 relative group gap-0 border border-border rounded-[2.25rem] bg-card/60 backdrop-blur-2xl overflow-hidden">
           {/* Divider */}
-          <div className="absolute left-1/2 top-8 bottom-8 w-px bg-white/10 hidden md:block z-10" />
+          <div className="absolute left-1/2 top-8 bottom-8 w-px bg-border hidden md:block z-10" />
 
           {/* Left: The Old Way */}
           <motion.div
-            className="p-10 md:p-14 bg-red-950/20 relative overflow-hidden transition-colors"
+            className="p-10 md:p-14 bg-red-50 relative overflow-hidden transition-colors"
             initial={{ opacity: 0, x: -50 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
@@ -93,7 +93,7 @@ export default function ProblemSolution() {
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-              className="absolute -right-24 -top-24 w-72 h-72 bg-linear-to-br from-primary/20 via-fuchsia-500/20 to-orange-400/20 rounded-full blur-3xl opacity-50 pointer-events-none"
+              className="absolute -right-24 -top-24 w-72 h-72 bg-linear-to-br from-primary/20 via-secondary/20 to-orange-400/20 rounded-full blur-3xl opacity-50 pointer-events-none"
             />
 
             <div className="inline-flex items-center gap-3 rounded-full bg-primary/10 border border-primary/20 px-4 py-2 text-xs font-bold uppercase tracking-wide text-primary mb-8 relative z-10">

@@ -99,7 +99,7 @@ export function CategoriesClient({
                       {category.description || "No description"}
                     </p>
                     <Badge
-                      variant={isGeneral ? "default" : "secondary"}
+                      variant={isGeneral ? "default" : "outline"}
                       className="mt-2.5 text-xs font-medium"
                     >
                       {category.type === "GENERAL" ? "General" : "Single"}

@@ -17,14 +17,14 @@ export default function DashboardNotFound() {
         aria-hidden
         className="pointer-events-none absolute inset-0 overflow-hidden"
       >
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[500px] rounded-full bg-violet-600/10 blur-[100px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[500px] rounded-full bg-primary/10 blur-[100px]" />
       </div>
 
       <div className="relative z-10 flex flex-col items-center gap-5">
         {/* Compass / navigation icon */}
-        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm">
+        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-border bg-card backdrop-blur-sm">
           <svg
-            className="h-10 w-10 text-violet-400"
+            className="h-10 w-10 text-primary"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -38,15 +38,15 @@ export default function DashboardNotFound() {
           </svg>
         </div>
 
-        <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-violet-400">
+        <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-primary">
           Dashboard · 404
         </span>
 
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight text-white">
+          <h1 className="text-3xl font-bold tracking-tight text-heading">
             Page Not Found
           </h1>
-          <p className="max-w-sm text-[#94a3b8] text-sm leading-relaxed">
+          <p className="max-w-sm text-muted-foreground text-sm leading-relaxed">
             This page doesn&apos;t exist in your dashboard. The route may have
             been removed or the URL is incorrect.
           </p>
@@ -55,7 +55,7 @@ export default function DashboardNotFound() {
         <div className="flex flex-col sm:flex-row items-center gap-3 mt-2">
           <Link
             href={dashboardHref}
-            className="inline-flex items-center gap-2 justify-center rounded-lg bg-violet-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-600/30 transition-all hover:bg-violet-500"
+            className="inline-flex items-center gap-2 justify-center rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:bg-primary-hover"
           >
             <svg
               className="h-4 w-4"
@@ -74,7 +74,7 @@ export default function DashboardNotFound() {
           </Link>
           <Link
             href={`/dashboard/${slug}/support`}
-            className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/5 px-6 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/10"
+            className="inline-flex items-center justify-center rounded-lg border border-border bg-card px-6 py-2.5 text-sm font-semibold text-foreground backdrop-blur-sm transition-all hover:bg-muted"
           >
             Get Help
           </Link>

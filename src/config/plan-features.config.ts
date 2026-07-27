@@ -75,7 +75,7 @@ export const PLAN_FEATURE_LABELS: Record<FeaturePath, string> = {
   bulkNotifications: "Bulk Notifications",
   advancedAnalytics: "Advanced Analytics",
   customReports: "Custom Reports",
-  designTemplates: "Design Templates",
+  templates: "Templates",
   qrCodes: "QR Codes",
   autoCertificates: "Auto Certificates",
   customCertificateTemplates: "Custom Certificate Templates",

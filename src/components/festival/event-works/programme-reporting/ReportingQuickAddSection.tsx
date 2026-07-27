@@ -22,7 +22,7 @@ export function ReportingQuickAddSection({
         )}
         aria-expanded={open}
       >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-violet-500/15 text-violet-700 dark:text-violet-300">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-purple/15 text-purple">
           <ScanLine className="h-3.5 w-3.5" aria-hidden />
         </span>
         <span className="min-w-0 flex-1 leading-tight">

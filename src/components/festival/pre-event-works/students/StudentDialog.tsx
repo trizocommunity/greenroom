@@ -12,14 +12,14 @@ import { useCreateStudent, useUpdateStudent } from "@/api/client/students";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import {
   Form,
   FormControl,
@@ -29,6 +29,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/core/utils/cn";
 import { validateStudentsAction } from "@/features/students/actions/student.actions";
 
@@ -179,209 +186,80 @@ export function StudentDialog({
   const allowedCategories = categories.filter((c) => c.type === "SINGLE");
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="w-[calc(100%-2rem)] max-w-xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden rounded-lg sm:rounded-2xl border shadow-2xl">
+    <Drawer open={open} onOpenChange={setOpen}>
+      <DrawerTrigger asChild>{trigger}</DrawerTrigger>
+      <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle>
+            {isEditing ? "Edit Student" : "Create Student"}
+          </DrawerTitle>
+          <DrawerDescription>
+            {isEditing
+              ? "Update student details."
+              : "Add a new student to the festival."}
+          </DrawerDescription>
+        </DrawerHeader>
+
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="flex flex-col h-full min-h-0 bg-background/95 backdrop-blur-sm"
+            className="flex flex-col flex-1 min-h-0"
           >
-            <DialogHeader className="px-4 sm:px-8 py-4 sm:py-6 border-b bg-muted/20 shrink-0">
-              <DialogTitle className="text-2xl font-semibold tracking-tight">
-                {isEditing ? "Edit Student" : "Add Student"}
-              </DialogTitle>
-              <DialogDescription className="text-muted-foreground/80">
-                Enter the details below.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-4 sm:py-6 space-y-8 min-h-0">
+            <div className="flex-1 overflow-y-auto min-h-0 space-y-3 sm:space-y-4 py-1">
               {!isEditing && groups.length === 0 && (
-                <div className="bg-destructive/10 text-destructive p-4 rounded-xl mb-4 text-sm font-medium flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Please create
-                  groups first.
+                <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm font-medium flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin shrink-0" /> Please create groups first.
                 </div>
               )}
 
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                        Full Name <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="e.g. Jane Doe"
-                          autoFocus={!isEditing}
-                          className="h-10 text-base"
-                          {...field}
-                          value={field.value ?? ""}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="age"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                          Age
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="e.g. 18"
-                            className="h-10"
-                            {...field}
-                            value={field.value}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="standard"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                          Class/Standard
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="e.g. 12-A"
-                            className="h-10"
-                            {...field}
-                            value={field.value ?? ""}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="gender"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                        Gender
-                      </FormLabel>
-                      <div className="flex flex-wrap gap-2">
-                        {["MALE", "FEMALE", "OTHER"].map((g) => (
-                          <button
-                            key={g}
-                            type="button"
-                            onClick={() => field.onChange(g)}
-                            className={cn(
-                              "px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border",
-                              field.value === g
-                                ? "bg-primary text-primary-foreground border-primary shadow-sm scale-105"
-                                : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:bg-muted/50",
-                            )}
-                          >
-                            {g.charAt(0) + g.slice(1).toLowerCase()}
-                          </button>
-                        ))}
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {!isBasicTier && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                            Email (Optional)
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="email"
-                              placeholder="jane@example.com"
-                              className="h-10"
-                              {...field}
-                              value={field.value ?? ""}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="phone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                            Mobile Number
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="tel"
-                              placeholder="e.g. 017XXXXXXXX"
-                              className="h-10"
-                              {...field}
-                              value={field.value ?? ""}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Full Name <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g. Jane Doe"
+                        autoFocus={!isEditing}
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </div>
+              />
 
-              <div className="grid gap-6 sm:grid-cols-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <FormField
                   control={form.control}
                   name="groupId"
                   render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                        <Users className="h-3 w-3" /> Group{" "}
-                        <span className="text-destructive">*</span>
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5 text-muted-foreground" /> Group <span className="text-destructive">*</span>
                       </FormLabel>
-                      {groups.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={isLoading}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select group" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
                           {groups.map((group) => (
-                            <button
-                              key={group.id}
-                              type="button"
-                              onClick={() => field.onChange(group.id)}
-                              className={cn(
-                                "px-3 py-1.5 rounded-lg text-sm transition-all border",
-                                field.value === group.id
-                                  ? "bg-indigo-500 text-white border-indigo-600 shadow-md font-medium"
-                                  : "bg-surface text-muted-foreground border-border hover:border-indigo-200 hover:bg-indigo-50/50",
-                              )}
-                            >
+                            <SelectItem key={group.id} value={group.id}>
                               {group.name}
-                            </button>
+                            </SelectItem>
                           ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground italic">
-                          No groups found.
-                        </p>
-                      )}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -391,62 +269,162 @@ export function StudentDialog({
                   control={form.control}
                   name="categoryId"
                   render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                        <Tag className="h-3 w-3" /> Category{" "}
-                        <span className="text-destructive">*</span>
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-1.5">
+                        <Tag className="h-3.5 w-3.5 text-muted-foreground" /> Category <span className="text-destructive">*</span>
                       </FormLabel>
-                      {allowedCategories.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={isLoading}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
                           {allowedCategories.map((cat) => (
-                            <button
-                              key={cat.id}
-                              type="button"
-                              onClick={() => field.onChange(cat.id)}
-                              className={cn(
-                                "px-3 py-1.5 rounded-lg text-sm transition-all border",
-                                field.value === cat.id
-                                  ? "bg-rose-500 text-white border-rose-600 shadow-md font-medium"
-                                  : "bg-surface text-muted-foreground border-border hover:border-rose-200 hover:bg-rose-50/50",
-                              )}
-                            >
+                            <SelectItem key={cat.id} value={cat.id}>
                               {cat.name}
-                            </button>
+                            </SelectItem>
                           ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground italic">
-                          No individual categories found.
-                        </p>
-                      )}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
+
+              <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                <FormField
+                  control={form.control}
+                  name="gender"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Gender</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={isLoading}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="MALE">Male</SelectItem>
+                          <SelectItem value="FEMALE">Female</SelectItem>
+                          <SelectItem value="OTHER">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="age"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Age</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="e.g. 18"
+                          {...field}
+                          value={field.value}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="standard"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Class/Std</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g. 12-A"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {!isBasicTier && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Mobile Number</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="tel"
+                            placeholder="e.g. 017XXXXXXXX"
+                            {...field}
+                            value={field.value ?? ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email (Optional)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="email"
+                            placeholder="jane@example.com"
+                            {...field}
+                            value={field.value ?? ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
             </div>
 
-            <DialogFooter className="px-4 sm:px-8 py-4 sm:py-6 border-t bg-muted/10 shrink-0 flex items-center justify-end gap-3">
+            <DrawerFooter>
               <Button
-                variant="ghost"
+                variant="outline"
                 type="button"
                 onClick={() => setOpen(false)}
-                className="hover:bg-muted/50"
+                disabled={isLoading}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={!form.formState.isValid || isLoading}
-                className="min-w-[120px] rounded-full shadow-lg hover:shadow-xl transition-all"
               >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditing ? "Save Changes" : "Add Student"}
+                {isEditing ? "Update Student" : "Create Student"}
               </Button>
-            </DialogFooter>
+            </DrawerFooter>
           </form>
         </Form>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }

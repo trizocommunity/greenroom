@@ -23,8 +23,7 @@ const roleConfig: Record<
 > = {
   SUPER_ADMIN: {
     label: "Super Admin",
-    className:
-      "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100",
+    className: "bg-muted text-muted-foreground border-border hover:bg-muted",
     icon: Shield,
   },
   ADMIN: {
@@ -58,8 +57,7 @@ const roleConfig: Record<
   },
   MEDIA: {
     label: "Media",
-    className:
-      "bg-violet-50 text-violet-700 border-violet-100 hover:bg-violet-50",
+    className: "bg-purple/10 text-purple border-purple/20 hover:bg-purple/10",
     icon: UsersRound,
   },
   ANNOUNCER: {

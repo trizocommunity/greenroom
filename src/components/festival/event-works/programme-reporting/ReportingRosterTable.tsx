@@ -97,7 +97,7 @@ export function ReportingRosterTable({
                 </div>
                 <div className="col-span-3 text-right font-mono text-xs">
                   {showCode ? (
-                    <span className="inline-flex items-center rounded-md border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-violet-700 dark:text-violet-300 font-bold">
+                    <span className="inline-flex items-center rounded-md border border-purple/30 bg-purple/10 px-2 py-0.5 text-purple font-bold">
                       {issuedCode}
                     </span>
                   ) : row.isReported && isInProgress ? (
@@ -106,7 +106,7 @@ export function ReportingRosterTable({
                       onClick={() => onSpin(row)}
                       disabled={isSpinPending}
                       aria-busy={isSpinPending}
-                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-violet-600 hover:bg-violet-500 disabled:pointer-events-none disabled:opacity-70 text-white text-[10px] font-bold transition-all shadow-sm active:scale-95"
+                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-purple hover:bg-purple/90 disabled:pointer-events-none disabled:opacity-70 text-white text-[10px] font-bold transition-all shadow-sm active:scale-95"
                     >
                       {isSpinPending ? (
                         <>
@@ -185,7 +185,7 @@ export function ReportingRosterTable({
               </div>
               <div className="shrink-0 font-mono text-xs">
                 {showCode ? (
-                  <span className="inline-flex items-center rounded-md border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-violet-700 dark:text-violet-300 font-bold">
+                  <span className="inline-flex items-center rounded-md border border-purple/30 bg-purple/10 px-2 py-1 text-purple font-bold">
                     {issuedCode}
                   </span>
                 ) : row.isReported && isInProgress ? (
@@ -194,7 +194,7 @@ export function ReportingRosterTable({
                     onClick={() => onSpin(row)}
                     disabled={isSpinPending}
                     aria-busy={isSpinPending}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-violet-600 hover:bg-violet-500 disabled:pointer-events-none disabled:opacity-70 text-white text-[10px] font-bold transition-all shadow-sm active:scale-95"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-purple hover:bg-purple/90 disabled:pointer-events-none disabled:opacity-70 text-white text-[10px] font-bold transition-all shadow-sm active:scale-95"
                   >
                     {isSpinPending ? (
                       <>

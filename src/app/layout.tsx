@@ -2,6 +2,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
+import NextTopLoader from "nextjs-toploader";
 import QueryProvider from "@/components/providers/QueryProvider";
 import { RazorpayInit } from "@/components/razorpay/RazorpayInit";
 import { Toaster } from "@/components/ui/sonner";
@@ -34,6 +35,7 @@ export default function RootLayout({
       <body
         className={`${outfit.variable} antialiased bg-background text-foreground flex flex-col min-h-screen`}
       >
+        <NextTopLoader height={2} color="#d72626" showSpinner={false} />
         <QueryProvider>
           <RazorpayInit />
           <main className="flex-1">{children}</main>

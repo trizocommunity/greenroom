@@ -40,8 +40,8 @@ export interface TierFeatures {
   advancedAnalytics: boolean;
   customReports: boolean;
 
-  // Design templates (poster editor)
-  designTemplates: boolean;
+  // Templates (poster editor)
+  templates: boolean;
 
   // Certificates & QR
   qrCodes: boolean;
@@ -149,7 +149,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       advancedAnalytics: false,
       customReports: false,
 
-      designTemplates: true,
+      templates: true,
 
       // Certificates & QR
       qrCodes: false,
@@ -238,7 +238,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       advancedAnalytics: false,
       customReports: false,
 
-      designTemplates: true,
+      templates: true,
 
       // Certificates & QR — QR and auto-certs unlocked
       qrCodes: true,
@@ -327,7 +327,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       advancedAnalytics: true,
       customReports: true,
 
-      designTemplates: true,
+      templates: true,
 
       // Certificates & QR — fully unlocked with templates + bulk generation
       qrCodes: true,

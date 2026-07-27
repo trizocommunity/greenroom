@@ -29,7 +29,7 @@ export default function Values() {
           Core Principles
         </h2>
 
-        <div className="grid md:grid-cols-3 gap-0 border border-white/10 rounded-3xl overflow-hidden bg-card/20 backdrop-blur-sm">
+        <div className="grid md:grid-cols-3 gap-0 border border-border rounded-3xl overflow-hidden bg-card/60 backdrop-blur-sm">
           {values.map((item, i) => (
             <motion.div
               key={i}
@@ -37,7 +37,7 @@ export default function Values() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className={`p-10 border-white/10 hover:bg-white/5 transition-colors duration-500 group ${
+              className={`p-10 border-border hover:bg-muted/50 transition-colors duration-500 group ${
                 i !== values.length - 1
                   ? "md:border-r border-b md:border-b-0"
                   : ""
@@ -49,7 +49,7 @@ export default function Values() {
               <h3 className="font-bold text-xl uppercase tracking-widest mb-4 text-foreground">
                 {item.title}
               </h3>
-              <p className="text-sm md:text-base opacity-70 leading-relaxed font-medium">
+              <p className="text-sm md:text-base text-muted-foreground leading-relaxed font-medium">
                 {item.desc}
               </p>
             </motion.div>

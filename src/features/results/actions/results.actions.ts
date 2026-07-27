@@ -148,13 +148,14 @@ export async function deleteResult(
 }
 
 /**
- * Bulk publish/unpublish results for a programme
+ * Bulk publish/unpublish results for a programme.
+ * Result posters are now sourced from the festival's published templates —
+ * no per-programme template selection is required.
  */
 export async function bulkPublishProgrammeResults(
   programmeId: string,
   isPublished: boolean,
   festivalSlug: string,
-  resultPosterTemplateCode?: string | null,
 ): Promise<ActionResponse<void>> {
   try {
     const session = await getSession();
@@ -174,24 +175,6 @@ export async function bulkPublishProgrammeResults(
     }
 
     await ResultModel.bulkPublishByProgramme(programmeId, isPublished);
-    if (isPublished && resultPosterTemplateCode) {
-      await db
-        .update(programmeTable)
-        .set({
-          resultPosterTemplateCode,
-          updatedAt: new Date().toISOString(),
-        })
-        .where(eq(programmeTable.id, programmeId));
-    }
-    if (!isPublished) {
-      await db
-        .update(programmeTable)
-        .set({
-          resultPosterTemplateCode: null,
-          updatedAt: new Date().toISOString(),
-        })
-        .where(eq(programmeTable.id, programmeId));
-    }
     await setProgrammePublished(programmeId, isPublished);
     const reportingSessionId =
       await latestClosedReportingSessionId(programmeId);

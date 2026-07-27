@@ -14,12 +14,12 @@ const config: Config = {
         primary: {
           DEFAULT: "var(--primary)",
           foreground: "var(--primary-foreground)",
-          light: "var(--color-primary-light)", // Added specific light shade
+          hover: "var(--primary-hover)",
         },
-        heading: "var(--color-heading)", // Added heading color
-        text: "var(--color-text)", // Added text color
-        "bg-main": "var(--color-bg-main)", // Added specific bg main
-        "bg-soft": "var(--color-bg-soft)", // Added specific bg soft
+        secondary: {
+          DEFAULT: "var(--secondary)",
+          foreground: "var(--secondary-foreground)",
+        },
         accent: {
           DEFAULT: "var(--accent)",
           foreground: "var(--accent-foreground)",
@@ -28,6 +28,28 @@ const config: Config = {
           DEFAULT: "var(--muted)",
           foreground: "var(--muted-foreground)",
         },
+        destructive: {
+          DEFAULT: "var(--destructive)",
+          foreground: "var(--destructive-foreground)",
+        },
+        card: {
+          DEFAULT: "var(--card)",
+          foreground: "var(--card-foreground)",
+        },
+        popover: {
+          DEFAULT: "var(--popover)",
+          foreground: "var(--popover-foreground)",
+        },
+        border: "var(--border)",
+        input: "var(--input)",
+        ring: "var(--ring)",
+        heading: "var(--heading)",
+        text: "var(--text)",
+        success: "var(--success)",
+        warning: "var(--warning)",
+        info: "var(--info)",
+        purple: "var(--purple)",
+        pink: "var(--pink)",
       },
       fontFamily: {
         sans: ["var(--font-outfit)", "sans-serif"],
