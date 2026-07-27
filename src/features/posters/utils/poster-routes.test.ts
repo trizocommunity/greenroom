@@ -1,18 +1,13 @@
-import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, expect, it } from "vitest";
 import { festivalEditorPath, festivalTemplatesPath } from "./poster-routes";
 
 describe("festivalEditorPath", () => {
   it("returns /{slug}/editor with no code", () => {
-    assert.equal(
-      festivalEditorPath("greenroom-fest"),
-      "/greenroom-fest/editor",
-    );
+    expect(festivalEditorPath("greenroom-fest")).toBe("/greenroom-fest/editor");
   });
 
   it("appends ?code= when a code is provided", () => {
-    assert.equal(
-      festivalEditorPath("greenroom-fest", "RESULT-A"),
+    expect(festivalEditorPath("greenroom-fest", "RESULT-A")).toBe(
       "/greenroom-fest/editor?code=RESULT-A",
     );
   });
@@ -20,8 +15,7 @@ describe("festivalEditorPath", () => {
 
 describe("festivalTemplatesPath", () => {
   it("returns the renamed templates route", () => {
-    assert.equal(
-      festivalTemplatesPath("greenroom-fest"),
+    expect(festivalTemplatesPath("greenroom-fest")).toBe(
       "/dashboard/greenroom-fest/templates",
     );
   });

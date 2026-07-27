@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, expect, it } from "vitest";
 import {
   filterResultsForLeaderboard,
   isResultVisibleForLeaderboard,
@@ -12,52 +11,42 @@ const row = (published: boolean, announced: boolean) => ({
 
 describe("isResultVisibleForLeaderboard", () => {
   it("BASIC standings: published only", () => {
-    assert.equal(
+    expect(
       isResultVisibleForLeaderboard(row(true, false), "BASIC", "standings"),
-      true,
-    );
-    assert.equal(
+    ).toBe(true);
+    expect(
       isResultVisibleForLeaderboard(row(true, true), "BASIC", "standings"),
-      true,
-    );
-    assert.equal(
+    ).toBe(true);
+    expect(
       isResultVisibleForLeaderboard(row(false, true), "BASIC", "standings"),
-      false,
-    );
-    assert.equal(
+    ).toBe(false);
+    expect(
       isResultVisibleForLeaderboard(row(true, true), "BASIC", "desk"),
-      false,
-    );
-    assert.equal(
+    ).toBe(false);
+    expect(
       isResultVisibleForLeaderboard(row(true, true), "BASIC", "onAir"),
-      false,
-    );
+    ).toBe(false);
   });
 
   it("Standard desk: published only", () => {
-    assert.equal(
+    expect(
       isResultVisibleForLeaderboard(row(true, false), "STANDARD", "desk"),
-      true,
-    );
-    assert.equal(
+    ).toBe(true);
+    expect(
       isResultVisibleForLeaderboard(row(false, true), "STANDARD", "desk"),
-      false,
-    );
+    ).toBe(false);
   });
 
   it("Standard onAir: published and announced", () => {
-    assert.equal(
+    expect(
       isResultVisibleForLeaderboard(row(true, true), "STANDARD", "onAir"),
-      true,
-    );
-    assert.equal(
+    ).toBe(true);
+    expect(
       isResultVisibleForLeaderboard(row(true, false), "STANDARD", "onAir"),
-      false,
-    );
-    assert.equal(
+    ).toBe(false);
+    expect(
       isResultVisibleForLeaderboard(row(false, true), "STANDARD", "onAir"),
-      false,
-    );
+    ).toBe(false);
   });
 });
 
@@ -65,16 +54,15 @@ describe("filterResultsForLeaderboard", () => {
   const results = [row(false, false), row(true, false), row(true, true)];
 
   it("filters BASIC to published rows only", () => {
-    assert.deepEqual(
-      filterResultsForLeaderboard(results, "BASIC", "standings"),
-      [row(true, false), row(true, true)],
-    );
+    expect(filterResultsForLeaderboard(results, "BASIC", "standings")).toEqual([
+      row(true, false),
+      row(true, true),
+    ]);
   });
 
   it("filters Standard onAir to announced published rows", () => {
-    assert.deepEqual(
-      filterResultsForLeaderboard(results, "STANDARD", "onAir"),
-      [row(true, true)],
-    );
+    expect(filterResultsForLeaderboard(results, "STANDARD", "onAir")).toEqual([
+      row(true, true),
+    ]);
   });
 });
