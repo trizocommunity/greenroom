@@ -88,20 +88,24 @@ export default async function ProgrammesPage({
   });
 
   return (
-    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen py-16 md:py-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         <header className="mb-10">
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">
+          <p className="text-eyebrow mb-3">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+            Schedule
+          </p>
+          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-heading mb-2">
             Programmes
           </h1>
-          <p className="text-muted-foreground text-lg max-w-2xl">
+          <p className="text-muted-foreground text-base max-w-2xl leading-relaxed">
             Competition and performance programmes at {festival.name}. Switch
             days to see the schedule.
           </p>
         </header>
 
         {days.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border bg-muted/30 py-16 text-center">
+          <div className="rounded-2xl border border-dashed border-border bg-muted/30 py-16 text-center">
             <p className="text-muted-foreground">
               No programme schedule published yet. Check back later.
             </p>

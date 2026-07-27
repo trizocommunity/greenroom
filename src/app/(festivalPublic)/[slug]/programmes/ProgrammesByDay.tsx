@@ -65,7 +65,7 @@ export function ProgrammesByDay({ days }: ProgrammesByDayProps) {
     <div className="space-y-6">
       {/* Day tabs */}
       <div
-        className="flex flex-wrap gap-2 border-b border-border pb-2"
+        className="flex flex-wrap gap-2 border-b border-border pb-3"
         role="tablist"
       >
         {days.map(({ dateKey, tabLabel, entries: dayEntries }) => (
@@ -79,10 +79,10 @@ export function ProgrammesByDay({ days }: ProgrammesByDayProps) {
               setActiveStageId("");
             }}
             className={cn(
-              "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+              "px-4 py-2 rounded-full text-sm font-medium transition-colors",
               activeDay === dateKey
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
             )}
           >
             {tabLabel}
@@ -95,7 +95,7 @@ export function ProgrammesByDay({ days }: ProgrammesByDayProps) {
       {activeData && (
         <div role="tabpanel" className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold text-foreground">
+            <h2 className="text-xl font-semibold tracking-tight text-heading">
               {activeData.label}
             </h2>
             {stagesForDay.length > 0 && (
@@ -142,7 +142,7 @@ function ProgrammeCard({ entry }: { entry: ProgrammeEntry }) {
   const end = entry.endTime ? parseStoredScheduleInstant(entry.endTime) : null;
 
   return (
-    <article className="rounded-xl border border-border bg-card p-5 shadow-sm hover:shadow-md transition-shadow">
+    <article className="rounded-2xl border border-border bg-card p-5 transition-all hover:border-primary/30 hover:shadow-premium">
       <time
         className="text-sm font-semibold text-muted-foreground tabular-nums block mb-2"
         dateTime={entry.startTime}
@@ -151,7 +151,7 @@ function ProgrammeCard({ entry }: { entry: ProgrammeEntry }) {
         {end && ` – ${format(end, "h:mm a")}`}
       </time>
       <div className="mb-2 flex items-center gap-2 flex-wrap">
-        <h3 className="font-bold text-lg tracking-tight">
+        <h3 className="font-semibold text-lg tracking-tight text-heading">
           {entry.programme.name}
         </h3>
         {entry.programme.category?.name && (

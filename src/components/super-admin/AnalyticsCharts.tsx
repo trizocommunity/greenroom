@@ -55,11 +55,14 @@ export interface AnalyticsData {
   revenueByDay: TimeSeriesPoint[];
 }
 
+// Chart series colors: brand primary/secondary plus the info/success
+// design tokens (see globals.css --info / --success) for the remaining
+// series so the palette stays consistent with the rest of the product.
 const CHART_COLORS = {
   primary: "#d72626",
   primaryLight: "#f25c05",
-  accent: "#22d3ee",
-  accent2: "#34d399",
+  accent: "#3b82f6",
+  accent2: "#10b981",
   muted: "#64748b",
 };
 
@@ -143,7 +146,7 @@ export function AnalyticsCharts({ initialData }: AnalyticsChartsProps) {
       )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
+        <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-sm font-medium">Top spenders</CardTitle>
           </CardHeader>
@@ -184,7 +187,7 @@ export function AnalyticsCharts({ initialData }: AnalyticsChartsProps) {
                         if (!active || !payload?.[0]) return null;
                         const d = payload[0].payload;
                         return (
-                          <div className="rounded-md border bg-card px-3 py-2 text-sm shadow">
+                          <div className="rounded-xl border border-border bg-card px-3 py-2 text-sm shadow-premium">
                             <p className="font-medium">{d.fullName}</p>
                             <p className="text-muted-foreground">
                               {formatRupee(d.spend * 100)} · {d.count} festivals
@@ -205,7 +208,7 @@ export function AnalyticsCharts({ initialData }: AnalyticsChartsProps) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-sm font-medium">
               Most active (logins)
@@ -247,7 +250,7 @@ export function AnalyticsCharts({ initialData }: AnalyticsChartsProps) {
                         if (!active || !payload?.[0]) return null;
                         const d = payload[0].payload;
                         return (
-                          <div className="rounded-md border bg-card px-3 py-2 text-sm shadow">
+                          <div className="rounded-xl border border-border bg-card px-3 py-2 text-sm shadow-premium">
                             <p className="font-medium">{d.fullName}</p>
                             <p className="text-muted-foreground">
                               {d.logins} logins
@@ -268,7 +271,7 @@ export function AnalyticsCharts({ initialData }: AnalyticsChartsProps) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-sm font-medium">
               Top festival categories
@@ -307,7 +310,7 @@ export function AnalyticsCharts({ initialData }: AnalyticsChartsProps) {
                         if (!active || !payload?.[0]) return null;
                         const d = payload[0].payload;
                         return (
-                          <div className="rounded-md border bg-card px-3 py-2 text-sm shadow">
+                          <div className="rounded-xl border border-border bg-card px-3 py-2 text-sm shadow-premium">
                             <p className="font-medium">{d.fullName}</p>
                             <p className="text-muted-foreground">
                               {d.users} users · score {d.weight}
@@ -330,7 +333,7 @@ export function AnalyticsCharts({ initialData }: AnalyticsChartsProps) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
+        <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-sm font-medium">
               Logins over time (last 14 days)
@@ -384,7 +387,7 @@ export function AnalyticsCharts({ initialData }: AnalyticsChartsProps) {
                       if (!active || !payload?.[0]) return null;
                       const p = payload[0].payload;
                       return (
-                        <div className="rounded-md border bg-card px-3 py-2 text-sm shadow">
+                        <div className="rounded-xl border border-border bg-card px-3 py-2 text-sm shadow-premium">
                           <p className="text-muted-foreground">
                             {formatShortDate(p.date)}
                           </p>
@@ -406,7 +409,7 @@ export function AnalyticsCharts({ initialData }: AnalyticsChartsProps) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-sm font-medium">
               Revenue over time (last 14 days)
@@ -441,7 +444,7 @@ export function AnalyticsCharts({ initialData }: AnalyticsChartsProps) {
                       if (!active || !payload?.[0]) return null;
                       const p = payload[0].payload;
                       return (
-                        <div className="rounded-md border bg-card px-3 py-2 text-sm shadow">
+                        <div className="rounded-xl border border-border bg-card px-3 py-2 text-sm shadow-premium">
                           <p className="text-muted-foreground">
                             {formatShortDate(p.date)}
                           </p>

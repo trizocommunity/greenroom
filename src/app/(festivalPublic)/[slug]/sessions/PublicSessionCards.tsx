@@ -105,10 +105,10 @@ export function PublicSessionCards({ entries }: { entries: SessionEntry[] }) {
                 setActiveStageId("");
               }}
               className={cn(
-                "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                "px-4 py-2 rounded-full text-sm font-medium transition-colors",
                 activeDayKey === key
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
               )}
             >
               {dayLabels[key]}
@@ -123,7 +123,7 @@ export function PublicSessionCards({ entries }: { entries: SessionEntry[] }) {
       {/* Stage filter + list for selected day */}
       <div className="space-y-4">
         {sortedDayKeys.length > 1 && (
-          <h2 className="text-xl font-semibold text-foreground">
+          <h2 className="text-xl font-semibold tracking-tight text-heading">
             {dayLabels[activeDayKey]}
           </h2>
         )}
@@ -180,28 +180,57 @@ function SessionCard({ entry }: { entry: SessionEntry }) {
   return (
     <article
       className={cn(
-        "group/card relative flex flex-col overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm transition-all hover:border-primary/20 hover:shadow-md",
+        "flex flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground",
+        "transition-all duration-200 hover:border-primary/30 hover:shadow-premium",
       )}
     >
-      <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-primary/40 to-primary/10" />
-      <div className="flex-1 p-5 pb-0">
-        {/* Title and Type Badge */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h3 className="text-xl font-bold tracking-tight text-foreground line-clamp-2">
-              {entry.session.name}
-            </h3>
-            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
-              <Mic2 className="h-3.5 w-3.5" />
-              {typeLabel}
-            </span>
-          </div>
-          {isPastEvent && (
-            <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-              Past
+      {/* Accent strip + type badge */}
+      <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/40 px-5 py-3">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+          <Mic2 className="h-3.5 w-3.5" />
+          {typeLabel}
+        </span>
+        {isPastEvent && (
+          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            Past
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-1 flex-col p-5">
+        {/* Date/time or TBA */}
+        <div className="mb-3">
+          {hasSchedule && start ? (
+            <time
+              className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-sm font-medium text-foreground tabular-nums"
+              dateTime={entry.startTime!}
+            >
+              <Calendar className="h-4 w-4 text-primary" />
+              {format(start, "EEE, d MMM yyyy")} ·{" "}
+              {end
+                ? `${format(start, "h:mm a")} – ${format(end, "h:mm a")}`
+                : format(start, "h:mm a")}
+            </time>
+          ) : (
+            <span className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-sm font-medium text-muted-foreground">
+              <Calendar className="h-4 w-4" />
+              Date & time TBA
             </span>
           )}
         </div>
+
+        {/* Stage chip */}
+        {entry.stage?.name && (
+          <span className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-sm font-medium text-primary">
+            <MapPin className="h-3.5 w-3.5" />
+            {entry.stage.name}
+          </span>
+        )}
+
+        {/* Title */}
+        <h3 className="text-xl font-semibold tracking-tight text-heading line-clamp-2">
+          {entry.session.name}
+        </h3>
 
         {/* Speakers */}
         <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
@@ -213,7 +242,7 @@ function SessionCard({ entry }: { entry: SessionEntry }) {
 
         {/* Description (expandable) */}
         {entry.session.description && (
-          <div className="mt-4 flex flex-col pt-2 border-t border-border/60">
+          <div className="mt-4 flex flex-1 flex-col border-t border-border pt-4">
             {showMore ? (
               <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
                 {entry.session.description}
@@ -226,7 +255,7 @@ function SessionCard({ entry }: { entry: SessionEntry }) {
             <button
               type="button"
               onClick={() => setShowMore(!showMore)}
-              className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+              className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
             >
               {showMore ? (
                 <>
@@ -242,42 +271,10 @@ function SessionCard({ entry }: { entry: SessionEntry }) {
         )}
 
         {!entry.session.description && (
-          <div className="mt-4 pt-2 border-t border-border/60">
+          <div className="mt-4 pt-4 border-t border-border">
             <span className="text-sm text-muted-foreground">—</span>
           </div>
         )}
-      </div>
-
-      <div className="flex-1 min-h-4" />
-
-      {/* Date/time and Stage in footer */}
-      <div className="mx-5 mb-5 mt-4 flex flex-col gap-2 rounded-lg bg-muted/40 px-3 py-2.5 border border-border/40">
-        <div className="flex flex-col gap-1.5 text-sm text-muted-foreground">
-          {hasSchedule && start ? (
-            <time
-              className="inline-flex items-center gap-2 font-medium tabular-nums"
-              dateTime={entry.startTime!}
-            >
-              <Calendar className="h-4 w-4 shrink-0 text-primary/70" />
-              {format(start, "EEE, d MMM yyyy")} ·{" "}
-              {end
-                ? `${format(start, "h:mm a")} – ${format(end, "h:mm a")}`
-                : format(start, "h:mm a")}
-            </time>
-          ) : (
-            <span className="inline-flex items-center gap-2 font-medium">
-              <Calendar className="h-4 w-4 shrink-0 text-primary/70" />
-              Date & time TBA
-            </span>
-          )}
-
-          {entry.stage?.name && (
-            <span className="inline-flex items-center gap-2 font-medium">
-              <MapPin className="h-4 w-4 shrink-0 text-primary/70" />
-              {entry.stage.name}
-            </span>
-          )}
-        </div>
       </div>
     </article>
   );

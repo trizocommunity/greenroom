@@ -110,13 +110,17 @@ export function UpdateInstitutionDialog({
   return (
     <Drawer open={isOpen} onOpenChange={setIsOpen}>
       <DrawerTrigger asChild>
-        <Button variant="outline" size="sm">
-          Update Institution
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-full font-medium border-border hover:bg-muted"
+        >
+          Update institution
         </Button>
       </DrawerTrigger>
       <DrawerContent>
         <DrawerHeader>
-          <DrawerTitle>Update Institution</DrawerTitle>
+          <DrawerTitle>Update institution</DrawerTitle>
           <DrawerDescription>
             Update your institution details.
           </DrawerDescription>
@@ -223,19 +227,21 @@ export function UpdateInstitutionDialog({
               <Button
                 type="button"
                 variant="outline"
+                className="rounded-full font-medium border-border hover:bg-muted"
                 onClick={() => setIsOpen(false)}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
+                className="rounded-full font-medium shadow-primary-glow hover:opacity-90 transition-opacity"
                 disabled={
                   !form.formState.isDirty ||
                   !form.formState.isValid ||
                   isPending
                 }
               >
-                {isPending ? "Saving..." : "Save Changes"}
+                {isPending ? "Saving..." : "Save changes"}
               </Button>
             </div>
           </form>

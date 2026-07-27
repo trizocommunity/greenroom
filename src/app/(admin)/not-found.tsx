@@ -13,7 +13,7 @@ export default function AdminNotFound() {
 
       <div className="relative z-10 flex flex-col items-center gap-5">
         {/* Icon */}
-        <div className="flex h-16 w-16 items-center justify-center rounded-xl border border-border bg-card">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-border bg-card">
           <svg
             className="h-8 w-8 text-primary"
             fill="none"
@@ -29,13 +29,11 @@ export default function AdminNotFound() {
           </svg>
         </div>
 
-        <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-primary">
-          Admin · 404
-        </span>
+        <span className="text-eyebrow">Admin · 404</span>
 
         <div className="space-y-1.5">
-          <h1 className="text-3xl font-bold tracking-tight text-heading">
-            Admin Page Not Found
+          <h1 className="text-3xl font-semibold tracking-tight text-heading">
+            Admin page not found
           </h1>
           <p className="max-w-sm text-muted-foreground text-sm leading-relaxed">
             This admin route doesn&apos;t exist. It may have been removed or the
@@ -45,9 +43,9 @@ export default function AdminNotFound() {
 
         <Link
           href="/super-admin"
-          className="mt-2 inline-flex items-center justify-center rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:bg-primary-hover"
+          className="mt-2 inline-flex items-center justify-center rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground shadow-primary-glow transition-opacity hover:opacity-90"
         >
-          Back to Admin Dashboard
+          Back to admin dashboard
         </Link>
       </div>
     </div>

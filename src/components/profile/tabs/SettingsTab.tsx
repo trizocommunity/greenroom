@@ -45,48 +45,48 @@ export function SettingsTab({ userId: _userId }: SettingsTabProps) {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Account Settings</h2>
+        <h2 className="text-3xl font-semibold tracking-tight text-heading">
+          Account settings
+        </h2>
         <p className="text-muted-foreground">
           View and manage your account information.
         </p>
       </div>
 
       {/* Personal Information Card */}
-      <Card>
+      <Card className="border border-border rounded-2xl bg-card shadow-premium">
         <CardHeader>
-          <CardTitle>Personal Information</CardTitle>
+          <CardTitle className="font-semibold tracking-tight text-heading">
+            Personal information
+          </CardTitle>
           <CardDescription>Your personal account details</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Full Name
+              <p className="text-xs text-muted-foreground">Full name</p>
+              <p className="text-sm font-medium text-heading">
+                {user.fullName || "—"}
               </p>
-              <p className="text-sm font-medium">{user.fullName || "—"}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Display Name
+              <p className="text-xs text-muted-foreground">Display name</p>
+              <p className="text-sm font-medium text-heading">
+                {user.displayName || "—"}
               </p>
-              <p className="text-sm font-medium">{user.displayName || "—"}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Email
-              </p>
-              <p className="text-sm font-medium">{user.email}</p>
+              <p className="text-xs text-muted-foreground">Email</p>
+              <p className="text-sm font-medium text-heading">{user.email}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Account Type
-              </p>
-              <p className="text-sm font-medium">
+              <p className="text-xs text-muted-foreground">Account type</p>
+              <p className="text-sm font-medium text-heading">
                 {user.accountType || "PERSONAL"}
               </p>
             </div>
           </div>
-          <div className="pt-4 border-t">
+          <div className="pt-4 border-t border-border">
             <UpdateProfileDialog user={user} />
           </div>
         </CardContent>
@@ -94,9 +94,11 @@ export function SettingsTab({ userId: _userId }: SettingsTabProps) {
 
       {/* Institution Information Card - Only for INSTITUTIONAL accounts */}
       {user.accountType === "INSTITUTIONAL" && institution && (
-        <Card>
+        <Card className="border border-border rounded-2xl bg-card shadow-premium">
           <CardHeader>
-            <CardTitle>Institution Information</CardTitle>
+            <CardTitle className="font-semibold tracking-tight text-heading">
+              Institution information
+            </CardTitle>
             <CardDescription>
               Your institutional account details
             </CardDescription>
@@ -104,41 +106,41 @@ export function SettingsTab({ userId: _userId }: SettingsTabProps) {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Institution Name
+                <p className="text-xs text-muted-foreground">
+                  Institution name
                 </p>
-                <p className="text-sm font-medium">{institution.name || "—"}</p>
+                <p className="text-sm font-medium text-heading">
+                  {institution.name || "—"}
+                </p>
               </div>
               <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Institution Type
+                <p className="text-xs text-muted-foreground">
+                  Institution type
                 </p>
-                <p className="text-sm font-medium">{institution.type || "—"}</p>
+                <p className="text-sm font-medium text-heading">
+                  {institution.type || "—"}
+                </p>
               </div>
               <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Affiliation
-                </p>
-                <p className="text-sm font-medium">
+                <p className="text-xs text-muted-foreground">Affiliation</p>
+                <p className="text-sm font-medium text-heading">
                   {institution.affiliation || "—"}
                 </p>
               </div>
               <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  City
+                <p className="text-xs text-muted-foreground">City</p>
+                <p className="text-sm font-medium text-heading">
+                  {institution.city || "—"}
                 </p>
-                <p className="text-sm font-medium">{institution.city || "—"}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Size Range
-                </p>
-                <p className="text-sm font-medium">
+                <p className="text-xs text-muted-foreground">Size range</p>
+                <p className="text-sm font-medium text-heading">
                   {institution.sizeRange || "—"}
                 </p>
               </div>
             </div>
-            <div className="pt-4 border-t">
+            <div className="pt-4 border-t border-border">
               <UpdateInstitutionDialog institution={institution} />
             </div>
           </CardContent>

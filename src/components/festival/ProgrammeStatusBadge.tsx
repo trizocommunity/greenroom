@@ -53,7 +53,7 @@ export function ProgrammeStatusBadge({
   const label = STATUS_LABELS[status] ?? status;
   const style = STATUS_STYLES[status] ?? STATUS_STYLES.READY;
   return (
-    <Badge variant="outline" className={cn(style, className)}>
+    <Badge variant="outline" className={cn("rounded-full", style, className)}>
       {label}
     </Badge>
   );

@@ -3,7 +3,6 @@
 import { format } from "date-fns";
 import { Newspaper } from "lucide-react";
 import Image from "next/image";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/core/utils/cn";
 
@@ -28,8 +27,11 @@ export function PublicNewsView({
 }: PublicNewsViewProps) {
   if (posts.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed bg-muted/20 py-24 text-center">
-        <Newspaper className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+      <div className="rounded-2xl border border-dashed border-border bg-muted/30 py-24 text-center">
+        <Newspaper
+          className="h-10 w-10 text-muted-foreground mx-auto mb-3"
+          strokeWidth={1.5}
+        />
         <p className="text-muted-foreground">No news posts yet.</p>
       </div>
     );
@@ -39,9 +41,10 @@ export function PublicNewsView({
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
         {posts.map((post) => (
-          <Card
+          <article
             key={post.id}
-            className="overflow-hidden border bg-card/80 backdrop-blur hover:shadow-lg transition-shadow"
+            id={`post-${post.id}`}
+            className="overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-premium"
           >
             {post.imageUrl && (
               <div className="relative aspect-video w-full bg-muted">
@@ -53,8 +56,8 @@ export function PublicNewsView({
                 />
               </div>
             )}
-            <CardHeader className="p-5 pb-1">
-              <h2 className="text-lg font-semibold leading-tight line-clamp-2">
+            <div className="p-5 space-y-2">
+              <h2 className="text-lg font-semibold tracking-tight leading-tight line-clamp-2 text-heading">
                 {post.title}
               </h2>
               <p className="text-xs text-muted-foreground">
@@ -62,27 +65,23 @@ export function PublicNewsView({
                   ? format(new Date(post.publishedAt), "MMMM d, yyyy")
                   : ""}
               </p>
-            </CardHeader>
-            <CardContent className="p-5 pt-2">
-              <p className="text-sm text-muted-foreground line-clamp-3">
+              <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
                 {post.excerpt || post.content}
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </article>
         ))}
       </div>
       <div className="lg:col-span-1">
-        <p className="text-sm font-medium text-muted-foreground mb-3">
-          All updates
-        </p>
-        <ScrollArea className="h-[420px] rounded-xl border bg-card/50 p-4">
-          <ul className="space-y-3 pr-4">
+        <p className="text-sm font-medium text-foreground mb-3">All updates</p>
+        <ScrollArea className="h-[420px] rounded-2xl border border-border bg-card p-4">
+          <ul className="space-y-2 pr-4">
             {posts.map((post) => (
               <li key={post.id}>
                 <a
                   href={`#post-${post.id}`}
                   className={cn(
-                    "block rounded-lg p-3 text-sm font-medium transition hover:bg-muted/50",
+                    "block rounded-xl p-3 text-sm font-medium text-foreground transition-colors hover:bg-muted",
                   )}
                 >
                   <span className="line-clamp-2">{post.title}</span>

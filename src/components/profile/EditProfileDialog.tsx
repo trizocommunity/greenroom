@@ -73,14 +73,18 @@ export function EditProfileDialog({ user, trigger }: EditProfileDialogProps) {
     <Drawer open={isOpen} onOpenChange={setIsOpen}>
       <DrawerTrigger asChild>
         {trigger || (
-          <Button variant="outline" size="sm" className="w-fit">
-            Edit Profile
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-fit rounded-full font-medium border-border hover:bg-muted"
+          >
+            Edit profile
           </Button>
         )}
       </DrawerTrigger>
       <DrawerContent>
         <DrawerHeader>
-          <DrawerTitle>Edit Profile</DrawerTitle>
+          <DrawerTitle>Edit profile</DrawerTitle>
           <DrawerDescription>
             Update your personal information.
           </DrawerDescription>
@@ -117,19 +121,21 @@ export function EditProfileDialog({ user, trigger }: EditProfileDialogProps) {
               <Button
                 type="button"
                 variant="outline"
+                className="rounded-full font-medium border-border hover:bg-muted"
                 onClick={() => setIsOpen(false)}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
+                className="rounded-full font-medium shadow-primary-glow hover:opacity-90 transition-opacity"
                 disabled={
                   !form.formState.isDirty ||
                   !form.formState.isValid ||
                   isPending
                 }
               >
-                {isPending ? "Saving..." : "Save Changes"}
+                {isPending ? "Saving..." : "Save changes"}
               </Button>
             </div>
           </form>

@@ -19,122 +19,116 @@ export default function ContactForm() {
 
   if (submitted) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-center p-12 bg-card border border-border">
-        <div className="mb-6">
-          <CheckCircle size={48} className="text-primary" />
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="h-full flex flex-col items-center justify-center text-center p-12"
+      >
+        <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-success/10 text-success">
+          <CheckCircle size={26} />
         </div>
-        <h3 className="text-3xl font-black uppercase mb-4 text-foreground">
-          Received
+        <h3 className="text-2xl font-semibold tracking-tight mb-3 text-heading">
+          Message received
         </h3>
-        <p className="text-muted-foreground mb-8 font-medium">
-          We will contact you shortly.
+        <p className="text-muted-foreground mb-8 max-w-xs">
+          Thanks for reaching out — we&apos;ll get back to you shortly.
         </p>
         <Button
           onClick={() => setSubmitted(false)}
           variant="outline"
-          className="uppercase font-bold tracking-wider rounded-none border-foreground hover:bg-foreground hover:text-background h-12 px-8"
+          className="rounded-full font-medium border-border hover:bg-muted h-11 px-6"
         >
-          Reset
+          Send another message
         </Button>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
-      <h3 className="text-3xl font-black uppercase mb-8 tracking-tighter text-foreground">
-        Usage Inquiry
-      </h3>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div>
+        <h3 className="text-2xl font-semibold tracking-tight text-heading mb-1.5">
+          Send us a message
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          We typically reply within one business day.
+        </p>
+      </div>
 
-      <div className="space-y-6">
-        <div className="grid md:grid-cols-2 gap-6">
+      <div className="space-y-5">
+        <div className="grid md:grid-cols-2 gap-5">
           <div className="space-y-2">
-            <label
-              htmlFor="name"
-              className="text-xs font-bold uppercase tracking-widest text-gray-400"
-            >
-              Full Name
+            <label htmlFor="name" className="text-sm font-medium text-heading">
+              Full name
             </label>
             <Input
               required
               type="text"
               id="name"
-              placeholder="YOUR NAME"
-              className="h-12 bg-transparent border-t-0 border-x-0 border-b-2 border-border focus-visible:ring-0 focus-visible:border-foreground rounded-none px-0 font-bold uppercase placeholder:text-muted-foreground text-foreground"
+              placeholder="Jordan Rivera"
+              className="h-11 rounded-lg border-border bg-background"
             />
           </div>
           <div className="space-y-2">
-            <label
-              htmlFor="org"
-              className="text-xs font-bold uppercase tracking-widest text-gray-400"
-            >
+            <label htmlFor="org" className="text-sm font-medium text-heading">
               Organization
             </label>
             <Input
               required
               type="text"
               id="org"
-              placeholder="YOUR ORG"
-              className="h-12 bg-transparent border-t-0 border-x-0 border-b-2 border-border focus-visible:ring-0 focus-visible:border-foreground rounded-none px-0 font-bold uppercase placeholder:text-muted-foreground text-foreground"
+              placeholder="Your institution"
+              className="h-11 rounded-lg border-border bg-background"
             />
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-5">
           <div className="space-y-2">
-            <label
-              htmlFor="email"
-              className="text-xs font-bold uppercase tracking-widest text-gray-400"
-            >
+            <label htmlFor="email" className="text-sm font-medium text-heading">
               Email
             </label>
             <Input
               required
               type="email"
               id="email"
-              placeholder="EMAIL@EXAMPLE.COM"
-              className="h-12 bg-transparent border-t-0 border-x-0 border-b-2 border-border focus-visible:ring-0 focus-visible:border-foreground rounded-none px-0 font-bold uppercase placeholder:text-muted-foreground text-foreground"
+              placeholder="you@example.com"
+              className="h-11 rounded-lg border-border bg-background"
             />
           </div>
           <div className="space-y-2">
-            <label
-              htmlFor="phone"
-              className="text-xs font-bold uppercase tracking-widest text-gray-400"
-            >
+            <label htmlFor="phone" className="text-sm font-medium text-heading">
               Phone
             </label>
             <Input
               required
               type="tel"
               id="phone"
-              placeholder="+00 00000 00000"
-              className="h-12 bg-transparent border-t-0 border-x-0 border-b-2 border-border focus-visible:ring-0 focus-visible:border-foreground rounded-none px-0 font-bold uppercase placeholder:text-muted-foreground text-foreground"
+              placeholder="+1 (555) 000-0000"
+              className="h-11 rounded-lg border-border bg-background"
             />
           </div>
         </div>
 
         <div className="space-y-2">
-          <label
-            htmlFor="message"
-            className="text-xs font-bold uppercase tracking-widest text-gray-400"
-          >
+          <label htmlFor="message" className="text-sm font-medium text-heading">
             Message
           </label>
           <Textarea
             required
             id="message"
             rows={4}
-            placeholder="TELL US ABOUT YOUR EVENT..."
-            className="p-4 bg-background border-2 border-border focus-visible:ring-0 focus-visible:border-foreground rounded-none font-bold uppercase placeholder:text-muted-foreground text-foreground resize-none"
+            placeholder="Tell us about your event..."
+            className="rounded-lg border-border bg-background resize-none"
           />
         </div>
 
         <Button
           type="submit"
           size="lg"
-          className="w-full h-14 bg-primary text-primary-foreground hover:bg-primary/90 rounded-none uppercase font-black tracking-widest text-lg"
+          className="w-full h-12 rounded-full font-medium shadow-primary-glow hover:opacity-90 transition-opacity"
         >
-          Submit Inquiry <Send className="ml-4 w-4 h-4" />
+          Submit inquiry <Send className="ml-2 w-4 h-4" />
         </Button>
       </div>
     </form>
