@@ -20,7 +20,7 @@ export function useNotifications(studentId: string) {
       return handleApiResponse(response.data);
     },
     enabled: !!studentId,
-    staleTime: STALE_TIME.realtime,
+    staleTime: STALE_TIME.fast,
     refetchInterval: 30 * 1000,
     refetchOnWindowFocus: true,
   });

@@ -1,5 +1,5 @@
 export const STALE_TIME = {
-  realtime: 1_000,
+  fast: 1_000,
   standard: 1_000,
   stable: 1_000,
 } as const;
