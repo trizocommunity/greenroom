@@ -6,7 +6,6 @@ import { DashboardCelebration } from "@/components/festival/dashboard/DashboardC
 import { DashboardRightSidebar } from "@/components/festival/dashboard/DashboardRightSidebar";
 import { FestivalDashboardClientShell } from "@/components/festival/dashboard/FestivalDashboardClientShell";
 import { FestivalDashboardSidebar } from "@/components/festival/dashboard/FestivalDashboardSidebar";
-import { ReadOnlyExpiredBanner } from "@/components/festival/dashboard/ReadOnlyExpiredBanner";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { FestivalStatusBadge } from "@/components/festival/FestivalStatusBadge";
 import {
@@ -76,7 +75,6 @@ export default async function FestivalDashboardLayout({
     tier: festival.tier,
     accentColor: "#000000",
     expiresAt: festival.expiresAt,
-    readOnlyExpired: false,
     description: festival.description || "",
     // Legacy fields or unused
     tagline: "",
@@ -179,7 +177,6 @@ export default async function FestivalDashboardLayout({
               <Suspense fallback={null}>
                 <DashboardCelebration />
               </Suspense>
-              <ReadOnlyExpiredBanner />
               {children}
             </main>
           </SidebarInset>
