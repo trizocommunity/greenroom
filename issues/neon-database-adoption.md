@@ -121,13 +121,15 @@ Neon's `neon-http` driver doesn't support interactive transactions in production
 
 ## Acceptance Criteria
 
-- [ ] Neon project provisioned via `neonctl` (not dashboard).
-- [ ] Pooled + unpooled connection strings captured.
-- [ ] `drizzle.config.ts` updated (unpooled URL, stale Supabase comment removed).
-- [ ] `client.ts` pool size tuned for Neon's pooler.
-- [ ] `.env.example` updated with `DATABASE_URL` / `DATABASE_URL_UNPOOLED`.
-- [ ] Existing 12 migrations applied cleanly to the new Neon branch.
-- [ ] All 12 `db.transaction(...)` call sites verified working against Neon.
-- [ ] Neon–Vercel integration installed; PR preview branches confirmed working.
-- [ ] Production `DATABASE_URL`/`DATABASE_URL_UNPOOLED` set in Vercel; production deploy verified.
-- [ ] No branch-per-tenant architecture introduced — shared schema + `festivalId` remains the tenancy model.
+- [ ] Neon project provisioned via `neonctl` (not dashboard). **Needs a human with Neon account access — see note below.**
+- [ ] Pooled + unpooled connection strings captured. **Needs a human with Neon account access.**
+- [x] `drizzle.config.ts` updated (unpooled URL, stale Supabase comment removed).
+- [x] `client.ts` pool size tuned for Neon's pooler.
+- [x] `.env.example` updated with `DATABASE_URL` / `DATABASE_URL_UNPOOLED`.
+- [ ] Existing 12 migrations applied cleanly to the new Neon branch. **Blocked on project provisioning above.**
+- [ ] All 12 `db.transaction(...)` call sites verified working against Neon. **Blocked on project provisioning above.**
+- [ ] Neon–Vercel integration installed; PR preview branches confirmed working. **Needs Vercel dashboard access.**
+- [ ] Production `DATABASE_URL`/`DATABASE_URL_UNPOOLED` set in Vercel; production deploy verified. **Needs Vercel dashboard access.**
+- [x] No branch-per-tenant architecture introduced — shared schema + `festivalId` remains the tenancy model (no change made; confirmed by inspection).
+
+**Note on unchecked items**: Phases 0/1/3/4/5 require an authenticated `neonctl` session (`NEON_API_KEY` or interactive browser login) and Vercel dashboard/CLI access, neither of which is available in this automated environment. Everything achievable from the codebase alone (Phase 2) is done. To finish: run `npx neonctl auth` (or set `NEON_API_KEY`), then `npx neonctl projects create --name greenroom`, capture the pooled/unpooled connection strings, set them locally and in Vercel, run `npm run db:push`, smoke-test the 12 transactional flows, and install the Neon–Vercel marketplace integration.
