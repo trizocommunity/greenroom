@@ -127,9 +127,7 @@ export const ParticipantLoginService = {
     });
 
     if (recentRequests.length >= OTP_MAX_REQUESTS_PER_10_MIN) {
-      throw new AppError(
-        "Too many OTP requests. Please wait 10 minutes.",
-      );
+      throw new AppError("Too many OTP requests. Please wait 10 minutes.");
     }
 
     const otpCode = generateOtpCode();

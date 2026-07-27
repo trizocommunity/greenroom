@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
-import { getParticipantSessionFromCookie } from "./participant-session";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { findStudentByFestivalAndProfileSlug } from "@/features/students/repositories/student.repository";
+import { getParticipantSessionFromCookie } from "./participant-session";
 
 export type ParticipantAuthContext = {
-  session: NonNullable<Awaited<ReturnType<typeof getParticipantSessionFromCookie>>>;
+  session: NonNullable<
+    Awaited<ReturnType<typeof getParticipantSessionFromCookie>>
+  >;
   student: NonNullable<
     Awaited<ReturnType<typeof findStudentByFestivalAndProfileSlug>>
   >;

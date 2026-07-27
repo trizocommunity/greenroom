@@ -11,7 +11,13 @@ export function ParticipantLogoutButton({
   variant = "outline",
 }: {
   festivalSlug: string;
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  variant?:
+    | "default"
+    | "destructive"
+    | "outline"
+    | "secondary"
+    | "ghost"
+    | "link";
 }) {
   const router = useRouter();
   const logoutMutation = useParticipantLogout();

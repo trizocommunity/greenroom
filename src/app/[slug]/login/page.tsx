@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
+import { AuthLayout } from "@/components/auth/AuthLayout";
 import { ParticipantLoginClient } from "@/components/festival/public/ParticipantLoginClient";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
-import { findGroupsByFestival } from "@/features/groups/repositories/group.repository";
 
 export default async function ParticipantLoginPage({
   params,
@@ -12,15 +12,14 @@ export default async function ParticipantLoginPage({
   const festival = await findFestivalBySlug(slug);
   if (!festival) notFound();
 
-  const groups = await findGroupsByFestival(festival.id);
-
   return (
-    <div className="max-w-xl mx-auto px-4 md:px-6 py-8">
-      <ParticipantLoginClient
-        festivalSlug={festival.slug}
-        festivalName={festival.name}
-        groups={groups.map((g) => ({ id: g.id, name: g.name }))}
-      />
-    </div>
+    <AuthLayout
+      title="Participant Login"
+      description={`Sign in to ${festival.name}`}
+      variant="centered"
+      showLogo={false}
+    >
+      <ParticipantLoginClient festivalSlug={festival.slug} />
+    </AuthLayout>
   );
 }

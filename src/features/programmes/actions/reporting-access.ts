@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
-import { getSession } from "@/core/auth/session";
 import { getParticipantSessionFromCookie } from "@/core/auth/participant-session";
+import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
   festivalMember as festivalMemberTable,

@@ -188,174 +188,44 @@ export function StudentDialog({
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>{trigger}</DrawerTrigger>
-      <DrawerContent>
-        <DrawerHeader>
-          <DrawerTitle>
-            {isEditing ? "Edit Student" : "Create Student"}
-          </DrawerTitle>
-          <DrawerDescription>
-            {isEditing
-              ? "Update student details."
-              : "Add a new student to the festival."}
-          </DrawerDescription>
-        </DrawerHeader>
+      <DrawerContent className="p-0 sm:p-0 gap-0">
+        <div className="mx-auto w-full max-w-2xl flex flex-col h-full overflow-hidden">
+          <DrawerHeader className="shrink-0 p-4 sm:p-6 pb-2 border-b">
+            <DrawerTitle>
+              {isEditing ? "Edit Student" : "Create Student"}
+            </DrawerTitle>
+            <DrawerDescription>
+              {isEditing
+                ? "Update student details."
+                : "Add a new student to the festival."}
+            </DrawerDescription>
+          </DrawerHeader>
 
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            className="flex flex-col flex-1 min-h-0"
-          >
-            <div className="flex-1 overflow-y-auto min-h-0 space-y-3 sm:space-y-4 py-1">
-              {!isEditing && groups.length === 0 && (
-                <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm font-medium flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin shrink-0" /> Please
-                  create groups first.
-                </div>
-              )}
-
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Full Name <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="e.g. Jane Doe"
-                        autoFocus={!isEditing}
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="flex flex-col flex-1 min-h-0 overflow-hidden"
+            >
+              <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-2 space-y-4">
+                {!isEditing && groups.length === 0 && (
+                  <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm font-medium flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin shrink-0" /> Please
+                    create groups first.
+                  </div>
                 )}
-              />
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <FormField
                   control={form.control}
-                  name="groupId"
+                  name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-1.5">
-                        <Users className="h-3.5 w-3.5 text-muted-foreground" />{" "}
-                        Group <span className="text-destructive">*</span>
+                      <FormLabel>
+                        Full Name <span className="text-destructive">*</span>
                       </FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={isLoading}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select group" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {groups.map((group) => (
-                            <SelectItem key={group.id} value={group.id}>
-                              {group.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="categoryId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-1.5">
-                        <Tag className="h-3.5 w-3.5 text-muted-foreground" />{" "}
-                        Category <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={isLoading}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {allowedCategories.map((cat) => (
-                            <SelectItem key={cat.id} value={cat.id}>
-                              {cat.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-3 sm:gap-4">
-                <FormField
-                  control={form.control}
-                  name="gender"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Gender</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={isLoading}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="MALE">Male</SelectItem>
-                          <SelectItem value="FEMALE">Female</SelectItem>
-                          <SelectItem value="OTHER">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="age"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Age</FormLabel>
                       <FormControl>
                         <Input
-                          type="number"
-                          placeholder="e.g. 18"
-                          {...field}
-                          value={field.value}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="standard"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Class/Std</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="e.g. 12-A"
+                          placeholder="e.g. Jane Doe"
+                          autoFocus={!isEditing}
                           {...field}
                           value={field.value ?? ""}
                         />
@@ -364,38 +234,129 @@ export function StudentDialog({
                     </FormItem>
                   )}
                 />
-              </div>
 
-              {!isBasicTier && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <FormField
                     control={form.control}
-                    name="phone"
+                    name="groupId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Mobile Number</FormLabel>
+                        <FormLabel className="flex items-center gap-1.5">
+                          <Users className="h-3.5 w-3.5 text-muted-foreground" />{" "}
+                          Group <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          disabled={isLoading}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select group" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {groups.map((group) => (
+                              <SelectItem key={group.id} value={group.id}>
+                                {group.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="categoryId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1.5">
+                          <Tag className="h-3.5 w-3.5 text-muted-foreground" />{" "}
+                          Category <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          disabled={isLoading}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {allowedCategories.map((cat) => (
+                              <SelectItem key={cat.id} value={cat.id}>
+                                {cat.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                  <FormField
+                    control={form.control}
+                    name="gender"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Gender</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          disabled={isLoading}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="MALE">Male</SelectItem>
+                            <SelectItem value="FEMALE">Female</SelectItem>
+                            <SelectItem value="OTHER">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="age"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Age</FormLabel>
                         <FormControl>
                           <Input
-                            type="tel"
-                            placeholder="e.g. 017XXXXXXXX"
+                            type="number"
+                            placeholder="e.g. 18"
                             {...field}
-                            value={field.value ?? ""}
+                            value={field.value}
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+
                   <FormField
                     control={form.control}
-                    name="email"
+                    name="standard"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email (Optional)</FormLabel>
+                        <FormLabel>Class/Std</FormLabel>
                         <FormControl>
                           <Input
-                            type="email"
-                            placeholder="jane@example.com"
+                            placeholder="e.g. 12-A"
                             {...field}
                             value={field.value ?? ""}
                           />
@@ -405,28 +366,71 @@ export function StudentDialog({
                     )}
                   />
                 </div>
-              )}
-            </div>
 
-            <DrawerFooter>
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => setOpen(false)}
-                disabled={isLoading}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={!form.formState.isValid || isLoading}
-              >
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditing ? "Update Student" : "Create Student"}
-              </Button>
-            </DrawerFooter>
-          </form>
-        </Form>
+                {!isBasicTier && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <FormField
+                      control={form.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Mobile Number</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="tel"
+                              placeholder="e.g. 017XXXXXXXX"
+                              {...field}
+                              value={field.value ?? ""}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email (Optional)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="email"
+                              placeholder="jane@example.com"
+                              {...field}
+                              value={field.value ?? ""}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <DrawerFooter className="shrink-0 px-4 sm:px-6 py-4 border-t bg-background">
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  disabled={isLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={!form.formState.isValid || isLoading}
+                >
+                  {isLoading && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  {isEditing ? "Update Student" : "Create Student"}
+                </Button>
+              </DrawerFooter>
+            </form>
+          </Form>
+        </div>
       </DrawerContent>
     </Drawer>
   );

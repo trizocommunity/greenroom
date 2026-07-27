@@ -15,15 +15,18 @@ export type SeedSummary = {
   assignments: number;
 };
 
-export function printSeedSummary(summary: SeedSummary, students: CreatedStudent[]): void {
-  const showcase = students
-    .filter((s) => s.isTeamLeader)
-    .slice(0, 4);
+export function printSeedSummary(
+  summary: SeedSummary,
+  students: CreatedStudent[],
+): void {
+  const showcase = students.filter((s) => s.isTeamLeader).slice(0, 4);
 
   console.log("\n✨ AHLUSSUFFA IGS PRO TIER FESTIVAL SUCCESSFULLY SEEDED!");
   console.log("──────────────────────────────────────────────────────────");
   console.log(`Festival Name    : ${FESTIVAL.name}`);
-  console.log(`Festival Dates   : ${FESTIVAL.startDate} to ${FESTIVAL.endDate}`);
+  console.log(
+    `Festival Dates   : ${FESTIVAL.startDate} to ${FESTIVAL.endDate}`,
+  );
   console.log(`Tier             : ${FESTIVAL.tier}`);
   console.log("──────────────────────────────────────────────────────────");
   console.log(`Categories       : ${summary.categories}`);
@@ -38,7 +41,9 @@ export function printSeedSummary(summary: SeedSummary, students: CreatedStudent[
   console.log("──────────────────────────────────────────────────────────");
   console.log("PARTICIPANT LOGIN SHOWCASE (first leaders of each group):");
   for (const leader of showcase) {
-    console.log(`  • Chest ${leader.chestNumber}  →  DOB ${leader.dateOfBirth.split("T")[0]}`);
+    console.log(
+      `  • Chest ${leader.chestNumber}  →  DOB ${leader.dateOfBirth.split("T")[0]}`,
+    );
     console.log(
       `    Group: ${leader.groupId.slice(0, 8)}…   Email: ${leader.email}`,
     );

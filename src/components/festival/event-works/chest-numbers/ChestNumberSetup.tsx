@@ -416,121 +416,162 @@ export function ChestNumberSetup({
         )}
       </div>
       <Drawer open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>Chest Number Configuration</DrawerTitle>
-            <DrawerDescription>
-              Define the format for chest numbers. Choose style and set
-              sequences.
-            </DrawerDescription>
-          </DrawerHeader>
-          <div className="py-2 space-y-6">
-            <Tabs
-              value={numberingStyle}
-              onValueChange={(v) =>
-                setNumberingStyle(v as "ALPHANUMERIC" | "NUMERIC")
-              }
-              className="w-full"
-            >
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="ALPHANUMERIC" disabled={isReadOnly}>
-                  Alphanumeric (e.g. FEST-A-01)
-                </TabsTrigger>
-                <TabsTrigger value="NUMERIC" disabled={isReadOnly}>
-                  Numeric Only (e.g. 101)
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+        <DrawerContent className="p-0 sm:p-0 gap-0">
+          <div className="mx-auto w-full max-w-2xl flex flex-col h-full overflow-hidden">
+            <DrawerHeader className="shrink-0 border-b pb-4 px-4 sm:px-6 text-left">
+              <DrawerTitle>Chest Number Configuration</DrawerTitle>
+              <DrawerDescription>
+                Define the format for chest numbers. Choose style and set
+                sequences.
+              </DrawerDescription>
+            </DrawerHeader>
 
-            {/* Prefix Section - Only for Alphanumeric */}
-            {numberingStyle === "ALPHANUMERIC" && (
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <Label>Prefix (e.g. FEST)</Label>
-                  <div className="text-xs text-muted-foreground font-mono">
-                    Preview: {getEditPreview(editPrefix)}
-                  </div>
-                </div>
-                <Input
-                  value={editPrefix}
-                  onChange={(e) => setEditPrefix(e.target.value.toUpperCase())}
-                  placeholder="Enter prefix"
-                  disabled={isReadOnly}
-                />
-              </div>
-            )}
-            {/* Preview for Numeric */}
-            {numberingStyle === "NUMERIC" && (
-              <div className="text-xs text-muted-foreground font-mono text-center p-2 bg-muted/50 rounded">
-                Preview Format: {getEditPreview(editPrefix)}
-              </div>
-            )}
-
-            {/* Categories Section */}
-            <div className="space-y-3">
-              <Label>Category Sequences</Label>
-              <div className="border rounded-md divide-y max-h-[400px] overflow-y-auto">
-                {categories.map((cat: CategoryItem) => (
-                  <div
-                    key={cat.id}
-                    className="flex items-center justify-between p-3 text-sm"
+            <div className="flex-1 overflow-y-auto min-h-0 px-4 sm:px-6 py-4 space-y-6">
+              <Tabs
+                value={numberingStyle}
+                onValueChange={(v) =>
+                  setNumberingStyle(v as "ALPHANUMERIC" | "NUMERIC")
+                }
+                className="w-full"
+              >
+                <TabsList className="flex w-full h-auto p-1 bg-muted rounded-lg">
+                  <TabsTrigger
+                    value="ALPHANUMERIC"
+                    disabled={isReadOnly}
+                    className="flex-1 text-xs sm:text-sm whitespace-normal sm:whitespace-nowrap h-auto py-2 px-2 leading-snug"
                   >
-                    <span className="font-medium">{cat.name}</span>
-                    <div className="flex items-center gap-2">
-                      {numberingStyle === "ALPHANUMERIC" && (
-                        <div className="flex items-center gap-1">
-                          <span className="text-muted-foreground text-xs whitespace-nowrap">
-                            Code:
+                    Alphanumeric
+                    <span className="block sm:inline sm:ml-1 text-[10px] sm:text-xs opacity-70">
+                      (e.g. FEST-A-01)
+                    </span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="NUMERIC"
+                    disabled={isReadOnly}
+                    className="flex-1 text-xs sm:text-sm whitespace-normal sm:whitespace-nowrap h-auto py-2 px-2 leading-snug"
+                  >
+                    Numeric Only
+                    <span className="block sm:inline sm:ml-1 text-[10px] sm:text-xs opacity-70">
+                      (e.g. 101)
+                    </span>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              {/* Prefix Section - Only for Alphanumeric */}
+              {numberingStyle === "ALPHANUMERIC" && (
+                <div className="space-y-2 bg-muted/30 p-3 sm:p-4 rounded-xl border border-border/50">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <Label className="text-sm font-semibold">Prefix</Label>
+                    <div className="text-[11px] sm:text-xs text-muted-foreground font-mono bg-background px-2 py-1 rounded border">
+                      Preview:{" "}
+                      <span className="font-semibold text-foreground">
+                        {getEditPreview(editPrefix)}
+                      </span>
+                    </div>
+                  </div>
+                  <Input
+                    value={editPrefix}
+                    onChange={(e) =>
+                      setEditPrefix(e.target.value.toUpperCase())
+                    }
+                    placeholder="e.g. FEST"
+                    disabled={isReadOnly}
+                    className="font-mono text-sm"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    This prefix will be prepended to all generated chest
+                    numbers.
+                  </p>
+                </div>
+              )}
+
+              {/* Preview for Numeric */}
+              {numberingStyle === "NUMERIC" && (
+                <div className="text-xs sm:text-sm text-muted-foreground font-mono text-center p-3 bg-muted/30 rounded-xl border border-border/50">
+                  Preview Format:{" "}
+                  <span className="font-semibold text-foreground">
+                    {getEditPreview(editPrefix)}
+                  </span>
+                </div>
+              )}
+
+              {/* Categories Section */}
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold">
+                  Category Sequences
+                </Label>
+                <div className="border rounded-xl divide-y overflow-hidden bg-card">
+                  {categories.map((cat: CategoryItem) => (
+                    <div
+                      key={cat.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 gap-3 sm:gap-4 transition-colors hover:bg-muted/10"
+                    >
+                      <span className="font-medium text-sm sm:text-base leading-tight">
+                        {cat.name}
+                      </span>
+                      <div className="flex items-center gap-3 sm:gap-4 self-start sm:self-auto w-full sm:w-auto">
+                        {numberingStyle === "ALPHANUMERIC" && (
+                          <div className="flex items-center gap-2 flex-1 sm:flex-none bg-muted/30 px-2 py-1.5 rounded-md border border-border/50">
+                            <span className="text-muted-foreground text-[11px] sm:text-xs font-semibold uppercase tracking-wider">
+                              Code
+                            </span>
+                            <Input
+                              className="w-14 sm:w-16 h-7 sm:h-8 font-mono uppercase text-xs sm:text-sm bg-background px-2"
+                              value={editCategoryCodes[cat.id] ?? ""}
+                              onChange={(e) =>
+                                handleEditCodeChange(cat.id, e.target.value)
+                              }
+                              placeholder={cat.name.charAt(0)}
+                              maxLength={3}
+                              disabled={isReadOnly}
+                            />
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 flex-1 sm:flex-none bg-muted/30 px-2 py-1.5 rounded-md border border-border/50">
+                          <span className="text-muted-foreground text-[11px] sm:text-xs font-semibold uppercase tracking-wider">
+                            Start
                           </span>
                           <Input
-                            className="w-16 h-8 font-mono uppercase"
-                            value={editCategoryCodes[cat.id] ?? ""}
+                            className="w-16 sm:w-20 h-7 sm:h-8 text-xs sm:text-sm bg-background px-2"
+                            type="number"
+                            value={editCategoryStarts[cat.id] ?? ""}
                             onChange={(e) =>
-                              handleEditCodeChange(cat.id, e.target.value)
+                              setEditCategoryStarts((prev) => ({
+                                ...prev,
+                                [cat.id]: e.target.value,
+                              }))
                             }
-                            placeholder={cat.name.charAt(0)}
-                            maxLength={3}
                             disabled={isReadOnly}
                           />
                         </div>
-                      )}
-                      <div className="flex items-center gap-1">
-                        <span className="text-muted-foreground text-xs whitespace-nowrap">
-                          Start:
-                        </span>
-                        <Input
-                          className="w-20 h-8"
-                          type="number"
-                          value={editCategoryStarts[cat.id] ?? ""}
-                          onChange={(e) =>
-                            setEditCategoryStarts((prev) => ({
-                              ...prev,
-                              [cat.id]: e.target.value,
-                            }))
-                          }
-                          disabled={isReadOnly}
-                        />
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
+
+            <DrawerFooter className="shrink-0 border-t px-4 sm:px-6 py-4 flex-row justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsEditOpen(false)}
+                className="flex-1 sm:flex-none"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleUpdateConfiguration}
+                disabled={isReadOnly || isUpdatingPrefix}
+                className="flex-1 sm:flex-none"
+              >
+                {isUpdatingPrefix && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {isConfigured ? "Update All" : "Save & Generate"}
+              </Button>
+            </DrawerFooter>
           </div>
-          <DrawerFooter>
-            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUpdateConfiguration}
-              disabled={isReadOnly || isUpdatingPrefix}
-            >
-              {isUpdatingPrefix && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              {isConfigured ? "Update All" : "Save & Generate"}
-            </Button>
-          </DrawerFooter>
         </DrawerContent>
       </Drawer>
     </div>

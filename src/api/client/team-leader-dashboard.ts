@@ -1,6 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
+import {
+  type ApiResponse,
+  apiClient,
+  handleApiResponse,
+} from "@/lib/api-client";
 import { STALE_TIME } from "@/lib/query-utils";
-import { type ApiResponse, apiClient, handleApiResponse } from "@/lib/api-client";
 import { queryKeys } from "./_query-keys";
 
 export function useTeamLeaderFestivals() {

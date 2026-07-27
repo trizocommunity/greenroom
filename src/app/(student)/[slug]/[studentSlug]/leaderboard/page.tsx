@@ -15,7 +15,7 @@ export default async function StudentLeaderboardPage({
   const { festival, student } = await requireParticipantAuth(
     slug,
     studentSlug,
-    true
+    true,
   );
 
   const leaderGroupId = student.groupId;

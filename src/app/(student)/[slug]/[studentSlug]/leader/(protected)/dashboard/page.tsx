@@ -3,8 +3,8 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { MapPin, Trophy, Users } from "lucide-react";
 import Link from "next/link";
 import { QrViewButton } from "@/components/common/QrViewButton";
-import { ReportingEndsInCountdown } from "@/components/programme/ReportingEndsInCountdown";
 import { ParticipantLogoutButton } from "@/components/festival/public/ParticipantLogoutButton";
+import { ReportingEndsInCountdown } from "@/components/programme/ReportingEndsInCountdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,11 +17,11 @@ import {
   programmeReportingSession as sessionTable,
   student as studentTable,
 } from "@/core/database/schema";
+import { getTeamLeaderMyStudents } from "@/features/participants/services/my-team";
 import {
   getQrCodeContent,
   getStudentProfileUrl,
 } from "@/features/students/services/student-profile-url";
-import { getTeamLeaderMyStudents } from "@/features/participants/services/my-team";
 
 export default async function TeamLeaderDashboardPage({
   params,
@@ -29,7 +29,11 @@ export default async function TeamLeaderDashboardPage({
   params: Promise<{ slug: string; studentSlug: string }>;
 }) {
   const { slug, studentSlug } = await params;
-  const { festival, student } = await requireParticipantAuth(slug, studentSlug, true);
+  const { festival, student } = await requireParticipantAuth(
+    slug,
+    studentSlug,
+    true,
+  );
   const base = `/${slug}/${studentSlug}/leader`;
 
   const startDate = festival.startDate ?? festival.createdAt;

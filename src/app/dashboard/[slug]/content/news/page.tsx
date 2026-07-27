@@ -21,9 +21,9 @@ export default async function NewsPage({ params }: PageProps) {
   const posts = await getNewsPostsAction(festival.id);
   const normalizedPosts = posts.map((post) => ({
     ...post,
-    publishedAt: post.publishedAt ? post.publishedAt.toISOString() : null,
-    createdAt: post.createdAt.toISOString(),
-    updatedAt: post.updatedAt.toISOString(),
+    publishedAt: post.publishedAt ?? null,
+    createdAt: post.createdAt,
+    updatedAt: post.updatedAt,
   }));
 
   return (

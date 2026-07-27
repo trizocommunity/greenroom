@@ -15,7 +15,8 @@ vi.mock("@/features/festivals/repositories/festival.repository", () => ({
 }));
 
 vi.mock("@/features/groups/repositories/group.repository", () => ({
-  findGroupsByFestival: (...args: unknown[]) => mockFindGroupsByFestival(...args),
+  findGroupsByFestival: (...args: unknown[]) =>
+    mockFindGroupsByFestival(...args),
 }));
 
 vi.mock("@/core/database/client", () => ({
@@ -77,7 +78,9 @@ beforeEach(() => {
 
   mockInsert.mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) });
   mockUpdate.mockReturnValue({
-    set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+    set: vi
+      .fn()
+      .mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
   });
 });
 

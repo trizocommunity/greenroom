@@ -23,6 +23,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
+import { cn } from "@/core/utils/cn";
 
 interface ResponsiveDialogProps {
   open?: boolean;
@@ -40,14 +41,14 @@ const ResponsiveDialog = ({
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent>{children}</DrawerContent>
+        {children}
       </Drawer>
     );
   }
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>{children}</AlertDialogContent>
+      {children}
     </AlertDialog>
   );
 };
@@ -80,7 +81,9 @@ const ResponsiveDialogHeader = ({
   const isMobile = useIsMobile();
 
   if (isMobile) {
-    return <DrawerHeader className={className} {...props} />;
+    return (
+      <DrawerHeader className={cn("p-4 sm:p-6 pb-2", className)} {...props} />
+    );
   }
 
   return <AlertDialogHeader className={className} {...props} />;
@@ -93,7 +96,12 @@ const ResponsiveDialogFooter = ({
   const isMobile = useIsMobile();
 
   if (isMobile) {
-    return <DrawerFooter className={className} {...props} />;
+    return (
+      <DrawerFooter
+        className={cn("p-4 sm:p-6 pt-2 bg-background", className)}
+        {...props}
+      />
+    );
   }
 
   return <AlertDialogFooter className={className} {...props} />;
@@ -127,9 +135,26 @@ const ResponsiveDialogDescription = ({
 
 const ResponsiveDialogContent = ({
   children,
+  className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => {
-  return <div {...props}>{children}</div>;
+  const isMobile = useIsMobile();
+
+  if (isMobile) {
+    return (
+      <DrawerContent className="p-0 sm:p-0 gap-0">
+        <div className="mx-auto w-full max-w-lg flex flex-col h-full overflow-hidden">
+          {children}
+        </div>
+      </DrawerContent>
+    );
+  }
+
+  return (
+    <AlertDialogContent className={className} {...props}>
+      {children}
+    </AlertDialogContent>
+  );
 };
 
 const ResponsiveDialogAction = ({

@@ -64,11 +64,7 @@ import {
 import { parseStoredInstant } from "@/core/utils/date-time";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { useFeature } from "@/features/plan-features/hooks/use-feature";
-import {
-  getQrCodeContent,
-  getStudentProfilePath,
-  getStudentProfileUrl,
-} from "@/features/students/services/student-profile-url";
+import { getQrCodeContent } from "@/features/students/services/student-profile-url";
 import { AssignTeamLeadersModal } from "./AssignTeamLeadersModal";
 import { BulkUploadStudentsModal } from "./BulkUploadStudentsModal";
 import { StudentDetailsDialog } from "./StudentDetailsDialog";
@@ -101,8 +97,7 @@ export function StudentsClient({
   const deleteStudent = useDeleteStudent();
   const { data: groups = [] } = useGroups(festivalId);
   const { data: categories = [] } = useCategories(festivalId);
-  const canViewPublicStudentProfile = useFeature("publicStudentProfile");
-  const canViewStudentProfile = useFeature("viewStudentProfile");
+
   const canUseQR = useFeature("qrCodes");
   const { isReadOnly } = useFestivalReadOnly();
 
@@ -287,35 +282,14 @@ export function StudentsClient({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-44">
-                    {canViewPublicStudentProfile && tl.profileSlug ? (
-                      <DropdownMenuItem asChild>
-                        <Link href={getStudentProfilePath(festivalSlug, tl)}>
-                          <Eye className="h-4 w-4 mr-2" />
-                          View Profile
-                        </Link>
-                      </DropdownMenuItem>
-                    ) : null}
-                    {canViewStudentProfile ? (
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href={`/dashboard/${festivalSlug}/pre-event-works/students/${
-                            tl.profileSlug ?? tl.id
-                          }`}
-                        >
-                          <Eye className="h-4 w-4 mr-2" />
-                          View Details
-                        </Link>
-                      </DropdownMenuItem>
-                    ) : (
-                      <DropdownMenuItem
-                        onSelect={() =>
-                          setActionStudent({ student: tl, action: "view" })
-                        }
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
-                      </DropdownMenuItem>
-                    )}
+                    <DropdownMenuItem
+                      onSelect={() =>
+                        setActionStudent({ student: tl, action: "view" })
+                      }
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      View Details
+                    </DropdownMenuItem>
                     {/* View QR */}
                     {canUseQR && (
                       <DropdownMenuItem
@@ -572,40 +546,14 @@ export function StudentsClient({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-44">
-                        {canViewPublicStudentProfile && student.profileSlug ? (
-                          <DropdownMenuItem asChild>
-                            <Link
-                              href={getStudentProfilePath(
-                                festivalSlug,
-                                student,
-                              )}
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              View Profile
-                            </Link>
-                          </DropdownMenuItem>
-                        ) : null}
-                        {canViewStudentProfile ? (
-                          <DropdownMenuItem asChild>
-                            <Link
-                              href={`/dashboard/${festivalSlug}/pre-event-works/students/${
-                                student.profileSlug ?? student.id
-                              }`}
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              View Details
-                            </Link>
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem
-                            onSelect={() =>
-                              setActionStudent({ student, action: "view" })
-                            }
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
-                          </DropdownMenuItem>
-                        )}
+                        <DropdownMenuItem
+                          onSelect={() =>
+                            setActionStudent({ student, action: "view" })
+                          }
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Details
+                        </DropdownMenuItem>
                         {/* View QR */}
                         {canUseQR && (
                           <DropdownMenuItem
@@ -623,29 +571,7 @@ export function StudentsClient({
                             View QR
                           </DropdownMenuItem>
                         )}
-                        {/* Copy Profile Link */}
-                        {canViewPublicStudentProfile && (
-                          <DropdownMenuItem
-                            onSelect={async (e) => {
-                              e.preventDefault();
-                              const profileUrl = getStudentProfileUrl(
-                                window.location.origin,
-                                festivalSlug,
-                                student,
-                              );
-                              try {
-                                await navigator.clipboard.writeText(profileUrl);
-                                toast.success("Link copied to clipboard!");
-                              } catch (error) {
-                                console.error("Copy failed:", error);
-                                toast.error("Failed to copy link");
-                              }
-                            }}
-                          >
-                            <FileText className="h-4 w-4 mr-2" />
-                            Copy Profile Link
-                          </DropdownMenuItem>
-                        )}
+
                         {!isReadOnly && (
                           <>
                             <DropdownMenuItem
@@ -740,41 +666,14 @@ export function StudentsClient({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-44">
-                          {canViewPublicStudentProfile &&
-                          student.profileSlug ? (
-                            <DropdownMenuItem asChild>
-                              <Link
-                                href={getStudentProfilePath(
-                                  festivalSlug,
-                                  student,
-                                )}
-                              >
-                                <Eye className="h-4 w-4 mr-2" />
-                                View Profile
-                              </Link>
-                            </DropdownMenuItem>
-                          ) : null}
-                          {canViewStudentProfile ? (
-                            <DropdownMenuItem asChild>
-                              <Link
-                                href={`/dashboard/${festivalSlug}/pre-event-works/students/${
-                                  student.profileSlug ?? student.id
-                                }`}
-                              >
-                                <Eye className="h-4 w-4 mr-2" />
-                                View Details
-                              </Link>
-                            </DropdownMenuItem>
-                          ) : (
-                            <DropdownMenuItem
-                              onSelect={() =>
-                                setActionStudent({ student, action: "view" })
-                              }
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              View Details
-                            </DropdownMenuItem>
-                          )}
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              setActionStudent({ student, action: "view" })
+                            }
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </DropdownMenuItem>
                           {/* View QR */}
                           {canUseQR && (
                             <DropdownMenuItem
@@ -795,31 +694,7 @@ export function StudentsClient({
                               View QR
                             </DropdownMenuItem>
                           )}
-                          {/* Copy Profile Link */}
-                          {canViewPublicStudentProfile && (
-                            <DropdownMenuItem
-                              onSelect={async (e) => {
-                                e.preventDefault();
-                                const profileUrl = getStudentProfileUrl(
-                                  window.location.origin,
-                                  festivalSlug,
-                                  student,
-                                );
-                                try {
-                                  await navigator.clipboard.writeText(
-                                    profileUrl,
-                                  );
-                                  toast.success("Link copied to clipboard!");
-                                } catch (error) {
-                                  console.error("Copy failed:", error);
-                                  toast.error("Failed to copy link");
-                                }
-                              }}
-                            >
-                              <FileText className="h-4 w-4 mr-2" />
-                              Copy Profile Link
-                            </DropdownMenuItem>
-                          )}
+
                           {!isReadOnly && (
                             <>
                               <DropdownMenuItem

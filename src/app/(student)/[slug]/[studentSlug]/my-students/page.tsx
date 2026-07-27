@@ -15,7 +15,7 @@ export default async function MyStudentsPage({
   const { festival, student } = await requireParticipantAuth(
     slug,
     studentSlug,
-    true
+    true,
   );
 
   const groupStudents = await db.query.student.findMany({

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getParticipantSessionFromCookie } from "@/core/auth/participant-session";
-import { findStudentByFestivalAndProfileSlug } from "@/features/students/repositories/student.repository";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { findStudentByFestivalAndProfileSlug } from "@/features/students/repositories/student.repository";
 
 export default async function TeamLeaderRootPage({
   params,

@@ -12,13 +12,13 @@ import {
   programmeReportedParticipant as reportedParticipantTable,
   programmeReportingSession as sessionTable,
 } from "@/core/database/schema";
+import { getTeamLeaderMyStudents } from "@/features/participants/services/my-team";
 import { getExpectedAssignmentsTotal } from "@/features/programmes/services/programme-assignment-progress";
 import {
   getCodeForStudentFromLetters,
   mapSessionCodeLettersForLookup,
 } from "@/features/programmes/services/programme-reporting-code";
 import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
-import { getTeamLeaderMyStudents } from "@/features/participants/services/my-team";
 
 function isSessionTimedOut(session: any): boolean {
   return Boolean(

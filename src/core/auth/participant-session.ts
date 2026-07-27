@@ -35,7 +35,9 @@ export async function clearParticipantSessionCookie(): Promise<void> {
   cookieStore.delete(PARTICIPANT_SESSION_COOKIE);
 }
 
-export async function getParticipantSessionCookie(): Promise<string | undefined> {
+export async function getParticipantSessionCookie(): Promise<
+  string | undefined
+> {
   const cookieStore = await cookies();
   return cookieStore.get(PARTICIPANT_SESSION_COOKIE)?.value;
 }

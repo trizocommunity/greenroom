@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { useCreateInvitation } from "@/features/invitation/hooks/use-invitations";
 import { type InviteMemberFormValues, InviteMemberSchema } from "./types";
 
@@ -46,8 +47,8 @@ export function AddMemberDialog({
   existingEmails,
 }: AddMemberDialogProps) {
   const createInvitation = useCreateInvitation();
-  const festival = useFestival();
-  const readOnlyExpired = (festival as any)?.readOnlyExpired ?? false;
+  useFestival();
+  const { isReadOnly } = useFestivalReadOnly();
   const [open, setOpen] = useState(false);
 
   const form = useForm<InviteMemberFormValues>({
@@ -108,11 +109,9 @@ export function AddMemberDialog({
       <DrawerTrigger asChild>
         <Button
           size="sm"
-          disabled={disabled || readOnlyExpired}
+          disabled={disabled || isReadOnly}
           title={
-            readOnlyExpired
-              ? "Festival has expired; read-only access."
-              : undefined
+            isReadOnly ? "Festival has expired; read-only access." : undefined
           }
           className="rounded-xl shadow-sm hover:shadow transition-all font-medium"
         >

@@ -4,6 +4,7 @@ import { Download, MapPin, Users } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { QrCodeWithActions } from "@/components/common/QrCodeWithActions";
+import { ParticipantLogoutButton } from "@/components/festival/public/ParticipantLogoutButton";
 import { ReportingEndsInCountdown } from "@/components/programme/ReportingEndsInCountdown";
 import { CopyProfileLinkButton } from "@/components/student/CopyProfileLinkButton";
 import { StudentAssignedProgrammeCards } from "@/components/student/StudentAssignedProgrammeCards";
@@ -11,6 +12,7 @@ import { StudentQrDialogButton } from "@/components/student/StudentQrDialogButto
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_URL } from "@/config/routes";
+import { getParticipantSessionFromCookie } from "@/core/auth/participant-session";
 import { db } from "@/core/database/client";
 import {
   programmeReportingSession as sessionTable,
@@ -29,8 +31,6 @@ import {
   getQrCodeContent,
   getStudentProfileUrl,
 } from "@/features/students/services/student-profile-url";
-import { getParticipantSessionFromCookie } from "@/core/auth/participant-session";
-import { ParticipantLogoutButton } from "@/components/festival/public/ParticipantLogoutButton";
 
 const RESERVED_SLUGS = new Set([
   "results",

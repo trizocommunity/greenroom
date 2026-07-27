@@ -2,8 +2,8 @@
 
 import { and, count, eq, inArray } from "drizzle-orm";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
-import { getSession } from "@/core/auth/session";
 import { getParticipantSessionFromCookie } from "@/core/auth/participant-session";
+import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,

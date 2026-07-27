@@ -1,7 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import type { ApiResponse } from "@/lib/api-client";
-import { apiClient, handleApiResponse } from "@/lib/api-client";
 import type {
   ParticipantLogoutResponse,
   RequestAccessInput,
@@ -9,6 +7,8 @@ import type {
   VerifyOtpInput,
   VerifyOtpResponse,
 } from "@/api/contracts/participant-login";
+import type { ApiResponse } from "@/lib/api-client";
+import { apiClient, handleApiResponse } from "@/lib/api-client";
 
 export function useRequestAccess() {
   return useMutation<RequestAccessResponse, Error, RequestAccessInput>({

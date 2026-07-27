@@ -1,25 +1,25 @@
 import "dotenv/config";
-import { buildDb } from "./seed/db";
 import { JUDGES, SESSIONS } from "./seed/config";
-import { createSuperAdmin, createFestivalOwner } from "./seed/users";
+import { buildDb } from "./seed/db";
 import {
+  addFestivalMembers,
   createFestival,
   recordProPayment,
   upsertPurchaseSummary,
-  addFestivalMembers,
 } from "./seed/festival";
+import {
+  createProgrammesAndAssignments,
+  createSessions,
+} from "./seed/programmes";
+import { createStudents } from "./seed/students";
+import { printSeedSummary, updateFestivalUsageCounts } from "./seed/summary";
 import {
   createCategories,
   createGroups,
   createJudges,
   createStages,
 } from "./seed/taxonomies";
-import { createStudents } from "./seed/students";
-import {
-  createSessions,
-  createProgrammesAndAssignments,
-} from "./seed/programmes";
-import { printSeedSummary, updateFestivalUsageCounts } from "./seed/summary";
+import { createFestivalOwner, createSuperAdmin } from "./seed/users";
 
 async function seed() {
   console.log("🌱 Starting database seeding...");

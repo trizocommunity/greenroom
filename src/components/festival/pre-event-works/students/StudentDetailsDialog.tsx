@@ -16,14 +16,7 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+
 import { parseStoredInstant } from "@/core/utils/date-time";
 import { getProgrammeTeamMembersAction } from "@/features/assignments/actions/assignment.actions";
 import { useFeature } from "@/features/plan-features/hooks/use-feature";
@@ -120,208 +113,202 @@ export function StudentDetailsDialog({
           )}
         </DrawerTrigger>
       )}
-      <DrawerContent>
-        <DrawerHeader className="shrink-0 pb-2">
-          <DrawerTitle className="text-base sm:text-lg truncate pr-8">
-            {student.name}
-          </DrawerTitle>
-        </DrawerHeader>
-
-        <ScrollArea className="flex-1 min-h-0 -mx-1 px-1">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
-            {/* Complete details column */}
-            <div className="space-y-2.5 sm:border-r sm:pr-4 sm:border-b-0 border-b pb-3 sm:pb-0">
+      <DrawerContent className="p-0 sm:p-0 gap-0">
+        <div className="mx-auto w-full max-w-2xl flex flex-col h-full overflow-hidden">
+          <DrawerHeader className="shrink-0 text-left border-b p-4 sm:p-6 pb-4">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide">
-                  Chest No
-                </span>
-                <div className="text-sm mt-0.5">
-                  {student.chestNumber ? (
+                <DrawerTitle className="text-xl sm:text-2xl font-semibold tracking-tight">
+                  {student.name}
+                </DrawerTitle>
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  {student.chestNumber && (
                     <Badge
                       variant="secondary"
-                      className="font-mono text-[10px] h-5 px-1.5"
+                      className="font-mono bg-primary/10 text-primary hover:bg-primary/20"
                     >
                       {student.chestNumber}
                     </Badge>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
+                  )}
+                  {canViewTeamLeaders && student.isTeamLeader && (
+                    <Badge
+                      variant="outline"
+                      className="text-amber-600 border-amber-200 bg-amber-50 gap-1 pl-1.5"
+                    >
+                      <Crown className="h-3 w-3" />
+                      Team Leader
+                    </Badge>
                   )}
                 </div>
               </div>
-              <div>
-                <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide">
-                  Group
-                </span>
-                <div className="text-sm flex items-center gap-1.5 mt-0.5">
-                  <span
-                    className="w-1.5 h-1.5 rounded-full shrink-0"
-                    style={{
-                      backgroundColor: student.group?.color || "#2563eb",
-                    }}
-                  />
-                  {student.group?.name ?? "—"}
-                </div>
-              </div>
-              <div>
-                <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide">
-                  Category
-                </span>
-                <div className="text-sm mt-0.5">
-                  {student.category?.name ?? "—"}
-                </div>
-              </div>
-              <div>
-                <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide">
-                  Gender
-                </span>
-                <div className="text-sm mt-0.5 capitalize">
-                  {student.gender?.toLowerCase() ?? "—"}
-                </div>
-              </div>
-              {(student.age != null ||
-                (student.standard != null && student.standard !== "")) && (
-                <div className="flex gap-4 pt-1 border-t">
-                  {student.age != null && (
-                    <div>
-                      <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide">
-                        Age
-                      </span>
-                      <div className="text-sm mt-0.5">{student.age}</div>
-                    </div>
-                  )}
-                  {student.standard != null && student.standard !== "" && (
-                    <div>
-                      <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide">
-                        Class
-                      </span>
-                      <div className="text-sm mt-0.5">{student.standard}</div>
-                    </div>
-                  )}
-                </div>
-              )}
-              {canViewTeamLeaders && student.isTeamLeader && (
-                <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-500 text-xs">
-                  <Crown className="h-3.5 w-3.5" />
-                  <span>Team leader</span>
-                </div>
-              )}
-              {!isBasicTier && (
-                <div className="pt-1.5 space-y-1 border-t text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <Mail className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">
-                      {student.email || "No email"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Phone className="h-3.5 w-3.5 shrink-0" />
-                    {student.phone || "No phone"}
+            </div>
+          </DrawerHeader>
+
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <div className="px-4 sm:px-6 py-6 space-y-8">
+              {/* Profile Details Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                    Group
+                  </p>
+                  <div className="flex items-center gap-1.5 text-sm font-medium">
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{
+                        backgroundColor: student.group?.color || "#2563eb",
+                      }}
+                    />
+                    {student.group?.name ?? "—"}
                   </div>
                 </div>
-              )}
-              <div className="pt-1.5 border-t text-[11px] text-muted-foreground space-y-0.5">
+
+                <div className="space-y-1">
+                  <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                    Category
+                  </p>
+                  <p className="text-sm font-medium">
+                    {student.category?.name ?? "—"}
+                  </p>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                    Gender
+                  </p>
+                  <p className="text-sm font-medium capitalize">
+                    {student.gender?.toLowerCase() ?? "—"}
+                  </p>
+                </div>
+
+                {student.age != null && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                      Age
+                    </p>
+                    <p className="text-sm font-medium">{student.age}</p>
+                  </div>
+                )}
+
+                {student.standard != null && student.standard !== "" && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                      Class
+                    </p>
+                    <p className="text-sm font-medium">{student.standard}</p>
+                  </div>
+                )}
+
+                {!isBasicTier && student.phone && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                      Phone
+                    </p>
+                    <p className="text-sm font-medium flex items-center gap-1.5">
+                      <Phone className="h-3 w-3 text-muted-foreground" />
+                      {student.phone}
+                    </p>
+                  </div>
+                )}
+
+                {!isBasicTier && student.email && (
+                  <div className="col-span-2 sm:col-span-3 space-y-1">
+                    <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                      Email
+                    </p>
+                    <p className="text-sm font-medium flex items-center gap-1.5 truncate">
+                      <Mail className="h-3 w-3 text-muted-foreground shrink-0" />
+                      <span className="truncate">{student.email}</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Programmes Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold tracking-tight">
+                    Assigned Programmes
+                  </h4>
+                  <Badge variant="secondary" className="rounded-full">
+                    {studentAssignments.length}
+                  </Badge>
+                </div>
+
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-8 border rounded-xl border-dashed">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : studentAssignments.length === 0 ? (
+                  <div className="text-center text-muted-foreground text-sm py-8 border rounded-xl border-dashed bg-muted/20">
+                    Not assigned to any programmes yet.
+                  </div>
+                ) : (
+                  <div className="grid gap-2">
+                    {studentAssignments.map((assignment: any) => {
+                      const isGroup = assignment.programme?.type === "GROUP";
+                      const isLoadingTeam = loadingTeamFor === assignment.id;
+                      return (
+                        <div
+                          key={assignment.id}
+                          onClick={
+                            isGroup
+                              ? () => openTeamModal(assignment)
+                              : undefined
+                          }
+                          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl border bg-card transition-colors ${
+                            isGroup
+                              ? "cursor-pointer hover:bg-muted/50 hover:border-border/80"
+                              : ""
+                          }`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium leading-tight truncate">
+                                {assignment.programme?.name}
+                              </p>
+                              {isGroup && (
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[9px] px-1.5 h-4 py-0 shrink-0"
+                                >
+                                  TEAM
+                                </Badge>
+                              )}
+                              {isLoadingTeam && (
+                                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground shrink-0" />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground font-mono">
+                              <span>{assignment.programme?.type}</span>
+                              <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                              <span>{assignment.programme?.stageType}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Meta Info */}
+              <div className="pt-4 border-t text-[11px] text-muted-foreground flex flex-col sm:flex-row gap-2 sm:gap-6">
                 {student.createdAt && (
                   <div>
-                    Created{" "}
-                    {format(parseStoredInstant(student.createdAt), "PP")}
+                    Added {format(parseStoredInstant(student.createdAt), "PPp")}
                   </div>
                 )}
                 {student.updatedAt && (
                   <div>
-                    Updated{" "}
-                    {format(parseStoredInstant(student.updatedAt), "PP")}
+                    Last updated{" "}
+                    {format(parseStoredInstant(student.updatedAt), "PPp")}
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Programmes */}
-            <div className="sm:col-span-2 min-w-0">
-              <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                Assigned Programmes
-                <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
-                  {studentAssignments.length}
-                </Badge>
-              </h4>
-              <div className="border rounded-md overflow-hidden">
-                {isLoading ? (
-                  <div className="flex items-center justify-center py-10">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : (
-                  <ScrollArea className="h-[200px] sm:h-[220px]">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="hover:bg-transparent">
-                          <TableHead className="py-1.5 text-xs">
-                            Programme
-                          </TableHead>
-                          <TableHead className="py-1.5 text-xs w-20">
-                            Type
-                          </TableHead>
-                          <TableHead className="py-1.5 text-xs w-24">
-                            Stage
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {studentAssignments.map((assignment: any) => {
-                          const isGroup =
-                            assignment.programme?.type === "GROUP";
-                          const isLoading = loadingTeamFor === assignment.id;
-                          return (
-                            <TableRow
-                              key={assignment.id}
-                              className={`border-b last:border-0 ${isGroup ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}`}
-                              onClick={
-                                isGroup
-                                  ? () => openTeamModal(assignment)
-                                  : undefined
-                              }
-                            >
-                              <TableCell className="py-1.5 text-xs font-medium">
-                                <span className="flex items-center gap-1.5">
-                                  {assignment.programme?.name}
-                                  {isGroup && (
-                                    <Badge
-                                      variant="secondary"
-                                      className="text-[10px] h-4"
-                                    >
-                                      Team
-                                    </Badge>
-                                  )}
-                                  {isLoading && (
-                                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                                  )}
-                                </span>
-                              </TableCell>
-                              <TableCell className="py-1.5 text-[11px] text-muted-foreground">
-                                {assignment.programme?.type}
-                              </TableCell>
-                              <TableCell className="py-1.5 text-[11px] font-mono text-muted-foreground">
-                                {assignment.programme?.stageType}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                        {studentAssignments.length === 0 && (
-                          <TableRow>
-                            <TableCell
-                              colSpan={3}
-                              className="text-center text-muted-foreground text-xs py-6"
-                            >
-                              Not assigned to any programmes.
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </ScrollArea>
                 )}
               </div>
             </div>
           </div>
-        </ScrollArea>
+        </div>
       </DrawerContent>
 
       <TeamStudentsDialog
