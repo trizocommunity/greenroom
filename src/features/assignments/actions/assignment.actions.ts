@@ -2,8 +2,8 @@
 
 import { and, count, eq, inArray } from "drizzle-orm";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
-import { getSession } from "@/core/auth/session";
 import { getParticipantSessionFromCookie } from "@/core/auth/participant-session";
+import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
@@ -16,10 +16,37 @@ import {
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { parseStoredInstant } from "@/core/utils/date-time";
 import { AssignmentService } from "@/features/assignments/services/assignment.service";
+import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { assertFestivalMutationAllowed } from "@/features/festivals/services/festival-lifecycle-policy.service";
 
-async function getActorForCreatedBy(userId: string) {
+function auditActorForContext(actorContext: AssignmentActorContext) {
+  return actorContext.type === "user"
+    ? undefined
+    : { actorId: actorContext.studentId, actorRole: "TEAM_LEADER" };
+}
+
+export async function resolveAppointerContext(
+  actorContext: AssignmentActorContext,
+) {
+  if (actorContext.type === "user") {
+    const actor = await getActorForCreatedBy(actorContext.userId);
+    return {
+      appointedBy: actorContext.userId,
+      appointedByRole: "ADMIN" as const,
+      appointedByName: actor.createdByName,
+      appointedByEmail: actor.createdByEmail,
+    };
+  }
+  return {
+    appointedBy: actorContext.studentId,
+    appointedByRole: "TEAM_LEADER" as const,
+    appointedByName: "Team Leader",
+    appointedByEmail: undefined,
+  };
+}
+
+export async function getActorForCreatedBy(userId: string) {
   const user = await db.query.user.findFirst({
     where: eq(userTable.id, userId),
     columns: { email: true, fullName: true, displayName: true },
@@ -44,11 +71,11 @@ function assertAssignmentWindowOpen(
   }
 }
 
-type AssignmentActorContext =
+export type AssignmentActorContext =
   | { type: "user"; userId: string }
   | { type: "teamLeader"; studentId: string; groupId: string };
 
-async function resolveAssignmentActorContext(
+export async function resolveAssignmentActorContext(
   festivalId: string,
   options?: { requireWritable?: boolean },
 ): Promise<AssignmentActorContext> {
@@ -163,7 +190,15 @@ export async function createAssignmentAction(
     }
   }
 
-  return AssignmentService.create(festivalId, data, actor);
+  const created = await AssignmentService.create(festivalId, data, actor);
+  await createAuditLog({
+    action: "ASSIGN_STUDENTS",
+    targetType: "PROGRAMME_ASSIGNMENT",
+    targetId: created.id,
+    metadata: { programmeId: data.programmeId, studentId: data.studentId },
+    actor: auditActorForContext(actorContext),
+  }).catch((err) => console.error("[AuditLog] ASSIGN_STUDENTS failed", err));
+  return created;
 }
 
 export async function bulkCreateAssignmentAction(
@@ -173,6 +208,7 @@ export async function bulkCreateAssignmentAction(
     studentId: string;
     teamNumber?: number;
   }[],
+  teamLeadsByTeam?: Record<string, string>,
 ) {
   const actorContext = await resolveAssignmentActorContext(festivalId, {
     requireWritable: true,
@@ -213,10 +249,29 @@ export async function bulkCreateAssignmentAction(
     }
   }
 
-  return AssignmentService.bulkCreate(festivalId, assignments, actor);
+  const appointer = await resolveAppointerContext(actorContext);
+
+  const created = await AssignmentService.bulkCreate(
+    festivalId,
+    assignments,
+    actor,
+    { teamLeadsByTeam, appointer },
+  );
+  await createAuditLog({
+    action: "ASSIGN_STUDENTS",
+    targetType: "PROGRAMME_ASSIGNMENT",
+    targetId: festivalId,
+    metadata: { count: created.length },
+    actor: auditActorForContext(actorContext),
+  }).catch((err) => console.error("[AuditLog] ASSIGN_STUDENTS failed", err));
+  return created;
 }
 
-export async function deleteAssignmentAction(festivalId: string, id: string) {
+export async function deleteAssignmentAction(
+  festivalId: string,
+  id: string,
+  replacementLeadStudentId?: string,
+) {
   const actorContext = await resolveAssignmentActorContext(festivalId, {
     requireWritable: true,
   });
@@ -245,7 +300,23 @@ export async function deleteAssignmentAction(festivalId: string, id: string) {
     }
   }
 
-  return AssignmentService.delete(id, festivalId);
+  const appointer = await resolveAppointerContext(actorContext);
+
+  const deleted = await AssignmentService.delete(id, festivalId, {
+    replacementLeadStudentId,
+    appointer,
+  });
+  await createAuditLog({
+    action: "REMOVE_ASSIGNMENT",
+    targetType: "PROGRAMME_ASSIGNMENT",
+    targetId: id,
+    metadata: {
+      programmeId: deleted?.programmeId,
+      studentId: deleted?.studentId,
+    },
+    actor: auditActorForContext(actorContext),
+  }).catch((err) => console.error("[AuditLog] REMOVE_ASSIGNMENT failed", err));
+  return deleted;
 }
 
 export async function deleteTeamAssignmentAction(
@@ -267,12 +338,20 @@ export async function deleteTeamAssignmentAction(
     throw new AppError(ERROR_MESSAGES.FORBIDDEN);
   }
 
-  return AssignmentService.deleteByTeam(
+  const result = await AssignmentService.deleteByTeam(
     festivalId,
     programmeId,
     groupId,
     teamNumber,
   );
+  await createAuditLog({
+    action: "REMOVE_ASSIGNMENT",
+    targetType: "PROGRAMME_ASSIGNMENT",
+    targetId: `${programmeId}:${groupId}:${teamNumber}`,
+    metadata: { programmeId, groupId, teamNumber, count: result.count },
+    actor: auditActorForContext(actorContext),
+  }).catch((err) => console.error("[AuditLog] REMOVE_ASSIGNMENT failed", err));
+  return result;
 }
 
 export async function updateAssignmentAction(

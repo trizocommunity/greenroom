@@ -173,6 +173,8 @@ function getFeatureLabel(feature: FeaturePath): string {
     festivalSettings: "Festival Settings",
     advancedSettings: "Advanced Settings",
     programmeAssignmentDeadline: "Programme Assignment Deadline",
+    programmeTeamLead: "Programme Team Lead",
+    programmeAuditDrawer: "Programme Audit Trail",
 
     // Support
     supportLevel: "Support Level",

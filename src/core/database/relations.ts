@@ -32,6 +32,7 @@ import {
   programmeNotification,
   programmeReportedParticipant,
   programmeReportingSession,
+  programmeTeamLead,
   realtimeOutbox,
   result,
   scheduleEntry,
@@ -138,6 +139,7 @@ export const groupRelations = relations(group, ({ one, many }) => ({
   students: many(student),
   assignments: many(programmeAssignment),
   programmeReportedParticipants: many(programmeReportedParticipant),
+  programmeTeamLeads: many(programmeTeamLead),
 }));
 
 export const programmeRelations = relations(programme, ({ one, many }) => ({
@@ -156,6 +158,7 @@ export const programmeRelations = relations(programme, ({ one, many }) => ({
   programmeCodeLetters: many(programmeCodeLetter),
   programmeJudgeSessions: many(programmeJudgeSession),
   judgmentConfigs: many(judgmentConfig),
+  programmeTeamLeads: many(programmeTeamLead),
 }));
 
 export const studentRelations = relations(student, ({ one, many }) => ({
@@ -171,7 +174,7 @@ export const studentRelations = relations(student, ({ one, many }) => ({
     fields: [student.categoryId],
     references: [category.id],
   }),
-assignments: many(programmeAssignment),
+  assignments: many(programmeAssignment),
   teamLeaderOtps: many(teamLeaderOtp),
   teamLeaderSessions: many(teamLeaderSession),
   programmeReportedParticipants: many(programmeReportedParticipant),
@@ -179,6 +182,7 @@ assignments: many(programmeAssignment),
   programmeNotifications: many(programmeNotification),
   participantOtps: many(participantOtp),
   participantSessions: many(participantSession),
+  programmeTeamLeads: many(programmeTeamLead),
 }));
 
 export const stageRelations = relations(stage, ({ one, many }) => ({
@@ -237,6 +241,24 @@ export const programmeAssignmentRelations = relations(
       references: [result.assignmentId],
     }),
     programmeReportedParticipants: many(programmeReportedParticipant),
+  }),
+);
+
+export const programmeTeamLeadRelations = relations(
+  programmeTeamLead,
+  ({ one }) => ({
+    programme: one(programme, {
+      fields: [programmeTeamLead.programmeId],
+      references: [programme.id],
+    }),
+    group: one(group, {
+      fields: [programmeTeamLead.groupId],
+      references: [group.id],
+    }),
+    student: one(student, {
+      fields: [programmeTeamLead.studentId],
+      references: [student.id],
+    }),
   }),
 );
 
@@ -617,7 +639,7 @@ export const pendingInvitationRelations = relations(
   }),
 );
 
-import { participantSession, participantOtp } from "./schema";
+import { participantOtp, participantSession } from "./schema";
 
 export const participantSessionRelations = relations(
   participantSession,
@@ -633,12 +655,9 @@ export const participantSessionRelations = relations(
   }),
 );
 
-export const participantOtpRelations = relations(
-  participantOtp,
-  ({ one }) => ({
-    student: one(student, {
-      fields: [participantOtp.studentId],
-      references: [student.id],
-    }),
+export const participantOtpRelations = relations(participantOtp, ({ one }) => ({
+  student: one(student, {
+    fields: [participantOtp.studentId],
+    references: [student.id],
   }),
-);
+}));

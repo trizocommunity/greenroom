@@ -2,11 +2,7 @@ import * as schema from "../../src/core/database/schema";
 import { PROGRAMME_SCHEDULE, PROGRAMME_TEMPLATES } from "./config";
 import type { DB } from "./db";
 import type { CreatedStudent } from "./students";
-import type {
-  CreatedCategory,
-  CreatedGroup,
-  CreatedStage,
-} from "./taxonomies";
+import type { CreatedCategory, CreatedGroup, CreatedStage } from "./taxonomies";
 
 export async function createSessions(
   db: DB,
@@ -170,6 +166,24 @@ export async function createProgrammesAndAssignments(
                 updatedAt: new Date().toISOString(),
               });
               assignmentCount++;
+            }
+            // Pick the first team member as the programme team lead (seed default).
+            const teamLead = teamMembers[0];
+            if (teamLead) {
+              await db.insert(schema.programmeTeamLead).values({
+                id: crypto.randomUUID(),
+                programmeId: progId,
+                groupId: group.id,
+                teamNumber: teamNum,
+                studentId: teamLead.id,
+                appointedBy: "seed",
+                appointedByRole: "ADMIN",
+                appointedByName: "Seed",
+                appointedByEmail: "seed@local",
+                appointedAt: new Date().toISOString(),
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              });
             }
           }
         }
