@@ -448,7 +448,7 @@ export const AssignmentService = {
     }[],
     actor?: { createdByEmail?: string; createdByName?: string },
     options?: {
-      /** GROUP programmes only, keyed by `${groupId}:${teamNumber}` -> lead studentId. */
+      /** GROUP programmes only, keyed by `${programmeId}:${groupId}:${teamNumber}` -> lead studentId. */
       teamLeadsByTeam?: Record<string, string>;
       appointer?: {
         appointedBy: string;
@@ -671,7 +671,7 @@ export const AssignmentService = {
           finalResults.push(created);
 
           if (programme.type === "GROUP" && studentGroupId) {
-            touchedTeams.set(`${studentGroupId}:${teamNumber}`, {
+            touchedTeams.set(`${programmeId}:${studentGroupId}:${teamNumber}`, {
               groupId: studentGroupId,
               teamNumber,
             });

@@ -1,9 +1,15 @@
 import { createAssignmentInput } from "@/api/contracts/assignments";
-import { badRequest, createProtectedHandler, ok } from "@/api/lib";
+import {
+  badRequest,
+  createHandler,
+  createProtectedHandler,
+  ok,
+} from "@/api/lib";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
+import { deleteAssignmentAction } from "@/features/assignments/actions/assignment.actions";
 import { AssignmentService } from "@/features/assignments/services/assignment.service";
 
-const handler = createProtectedHandler({
+const protectedHandler = createProtectedHandler({
   async GET({ user, request }) {
     const url = new URL(request.url);
     const festivalId = url.searchParams.get("festivalId");
@@ -28,21 +34,33 @@ const handler = createProtectedHandler({
     const result = await AssignmentService.create(festivalId, parsed.data);
     return ok(result);
   },
+});
 
-  async DELETE({ user, request }) {
+// Not createProtectedHandler: the team-leader OTP portal (no admin session
+// cookie) also deletes assignments here. Auth is resolved per-request inside
+// deleteAssignmentAction via resolveAssignmentActorContext.
+const deleteHandler = createHandler({
+  async DELETE({ request }) {
     const url = new URL(request.url);
     const festivalId = url.searchParams.get("festivalId");
-    const assignmentId = url.searchParams.get("assignmentId");
     if (!festivalId)
       return badRequest("MISSING_PARAM", "festivalId is required");
+
+    const body = await request.json().catch(() => ({}));
+    const assignmentId =
+      body.assignmentId ?? url.searchParams.get("assignmentId");
     if (!assignmentId)
       return badRequest("MISSING_PARAM", "assignmentId is required");
-    await assertFestivalAccess(user, festivalId);
-    const result = await AssignmentService.delete(assignmentId, festivalId);
+
+    const result = await deleteAssignmentAction(
+      festivalId,
+      assignmentId,
+      body.replacementLeadStudentId,
+    );
     return ok(result);
   },
 });
 
-export const GET = handler;
-export const POST = handler;
-export const DELETE = handler;
+export const GET = protectedHandler;
+export const POST = protectedHandler;
+export const DELETE = deleteHandler;

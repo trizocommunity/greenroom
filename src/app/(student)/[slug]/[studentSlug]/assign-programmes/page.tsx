@@ -9,6 +9,7 @@ import {
   programme as programmeTable,
 } from "@/core/database/schema";
 import { getTeamLeaderGroupStudentsForSelection } from "@/features/participants/services/my-team";
+import { isProTier } from "@/features/plan-features/services/tier";
 
 export default async function AssignProgrammesPage({
   params,
@@ -77,6 +78,7 @@ export default async function AssignProgrammesPage({
         managerEmail={managerEmail}
         managerPhone={managerPhone}
         groupCount={groupCount}
+        canUseTeamLead={isProTier(festival.tier)}
         programmes={programmes.map((p) => ({
           id: p.id,
           name: p.name,
