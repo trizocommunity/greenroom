@@ -35,8 +35,8 @@ export default async function SuperAdminAnalyticsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">
-          User Behaviour Analytics
+        <h2 className="text-3xl font-semibold tracking-tight">
+          User behaviour analytics
         </h2>
         <p className="text-muted-foreground">
           Purchase history, login activity, and category preferences. Charts

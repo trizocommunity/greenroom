@@ -53,6 +53,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["var(--font-outfit)", "sans-serif"],
+        display: ["var(--font-display)", "serif"],
       },
     },
   },

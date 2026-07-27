@@ -9,31 +9,12 @@ export default function FestivalPublicNotFound() {
         className="pointer-events-none absolute inset-0 overflow-hidden"
       >
         <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[500px] w-[500px] rounded-full bg-primary/10 blur-[120px]" />
-        <div className="absolute bottom-0 right-0 h-[300px] w-[300px] rounded-full bg-secondary/10 blur-[80px]" />
-        {/* Dot grid */}
-        <svg
-          className="absolute inset-0 h-full w-full opacity-[0.035]"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <defs>
-            <pattern
-              id="dot-grid-festival"
-              x="0"
-              y="0"
-              width="24"
-              height="24"
-              patternUnits="userSpaceOnUse"
-            >
-              <circle cx="1" cy="1" r="1" fill="currentColor" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#dot-grid-festival)" />
-        </svg>
+        <div className="absolute bottom-0 right-0 h-[300px] w-[300px] rounded-full bg-secondary/10 blur-[100px]" />
       </div>
 
-      <div className="relative z-10 flex flex-col items-center gap-6 text-center">
+      <div className="relative z-10 flex flex-col items-center gap-5 text-center">
         {/* Festival icon */}
-        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 backdrop-blur-sm">
+        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-border bg-card shadow-premium">
           <svg
             className="h-10 w-10 text-primary"
             fill="none"
@@ -54,13 +35,14 @@ export default function FestivalPublicNotFound() {
           </svg>
         </div>
 
-        <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-primary">
-          Festival · 404
+        <span className="text-eyebrow">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+          Festival · Error 404
         </span>
 
         <div className="space-y-2">
-          <h1 className="text-5xl font-bold tracking-tight text-heading">
-            Page Not Found
+          <h1 className="text-4xl font-semibold tracking-tight text-heading">
+            Page not found
           </h1>
           <p className="max-w-md text-muted-foreground leading-relaxed">
             This festival page couldn&apos;t be found. The event may have ended,
@@ -71,15 +53,15 @@ export default function FestivalPublicNotFound() {
         <div className="flex flex-col sm:flex-row items-center gap-3 mt-2">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 justify-center rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:bg-primary-hover"
+            className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground shadow-primary-glow transition-opacity hover:opacity-90"
           >
             Explore Greenroom
           </Link>
           <Link
             href="/contact"
-            className="inline-flex items-center justify-center rounded-lg border border-border bg-card px-6 py-2.5 text-sm font-semibold text-foreground backdrop-blur-sm transition-all hover:bg-muted"
+            className="inline-flex items-center justify-center rounded-full border border-border bg-card px-6 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
           >
-            Contact Support
+            Contact support
           </Link>
         </div>
       </div>

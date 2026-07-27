@@ -70,38 +70,36 @@ export function ProfileSidebarContent({
   return (
     <div className={cn("flex flex-col h-full", className)}>
       {/* User Info & Avatar Header */}
-      <div className="flex flex-col items-start gap-4 mb-6 px-4 md:px-0">
-        <Avatar className="h-20 w-20 border border-border shadow-sm">
+      <div className="flex flex-col items-start gap-4 mb-8 px-4 md:px-0">
+        <Avatar className="h-16 w-16 border border-border shadow-premium">
           <AvatarImage src="" />
-          <AvatarFallback className="text-xl font-bold bg-primary/10 text-primary">
+          <AvatarFallback className="text-lg font-semibold bg-primary/8 text-primary">
             {initials}
           </AvatarFallback>
         </Avatar>
 
         {/* Name, Email & Badge */}
         <div className="space-y-1 w-full">
-          <h1 className="text-base font-bold tracking-tight text-foreground truncate">
+          <h1 className="text-base font-semibold tracking-tight text-heading truncate">
             {displayName}
           </h1>
-          <p className="text-xs font-medium text-muted-foreground truncate">
-            {user.email}
-          </p>
+          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
 
           {user.accountType && (
             <div className="pt-1.5">
               <Badge
                 variant="outline"
                 className={cn(
-                  "text-[11px] font-semibold px-2.5 py-0.5",
+                  "text-[11px] font-medium px-2.5 py-0.5",
                   user.accountType === "INSTITUTIONAL"
-                    ? "bg-primary/10 text-primary border-primary/20"
+                    ? "bg-primary/8 text-primary border-primary/20"
                     : "bg-muted text-muted-foreground",
                 )}
               >
                 {user.accountType}
               </Badge>
               {user.accountType === "PERSONAL" && (
-                <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed">
+                <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
                   Upgrade to Institutional for campus features
                 </p>
               )}
@@ -112,19 +110,19 @@ export function ProfileSidebarContent({
 
       {/* Navigation */}
       <nav className="flex flex-col space-y-1 flex-1">
-        <div className="mb-4 px-4 md:px-0 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+        <div className="mb-3 px-4 md:px-0 text-xs font-medium text-muted-foreground">
           Account
         </div>
-        <div className="flex flex-col space-y-1 px-2 md:px-0">
+        <div className="flex flex-col space-y-0.5 px-2 md:px-0">
           {items.map((item) => (
             <button
               type="button"
               key={item.value}
               onClick={() => navigate(item.value)}
               className={cn(
-                "flex items-center gap-3 rounded-md px-4 py-2.5 text-sm font-medium transition-colors w-full text-left",
+                "flex items-center gap-3 rounded-full px-4 py-2.5 text-sm font-medium transition-colors w-full text-left",
                 activeTab === item.value
-                  ? "bg-primary/10 text-primary font-semibold"
+                  ? "bg-primary/8 text-primary"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
@@ -133,7 +131,7 @@ export function ProfileSidebarContent({
             </button>
           ))}
         </div>
-        <div className="md:hidden mt-auto pt-6 px-4 border-t border-border/50">
+        <div className="md:hidden mt-auto pt-6 px-4 border-t border-border">
           <LogoutButton />
         </div>
       </nav>

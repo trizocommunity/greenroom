@@ -39,28 +39,28 @@ export function PaymentDetailsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md bg-background/95 backdrop-blur-xl border-border/50 p-0 overflow-hidden gap-0">
+      <DialogContent className="max-w-md bg-card border-border p-0 overflow-hidden gap-0 rounded-2xl shadow-premium-lg">
         <DialogHeader className="p-6 pb-2">
-          <DialogTitle className="flex items-center gap-2 text-xl">
+          <DialogTitle className="flex items-center gap-2 text-xl font-semibold tracking-tight text-heading">
             <Receipt className="w-5 h-5 text-primary" />
-            Payment Details
+            Payment details
           </DialogTitle>
         </DialogHeader>
 
         <div className="p-6 pt-2 space-y-6">
           {/* Header Section */}
-          <div className="flex flex-col items-center justify-center py-6 bg-muted/30 rounded-2xl border border-border/50">
-            <h3 className="text-3xl font-black tracking-tighter">
+          <div className="flex flex-col items-center justify-center py-6 bg-muted/30 rounded-2xl border border-border">
+            <h3 className="text-3xl font-semibold tracking-tight text-heading">
               {payment.amount?.toLocaleString() || 0} {payment.currency}
             </h3>
             <div className="flex items-center gap-2 mt-2">
               <Badge
                 variant={payment.status === "PAID" ? "default" : "secondary"}
-                className={`flex items-center gap-1 ${
+                className={`flex items-center gap-1 font-medium ${
                   payment.status === "PAID"
-                    ? "bg-green-500 hover:bg-green-600"
+                    ? "bg-success hover:bg-success/90"
                     : payment.status === "FAILED"
-                      ? "bg-red-500 hover:bg-red-600"
+                      ? "bg-destructive hover:bg-destructive/90"
                       : ""
                 }`}
               >
@@ -74,8 +74,8 @@ export function PaymentDetailsModal({
                 {payment.status}
               </Badge>
               {payment.used && (
-                <Badge variant="outline" className="text-xs">
-                  REDEEMED
+                <Badge variant="outline" className="text-xs font-medium">
+                  Redeemed
                 </Badge>
               )}
             </div>
@@ -89,7 +89,7 @@ export function PaymentDetailsModal({
                   <Calendar className="w-3.5 h-3.5" />
                   Date
                 </div>
-                <p className="font-semibold text-sm">
+                <p className="font-medium text-sm text-heading">
                   {createdAt ? format(createdAt, "PPP p") : "N/A"}
                 </p>
               </div>
@@ -99,8 +99,8 @@ export function PaymentDetailsModal({
                   <Tag className="w-3.5 h-3.5" />
                   Plan
                 </div>
-                <p className="font-semibold text-sm capitalize">
-                  {payment.tier || "Standard"} Plan
+                <p className="font-medium text-sm text-heading capitalize">
+                  {payment.tier || "Standard"} plan
                 </p>
               </div>
             </div>
@@ -108,7 +108,7 @@ export function PaymentDetailsModal({
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wider">
                 <CreditCard className="w-3.5 h-3.5" />
-                Transaction ID (Ref)
+                Transaction ID (ref)
               </div>
               <p className="font-mono text-xs bg-muted/50 p-2 rounded-lg break-all">
                 {payment.referenceId || "N/A"}
@@ -128,7 +128,7 @@ export function PaymentDetailsModal({
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wider">
                 <Hash className="w-3.5 h-3.5" />
-                Payment ID (Internal)
+                Payment ID (internal)
               </div>
               <p className="font-mono text-xs bg-muted/50 p-2 rounded-lg text-muted-foreground">
                 {payment.id}
@@ -136,12 +136,12 @@ export function PaymentDetailsModal({
             </div>
 
             {payment.festival && (
-              <div className="space-y-1 pt-2 border-t border-border/50">
+              <div className="space-y-1 pt-2 border-t border-border">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wider">
                   <Box className="w-3.5 h-3.5" />
-                  Linked Festival
+                  Linked festival
                 </div>
-                <p className="font-semibold text-primary">
+                <p className="font-medium text-primary">
                   {payment.festival.name}
                 </p>
               </div>

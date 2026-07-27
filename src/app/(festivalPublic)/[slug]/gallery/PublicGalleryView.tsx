@@ -29,7 +29,7 @@ export function PublicGalleryView({ images }: PublicGalleryViewProps) {
 
   if (images.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed bg-muted/20 py-24 text-center">
+      <div className="rounded-2xl border border-dashed border-border bg-muted/30 py-24 text-center">
         <p className="text-muted-foreground">No photos in the gallery yet.</p>
       </div>
     );
@@ -37,13 +37,13 @@ export function PublicGalleryView({ images }: PublicGalleryViewProps) {
 
   return (
     <>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
         {images.map((img, index) => (
           <button
             key={img.id}
             type="button"
             className={cn(
-              "relative aspect-square rounded-xl overflow-hidden bg-muted border-0 focus:outline-none focus:ring-2 ring-primary ring-offset-2 transition hover:opacity-95",
+              "group relative aspect-square rounded-2xl overflow-hidden bg-muted border border-border focus:outline-none focus:ring-2 ring-primary ring-offset-2 transition-all hover:border-primary/30 hover:shadow-premium",
               index % 5 === 0 && "sm:col-span-2 sm:row-span-2",
             )}
             onClick={() => open(index)}
@@ -52,7 +52,7 @@ export function PublicGalleryView({ images }: PublicGalleryViewProps) {
               src={img.url}
               alt="Gallery image"
               fill
-              className="object-cover"
+              className="object-cover transition-transform duration-500 group-hover:scale-105"
             />
           </button>
         ))}

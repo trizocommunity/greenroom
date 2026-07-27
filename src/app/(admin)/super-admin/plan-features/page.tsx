@@ -15,21 +15,21 @@ export default async function PlanFeaturesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Plan Features</h2>
+        <h2 className="text-3xl font-semibold tracking-tight">Plan features</h2>
         <p className="text-muted-foreground">
           Enable or disable features per plan (BASIC, STANDARD, PRO). Changes
           apply to all festivals on that plan.
         </p>
       </div>
 
-      <Card>
+      <Card className="rounded-2xl">
         <CardHeader>
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
+            <div className="p-2 bg-primary/10 rounded-xl">
               <Layers className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-lg">Feature Tags</CardTitle>
+              <CardTitle className="text-lg">Feature tags</CardTitle>
               <CardDescription>
                 Toggle business-intent feature tags per plan. Alias tags map 1:1
                 to underlying feature flags.

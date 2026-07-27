@@ -30,9 +30,9 @@ export function LifecycleInfo() {
       transition={{ duration: 0.5, delay: 0.3 }}
       className="max-w-2xl mx-auto mt-16"
     >
-      <div className="bg-muted/50 border border-border rounded-xl p-6 md:p-8">
-        <h3 className="text-lg font-semibold text-foreground text-center mb-6">
-          Festival Validity
+      <div className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-premium">
+        <h3 className="text-lg font-semibold tracking-tight text-heading text-center mb-6">
+          Festival validity
         </h3>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -42,9 +42,9 @@ export function LifecycleInfo() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 + index * 0.1 }}
-              className="flex items-start gap-3 p-3 rounded-lg bg-background/50"
+              className="flex items-start gap-3 p-3 rounded-lg bg-muted/40"
             >
-              <div className="shrink-0 h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <div className="shrink-0 h-8 w-8 rounded-lg bg-primary/8 flex items-center justify-center">
                 <point.icon className="h-4 w-4 text-primary" />
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed pt-1">

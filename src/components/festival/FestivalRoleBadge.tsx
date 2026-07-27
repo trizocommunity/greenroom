@@ -82,7 +82,7 @@ export function FestivalRoleBadge({
   return (
     <Badge
       variant={variant}
-      className={`font-normal whitespace-nowrap ${config.className} ${className}`}
+      className={`rounded-full font-normal whitespace-nowrap ${config.className} ${className}`}
     >
       <Icon className="w-3 h-3 mr-1.5" />
       {config.label}

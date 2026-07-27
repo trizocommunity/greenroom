@@ -8,10 +8,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/core/utils/cn";
-import {
-  getResolvedTier,
-  isBasicTier,
-} from "@/features/plan-features/services/tier";
+import { isBasicTier } from "@/features/plan-features/services/tier";
 import type { FestivalPublicData } from "./FestivalContext";
 
 const navItems = [
@@ -65,33 +62,33 @@ export function FestivalNavbar({
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
         isScrolled
-          ? "bg-background/95 backdrop-blur-xl border-b border-border shadow-sm h-12"
-          : "bg-transparent h-14",
+          ? "bg-background/90 backdrop-blur-xl border-b border-border shadow-premium h-14"
+          : "bg-transparent border-b border-transparent h-16",
       )}
     >
-      <div className="mx-auto max-w-7xl px-4 md:px-6 h-12 flex items-center justify-between">
+      <div className="mx-auto max-w-7xl px-4 md:px-6 h-14 flex items-center justify-between">
         {/* Festival Logo / Name */}
-        <Link href={linkBase} className="flex items-center gap-3 group">
+        <Link href={linkBase} className="flex items-center gap-2.5 group">
           {festival.logo ? (
             <Image
               src={festival.logo}
               alt={festival.name}
-              width={40}
-              height={40}
-              className="h-10 w-10 object-contain rounded"
+              width={36}
+              height={36}
+              className="h-9 w-9 object-contain rounded-lg"
             />
           ) : (
-            <div className="w-10 h-10 rounded flex items-center justify-center font-bold text-lg text-primary-foreground bg-primary">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center font-semibold text-sm text-primary-foreground bg-primary">
               {festival.name.charAt(0)}
             </div>
           )}
-          <span className="font-bold text-lg tracking-tight hidden sm:block">
+          <span className="font-semibold text-base tracking-tight hidden sm:block text-heading">
             {festival.name}
           </span>
         </Link>
 
         {/* Desktop Nav - Center */}
-        <nav className="hidden md:flex items-center gap-6">
+        <nav className="hidden md:flex items-center gap-1">
           {activeNavItems.map((item) => {
             // Handle Home specially
             const href =
@@ -101,22 +98,24 @@ export function FestivalNavbar({
               (currentPage === "/" && item.href === "/");
 
             return (
-              <Link key={item.href} href={href} className="relative py-2">
+              <Link key={item.href} href={href} className="relative">
+                {isActive && (
+                  <motion.span
+                    layoutId="festival-navbar-indicator"
+                    className="absolute inset-0 rounded-full bg-primary/8"
+                    transition={{ type: "spring", stiffness: 350, damping: 32 }}
+                  />
+                )}
                 <span
                   className={cn(
-                    "text-sm font-medium transition-colors hover:text-foreground",
-                    isActive ? "text-foreground" : "text-muted-foreground",
+                    "relative block px-3.5 py-2 text-sm font-medium rounded-full transition-colors",
+                    isActive
+                      ? "text-primary"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                 >
                   {item.name}
                 </span>
-                {isActive && (
-                  <motion.div
-                    layoutId="festival-navbar-indicator"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  />
-                )}
               </Link>
             );
           })}
@@ -126,19 +125,20 @@ export function FestivalNavbar({
         <div className="hidden md:flex items-center gap-3">
           {isLoggedIn ? (
             <Link href={`/dashboard/${festival.slug}`}>
-              <Button
-                size="sm"
-                className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                <LayoutDashboard size={16} />
+              <Button size="sm" className="gap-2 rounded-full font-medium">
+                <LayoutDashboard size={15} />
                 Dashboard
               </Button>
             </Link>
           ) : (
             <Link href={`/login?redirect=${encodeURIComponent(pathname)}`}>
-              <Button variant="outline" size="sm" className="gap-2">
-                <LogIn size={16} />
-                Login
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 rounded-full font-medium border-border"
+              >
+                <LogIn size={15} />
+                Log in
               </Button>
             </Link>
           )}
@@ -147,10 +147,10 @@ export function FestivalNavbar({
         {/* Mobile Toggle */}
         <button
           type="button"
-          className="md:hidden p-2 text-primary hover:bg-muted rounded-md"
+          className="md:hidden p-2 text-foreground hover:bg-muted rounded-full"
           onClick={() => setIsOpen(!isOpen)}
         >
-          {isOpen ? <X size={24} /> : <Menu size={24} />}
+          {isOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
       </div>
 
@@ -163,7 +163,7 @@ export function FestivalNavbar({
             exit={{ opacity: 0, height: 0 }}
             className="md:hidden bg-background border-b border-border overflow-hidden"
           >
-            <div className="p-4 flex flex-col gap-2">
+            <div className="p-4 flex flex-col gap-1">
               {activeNavItems.map((item) => {
                 const href =
                   item.href === "/" ? linkBase : `${linkBase}${item.href}`;
@@ -174,9 +174,9 @@ export function FestivalNavbar({
                     href={href}
                     onClick={() => setIsOpen(false)}
                     className={cn(
-                      "px-4 py-3 rounded-lg font-medium transition-colors",
+                      "px-4 py-2.5 rounded-full font-medium transition-colors text-sm",
                       isActive
-                        ? "text-primary-foreground bg-primary"
+                        ? "text-primary bg-primary/8"
                         : "text-muted-foreground hover:bg-muted",
                     )}
                   >
@@ -184,16 +184,16 @@ export function FestivalNavbar({
                   </Link>
                 );
               })}
-              <div className="border-t pt-4 mt-2">
+              <div className="border-t border-border pt-4 mt-2">
                 {isLoggedIn ? (
                   <Button
-                    className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                    className="w-full gap-2 rounded-full font-medium"
                     onClick={() => {
                       setIsOpen(false);
                       window.location.href = `/dashboard/${festival.slug}`;
                     }}
                   >
-                    <LayoutDashboard size={16} />
+                    <LayoutDashboard size={15} />
                     Dashboard
                   </Button>
                 ) : (
@@ -201,9 +201,12 @@ export function FestivalNavbar({
                     href={`/login?redirect=${encodeURIComponent(pathname)}`}
                     onClick={() => setIsOpen(false)}
                   >
-                    <Button variant="outline" className="w-full gap-2">
-                      <LogIn size={16} />
-                      Login
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2 rounded-full font-medium border-border"
+                    >
+                      <LogIn size={15} />
+                      Log in
                     </Button>
                   </Link>
                 )}

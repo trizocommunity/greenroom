@@ -57,7 +57,7 @@ export default async function ResultsPage({
       : [];
 
   return (
-    <div className="bg-background min-h-screen pt-20">
+    <div className="bg-background min-h-screen">
       <ResultsList
         festivalId={festival.id}
         festivalName={festival.name}

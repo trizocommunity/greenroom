@@ -16,7 +16,7 @@ export function StatsSection({ accentColor }: StatsSectionProps) {
   ];
 
   return (
-    <section className="py-20 border-y border-border bg-muted/50 backdrop-blur-sm">
+    <section className="py-16 border-y border-border bg-muted/40">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           {stats.map((stat, idx) => (
@@ -28,15 +28,13 @@ export function StatsSection({ accentColor }: StatsSectionProps) {
               viewport={{ once: true }}
               className="flex flex-col items-center justify-center gap-2 group cursor-default"
             >
-              <div className="p-3 rounded-2xl bg-card border border-border shadow-sm mb-2 group-hover:scale-110 transition-transform duration-300">
-                <stat.icon className="w-6 h-6" style={{ color: accentColor }} />
+              <div className="p-3 rounded-xl bg-card border border-border shadow-premium mb-2 group-hover:scale-105 transition-transform duration-300">
+                <stat.icon className="w-5 h-5" style={{ color: accentColor }} />
               </div>
-              <h3 className="text-3xl md:text-4xl font-bold tracking-tight">
+              <h3 className="text-2xl md:text-3xl font-semibold tracking-tight text-heading">
                 {stat.value}
               </h3>
-              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                {stat.label}
-              </p>
+              <p className="text-sm text-muted-foreground">{stat.label}</p>
             </motion.div>
           ))}
         </div>

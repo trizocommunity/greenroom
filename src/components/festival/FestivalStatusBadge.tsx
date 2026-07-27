@@ -102,7 +102,7 @@ export function FestivalStatusBadge({
     return (
       <Badge
         variant={config.variant}
-        className={`${badgeSizeClass} ${config.className}`}
+        className={`rounded-full ${badgeSizeClass} ${config.className}`}
       >
         <Icon className={`${iconSizeClass} mr-1`} />
         <span>{label}</span>

@@ -12,17 +12,14 @@ export function AdminEmptyState({
   description,
 }: AdminEmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-20 px-4 text-center animate-in fade-in zoom-in duration-500">
-      <div className="relative mb-6">
-        <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full" />
-        <div className="relative rounded-2xl bg-background/50 backdrop-blur-sm border border-border/50 p-6 shadow-2xl ring-1 ring-border/50">
-          {icon}
-        </div>
+    <div className="flex flex-col items-center justify-center py-20 px-4 text-center animate-in fade-in duration-500">
+      <div className="mb-6 rounded-2xl border border-border bg-card p-6 shadow-premium">
+        {icon}
       </div>
-      <h3 className="text-2xl font-black tracking-tight text-foreground mb-2">
+      <h3 className="text-xl font-semibold tracking-tight text-foreground mb-2">
         {title}
       </h3>
-      <p className="text-muted-foreground max-w-xs mx-auto leading-relaxed">
+      <p className="text-muted-foreground max-w-xs mx-auto leading-relaxed text-sm">
         {description}
       </p>
     </div>

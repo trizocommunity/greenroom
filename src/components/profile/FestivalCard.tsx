@@ -38,7 +38,7 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
   const progress = Math.min(100, Math.round((daysPassed / totalDays) * 100));
 
   return (
-    <Card className="group relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm transition-all duration-500 hover:shadow-lg hover:-translate-y-0.5">
+    <Card className="group relative overflow-hidden rounded-3xl border border-border bg-card shadow-premium transition-shadow duration-500 hover:shadow-premium-lg">
       {/* Subtle backdrop gradient */}
       <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-secondary/5 opacity-70 group-hover:opacity-90" />
 
@@ -53,7 +53,7 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
                 }
                 className={
                   isActive
-                    ? "bg-success text-white hover:bg-success/90 shadow-sm"
+                    ? "bg-success text-white hover:bg-success/90"
                     : undefined
                 }
               >
@@ -77,10 +77,10 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
                 Plan: {festival.tierLabel || festival.tier || "Standard"}
               </Badge>
             </div>
-            <h3 className="font-black text-2xl md:text-3xl tracking-tight text-heading truncate">
+            <h3 className="font-semibold text-2xl md:text-3xl tracking-tight text-heading truncate">
               {festival.name}
             </h3>
-            <p className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-primary/60" />
               Created {format(createdAt, "PPP")}
             </p>
@@ -90,7 +90,7 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full bg-muted hover:bg-primary hover:text-primary-foreground shadow-sm transition-all duration-300 shrink-0"
+              className="rounded-full bg-muted hover:bg-primary hover:text-primary-foreground transition-colors duration-300 shrink-0"
               title="Edit Details"
               onClick={() => onEdit(festival)}
             >
@@ -108,9 +108,7 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
                   <Clock className="w-3.5 h-3.5" />
                 </span>
                 <div className="flex flex-col">
-                  <span className="font-semibold tracking-wide">
-                    Lifecycle Progress
-                  </span>
+                  <span className="font-semibold">Lifecycle progress</span>
                   <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                     Day {Math.min(daysPassed + 1, totalDays)} of {totalDays}
                   </span>
@@ -168,28 +166,28 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
             <Button
               asChild
               variant="outline"
-              className="w-full justify-center rounded-2xl h-11 text-sm font-semibold border-primary/40 text-primary hover:bg-primary/10"
+              className="w-full justify-center rounded-full h-11 text-sm font-medium border-border hover:bg-muted"
             >
               <Link href={`/profile/festivals/${festival.slug}/expired`}>
-                View Details
+                View details
               </Link>
             </Button>
           ) : isActive || isPast ? (
             <Button
               asChild
-              className="w-full justify-center rounded-2xl h-11 text-sm font-semibold tracking-wide bg-linear-to-r from-primary to-secondary text-white shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all"
+              className="w-full justify-center rounded-full h-11 text-sm font-medium bg-linear-to-r from-primary to-secondary text-white shadow-primary-glow hover:opacity-90 transition-opacity"
             >
               <Link href={`/dashboard/${festival.slug}`}>
                 <LayoutDashboard className="mr-2 h-4 w-4" />
-                {isPast ? "Open Dashboard (Read-only)" : "Open Dashboard"}
+                {isPast ? "Open dashboard (read-only)" : "Open dashboard"}
               </Link>
             </Button>
           ) : (
             <Button
               disabled
-              className="w-full rounded-2xl h-11 text-sm italic opacity-70 bg-muted text-muted-foreground border border-border"
+              className="w-full rounded-full h-11 text-sm opacity-70 bg-muted text-muted-foreground border border-border"
             >
-              {isLocked ? "Activation required" : "Past (Read-only)"}
+              {isLocked ? "Activation required" : "Past (read-only)"}
             </Button>
           )}
         </div>
