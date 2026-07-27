@@ -1,4 +1,4 @@
-p# Adopt Neon Postgres: Provider Decision, Tenancy Model, and Provisioning Plan
+# Adopt Neon Postgres: Provider Decision, Tenancy Model, and Provisioning Plan
 
 ## Status
 - **Created**: 2026-07-27
