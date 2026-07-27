@@ -36,6 +36,7 @@ import {
 } from "@/core/database/schema";
 import { AppError } from "@/core/errors/errors";
 import type { ProgrammeJudgmentStatus } from "@/core/types/app-enums";
+import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { listFestivalJudgesWithAssignments } from "@/features/judges/repositories/judge.repository";
 import {
   getScoringPolicyWithRules,
@@ -1056,6 +1057,21 @@ export async function submitJudgeScoresAction(
         });
     }
   });
+
+  // No session here — judge auth is link-token + judgeId, not getSession().
+  await createAuditLog({
+    action: "SUBMIT_JUDGE_SCORES",
+    targetType: "JUDGMENT_SCORE",
+    targetId: link.configId,
+    metadata: {
+      programmeId: link.judgmentConfig.programmeId,
+      judgeId: input.judgeId,
+      count: Object.keys(input.scoresByCodeLetterId).length,
+    },
+    actor: { actorId: input.judgeId, actorRole: "JUDGE" },
+  }).catch((err) =>
+    console.error("[AuditLog] SUBMIT_JUDGE_SCORES failed", err),
+  );
 
   const allScores = await db.query.judgmentScore.findMany({
     where: eq(judgmentScoreTable.configId, link.configId),

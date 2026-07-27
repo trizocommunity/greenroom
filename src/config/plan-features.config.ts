@@ -98,6 +98,8 @@ export const PLAN_FEATURE_LABELS: Record<FeaturePath, string> = {
   festivalSettings: "Festival Settings",
   advancedSettings: "Advanced Settings",
   programmeAssignmentDeadline: "Programme Assignment Deadline",
+  programmeTeamLead: "Programme Team Lead",
+  programmeAuditDrawer: "Programme Audit Trail",
   supportLevel: "Support Level",
   supportResponseTime: "Support Response Time",
   postExpiryAccess: "Post-expiry Access",

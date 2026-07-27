@@ -99,23 +99,33 @@ export function useUpdateAssignment() {
 
 export function useDeleteAssignment() {
   const qc = useQueryClient();
-  return useMutation<void, Error, { festivalId: string; assignmentId: string }>(
+  return useMutation<
+    void,
+    Error,
     {
-      mutationFn: async ({ festivalId, assignmentId }) => {
-        const response = await apiClient.delete<ApiResponse<void>>(
-          `/assignments?festivalId=${encodeURIComponent(festivalId)}`,
-          { data: { assignmentId } },
-        );
-        return handleApiResponse(response.data);
-      },
-      onSuccess: (_data, { festivalId }) => {
-        qc.invalidateQueries({
-          queryKey: queryKeys.assignments.all(festivalId),
-        });
-      },
-      onError: (error) => {
-        toast.error(error.message);
-      },
+      festivalId: string;
+      assignmentId: string;
+      replacementLeadStudentId?: string;
+    }
+  >({
+    mutationFn: async ({
+      festivalId,
+      assignmentId,
+      replacementLeadStudentId,
+    }) => {
+      const response = await apiClient.delete<ApiResponse<void>>(
+        `/assignments?festivalId=${encodeURIComponent(festivalId)}`,
+        { data: { assignmentId, replacementLeadStudentId } },
+      );
+      return handleApiResponse(response.data);
     },
-  );
+    onSuccess: (_data, { festivalId }) => {
+      qc.invalidateQueries({
+        queryKey: queryKeys.assignments.all(festivalId),
+      });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
 }

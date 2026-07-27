@@ -73,6 +73,7 @@ export function AssignProgrammesClient({
   groupCount,
   programmes,
   myStudents,
+  canUseTeamLead,
 }: {
   festivalId: string;
   leaderGroupId: string;
@@ -85,6 +86,8 @@ export function AssignProgrammesClient({
   groupCount: number;
   programmes: ProgrammeForAssignment[];
   myStudents: MyStudentForAssignment[];
+  /** PRO-tier only — resolved server-side since this portal has no FestivalContext. */
+  canUseTeamLead: boolean;
 }) {
   const { isLocked, justLocked } = useDeadlineLock(deadline ?? null);
   const runtimeIsReadOnly = isReadOnly || isLocked;
@@ -544,6 +547,23 @@ export function AssignProgrammesClient({
     selectedNewStudentIdsToAssign,
   ]);
 
+  // Teams being formed for the first time in this save (no prior DB
+  // assignments) require a lead pick, chosen from the members being added.
+  const [teamLeadsByTeam, setTeamLeadsByTeam] = useState<
+    Record<string, string>
+  >({});
+
+  const teamsNeedingLead = useMemo(() => {
+    if (!canUseTeamLead || !groupTeamPreview || !selectedProgramme) return [];
+    return groupTeamPreview.teams
+      .filter((t) => t.existingIds.length === 0 && t.newIds.length > 0)
+      .map((t) => ({
+        key: `${selectedProgramme.id}:${leaderGroupId}:${t.teamNumber}`,
+        teamNumber: t.teamNumber,
+        memberIds: t.newIds,
+      }));
+  }, [canUseTeamLead, groupTeamPreview, selectedProgramme, leaderGroupId]);
+
   const leaderAssignments = useMemo(() => {
     return (assignments as any[]).filter((a) => {
       const gid =
@@ -685,6 +705,18 @@ export function AssignProgrammesClient({
         return;
       }
       bulkPayload = payload;
+
+      if (canUseTeamLead) {
+        const missingLead = teamsNeedingLead.find(
+          (t) => !t.memberIds.includes(teamLeadsByTeam[t.key]),
+        );
+        if (missingLead) {
+          toast.error(
+            `Pick a team lead for Team ${missingLead.teamNumber} before saving.`,
+          );
+          return;
+        }
+      }
     } else {
       bulkPayload = studentIdsToAssign.map((studentId) => ({
         programmeId: selectedProgramme.id,
@@ -694,9 +726,15 @@ export function AssignProgrammesClient({
 
     await bulkCreateAssignments.mutateAsync({
       festivalId,
-      data: { assignments: bulkPayload as any[] },
+      data: {
+        assignments: bulkPayload as any[],
+        ...(canUseTeamLead && teamsNeedingLead.length > 0
+          ? { teamLeadsByTeam }
+          : {}),
+      },
     });
     setSelectedStudentIds([]);
+    setTeamLeadsByTeam({});
   };
 
   return (
@@ -969,6 +1007,50 @@ export function AssignProgrammesClient({
                             </div>
                           ) : null}
 
+                          {teamsNeedingLead.length > 0 ? (
+                            <div className="space-y-2">
+                              <div className="text-sm font-medium">
+                                Team Leads{" "}
+                                <span className="text-xs text-muted-foreground font-normal">
+                                  (required)
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {teamsNeedingLead.map((t) => (
+                                  <div
+                                    key={t.key}
+                                    className="flex items-center gap-2 rounded-md border bg-background p-2"
+                                  >
+                                    <span className="text-xs text-muted-foreground shrink-0">
+                                      Team {t.teamNumber}
+                                    </span>
+                                    <Select
+                                      value={teamLeadsByTeam[t.key] ?? ""}
+                                      onValueChange={(value) =>
+                                        setTeamLeadsByTeam((prev) => ({
+                                          ...prev,
+                                          [t.key]: value,
+                                        }))
+                                      }
+                                    >
+                                      <SelectTrigger className="h-8 flex-1 text-xs">
+                                        <SelectValue placeholder="Select lead" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {t.memberIds.map((id) => (
+                                          <SelectItem key={id} value={id}>
+                                            {studentByIdLookup.get(id)?.name ??
+                                              id}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+
                           <div className="space-y-2">
                             <div className="text-sm font-medium">Students</div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1044,7 +1126,13 @@ export function AssignProgrammesClient({
                                 runtimeIsReadOnly ||
                                 selectedNewCount === 0 ||
                                 isOverLimit ||
-                                bulkCreateAssignments.isPending
+                                bulkCreateAssignments.isPending ||
+                                teamsNeedingLead.some(
+                                  (t) =>
+                                    !t.memberIds.includes(
+                                      teamLeadsByTeam[t.key],
+                                    ),
+                                )
                               }
                               className={
                                 runtimeIsReadOnly
@@ -1291,6 +1379,50 @@ export function AssignProgrammesClient({
                           </div>
                         ) : null}
 
+                        {teamsNeedingLead.length > 0 ? (
+                          <div className="space-y-2">
+                            <div className="text-sm font-medium">
+                              Team Leads{" "}
+                              <span className="text-xs text-muted-foreground font-normal">
+                                (required)
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {teamsNeedingLead.map((t) => (
+                                <div
+                                  key={t.key}
+                                  className="flex items-center gap-2 rounded-md border bg-background p-2"
+                                >
+                                  <span className="text-xs text-muted-foreground shrink-0">
+                                    Team {t.teamNumber}
+                                  </span>
+                                  <Select
+                                    value={teamLeadsByTeam[t.key] ?? ""}
+                                    onValueChange={(value) =>
+                                      setTeamLeadsByTeam((prev) => ({
+                                        ...prev,
+                                        [t.key]: value,
+                                      }))
+                                    }
+                                  >
+                                    <SelectTrigger className="h-8 flex-1 text-xs">
+                                      <SelectValue placeholder="Select lead" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {t.memberIds.map((id) => (
+                                        <SelectItem key={id} value={id}>
+                                          {studentByIdLookup.get(id)?.name ??
+                                            id}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+
                         <div className="space-y-2">
                           <Input
                             value={studentSearch}
@@ -1395,7 +1527,11 @@ export function AssignProgrammesClient({
                               runtimeIsReadOnly ||
                               selectedNewCount === 0 ||
                               isOverLimit ||
-                              bulkCreateAssignments.isPending
+                              bulkCreateAssignments.isPending ||
+                              teamsNeedingLead.some(
+                                (t) =>
+                                  !t.memberIds.includes(teamLeadsByTeam[t.key]),
+                              )
                             }
                           >
                             {bulkCreateAssignments.isPending && (

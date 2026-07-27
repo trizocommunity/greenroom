@@ -23,7 +23,9 @@ export type CuratedFeatureTag =
   | "eventWorks.reporting"
   | "eventWorks.externalJudging"
   | "eventWorks.judgmentUI"
-  | "eventWorks.marksUI";
+  | "eventWorks.marksUI"
+  | "programme.teamLead"
+  | "programme.auditDrawer";
 
 export type FeatureTag = FeatureToggleKey | CuratedFeatureTag;
 
@@ -32,6 +34,8 @@ const CURATED_FEATURE_TAGS: CuratedFeatureTag[] = [
   "eventWorks.externalJudging",
   "eventWorks.judgmentUI",
   "eventWorks.marksUI",
+  "programme.teamLead",
+  "programme.auditDrawer",
 ];
 
 export const FEATURE_TAGS: FeatureTag[] = [
@@ -74,6 +78,12 @@ const CURATED_TAG_REQUIREMENTS: Record<CuratedFeatureTag, TagRequirement> = {
     allowedTiers: ["BASIC"],
     requires: ["results", "chestNumbers"],
   },
+  "programme.teamLead": {
+    allowedTiers: ["PRO"],
+  },
+  "programme.auditDrawer": {
+    allowedTiers: ["PRO"],
+  },
 };
 
 export function isCuratedFeatureTag(tag: FeatureTag): tag is CuratedFeatureTag {
@@ -91,6 +101,8 @@ const CURATED_FEATURE_TAG_LABELS: Record<CuratedFeatureTag, string> = {
   "eventWorks.externalJudging": "External Judges",
   "eventWorks.judgmentUI": "Judgment UI",
   "eventWorks.marksUI": "Marks UI",
+  "programme.teamLead": "Programme Team Lead",
+  "programme.auditDrawer": "Programme Audit Trail",
 };
 
 export function getFeatureTagLabel(tag: FeatureTag): string {

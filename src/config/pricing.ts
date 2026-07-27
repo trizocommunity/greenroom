@@ -69,6 +69,8 @@ export interface TierFeatures {
   liveScoreboard: boolean;
   liveResults: boolean;
   multiFestivalManagement: boolean;
+  programmeTeamLead: boolean; // Team lead picker on GROUP assignments (PRO)
+  programmeAuditDrawer: boolean; // Audit timeline panel on programme drawer (PRO)
 
   // Settings
   festivalSettings: boolean;
@@ -181,6 +183,8 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       liveScoreboard: true,
       liveResults: true,
       multiFestivalManagement: false,
+      programmeTeamLead: false,
+      programmeAuditDrawer: false,
 
       // Settings — BASIC has no settings page (sidebar/route already gate on this)
       festivalSettings: true,
@@ -274,6 +278,8 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       liveScoreboard: true,
       liveResults: false,
       multiFestivalManagement: false,
+      programmeTeamLead: false,
+      programmeAuditDrawer: false,
 
       // Settings
       festivalSettings: true,
@@ -367,6 +373,8 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       liveScoreboard: true,
       liveResults: true,
       multiFestivalManagement: true,
+      programmeTeamLead: true,
+      programmeAuditDrawer: true,
 
       // Settings
       festivalSettings: true,

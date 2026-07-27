@@ -100,6 +100,10 @@ export const publicDisplayMode = pgEnum("PublicDisplayMode", [
   "team_standings",
 ]);
 export const programmeType = pgEnum("ProgrammeType", ["INDIVIDUAL", "GROUP"]);
+export const programmeTeamLeadAppointedByRole = pgEnum(
+  "ProgrammeTeamLeadAppointedByRole",
+  ["ADMIN", "TEAM_LEADER"],
+);
 export const realtimeOutboxStatus = pgEnum("RealtimeOutboxStatus", [
   "PENDING",
   "PROCESSING",
@@ -473,6 +477,10 @@ export const programme = pgTable(
     maxStudentsPerTeam: integer().default(1).notNull(),
     status: programmeStatus().default("READY").notNull(),
     publishedAt: timestamp({ precision: 3, mode: "string" }),
+    createdByEmail: text("created_by_email"),
+    createdByName: text("created_by_name"),
+    publishedByEmail: text("published_by_email"),
+    publishedByName: text("published_by_name"),
     resultPosterTemplateCode: text("result_poster_template_code"),
   },
   (table) => [
@@ -864,6 +872,12 @@ export const result = pgTable(
     isPublished: boolean().default(false).notNull(),
     isAnnounced: boolean().default(false).notNull(),
     announcedAt: timestamp({ precision: 3, mode: "string" }),
+    savedByEmail: text("saved_by_email"),
+    savedByName: text("saved_by_name"),
+    publishedByEmail: text("published_by_email"),
+    publishedByName: text("published_by_name"),
+    announcedByEmail: text("announced_by_email"),
+    announcedByName: text("announced_by_name"),
     createdAt: timestamp({ precision: 3, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -909,6 +923,71 @@ export const result = pgTable(
       columns: [table.assignmentId],
       foreignColumns: [programmeAssignment.id],
       name: "result_assignmentId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
+// ─── 11.5 programme_team_lead (depends on: programme, group, student) ─────────
+
+export const programmeTeamLead = pgTable(
+  "programme_team_lead",
+  {
+    id: text().primaryKey().notNull(),
+    programmeId: text().notNull(),
+    groupId: text().notNull(),
+    teamNumber: integer().default(1).notNull(),
+    studentId: text().notNull(),
+    appointedBy: text().notNull(),
+    appointedByRole: programmeTeamLeadAppointedByRole()
+      .default("ADMIN")
+      .notNull(),
+    appointedByName: text(),
+    appointedByEmail: text(),
+    appointedAt: timestamp({ precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    createdAt: timestamp({ precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp({ precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("programme_team_lead_team_key").using(
+      "btree",
+      table.programmeId.asc().nullsLast(),
+      table.groupId.asc().nullsLast(),
+      table.teamNumber.asc().nullsLast(),
+    ),
+    index("programme_team_lead_programmeId_idx").using(
+      "btree",
+      table.programmeId.asc().nullsLast(),
+    ),
+    index("programme_team_lead_studentId_idx").using(
+      "btree",
+      table.studentId.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.programmeId],
+      foreignColumns: [programme.id],
+      name: "programme_team_lead_programmeId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.groupId],
+      foreignColumns: [group.id],
+      name: "programme_team_lead_groupId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.studentId],
+      foreignColumns: [student.id],
+      name: "programme_team_lead_studentId_fkey",
     })
       .onUpdate("cascade")
       .onDelete("cascade"),

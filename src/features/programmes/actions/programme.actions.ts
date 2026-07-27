@@ -6,14 +6,31 @@ import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
   category as categoryTable,
+  festival as festivalTable,
   programme as programmeTable,
+  user as userTable,
 } from "@/core/database/schema";
 import {
   AppError,
   ERROR_MESSAGES,
   handleActionError,
 } from "@/core/errors/errors";
+import { createAuditLog } from "@/features/auth/services/audit-log.service";
+import { isProTier } from "@/features/plan-features/services/tier";
+import { getProgrammeDetailForDrawer } from "@/features/programmes/loaders/programme-detail.loader";
 import { ProgrammeService } from "@/features/programmes/services/programme.service";
+
+async function getActorForCreatedBy(userId: string) {
+  const user = await db.query.user.findFirst({
+    where: eq(userTable.id, userId),
+    columns: { email: true, fullName: true, displayName: true },
+  });
+  if (!user) return {};
+  return {
+    createdByEmail: user.email,
+    createdByName: user.displayName || user.fullName || user.email,
+  };
+}
 
 export async function getProgrammesAction(festivalId: string) {
   const session = await getSession();
@@ -91,15 +108,36 @@ export async function createProgrammeAction(
     throw new AppError(ERROR_MESSAGES.CATEGORY_REQUIRED);
   }
 
-  return ProgrammeService.create(festivalId, {
-    name: data.name,
-    categoryId: data.categoryId,
-    type: (data.type as "INDIVIDUAL" | "GROUP") || "INDIVIDUAL",
-    stageType: (data.stageType as "STAGE" | "NON_STAGE") || "STAGE",
-    maxParticipantsPerGroup: data.maxParticipantsPerGroup,
-    maxTeamsPerGroup: data.maxTeamsPerGroup,
-    maxStudentsPerTeam: data.maxStudentsPerTeam,
-  });
+  const actor = session?.userId
+    ? await getActorForCreatedBy(session.userId)
+    : {};
+
+  const created = await ProgrammeService.create(
+    festivalId,
+    {
+      name: data.name,
+      categoryId: data.categoryId,
+      type: (data.type as "INDIVIDUAL" | "GROUP") || "INDIVIDUAL",
+      stageType: (data.stageType as "STAGE" | "NON_STAGE") || "STAGE",
+      maxParticipantsPerGroup: data.maxParticipantsPerGroup,
+      maxTeamsPerGroup: data.maxTeamsPerGroup,
+      maxStudentsPerTeam: data.maxStudentsPerTeam,
+    },
+    actor,
+  );
+
+  await createAuditLog({
+    action: "CREATE_PROGRAMME",
+    targetType: "PROGRAMME",
+    targetId: created.id,
+    metadata: {
+      programmeId: created.id,
+      name: data.name,
+      categoryId: data.categoryId,
+    },
+  }).catch((err) => console.error("[AuditLog] CREATE_PROGRAMME failed", err));
+
+  return created;
 }
 
 export async function bulkCreateProgrammesAction(
@@ -138,7 +176,14 @@ export async function bulkCreateProgrammesAction(
 export async function deleteProgrammeAction(festivalId: string, id: string) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId, { requireWritable: true });
-  return ProgrammeService.delete(id, festivalId);
+  const deleted = await ProgrammeService.delete(id, festivalId);
+  await createAuditLog({
+    action: "DELETE_PROGRAMME",
+    targetType: "PROGRAMME",
+    targetId: id,
+    metadata: { festivalId, programmeId: id },
+  }).catch((err) => console.error("[AuditLog] DELETE_PROGRAMME failed", err));
+  return deleted;
 }
 
 export async function updateProgrammeAction(
@@ -158,7 +203,7 @@ export async function updateProgrammeAction(
   const session = await getSession();
   await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
-  return ProgrammeService.update(id, festivalId, {
+  const updated = await ProgrammeService.update(id, festivalId, {
     name: data.name,
     categoryId: data.categoryId,
     type: data.type
@@ -171,4 +216,38 @@ export async function updateProgrammeAction(
     maxTeamsPerGroup: data.maxTeamsPerGroup,
     maxStudentsPerTeam: data.maxStudentsPerTeam,
   });
+
+  await createAuditLog({
+    action: "UPDATE_PROGRAMME",
+    targetType: "PROGRAMME",
+    targetId: id,
+    metadata: { programmeId: id, changes: data },
+  }).catch((err) => console.error("[AuditLog] UPDATE_PROGRAMME failed", err));
+
+  return updated;
+}
+
+/**
+ * Programme drawer data. Panel A (summary/counts) is available on every
+ * tier; teamLeads/auditTimeline (Panels B/C) are PRO-only and stripped
+ * here rather than left to the frontend to hide.
+ */
+export async function getProgrammeDetailForDrawerAction(
+  festivalId: string,
+  programmeId: string,
+) {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
+
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.id, festivalId),
+    columns: { tier: true },
+  });
+
+  const detail = await getProgrammeDetailForDrawer(programmeId);
+
+  if (!isProTier(festival?.tier)) {
+    return { ...detail, teamLeads: {}, auditTimeline: [] };
+  }
+  return detail;
 }

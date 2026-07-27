@@ -15,6 +15,7 @@ import {
   countPendingAnnounceSlotsForProgramme,
   getAnnouncerBlockProgress,
 } from "@/features/announcement/services/announcer-result-count.service";
+import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { updateFestivalAnnouncerState } from "@/features/festivals/repositories/festival.repository";
 import { ensureFestivalWritable } from "@/features/festivals/services/festival-context.service";
 import {
@@ -144,6 +145,12 @@ export async function markProgrammeAnnounced(
     });
 
     if (festival.slug) revalidateAnnouncementPaths(festival.slug);
+    await createAuditLog({
+      action: "ANNOUNCE_RESULTS",
+      targetType: "RESULT",
+      targetId: programmeId,
+      metadata: { festivalId, programmeId, slotsAnnounced },
+    }).catch((err) => console.error("[AuditLog] ANNOUNCE_RESULTS failed", err));
     return {
       success: true,
       data: {

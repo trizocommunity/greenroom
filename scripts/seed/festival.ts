@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
+import { generateId } from "../../src/core/database/ids";
 import * as schema from "../../src/core/database/schema";
-import { FESTIVAL, FESTIVAL_MEMBERS, expiresAt } from "./config";
+import { expiresAt, FESTIVAL, FESTIVAL_MEMBERS } from "./config";
 import type { DB } from "./db";
 import { getOrCreateUser } from "./users";
 
@@ -10,7 +11,7 @@ export async function createFestival(
   institutionId: string,
 ): Promise<string> {
   const now = new Date().toISOString();
-  const festivalId = crypto.randomUUID();
+  const festivalId = generateId();
 
   const existing = await db.query.festival.findFirst({
     where: (f, { eq }) => eq(f.slug, FESTIVAL.slug),
@@ -20,9 +21,7 @@ export async function createFestival(
     console.log(
       `♻️  Existing Festival '${existing.name}' found. Removing previous data to seed cleanly...`,
     );
-    await db
-      .delete(schema.festival)
-      .where(eq(schema.festival.id, existing.id));
+    await db.delete(schema.festival).where(eq(schema.festival.id, existing.id));
   }
 
   await db.insert(schema.festival).values({
@@ -67,7 +66,7 @@ export async function recordProPayment(
   validUntil.setDate(validUntil.getDate() + 30);
 
   await db.insert(schema.payment).values({
-    id: crypto.randomUUID(),
+    id: generateId(),
     amount: FESTIVAL.payment.amount,
     currency: FESTIVAL.payment.currency,
     providerId: "SEED_PAYMENT",
@@ -134,7 +133,7 @@ export async function addFestivalMembers(
   const now = new Date().toISOString();
 
   await db.insert(schema.festivalMember).values({
-    id: crypto.randomUUID(),
+    id: generateId(),
     festivalId,
     userId: ownerId,
     role: "ADMIN",
@@ -147,7 +146,7 @@ export async function addFestivalMembers(
   for (const acc of FESTIVAL_MEMBERS) {
     const userId = await getOrCreateUser(db, acc.email, acc.name, "USER");
     await db.insert(schema.festivalMember).values({
-      id: crypto.randomUUID(),
+      id: generateId(),
       festivalId,
       userId,
       role: acc.role,

@@ -40,6 +40,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/core/utils/cn";
+import { useFeatureTag } from "@/features/plan-features/hooks/use-feature";
 
 interface AssignmentModalProps {
   festivalId: string;
@@ -78,6 +79,7 @@ export function AssignmentModal({
     useStudents(festivalId);
   const { data: assignments = [] } = useAssignments(festivalId);
   const bulkCreateAssignment = useBulkCreateAssignments();
+  const canUseTeamLead = useFeatureTag("programme.teamLead");
 
   const isLoading = programmesLoading || studentsLoading;
 
@@ -91,6 +93,40 @@ export function AssignmentModal({
   );
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [teamLeadsByTeam, setTeamLeadsByTeam] = useState<
+    Record<string, string>
+  >({});
+
+  // GROUP teams present in the queue, for the lead picker in the review step.
+  const queueTeams = useMemo(() => {
+    const teams = new Map<
+      string,
+      {
+        key: string;
+        programmeName: string;
+        groupName?: string;
+        teamNumber: number;
+        members: { id: string; name: string }[];
+      }
+    >();
+    for (const item of queue) {
+      if (!item.isGroupType || !item.groupId) continue;
+      const key = `${item.programmeId}:${item.groupId}:${item.teamNumber}`;
+      const existing = teams.get(key);
+      if (existing) {
+        existing.members.push({ id: item.studentId, name: item.studentName });
+      } else {
+        teams.set(key, {
+          key,
+          programmeName: item.programmeName,
+          groupName: item.groupName,
+          teamNumber: item.teamNumber,
+          members: [{ id: item.studentId, name: item.studentName }],
+        });
+      }
+    }
+    return Array.from(teams.values());
+  }, [queue]);
 
   // Derived Selection Objects
   const selectedProgramme = useMemo(
@@ -434,6 +470,19 @@ export function AssignmentModal({
   const handleSave = async () => {
     if (isReadOnly) return;
     if (queue.length === 0) return;
+
+    if (canUseTeamLead) {
+      const missingLead = queueTeams.find(
+        (t) => !t.members.some((m) => m.id === teamLeadsByTeam[t.key]),
+      );
+      if (missingLead) {
+        toast.error(
+          `Pick a team lead for Team ${missingLead.teamNumber} (${missingLead.groupName ?? "team"}) before saving.`,
+        );
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       await bulkCreateAssignment.mutateAsync({
@@ -444,9 +493,11 @@ export function AssignmentModal({
             studentId: item.studentId,
             teamNumber: item.teamNumber,
           })),
+          ...(canUseTeamLead ? { teamLeadsByTeam } : {}),
         },
       });
       setQueue([]);
+      setTeamLeadsByTeam({});
       onOpenChange(false);
       // Reset form
       setSelectedProgrammeId("");
@@ -855,6 +906,49 @@ export function AssignmentModal({
                   </Button>
                 </div>
 
+                {canUseTeamLead && queueTeams.length > 0 && (
+                  <div className="p-4 border-b bg-muted/10 space-y-3">
+                    <p className="text-sm font-medium">
+                      Team Leads{" "}
+                      <span className="text-xs text-muted-foreground font-normal">
+                        (required for GROUP programmes)
+                      </span>
+                    </p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {queueTeams.map((team) => (
+                        <div
+                          key={team.key}
+                          className="flex items-center gap-2 rounded-md border bg-background p-2"
+                        >
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            {team.programmeName} · Team {team.teamNumber}
+                          </span>
+                          <Select
+                            value={teamLeadsByTeam[team.key] ?? ""}
+                            onValueChange={(value) =>
+                              setTeamLeadsByTeam((prev) => ({
+                                ...prev,
+                                [team.key]: value,
+                              }))
+                            }
+                          >
+                            <SelectTrigger className="h-8 flex-1 text-xs">
+                              <SelectValue placeholder="Select lead" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {team.members.map((m) => (
+                                <SelectItem key={m.id} value={m.id}>
+                                  {m.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <ScrollArea className="flex-1 overflow-y-scroll">
                   {queue.length === 0 ? (
                     <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
@@ -918,7 +1012,16 @@ export function AssignmentModal({
                     <Button
                       onClick={handleSave}
                       disabled={
-                        isReadOnly || isSubmitting || queue.length === 0
+                        isReadOnly ||
+                        isSubmitting ||
+                        queue.length === 0 ||
+                        (canUseTeamLead &&
+                          queueTeams.some(
+                            (t) =>
+                              !t.members.some(
+                                (m) => m.id === teamLeadsByTeam[t.key],
+                              ),
+                          ))
                       }
                     >
                       {isSubmitting && (

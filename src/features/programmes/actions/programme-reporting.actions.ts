@@ -11,6 +11,7 @@ import {
   student as studentTable,
 } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import {
   assertReportingReopenAccess,
   assertStageManagerAccess,
@@ -18,6 +19,14 @@ import {
 } from "@/features/programmes/actions/reporting-access";
 import { revalidateProgrammeReporting } from "@/features/programmes/actions/reporting-revalidation";
 import { ProgrammeReportingService } from "@/features/programmes/services/programme-reporting.service";
+
+async function getProgrammeIdForReportingSession(reportingSessionId: string) {
+  const session = await db.query.programmeReportingSession.findFirst({
+    where: eq(prsTable.id, reportingSessionId),
+    columns: { programmeId: true },
+  });
+  return session?.programmeId;
+}
 
 export async function getProgrammeReportingBoardAction(festivalId: string) {
   const actor = await getSession();
@@ -35,6 +44,12 @@ export async function startProgrammeReportingAction(
 ) {
   const actorName = await assertStageManagerAccess(festivalId);
   const res = await ProgrammeReportingService.start(scheduleEntryId, actorName);
+  await createAuditLog({
+    action: "OPEN_REPORTING",
+    targetType: "REPORTING_SESSION",
+    targetId: res.id,
+    metadata: { festivalId, scheduleEntryId, programmeId: res.programmeId },
+  }).catch((err) => console.error("[AuditLog] OPEN_REPORTING failed", err));
   await revalidateProgrammeReporting(festivalId, "reporting");
   return { success: true, data: res };
 }
@@ -65,6 +80,22 @@ export async function markProgrammeParticipantAction(
     isReported,
     actorName,
   );
+  if (isReported) {
+    const assignment = await db.query.programmeAssignment.findFirst({
+      where: eq(assignmentTable.id, assignmentId),
+      columns: { programmeId: true },
+    });
+    await createAuditLog({
+      action: "MARK_REPORTED",
+      targetType: "PROGRAMME_ASSIGNMENT",
+      targetId: assignmentId,
+      metadata: {
+        festivalId,
+        reportingSessionId,
+        programmeId: assignment?.programmeId,
+      },
+    }).catch((err) => console.error("[AuditLog] MARK_REPORTED failed", err));
+  }
   await revalidateProgrammeReporting(festivalId, "reporting");
   return { success: true };
 }
@@ -82,6 +113,21 @@ export async function markProgrammeAssignmentsBulkAction(
     isReported,
     actorName,
   );
+  if (isReported) {
+    const programmeId =
+      await getProgrammeIdForReportingSession(reportingSessionId);
+    await createAuditLog({
+      action: "MARK_REPORTED",
+      targetType: "PROGRAMME_ASSIGNMENT",
+      targetId: reportingSessionId,
+      metadata: {
+        festivalId,
+        reportingSessionId,
+        programmeId,
+        count: assignmentIds.length,
+      },
+    }).catch((err) => console.error("[AuditLog] MARK_REPORTED failed", err));
+  }
   await revalidateProgrammeReporting(festivalId, "reporting");
   return { success: true };
 }
@@ -95,6 +141,15 @@ export async function closeProgrammeReportingAction(
     reportingSessionId,
     actorName,
   );
+  await createAuditLog({
+    action: "CLOSE_REPORTING",
+    targetType: "REPORTING_SESSION",
+    targetId: reportingSessionId,
+    metadata: {
+      festivalId,
+      programmeId: await getProgrammeIdForReportingSession(reportingSessionId),
+    },
+  }).catch((err) => console.error("[AuditLog] CLOSE_REPORTING failed", err));
   await revalidateProgrammeReporting(festivalId, "reporting-close");
   return { success: true, data: res };
 }
@@ -390,6 +445,16 @@ export async function assignCodeLettersWithSpinAction(
     codeAssignments,
     actorName,
   );
+  await createAuditLog({
+    action: "ISSUE_CODE_LETTER",
+    targetType: "REPORTING_SESSION",
+    targetId: reportingSessionId,
+    metadata: {
+      festivalId,
+      count: codeAssignments.length,
+      programmeId: await getProgrammeIdForReportingSession(reportingSessionId),
+    },
+  }).catch((err) => console.error("[AuditLog] ISSUE_CODE_LETTER failed", err));
   await revalidateProgrammeReporting(festivalId, "reporting");
 
   return { success: true, data: result };

@@ -404,14 +404,56 @@ export const TEAM_LEADER_DOB_BY_GROUP: Record<string, string> = {
 };
 
 /**
- * Compute a deterministic date of birth so re-runs produce stable identifiers.
- * Cycles through a 7-year window from a base date so ages look realistic.
+ * Age brackets matching the JUNIOR ("Under 15") / SENIOR ("15 to 19")
+ * category descriptions in `CATEGORIES`, so seeded students land in the
+ * category they're actually assigned to instead of a random 7-year window.
  */
-export function dateOfBirthFor(index: number): string {
-  const base = new Date("2006-01-15T00:00:00.000Z").getTime();
-  const oneDay = 24 * 60 * 60 * 1000;
-  const offset = (index * 137) % (7 * 365);
-  return new Date(base + offset * oneDay).toISOString();
+const AGE_BRACKET_BY_CATEGORY: Record<string, { min: number; max: number }> = {
+  JUNIOR: { min: 11, max: 14 },
+  SENIOR: { min: 15, max: 19 },
+};
+
+/**
+ * Deterministic date of birth for a student in a given category, so re-runs
+ * produce stable identifiers and the resulting age matches the category.
+ */
+export function dateOfBirthForCategory(
+  categoryName: string,
+  index: number,
+): string {
+  const bracket = AGE_BRACKET_BY_CATEGORY[categoryName] ?? { min: 11, max: 19 };
+  const span = bracket.max - bracket.min + 1;
+  const age = bracket.min + (index % span);
+
+  const now = new Date();
+  const birthYear = now.getUTCFullYear() - age;
+  // Deterministic day-of-year jitter so DOBs aren't all Jan 1.
+  const dayOfYear = (index * 137) % 365;
+  return new Date(Date.UTC(birthYear, 0, 1 + dayOfYear)).toISOString();
+}
+
+/** Whole-years age as of today, derived from an ISO date of birth string. */
+export function ageFromDateOfBirth(dobIso: string): number {
+  const dob = new Date(dobIso);
+  const now = new Date();
+  let age = now.getUTCFullYear() - dob.getUTCFullYear();
+  const hasHadBirthdayThisYear =
+    now.getUTCMonth() > dob.getUTCMonth() ||
+    (now.getUTCMonth() === dob.getUTCMonth() &&
+      now.getUTCDate() >= dob.getUTCDate());
+  if (!hasHadBirthdayThisYear) age -= 1;
+  return age;
+}
+
+/**
+ * Deterministic "class/standard" label consistent with an age, roughly
+ * mirroring an Indian schooling system (age - 5 ≈ standard). Section letter
+ * follows the student's group so it reads naturally alongside chest numbers.
+ */
+export function standardForAge(age: number, groupName: string): string {
+  const standardNumber = Math.min(12, Math.max(1, age - 5));
+  const section = groupName.includes("Qurtuba") ? "A" : "B";
+  return `${standardNumber}-${section}`;
 }
 
 export function expiresAt(startDate: string): string {
