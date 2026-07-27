@@ -146,11 +146,22 @@ export function createAdminHandler(handlers: RouteHandlers) {
 }
 
 export function createCronHandler(handlers: RouteHandlers) {
+  const cronSecretEnv = process.env.CRON_SECRET;
+
+  // Fail-fast in production: silently rejecting every cron call because the
+  // secret is unset is worse than throwing at startup — Vercel Cron would
+  // 403 every invocation with no signal in the code that anything is wrong.
+  if (process.env.NODE_ENV === "production" && !cronSecretEnv) {
+    throw new Error(
+      "CRON_SECRET is not defined — refusing to start cron handlers in production.",
+    );
+  }
+
   return createHandler({
     GET: handlers.GET
       ? async (ctx) => {
           const cronSecret = ctx.request.headers.get("x-cron-secret");
-          if (!cronSecret || cronSecret !== process.env.CRON_SECRET) {
+          if (!cronSecret || !cronSecretEnv || cronSecret !== cronSecretEnv) {
             return forbidden("Invalid or missing cron secret");
           }
           return handlers.GET!(ctx);
