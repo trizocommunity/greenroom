@@ -76,7 +76,9 @@ export async function createStudentWithServiceAction(
   await assignChestNumberForNewStudent(festivalId, newStudent.id);
   try {
     revalidatePath(`/dashboard/${festival.slug}/pre-event-works/students`);
-  } catch {}
+  } catch (error) {
+    console.error("[revalidatePath] students page", error);
+  }
   return newStudent;
 }
 
@@ -201,7 +203,9 @@ export async function bulkCreateStudentsAction(
 
   try {
     revalidatePath(`/dashboard/${festival.slug}/pre-event-works/students`);
-  } catch {}
+  } catch (error) {
+    console.error("[revalidatePath] students page", error);
+  }
 
   return { success: true, successCount, errors };
 }

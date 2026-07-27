@@ -1,11 +1,37 @@
 "use client";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  MutationCache,
+  QueryCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useState } from "react";
+import { toast } from "sonner";
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  return "Something went wrong. Please try again.";
+}
 
 function makeBrowserQueryClient() {
   return new QueryClient({
+    queryCache: new QueryCache({
+      onError: (error, query) => {
+        if (query.meta?.suppressErrorToast) return;
+        toast.error(getErrorMessage(error));
+      },
+    }),
+    mutationCache: new MutationCache({
+      onError: (error, _variables, _context, mutation) => {
+        // Mutations that already show their own toast (the common
+        // pattern in this codebase) opt out by defining onError locally.
+        if (mutation.options.onError) return;
+        if (mutation.meta?.suppressErrorToast) return;
+        toast.error(getErrorMessage(error));
+      },
+    }),
     defaultOptions: {
       queries: {
         staleTime: 60 * 1000,

@@ -1,7 +1,8 @@
 import "server-only";
 import type { SessionPayload } from "@/core/auth/session";
 import { decrypt } from "@/core/auth/session";
-import { err, forbidden, unauthorized } from "./response";
+import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { err, forbidden, internalError, unauthorized } from "./response";
 
 export type { SessionPayload };
 
@@ -53,7 +54,19 @@ export function createHandler(handlers: RouteHandlers) {
       );
     }
 
-    return handler({ user, session: sessionValue, request: req });
+    try {
+      return await handler({ user, session: sessionValue, request: req });
+    } catch (error) {
+      console.error("[ApiHandlerError]", error);
+
+      if (error instanceof AppError) {
+        return Response.json(err(error.code, error.message), {
+          status: 400,
+        });
+      }
+
+      return internalError(ERROR_MESSAGES.DEFAULT);
+    }
   };
 }
 

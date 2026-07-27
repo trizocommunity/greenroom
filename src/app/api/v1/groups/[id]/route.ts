@@ -1,9 +1,16 @@
 import "server-only";
 
 import { updateGroupInput } from "@/api/contracts/groups";
-import { badRequest, notFound, ok, unauthorized } from "@/api/lib";
+import {
+  badRequest,
+  internalError,
+  notFound,
+  ok,
+  unauthorized,
+} from "@/api/lib";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
+import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { GroupService } from "@/features/groups/services/group.service";
 
 export const PUT = async (
@@ -24,17 +31,19 @@ export const PUT = async (
   const parsed = updateGroupInput.safeParse(data);
   if (!parsed.success) return badRequest("INVALID_INPUT", parsed.error.message);
 
-  await assertFestivalAccess(session, festivalId);
-
   try {
+    await assertFestivalAccess(session, festivalId);
     const result = await GroupService.update(id, festivalId, parsed.data);
     return ok(result);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    if (message.includes("not found")) {
-      return notFound("GROUP_NOT_FOUND", message);
+    if (error instanceof AppError) {
+      if (error.message === ERROR_MESSAGES.GROUP_NOT_FOUND) {
+        return notFound("GROUP_NOT_FOUND", error.message);
+      }
+      return badRequest(error.code, error.message);
     }
-    throw error;
+    console.error("[GroupUpdateError]", error);
+    return internalError(ERROR_MESSAGES.DEFAULT);
   }
 };
 
@@ -50,19 +59,18 @@ export const DELETE = async (
   const festivalId = url.searchParams.get("festivalId");
   if (!festivalId) return badRequest("MISSING_PARAM", "festivalId is required");
 
-  await assertFestivalAccess(session, festivalId);
-
   try {
+    await assertFestivalAccess(session, festivalId);
     const result = await GroupService.delete(groupId, festivalId);
     return ok(result);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    if (message.includes("not found")) {
-      return notFound("GROUP_NOT_FOUND", message);
+    if (error instanceof AppError) {
+      if (error.message === ERROR_MESSAGES.GROUP_NOT_FOUND) {
+        return notFound("GROUP_NOT_FOUND", error.message);
+      }
+      return badRequest(error.code, error.message);
     }
-    if (message.includes("students")) {
-      return badRequest("GROUP_HAS_STUDENTS", message);
-    }
-    throw error;
+    console.error("[GroupDeleteError]", error);
+    return internalError(ERROR_MESSAGES.DEFAULT);
   }
 };
