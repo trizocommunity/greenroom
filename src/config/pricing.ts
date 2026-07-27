@@ -78,6 +78,10 @@ export interface TierFeatures {
   // Support
   supportLevel: "whatsapp" | "email" | "priority" | "dedicated";
   supportResponseTime: number; // hours
+
+  // Post-expiry
+  postExpiryAccess: "readonly" | "delete";
+  dataRetentionDays: number;
 }
 
 export interface TierLimits {
@@ -186,6 +190,10 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       // Support
       supportLevel: "whatsapp",
       supportResponseTime: 24,
+
+      // Post-expiry
+      postExpiryAccess: "delete",
+      dataRetentionDays: 0,
     },
   },
 
@@ -275,6 +283,10 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       // Support — email support with faster response
       supportLevel: "email",
       supportResponseTime: 12,
+
+      // Post-expiry
+      postExpiryAccess: "delete",
+      dataRetentionDays: 0,
     },
   },
 
@@ -364,6 +376,10 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       // Support — priority support with 4h SLA
       supportLevel: "priority",
       supportResponseTime: 4,
+
+      // Post-expiry
+      postExpiryAccess: "delete",
+      dataRetentionDays: 0,
     },
   },
 };
