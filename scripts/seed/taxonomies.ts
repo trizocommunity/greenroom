@@ -1,3 +1,4 @@
+import { generateId } from "../../src/core/database/ids";
 import * as schema from "../../src/core/database/schema";
 import { CATEGORIES, GROUPS, STAGES } from "./config";
 import type { DB } from "./db";
@@ -13,7 +14,7 @@ export async function createCategories(
   console.log("📁 Creating Categories (GENERAL, JUNIOR, SENIOR)...");
   const out: CreatedCategory[] = [];
   for (const cat of CATEGORIES) {
-    const id = crypto.randomUUID();
+    const id = generateId();
     await db.insert(schema.category).values({
       id,
       festivalId,
@@ -35,7 +36,7 @@ export async function createGroups(
   console.log("🚩 Creating 2 Groups (Al-Qurtuba & Al-Andalus)...");
   const out: CreatedGroup[] = [];
   for (const group of GROUPS) {
-    const id = crypto.randomUUID();
+    const id = generateId();
     await db.insert(schema.group).values({
       id,
       festivalId,
@@ -57,7 +58,7 @@ export async function createStages(
   console.log("🎭 Creating Stages...");
   const out: CreatedStage[] = [];
   for (const stage of STAGES) {
-    const id = crypto.randomUUID();
+    const id = generateId();
     await db.insert(schema.stage).values({
       id,
       festivalId,
@@ -79,7 +80,7 @@ export async function createJudges(
   console.log(`⚖️  Creating ${judges.length} Judges...`);
   for (const name of judges) {
     await db.insert(schema.judge).values({
-      id: crypto.randomUUID(),
+      id: generateId(),
       festivalId,
       name,
       description: "Appointed Panel Judge",

@@ -1,12 +1,15 @@
+import { generateId } from "../../src/core/database/ids";
 import * as schema from "../../src/core/database/schema";
 import { generateProfileSlug } from "../../src/core/utils/slug";
 import {
+  ageFromDateOfBirth,
+  dateOfBirthForCategory,
   ISLAMIC_FEMALE_NAMES,
   ISLAMIC_MALE_NAMES,
   STUDENTS_PER_CATEGORY_PER_GROUP,
+  standardForAge,
   TEAM_LEADER_DOB_BY_GROUP,
   TEAM_LEADERS_PER_GROUP,
-  dateOfBirthFor,
 } from "./config";
 import type { DB } from "./db";
 import type { CreatedCategory, CreatedGroup } from "./taxonomies";
@@ -19,6 +22,8 @@ export type CreatedStudent = {
   chestNumber: string;
   isTeamLeader: boolean;
   dateOfBirth: string;
+  age: number;
+  standard: string;
   profileSlug: string;
   email: string | null;
 };
@@ -45,14 +50,15 @@ export async function createStudents(
 
     for (const cat of specificCategories) {
       for (let i = 0; i < STUDENTS_PER_CATEGORY_PER_GROUP; i++) {
-        const studentId = crypto.randomUUID();
+        const studentId = generateId();
         const chestNumber = `${group.start + chestCount}`;
         const isFemale = i % 2 === 1;
         const studentName = isFemale
           ? ISLAMIC_FEMALE_NAMES[(globalIdx >> 1) % ISLAMIC_FEMALE_NAMES.length]
           : ISLAMIC_MALE_NAMES[(globalIdx >> 1) % ISLAMIC_MALE_NAMES.length];
 
-        const isLeader = leadersAssignedForGroup < TEAM_LEADERS_PER_GROUP && i === 0;
+        const isLeader =
+          leadersAssignedForGroup < TEAM_LEADERS_PER_GROUP && i === 0;
         if (isLeader) leadersAssignedForGroup++;
 
         // First team leader of each group gets the deterministic showcase DOB
@@ -60,7 +66,10 @@ export async function createStudents(
         const dob =
           isLeader && leaderDob && leadersAssignedForGroup === 1
             ? leaderDob
-            : dateOfBirthFor(globalIdx);
+            : dateOfBirthForCategory(cat.name, globalIdx);
+        // Derived from the same dob so age/standard/DOB never disagree.
+        const age = ageFromDateOfBirth(dob);
+        const standard = standardForAge(age, group.name);
 
         const profileSlug = generateProfileSlug(
           studentName,
@@ -84,6 +93,8 @@ export async function createStudents(
           gender: isFemale ? "FEMALE" : "MALE",
           isTeamLeader: isLeader,
           dateOfBirth: dob,
+          age,
+          standard,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
@@ -96,6 +107,8 @@ export async function createStudents(
           chestNumber,
           isTeamLeader: isLeader,
           dateOfBirth: dob,
+          age,
+          standard,
           profileSlug,
           email,
         });

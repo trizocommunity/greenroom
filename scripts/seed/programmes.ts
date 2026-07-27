@@ -1,3 +1,4 @@
+import { generateId } from "../../src/core/database/ids";
 import * as schema from "../../src/core/database/schema";
 import { PROGRAMME_SCHEDULE, PROGRAMME_TEMPLATES } from "./config";
 import type { DB } from "./db";
@@ -22,7 +23,7 @@ export async function createSessions(
   for (const sess of sessions) {
     const stageAssigned = stages[sess.stageIdx] ?? stages[0];
     await db.insert(schema.scheduleEntry).values({
-      id: crypto.randomUUID(),
+      id: generateId(),
       festivalId,
       title: sess.title,
       description: sess.description,
@@ -62,7 +63,7 @@ export async function createProgrammesAndAssignments(
 
   for (const cat of categories) {
     for (const tmpl of PROGRAMME_TEMPLATES) {
-      const progId = crypto.randomUUID();
+      const progId = generateId();
       const scheduleKey = `${tmpl.name} - ${cat.name}`;
       const scheduleSlot = PROGRAMME_SCHEDULE[scheduleKey] ?? {
         startTime: "2026-08-15T11:00:00.000Z",
@@ -86,7 +87,7 @@ export async function createProgrammesAndAssignments(
         updatedAt: new Date().toISOString(),
       });
 
-      const scheduleEntryId = crypto.randomUUID();
+      const scheduleEntryId = generateId();
       await db.insert(schema.scheduleEntry).values({
         id: scheduleEntryId,
         festivalId,
@@ -102,7 +103,7 @@ export async function createProgrammesAndAssignments(
       });
 
       await db.insert(schema.programmeReportingSession).values({
-        id: crypto.randomUUID(),
+        id: generateId(),
         festivalId,
         scheduleEntryId,
         programmeId: progId,
@@ -129,7 +130,7 @@ export async function createProgrammesAndAssignments(
             tmpl.maxParticipantsPerGroup,
           )) {
             await db.insert(schema.programmeAssignment).values({
-              id: crypto.randomUUID(),
+              id: generateId(),
               programmeId: progId,
               festivalId,
               categoryId: cat.id,
@@ -155,7 +156,7 @@ export async function createProgrammesAndAssignments(
             );
             for (const student of teamMembers) {
               await db.insert(schema.programmeAssignment).values({
-                id: crypto.randomUUID(),
+                id: generateId(),
                 programmeId: progId,
                 festivalId,
                 categoryId: cat.id,
@@ -171,7 +172,7 @@ export async function createProgrammesAndAssignments(
             const teamLead = teamMembers[0];
             if (teamLead) {
               await db.insert(schema.programmeTeamLead).values({
-                id: crypto.randomUUID(),
+                id: generateId(),
                 programmeId: progId,
                 groupId: group.id,
                 teamNumber: teamNum,
