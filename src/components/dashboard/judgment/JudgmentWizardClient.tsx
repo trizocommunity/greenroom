@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Link2, Plus, RefreshCcw } from "lucide-react";
+import { Copy, Eye, Link2, MoreVertical, Plus, RefreshCcw } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -29,6 +29,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -724,74 +730,93 @@ export function JudgmentWizardClient({
               {completedJudgments.map((item) => (
                 <div
                   key={item.configId}
-                  className="rounded-xl border border-border/60 bg-linear-to-br from-background to-muted/30 p-3 text-sm shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md sm:p-4"
+                  className="group/card relative flex flex-col overflow-hidden rounded-xl border border-border/80 bg-card text-card-foreground shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/20"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 space-y-1.5">
-                      <p className="truncate text-sm font-semibold leading-snug">
-                        {item.programmeName}
-                      </p>
-                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-                        {(item.programmeStatus ?? "")
-                          .toUpperCase()
-                          .includes("PUBLISHED") ? (
-                          <span className="rounded border border-purple/60 px-1.5 py-0.5 text-[10px] font-medium text-purple">
-                            Published
-                          </span>
+                  <div className="flex flex-1 flex-col p-4 sm:p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-base leading-tight text-foreground line-clamp-2">
+                          {item.programmeName}
+                        </h3>
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                          {(item.programmeStatus ?? "").toUpperCase().includes("PUBLISHED") ? (
+                            <Badge variant="outline" className="border-purple/60 text-purple bg-purple/10 text-[10px]">
+                              Published
+                            </Badge>
+                          ) : null}
+                          <Badge variant="secondary" className="text-[10px]">
+                            {item.programmeStatus}
+                          </Badge>
+                          <Badge variant="secondary" className="text-[10px]">
+                            {item.judgingMode}
+                          </Badge>
+                        </div>
+                        {item.programmeCategory ? (
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            Category: {item.programmeCategory}
+                          </p>
                         ) : null}
-                        <span className="rounded bg-muted/40 px-1.5 py-0.5">
-                          {item.programmeStatus}
-                        </span>
-                        <span className="rounded bg-muted/40 px-1.5 py-0.5">
-                          {item.judgingMode}
-                        </span>
-                        <span className="rounded bg-muted/40 px-1.5 py-0.5">
-                          {item.programmeCategory ?? "No category"}
-                        </span>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                        <Badge
-                          variant="default"
-                          className="h-5 px-2 text-[10px]"
-                        >
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onSelect={() => setCompletedDetail(item)}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => setJudgedDetail(item)}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            Review scores
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    <div className="flex-1 min-h-4" />
+
+                    <div className="mt-4 flex flex-col gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="default" className="text-[10px]">
                           {judgmentStatusLabel(item.judgmentStatus)}
                         </Badge>
-                        <span className="text-muted-foreground/80">
-                          Created {formatCardDateTime(item.createdAt)}
-                        </span>
-                        <span className="text-muted-foreground">
+                        <span className="text-sm text-muted-foreground">
                           {item.completionSummary}
                         </span>
-                        <span className="text-muted-foreground/80">
-                          {item.totalJudgments} entries
-                        </span>
                       </div>
-                      {item.judgingMode === "SINGLE" &&
-                      item.pendingJudgeNames.length > 0 ? (
-                        <p className="text-[11px] text-muted-foreground">
-                          Pending: {item.pendingJudgeNames.join(", ")}
+                      {item.judgingMode === "SINGLE" && item.pendingJudgeNames.length > 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          <span className="font-medium">Pending:</span> {item.pendingJudgeNames.join(", ")}
                         </p>
                       ) : null}
                     </div>
-                    <div className="flex shrink-0 flex-col items-stretch gap-1.5 self-center">
-                      <Button
-                        className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCompletedDetail(item)}
-                      >
-                        View details
-                      </Button>
-                      <Button
-                        className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setJudgedDetail(item)}
-                      >
-                        Review scores
-                      </Button>
+
+                    {/* Stats strip */}
+                    <div className="mt-4 flex items-center gap-4 rounded-lg bg-muted/40 px-3 py-2.5 overflow-x-auto">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm whitespace-nowrap">
+                          <span className="font-semibold text-foreground">
+                            {item.totalJudgments}
+                          </span>
+                          <span className="text-muted-foreground"> entries</span>
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 border-l border-border pl-4">
+                        <span className="text-sm whitespace-nowrap text-muted-foreground">
+                          Created {formatCardDateTime(item.createdAt)}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>

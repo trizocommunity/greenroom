@@ -1,6 +1,6 @@
 "use client";
 
-import { Edit, Megaphone, Plus, Trash2 } from "lucide-react";
+import { Edit, Megaphone, MoreVertical, Plus, Trash2 } from "lucide-react";
 
 interface Stage {
   id: string;
@@ -25,11 +25,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { StageDialog } from "./StageDialog";
 
@@ -118,49 +119,79 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
           {stages.map((stage) => (
-            <Card key={stage.id} className="relative group overflow-hidden">
-              <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 pl-8">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-                  onClick={() => handleEdit(stage)}
-                  disabled={isReadOnly}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-                  onClick={() => setStageToDelete(stage.id)}
-                  disabled={isReadOnly}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-              <CardHeader>
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 bg-primary/10 rounded-md">
-                    <Megaphone className="h-4 w-4 text-primary" />
+            <div
+              key={stage.id}
+              className="group/card relative flex flex-col overflow-hidden rounded-xl border border-border/80 bg-card text-card-foreground shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/20"
+            >
+              <div className="flex flex-1 flex-col p-4 sm:p-5">
+                {/* Top: name + actions */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <div className="p-2 bg-primary/10 rounded-md shrink-0">
+                      <Megaphone className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3
+                        className="font-semibold text-base leading-tight text-foreground line-clamp-2"
+                        title={stage.name}
+                      >
+                        {stage.name}
+                      </h3>
+                      <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">
+                        {stage.description || "No description provided."}
+                      </p>
+                    </div>
                   </div>
-                  <CardTitle className="text-lg">{stage.name}</CardTitle>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                        <span className="sr-only">Actions</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-44">
+                      {!isReadOnly && (
+                        <>
+                          <DropdownMenuItem
+                            onSelect={() => handleEdit(stage)}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onSelect={() => setStageToDelete(stage.id)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
-                <CardDescription className="line-clamp-2 min-h-[2.5em]">
-                  {stage.description || "No description provided."}
-                </CardDescription>
+                {/* Spacer so footer stays at bottom */}
+                <div className="flex-1 min-h-2" />
 
-                <div className="pt-2 flex items-center gap-2 text-xs text-muted-foreground mt-2 border-t">
-                  <span>Created by:</span>
-                  <span className="font-medium text-foreground">
-                    {stage.createdBy || "System"}
-                  </span>
+                {/* Stats strip */}
+                <div className="mt-4 flex items-center gap-4 rounded-lg bg-muted/40 px-3 py-2.5">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">Created by:</span>
+                    <span className="font-medium text-foreground">
+                      {stage.createdBy || "System"}
+                    </span>
+                  </div>
                 </div>
-              </CardHeader>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       )}

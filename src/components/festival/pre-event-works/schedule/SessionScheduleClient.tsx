@@ -440,54 +440,61 @@ export function SessionScheduleClient({
                 {filteredDayEntries.map((entry) => (
                   <Card
                     key={entry.id}
-                    className="group relative overflow-hidden border border-border/80 bg-card shadow-sm transition-all hover:shadow-md hover:border-primary/20"
+                    className="group/card relative flex flex-col overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm transition-all hover:border-primary/20 hover:shadow-md"
                   >
-                    <div className="absolute top-3 right-3 z-10">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="secondary"
-                            size="icon"
-                            className="h-8 w-8 rounded-lg shadow-sm"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {!isReadOnly && (
-                            <>
-                              <DropdownMenuItem
-                                onClick={() => setEditEntry(entry)}
-                              >
-                                <Pencil className="h-4 w-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => setDeleteEntryId(entry.id)}
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </>
+                    <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-primary/40 to-primary/10" />
+                    <div className="flex-1 p-5 pb-0">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <h4 className="font-semibold text-base tracking-tight line-clamp-2">
+                            {getEntryLabel(entry)}
+                          </h4>
+                          {entry.sessionType && (
+                            <span className="mt-1.5 inline-block shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground border border-border/50">
+                              {SESSION_TYPE_LABELS[entry.sessionType] ??
+                                entry.sessionType}
+                            </span>
                           )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    <CardContent className="p-5 pr-12">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <h4 className="font-semibold text-base tracking-tight line-clamp-2 flex-1 min-w-0">
-                          {getEntryLabel(entry)}
-                        </h4>
-                        {entry.sessionType && (
-                          <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                            {SESSION_TYPE_LABELS[entry.sessionType] ??
-                              entry.sessionType}
-                          </span>
-                        )}
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:bg-background hover:text-foreground opacity-0 group-hover/card:opacity-100 transition-opacity focus:opacity-100 sm:-mr-2 sm:-mt-1"
+                              aria-label="Actions"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {!isReadOnly && (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => setEditEntry(entry)}
+                                >
+                                  <Pencil className="h-4 w-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => setDeleteEntryId(entry.id)}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
-                      <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                    </div>
+                    
+                    <div className="flex-1 min-h-4" />
+
+                    <div className="mx-5 mb-5 mt-4 flex flex-col gap-2 rounded-lg bg-muted/40 px-3 py-2.5 border border-border/40">
+                      <div className="flex flex-col gap-1.5 text-sm text-muted-foreground">
                         <span className="inline-flex items-center gap-2">
                           <Clock className="h-4 w-4 shrink-0 text-primary/70" />
                           {format(
@@ -507,7 +514,7 @@ export function SessionScheduleClient({
                           </span>
                         )}
                       </div>
-                    </CardContent>
+                    </div>
                   </Card>
                 ))}
               </div>

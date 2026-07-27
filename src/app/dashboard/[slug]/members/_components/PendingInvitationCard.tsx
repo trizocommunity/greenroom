@@ -55,33 +55,22 @@ export function PendingInvitationCard({
 
   return (
     <div className="group/card relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-blue-500/30">
-      {/* Color accent bar on the left */}
-      <div
-        className="absolute left-0 top-0 h-full w-1.5 shrink-0 transition-all duration-300 group-hover/card:w-2"
-        style={{ backgroundColor: statusColor }}
-      />
+      {/* Accent bar removed per user request */}
 
       <div className="flex flex-1 flex-col pl-5 pr-4 pt-5 pb-4">
-        {/* Top Header: Avatar + Email + Dropdown Menu */}
+        {/* Top Header: Email + Dropdown Menu */}
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 min-w-0 flex-1">
-            <Avatar className="h-11 w-11 shrink-0 rounded-full border-2 border-background shadow-sm ring-2 ring-blue-500/15 bg-gradient-to-br from-blue-500/20 to-blue-500/5 flex items-center justify-center text-blue-600 dark:text-blue-400 transition-transform duration-300 group-hover/card:scale-105">
-              <AvatarFallback className="bg-transparent text-blue-600 dark:text-blue-400">
-                <Mail className="h-4 w-4" />
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1 pt-0.5">
-              <h3
-                className="font-semibold text-base leading-snug text-foreground truncate tracking-tight group-hover/card:text-blue-500 transition-colors"
-                title={invitation.email}
-              >
-                {invitation.email}
-              </h3>
-              <p className="text-xs text-muted-foreground truncate mt-0.5 font-medium flex items-center gap-1">
-                <Clock className="h-3 w-3 text-blue-500/80 shrink-0" />
-                Pending Invitation
-              </p>
-            </div>
+          <div className="flex flex-col min-w-0 flex-1 pt-0.5">
+            <h3
+              className="font-semibold text-base leading-snug text-foreground truncate tracking-tight group-hover/card:text-blue-500 transition-colors"
+              title={invitation.email}
+            >
+              {invitation.email}
+            </h3>
+            <p className="text-xs text-muted-foreground truncate mt-0.5 font-medium flex items-center gap-1">
+              <Clock className="h-3 w-3 text-blue-500/80 shrink-0" />
+              Pending Invitation
+            </p>
           </div>
 
           {!isOwner ? (
@@ -144,23 +133,23 @@ export function PendingInvitationCard({
           </div>
         </div>
 
-        {/* Bottom Bento Box: Invited Date + Expiration Date */}
-        <div className="mt-4 grid grid-cols-2 gap-2 text-center rounded-xl border border-border/50 bg-muted/30 dark:bg-muted/15 p-2.5 transition-colors group-hover/card:bg-muted/50">
-          <div className="border-r border-border/40 pr-2">
-            <p className="text-xs font-bold leading-none text-foreground mt-0.5">
-              {format(createdAt, "MMM d, yyyy")}
-            </p>
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mt-1.5">
-              Invited
-            </p>
+        {/* Stats strip */}
+        <div className="mt-4 flex items-center gap-4 rounded-lg bg-muted/40 px-3 py-2.5 overflow-x-auto">
+          <div className="flex items-center gap-2">
+            <span className="text-sm whitespace-nowrap">
+              <span className="text-muted-foreground">Invited: </span>
+              <span className="font-medium text-foreground">
+                {format(createdAt, "MMM d, yyyy")}
+              </span>
+            </span>
           </div>
-          <div className="pl-2">
-            <p className="text-xs font-bold leading-none text-foreground mt-0.5">
-              {format(expiresAt, "MMM d, yyyy")}
-            </p>
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mt-1.5">
-              {isExpired ? "Expired On" : "Expires"}
-            </p>
+          <div className="flex items-center gap-2 border-l border-border pl-4">
+            <span className="text-sm whitespace-nowrap">
+              <span className="text-muted-foreground">{isExpired ? "Expired On: " : "Expires: "}</span>
+              <span className="font-medium text-foreground">
+                {format(expiresAt, "MMM d, yyyy")}
+              </span>
+            </span>
           </div>
         </div>
       </div>

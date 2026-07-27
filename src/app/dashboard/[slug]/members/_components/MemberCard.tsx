@@ -66,37 +66,25 @@ export function MemberCard({
 
   return (
     <div className="group/card relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30">
-      {/* Color accent bar on the left */}
-      <div
-        className="absolute left-0 top-0 h-full w-1.5 shrink-0 transition-all duration-300 group-hover/card:w-2"
-        style={{ backgroundColor: statusColor }}
-      />
+      {/* Accent bar removed per user request */}
 
       <div className="flex flex-1 flex-col pl-5 pr-4 pt-5 pb-4">
-        {/* Top Header: Avatar + Name/Email + Dropdown Menu */}
+        {/* Top Header: Name/Email + Dropdown Menu */}
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 min-w-0 flex-1">
-            <Avatar className="h-11 w-11 shrink-0 rounded-full border-2 border-background shadow-sm ring-2 ring-primary/10 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center font-semibold text-primary transition-transform duration-300 group-hover/card:scale-105">
-              {avatarUrl && <AvatarImage src={avatarUrl} alt={fullName} />}
-              <AvatarFallback className="bg-transparent text-sm font-bold text-primary">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1 pt-0.5">
-              <h3
-                className="font-semibold text-base leading-snug text-foreground truncate tracking-tight group-hover/card:text-primary transition-colors cursor-pointer"
-                onClick={() => setShowDetails(true)}
-                title={fullName}
-              >
-                {fullName}
-              </h3>
-              <p
-                className="text-xs text-muted-foreground truncate mt-0.5 font-medium"
-                title={email}
-              >
-                {email}
-              </p>
-            </div>
+          <div className="flex flex-col min-w-0 flex-1 pt-0.5">
+            <h3
+              className="font-semibold text-base leading-snug text-foreground truncate tracking-tight group-hover/card:text-primary transition-colors cursor-pointer"
+              onClick={() => setShowDetails(true)}
+              title={fullName}
+            >
+              {fullName}
+            </h3>
+            <p
+              className="text-xs text-muted-foreground truncate mt-0.5 font-medium"
+              title={email}
+            >
+              {email}
+            </p>
           </div>
 
           <DropdownMenu>
@@ -166,23 +154,23 @@ export function MemberCard({
           </div>
         </div>
 
-        {/* Bottom Bento Box: Joined Date + Access Status */}
-        <div className="mt-4 grid grid-cols-2 gap-2 text-center rounded-xl border border-border/50 bg-muted/30 dark:bg-muted/15 p-2.5 transition-colors group-hover/card:bg-muted/50">
-          <div className="border-r border-border/40 pr-2">
-            <p className="text-xs font-bold leading-none text-foreground mt-0.5">
-              {format(joinedAt, "MMM d, yyyy")}
-            </p>
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mt-1.5">
-              Joined
-            </p>
+        {/* Stats strip */}
+        <div className="mt-4 flex items-center gap-4 rounded-lg bg-muted/40 px-3 py-2.5 overflow-x-auto">
+          <div className="flex items-center gap-2">
+            <span className="text-sm whitespace-nowrap">
+              <span className="text-muted-foreground">Joined: </span>
+              <span className="font-medium text-foreground">
+                {format(joinedAt, "MMM d, yyyy")}
+              </span>
+            </span>
           </div>
-          <div className="pl-2">
-            <p className="text-xs font-bold leading-none text-foreground mt-0.5">
-              {member.isActive ? "Full Access" : "Disabled"}
-            </p>
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mt-1.5">
-              Access Status
-            </p>
+          <div className="flex items-center gap-2 border-l border-border pl-4">
+            <span className="text-sm whitespace-nowrap">
+              <span className="text-muted-foreground">Access: </span>
+              <span className="font-medium text-foreground">
+                {member.isActive ? "Full Access" : "Disabled"}
+              </span>
+            </span>
           </div>
         </div>
       </div>

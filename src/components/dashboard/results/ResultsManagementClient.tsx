@@ -1654,44 +1654,32 @@ export function ResultsManagementClient({
               <Card
                 key={prog.id}
                 className={cn(
-                  "overflow-hidden rounded-xl border border-border/80 transition-all hover:border-primary/25 hover:shadow-md active:scale-[0.99]",
+                  "group/card relative flex flex-col overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm transition-all hover:border-primary/20 hover:shadow-md active:scale-[0.99]",
                   viewProgramme?.id === prog.id &&
                     "ring-2 ring-primary border-primary/50 shadow-md",
                 )}
               >
-                {/* Compact category strip */}
-                <div className="flex items-center justify-between gap-2 px-3 py-2 bg-muted/30 border-b border-border/50">
-                  <span className="text-xs font-medium text-muted-foreground truncate">
-                    {prog.category.name}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      size="sm"
-                      variant={isPublished ? "outline" : "default"}
-                      className="h-7 text-[11px] px-2.5"
-                      onClick={() =>
-                        handlePublishProgramme(prog.id, !isPublished)
-                      }
-                      disabled={
-                        isReadOnly ||
-                        isPending ||
-                        (!isPublished && prog.stats.enteredScores === 0)
-                      }
-                    >
-                      {publishingProgrammeId === prog.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : isPublished ? (
-                        "Unpublish"
-                      ) : (
-                        "Publish"
-                      )}
-                    </Button>
+                <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-primary/40 to-primary/10" />
+                <div className="flex-1 p-5 pb-0">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-base leading-snug flex items-center gap-1.5 text-foreground line-clamp-1">
+                        {prog.name}
+                        {prog.type === "GROUP" && (
+                          <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        )}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mt-1 truncate">
+                        {prog.category.name}
+                      </p>
+                    </div>
+
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 shrink-0 rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
+                          className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:bg-background hover:text-foreground opacity-0 group-hover/card:opacity-100 transition-opacity focus:opacity-100 sm:-mr-2 sm:-mt-1"
                           aria-label="Actions"
                         >
                           <MoreVertical className="h-4 w-4" />
@@ -1772,47 +1760,14 @@ export function ResultsManagementClient({
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                </div>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-base leading-snug flex items-center gap-1.5 line-clamp-2 text-foreground mb-2">
-                    {prog.name}
-                    {prog.type === "GROUP" && (
-                      <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    )}
-                  </h3>
-                  <div className="flex items-center justify-between gap-2">
-                    {prog.stats.status === "published" ? (
-                      <Badge className="bg-emerald-600 dark:bg-emerald-700 text-white text-xs font-medium">
-                        Published
-                      </Badge>
-                    ) : prog.stats.status === "partial-published" ? (
-                      <Badge className="bg-amber-500 dark:bg-amber-600 text-white text-xs font-medium">
-                        Partial
-                      </Badge>
-                    ) : prog.stats.status === "ready" ? (
-                      <Badge className="bg-sky-600 dark:bg-sky-700 text-white text-xs font-medium">
-                        Ready
-                      </Badge>
-                    ) : prog.stats.status === "in-progress" ? (
-                      <Badge className="bg-orange-500 dark:bg-orange-600 text-white text-xs font-medium">
-                        In progress
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="secondary"
-                        className="text-xs font-medium text-muted-foreground"
-                      >
-                        Not started
-                      </Badge>
-                    )}
-                  </div>
-                  {canUseExternalJudging &&
-                  prog.status === "STARTED" &&
-                  openJudgeSession ? (
-                    <div className="mt-2">
+
+                  <div className="mt-4 flex flex-col gap-2">
+                    {canUseExternalJudging &&
+                    prog.status === "STARTED" &&
+                    openJudgeSession ? (
                       <Badge
                         variant="outline"
-                        className="w-full justify-start gap-2 border-primary/30 bg-primary/5 text-primary"
+                        className="w-fit justify-start gap-2 border-primary/30 bg-primary/5 text-primary"
                       >
                         <span className="font-mono text-xs">
                           External judging:{" "}
@@ -1821,19 +1776,79 @@ export function ResultsManagementClient({
                             : "00:00:00"}
                         </span>
                       </Badge>
-                    </div>
-                  ) : null}
-                  {prog.status === "ENDED" ? (
-                    <div className="mt-2">
+                    ) : null}
+                    {prog.status === "ENDED" ? (
                       <Badge
                         variant="secondary"
-                        className="w-full justify-start gap-2"
+                        className="w-fit justify-start gap-2"
                       >
-                        Judging completed (awaiting admin publish)
+                        Judging completed
                       </Badge>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="flex-1 min-h-4" />
+
+                <div className="mx-5 mb-5 mt-4 flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2.5 border border-border/40 overflow-x-auto">
+                  <div className="flex items-center gap-4 shrink-0">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
+                      {prog.stats.status === "published" ? (
+                        <>
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                          <span className="font-medium text-emerald-600 dark:text-emerald-400">Published</span>
+                        </>
+                      ) : prog.stats.status === "partial-published" ? (
+                        <>
+                          <AlertCircle className="h-4 w-4 text-amber-500" />
+                          <span className="font-medium text-amber-600 dark:text-amber-400">Partial</span>
+                        </>
+                      ) : prog.stats.status === "ready" ? (
+                        <>
+                          <Check className="h-4 w-4 text-sky-500" />
+                          <span className="font-medium text-sky-600 dark:text-sky-400">Ready</span>
+                        </>
+                      ) : prog.stats.status === "in-progress" ? (
+                        <>
+                          <Pencil className="h-4 w-4 text-orange-500" />
+                          <span className="font-medium text-orange-600 dark:text-orange-400">In Progress</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30" />
+                          <span>Not Started</span>
+                        </>
+                      )}
                     </div>
-                  ) : null}
-                </CardContent>
+                  </div>
+
+                  <div className="flex items-center shrink-0 border-l border-border pl-4">
+                    <Button
+                      size="sm"
+                      variant={isPublished ? "outline" : "default"}
+                      className={cn(
+                        "h-7 text-[11px] px-3 font-semibold",
+                        isPublished ? "hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30" : ""
+                      )}
+                      onClick={() =>
+                        handlePublishProgramme(prog.id, !isPublished)
+                      }
+                      disabled={
+                        isReadOnly ||
+                        isPending ||
+                        (!isPublished && prog.stats.enteredScores === 0)
+                      }
+                    >
+                      {publishingProgrammeId === prog.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : isPublished ? (
+                        "Unpublish"
+                      ) : (
+                        "Publish"
+                      )}
+                    </Button>
+                  </div>
+                </div>
               </Card>
             );
           })}

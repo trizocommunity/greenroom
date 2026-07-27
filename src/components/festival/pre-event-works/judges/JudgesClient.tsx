@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, Loader2, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import { ClipboardList, Eye, FileText, Loader2, Megaphone, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import {
   useCreateJudge,
@@ -208,119 +208,133 @@ export function JudgesClient({
         {judges.map((j) => (
           <div
             key={j.id}
-            className="rounded-2xl border bg-card p-4 flex flex-col gap-4 shadow-sm"
+            className="group/card relative flex flex-col overflow-hidden rounded-xl border border-border/80 bg-card text-card-foreground shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/20"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3 min-w-0">
-                <div className="h-10 w-10 rounded-full border bg-muted/50 flex items-center justify-center text-xs font-semibold">
-                  {getInitials(j.name)}
+            <div className="flex flex-1 flex-col p-4 sm:p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                  <div className="h-10 w-10 shrink-0 rounded-full border bg-muted/50 flex items-center justify-center text-xs font-semibold">
+                    {getInitials(j.name)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-base leading-tight text-foreground line-clamp-2">
+                      {j.name}
+                    </h3>
+                    <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">
+                      {j.description || "No description"}
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <h3 className="text-base font-semibold truncate tracking-wide">
-                    {j.name}
-                  </h3>
-                  <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                    {j.description || "No description"}
-                  </p>
-                </div>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onSelect={() => setViewingActivities(j as JudgeRow)}
-                  >
-                    <Eye className="h-4 w-4 mr-2" />
-                    Activities
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => setViewingProgrammes(j as JudgeRow)}
-                  >
-                    <Eye className="h-4 w-4 mr-2" />
-                    Programmes
-                  </DropdownMenuItem>
-                  {!isReadOnly ? (
-                    <DropdownMenuItem onSelect={() => openEdit(j as JudgeRow)}>
-                      <Pencil className="h-4 w-4 mr-2" />
-                      Edit
-                    </DropdownMenuItem>
-                  ) : null}
-                  {!isReadOnly ? (
-                    <DropdownMenuItem
-                      className="text-destructive focus:text-destructive"
-                      onSelect={() => setDeleting(j as JudgeRow)}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
                     >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onSelect={() => setViewingActivities(j as JudgeRow)}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Activities
                     </DropdownMenuItem>
-                  ) : null}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            <div>
-              <p className="text-xs font-medium text-muted-foreground mb-2">
-                Stage highlights
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {j.stages && j.stages.length > 0 ? (
-                  j.stages
-                    .slice(0, 3)
-                    .map((stage) => (
-                      <Badge
-                        key={stage.id}
-                        className="bg-primary/10 text-primary border-primary/30"
-                        variant="outline"
+                    <DropdownMenuItem
+                      onSelect={() => setViewingProgrammes(j as JudgeRow)}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Programmes
+                    </DropdownMenuItem>
+                    {!isReadOnly ? (
+                      <DropdownMenuItem onSelect={() => openEdit(j as JudgeRow)}>
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                    ) : null}
+                    {!isReadOnly ? (
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onSelect={() => setDeleting(j as JudgeRow)}
                       >
-                        {stage.name}
-                      </Badge>
-                    ))
-                    .concat(
-                      j.stages.length > 3
-                        ? ([
-                            <Badge
-                              key={`${j.id}-more-stages`}
-                              variant="outline"
-                            >
-                              +{j.stages.length - 3} more
-                            </Badge>,
-                          ] as any)
-                        : [],
-                    )
-                ) : (
-                  <span className="text-xs text-muted-foreground">
-                    No stages assigned
-                  </span>
-                )}
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    ) : null}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
-            </div>
 
-            <div className="grid grid-cols-3 gap-2 text-center rounded-xl border bg-muted/20 p-2">
+              {/* Spacer so footer stays at bottom */}
+              <div className="flex-1 min-h-4" />
+
               <div>
-                <p className="text-lg font-semibold leading-none">
-                  {j.activities?.length ?? 0}
+                <p className="text-xs font-medium text-muted-foreground mb-2">
+                  Stage highlights
                 </p>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Activities
-                </p>
+                <div className="flex flex-wrap gap-2">
+                  {j.stages && j.stages.length > 0 ? (
+                    j.stages
+                      .slice(0, 3)
+                      .map((stage) => (
+                        <Badge
+                          key={stage.id}
+                          className="bg-primary/10 text-primary border-primary/30"
+                          variant="outline"
+                        >
+                          {stage.name}
+                        </Badge>
+                      ))
+                      .concat(
+                        j.stages.length > 3
+                          ? ([
+                              <Badge
+                                key={`${j.id}-more-stages`}
+                                variant="outline"
+                              >
+                                +{j.stages.length - 3} more
+                              </Badge>,
+                            ] as any)
+                          : [],
+                      )
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      No stages assigned
+                    </span>
+                  )}
+                </div>
               </div>
-              <div>
-                <p className="text-lg font-semibold leading-none">
-                  {j.programmes?.length ?? 0}
-                </p>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Programmes
-                </p>
-              </div>
-              <div>
-                <p className="text-lg font-semibold leading-none">
-                  {j.stages?.length ?? 0}
-                </p>
-                <p className="text-[11px] text-muted-foreground mt-1">Stages</p>
+
+              <div className="mt-4 flex items-center gap-4 rounded-lg bg-muted/40 px-3 py-2.5 overflow-x-auto">
+                <div className="flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="text-sm whitespace-nowrap">
+                    <span className="font-semibold text-foreground">
+                      {j.activities?.length ?? 0}
+                    </span>
+                    <span className="text-muted-foreground"> Activities</span>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 border-l border-border pl-4">
+                  <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="text-sm whitespace-nowrap">
+                    <span className="font-semibold text-foreground">
+                      {j.programmes?.length ?? 0}
+                    </span>
+                    <span className="text-muted-foreground"> Programmes</span>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 border-l border-border pl-4">
+                  <Megaphone className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="text-sm whitespace-nowrap">
+                    <span className="font-semibold text-foreground">
+                      {j.stages?.length ?? 0}
+                    </span>
+                    <span className="text-muted-foreground"> Stages</span>
+                  </span>
+                </div>
               </div>
             </div>
           </div>

@@ -80,9 +80,9 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
                 style={{ backgroundColor: groupColor }}
               />
 
-              <div className="flex flex-1 flex-col pl-5 pr-4 sm:pl-6 sm:pr-5">
-                {/* Top: name + student count + actions */}
-                <div className="flex items-start justify-between gap-3 pt-5 pb-3 sm:pt-6">
+              <div className="flex flex-1 flex-col p-4 sm:p-5 pl-5 sm:pl-6">
+                {/* Top: name + actions */}
+                <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <h3
                       className="font-semibold text-base leading-tight text-foreground line-clamp-2"
@@ -90,15 +90,6 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
                     >
                       {group.name}
                     </h3>
-                    <div className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
-                      <Users className="h-3.5 w-3.5 shrink-0" />
-                      <span>
-                        <span className="font-medium text-foreground">
-                          {group._count?.students ?? 0}
-                        </span>{" "}
-                        student{(group._count?.students ?? 0) !== 1 ? "s" : ""}
-                      </span>
-                    </div>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -146,9 +137,12 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
                   </DropdownMenu>
                 </div>
 
+                {/* Spacer so footer stays at bottom */}
+                <div className="flex-1 min-h-2" />
+
                 {/* Team leaders */}
                 {teamLeaders.length > 0 && (
-                  <div className="rounded-lg bg-muted/40 px-3 py-2.5">
+                  <div className="mt-4 rounded-lg bg-muted/20 px-3 py-2.5 border border-border/50">
                     <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                       <Crown className="h-3 w-3 shrink-0 text-amber-500" />
                       Team Leaders
@@ -167,8 +161,21 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
                   </div>
                 )}
 
-                {/* Spacer so footer stays at bottom */}
-                <div className="flex-1 min-h-2" />
+                {/* Stats strip */}
+                <div className="mt-4 flex items-center gap-4 rounded-lg bg-muted/40 px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="text-sm">
+                      <span className="font-semibold text-foreground">
+                        {group._count?.students ?? 0}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {" "}
+                        student{(group._count?.students ?? 0) !== 1 ? "s" : ""}
+                      </span>
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           );
