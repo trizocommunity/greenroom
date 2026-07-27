@@ -40,29 +40,92 @@
     {
       "idx": 5,
       "version": "7",
+      "when": 1784691099652,
+      "tag": "0007_funny_whizzer",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785147274351,
+      "tag": "0008_solid_nemesis",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
       "when": 1718000000000,
       "tag": "0010_add_dars_enum",
       "breakpoints": false
     },
     {
-      "idx": 6,
+      "idx": 8,
       "version": "7",
       "when": 1752595200000,
       "tag": "0011_add_team_leader_limit",
       "breakpoints": true
     },
     {
-      "idx": 7,
+      "idx": 9,
       "version": "7",
-      "when": 1784691099652,
-      "tag": "0007_funny_whizzer",
+      "when": 1762500000000,
+      "tag": "0013_drop_realtime_outbox",
       "breakpoints": true
     },
     {
-      "idx": 8,
+      "idx": 10,
       "version": "7",
-      "when": 1785147274351,
-      "tag": "0008_solid_nemesis",
+      "when": 1762500001000,
+      "tag": "0014_drop_team_leader_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1762500002000,
+      "tag": "0015_schema_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1762500003000,
+      "tag": "0016_pre_hardening_cleanup",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1762500004000,
+      "tag": "0017_scoring_matrix_row_types",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1762500005000,
+      "tag": "0018_scoring_policy_bootstrap",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1762500006000,
+      "tag": "0019_announcer_workflow",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1762500007000,
+      "tag": "0020_design_templates",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1762500008000,
+      "tag": "0021_programme_team_lead_and_audit_columns",
       "breakpoints": true
     }
   ]
