@@ -1,6 +1,16 @@
 "use client";
 
-import { ClipboardList, Eye, FileText, Loader2, Megaphone, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  ClipboardList,
+  Eye,
+  FileText,
+  Loader2,
+  Megaphone,
+  MoreVertical,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import {
   useCreateJudge,
@@ -249,7 +259,9 @@ export function JudgesClient({
                       Programmes
                     </DropdownMenuItem>
                     {!isReadOnly ? (
-                      <DropdownMenuItem onSelect={() => openEdit(j as JudgeRow)}>
+                      <DropdownMenuItem
+                        onSelect={() => openEdit(j as JudgeRow)}
+                      >
                         <Pencil className="h-4 w-4 mr-2" />
                         Edit
                       </DropdownMenuItem>

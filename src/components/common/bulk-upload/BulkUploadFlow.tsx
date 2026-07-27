@@ -248,8 +248,8 @@ export function BulkUploadFlow<T>({
       <DialogTrigger asChild>
         {trigger || (
           <Button size="sm" variant="outline">
-            <Upload className="mr-2 h-4 w-4" />
-            Bulk Upload
+            <Upload className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Bulk Upload</span>
           </Button>
         )}
       </DialogTrigger>

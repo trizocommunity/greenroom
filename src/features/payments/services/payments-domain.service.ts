@@ -75,7 +75,7 @@ export async function initiatePaymentDomain(
 
   const now = new Date();
   const validUntil = new Date(
-    now.getTime() + config.durationDays * 24 * 60 * 60 * 1000,
+    now.getTime() + config.festivalDurationDays * 24 * 60 * 60 * 1000,
   );
 
   const newPayment = await db

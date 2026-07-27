@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { getSession } from "@/core/auth/session";
-import { getTeamLeaderSessionFromCookie } from "@/core/auth/team-leader-session";
+import { getParticipantSessionFromCookie } from "@/core/auth/participant-session";
 import { db } from "@/core/database/client";
 import {
   festivalMember as festivalMemberTable,
@@ -68,7 +68,7 @@ export async function assertStudentNotificationAccess(studentId: string) {
     if (membership?.isActive) return student;
   }
 
-  const tlSession = await getTeamLeaderSessionFromCookie();
+  const tlSession = await getParticipantSessionFromCookie();
   if (
     tlSession &&
     parseStoredInstant(tlSession.expiresAt) > new Date() &&

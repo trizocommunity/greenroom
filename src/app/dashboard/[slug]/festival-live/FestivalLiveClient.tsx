@@ -78,7 +78,7 @@ export function FestivalLiveClient({
   const fullPublicUrl = publicUrl || `/${festivalSlug}`;
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-8xl mx-auto">
       <div className="grid gap-6">
         {enabled && fullPublicUrl && (
           <Card className="overflow-hidden border-primary/20 bg-linear-to-br from-primary/5 via-background to-background">

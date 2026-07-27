@@ -1,5 +1,6 @@
 "use client";
 
+import { useTopLoader } from "nextjs-toploader";
 import * as React from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 
@@ -71,6 +72,20 @@ const DrawerContent = React.forwardRef<
   const explicitDirection = direction ?? side;
   const responsiveDirection =
     explicitDirection ?? contextDirection ?? (isMobile ? "bottom" : "right");
+
+  const { start, done } = useTopLoader();
+
+  React.useEffect(() => {
+    start();
+    const timer = setTimeout(() => {
+      done();
+    }, 400);
+
+    return () => {
+      clearTimeout(timer);
+      done();
+    };
+  }, [start, done]);
 
   return (
     <DrawerPortal>

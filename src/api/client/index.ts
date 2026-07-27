@@ -55,6 +55,11 @@ export {
   useNotifications,
 } from "./notifications";
 export {
+  useParticipantLogout,
+  useRequestAccess,
+  useVerifyOtp as useVerifyParticipantOtp,
+} from "./participant-login";
+export {
   useFestivalPayment,
   useInitiatePayment,
   usePaymentHistory,
@@ -135,11 +140,8 @@ export {
   useValidateStudents,
 } from "./students";
 export {
-  useRequestOtp,
-  useTeamLeaderDashboard,
-  useTeamLeaderFestivals,
-  useTeamLeaderLogout,
-  useTeamLeaderStudents,
-  useVerifyOtp,
-} from "./team-leader";
+  useTeamLeaderDashboard as useTeamLeaderDashboardData,
+  useTeamLeaderFestivals as useTeamLeaderFestivalsDashboard,
+  useTeamLeaderStudents as useTeamLeaderStudentsData,
+} from "./team-leader-dashboard";
 export { useCloudinaryUpload, useDeleteFile, useUploadFile } from "./upload";

@@ -1796,22 +1796,30 @@ export function ResultsManagementClient({
                       {prog.stats.status === "published" ? (
                         <>
                           <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                          <span className="font-medium text-emerald-600 dark:text-emerald-400">Published</span>
+                          <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                            Published
+                          </span>
                         </>
                       ) : prog.stats.status === "partial-published" ? (
                         <>
                           <AlertCircle className="h-4 w-4 text-amber-500" />
-                          <span className="font-medium text-amber-600 dark:text-amber-400">Partial</span>
+                          <span className="font-medium text-amber-600 dark:text-amber-400">
+                            Partial
+                          </span>
                         </>
                       ) : prog.stats.status === "ready" ? (
                         <>
                           <Check className="h-4 w-4 text-sky-500" />
-                          <span className="font-medium text-sky-600 dark:text-sky-400">Ready</span>
+                          <span className="font-medium text-sky-600 dark:text-sky-400">
+                            Ready
+                          </span>
                         </>
                       ) : prog.stats.status === "in-progress" ? (
                         <>
                           <Pencil className="h-4 w-4 text-orange-500" />
-                          <span className="font-medium text-orange-600 dark:text-orange-400">In Progress</span>
+                          <span className="font-medium text-orange-600 dark:text-orange-400">
+                            In Progress
+                          </span>
                         </>
                       ) : (
                         <>
@@ -1828,7 +1836,9 @@ export function ResultsManagementClient({
                       variant={isPublished ? "outline" : "default"}
                       className={cn(
                         "h-7 text-[11px] px-3 font-semibold",
-                        isPublished ? "hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30" : ""
+                        isPublished
+                          ? "hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+                          : "",
                       )}
                       onClick={() =>
                         handlePublishProgramme(prog.id, !isPublished)

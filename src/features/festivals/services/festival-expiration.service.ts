@@ -139,7 +139,7 @@ export const FestivalExpirationService = {
       scheduleData,
       resultsData,
     ] = await Promise.all([
-      db.query.student.findMany({ where: eq(student.festivalId, festivalId) }),
+      db.query.student.findMany({ where: eq(students.festivalId, festivalId) }),
       db.query.programme.findMany({
         where: eq(programmes.festivalId, festivalId),
       }),
@@ -157,60 +157,14 @@ export const FestivalExpirationService = {
     const publishedResults = await getPublicFestivalResults(festivalId);
 
     const manualBookData = {
-      festival: {
-        id: festival.id,
-        name: festival.name,
-        slug: festival.slug,
-        tier: festival.tier,
-        tierLabel: festival.tierLabel,
-        createdAt: festival.createdAt,
-        startDate: festival.startDate,
-        endDate: festival.endDate,
-        status: festival.status,
-      },
-      students: studentsData.map((s) => ({
-        name: s.name,
-        email: s.email,
-        phone: s.phone,
-        gender: s.gender,
-        chestNumber: s.chestNumber,
-        age: s.age,
-        standard: s.standard,
-        isTeamLeader: s.isTeamLeader,
-      })),
-      programmes: programmesData.map((p) => ({
-        name: p.name,
-        category: p.category,
-      })),
-      categories: categoriesData.map((c) => ({
-        name: c.name,
-        type: c.type,
-      })),
-      groups: groupsData.map((g) => ({
-        name: g.name,
-        category: g.category,
-      })),
-      stages: stagesData.map((s) => ({
-        name: s.name,
-        location: s.location,
-      })),
-      schedule: scheduleData.map((s) => ({
-        date: s.date,
-        startTime: s.startTime,
-        endTime: s.endTime,
-        programme: s.programme,
-        stage: s.stage,
-        event: s.event,
-      })),
-      results: resultsData.map((r) => ({
-        participantName: r.participantName,
-        programme: r.programme,
-        category: r.category,
-        position: r.position,
-        grade: r.grade,
-        score: r.score,
-        points: r.points,
-      })),
+      festival,
+      students: studentsData,
+      programmes: programmesData,
+      categories: categoriesData,
+      groups: groupsData,
+      stages: stagesData,
+      schedule: scheduleData,
+      results: resultsData,
     };
 
     await db.transaction(async (tx) => {
