@@ -96,26 +96,16 @@ export default async function SettingsPage({
   const publicUrl = baseUrl ? `${baseUrl}/${festival.slug}` : "";
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-          Settings
-        </h1>
-        <p className="text-sm sm:text-base text-muted-foreground">
-          Manage your festival configuration, scoring policy, and live site.
-        </p>
-      </div>
-      <SettingsTabs
-        festival={festival}
-        policy={policy}
-        categories={categories}
-        programmes={programmes}
-        publicUrl={publicUrl}
-        templates={templates}
-        canManageTemplates={canManageTemplates}
-        canManageScoring={canManageScoring}
-        canManageFestivalLive={canManageFestivalLive}
-      />
-    </div>
+    <SettingsTabs
+      festival={festival}
+      policy={policy}
+      categories={categories}
+      programmes={programmes}
+      publicUrl={publicUrl}
+      templates={templates}
+      canManageTemplates={canManageTemplates}
+      canManageScoring={canManageScoring}
+      canManageFestivalLive={canManageFestivalLive}
+    />
   );
 }

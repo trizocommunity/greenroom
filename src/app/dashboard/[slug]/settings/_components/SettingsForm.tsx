@@ -60,7 +60,9 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
       <div className="space-y-8">
         <div>
           <h2 className="text-xl font-semibold mb-1">General</h2>
-          <p className="text-sm text-muted-foreground">Manage your festival's status, visual identity, and plan details.</p>
+          <p className="text-sm text-muted-foreground">
+            Manage your festival's status, visual identity, and plan details.
+          </p>
         </div>
 
         <div className="divide-y border rounded-xl overflow-hidden bg-card text-card-foreground shadow-sm">
@@ -119,7 +121,9 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
     <div className="space-y-8">
       <div>
         <h2 className="text-xl font-semibold mb-1">Configuration</h2>
-        <p className="text-sm text-muted-foreground">Manage event timing, deadlines, and advanced rules.</p>
+        <p className="text-sm text-muted-foreground">
+          Manage event timing, deadlines, and advanced rules.
+        </p>
       </div>
 
       <div className="divide-y border rounded-xl overflow-hidden bg-card text-card-foreground shadow-sm">
@@ -130,7 +134,7 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
             <p className="text-sm text-muted-foreground mb-4">
               Core identity and timing of your festival.
             </p>
-            
+
             <div className="space-y-4">
               <div>
                 <p className="text-sm font-medium">{festival.name}</p>
@@ -142,7 +146,9 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
               </div>
               <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm">
                 <div>
-                  <p className="text-muted-foreground text-xs mb-1">Start Date</p>
+                  <p className="text-muted-foreground text-xs mb-1">
+                    Start Date
+                  </p>
                   <p className="font-medium">
                     {festival.startDate
                       ? format(new Date(festival.startDate), "dd/MM/yyyy")
@@ -159,7 +165,9 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
                 </div>
                 {festival.location && (
                   <div>
-                    <p className="text-muted-foreground text-xs mb-1">Venue / City</p>
+                    <p className="text-muted-foreground text-xs mb-1">
+                      Venue / City
+                    </p>
                     <p className="font-medium">{festival.location}</p>
                   </div>
                 )}
@@ -183,7 +191,9 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
             </p>
             <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm">
               <div>
-                <p className="text-muted-foreground text-xs mb-1">Programme Assignment</p>
+                <p className="text-muted-foreground text-xs mb-1">
+                  Programme Assignment
+                </p>
                 <p className="font-medium">
                   {festival.programmeAssignmentDeadline
                     ? format(
@@ -194,7 +204,9 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
                 </p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs mb-1">Student Registration</p>
+                <p className="text-muted-foreground text-xs mb-1">
+                  Student Registration
+                </p>
                 <p className="font-medium">
                   {festival.studentCreationDeadline
                     ? format(
@@ -225,20 +237,25 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
             </p>
             <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm">
               <div>
-                <p className="text-muted-foreground text-xs mb-1">Team Leader Limit</p>
-                <p className="font-medium">{festival.teamLeaderLimit ?? 2} per group</p>
+                <p className="text-muted-foreground text-xs mb-1">
+                  Team Leader Limit
+                </p>
+                <p className="font-medium">
+                  {festival.teamLeaderLimit ?? 2} per group
+                </p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs mb-1">Results per Standings</p>
-                <p className="font-medium">{festival.announcerResultsPerStandings ?? 10}</p>
+                <p className="text-muted-foreground text-xs mb-1">
+                  Results per Standings
+                </p>
+                <p className="font-medium">
+                  {festival.announcerResultsPerStandings ?? 10}
+                </p>
               </div>
             </div>
           </div>
           <div>
-            <TeamResultsDialog
-              festival={festival}
-              onSuccess={handleSuccess}
-            />
+            <TeamResultsDialog festival={festival} onSuccess={handleSuccess} />
           </div>
         </div>
 
@@ -252,7 +269,9 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
             {isAdvancedSettingsEnabled ? (
               <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm">
                 <div>
-                  <p className="text-muted-foreground text-xs mb-1">Scoring System</p>
+                  <p className="text-muted-foreground text-xs mb-1">
+                    Scoring System
+                  </p>
                   <p className="font-medium">
                     {festival.scoringSystem === "POSITION_BASED"
                       ? "Position Based"
@@ -260,7 +279,9 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs mb-1">Public Display</p>
+                  <p className="text-muted-foreground text-xs mb-1">
+                    Public Display
+                  </p>
                   <p className="font-medium">
                     {festival.publicDisplayMode === "team_standings"
                       ? "Team Standings"
@@ -269,8 +290,12 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
                 </div>
                 {festival.chestNumberSettings?.prefix && (
                   <div>
-                    <p className="text-muted-foreground text-xs mb-1">Chest Number Prefix</p>
-                    <p className="font-medium">{festival.chestNumberSettings.prefix}</p>
+                    <p className="text-muted-foreground text-xs mb-1">
+                      Chest Number Prefix
+                    </p>
+                    <p className="font-medium">
+                      {festival.chestNumberSettings.prefix}
+                    </p>
                   </div>
                 )}
               </div>
