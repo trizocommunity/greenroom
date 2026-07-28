@@ -1,8 +1,9 @@
 "use client";
 
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Clock } from "lucide-react";
+import { CalendarIcon, Clock } from "lucide-react";
 import * as React from "react";
+import type { DateRange } from "react-day-picker";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -13,6 +14,11 @@ import {
 import { TimePicker } from "@/components/ui/time-picker";
 import { cn } from "@/core/utils/cn";
 
+function rangeDisabledMatcher(from?: Date, to?: Date) {
+  if (!from && !to) return undefined;
+  return (day: Date) => (!!from && day < from) || (!!to && day > to);
+}
+
 interface DatePickerProps {
   id?: string;
   date?: Date;
@@ -22,7 +28,6 @@ interface DatePickerProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
-  showValidityHint?: boolean; // Show hint about valid date range
 }
 
 export function DatePicker({
@@ -34,56 +39,154 @@ export function DatePicker({
   placeholder = "Pick a date",
   disabled,
   className,
-  showValidityHint = false,
 }: DatePickerProps) {
-  const isEmpty = !date;
-
-  const hintLabel = () => {
-    if (!showValidityHint || (!from && !to)) return null;
-    const parts: string[] = [];
-    if (from) parts.push(`From ${format(from, "MMM d, yyyy")}`);
-    if (to) parts.push(`Until ${format(to, "MMM d, yyyy")}`);
-    return parts.join(" • ");
-  };
-
   return (
-    <div className="space-y-1.5">
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          id={id}
+          variant={"outline"}
+          disabled={disabled}
+          className={cn(
+            "w-full justify-start text-left font-normal",
+            !date && "text-muted-foreground",
+            className,
+          )}
+        >
+          <CalendarIcon />
+          {date ? format(date, "PPP") : <span>{placeholder}</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={date}
+          onSelect={onChange}
+          defaultMonth={date}
+          disabled={rangeDisabledMatcher(from, to)}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+interface DateRangePickerProps {
+  id?: string;
+  value?: DateRange;
+  onChange: (value: { from: Date | undefined; to: Date | undefined }) => void;
+  from?: Date;
+  to?: Date;
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+}
+
+export function DateRangePicker({
+  id,
+  value,
+  onChange,
+  from,
+  to,
+  placeholder = "Pick a date range",
+  disabled,
+  className,
+}: DateRangePickerProps) {
+  return (
+    <div className="grid gap-2">
       <Popover>
         <PopoverTrigger asChild>
           <Button
-            type="button"
-            variant="outline"
             id={id}
+            variant={"outline"}
             disabled={disabled}
-            data-empty={isEmpty || undefined}
             className={cn(
               "w-full justify-start text-left font-normal",
-              !date && "text-muted-foreground",
+              !value?.from && "text-muted-foreground",
               className,
             )}
           >
-            <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-            {date ? format(date, "PPP") : <span>{placeholder}</span>}
+            <CalendarIcon />
+            {value?.from ? (
+              value.to ? (
+                <>
+                  {format(value.from, "LLL dd, y")} -{" "}
+                  {format(value.to, "LLL dd, y")}
+                </>
+              ) : (
+                format(value.from, "LLL dd, y")
+              )
+            ) : (
+              <span>{placeholder}</span>
+            )}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
           <Calendar
-            mode="single"
-            selected={date}
-            onSelect={onChange}
-            defaultMonth={date}
-            disabled={
-              from || to
-                ? (day) => (!!from && day < from) || (!!to && day > to)
-                : undefined
-            }
+            mode="range"
+            defaultMonth={value?.from}
+            selected={value}
+            onSelect={(range) => onChange({ from: range?.from, to: range?.to })}
+            numberOfMonths={2}
+            disabled={rangeDisabledMatcher(from, to)}
           />
         </PopoverContent>
       </Popover>
-      {showValidityHint && hintLabel() && (
-        <p className="text-xs text-muted-foreground">{hintLabel()}</p>
-      )}
     </div>
+  );
+}
+
+interface DateOfBirthPickerProps {
+  id?: string;
+  date?: Date;
+  onChange: (date: Date | undefined) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+}
+
+export function DateOfBirthPicker({
+  id,
+  date,
+  onChange,
+  placeholder = "Select date",
+  disabled,
+  className,
+}: DateOfBirthPickerProps) {
+  const [open, setOpen] = React.useState(false);
+  const today = new Date();
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          id={id}
+          variant={"outline"}
+          disabled={disabled}
+          className={cn(
+            "w-full justify-start text-left font-normal",
+            !date && "text-muted-foreground",
+            className,
+          )}
+        >
+          <CalendarIcon />
+          {date ? format(date, "PPP") : <span>{placeholder}</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={date}
+          captionLayout="dropdown"
+          startMonth={new Date(today.getFullYear() - 100, 0)}
+          endMonth={today}
+          disabled={{ after: today }}
+          onSelect={(d) => {
+            onChange(d);
+            setOpen(false);
+          }}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -120,8 +223,6 @@ export function DateTimePicker({
     }
   }, [value]);
 
-  const isEmpty = !value;
-
   const commit = (nextDate: Date | undefined, nextTime: string) => {
     if (!nextDate) {
       onChange(null);
@@ -137,17 +238,15 @@ export function DateTimePicker({
     <Popover>
       <PopoverTrigger asChild>
         <Button
-          type="button"
-          variant="outline"
           id={id}
+          variant={"outline"}
           disabled={disabled}
-          data-empty={isEmpty || undefined}
           className={cn(
             "w-full justify-start text-left font-normal",
             !value && "text-muted-foreground",
           )}
         >
-          <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+          <CalendarIcon />
           {value ? (
             <span>{format(value, "PPP, HH:mm")}</span>
           ) : (
@@ -164,11 +263,7 @@ export function DateTimePicker({
             commit(d ?? undefined, time);
           }}
           defaultMonth={internalDate}
-          disabled={
-            from || to
-              ? (day) => (!!from && day < from) || (!!to && day > to)
-              : undefined
-          }
+          disabled={rangeDisabledMatcher(from, to)}
         />
         <div className="flex items-center gap-2 border-t pt-3">
           <Clock className="h-4 w-4 text-muted-foreground shrink-0" />

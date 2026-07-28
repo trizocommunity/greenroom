@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowRight,
@@ -18,8 +19,7 @@ import { toast } from "sonner";
 import { queryKeys } from "@/api/client/_query-keys";
 import { useCreateFestival } from "@/api/client/festivals";
 import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/components/ui/date-picker";
-import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { DateRangePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -534,9 +534,20 @@ export function FestivalSetupForm({
                           planValidFrom ? new Date(planValidFrom) : undefined
                         }
                         to={planExpiryDate}
-                        showValidityHint
                         className="h-12 rounded-xl border-border/60 bg-background/60 backdrop-blur-sm"
                       />
+                      {(planValidFrom || planExpiryDate) && (
+                        <p className="text-xs text-muted-foreground">
+                          {[
+                            planValidFrom &&
+                              `From ${format(new Date(planValidFrom), "MMM d, yyyy")}`,
+                            planExpiryDate &&
+                              `Until ${format(planExpiryDate, "MMM d, yyyy")}`,
+                          ]
+                            .filter(Boolean)
+                            .join(" • ")}
+                        </p>
+                      )}
                       {errors.startDate && (
                         <p className="text-xs text-destructive">
                           {errors.startDate.message}

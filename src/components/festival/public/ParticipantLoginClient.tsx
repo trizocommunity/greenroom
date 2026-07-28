@@ -1,21 +1,13 @@
 "use client";
 
-import { ChevronDownIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useRequestAccess, useVerifyParticipantOtp } from "@/api/client";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+import { DateOfBirthPicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-
-const currentYear = new Date().getFullYear();
 
 export function ParticipantLoginClient({
   festivalSlug,
@@ -28,7 +20,6 @@ export function ParticipantLoginClient({
 
   const [chestNumber, setChestNumber] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState<Date | undefined>(undefined);
-  const [dobPickerOpen, setDobPickerOpen] = useState(false);
   const [otpStage, setOtpStage] = useState<{
     studentSlug: string;
     devOtp: string | null;
@@ -151,40 +142,13 @@ export function ParticipantLoginClient({
 
           <div className="space-y-2">
             <Label htmlFor="dateOfBirth">Date of Birth</Label>
-            <Popover open={dobPickerOpen} onOpenChange={setDobPickerOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  id="dateOfBirth"
-                  className="w-full h-10 rounded-xl justify-between font-normal text-left"
-                  data-empty={!dateOfBirth || undefined}
-                >
-                  {dateOfBirth ? (
-                    dateOfBirth.toLocaleDateString()
-                  ) : (
-                    <span className="text-muted-foreground">
-                      Select your birth date
-                    </span>
-                  )}
-                  <ChevronDownIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto overflow-hidden p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={dateOfBirth}
-                  captionLayout="dropdown"
-                  startMonth={new Date(currentYear - 100, 0)}
-                  endMonth={new Date()}
-                  disabled={{ after: new Date() }}
-                  onSelect={(date) => {
-                    setDateOfBirth(date);
-                    setDobPickerOpen(false);
-                  }}
-                />
-              </PopoverContent>
-            </Popover>
+            <DateOfBirthPicker
+              id="dateOfBirth"
+              date={dateOfBirth}
+              onChange={setDateOfBirth}
+              placeholder="Select your birth date"
+              className="h-10 rounded-xl"
+            />
           </div>
 
           <Button
