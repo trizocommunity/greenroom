@@ -33,14 +33,22 @@ export const createFestivalInput = z.object({
 });
 
 export const updateFestivalInput = z.object({
-  id: z.string(),
+  id: z.string().optional(),
   name: z.string().min(1).optional(),
   description: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   location: z.string().optional(),
   publicSiteEnabled: z.boolean().optional(),
-  slug: z.string().optional(),
+  slug: z
+    .string()
+    .min(3, "Subdomain must be at least 3 characters")
+    .max(50)
+    .regex(
+      /^[a-z0-9-]+$/,
+      "Subdomain must be lowercase alphanumeric with dashes only",
+    )
+    .optional(),
 });
 
 export const dashboardOverviewInput = z.object({

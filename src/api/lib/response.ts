@@ -29,6 +29,10 @@ export function notFound(code: string, message: string): Response {
   return Response.json(err(code, message), { status: 404 });
 }
 
+export function conflict(code: string, message: string): Response {
+  return Response.json(err(code, message), { status: 409 });
+}
+
 export function internalError(message = "Internal server error"): Response {
   return Response.json(err("INTERNAL_ERROR", message), { status: 500 });
 }

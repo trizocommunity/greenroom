@@ -56,9 +56,9 @@ export function useCreateFestival() {
 export function useUpdateFestival(id: string) {
   const qc = useQueryClient();
   return useMutation<Festival, Error, UpdateFestivalInput>({
-    mutationFn: async (data) => {
+    mutationFn: async ({ id: _festivalId, ...data }) => {
       const response = await apiClient.put<ApiResponse<Festival>>(
-        "/festivals",
+        `/festivals/${id}`,
         { data },
       );
       return handleApiResponse(response.data);

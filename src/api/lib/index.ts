@@ -13,6 +13,7 @@ export {
 export type { ApiResponse } from "./response";
 export {
   badRequest,
+  conflict,
   err,
   forbidden,
   internalError,

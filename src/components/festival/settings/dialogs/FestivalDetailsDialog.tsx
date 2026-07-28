@@ -1,12 +1,13 @@
 "use client";
 
+import axios from "axios";
 import { Loader2, Pencil } from "lucide-react";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useUpdateFestival } from "@/api/client/festivals";
 import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/components/ui/date-picker";
-import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { DateRangePicker } from "@/components/ui/date-picker";
 import {
   Drawer,
   DrawerContent,
@@ -20,6 +21,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toDateOrNull } from "@/core/utils/date-time";
+import { slugify } from "@/core/utils/slug";
+
+const SLUG_PATTERN = /^[a-z0-9-]+$/;
 
 interface FestivalDetailsDialogProps {
   festival: {
@@ -41,10 +45,13 @@ export function FestivalDetailsDialog({
   onSuccess,
   trigger,
 }: FestivalDetailsDialogProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(festival.name || "");
   const [description, setDescription] = useState(festival.description || "");
   const [location, setLocation] = useState(festival.location || "");
+  const [slug, setSlug] = useState(festival.slug || "");
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined;
     to: Date | undefined;
@@ -53,6 +60,18 @@ export function FestivalDetailsDialog({
     to: toDateOrNull(festival.endDate) ?? undefined,
   });
   const updateFestival = useUpdateFestival(festival.id);
+
+  const [origin, setOrigin] = useState("");
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
+  const slugError =
+    slug.length > 0 && !SLUG_PATTERN.test(slug)
+      ? "Only lowercase letters, numbers and dashes are allowed."
+      : slug.length > 0 && slug.length < 3
+        ? "Subdomain must be at least 3 characters."
+        : null;
 
   const durationStart = festival.createdAt
     ? (toDateOrNull(festival.createdAt) ?? new Date())
@@ -86,6 +105,16 @@ export function FestivalDetailsDialog({
       return;
     }
     if (!validateDates()) return;
+    const nextSlug = slug.trim().toLowerCase();
+    if (!nextSlug) {
+      toast.error("Subdomain is required.");
+      return;
+    }
+    if (!SLUG_PATTERN.test(nextSlug) || nextSlug.length < 3) {
+      toast.error(slugError ?? "Please enter a valid subdomain before saving.");
+      return;
+    }
+    const slugChanged = nextSlug !== festival.slug;
 
     try {
       await updateFestival.mutateAsync({
@@ -95,12 +124,23 @@ export function FestivalDetailsDialog({
         location: location.trim() || undefined,
         startDate: dateRange.from ? dateRange.from.toISOString() : undefined,
         endDate: dateRange.to ? dateRange.to.toISOString() : undefined,
+        slug: slugChanged ? nextSlug : undefined,
       });
-      toast.success("Festival details updated");
       setOpen(false);
       onSuccess?.();
-    } catch {
-      toast.error("Failed to update festival details");
+
+      if (slugChanged && pathname) {
+        toast.success(
+          `Subdomain updated to "${nextSlug}". Redirecting to the new URL…`,
+        );
+        router.push(pathname.replace(`/${festival.slug}`, `/${nextSlug}`));
+      } else {
+        toast.success("Festival details updated");
+      }
+    } catch (error) {
+      const message =
+        axios.isAxiosError(error) && error.response?.data?.error?.message;
+      toast.error(message || "Failed to update festival details");
     }
   };
 
@@ -142,6 +182,30 @@ export function FestivalDetailsDialog({
               placeholder="Briefly describe your festival..."
               rows={3}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="slug">Subdomain</Label>
+            <Input
+              id="slug"
+              value={slug}
+              onChange={(e) => setSlug(slugify(e.target.value))}
+              placeholder="summer-arts-2025"
+              className={slugError ? "border-destructive" : undefined}
+            />
+            {slugError ? (
+              <p className="text-xs text-destructive">{slugError}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground truncate">
+                {origin || "yourapp.com"}/{slug || "your-subdomain"}
+              </p>
+            )}
+            {slug !== festival.slug && !slugError && (
+              <p className="text-xs text-amber-600">
+                Changing this will move your festival to a new URL and redirect
+                you there after saving.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
