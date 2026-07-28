@@ -6,6 +6,7 @@ import {
   Loader2,
   Mail,
   Phone,
+  Plus,
   ShieldAlert,
   Trash2,
 } from "lucide-react";
@@ -17,10 +18,12 @@ import {
   useDeleteAssignment,
 } from "@/api/client/assignments";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
+import { AssignmentModal } from "@/components/festival/pre-event-works/assignments/AssignmentModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -203,6 +206,14 @@ export function AssignProgrammesClient({
   const [assignProgrammesTab, setAssignProgrammesTab] = useState<
     "ASSIGN" | "ASSIGNMENTS"
   >("ASSIGN");
+  const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
+
+  // AssignmentModal expects a top-level `categoryId` on each programme (this
+  // component's ProgrammeForAssignment only nests it under `category.id`).
+  const assignmentModalProgrammes = useMemo(
+    () => programmes.map((p) => ({ ...p, categoryId: p.category.id })),
+    [programmes],
+  );
 
   useEffect(() => {
     if (!justLocked) return;
@@ -701,16 +712,35 @@ export function AssignProgrammesClient({
 
   return (
     <div className="pt-5">
+      <AssignmentModal
+        festivalId={festivalId}
+        open={assignmentModalOpen}
+        onOpenChange={setAssignmentModalOpen}
+        isReadOnly={runtimeIsReadOnly}
+        fixedGroupId={leaderGroupId}
+        categories={programmeCategoryOptions}
+        programmes={assignmentModalProgrammes}
+        students={myStudents}
+        assignments={assignments}
+      />
       <Tabs
         value={assignProgrammesTab}
         onValueChange={(v) => {
           setAssignProgrammesTab(v as "ASSIGN" | "ASSIGNMENTS");
         }}
       >
-        <TabsList className="w-full justify-start gap-2">
-          <TabsTrigger value="ASSIGN">Assign</TabsTrigger>
-          <TabsTrigger value="ASSIGNMENTS">Assignments</TabsTrigger>
-        </TabsList>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <TabsList className="justify-start gap-2">
+            <TabsTrigger value="ASSIGN">Assign</TabsTrigger>
+            <TabsTrigger value="ASSIGNMENTS">Assignments</TabsTrigger>
+          </TabsList>
+          {!runtimeIsReadOnly && (
+            <Button size="sm" onClick={() => setAssignmentModalOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Assignment
+            </Button>
+          )}
+        </div>
 
         <TabsContent value="ASSIGN">
           {runtimeIsReadOnly ? (
@@ -838,40 +868,65 @@ export function AssignProgrammesClient({
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-2">
-                      {eligibleProgrammes.length === 0 ? (
-                        <div className="text-sm text-muted-foreground">
-                          No programmes available.
-                        </div>
-                      ) : (
-                        eligibleProgrammes.map((p) => (
-                          <button
-                            key={p.id}
-                            type="button"
-                            onClick={() => setSelectedProgrammeId(p.id)}
-                            className={[
-                              "w-full text-left rounded-lg border p-3 transition-colors",
-                              p.id === selectedProgrammeId
-                                ? "bg-muted/60 border-primary/30"
-                                : "hover:bg-muted/40",
-                            ].join(" ")}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <div className="font-medium truncate">
-                                  {p.name}
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  {p.type === "GROUP" ? "Group" : "Individual"}
-                                </div>
-                              </div>
-                              <ProgrammeStatusBadge
-                                status={getUiProgrammeStatus(p)}
-                              />
+                    <CardContent className="p-0">
+                      <ScrollArea className="h-[60vh]">
+                        <div className="space-y-2 p-4 pt-0">
+                          {eligibleProgrammes.length === 0 ? (
+                            <div className="text-sm text-muted-foreground">
+                              No programmes available.
                             </div>
-                          </button>
-                        ))
-                      )}
+                          ) : (
+                            eligibleProgrammes.map((p) => (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => setSelectedProgrammeId(p.id)}
+                                className={[
+                                  "w-full text-left rounded-lg border p-3 transition-colors",
+                                  p.id === selectedProgrammeId
+                                    ? "bg-muted/60 border-primary/30"
+                                    : "hover:bg-muted/40",
+                                ].join(" ")}
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <div className="font-medium truncate">
+                                      {p.name}
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                      <Badge
+                                        variant={
+                                          p.type === "GROUP"
+                                            ? "secondary"
+                                            : "outline"
+                                        }
+                                        className="text-[10px] h-5"
+                                      >
+                                        {p.type === "GROUP"
+                                          ? "Group"
+                                          : "Individual"}
+                                      </Badge>
+                                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                                        {p.type === "GROUP"
+                                          ? `Teams: ${p.maxTeamsPerGroup} · Size: ${p.maxStudentsPerTeam}`
+                                          : `Max: ${p.maxParticipantsPerGroup}`}
+                                      </span>
+                                      {p.category.type === "GENERAL" && (
+                                        <span className="text-[10px] text-muted-foreground italic">
+                                          General — open to all categories
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <ProgrammeStatusBadge
+                                    status={getUiProgrammeStatus(p)}
+                                  />
+                                </div>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </ScrollArea>
                     </CardContent>
                   </Card>
                 </div>
@@ -971,70 +1026,72 @@ export function AssignProgrammesClient({
 
                           <div className="space-y-2">
                             <div className="text-sm font-medium">Students</div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              {studentsForSelectedProgramme.map((s) => {
-                                const checked = selectedStudentIds.includes(
-                                  s.id,
-                                );
-                                const isAssignedDB =
-                                  alreadyAssignedStudentIdsForSelectedProgramme.has(
+                            <ScrollArea className="h-[45vh] rounded-lg border p-2">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {studentsForSelectedProgramme.map((s) => {
+                                  const checked = selectedStudentIds.includes(
                                     s.id,
                                   );
-                                const disableForLimit =
-                                  !checked && !isAssignedDB && isCapacityFull;
-                                return (
-                                  <label
-                                    key={s.id}
-                                    className={[
-                                      "flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors",
-                                      checked
-                                        ? "bg-amber-500/10 border-amber-500/30"
-                                        : "",
-                                      disableForLimit
-                                        ? "opacity-40 cursor-not-allowed bg-muted/20"
-                                        : "",
-                                      isAssignedDB ? "opacity-60" : "",
-                                    ].join(" ")}
-                                  >
-                                    <span className="min-w-0">
-                                      <span className="font-medium truncate block">
-                                        {s.name}
-                                      </span>
-                                      {s.chestNumber ? (
-                                        <span className="text-xs text-muted-foreground">
-                                          {s.chestNumber}
-                                        </span>
-                                      ) : null}
-                                      {selectedProgramme.type === "GROUP" &&
-                                      groupTeamPreview ? (
-                                        <div className="mt-1">
-                                          <Badge
-                                            variant="outline"
-                                            className="text-[10px] h-5 px-2"
-                                          >
-                                            T
-                                            {groupTeamPreview.studentIdToTeamNumber.get(
-                                              s.id,
-                                            ) ?? "?"}
-                                          </Badge>
-                                        </div>
-                                      ) : null}
-                                    </span>
-                                    <input
-                                      type="checkbox"
-                                      className="h-4 w-4"
-                                      checked={checked}
-                                      onChange={() => toggleStudent(s.id)}
-                                      disabled={
-                                        runtimeIsReadOnly ||
-                                        isAssignedDB ||
+                                  const isAssignedDB =
+                                    alreadyAssignedStudentIdsForSelectedProgramme.has(
+                                      s.id,
+                                    );
+                                  const disableForLimit =
+                                    !checked && !isAssignedDB && isCapacityFull;
+                                  return (
+                                    <label
+                                      key={s.id}
+                                      className={[
+                                        "flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors",
+                                        checked
+                                          ? "bg-amber-500/10 border-amber-500/30"
+                                          : "",
                                         disableForLimit
-                                      }
-                                    />
-                                  </label>
-                                );
-                              })}
-                            </div>
+                                          ? "opacity-40 cursor-not-allowed bg-muted/20"
+                                          : "",
+                                        isAssignedDB ? "opacity-60" : "",
+                                      ].join(" ")}
+                                    >
+                                      <span className="min-w-0">
+                                        <span className="font-medium truncate block">
+                                          {s.name}
+                                        </span>
+                                        {s.chestNumber ? (
+                                          <span className="text-xs text-muted-foreground">
+                                            {s.chestNumber}
+                                          </span>
+                                        ) : null}
+                                        {selectedProgramme.type === "GROUP" &&
+                                        groupTeamPreview ? (
+                                          <div className="mt-1">
+                                            <Badge
+                                              variant="outline"
+                                              className="text-[10px] h-5 px-2"
+                                            >
+                                              T
+                                              {groupTeamPreview.studentIdToTeamNumber.get(
+                                                s.id,
+                                              ) ?? "?"}
+                                            </Badge>
+                                          </div>
+                                        ) : null}
+                                      </span>
+                                      <input
+                                        type="checkbox"
+                                        className="h-4 w-4"
+                                        checked={checked}
+                                        onChange={() => toggleStudent(s.id)}
+                                        disabled={
+                                          runtimeIsReadOnly ||
+                                          isAssignedDB ||
+                                          disableForLimit
+                                        }
+                                      />
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </ScrollArea>
                           </div>
 
                           <div className="flex items-center justify-end gap-2">

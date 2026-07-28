@@ -13,14 +13,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  useAssignments,
-  useBulkCreateAssignments,
-} from "@/api/client/assignments";
-import { useCategories } from "@/api/client/categories";
-import { useGroups } from "@/api/client/groups";
-import { useProgrammes } from "@/api/client/programmes";
-import { useStudents } from "@/api/client/students";
+import { useBulkCreateAssignments } from "@/api/client/assignments";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,7 +31,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/core/utils/cn";
 
 interface AssignmentModalProps {
@@ -46,6 +38,14 @@ interface AssignmentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   isReadOnly?: boolean;
+  categories: { id: string; name: string; type?: string | null }[];
+  programmes: any[];
+  students: any[];
+  assignments: any[];
+  /** Omit/empty to skip the Group step and scope everything via fixedGroupId instead. */
+  groups?: { id: string; name: string }[];
+  /** Pre-scopes the dialog to a single group (e.g. a team leader's own group) and hides the Group step. */
+  fixedGroupId?: string;
 }
 
 interface QueueItem {
@@ -68,29 +68,40 @@ export function AssignmentModal({
   open,
   onOpenChange,
   isReadOnly = false,
+  categories,
+  programmes,
+  students,
+  assignments,
+  groups = [],
+  fixedGroupId,
 }: AssignmentModalProps) {
-  // Data Hooks
-  const { data: categories = [] } = useCategories(festivalId);
-  const { data: groups = [] } = useGroups(festivalId);
-  const { data: programmes = [], isLoading: programmesLoading } =
-    useProgrammes(festivalId);
-  const { data: students = [], isLoading: studentsLoading } =
-    useStudents(festivalId);
-  const { data: assignments = [] } = useAssignments(festivalId);
   const bulkCreateAssignment = useBulkCreateAssignments();
 
-  const isLoading = programmesLoading || studentsLoading;
+  // Whether to show the "Group" step at all — admin dialogs pick a group;
+  // team-leader dialogs are pre-scoped to their own group via fixedGroupId.
+  const hasGroupStep = !fixedGroupId && groups.length > 0;
+  const groupStepNum = 1;
+  const categoryStepNum = hasGroupStep ? 2 : 1;
+  const programmeStepNum = hasGroupStep ? 3 : 2;
+  const studentStepNum = hasGroupStep ? 4 : 3;
 
   // State
   const [view, setView] = useState<ModalView>("SELECTION");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
-  const [selectedGroupId, setSelectedGroupId] = useState<string>("");
+  const [selectedGroupId, setSelectedGroupId] = useState<string>(
+    fixedGroupId ?? "",
+  );
   const [selectedProgrammeId, setSelectedProgrammeId] = useState<string>("");
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(
     new Set(),
   );
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const categoriesById = useMemo(
+    () => new Map(categories.map((c) => [c.id, c])),
+    [categories],
+  );
 
   // Derived Selection Objects
   const selectedProgramme = useMemo(
@@ -99,12 +110,14 @@ export function AssignmentModal({
   );
 
   const selectedCategory = useMemo(
-    () => categories.find((c: any) => c.id === selectedCategoryId),
-    [categories, selectedCategoryId],
+    () => categoriesById.get(selectedCategoryId),
+    [categoriesById, selectedCategoryId],
   );
 
+  const selectedCategoryType = selectedCategory?.type ?? null;
+
   const selectedGroup = useMemo(
-    () => groups.find((g: any) => g.id === selectedGroupId),
+    () => groups.find((g) => g.id === selectedGroupId),
     [groups, selectedGroupId],
   );
 
@@ -117,20 +130,15 @@ export function AssignmentModal({
   const filteredStudents = useMemo(() => {
     if (!selectedGroupId) return [];
 
-    let eligibleStudents = students.filter(
-      (s: any) => s.groupId === selectedGroupId,
-    );
+    // When fixedGroupId is set, the caller already scoped `students` to the
+    // right group (team-leader students have no groupId field at all).
+    let eligibleStudents = fixedGroupId
+      ? students
+      : students.filter((s: any) => s.groupId === selectedGroupId);
 
-    // If programme is selected, we need to sort/filter
-    // Prioritize showing UNASSIGNED students at the top.
-    // If assigned, we mark them differently.
-
-    // We also need to consider category filtering IF the programme is not GENERAL.
-    const isGeneralProgramme =
-      selectedCategoryId === null || selectedCategoryId === undefined;
-
-    // Filter by Category matching if NOT general and strict mode (User said: first Group, then Category - implying filter)
-    if (!isGeneralProgramme && selectedCategoryId) {
+    // GENERAL-type categories are open to students from any category;
+    // SINGLE-type categories only accept students from that exact category.
+    if (selectedCategoryId && selectedCategoryType !== "GENERAL") {
       eligibleStudents = eligibleStudents.filter(
         (s: any) => s.categoryId === selectedCategoryId,
       );
@@ -161,7 +169,9 @@ export function AssignmentModal({
     queue,
     selectedGroupId,
     selectedCategoryId,
+    selectedCategoryType,
     selectedProgrammeId,
+    fixedGroupId,
   ]);
 
   // Limits Logic
@@ -484,18 +494,6 @@ export function AssignmentModal({
     setSelectedStudentIds(new Set());
   };
 
-  if (isLoading) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-none w-[calc(100%-1rem)] sm:w-[95vw] h-[95vh] max-h-dvh flex flex-col p-0 gap-0 border rounded-lg sm:rounded-xl mx-auto my-auto ring-0 outline-none overflow-hidden">
-          <div className="flex items-center justify-center h-full">
-            <Skeleton className="h-8 w-8 rounded-full" />
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-none w-[calc(100%-1rem)] sm:w-[95vw] h-[95vh] max-h-dvh flex flex-col p-0 gap-0 border rounded-lg sm:rounded-xl mx-auto my-auto ring-0 outline-none overflow-hidden">
@@ -544,44 +542,48 @@ export function AssignmentModal({
         {view === "SELECTION" && (
           <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
             {/* Left Context Pane (Sidebar on Desktop, Top Bar on Mobile) */}
-            <div className="w-full lg:w-[300px] border-b lg:border-b-0 lg:border-r flex flex-col bg-muted/10 shrink-0">
+            <div className="w-full lg:w-[300px] border-b lg:border-b-0 lg:border-r flex flex-col bg-muted/10 shrink-0 overflow-y-auto">
               <div className="p-6 space-y-6">
-                {/* Step 1: Group (First Priority as requested) */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
-                      1
+                {/* Step: Group (only shown when the dialog isn't pre-scoped to one group) */}
+                {hasGroupStep && (
+                  <>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
+                          {groupStepNum}
+                        </div>
+                        <span className="text-sm font-semibold">Group</span>
+                      </div>
+                      <Select
+                        value={selectedGroupId}
+                        onValueChange={(val) => {
+                          setSelectedGroupId(val);
+                          resetFilters(); // Reset everything when group changes naturally
+                        }}
+                        disabled={isReadOnly}
+                      >
+                        <SelectTrigger className="w-full bg-background">
+                          <SelectValue placeholder="Select Group" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {groups.map((g) => (
+                            <SelectItem key={g.id} value={g.id}>
+                              {g.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <span className="text-sm font-semibold">Group</span>
-                  </div>
-                  <Select
-                    value={selectedGroupId}
-                    onValueChange={(val) => {
-                      setSelectedGroupId(val);
-                      resetFilters(); // Reset everything when group changes naturally
-                    }}
-                    disabled={isReadOnly}
-                  >
-                    <SelectTrigger className="w-full bg-background">
-                      <SelectValue placeholder="Select Group" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {groups.map((g: any) => (
-                        <SelectItem key={g.id} value={g.id}>
-                          {g.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
 
-                <Separator />
+                    <Separator />
+                  </>
+                )}
 
-                {/* Step 2: Category (Rearranged) */}
+                {/* Step: Category */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
-                      2
+                      {categoryStepNum}
                     </div>
                     <span className="text-sm font-semibold">Category</span>
                   </div>
@@ -598,13 +600,19 @@ export function AssignmentModal({
                       <SelectValue placeholder="Select Category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map((c: any) => (
+                      {categories.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {c.name}
+                          {c.type === "GENERAL" ? " (General)" : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {selectedCategoryType === "GENERAL" && (
+                    <p className="text-xs text-muted-foreground">
+                      General — open to students from any category.
+                    </p>
+                  )}
                 </div>
                 <Separator />
 
@@ -632,12 +640,12 @@ export function AssignmentModal({
             </div>
 
             {/* Right Content Area */}
-            <div className="flex-1 flex flex-col lg:grid lg:grid-cols-2 overflow-hidden bg-background">
+            <div className="flex-1 flex flex-col lg:grid lg:grid-cols-2 overflow-hidden bg-background min-h-0">
               {/* Left Bar: Programmes */}
-              <div className="h-full border-b lg:border-r w-full flex flex-col">
-                <div className="px-6 h-14 border-b bg-muted/5 flex items-center gap-2">
+              <div className="h-full border-b lg:border-r w-full flex flex-col min-h-0">
+                <div className="px-6 h-14 border-b bg-muted/5 flex items-center gap-2 shrink-0">
                   <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
-                    3
+                    {programmeStepNum}
                   </div>
                   <h3 className="text-sm font-semibold">Select Programme</h3>
                 </div>
@@ -718,11 +726,11 @@ export function AssignmentModal({
 
               {/* Right Bar: Students */}
               <div className="h-full flex flex-col min-h-0 border-t lg:border-t-0">
-                <div className="px-6 py-3 gap-3 border-l-0 lg:border-l border-b flex bg-muted/5 flex-col xl:flex-row items-start xl:items-center justify-between w-full">
+                <div className="px-6 py-3 gap-3 border-l-0 lg:border-l border-b flex bg-muted/5 flex-col xl:flex-row items-start xl:items-center justify-between w-full shrink-0">
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">
                       <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
-                        4
+                        {studentStepNum}
                       </div>
                       <h3 className="text-sm font-semibold">
                         {selectedProgramme?.type === "GROUP"
@@ -841,7 +849,7 @@ export function AssignmentModal({
         {/* --- VIEW: REVIEW --- */}
         {view === "REVIEW" && (
           <div className="flex-1 flex flex-col bg-muted/5 animate-in slide-in-from-right-10 duration-200 overflow-hidden min-h-0">
-            <div className="flex-1 flex justify-center p-8 overflow-hidden min-h-0">
+            <div className="flex-1 flex justify-center p-4 sm:p-8 overflow-hidden min-h-0">
               <div className="w-full max-w-4xl flex flex-col bg-background rounded-lg border h-full shadow-sm overflow-hidden">
                 <div className="p-4 border-b flex items-center justify-between">
                   <div>
@@ -875,8 +883,12 @@ export function AssignmentModal({
                               <p className="font-medium">{item.studentName}</p>
                               <div className="flex gap-2 text-xs text-muted-foreground mt-0.5">
                                 <span>{item.programmeName}</span>
-                                <span className="text-gray-300">•</span>
-                                <span>{item.groupName}</span>
+                                {item.groupName && (
+                                  <>
+                                    <span className="text-gray-300">•</span>
+                                    <span>{item.groupName}</span>
+                                  </>
+                                )}
                                 {item.isGroupType && (
                                   <>
                                     <span className="text-gray-300">•</span>

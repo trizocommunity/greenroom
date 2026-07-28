@@ -574,6 +574,11 @@ export function AssignmentsClient({
         open={assignmentModalOpen}
         onOpenChange={setAssignmentModalOpen}
         isReadOnly={isReadOnlyMode}
+        categories={categories}
+        groups={groups}
+        programmes={programmes}
+        students={students}
+        assignments={assignments}
       />
 
       {/* Header row */}
@@ -603,27 +608,18 @@ export function AssignmentsClient({
               assignment&quot; to pick a programme, then add students to the
               queue to form teams.
             </p>
-            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-left">
-              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                <strong>Note:</strong> Creating new assignments is only
-                available on laptop or large screens. On smaller devices you can
-                view and remove assignments.
-              </p>
-            </div>
           </HowItWorksButton>
           <div className="flex items-center">
             <DeadlinesCard isLockedOverride={isReadOnlyMode} />
           </div>
-          <div className="hidden md:block">
-            <Button
-              size="sm"
-              onClick={() => setAssignmentModalOpen(true)}
-              disabled={isReadOnlyMode}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              New assignment
-            </Button>
-          </div>
+          <Button
+            size="sm"
+            onClick={() => setAssignmentModalOpen(true)}
+            disabled={isReadOnlyMode}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            New assignment
+          </Button>
         </div>
       </div>
 
