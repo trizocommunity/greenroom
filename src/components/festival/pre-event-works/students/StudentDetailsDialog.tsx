@@ -190,6 +190,17 @@ export function StudentDetailsDialog({
                   </div>
                 )}
 
+                {student.dateOfBirth && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                      Date of Birth
+                    </p>
+                    <p className="text-sm font-medium">
+                      {format(parseStoredInstant(student.dateOfBirth), "PP")}
+                    </p>
+                  </div>
+                )}
+
                 {student.standard != null && student.standard !== "" && (
                   <div className="space-y-1">
                     <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">

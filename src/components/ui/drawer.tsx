@@ -113,7 +113,7 @@ const DrawerContent = React.forwardRef<
           <div className="absolute right-3 top-1/2 -translate-y-1/2 h-2 w-[60px] sm:w-[100px] shrink-0 rounded-full bg-muted -rotate-90" />
         )}
         {responsiveDirection === "right" && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 h-2 w-[60px] sm:w-[100px] shrink-0 rounded-full bg-muted -rotate-90" />
+          <div className="absolute -left-11 top-1/2 -translate-y-1/2 h-2 w-[60px] sm:w-[100px] shrink-0 rounded-full bg-muted -rotate-90" />
         )}
         {children}
       </DrawerPrimitive.Content>

@@ -35,6 +35,7 @@ interface StudentProfileViewProps {
     phone: string | null;
     gender: string | null;
     age: number | null;
+    dateOfBirth: string | null;
     standard: string | null;
     isTeamLeader: boolean;
     createdAt: Date;
@@ -224,6 +225,16 @@ export function StudentProfileView({
                     Age
                   </span>
                   <div className="text-sm">{student.age}</div>
+                </div>
+              )}
+              {student.dateOfBirth && (
+                <div className="min-w-0">
+                  <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide block mb-0.5">
+                    Date of Birth
+                  </span>
+                  <div className="text-sm">
+                    {format(parseStoredInstant(student.dateOfBirth), "PP")}
+                  </div>
                 </div>
               )}
               {student.standard != null && student.standard !== "" && (

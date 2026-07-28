@@ -21,6 +21,7 @@ export const studentSchema = z.object({
   categoryId: z.string().nullable(),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).nullable(),
   age: z.number().nullable(),
+  dateOfBirth: z.string().nullable(),
   standard: z.string().nullable(),
   chestNumber: z.string().nullable(),
   profileSlug: z.string().nullable(),
