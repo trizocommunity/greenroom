@@ -15,6 +15,10 @@ export default async function ProfilePage() {
     redirect("/login");
   }
 
+  if (user.globalRole === "SUPER_ADMIN") {
+    redirect("/super-admin");
+  }
+
   return (
     <div className="container mx-auto max-w-7xl py-12 px-6">
       <ProfileView user={user as any} />

@@ -97,6 +97,59 @@
   --sidebar-ring: var(--primary);
 }
 
+.dark {
+  --primary: #ef4444;
+  --primary-hover: #f87171;
+  --secondary: #f25c05;
+
+  --bg: #0b0e14;
+  --surface: #12151f;
+  --border: #232735;
+
+  --text: #e5e7eb;
+  --text-muted: #9ca3af;
+  --heading: #f9fafb;
+
+  --success: #34d399;
+  --warning: #fbbf24;
+  --info: #60a5fa;
+  --purple: #a78bfa;
+  --pink: #f472b6;
+
+  --background: var(--bg);
+  --foreground: var(--text);
+
+  --primary-foreground: #ffffff;
+  --secondary-foreground: #ffffff;
+
+  --muted: #1a1e2b;
+  --muted-foreground: var(--text-muted);
+
+  --accent: #1a1e2b;
+  --accent-foreground: var(--text);
+
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  --input: var(--border);
+  --ring: var(--primary);
+
+  --card: var(--surface);
+  --card-foreground: var(--heading);
+
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--text);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(239, 68, 68, 0.12);
+  --sidebar-accent-foreground: var(--primary);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--primary);
+}
+
 body {
   color: var(--foreground);
   background: var(--background);

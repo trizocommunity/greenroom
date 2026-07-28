@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -32,6 +33,9 @@ export function AdminHeader() {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
+      </div>
+      <div className="flex items-center gap-2 px-7">
+        <ThemeToggle />
       </div>
     </header>
   );

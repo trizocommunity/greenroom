@@ -8,6 +8,7 @@ import { FestivalDashboardClientShell } from "@/components/festival/dashboard/Fe
 import { FestivalDashboardSidebar } from "@/components/festival/dashboard/FestivalDashboardSidebar";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { FestivalStatusBadge } from "@/components/festival/FestivalStatusBadge";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import {
   SidebarInset,
   SidebarProvider,
@@ -129,6 +130,7 @@ export default async function FestivalDashboardLayout({
 
               {/* Header Actions */}
               <div className="flex items-center gap-2">
+                <ThemeToggle />
                 <FestivalStatusBadge
                   status={derivedStatus}
                   createdAt={festival.createdAt}

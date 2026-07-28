@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { Instrument_Serif, Outfit } from "next/font/google";
 import NextTopLoader from "nextjs-toploader";
 import QueryProvider from "@/components/providers/QueryProvider";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { RazorpayInit } from "@/components/razorpay/RazorpayInit";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -46,13 +47,15 @@ export default function RootLayout({
         className={`${outfit.variable} ${instrumentSerif.variable} antialiased bg-background text-foreground flex flex-col min-h-screen`}
       >
         <NextTopLoader height={2} color="#d72626" showSpinner={false} />
-        <QueryProvider>
-          <RazorpayInit />
-          <main className="flex-1">{children}</main>
-          <Toaster />
-          <Analytics />
-          <SpeedInsights />
-        </QueryProvider>
+        <ThemeProvider>
+          <QueryProvider>
+            <RazorpayInit />
+            <main className="flex-1">{children}</main>
+            <Toaster />
+            <Analytics />
+            <SpeedInsights />
+          </QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

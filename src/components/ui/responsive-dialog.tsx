@@ -1,6 +1,6 @@
 "use client";
 
-import type * as React from "react";
+import * as React from "react";
 import { useIsMobile } from "@/components/common/use-mobile";
 import {
   AlertDialog,
@@ -13,6 +13,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import {
   Drawer,
   DrawerClose,
@@ -24,6 +25,20 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { cn } from "@/core/utils/cn";
+
+/**
+ * Shared once at the root and read by every sub-component below. Each
+ * sub-component previously called useIsMobile() independently — since that
+ * hook only settles on the real value inside a useEffect, the moment the
+ * root swaps AlertDialog -> Drawer (a different element type at the same
+ * position), React remounts the whole subtree fresh. On that fresh mount
+ * the children's own useIsMobile() briefly resets to its initial value
+ * before their effect fires, so they'd render AlertDialog-family
+ * primitives under an already-swapped Drawer root — a guaranteed
+ * "DialogPortal must be used within Dialog" crash, not just an occasional
+ * race. A single shared value keeps root and children always in sync.
+ */
+const ResponsiveDialogMobileContext = React.createContext(false);
 
 interface ResponsiveDialogProps {
   open?: boolean;
@@ -38,18 +53,18 @@ const ResponsiveDialog = ({
 }: ResponsiveDialogProps) => {
   const isMobile = useIsMobile();
 
-  if (isMobile) {
-    return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
-        {children}
-      </Drawer>
-    );
-  }
-
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      {children}
-    </AlertDialog>
+    <ResponsiveDialogMobileContext.Provider value={isMobile}>
+      {isMobile ? (
+        <Drawer open={open} onOpenChange={onOpenChange}>
+          {children}
+        </Drawer>
+      ) : (
+        <AlertDialog open={open} onOpenChange={onOpenChange}>
+          {children}
+        </AlertDialog>
+      )}
+    </ResponsiveDialogMobileContext.Provider>
   );
 };
 
@@ -57,7 +72,7 @@ const ResponsiveDialogTrigger = ({
   children,
   ...props
 }: React.ComponentProps<typeof AlertDialogTrigger>) => {
-  const isMobile = useIsMobile();
+  const isMobile = React.useContext(ResponsiveDialogMobileContext);
 
   if (isMobile) {
     return (
@@ -78,7 +93,7 @@ const ResponsiveDialogHeader = ({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => {
-  const isMobile = useIsMobile();
+  const isMobile = React.useContext(ResponsiveDialogMobileContext);
 
   if (isMobile) {
     return (
@@ -93,7 +108,7 @@ const ResponsiveDialogFooter = ({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => {
-  const isMobile = useIsMobile();
+  const isMobile = React.useContext(ResponsiveDialogMobileContext);
 
   if (isMobile) {
     return (
@@ -111,7 +126,7 @@ const ResponsiveDialogTitle = ({
   className,
   ...props
 }: React.ComponentProps<typeof AlertDialogTitle>) => {
-  const isMobile = useIsMobile();
+  const isMobile = React.useContext(ResponsiveDialogMobileContext);
 
   if (isMobile) {
     return <DrawerTitle className={className} {...props} />;
@@ -124,7 +139,7 @@ const ResponsiveDialogDescription = ({
   className,
   ...props
 }: React.ComponentProps<typeof AlertDialogDescription>) => {
-  const isMobile = useIsMobile();
+  const isMobile = React.useContext(ResponsiveDialogMobileContext);
 
   if (isMobile) {
     return <DrawerDescription className={className} {...props} />;
@@ -138,7 +153,7 @@ const ResponsiveDialogContent = ({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => {
-  const isMobile = useIsMobile();
+  const isMobile = React.useContext(ResponsiveDialogMobileContext);
 
   if (isMobile) {
     return (
@@ -161,12 +176,15 @@ const ResponsiveDialogAction = ({
   className,
   ...props
 }: React.ComponentProps<typeof AlertDialogAction>) => {
-  const isMobile = useIsMobile();
+  const isMobile = React.useContext(ResponsiveDialogMobileContext);
 
   if (isMobile) {
+    // AlertDialogAction requires an AlertDialog.Root ancestor, but here the
+    // root is <Drawer> (Vaul), not <AlertDialog> — a plain Button avoids
+    // the missing-context crash while keeping identical styling/behavior.
     return (
       <DrawerClose asChild>
-        <AlertDialogAction className={className} {...props} />
+        <Button className={className} {...props} />
       </DrawerClose>
     );
   }
@@ -178,12 +196,16 @@ const ResponsiveDialogCancel = ({
   className,
   ...props
 }: React.ComponentProps<typeof AlertDialogCancel>) => {
-  const isMobile = useIsMobile();
+  const isMobile = React.useContext(ResponsiveDialogMobileContext);
 
   if (isMobile) {
     return (
       <DrawerClose asChild>
-        <AlertDialogCancel className={className} {...props} />
+        <Button
+          variant="outline"
+          className={cn("mt-2 sm:mt-0", className)}
+          {...props}
+        />
       </DrawerClose>
     );
   }

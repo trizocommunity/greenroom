@@ -41,6 +41,7 @@ export const ProgrammeService = {
       maxStudentsPerTeam?: number;
       maxPoints?: number;
     },
+    actor?: { createdByEmail?: string; createdByName?: string },
   ) {
     // Enforce duplicate check: name + categoryId + type
     const existing = await db.query.programme.findFirst({
@@ -71,6 +72,10 @@ export const ProgrammeService = {
         maxParticipantsPerGroup: data.maxParticipantsPerGroup || 1,
         maxTeamsPerGroup: data.maxTeamsPerGroup || 1,
         maxStudentsPerTeam: data.maxStudentsPerTeam || 1,
+        ...(actor?.createdByEmail
+          ? { createdByEmail: actor.createdByEmail }
+          : {}),
+        ...(actor?.createdByName ? { createdByName: actor.createdByName } : {}),
       });
     } catch (error) {
       await UsageCounterService.incrementUsage(

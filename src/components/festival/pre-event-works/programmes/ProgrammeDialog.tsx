@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2, Plus, User } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -12,6 +13,7 @@ import {
   useProgramme,
   useUpdateProgramme,
 } from "@/api/client/programmes";
+import { ProgrammeActivityTimeline } from "@/components/festival/pre-event-works/programmes/ProgrammeActivityTimeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,6 +50,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useFeatureTag } from "@/features/plan-features/hooks/use-feature";
+import { getProgrammeDetailForDrawerAction } from "@/features/programmes/actions/programme.actions";
 
 const ProgrammeBaseSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -144,6 +149,14 @@ export function ProgrammeDialog({
     open && readOnly ? programme?.id : undefined,
   );
 
+  const canUseAuditDrawer = useFeatureTag("programme.auditDrawer");
+  const { data: activityDetail, isLoading: isLoadingActivity } = useQuery({
+    queryKey: ["programme-detail-drawer", festivalId, programme?.id],
+    queryFn: () => getProgrammeDetailForDrawerAction(festivalId, programme!.id),
+    enabled: Boolean(open && readOnly && canUseAuditDrawer && programme?.id),
+    staleTime: 30_000,
+  });
+
   useEffect(() => {
     if (open) {
       if (programme) {
@@ -237,109 +250,137 @@ export function ProgrammeDialog({
 
     const assignments = details.assignments || [];
 
+    const detailsBody = (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm">
+          <div className="space-y-1">
+            <span className="text-muted-foreground">Category</span>
+            <div className="font-medium">{details.category?.name}</div>
+          </div>
+          <div className="space-y-1">
+            <span className="text-muted-foreground">Type</span>
+            <div className="flex gap-2">
+              <Badge variant="outline">{details.type}</Badge>
+              <Badge variant="secondary">
+                {details.stageType === "STAGE" ? "Stage" : "Off-Stage"}
+              </Badge>
+            </div>
+          </div>
+          {details.type === "INDIVIDUAL" ? (
+            <div className="space-y-1">
+              <span className="text-muted-foreground">Max Entries/Group</span>
+              <div className="font-medium">
+                {details.maxParticipantsPerGroup}
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-1">
+                <span className="text-muted-foreground">Max Teams/Group</span>
+                <div className="font-medium">{details.maxTeamsPerGroup}</div>
+              </div>
+              <div className="space-y-1">
+                <span className="text-muted-foreground">Students/Team</span>
+                <div className="font-medium">{details.maxStudentsPerTeam}</div>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="space-y-2 flex flex-col flex-1 min-h-0">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold">
+              Assigned Students ({assignments.length})
+            </h4>
+          </div>
+          <div className="rounded-md border flex-1 min-h-[200px] max-h-[350px] overflow-hidden flex flex-col">
+            <ScrollArea className="flex-1">
+              <Table>
+                <TableHeader className="bg-muted/50 sticky top-0 z-10">
+                  <TableRow>
+                    <TableHead className="w-[50px]">#</TableHead>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Group</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {assignments.map((assignment: any, index: number) => (
+                    <TableRow key={assignment.id}>
+                      <TableCell className="text-muted-foreground text-xs">
+                        {index + 1}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {assignment.student?.name}
+                      </TableCell>
+                      <TableCell>
+                        {assignment.student?.group ? (
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="h-2 w-2 rounded-full"
+                              style={{
+                                backgroundColor:
+                                  assignment.student.group.color || "#2563eb",
+                              }}
+                            />
+                            <span className="font-medium">
+                              {assignment.student.group.name}
+                            </span>
+                          </div>
+                        ) : (
+                          "-"
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {assignments.length === 0 && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={3}
+                        className="h-24 text-center text-muted-foreground"
+                      >
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          <User className="h-5 w-5 text-muted-foreground/50" />
+                          <span className="text-xs">No assignments yet</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </div>
+        </div>
+      </div>
+    );
+
     return (
       <div className="flex flex-col flex-1 min-h-0 space-y-4 py-1">
-        <div className="flex-1 overflow-y-auto min-h-0 space-y-4">
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm">
-            <div className="space-y-1">
-              <span className="text-muted-foreground">Category</span>
-              <div className="font-medium">{details.category?.name}</div>
-            </div>
-            <div className="space-y-1">
-              <span className="text-muted-foreground">Type</span>
-              <div className="flex gap-2">
-                <Badge variant="outline">{details.type}</Badge>
-                <Badge variant="secondary">
-                  {details.stageType === "STAGE" ? "Stage" : "Off-Stage"}
-                </Badge>
-              </div>
-            </div>
-            {details.type === "INDIVIDUAL" ? (
-              <div className="space-y-1">
-                <span className="text-muted-foreground">Max Entries/Group</span>
-                <div className="font-medium">
-                  {details.maxParticipantsPerGroup}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {canUseAuditDrawer ? (
+            <Tabs defaultValue="details" className="flex flex-col">
+              <TabsList className="w-full sm:w-fit">
+                <TabsTrigger value="details" className="flex-1 sm:flex-none">
+                  Details
+                </TabsTrigger>
+                <TabsTrigger value="activity" className="flex-1 sm:flex-none">
+                  Activity
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="details">{detailsBody}</TabsContent>
+              <TabsContent value="activity">
+                <div className="rounded-lg border overflow-hidden">
+                  <ProgrammeActivityTimeline
+                    entries={activityDetail?.auditTimeline ?? []}
+                    isLoading={isLoadingActivity}
+                    className="p-3"
+                    scrollClassName="max-h-72 sm:max-h-[28rem]"
+                  />
                 </div>
-              </div>
-            ) : (
-              <>
-                <div className="space-y-1">
-                  <span className="text-muted-foreground">Max Teams/Group</span>
-                  <div className="font-medium">{details.maxTeamsPerGroup}</div>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-muted-foreground">Students/Team</span>
-                  <div className="font-medium">
-                    {details.maxStudentsPerTeam}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="space-y-2 flex flex-col flex-1 min-h-0">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold">
-                Assigned Students ({assignments.length})
-              </h4>
-            </div>
-            <div className="rounded-md border flex-1 min-h-[200px] max-h-[350px] overflow-hidden flex flex-col">
-              <ScrollArea className="flex-1">
-                <Table>
-                  <TableHeader className="bg-muted/50 sticky top-0 z-10">
-                    <TableRow>
-                      <TableHead className="w-[50px]">#</TableHead>
-                      <TableHead>Student</TableHead>
-                      <TableHead>Group</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {assignments.map((assignment: any, index: number) => (
-                      <TableRow key={assignment.id}>
-                        <TableCell className="text-muted-foreground text-xs">
-                          {index + 1}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {assignment.student?.name}
-                        </TableCell>
-                        <TableCell>
-                          {assignment.student?.group ? (
-                            <div className="flex items-center gap-2">
-                              <span
-                                className="h-2 w-2 rounded-full"
-                                style={{
-                                  backgroundColor:
-                                    assignment.student.group.color || "#2563eb",
-                                }}
-                              />
-                              <span className="font-medium">
-                                {assignment.student.group.name}
-                              </span>
-                            </div>
-                          ) : (
-                            "-"
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {assignments.length === 0 && (
-                      <TableRow>
-                        <TableCell
-                          colSpan={3}
-                          className="h-24 text-center text-muted-foreground"
-                        >
-                          <div className="flex flex-col items-center justify-center gap-1">
-                            <User className="h-5 w-5 text-muted-foreground/50" />
-                            <span className="text-xs">No assignments yet</span>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </ScrollArea>
-            </div>
-          </div>
+              </TabsContent>
+            </Tabs>
+          ) : (
+            detailsBody
+          )}
         </div>
 
         <DrawerFooter>

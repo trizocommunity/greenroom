@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Loader2, Plus, Search, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -11,6 +12,7 @@ import { useProgrammes } from "@/api/client/programmes";
 import { useStudents } from "@/api/client/students";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { DeadlinesCard } from "@/components/festival/pre-event-works/DeadlinesCard";
+import { ProgrammeActivityTimeline } from "@/components/festival/pre-event-works/programmes/ProgrammeActivityTimeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -38,6 +40,8 @@ import {
 } from "@/features/assignments/actions/assignment.actions";
 import { useDeadlineLock } from "@/features/festivals/hooks/use-deadline-lock";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
+import { useFeatureTag } from "@/features/plan-features/hooks/use-feature";
+import { getProgrammeDetailForDrawerAction } from "@/features/programmes/actions/programme.actions";
 import { AssignmentModal } from "./AssignmentModal";
 
 type IndividualAssignmentRow = {
@@ -217,6 +221,25 @@ export function AssignmentsClient({
   const [selectedProgrammeCard, setSelectedProgrammeCard] =
     useState<ProgrammeCardRow | null>(null);
   const [detailsSearch, setDetailsSearch] = useState("");
+
+  const canUseTeamLead = useFeatureTag("programme.teamLead");
+  const canUseAuditDrawer = useFeatureTag("programme.auditDrawer");
+  const { data: programmeDetail, isLoading: programmeDetailLoading } = useQuery(
+    {
+      queryKey: [
+        "programme-detail-drawer",
+        festivalId,
+        selectedProgrammeCard?.programmeId,
+      ],
+      queryFn: () =>
+        getProgrammeDetailForDrawerAction(
+          festivalId,
+          selectedProgrammeCard!.programmeId,
+        ),
+      enabled: Boolean(selectedProgrammeCard?.programmeId),
+      staleTime: 30_000,
+    },
+  );
 
   // Global Filters
   const [filterGroup, setFilterGroup] = useState<string>("ALL");
@@ -759,11 +782,11 @@ export function AssignmentsClient({
         }}
       >
         <DrawerContent>
-          <DrawerHeader>
+          <DrawerHeader className="shrink-0">
             <DrawerTitle>Programme details</DrawerTitle>
           </DrawerHeader>
           {selectedProgrammeCard ? (
-            <div className="space-y-4">
+            <div className="space-y-4 p-4 pt-0 overflow-y-auto flex-1 min-h-0">
               <div className="grid gap-2 sm:grid-cols-2 text-sm">
                 <div>
                   <span className="text-muted-foreground">Programme:</span>{" "}
@@ -786,6 +809,118 @@ export function AssignmentsClient({
                   </div>
                 ) : null}
               </div>
+
+              {/* Panel A — lifecycle summary (always visible) */}
+              {programmeDetailLoading ? (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Loading programme
+                  summary…
+                </div>
+              ) : programmeDetail ? (
+                <div className="rounded-lg border bg-muted/10 p-3 space-y-2 text-xs">
+                  <div className="text-[10px] font-bold uppercase text-muted-foreground">
+                    Summary
+                  </div>
+                  <div className="grid gap-1.5 sm:grid-cols-2">
+                    <div>
+                      Reporting:{" "}
+                      {programmeDetail.reportingSession?.startedAt ? (
+                        <span>
+                          started
+                          {programmeDetail.reportingSession.startedByName
+                            ? ` by ${programmeDetail.reportingSession.startedByName}`
+                            : ""}
+                          {programmeDetail.reportingSession.endedAt
+                            ? `, closed${
+                                programmeDetail.reportingSession.endedByName
+                                  ? ` by ${programmeDetail.reportingSession.endedByName}`
+                                  : ""
+                              }`
+                            : ""}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          not started
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      Reported: {programmeDetail.counts.reported}/
+                      {programmeDetail.counts.totalAssigned}
+                    </div>
+                    <div>
+                      Judging:{" "}
+                      {programmeDetail.judgingSession ? (
+                        <span>
+                          {programmeDetail.judgingSession.judgeCount} judge(s)
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          not configured
+                        </span>
+                      )}
+                    </div>
+                    <div>Scored: {programmeDetail.counts.scored}</div>
+                    <div>
+                      Results:{" "}
+                      {programmeDetail.results.savedAt ? (
+                        <span>
+                          saved
+                          {programmeDetail.results.savedByName
+                            ? ` by ${programmeDetail.results.savedByName}`
+                            : ""}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">not saved</span>
+                      )}
+                    </div>
+                    <div>
+                      Published: {programmeDetail.counts.published} · Announced:{" "}
+                      {programmeDetail.counts.announced}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Panel B — programme team leads (PRO, GROUP only) */}
+              {canUseTeamLead &&
+              selectedProgrammeCard.programmeType === "GROUP" &&
+              programmeDetail &&
+              Object.keys(programmeDetail.teamLeads).length > 0 ? (
+                <div className="rounded-lg border bg-muted/10 p-3 space-y-2 text-xs">
+                  <div className="text-[10px] font-bold uppercase text-muted-foreground">
+                    Team Leads
+                  </div>
+                  <div className="grid gap-1.5 sm:grid-cols-2">
+                    {Object.entries(programmeDetail.teamLeads).flatMap(
+                      ([groupId, teams]) =>
+                        Object.entries(teams).map(([teamNumber, lead]) => (
+                          <div key={`${groupId}:${teamNumber}`}>
+                            Team {teamNumber}:{" "}
+                            <span className="font-medium">
+                              {lead.studentName}
+                            </span>{" "}
+                            {lead.chestNumber ? `(#${lead.chestNumber})` : ""}
+                          </div>
+                        )),
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Panel C — audit timeline (PRO) */}
+              {canUseAuditDrawer ? (
+                <div className="rounded-lg border overflow-hidden">
+                  <div className="border-b bg-muted/10 px-3 py-2 text-[10px] font-bold uppercase text-muted-foreground">
+                    Activity
+                  </div>
+                  <ProgrammeActivityTimeline
+                    entries={programmeDetail?.auditTimeline ?? []}
+                    isLoading={programmeDetailLoading}
+                    className="p-3"
+                  />
+                </div>
+              ) : null}
 
               {/* Progress in detail view */}
               <div className="rounded-lg border bg-muted/10 p-3 space-y-3">
@@ -1070,6 +1205,18 @@ export function AssignmentsClient({
                                   Leader
                                 </Badge>
                               )}
+                              {canUseTeamLead &&
+                                programmeDetail?.teamLeads[row.groupId]?.[
+                                  row.teamNumber
+                                ]?.studentId ===
+                                  (a.student?.id ?? a.studentId) && (
+                                  <Badge
+                                    variant="secondary"
+                                    className="h-3.5 px-1 text-[8px] uppercase font-bold bg-primary/10 text-primary border-primary/30"
+                                  >
+                                    Lead
+                                  </Badge>
+                                )}
                             </div>
                           ))}
                         </div>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { ProfileSidebarContent } from "@/components/profile/ProfileSidebarContent";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -33,7 +34,8 @@ export default function DashboardNavbar({ user }: DashboardNavbarProps) {
             Greenroom
           </span>
         </Link>
-        <div className="md:hidden">
+        <div className="flex items-center gap-1 md:hidden">
+          <ThemeToggle />
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -54,7 +56,8 @@ export default function DashboardNavbar({ user }: DashboardNavbarProps) {
             </SheetContent>
           </Sheet>
         </div>
-        <div className="hidden md:block">
+        <div className="hidden md:flex items-center gap-1">
+          <ThemeToggle />
           <LogoutButton />
         </div>
       </div>

@@ -6,6 +6,7 @@ import {
   consumeMagicLinkToken,
   createMagicLinkToken,
 } from "@/core/auth/magic-link";
+import { getPostAuthRoute } from "@/core/auth/routing";
 import { createSession, deleteSession, getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { generateId } from "@/core/database/ids";
@@ -101,16 +102,16 @@ const handler = createHandler({
         return badRequest("USER_CREATION_FAILED", "Could not create user");
       }
 
-      await createSession(
-        dbUser.id,
-        dbUser.globalRole as "USER" | "SUPER_ADMIN",
-      );
+      const role = dbUser.globalRole as "USER" | "SUPER_ADMIN";
+
+      await createSession(dbUser.id, role);
 
       const requiresOnboarding = !dbUser.fullName;
 
       return ok({
-        role: dbUser.globalRole,
+        role,
         requiresOnboarding,
+        redirectTo: getPostAuthRoute({ role, requiresOnboarding }),
       });
     }
 

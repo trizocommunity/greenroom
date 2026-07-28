@@ -18,6 +18,7 @@ import {
   handleActionError,
 } from "@/core/errors/errors";
 import type { ActionResponse } from "@/core/types/actions";
+import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import {
   setProgrammePublished,
   updateProgrammeStatus,
@@ -111,6 +112,12 @@ export async function saveResult(
     if (festival) {
       revalidateResultsPaths(festival.slug);
     }
+    await createAuditLog({
+      action: "SAVE_RESULT",
+      targetType: "RESULT",
+      targetId: data.assignmentId,
+      metadata: { programmeId: data.programmeId, festivalId: data.festivalId },
+    }).catch((err) => console.error("[AuditLog] SAVE_RESULT failed", err));
     return { success: true, data: result };
   } catch (error) {
     return handleActionError(error);
@@ -180,6 +187,16 @@ export async function bulkPublishProgrammeResults(
       await latestClosedReportingSessionId(programmeId);
     await updateProgrammeStatus(programmeId, reportingSessionId);
     revalidateResultsPaths(festivalSlug);
+    if (isPublished) {
+      await createAuditLog({
+        action: "PUBLISH_RESULTS",
+        targetType: "RESULT",
+        targetId: programmeId,
+        metadata: { programmeId },
+      }).catch((err) =>
+        console.error("[AuditLog] PUBLISH_RESULTS failed", err),
+      );
+    }
     return { success: true, data: undefined };
   } catch (error) {
     return handleActionError(error);
@@ -233,6 +250,12 @@ export async function publishTeamStandings(
 
     revalidatePath(`/${festivalSlug}`);
     revalidatePath(`/${festivalSlug}/results`);
+    await createAuditLog({
+      action: "PUBLISH_RESULTS",
+      targetType: "RESULT",
+      targetId: festivalId,
+      metadata: { festivalId, teamCount: standings.length },
+    }).catch((err) => console.error("[AuditLog] PUBLISH_RESULTS failed", err));
     return { success: true, data: undefined };
   } catch (error) {
     return handleActionError(error);

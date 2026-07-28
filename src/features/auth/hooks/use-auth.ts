@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { getPostAuthRoute } from "@/core/auth/routing";
 import { api } from "@/lib/api-client";
 
 export const useSendMagicLink = () => {
@@ -32,13 +33,13 @@ export const useVerifyMagicLink = () => {
     mutationFn: (data: { token: string }) => api.auth.verifyMagicLink(data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["me"] });
-      if (data.body.role === "SUPER_ADMIN") {
-        router.push("/super-admin");
-      } else if (data.body.requiresOnboarding) {
-        router.push("/onboarding");
-      } else {
-        router.push("/profile");
-      }
+      const redirectTo =
+        data.body.redirectTo ??
+        getPostAuthRoute({
+          role: data.body.role,
+          requiresOnboarding: data.body.requiresOnboarding,
+        });
+      router.push(redirectTo);
       router.refresh();
     },
     onError: (error: any) => {

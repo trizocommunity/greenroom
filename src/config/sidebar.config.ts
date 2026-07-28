@@ -207,12 +207,6 @@ export const getFestivalDashboardSidebarConfig = (
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {
-          title: "QR Codes",
-          href: `${basePath}/pre-event-works/qr-codes`,
-          icon: QrCode,
-          allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
-        },
-        {
           title: "Stage Management",
           href: `${basePath}/pre-event-works/stage-management`,
           icon: Megaphone,

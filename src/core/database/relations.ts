@@ -236,6 +236,24 @@ export const programmeAssignmentRelations = relations(
   }),
 );
 
+export const programmeTeamLeadRelations = relations(
+  programmeTeamLead,
+  ({ one }) => ({
+    programme: one(programme, {
+      fields: [programmeTeamLead.programmeId],
+      references: [programme.id],
+    }),
+    group: one(group, {
+      fields: [programmeTeamLead.groupId],
+      references: [group.id],
+    }),
+    student: one(student, {
+      fields: [programmeTeamLead.studentId],
+      references: [student.id],
+    }),
+  }),
+);
+
 export const resultRelations = relations(result, ({ one }) => ({
   festival: one(festival, {
     fields: [result.festivalId],

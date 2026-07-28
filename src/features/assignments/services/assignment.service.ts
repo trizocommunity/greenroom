@@ -6,6 +6,7 @@ import {
   group as groupTable,
   programmeAssignment,
   programme as programmeTable,
+  programmeTeamLead as programmeTeamLeadTable,
   student as studentTable,
 } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
@@ -16,6 +17,9 @@ import {
   findAssignmentsByProgramme,
 } from "@/features/assignments/repositories/assignment.repository";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
+import { isProTier } from "@/features/plan-features/services/tier";
+import type { TeamLeadAppointerRole } from "@/features/programme-team-leads/services/programme-team-lead.service";
+import { ProgrammeTeamLeadService } from "@/features/programme-team-leads/services/programme-team-lead.service";
 import { findProgrammeById } from "@/features/programmes/repositories/programme.repository";
 import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
 import { findStudentById } from "@/features/students/repositories/student.repository";
@@ -297,7 +301,93 @@ export const AssignmentService = {
     return updated;
   },
 
-  async delete(id: string, _festivalId?: string) {
+  async delete(
+    id: string,
+    _festivalId?: string,
+    options?: {
+      replacementLeadStudentId?: string;
+      appointer?: {
+        appointedBy: string;
+        appointedByRole: TeamLeadAppointerRole;
+        appointedByName?: string;
+        appointedByEmail?: string;
+      };
+    },
+  ) {
+    const existing = await db.query.programmeAssignment.findFirst({
+      where: eq(programmeAssignment.id, id),
+      with: { programme: { columns: { type: true } } },
+    });
+    if (!existing) throw new AppError(ERROR_MESSAGES.ASSIGNMENT_NOT_FOUND);
+
+    if (
+      existing.programme?.type === "GROUP" &&
+      existing.groupId &&
+      existing.studentId
+    ) {
+      const lead = await db.query.programmeTeamLead.findFirst({
+        where: and(
+          eq(programmeTeamLeadTable.programmeId, existing.programmeId),
+          eq(programmeTeamLeadTable.groupId, existing.groupId),
+          eq(programmeTeamLeadTable.teamNumber, existing.teamNumber),
+        ),
+      });
+
+      if (lead && lead.studentId === existing.studentId) {
+        const [{ c: remainingCount }] = await db
+          .select({ c: count() })
+          .from(programmeAssignment)
+          .where(
+            and(
+              eq(programmeAssignment.programmeId, existing.programmeId),
+              eq(programmeAssignment.groupId, existing.groupId),
+              eq(programmeAssignment.teamNumber, existing.teamNumber),
+              sql`${programmeAssignment.id} != ${id}`,
+            ),
+          );
+
+        if (remainingCount === 0) {
+          throw new AppError(
+            "This student is the only member of the team. Delete the whole team instead of removing its last member.",
+            "TEAM_WOULD_BE_EMPTY",
+          );
+        }
+
+        if (!options?.replacementLeadStudentId) {
+          throw new AppError(
+            "This student is the team lead. Appoint a replacement lead before removing them.",
+            "LEAD_MUST_BE_REPLACED",
+          );
+        }
+        if (!options?.appointer) {
+          throw new AppError(
+            "Missing appointer context for team lead replacement.",
+            "LEAD_MUST_BE_REPLACED",
+          );
+        }
+
+        const deleted = await db.transaction(async (tx) => {
+          await ProgrammeTeamLeadService.replaceTeamLead(
+            {
+              programmeId: existing.programmeId,
+              groupId: existing.groupId!,
+              teamNumber: existing.teamNumber,
+              studentId: options.replacementLeadStudentId!,
+              ...options.appointer!,
+            },
+            tx,
+          );
+          const [row] = await tx
+            .delete(programmeAssignment)
+            .where(eq(programmeAssignment.id, id))
+            .returning();
+          return row;
+        });
+        await updateProgrammeStatus(deleted.programmeId);
+        return deleted;
+      }
+    }
+
     const deleted = await deleteAssignment(id);
     await updateProgrammeStatus(deleted.programmeId);
     return deleted;
@@ -326,6 +416,16 @@ export const AssignmentService = {
       .returning();
 
     if (result.length > 0) {
+      // No FK cascade from assignment -> team lead; clean up the orphaned row.
+      await db
+        .delete(programmeTeamLeadTable)
+        .where(
+          and(
+            eq(programmeTeamLeadTable.programmeId, programmeId),
+            eq(programmeTeamLeadTable.groupId, groupId),
+            eq(programmeTeamLeadTable.teamNumber, teamNumber),
+          ),
+        );
       await updateProgrammeStatus(programmeId);
     }
     return { count: result.length };
@@ -347,10 +447,23 @@ export const AssignmentService = {
       teamNumber?: number;
     }[],
     actor?: { createdByEmail?: string; createdByName?: string },
+    options?: {
+      /** GROUP programmes only, keyed by `${programmeId}:${groupId}:${teamNumber}` -> lead studentId. */
+      teamLeadsByTeam?: Record<string, string>;
+      appointer?: {
+        appointedBy: string;
+        appointedByRole: TeamLeadAppointerRole;
+        appointedByName?: string;
+        appointedByEmail?: string;
+      };
+    },
   ) {
     const festival = await findFestivalById(festivalId);
     if (festival?.status === "EXPIRED")
       throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
+
+    const teamLeadsRequired = isProTier(festival?.tier);
+    const teamLeadsByTeam = options?.teamLeadsByTeam ?? {};
 
     return await db.transaction(async (tx) => {
       const finalResults = [];
@@ -449,6 +562,10 @@ export const AssignmentService = {
         });
 
         const processedStudentIds = new Set<string>();
+        const touchedTeams = new Map<
+          string,
+          { groupId: string; teamNumber: number }
+        >();
 
         for (const assignment of progAssignments) {
           const { studentId } = assignment;
@@ -552,6 +669,51 @@ export const AssignmentService = {
               .returning()
           )[0];
           finalResults.push(created);
+
+          if (programme.type === "GROUP" && studentGroupId) {
+            touchedTeams.set(`${programmeId}:${studentGroupId}:${teamNumber}`, {
+              groupId: studentGroupId,
+              teamNumber,
+            });
+          }
+        }
+
+        if (programme.type === "GROUP" && teamLeadsRequired) {
+          for (const [key, { groupId, teamNumber }] of touchedTeams) {
+            const existingLead = await tx.query.programmeTeamLead.findFirst({
+              where: and(
+                eq(programmeTeamLeadTable.programmeId, programmeId),
+                eq(programmeTeamLeadTable.groupId, groupId),
+                eq(programmeTeamLeadTable.teamNumber, teamNumber),
+              ),
+            });
+            if (existingLead) continue;
+
+            const leadStudentId = teamLeadsByTeam[key];
+            if (!leadStudentId) {
+              throw new AppError(
+                "Each team must have a lead selected before saving.",
+                "EACH_TEAM_MUST_HAVE_LEAD",
+              );
+            }
+            if (!options?.appointer) {
+              throw new AppError(
+                "Missing appointer context for team lead.",
+                "EACH_TEAM_MUST_HAVE_LEAD",
+              );
+            }
+
+            await ProgrammeTeamLeadService.appointTeamLead(
+              {
+                programmeId,
+                groupId,
+                teamNumber,
+                studentId: leadStudentId,
+                ...options.appointer,
+              },
+              tx,
+            );
+          }
         }
       }
 

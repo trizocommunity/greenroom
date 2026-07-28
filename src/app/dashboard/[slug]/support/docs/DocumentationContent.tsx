@@ -29,7 +29,6 @@ const STAGE_MANAGER_FAQ_IDS = [
   "stage-manage",
   "schedule-view",
   "sessions-view",
-  "qr-codes",
   "news",
   "gallery",
 ];
@@ -58,12 +57,6 @@ const allFaqs = [
     question: "What are Sessions and how do I add them?",
     answer:
       "Sessions are non-programme items on the schedule (e.g. opening ceremony, break, talk). Go to 'Pre Event Works' -> 'Sessions'. Add a session with title, date, time, and optional stage. Create at least one stage first.",
-  },
-  {
-    id: "qr-codes",
-    question: "How do QR codes work?",
-    answer:
-      "Under 'Pre Event Works' -> 'QR Codes' each student gets a unique QR code that links to their public profile. You can download a single code as JPEG, share it, or download all filtered codes as a PDF for printing.",
   },
   {
     id: "news",

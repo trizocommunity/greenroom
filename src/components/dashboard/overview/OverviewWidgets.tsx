@@ -119,12 +119,6 @@ export default async function OverviewWidgets({
       condition: planFeature(features, "assignments"),
     },
     {
-      label: "QR Codes",
-      icon: QrCode,
-      href: `/dashboard/${slug}/pre-event-works/qr-codes`,
-      condition: planFeature(features, "qrCodes"),
-    },
-    {
       label: "Schedule",
       icon: Calendar,
       href: `/dashboard/${slug}/pre-event-works/schedule`,
