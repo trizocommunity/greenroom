@@ -1,19 +1,54 @@
 import { createAssignmentInput } from "@/api/contracts/assignments";
-import { badRequest, createProtectedHandler, ok } from "@/api/lib";
+import {
+  badRequest,
+  createHandler,
+  createProtectedHandler,
+  ok,
+} from "@/api/lib";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
+import {
+  deleteAssignmentAction,
+  getAssignmentsAction,
+} from "@/features/assignments/actions/assignment.actions";
 import { AssignmentService } from "@/features/assignments/services/assignment.service";
 
-const handler = createProtectedHandler({
-  async GET({ user, request }) {
+// GET/DELETE also serve the team-leader OTP portal (no admin session
+// cookie), so they resolve auth per-request via the assignment actions
+// (admin session OR participant/team-leader session). POST (single create)
+// has no team-leader caller today, so it stays admin-only.
+const dualAuthHandler = createHandler({
+  async GET({ request }) {
     const url = new URL(request.url);
     const festivalId = url.searchParams.get("festivalId");
     if (!festivalId)
       return badRequest("MISSING_PARAM", "festivalId is required");
-    await assertFestivalAccess(user, festivalId);
-    const data = await AssignmentService.getAll(festivalId);
+    const data = await getAssignmentsAction(festivalId);
     return ok(data);
   },
 
+  async DELETE({ user, request }) {
+    const url = new URL(request.url);
+    const festivalId = url.searchParams.get("festivalId");
+    if (!festivalId)
+      return badRequest("MISSING_PARAM", "festivalId is required");
+    const body = await request.json();
+    const data = body.data ?? body;
+    const assignmentId = data.assignmentId as string | undefined;
+    if (!assignmentId)
+      return badRequest("MISSING_PARAM", "assignmentId is required");
+
+    if (user) {
+      await assertFestivalAccess(user, festivalId);
+      const result = await AssignmentService.delete(assignmentId, festivalId);
+      return ok(result);
+    }
+
+    const result = await deleteAssignmentAction(festivalId, assignmentId);
+    return ok(result);
+  },
+});
+
+const adminOnlyHandler = createProtectedHandler({
   async POST({ user, request }) {
     const url = new URL(request.url);
     const festivalId = url.searchParams.get("festivalId");
@@ -28,21 +63,8 @@ const handler = createProtectedHandler({
     const result = await AssignmentService.create(festivalId, parsed.data);
     return ok(result);
   },
-
-  async DELETE({ user, request }) {
-    const url = new URL(request.url);
-    const festivalId = url.searchParams.get("festivalId");
-    const assignmentId = url.searchParams.get("assignmentId");
-    if (!festivalId)
-      return badRequest("MISSING_PARAM", "festivalId is required");
-    if (!assignmentId)
-      return badRequest("MISSING_PARAM", "assignmentId is required");
-    await assertFestivalAccess(user, festivalId);
-    const result = await AssignmentService.delete(assignmentId, festivalId);
-    return ok(result);
-  },
 });
 
-export const GET = handler;
-export const POST = handler;
-export const DELETE = handler;
+export const GET = dualAuthHandler;
+export const DELETE = dualAuthHandler;
+export const POST = adminOnlyHandler;

@@ -54,6 +54,8 @@ export const createAssignmentInput = z.object({
 
 export const bulkCreateAssignmentInput = z.object({
   assignments: z.array(createAssignmentInput).min(1).max(1000),
+  /** GROUP programmes only, keyed by `${programmeId}:${groupId}:${teamNumber}` -> lead studentId. */
+  teamLeadsByTeam: z.record(z.string(), z.string()).optional(),
 });
 
 export const updateAssignmentInput = z.object({
