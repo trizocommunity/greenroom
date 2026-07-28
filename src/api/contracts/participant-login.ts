@@ -30,6 +30,8 @@ export const verifyOtpInput = z.object({
 
 export const verifyOtpResponse = z.object({
   success: z.literal(true),
+  studentSlug: z.string(),
+  isTeamLeader: z.boolean(),
   expiresAt: z.string(),
 });
 

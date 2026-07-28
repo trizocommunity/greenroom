@@ -34,7 +34,7 @@ export default async function TeamLeaderDashboardPage({
     studentSlug,
     true,
   );
-  const base = `/${slug}/${studentSlug}/leader`;
+  const base = `/${slug}/${studentSlug}`;
 
   const startDate = festival.startDate ?? festival.createdAt;
   const endDate =

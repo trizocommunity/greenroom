@@ -21,6 +21,7 @@ import {
 import { parseStoredInstant } from "@/core/utils/date-time";
 import { getProgrammeTeamMembersAction } from "@/features/assignments/actions/assignment.actions";
 import { useFeature } from "@/features/plan-features/hooks/use-feature";
+import { computeAgeFromDateOfBirth } from "@/lib/age";
 import {
   getQrCodeContent,
   getStudentProfileUrl,
@@ -34,7 +35,6 @@ interface StudentProfileViewProps {
     email: string | null;
     phone: string | null;
     gender: string | null;
-    age: number | null;
     dateOfBirth: string | null;
     standard: string | null;
     isTeamLeader: boolean;
@@ -219,14 +219,6 @@ export function StudentProfileView({
                   {student.gender?.toLowerCase() ?? "—"}
                 </div>
               </div>
-              {student.age != null && (
-                <div className="min-w-0">
-                  <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide block mb-0.5">
-                    Age
-                  </span>
-                  <div className="text-sm">{student.age}</div>
-                </div>
-              )}
               {student.dateOfBirth && (
                 <div className="min-w-0">
                   <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide block mb-0.5">
@@ -237,6 +229,17 @@ export function StudentProfileView({
                   </div>
                 </div>
               )}
+              {(() => {
+                const age = computeAgeFromDateOfBirth(student.dateOfBirth);
+                return age != null ? (
+                  <div className="min-w-0">
+                    <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide block mb-0.5">
+                      Age
+                    </span>
+                    <div className="text-sm">{age}</div>
+                  </div>
+                ) : null;
+              })()}
               {student.standard != null && student.standard !== "" && (
                 <div className="min-w-0">
                   <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide block mb-0.5">

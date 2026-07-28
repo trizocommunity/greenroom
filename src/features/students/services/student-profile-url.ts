@@ -1,7 +1,7 @@
 /**
- * Single source for student profile URL path:
- * - Non-leader: /{festivalSlug}/{studentSlug}
- * - Leader: /{festivalSlug}/{studentSlug}/leader
+ * Single source for student profile URL path. All participants (leaders
+ * included) share the same URL — leader-only sections are conditionally
+ * rendered on the profile page itself, not isolated into a `/leader` subtree.
  * STANDARD+ feature; BASIC has no public student profile page.
  */
 export function getStudentProfilePath(
@@ -15,9 +15,6 @@ export function getStudentProfilePath(
   const studentSlug = student.profileSlug || student.id;
   if (!studentSlug) {
     return `/${festivalSlug}`;
-  }
-  if (student.isTeamLeader) {
-    return `/${festivalSlug}/${studentSlug}/leader`;
   }
   return `/${festivalSlug}/${studentSlug}`;
 }

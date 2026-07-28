@@ -31,7 +31,7 @@ export const StudentService = {
       groupId: string;
       categoryId: string;
       gender?: "MALE" | "FEMALE" | "OTHER";
-      age?: number;
+      dateOfBirth: string;
       standard?: string;
     },
   ) {
@@ -89,7 +89,7 @@ export const StudentService = {
       gender: data.gender ?? "MALE",
       email: data.email || undefined,
       phone: data.phone,
-      age: data.age,
+      dateOfBirth: data.dateOfBirth,
       standard: data.standard,
     });
 
@@ -132,7 +132,7 @@ export const StudentService = {
       groupId?: string;
       categoryId?: string;
       gender?: "MALE" | "FEMALE" | "OTHER";
-      age?: number;
+      dateOfBirth?: string;
       standard?: string;
     },
   ) {
@@ -208,7 +208,7 @@ export const StudentService = {
       email: data.email,
       phone: data.phone,
       gender: data.gender,
-      age: data.age,
+      dateOfBirth: data.dateOfBirth,
       standard: data.standard,
       profileSlug: profileSlug ?? undefined,
     });

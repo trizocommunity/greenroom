@@ -12,14 +12,20 @@ const handler = createHandler({
     if (!parsed.success)
       return badRequest("INVALID_INPUT", parsed.error.message);
 
-    const { rawToken, expiresAt } = await ParticipantLoginService.verifyOtp({
-      ...parsed.data,
-      ipAddress: request.headers.get("x-forwarded-for") ?? null,
-      userAgent: request.headers.get("user-agent") ?? null,
-    });
+    const { rawToken, expiresAt, studentSlug, isTeamLeader } =
+      await ParticipantLoginService.verifyOtp({
+        ...parsed.data,
+        ipAddress: request.headers.get("x-forwarded-for") ?? null,
+        userAgent: request.headers.get("user-agent") ?? null,
+      });
 
     await setParticipantSessionCookie(rawToken, expiresAt);
-    return ok({ success: true, expiresAt: expiresAt.toISOString() });
+    return ok({
+      success: true,
+      studentSlug,
+      isTeamLeader,
+      expiresAt: expiresAt.toISOString(),
+    });
   },
 });
 

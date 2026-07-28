@@ -153,7 +153,26 @@ export function DateOfBirthPicker({
   className,
 }: DateOfBirthPickerProps) {
   const [open, setOpen] = React.useState(false);
+  // Controlled displayed month. react-day-picker's `selected` prop only
+  // highlights the day — it does NOT move the caption. We track the month
+  // and snap it to the bound date each time the popover opens so the caption
+  // shows e.g. 2008 (not the current year) for a stored DOB.
+  const [displayedMonth, setDisplayedMonth] = React.useState<
+    Date | undefined
+  >(undefined);
   const today = new Date();
+  // Defensive: an Invalid Date instance is truthy but `format()` would throw.
+  // Treat it as "no date" until the caller passes a real one.
+  const safeDate =
+    date && !Number.isNaN(date.getTime()) ? date : undefined;
+
+  // Snap the calendar to the bound date's month whenever the popover opens
+  // or the bound date changes from outside.
+  React.useEffect(() => {
+    if (open) {
+      setDisplayedMonth(safeDate);
+    }
+  }, [open, safeDate]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -164,18 +183,24 @@ export function DateOfBirthPicker({
           disabled={disabled}
           className={cn(
             "w-full justify-start text-left font-normal",
-            !date && "text-muted-foreground",
+            !safeDate && "text-muted-foreground",
             className,
           )}
         >
           <CalendarIcon />
-          {date ? format(date, "PPP") : <span>{placeholder}</span>}
+          {safeDate ? (
+            format(safeDate, "PPP")
+          ) : (
+            <span>{placeholder}</span>
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar
           mode="single"
-          selected={date}
+          selected={safeDate}
+          month={displayedMonth}
+          onMonthChange={setDisplayedMonth}
           captionLayout="dropdown"
           startMonth={new Date(today.getFullYear() - 100, 0)}
           endMonth={today}

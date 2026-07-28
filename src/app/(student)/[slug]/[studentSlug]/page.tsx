@@ -1,6 +1,15 @@
 import { format } from "date-fns";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { Download, MapPin, Users } from "lucide-react";
+import {
+  Bell,
+  Crown,
+  Download,
+  LayoutDashboard,
+  ListChecks,
+  MapPin,
+  Trophy,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { QrCodeWithActions } from "@/components/common/QrCodeWithActions";
@@ -78,8 +87,10 @@ export default async function StudentMainPage({
     session.studentId === student.id &&
     session.festivalId === festival.id;
 
-  if (student.isTeamLeader && !isOwnerSession) {
-    redirect(`/${festival.slug}/${studentSlug}/leader`);
+  // No session for any reason → send to login. Auth/team-leader checks live
+  // in `requireParticipantAuth` for protected sub-pages, not here.
+  if (!isOwnerSession) {
+    redirect(`/${festival.slug}/login`);
   }
 
   const startDate = festival.startDate ?? festival.createdAt;
@@ -397,6 +408,103 @@ export default async function StudentMainPage({
           </CardContent>
         </Card>
       </div>
+
+      {student.isTeamLeader ? (
+        <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-transparent">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Crown className="h-5 w-5 text-amber-600" />
+              Team Leader Tools
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              You manage this group. Use these to assign programmes, track your
+              students and stay on top of live reporting.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <Button asChild className="h-auto py-3 justify-start">
+                <Link
+                  href={`/${slug}/${studentSlug}/dashboard`}
+                  className="flex flex-col items-start gap-0.5 text-left"
+                >
+                  <span className="inline-flex items-center gap-2 font-semibold">
+                    <LayoutDashboard className="h-4 w-4" /> Dashboard
+                  </span>
+                  <span className="text-xs font-normal opacity-80">
+                    Live summary & quick links
+                  </span>
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="h-auto py-3 justify-start">
+                <Link
+                  href={`/${slug}/${studentSlug}/assign-programmes`}
+                  className="flex flex-col items-start gap-0.5 text-left"
+                >
+                  <span className="inline-flex items-center gap-2 font-semibold">
+                    <ListChecks className="h-4 w-4" /> Assign Programmes
+                  </span>
+                  <span className="text-xs font-normal opacity-80">
+                    Pick programmes for your students
+                  </span>
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="h-auto py-3 justify-start">
+                <Link
+                  href={`/${slug}/${studentSlug}/my-students`}
+                  className="flex flex-col items-start gap-0.5 text-left"
+                >
+                  <span className="inline-flex items-center gap-2 font-semibold">
+                    <Users className="h-4 w-4" /> My Students
+                  </span>
+                  <span className="text-xs font-normal opacity-80">
+                    Roster & chest numbers
+                  </span>
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="h-auto py-3 justify-start">
+                <Link
+                  href={`/${slug}/${studentSlug}/all-programmes`}
+                  className="flex flex-col items-start gap-0.5 text-left"
+                >
+                  <span className="inline-flex items-center gap-2 font-semibold">
+                    <ListChecks className="h-4 w-4" /> All Programmes
+                  </span>
+                  <span className="text-xs font-normal opacity-80">
+                    Reporting in progress
+                  </span>
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="h-auto py-3 justify-start">
+                <Link
+                  href={`/${slug}/${studentSlug}/leaderboard`}
+                  className="flex flex-col items-start gap-0.5 text-left"
+                >
+                  <span className="inline-flex items-center gap-2 font-semibold">
+                    <Trophy className="h-4 w-4" /> Leaderboard
+                  </span>
+                  <span className="text-xs font-normal opacity-80">
+                    Group standings
+                  </span>
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="h-auto py-3 justify-start">
+                <Link
+                  href={`/${slug}/${studentSlug}/notifications`}
+                  className="flex flex-col items-start gap-0.5 text-left"
+                >
+                  <span className="inline-flex items-center gap-2 font-semibold">
+                    <Bell className="h-4 w-4" /> Notifications
+                  </span>
+                  <span className="text-xs font-normal opacity-80">
+                    Programme updates
+                  </span>
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {assignedProgrammes.length > 0 ? (
         <div className="space-y-3">

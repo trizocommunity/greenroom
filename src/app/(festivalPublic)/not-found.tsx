@@ -1,6 +1,18 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export default function FestivalPublicNotFound() {
+  const pathname = usePathname();
+  // First URL segment is the festival slug. Layout only calls notFound() after
+  // findFestivalBySlug succeeds, so this is always a real (or formerly-real)
+  // festival. If it's missing, fall back to site root for both CTAs.
+  const segments = (pathname ?? "").split("/").filter(Boolean);
+  const festivalSlug = segments[0];
+  const festivalHref = festivalSlug ? `/${festivalSlug}` : "/";
+  const loginHref = festivalSlug ? `/${festivalSlug}/login` : "/login";
+
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-background px-6 text-foreground">
       {/* Ambient glow */}
@@ -52,16 +64,16 @@ export default function FestivalPublicNotFound() {
 
         <div className="flex flex-col sm:flex-row items-center gap-3 mt-2">
           <Link
-            href="/"
+            href={festivalHref}
             className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground shadow-primary-glow transition-opacity hover:opacity-90"
           >
-            Explore Greenroom
+            Go to festival home
           </Link>
           <Link
-            href="/contact"
+            href={loginHref}
             className="inline-flex items-center justify-center rounded-full border border-border bg-card px-6 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
           >
-            Contact support
+            Try login again
           </Link>
         </div>
       </div>

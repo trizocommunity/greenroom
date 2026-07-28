@@ -50,13 +50,14 @@ export function StudentNavbar({
 
   if (isTeamLeader) {
     menuItems.push(
+      { label: "Dashboard", href: `${linkBase}/dashboard` },
       {
         label: "Assign Programmes",
-        href: `${linkBase}/leader/assign-programmes`,
+        href: `${linkBase}/assign-programmes`,
       },
-      { label: "My Students", href: `${linkBase}/leader/my-students` },
-      { label: "Programmes", href: `${linkBase}/leader/all-programmes` },
-      { label: "Leaderboard", href: `${linkBase}/leader/leaderboard` },
+      { label: "My Students", href: `${linkBase}/my-students` },
+      { label: "Programmes", href: `${linkBase}/all-programmes` },
+      { label: "Leaderboard", href: `${linkBase}/leaderboard` },
     );
   } else {
     menuItems.push(
@@ -126,11 +127,7 @@ export function StudentNavbar({
 
           {/* Notification icon only (no implementation required). */}
           <Link
-            href={
-              isTeamLeader
-                ? `${linkBase}/leader/notifications`
-                : `${linkBase}/notifications`
-            }
+            href={`${linkBase}/notifications`}
           >
             <Button
               variant="outline"

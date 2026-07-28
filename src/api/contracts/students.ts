@@ -20,8 +20,7 @@ export const studentSchema = z.object({
   groupId: z.string().nullable(),
   categoryId: z.string().nullable(),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).nullable(),
-  age: z.number().nullable(),
-  dateOfBirth: z.string().nullable(),
+  dateOfBirth: z.string(),
   standard: z.string().nullable(),
   chestNumber: z.string().nullable(),
   profileSlug: z.string().nullable(),
@@ -39,7 +38,7 @@ export const createStudentInput = z.object({
   groupId: z.string().min(1),
   categoryId: z.string().min(1),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).default("MALE"),
-  age: z.number().optional(),
+  dateOfBirth: z.string().min(1, "Date of birth is required"),
   standard: z.string().optional(),
 });
 

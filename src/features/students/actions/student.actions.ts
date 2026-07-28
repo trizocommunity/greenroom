@@ -36,7 +36,7 @@ export async function createStudentWithServiceAction(
     email?: string;
     phone?: string;
     gender?: string;
-    age?: number;
+    dateOfBirth: string;
     standard?: string;
   },
 ) {
@@ -70,7 +70,7 @@ export async function createStudentWithServiceAction(
     email: data.email,
     phone: data.phone,
     gender: (data.gender as "MALE" | "FEMALE" | "OTHER") || "MALE",
-    age: data.age,
+    dateOfBirth: data.dateOfBirth,
     standard: data.standard,
   });
   await assignChestNumberForNewStudent(festivalId, newStudent.id);
@@ -146,7 +146,7 @@ export async function bulkCreateStudentsAction(
     gender?: string;
     email?: string;
     phone?: string;
-    age?: number;
+    dateOfBirth: string;
     standard?: string;
   }[],
 ) {
@@ -188,7 +188,7 @@ export async function bulkCreateStudentsAction(
         email: student.email,
         phone: student.phone,
         gender: (student.gender as "MALE" | "FEMALE" | "OTHER") || "MALE",
-        age: student.age,
+        dateOfBirth: student.dateOfBirth,
         standard: student.standard,
       });
       await assignChestNumberForNewStudent(festivalId, newStudent.id);
@@ -235,7 +235,7 @@ export async function updateStudentAction(
     email?: string;
     phone?: string;
     gender?: string;
-    age?: number;
+    dateOfBirth?: string;
     standard?: string;
   },
 ) {
@@ -249,7 +249,7 @@ export async function updateStudentAction(
     email: data.email,
     phone: data.phone,
     gender: data.gender as any,
-    age: data.age,
+    dateOfBirth: data.dateOfBirth,
     standard: data.standard,
   });
   const festival = await findFestivalById(festivalId);
@@ -299,7 +299,7 @@ export async function exportStudentsToExcelAction(
     "Category",
     "Chest Number",
     "Gender",
-    "Age",
+    "Date of Birth",
     "Standard",
   ];
   const rows = students.map((s) => [
@@ -310,7 +310,7 @@ export async function exportStudentsToExcelAction(
     s.category?.name ?? "",
     s.chestNumber ?? "",
     s.gender ?? "",
-    s.age ?? "",
+    s.dateOfBirth ?? "",
     s.standard ?? "",
   ]);
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);

@@ -38,7 +38,7 @@ export async function createStudentAsTeamLeaderAction(
     email?: string;
     phone?: string;
     gender?: "MALE" | "FEMALE" | "OTHER";
-    age?: number;
+    dateOfBirth: string;
     standard?: string;
   },
 ) {
@@ -64,7 +64,7 @@ export async function createStudentAsTeamLeaderAction(
     email: data.email,
     phone: data.phone,
     gender: data.gender ?? "MALE",
-    age: data.age,
+    dateOfBirth: data.dateOfBirth,
     standard: data.standard,
   });
 
@@ -73,9 +73,6 @@ export async function createStudentAsTeamLeaderAction(
   try {
     if (ctx.profileSlug) {
       revalidatePath(`/${festival.slug}/${ctx.profileSlug}/my-students`);
-      revalidatePath(
-        `/${festival.slug}/${ctx.profileSlug}/leader/my-students`,
-      );
     }
   } catch (error) {
     console.error("[revalidatePath] my-students page", error);

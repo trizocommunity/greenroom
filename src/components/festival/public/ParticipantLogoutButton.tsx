@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useParticipantLogout } from "@/api/client";
 import { Button } from "@/components/ui/button";
+import { clearParticipantSessionMeta } from "@/lib/participant-session-storage";
 
 export function ParticipantLogoutButton({
   festivalSlug,
@@ -25,6 +26,7 @@ export function ParticipantLogoutButton({
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
       onSuccess: () => {
+        clearParticipantSessionMeta(festivalSlug);
         toast.success("Logged out successfully");
         router.push(`/${festivalSlug}`);
         router.refresh();

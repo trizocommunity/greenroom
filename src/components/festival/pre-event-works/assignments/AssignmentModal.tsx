@@ -79,9 +79,12 @@ export function AssignmentModal({
 
   // Whether to show the "Group" step at all — admin dialogs pick a group;
   // team-leader dialogs are pre-scoped to their own group via fixedGroupId.
+  // Wizard order: Category (1) → Group (2) → Programme (3) → Students (4).
+  // When the dialog is pre-scoped to a single group (fixedGroupId), the Group
+  // step is hidden and the remaining steps renumber down.
   const hasGroupStep = !fixedGroupId && groups.length > 0;
-  const groupStepNum = 1;
-  const categoryStepNum = hasGroupStep ? 2 : 1;
+  const categoryStepNum = 1;
+  const groupStepNum = hasGroupStep ? 2 : 1;
   const programmeStepNum = hasGroupStep ? 3 : 2;
   const studentStepNum = hasGroupStep ? 4 : 3;
 
@@ -124,8 +127,9 @@ export function AssignmentModal({
   // Filtered Lists
   const filteredProgrammes = useMemo(() => {
     if (!selectedCategoryId) return [];
+    if (hasGroupStep && !selectedGroupId) return [];
     return programmes.filter((p: any) => p.categoryId === selectedCategoryId);
-  }, [programmes, selectedCategoryId]);
+  }, [programmes, selectedCategoryId, selectedGroupId, hasGroupStep]);
 
   const filteredStudents = useMemo(() => {
     if (!selectedGroupId) return [];
@@ -339,12 +343,20 @@ export function AssignmentModal({
 
   // Handler for adding to queue - MUST USE AUTO-ASSIGN
   const handleAddToQueue = () => {
+    addStudentsToQueue(selectedStudentIds);
+  };
+
+  // Generic queue impl, used by both the manual "Add to Queue" button and the
+  // "Add all eligible" quick action. Takes an explicit set of student IDs so
+  // the bulk path can supply it directly without waiting on a batched state
+  // update.
+  const addStudentsToQueue = (ids: Set<string>) => {
     if (isReadOnly) return;
-    if (!selectedProgramme || selectedStudentIds.size === 0) return;
+    if (!selectedProgramme || ids.size === 0) return;
     if (
       !assignmentState.canAssign &&
       assignmentState.limitReached &&
-      selectedStudentIds.size === 0
+      ids.size === 0
     )
       return;
     // Note: if selection exists but limit reached, we MIGHT be able to commit if valid?
@@ -381,7 +393,7 @@ export function AssignmentModal({
       });
     }
 
-    Array.from(selectedStudentIds).forEach((sId) => {
+    Array.from(ids).forEach((sId) => {
       const student = students.find((s: any) => s.id === sId);
       if (!student) return;
 
@@ -430,9 +442,64 @@ export function AssignmentModal({
       });
     });
 
+    if (newItems.length === 0) return;
     setQueue((prev) => [...prev, ...newItems]);
-    setSelectedStudentIds(new Set()); // Clear selection
+    if (ids === selectedStudentIds) setSelectedStudentIds(new Set()); // Clear selection only for the manual path
     toast.success(`Added ${newItems.length} to queue`);
+  };
+
+  // "Add all eligible" quick action — selects every eligible (unassigned,
+  // not-yet-queued) student and queues them in one go, respecting the
+  // programme's per-group capacity. For programmes that are already full the
+  // button is disabled.
+  const eligibleUnassignedCount = useMemo(() => {
+    if (!selectedProgramme) return 0;
+    return filteredStudents.filter((s: any) => !s.isAssigned).length;
+  }, [filteredStudents, selectedProgramme]);
+
+  // Total slots the group still has on this programme (across all teams).
+  // Used both to surface "capacity full" and to clamp the "add all" batch.
+  const remainingProgrammeSlots = useMemo(() => {
+    if (!selectedProgramme || !selectedGroupId || !limitInfo) return 0;
+    const dbCount = assignments.filter(
+      (a: any) =>
+        a.programmeId === selectedProgrammeId &&
+        (a.groupId === selectedGroupId ||
+          a.student?.groupId === selectedGroupId),
+    ).length;
+    const queueCount = queue.filter(
+      (q) =>
+        q.programmeId === selectedProgrammeId && q.groupId === selectedGroupId,
+    ).length;
+    const cap =
+      limitInfo.type === "INDIVIDUAL"
+        ? limitInfo.max
+        : limitInfo.maxTeams * limitInfo.maxPerTeam;
+    return Math.max(0, cap - dbCount - queueCount);
+  }, [
+    assignments,
+    queue,
+    selectedProgrammeId,
+    selectedGroupId,
+    selectedProgramme,
+    limitInfo,
+  ]);
+
+  const handleAddAllEligible = () => {
+    if (isReadOnly || !selectedProgramme) return;
+    if (remainingProgrammeSlots <= 0) {
+      toast.info("Programme capacity is full for this group");
+      return;
+    }
+    const eligibleIds = filteredStudents
+      .filter((s: any) => !s.isAssigned)
+      .slice(0, remainingProgrammeSlots)
+      .map((s: any) => s.id);
+    if (eligibleIds.length === 0) {
+      toast.info("No eligible (unassigned) students to add");
+      return;
+    }
+    addStudentsToQueue(new Set(eligibleIds));
   };
 
   const isLimitReached = assignmentState.limitReached || false;
@@ -487,13 +554,6 @@ export function AssignmentModal({
     setSelectedStudentIds(next);
   };
 
-  // Reset helpers
-  const resetFilters = () => {
-    setSelectedCategoryId("");
-    setSelectedProgrammeId("");
-    setSelectedStudentIds(new Set());
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-none w-[calc(100%-1rem)] sm:w-[95vw] h-[95vh] max-h-dvh flex flex-col p-0 gap-0 border rounded-lg sm:rounded-xl mx-auto my-auto ring-0 outline-none overflow-hidden">
@@ -544,42 +604,8 @@ export function AssignmentModal({
             {/* Left Context Pane (Sidebar on Desktop, Top Bar on Mobile) */}
             <div className="w-full lg:w-[300px] border-b lg:border-b-0 lg:border-r flex flex-col bg-muted/10 shrink-0 overflow-y-auto">
               <div className="p-6 space-y-6">
-                {/* Step: Group (only shown when the dialog isn't pre-scoped to one group) */}
-                {hasGroupStep && (
-                  <>
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
-                          {groupStepNum}
-                        </div>
-                        <span className="text-sm font-semibold">Group</span>
-                      </div>
-                      <Select
-                        value={selectedGroupId}
-                        onValueChange={(val) => {
-                          setSelectedGroupId(val);
-                          resetFilters(); // Reset everything when group changes naturally
-                        }}
-                        disabled={isReadOnly}
-                      >
-                        <SelectTrigger className="w-full bg-background">
-                          <SelectValue placeholder="Select Group" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {groups.map((g) => (
-                            <SelectItem key={g.id} value={g.id}>
-                              {g.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <Separator />
-                  </>
-                )}
-
-                {/* Step: Category */}
+                {/* Step: Category (selected first so programme list can be
+                    filtered by category before group is chosen) */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
@@ -594,7 +620,7 @@ export function AssignmentModal({
                       setSelectedProgrammeId("");
                       setSelectedStudentIds(new Set());
                     }}
-                    disabled={isReadOnly || !selectedGroupId}
+                    disabled={isReadOnly}
                   >
                     <SelectTrigger className="w-full bg-background">
                       <SelectValue placeholder="Select Category" />
@@ -614,6 +640,45 @@ export function AssignmentModal({
                     </p>
                   )}
                 </div>
+
+                {/* Step: Group (only shown when the dialog isn't pre-scoped to one group) */}
+                {hasGroupStep && (
+                  <>
+                    <Separator />
+
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
+                          {groupStepNum}
+                        </div>
+                        <span className="text-sm font-semibold">Group</span>
+                      </div>
+                      <Select
+                        value={selectedGroupId}
+                        onValueChange={(val) => {
+                          setSelectedGroupId(val);
+                          // Group comes after Category now — only reset
+                          // downstream selections, keep the category.
+                          setSelectedProgrammeId("");
+                          setSelectedStudentIds(new Set());
+                        }}
+                        disabled={isReadOnly || !selectedCategoryId}
+                      >
+                        <SelectTrigger className="w-full bg-background">
+                          <SelectValue placeholder="Select Group" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {groups.map((g) => (
+                            <SelectItem key={g.id} value={g.id}>
+                              {g.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
+
                 <Separator />
 
                 {/* Queue Status Widget */}
@@ -650,10 +715,16 @@ export function AssignmentModal({
                   <h3 className="text-sm font-semibold">Select Programme</h3>
                 </div>
                 <ScrollArea className="flex-1 p-6">
-                  {!selectedCategoryId ? (
+                  {!selectedCategoryId ||
+                  (hasGroupStep && !selectedGroupId) ? (
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
                       <Grid2X2 className="h-8 w-8 opacity-20" />
-                      <p>Select a category to view programmes.</p>
+                      <p>
+                        {!selectedCategoryId
+                          ? "Select a category"
+                          : "Select a group"}{" "}
+                        to view programmes.
+                      </p>
                     </div>
                   ) : filteredProgrammes.length === 0 ? (
                     <p className="text-sm text-muted-foreground italic text-center py-10">
@@ -765,18 +836,37 @@ export function AssignmentModal({
                       </div>
                     )}
 
-                    <Button
-                      size="sm"
-                      disabled={
-                        isReadOnly ||
-                        !selectedProgramme ||
-                        selectedStudentIds.size === 0
-                      }
-                      onClick={handleAddToQueue}
-                      className="h-8"
-                    >
-                      <Plus className="h-3 w-3 mr-1" /> Add to Queue
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={
+                          isReadOnly ||
+                          !selectedProgramme ||
+                          eligibleUnassignedCount === 0 ||
+                          remainingProgrammeSlots <= 0
+                        }
+                        onClick={handleAddAllEligible}
+                        className="h-8"
+                        title="Queue every eligible (unassigned, not yet on this programme) student for the selected programme in one click — capped at the group's remaining capacity."
+                      >
+                        <Plus className="h-3 w-3 mr-1" /> Add all eligible (
+                        {Math.min(eligibleUnassignedCount, remainingProgrammeSlots)}
+                        )
+                      </Button>
+                      <Button
+                        size="sm"
+                        disabled={
+                          isReadOnly ||
+                          !selectedProgramme ||
+                          selectedStudentIds.size === 0
+                        }
+                        onClick={handleAddToQueue}
+                        className="h-8"
+                      >
+                        <Plus className="h-3 w-3 mr-1" /> Add to Queue
+                      </Button>
+                    </div>
                   </div>
                 </div>
 

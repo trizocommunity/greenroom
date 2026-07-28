@@ -100,11 +100,7 @@ export default async function StudentLayout({
             name: student.name,
           }}
           studentSlugParam={studentSlug}
-          studentMainHref={
-            student.isTeamLeader
-              ? `/${festival.slug ?? slug}/${studentSlug}/leader`
-              : `/${festival.slug ?? slug}/${studentSlug}`
-          }
+          studentMainHref={`/${festival.slug ?? slug}/${studentSlug}`}
           assignedProgrammesTopStatus={assignedProgrammesTopStatus}
         />
         {children}

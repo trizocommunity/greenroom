@@ -160,7 +160,12 @@ export const ParticipantLoginService = {
     otp: string;
     ipAddress?: string | null;
     userAgent?: string | null;
-  }): Promise<{ rawToken: string; expiresAt: Date }> {
+  }): Promise<{
+    rawToken: string;
+    expiresAt: Date;
+    studentSlug: string;
+    isTeamLeader: boolean;
+  }> {
     const festival = await findFestivalBySlug(input.festivalSlug);
     if (!festival) {
       throw new AppError(
@@ -240,7 +245,7 @@ export const ParticipantLoginService = {
       userAgent: input.userAgent,
     });
 
-    return { rawToken, expiresAt };
+    return { rawToken, expiresAt, studentSlug: input.studentSlug, isTeamLeader: Boolean(studentData.isTeamLeader) };
   },
 
   async revokeSessionByRawToken(rawToken: string): Promise<void> {

@@ -59,7 +59,7 @@ type StudentForMyStudents = {
   email?: string | null;
   phone?: string | null;
   gender?: any;
-  age?: number | null;
+  dateOfBirth?: string | null;
   standard?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;

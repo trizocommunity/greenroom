@@ -26,7 +26,7 @@ type ManualBookData = {
     phone: string | null;
     gender: string | null;
     chestNumber: string | null;
-    age: number | null;
+    dateOfBirth: string | null;
     standard: string | null;
     isTeamLeader: boolean;
   }>;

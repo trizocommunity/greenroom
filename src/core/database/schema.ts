@@ -620,8 +620,7 @@ export const student = pgTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     chestNumber: text(),
-    age: integer(),
-    dateOfBirth: timestamp({ precision: 3, mode: "string" }),
+    dateOfBirth: timestamp({ precision: 3, mode: "string" }).notNull(),
     standard: text(),
     profileSlug: text(),
   },

@@ -18,6 +18,7 @@ import {
 import { useFestival } from "@/components/festival/FestivalContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DateOfBirthPicker } from "@/components/ui/date-picker";
 import {
   Form,
   FormControl,
@@ -46,7 +47,7 @@ interface StudentData {
   categoryName: string;
   groupId?: string; // Optional because it might be invalid initially
   categoryId?: string;
-  age?: number;
+  dateOfBirth?: string;
   standard?: string;
 }
 
@@ -57,11 +58,49 @@ const StudentSchema = z.object({
   gender: z.enum(["MALE", "FEMALE", "OTHER"]),
   groupId: z.string().min(1, "Group is required"),
   categoryId: z.string().min(1, "Category is required"),
-  age: z.number().optional(),
+  dateOfBirth: z.string().min(1, "Date of birth is required"),
   standard: z.string().optional(),
 });
 
 type StudentFormValues = z.infer<typeof StudentSchema>;
+
+function dateOfBirthToIsoString(date: Date | undefined): string {
+  if (!date) return "";
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function isoStringToDate(value: string | undefined): Date | undefined {
+  if (!value) return undefined;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
+function parseDateOfBirthFromCell(raw: unknown): string | undefined {
+  if (raw === undefined || raw === null || raw === "") return undefined;
+  // Excel cells can come in as a number (Excel serial), a Date, or a string.
+  if (raw instanceof Date && !Number.isNaN(raw.getTime())) {
+    return dateOfBirthToIsoString(raw);
+  }
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    // Excel date serial: days since 1900-01-01 (taking the 1900 leap bug into
+    // account). Treat as midnight UTC to avoid timezone drift on the day.
+    const serial = Math.floor(raw);
+    const epoch = Date.UTC(1899, 11, 30);
+    const ms = epoch + serial * 24 * 60 * 60 * 1000;
+    const d = new Date(ms);
+    if (!Number.isNaN(d.getTime())) return dateOfBirthToIsoString(d);
+  }
+  const text = String(raw).trim();
+  if (!text) return undefined;
+  const candidate = new Date(text);
+  if (!Number.isNaN(candidate.getTime())) {
+    return dateOfBirthToIsoString(candidate);
+  }
+  return undefined;
+}
 
 // --- Edit Component ---
 
@@ -90,7 +129,7 @@ function StudentEditForm({
       gender: (data.gender as any) || "MALE",
       groupId: data.groupId || "",
       categoryId: data.categoryId || "",
-      age: data.age,
+      dateOfBirth: data.dateOfBirth ?? "",
       standard: data.standard,
     },
   });
@@ -103,7 +142,7 @@ function StudentEditForm({
       gender: (data.gender as any) || "MALE",
       groupId: data.groupId || "",
       categoryId: data.categoryId || "",
-      age: data.age,
+      dateOfBirth: data.dateOfBirth ?? "",
       standard: data.standard,
     });
   }, [data, form]);
@@ -122,7 +161,7 @@ function StudentEditForm({
       categoryId: values.categoryId,
       groupName: group?.name || "",
       categoryName: category?.name || "",
-      age: values.age,
+      dateOfBirth: values.dateOfBirth,
       standard: values.standard,
     });
   };
@@ -250,42 +289,39 @@ function StudentEditForm({
           )}
         />
 
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="age"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Age</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    {...field}
-                    placeholder="Optional"
-                    onChange={(e) =>
-                      field.onChange(e.target.valueAsNumber || undefined)
-                    }
-                    value={field.value ?? ""}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="standard"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Class/Standard</FormLabel>
-                <FormControl>
-                  <Input {...field} placeholder="Optional" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        <FormField
+          control={form.control}
+          name="dateOfBirth"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Date of Birth</FormLabel>
+              <FormControl>
+                <DateOfBirthPicker
+                  date={isoStringToDate(field.value)}
+                  onChange={(d) =>
+                    field.onChange(d ? dateOfBirthToIsoString(d) : "")
+                  }
+                  placeholder="Pick a date"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="standard"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Class/Standard</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="Optional" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onCancel}>
@@ -337,16 +373,15 @@ export function BulkUploadStudentsModal({
     const genderRaw = row[3]?.toString().trim().toUpperCase() || "";
     const email = row[4]?.toString().trim() || "";
     const phone = row[5]?.toString().trim() || "";
-    const ageRaw = row[6];
+    const dateOfBirthRaw = row[6];
     const standard = row[7]?.toString().trim() || "";
 
     const errors: string[] = [];
     if (!name) errors.push("Name is required");
 
-    let age: number | undefined;
-    if (ageRaw) {
-      const parsedAge = parseInt(ageRaw.toString(), 10);
-      if (!Number.isNaN(parsedAge) && parsedAge > 0) age = parsedAge;
+    const dateOfBirth = parseDateOfBirthFromCell(dateOfBirthRaw);
+    if (!dateOfBirth) {
+      errors.push("Date of birth is required");
     }
 
     // Loose match for group
@@ -394,7 +429,7 @@ export function BulkUploadStudentsModal({
         categoryName,
         groupId: group?.id,
         categoryId: category?.id,
-        age,
+        dateOfBirth,
         standard,
       },
       isValid: errors.length === 0,
@@ -505,7 +540,7 @@ export function BulkUploadStudentsModal({
       gender: s.gender as "MALE" | "FEMALE" | "OTHER",
       email: s.email,
       phone: s.phone,
-      age: s.age,
+      dateOfBirth: s.dateOfBirth!,
       standard: s.standard,
     }));
 
@@ -536,7 +571,7 @@ export function BulkUploadStudentsModal({
         "Category",
         "Gender",
         ...(isBasicTier ? [] : ["Email", "Phone"]),
-        "Age",
+        "Date of Birth",
         "Class/Standard",
       ]}
       templateData={[
@@ -546,7 +581,7 @@ export function BulkUploadStudentsModal({
           "(Category Name)",
           "(Male/Female/Other)",
           ...(isBasicTier ? [] : ["(Email - Optional)", "(Phone - Optional)"]),
-          "(Age - Optional)",
+          "(YYYY-MM-DD)",
           "(Class/Standard - Optional)",
         ],
       ]}

@@ -1,13 +1,17 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useRequestAccess, useVerifyParticipantOtp } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { DateOfBirthPicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  readParticipantSessionMeta,
+  writeParticipantSessionMeta,
+} from "@/lib/participant-session-storage";
 
 export function ParticipantLoginClient({
   festivalSlug,
@@ -25,6 +29,15 @@ export function ParticipantLoginClient({
     devOtp: string | null;
   } | null>(null);
   const [otp, setOtp] = useState("");
+
+  // If the participant already has a valid localStorage session for this
+  // festival, skip the form entirely. The cookie is still the source of
+  // truth; localStorage just makes the UX skip the form on reload.
+  useEffect(() => {
+    const meta = readParticipantSessionMeta(festivalSlug);
+    if (!meta) return;
+    router.replace(`/${festivalSlug}/${meta.studentSlug}`);
+  }, [festivalSlug, router]);
 
   const submitIdentification = () => {
     if (!chestNumber) {
@@ -45,6 +58,12 @@ export function ParticipantLoginClient({
         onSuccess: (data) => {
           if (data.status === "AUTHENTICATED") {
             toast.success("Signed in successfully");
+            writeParticipantSessionMeta({
+              festivalSlug,
+              studentSlug: data.studentSlug,
+              isTeamLeader: false,
+              expiresAt: data.expiresAt,
+            });
             router.push(`/${festivalSlug}/${data.studentSlug}`);
             router.refresh();
             return;
@@ -69,11 +88,17 @@ export function ParticipantLoginClient({
     verifyOtpMutation.mutate(
       { festivalSlug, studentSlug: otpStage.studentSlug, otp },
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
           toast.success("Login successful");
-          router.push(
-            `/${festivalSlug}/${otpStage.studentSlug}/leader/dashboard`,
-          );
+          // All participants — leaders included — land on their profile.
+          // The profile page decides whether to surface leader tools.
+          writeParticipantSessionMeta({
+            festivalSlug,
+            studentSlug: data.studentSlug,
+            isTeamLeader: data.isTeamLeader,
+            expiresAt: data.expiresAt,
+          });
+          router.push(`/${festivalSlug}/${data.studentSlug}`);
           router.refresh();
         },
       },

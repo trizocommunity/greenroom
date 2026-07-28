@@ -20,6 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { parseStoredInstant } from "@/core/utils/date-time";
 import { getProgrammeTeamMembersAction } from "@/features/assignments/actions/assignment.actions";
 import { useFeature } from "@/features/plan-features/hooks/use-feature";
+import { computeAgeFromDateOfBirth } from "@/lib/age";
 
 interface StudentDetailsDialogProps {
   festivalId: string;
@@ -181,15 +182,6 @@ export function StudentDetailsDialog({
                   </p>
                 </div>
 
-                {student.age != null && (
-                  <div className="space-y-1">
-                    <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
-                      Age
-                    </p>
-                    <p className="text-sm font-medium">{student.age}</p>
-                  </div>
-                )}
-
                 {student.dateOfBirth && (
                   <div className="space-y-1">
                     <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
@@ -200,6 +192,18 @@ export function StudentDetailsDialog({
                     </p>
                   </div>
                 )}
+
+                {(() => {
+                  const age = computeAgeFromDateOfBirth(student.dateOfBirth);
+                  return age != null ? (
+                    <div className="space-y-1">
+                      <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                        Age
+                      </p>
+                      <p className="text-sm font-medium">{age}</p>
+                    </div>
+                  ) : null;
+                })()}
 
                 {student.standard != null && student.standard !== "" && (
                   <div className="space-y-1">

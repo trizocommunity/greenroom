@@ -1,13 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Tag } from "lucide-react";
+import { Cake, Loader2, Tag } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { Button } from "@/components/ui/button";
+import { DateOfBirthPicker } from "@/components/ui/date-picker";
 import {
   Drawer,
   DrawerContent,
@@ -41,7 +42,7 @@ const TeamLeaderStudentSchema = z.object({
   phone: z.string().optional(),
   categoryId: z.string().min(1, "Category is required"),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]),
-  age: z.coerce.number().optional(),
+  dateOfBirth: z.string().min(1, "Date of birth is required"),
   standard: z.string().optional(),
 });
 
@@ -53,6 +54,20 @@ interface AddStudentDialogProps {
   trigger?: React.ReactNode;
   disabled?: boolean;
   onCreated?: () => void;
+}
+
+function dateOfBirthToIsoString(date: Date | undefined): string {
+  if (!date) return "";
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function isoStringToDate(value: string | undefined): Date | undefined {
+  if (!value) return undefined;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? undefined : d;
 }
 
 export function AddStudentDialog({
@@ -76,7 +91,7 @@ export function AddStudentDialog({
       phone: "",
       categoryId: "",
       gender: "MALE",
-      age: undefined,
+      dateOfBirth: "",
       standard: "",
     },
   });
@@ -89,7 +104,7 @@ export function AddStudentDialog({
         phone: "",
         categoryId: "",
         gender: "MALE",
-        age: undefined,
+        dateOfBirth: "",
         standard: "",
       });
       form.trigger();
@@ -184,7 +199,34 @@ export function AddStudentDialog({
                   )}
                 />
 
-                <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                <FormField
+                  control={form.control}
+                  name="dateOfBirth"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-1.5">
+                        <Cake className="h-3.5 w-3.5 text-muted-foreground" />{" "}
+                        Date of Birth{" "}
+                        <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <DateOfBirthPicker
+                          date={isoStringToDate(field.value)}
+                          onChange={(d) =>
+                            field.onChange(
+                              d ? dateOfBirthToIsoString(d) : "",
+                            )
+                          }
+                          placeholder="Select date of birth"
+                          disabled={isLoading}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <FormField
                     control={form.control}
                     name="gender"
@@ -207,25 +249,6 @@ export function AddStudentDialog({
                             <SelectItem value="OTHER">Other</SelectItem>
                           </SelectContent>
                         </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="age"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Age</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="e.g. 18"
-                            {...field}
-                            value={field.value ?? ""}
-                          />
-                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
