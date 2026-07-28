@@ -58,17 +58,17 @@ export function AuthLayout({
             <div className="absolute w-[500px] h-[500px] bg-primary/10 rounded-full blur-[80px] -right-32" />
             <div className="absolute w-[500px] h-[500px] bg-secondary/5 rounded-full blur-[100px] -left-10" />
 
+            {/* Unlimited Concentric Circles */}
             <svg
-              className="absolute  text-primary/10 opacity-50 stroke-current fill-none pointer-events-none -top-[350px] sm:-top-[380px]"
-              viewBox="0 0 1400 1400"
+              className="absolute inset-0 w-full h-full text-primary/10 opacity-50 stroke-current fill-none pointer-events-none"
               xmlns="http://www.w3.org/2000/svg"
             >
-              {[...Array(88)].map((_, i) => (
+              {[...Array(200)].map((_, i) => (
                 <circle
                   key={i}
-                  cx="700"
-                  cy="700"
-                  r={1 + i * 10}
+                  cx="50%"
+                  cy="50%"
+                  r={1 + i * 16}
                   strokeWidth="1"
                 />
               ))}

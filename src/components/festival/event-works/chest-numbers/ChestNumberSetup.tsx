@@ -416,17 +416,17 @@ export function ChestNumberSetup({
         )}
       </div>
       <Drawer open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DrawerContent className="p-0 sm:p-0 gap-0">
-          <div className="mx-auto w-full max-w-2xl flex flex-col h-full overflow-hidden">
-            <DrawerHeader className="shrink-0 border-b pb-4 px-4 sm:px-6 text-left">
-              <DrawerTitle>Chest Number Configuration</DrawerTitle>
-              <DrawerDescription>
-                Define the format for chest numbers. Choose style and set
-                sequences.
-              </DrawerDescription>
-            </DrawerHeader>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Chest Number Configuration</DrawerTitle>
+            <DrawerDescription>
+              Define the format for chest numbers. Choose style and set
+              sequences.
+            </DrawerDescription>
+          </DrawerHeader>
 
-            <div className="flex-1 overflow-y-auto min-h-0 px-4 sm:px-6 py-4 space-y-6">
+          <div className="flex flex-col flex-1 min-h-0">
+            <div className="flex-1 overflow-y-auto min-h-0 space-y-6 py-1">
               <Tabs
                 value={numberingStyle}
                 onValueChange={(v) =>
@@ -552,7 +552,7 @@ export function ChestNumberSetup({
               </div>
             </div>
 
-            <DrawerFooter className="shrink-0 border-t px-4 sm:px-6 py-4 flex-row justify-end gap-2">
+            <DrawerFooter className="flex-row justify-end gap-2 pt-4">
               <Button
                 variant="outline"
                 onClick={() => setIsEditOpen(false)}
