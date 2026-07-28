@@ -22,12 +22,14 @@ interface DeadlinesDialogProps {
   festival: {
     id: string;
     programmeAssignmentDeadline?: Date | string | null;
+    studentCreationDeadline?: Date | string | null;
     startDate?: Date | string | null;
     createdAt?: Date | string | null;
   };
   onSuccess?: () => void;
   trigger?: React.ReactNode;
   isFeatureEnabled?: boolean;
+  isStudentDeadlineFeatureEnabled?: boolean;
 }
 
 export function DeadlinesDialog({
@@ -35,12 +37,19 @@ export function DeadlinesDialog({
   onSuccess,
   trigger,
   isFeatureEnabled = true,
+  isStudentDeadlineFeatureEnabled = true,
 }: DeadlinesDialogProps) {
   const [open, setOpen] = useState(false);
   const [programmeAssignmentDeadline, setProgrammeAssignmentDeadline] =
     useState<Date | null>(
       festival.programmeAssignmentDeadline
         ? parseStoredInstant(festival.programmeAssignmentDeadline)
+        : null,
+    );
+  const [studentCreationDeadline, setStudentCreationDeadline] =
+    useState<Date | null>(
+      festival.studentCreationDeadline
+        ? parseStoredInstant(festival.studentCreationDeadline)
         : null,
     );
   const [isSaving, setIsSaving] = useState(false);
@@ -66,6 +75,9 @@ export function DeadlinesDialog({
       const res = await updateFestivalSettingsAction(festival.id, {
         programmeAssignmentDeadline: programmeAssignmentDeadline
           ? programmeAssignmentDeadline.toISOString()
+          : null,
+        studentCreationDeadline: studentCreationDeadline
+          ? studentCreationDeadline.toISOString()
           : null,
       });
 
@@ -97,7 +109,7 @@ export function DeadlinesDialog({
         <DrawerHeader>
           <DrawerTitle>Deadlines</DrawerTitle>
           <DrawerDescription>
-            Set deadlines for programme assignments.
+            Set deadlines for programme assignments and student registration.
           </DrawerDescription>
         </DrawerHeader>
 
@@ -122,6 +134,28 @@ export function DeadlinesDialog({
               <p className="text-sm text-muted-foreground">
                 Team Leaders cannot assign students to programmes after this
                 time.
+              </p>
+            </div>
+          )}
+          {isStudentDeadlineFeatureEnabled && (
+            <div className="space-y-2">
+              <Label htmlFor="studentCreationDeadline">
+                Student Registration Deadline
+              </Label>
+              <DateTimePicker
+                id="studentCreationDeadline"
+                value={studentCreationDeadline}
+                onChange={(value) => {
+                  if (festivalHasStarted) return;
+                  setStudentCreationDeadline(value);
+                }}
+                placeholder="Pick deadline"
+                from={durationStart}
+                to={festivalStartDate ?? undefined}
+                disabled={festivalHasStarted}
+              />
+              <p className="text-sm text-muted-foreground">
+                Team Leaders cannot add new students after this time.
               </p>
             </div>
           )}

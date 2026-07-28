@@ -65,6 +65,7 @@ export const updateFestivalSchema = z.object({
     .regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with dashes")
     .optional(),
   programmeAssignmentDeadline: z.string().optional().nullable(),
+  studentCreationDeadline: z.string().optional().nullable(),
   teamLeaderLimit: z.number().int().min(1).max(10).optional(),
   publicSiteEnabled: z.boolean().optional(),
 });

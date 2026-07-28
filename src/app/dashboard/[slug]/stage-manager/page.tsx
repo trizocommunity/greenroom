@@ -50,10 +50,6 @@ export default async function StageManagerOverviewPage({
       })
     : [];
 
-  const canStages = await getEffectiveFeatureEnabled(
-    festival.tier as Tier,
-    "stageManagement",
-  );
   const canSchedule = await getEffectiveFeatureEnabled(
     festival.tier as Tier,
     "schedule",
@@ -69,8 +65,7 @@ export default async function StageManagerOverviewPage({
             Stage Manager Overview
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Manage stages and view the schedule for your festival (Standard
-            plan and above).
+            View the schedule, sessions, and programme reporting for your assigned stages.
           </p>
         </div>
         <Card className="border-dashed">
@@ -93,51 +88,39 @@ export default async function StageManagerOverviewPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+      <div className="mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight mb-4">
           Stage Manager Overview
         </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          You manage:{" "}
-          <span className="font-medium text-foreground">
-            {assignedStages.map((s) => s.name).join(", ")}
-          </span>
-        </p>
+        <div className="flex flex-col gap-2 p-5 rounded-xl border border-border bg-card/50 shadow-sm">
+          <p className="text-sm text-muted-foreground">
+            You are assigned to manage the following {assignedStages.length === 1 ? "stage" : "stages"}:
+          </p>
+          <div className="flex flex-wrap gap-2 mt-1">
+            {assignedStages.map((s) => (
+              <span key={s.id} className="inline-flex items-center px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-sm font-semibold border border-primary/20">
+                <Megaphone className="w-4 h-4 mr-2" />
+                {s.name}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {!canStages && !canSchedule ? (
-          <Card className="md:col-span-2 lg:col-span-4 border-muted">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {!canSchedule ? (
+          <Card className="md:col-span-2 lg:col-span-3 border-muted">
             <CardHeader>
               <CardTitle className="text-base">
                 Standard plan required
               </CardTitle>
               <CardDescription>
-                Stage management, schedule, sessions, and programme reporting
+                Schedule, sessions, and programme reporting
                 are included on Standard and Pro. Upgrade this festival to
                 access these tools.
               </CardDescription>
             </CardHeader>
           </Card>
-        ) : null}
-        {canStages ? (
-          <Link href={`${basePath}/pre-event-works/stage-management`}>
-            <Card className="h-full transition-colors hover:bg-muted/50">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Megaphone className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle>Stage Management</CardTitle>
-                    <CardDescription>
-                      Manage stages and programme flow for the event.
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-            </Card>
-          </Link>
         ) : null}
 
         {canSchedule ? (

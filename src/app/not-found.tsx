@@ -34,7 +34,7 @@ export default function GlobalNotFound() {
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center gap-6 text-center">
         {/* Greenroom wordmark */}
-        <span className="text-eyebrow">Greenroom</span>
+        <span className="font-black text-2xl tracking-tighter uppercase bg-gradient-to-r from-primary via-secondary to-primary/80 bg-clip-text text-transparent">Greenroom</span>
 
         {/* 404 gradient heading */}
         <h1

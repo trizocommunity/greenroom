@@ -134,9 +134,9 @@ export function TemplatesClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Templates</h1>
+          <h2 className="text-xl font-semibold mb-1">Templates</h2>
           <p className="text-sm text-muted-foreground">
             All poster layouts — drafts and published — in one place.
           </p>

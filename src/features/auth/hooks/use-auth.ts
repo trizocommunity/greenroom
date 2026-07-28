@@ -1,11 +1,21 @@
 import "client-only";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  QueryClientContext,
+  useMutation,
+  useQuery,
+} from "@tanstack/react-query";
+import { useContext } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { getPostAuthRoute } from "@/core/auth/routing";
 import { api } from "@/lib/api-client";
+
+function useQueryClientSafe() {
+  const queryClient = useContext(QueryClientContext);
+  return queryClient ?? null;
+}
 
 export const useSendMagicLink = () => {
   return useMutation({
@@ -27,12 +37,12 @@ export const useSendMagicLink = () => {
 
 export const useVerifyMagicLink = () => {
   const router = useRouter();
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClientSafe();
 
   return useMutation({
     mutationFn: (data: { token: string }) => api.auth.verifyMagicLink(data),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["me"] });
+      void queryClient?.invalidateQueries({ queryKey: ["me"] });
       const redirectTo =
         data.body.redirectTo ??
         getPostAuthRoute({
@@ -56,12 +66,12 @@ export const useVerifyMagicLink = () => {
 
 export const useLogout = () => {
   const router = useRouter();
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClientSafe();
 
   return useMutation({
     mutationFn: () => api.auth.v1Logout(),
     onSuccess: () => {
-      queryClient.clear();
+      queryClient?.clear();
       router.push("/login");
       router.refresh();
     },
@@ -79,14 +89,14 @@ export const useLogout = () => {
 
 export const useCompleteOnboarding = () => {
   const router = useRouter();
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClientSafe();
 
   return useMutation({
     mutationFn: (data: { fullName: string; displayName: string }) =>
       api.auth.completeOnboarding(data),
     onSuccess: async () => {
       toast.success("Onboarding complete");
-      await queryClient.invalidateQueries({ queryKey: ["me"] });
+      await queryClient?.invalidateQueries({ queryKey: ["me"] });
       router.push("/profile");
       router.refresh();
     },
@@ -104,7 +114,7 @@ export const useCompleteOnboarding = () => {
 
 export const useCompletePersonalOnboarding = () => {
   const router = useRouter();
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClientSafe();
 
   return useMutation({
     mutationFn: (data: {
@@ -114,7 +124,7 @@ export const useCompletePersonalOnboarding = () => {
     }) => api.auth.completePersonalOnboarding(data),
     onSuccess: async () => {
       toast.success("Onboarding complete");
-      await queryClient.invalidateQueries({ queryKey: ["me"] });
+      await queryClient?.invalidateQueries({ queryKey: ["me"] });
       router.push("/profile");
       router.refresh();
     },
@@ -132,7 +142,7 @@ export const useCompletePersonalOnboarding = () => {
 
 export const useCompleteInstitutionalOnboarding = () => {
   const router = useRouter();
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClientSafe();
 
   return useMutation({
     mutationFn: (data: {
@@ -147,7 +157,7 @@ export const useCompleteInstitutionalOnboarding = () => {
     }) => api.auth.completeInstitutionalOnboarding(data),
     onSuccess: async () => {
       toast.success("Onboarding complete");
-      await queryClient.invalidateQueries({ queryKey: ["me"] });
+      await queryClient?.invalidateQueries({ queryKey: ["me"] });
       router.push("/profile");
       router.refresh();
     },

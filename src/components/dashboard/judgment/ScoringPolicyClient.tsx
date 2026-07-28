@@ -709,7 +709,13 @@ export function ScoringPolicyClient({
   }, [dirtySourceId, onSave, registerSaveHandler, unregisterSaveHandler]);
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-xl font-semibold mb-1">Scoring Policy</h2>
+        <p className="text-sm text-muted-foreground">Configure the grading system, cut-offs, and points matrix.</p>
+      </div>
+
+      <div className="space-y-4 sm:space-y-6">
       <ScoringPolicySection
         policyVersion={policy.policyVersion}
         normalizeTo={policy.normalizeTo}
@@ -1133,6 +1139,7 @@ export function ScoringPolicyClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
     </div>
   );
 }

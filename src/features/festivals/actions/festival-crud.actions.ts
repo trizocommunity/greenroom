@@ -158,6 +158,7 @@ export async function updateFestivalSettingsAction(
   festivalId: string,
   data: {
     programmeAssignmentDeadline?: string | null;
+    studentCreationDeadline?: string | null;
     teamLeaderLimit?: number;
     announcerResultsPerStandings?: number;
     startDate?: string | null;
@@ -203,6 +204,7 @@ export async function updateFestivalSettingsAction(
       data.startDate !== undefined || data.endDate !== undefined;
     const hasNonDateField =
       data.programmeAssignmentDeadline !== undefined ||
+      data.studentCreationDeadline !== undefined ||
       data.teamLeaderLimit !== undefined ||
       data.announcerResultsPerStandings !== undefined;
     const isDateOnlyUpdate = hasDateField && !hasNonDateField;
@@ -241,6 +243,11 @@ export async function updateFestivalSettingsAction(
         ...(data.programmeAssignmentDeadline !== undefined && {
           programmeAssignmentDeadline: data.programmeAssignmentDeadline
             ? new Date(data.programmeAssignmentDeadline).toISOString()
+            : null,
+        }),
+        ...(data.studentCreationDeadline !== undefined && {
+          studentCreationDeadline: data.studentCreationDeadline
+            ? new Date(data.studentCreationDeadline).toISOString()
             : null,
         }),
         ...(data.teamLeaderLimit !== undefined && {

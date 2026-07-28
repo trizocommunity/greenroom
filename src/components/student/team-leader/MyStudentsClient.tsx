@@ -8,14 +8,18 @@ import {
   FileDown,
   Link as LinkIcon,
   MoreVertical,
+  Plus,
   QrCode,
   Share2,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { QrCodeWithActions } from "@/components/common/QrCodeWithActions";
+import { DeadlinesCard } from "@/components/festival/pre-event-works/DeadlinesCard";
 import { StudentDetailsDialog } from "@/components/festival/pre-event-works/students/StudentDetailsDialog";
+import { AddStudentDialog } from "@/components/student/team-leader/AddStudentDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,6 +43,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { APP_URL } from "@/config/routes";
+import { useDeadlineLock } from "@/features/festivals/hooks/use-deadline-lock";
 import {
   generateBulkQrPdf,
   prepareStudentQrData,
@@ -70,11 +75,21 @@ export function MyStudentsClient({
   festivalId,
   festivalSlug,
   students,
+  allCategories = [],
+  deadline,
+  isReadOnly,
 }: {
   festivalId: string;
   festivalSlug: string;
   students: StudentForMyStudents[];
+  allCategories?: { id: string; name: string }[];
+  deadline?: string | Date | null;
+  isReadOnly?: boolean;
 }) {
+  const router = useRouter();
+  const { isLocked } = useDeadlineLock(deadline ?? null);
+  const runtimeIsReadOnly = Boolean(isReadOnly) || isLocked;
+
   const categories = useMemo(() => {
     const map = new Map<string, { id: string; name: string }>();
     for (const s of students) {
@@ -135,6 +150,22 @@ export function MyStudentsClient({
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <DeadlinesCard label="Students" deadline={deadline} isLockedOverride={runtimeIsReadOnly} />
+        <AddStudentDialog
+          festivalId={festivalId}
+          categories={allCategories}
+          disabled={runtimeIsReadOnly}
+          onCreated={() => router.refresh()}
+          trigger={
+            <Button size="sm" disabled={runtimeIsReadOnly}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Student
+            </Button>
+          }
+        />
+      </div>
+
       <div className="flex flex-wrap items-center gap-3">
         <Select
           value={selectedCategoryId}

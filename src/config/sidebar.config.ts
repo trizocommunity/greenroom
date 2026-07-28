@@ -185,7 +185,7 @@ export const getFestivalDashboardSidebarConfig = (
           title: "Stage Management",
           href: `${basePath}/pre-event-works/stage-management`,
           icon: Megaphone,
-          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
+          allowedRoles: ["ADMIN", "OWNER"],
         },
         {
           title: "Schedule",

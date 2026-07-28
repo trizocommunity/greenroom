@@ -78,7 +78,12 @@ export function FestivalLiveClient({
   const fullPublicUrl = publicUrl || `/${festivalSlug}`;
 
   return (
-    <div className="space-y-6 max-w-8xl mx-auto">
+    <div className="space-y-8 max-w-8xl mx-auto">
+      <div>
+        <h2 className="text-xl font-semibold mb-1">Festival Live</h2>
+        <p className="text-sm text-muted-foreground">Manage your public-facing festival website.</p>
+      </div>
+
       <div className="grid gap-6">
         {enabled && fullPublicUrl && (
           <Card className="overflow-hidden border-primary/20 bg-linear-to-br from-primary/5 via-background to-background">
@@ -135,7 +140,7 @@ export function FestivalLiveClient({
               {enabled && (
                 <Sparkles className="h-5 w-5 text-primary animate-pulse" />
               )}
-              <CardTitle className="text-xl">Festival Live</CardTitle>
+              <CardTitle className="text-lg">Visibility Status</CardTitle>
             </div>
             <CardDescription>
               {enabled

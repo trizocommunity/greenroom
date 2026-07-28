@@ -88,6 +88,8 @@ export const ERROR_MESSAGES = {
   ASSIGNMENT_DEPENDENCIES_MISSING:
     "Please create categories, groups, programmes, and students before making assignments.",
   ASSIGNMENT_DEADLINE_PASSED_ADMIN: "Deadline passed. Assignments are closed.",
+  STUDENT_CREATION_DEADLINE_PASSED:
+    "Deadline passed. Adding new students is closed.",
 
   // ─── Usage / Limits ───────────────────────────────────────────────────────
   USAGE_LIMIT_EXCEEDED:

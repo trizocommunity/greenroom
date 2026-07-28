@@ -47,6 +47,7 @@ export const PLAN_FEATURE_TOGGLE_KEYS = [
   "festivalSettings",
   "advancedSettings",
   "programmeAssignmentDeadline",
+  "studentCreationDeadline",
 ] as const satisfies readonly FeaturePath[];
 
 /** Human-readable labels for the plan features matrix. */
@@ -98,6 +99,7 @@ export const PLAN_FEATURE_LABELS: Record<FeaturePath, string> = {
   festivalSettings: "Festival Settings",
   advancedSettings: "Advanced Settings",
   programmeAssignmentDeadline: "Programme Assignment Deadline",
+  studentCreationDeadline: "Student Registration Deadline",
   programmeTeamLead: "Programme Team Lead",
   programmeAuditDrawer: "Programme Audit Trail",
   supportLevel: "Support Level",

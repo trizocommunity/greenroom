@@ -248,6 +248,13 @@ export async function assignChestNumberForNewStudent(
   const session = await getSession();
   await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
+  return assignChestNumberForStudentInternal(festivalId, studentId);
+}
+
+export async function assignChestNumberForStudentInternal(
+  festivalId: string,
+  studentId: string,
+) {
   const student = await db.query.student.findFirst({
     where: and(
       eq(studentTable.id, studentId),

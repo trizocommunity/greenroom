@@ -27,9 +27,10 @@ import { getResolvedTier } from "@/features/plan-features/services/tier";
 
 interface SettingsFormProps {
   festival: any;
+  activeTab: "general" | "configuration";
 }
 
-export function SettingsForm({ festival }: SettingsFormProps) {
+export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
   const router = useRouter();
   const resolvedTier = getResolvedTier(festival.tier);
   const isBasic = resolvedTier === "BASIC";
@@ -37,6 +38,10 @@ export function SettingsForm({ festival }: SettingsFormProps) {
   const isProgrammeDeadlineEnabled = FeatureService.isFeatureEnabled(
     resolvedTier,
     "programmeAssignmentDeadline",
+  );
+  const isStudentDeadlineEnabled = FeatureService.isFeatureEnabled(
+    resolvedTier,
+    "studentCreationDeadline",
   );
   const isAdvancedSettingsEnabled = FeatureService.isFeatureEnabled(
     resolvedTier,
@@ -50,41 +55,28 @@ export function SettingsForm({ festival }: SettingsFormProps) {
     setRefreshKey((k) => k + 1);
   };
 
-  return (
-    <Tabs defaultValue="general" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-2 max-w-md">
-        <TabsTrigger value="general" className="gap-2">
-          <Globe className="h-4 w-4" />
-          General
-        </TabsTrigger>
-        <TabsTrigger value="configuration" className="gap-2">
-          <Settings2 className="h-4 w-4" />
-          Configuration
-        </TabsTrigger>
-      </TabsList>
+  if (activeTab === "general") {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h2 className="text-xl font-semibold mb-1">General</h2>
+          <p className="text-sm text-muted-foreground">Manage your festival's status, visual identity, and plan details.</p>
+        </div>
 
-      <TabsContent value="general" className="space-y-6">
-        <div className="grid gap-6">
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Palette className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-lg">Visual Identity</CardTitle>
-                </div>
-                <VisualIdentityDialog
-                  festival={festival}
-                  onSuccess={handleSuccess}
-                />
+        <div className="divide-y border rounded-xl overflow-hidden bg-card text-card-foreground shadow-sm">
+          {/* Visual Identity Section */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Palette className="h-4 w-4 text-primary" />
+                <h3 className="text-base font-medium">Visual Identity</h3>
               </div>
-              <CardDescription>
+              <p className="text-sm text-muted-foreground mb-4">
                 Customise how your festival appears online.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+              </p>
               {festival.branding?.logo ? (
                 <div className="flex items-center gap-4">
-                  <div className="relative w-16 h-16 rounded-lg overflow-hidden border">
+                  <div className="relative w-12 h-12 rounded-lg overflow-hidden border">
                     <Image
                       src={festival.branding.logo}
                       alt="Festival Logo"
@@ -92,45 +84,54 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                       className="object-cover"
                     />
                   </div>
-                  <p className="text-sm text-muted-foreground">Logo uploaded</p>
+                  <p className="text-sm font-medium">Logo uploaded</p>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">
-                  No logo uploaded yet
-                </p>
+                <p className="text-sm font-medium">No logo uploaded yet</p>
               )}
-            </CardContent>
-          </Card>
+            </div>
+            <div>
+              <VisualIdentityDialog
+                festival={festival}
+                onSuccess={handleSuccess}
+              />
+            </div>
+          </div>
 
+          {/* Re-use cards for Status, Usage, Plan - but we can tweak them if we want.
+              For now, we render them as is but maybe without Card wrapping if they are internal,
+              but since they are external components we might just leave them in a grid below. */}
+        </div>
+
+        <div className="grid gap-6">
           <FestivalStatusCard
             key={`status-${refreshKey}`}
             festival={festival}
           />
-
           <UsageLimitsCard key={`usage-${refreshKey}`} festival={festival} />
-
           <PlanPaymentCard key={`plan-${refreshKey}`} festival={festival} />
         </div>
-      </TabsContent>
+      </div>
+    );
+  }
 
-      <TabsContent value="configuration" className="space-y-6">
-        <div className="grid gap-6">
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg">Festival Details</CardTitle>
-                  <CardDescription>
-                    Core identity and timing of your festival.
-                  </CardDescription>
-                </div>
-                <FestivalDetailsDialog
-                  festival={festival}
-                  onSuccess={handleSuccess}
-                />
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-xl font-semibold mb-1">Configuration</h2>
+        <p className="text-sm text-muted-foreground">Manage event timing, deadlines, and advanced rules.</p>
+      </div>
+
+      <div className="divide-y border rounded-xl overflow-hidden bg-card text-card-foreground shadow-sm">
+        {/* Festival Details */}
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between p-6 gap-4">
+          <div className="flex-1">
+            <h3 className="text-base font-medium mb-1">Festival Details</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Core identity and timing of your festival.
+            </p>
+            
+            <div className="space-y-4">
               <div>
                 <p className="text-sm font-medium">{festival.name}</p>
                 {festival.description && (
@@ -139,11 +140,9 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                   </p>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm">
                 <div>
-                  <p className="text-muted-foreground text-xs mb-1">
-                    Start Date
-                  </p>
+                  <p className="text-muted-foreground text-xs mb-1">Start Date</p>
                   <p className="font-medium">
                     {festival.startDate
                       ? format(new Date(festival.startDate), "dd/MM/yyyy")
@@ -158,151 +157,138 @@ export function SettingsForm({ festival }: SettingsFormProps) {
                       : "—"}
                   </p>
                 </div>
+                {festival.location && (
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-1">Venue / City</p>
+                    <p className="font-medium">{festival.location}</p>
+                  </div>
+                )}
               </div>
-              {festival.location && (
-                <div>
-                  <p className="text-muted-foreground text-xs mb-1">
-                    Venue / City
-                  </p>
-                  <p className="font-medium">{festival.location}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+          <div>
+            <FestivalDetailsDialog
+              festival={festival}
+              onSuccess={handleSuccess}
+            />
+          </div>
+        </div>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg">Deadlines</CardTitle>
-                  <CardDescription>
-                    Set deadlines for programme assignments.
-                  </CardDescription>
-                </div>
-                <DeadlinesDialog
-                  festival={festival}
-                  onSuccess={handleSuccess}
-                  isFeatureEnabled={isProgrammeDeadlineEnabled}
-                />
+        {/* Deadlines */}
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between p-6 gap-4">
+          <div className="flex-1">
+            <h3 className="text-base font-medium mb-1">Deadlines</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Set deadlines for programme assignments and student registration.
+            </p>
+            <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm">
+              <div>
+                <p className="text-muted-foreground text-xs mb-1">Programme Assignment</p>
+                <p className="font-medium">
+                  {festival.programmeAssignmentDeadline
+                    ? format(
+                        new Date(festival.programmeAssignmentDeadline),
+                        "dd/MM/yyyy HH:mm",
+                      )
+                    : "—"}
+                </p>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground text-xs mb-1">
-                    Programme Assignment
-                  </p>
-                  <p className="font-medium">
-                    {festival.programmeAssignmentDeadline
-                      ? format(
-                          new Date(festival.programmeAssignmentDeadline),
-                          "dd/MM/yyyy HH:mm",
-                        )
-                      : "—"}
-                  </p>
-                </div>
+              <div>
+                <p className="text-muted-foreground text-xs mb-1">Student Registration</p>
+                <p className="font-medium">
+                  {festival.studentCreationDeadline
+                    ? format(
+                        new Date(festival.studentCreationDeadline),
+                        "dd/MM/yyyy HH:mm",
+                      )
+                    : "—"}
+                </p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+          <div>
+            <DeadlinesDialog
+              festival={festival}
+              onSuccess={handleSuccess}
+              isFeatureEnabled={isProgrammeDeadlineEnabled}
+              isStudentDeadlineFeatureEnabled={isStudentDeadlineEnabled}
+            />
+          </div>
+        </div>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg">Team &amp; Results</CardTitle>
-                  <CardDescription>
-                    Configure team limits and result display settings.
-                  </CardDescription>
-                </div>
-                <TeamResultsDialog
-                  festival={festival}
-                  onSuccess={handleSuccess}
-                />
+        {/* Team & Results */}
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between p-6 gap-4">
+          <div className="flex-1">
+            <h3 className="text-base font-medium mb-1">Team &amp; Results</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Configure team limits and result display settings.
+            </p>
+            <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm">
+              <div>
+                <p className="text-muted-foreground text-xs mb-1">Team Leader Limit</p>
+                <p className="font-medium">{festival.teamLeaderLimit ?? 2} per group</p>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground text-xs mb-1">
-                    Team Leader Limit
-                  </p>
-                  <p className="font-medium">
-                    {festival.teamLeaderLimit ?? 2} per group
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs mb-1">
-                    Results per Standings
-                  </p>
-                  <p className="font-medium">
-                    {festival.announcerResultsPerStandings ?? 10}
-                  </p>
-                </div>
+              <div>
+                <p className="text-muted-foreground text-xs mb-1">Results per Standings</p>
+                <p className="font-medium">{festival.announcerResultsPerStandings ?? 10}</p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+          <div>
+            <TeamResultsDialog
+              festival={festival}
+              onSuccess={handleSuccess}
+            />
+          </div>
+        </div>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg">Advanced</CardTitle>
-                  <CardDescription>
-                    Configure scoring system and result display preferences.
-                  </CardDescription>
-                </div>
-                <AdvancedSettingsDialog
-                  festival={festival}
-                  onSuccess={handleSuccess}
-                  isFeatureEnabled={isAdvancedSettingsEnabled}
-                />
-              </div>
-            </CardHeader>
+        {/* Advanced */}
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between p-6 gap-4">
+          <div className="flex-1">
+            <h3 className="text-base font-medium mb-1">Advanced</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Configure scoring system and result display preferences.
+            </p>
             {isAdvancedSettingsEnabled ? (
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground text-xs mb-1">
-                      Scoring System
-                    </p>
-                    <p className="font-medium">
-                      {festival.scoringSystem === "POSITION_BASED"
-                        ? "Position Based"
-                        : "Score Based"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs mb-1">
-                      Public Display
-                    </p>
-                    <p className="font-medium">
-                      {festival.publicDisplayMode === "team_standings"
-                        ? "Team Standings"
-                        : "Programme Results"}
-                    </p>
-                  </div>
+              <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground text-xs mb-1">Scoring System</p>
+                  <p className="font-medium">
+                    {festival.scoringSystem === "POSITION_BASED"
+                      ? "Position Based"
+                      : "Score Based"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs mb-1">Public Display</p>
+                  <p className="font-medium">
+                    {festival.publicDisplayMode === "team_standings"
+                      ? "Team Standings"
+                      : "Programme Results"}
+                  </p>
                 </div>
                 {festival.chestNumberSettings?.prefix && (
                   <div>
-                    <p className="text-muted-foreground text-xs mb-1">
-                      Chest Number Prefix
-                    </p>
-                    <p className="font-medium">
-                      {festival.chestNumberSettings.prefix}
-                    </p>
+                    <p className="text-muted-foreground text-xs mb-1">Chest Number Prefix</p>
+                    <p className="font-medium">{festival.chestNumberSettings.prefix}</p>
                   </div>
                 )}
-              </CardContent>
+              </div>
             ) : (
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Additional options for your plan.
-                </p>
-              </CardContent>
+              <p className="text-sm text-muted-foreground">
+                Additional options for your plan.
+              </p>
             )}
-          </Card>
+          </div>
+          <div>
+            <AdvancedSettingsDialog
+              festival={festival}
+              onSuccess={handleSuccess}
+              isFeatureEnabled={isAdvancedSettingsEnabled}
+            />
+          </div>
         </div>
-      </TabsContent>
-    </Tabs>
+      </div>
+    </div>
   );
 }

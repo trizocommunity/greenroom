@@ -40,6 +40,10 @@ export default async function StageManagementPage({ params }: PageProps) {
     context?.role === "SUPER_ADMIN" ||
     context?.role === "ADMIN";
 
+  if (!canCreateEditDeleteStages) {
+    redirect(`/dashboard/${slug}?error=forbidden`);
+  }
+
   const stages = await getStages(festival.id);
 
   return (

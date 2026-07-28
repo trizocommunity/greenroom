@@ -28,6 +28,8 @@ import { FeatureGate } from "@/components/common/FeatureGate";
 import { QrCodeDisplay } from "@/components/common/QrCodeDisplay";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { ChestNumberSetup } from "@/components/festival/event-works/chest-numbers/ChestNumberSetup";
+import { useFestival } from "@/components/festival/FestivalContext";
+import { DeadlinesCard } from "@/components/festival/pre-event-works/DeadlinesCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
@@ -100,6 +102,7 @@ export function StudentsClient({
 
   const canUseQR = useFeature("qrCodes");
   const { isReadOnly } = useFestivalReadOnly();
+  const { studentCreationDeadline } = useFestival();
 
   const singleCategories = (categories ?? []).filter(
     (c: any) => c.type === "SINGLE",
@@ -182,7 +185,10 @@ export function StudentsClient({
     <div className="space-y-4 pt-2">
       {/* Header row: title (children) + actions — Create icon only on mobile */}
       <div className="flex mb-10 flex-wrap items-start lg:items-center justify-between gap-4">
-        {children}
+        <div className="flex flex-wrap items-center gap-3">
+          {children}
+          <DeadlinesCard label="Students" deadline={studentCreationDeadline} />
+        </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <HowItWorksButton
             title="How Students work"

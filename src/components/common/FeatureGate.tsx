@@ -173,6 +173,7 @@ function getFeatureLabel(feature: FeaturePath): string {
     festivalSettings: "Festival Settings",
     advancedSettings: "Advanced Settings",
     programmeAssignmentDeadline: "Programme Assignment Deadline",
+    studentCreationDeadline: "Student Registration Deadline",
     programmeTeamLead: "Programme Team Lead",
     programmeAuditDrawer: "Programme Audit Trail",
 

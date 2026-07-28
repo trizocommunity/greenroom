@@ -3,9 +3,10 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ScoringPolicyClient } from "@/components/dashboard/judgment/ScoringPolicyClient";
 import { TemplatesClient } from "@/components/festival/posters/TemplatesClient";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FestivalLiveClient } from "./FestivalLiveClient";
 import { SettingsForm } from "./SettingsForm";
+import { cn } from "@/core/utils";
+import { Globe, Settings2, Sparkles, LayoutTemplate, Gavel } from "lucide-react";
 
 interface SettingsTabsProps {
   festival: any;
@@ -41,59 +42,78 @@ export function SettingsTabs({
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
+  const navItems = [
+    { value: "general", label: "General", icon: Globe },
+    { value: "configuration", label: "Configuration", icon: Settings2 },
+  ];
+
+  if (canManageScoring) {
+    navItems.push({ value: "scoring", label: "Scoring Policy", icon: Gavel });
+  }
+  if (canManageTemplates) {
+    navItems.push({ value: "templates", label: "Templates", icon: LayoutTemplate });
+  }
+  if (canManageFestivalLive) {
+    navItems.push({ value: "festival-live", label: "Festival Live", icon: Sparkles });
+  }
+
   return (
-    <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full space-y-6">
-      <div className="w-full overflow-x-auto pb-2 -mb-2">
-        <TabsList className="inline-flex h-10 items-center justify-start rounded-md bg-muted p-1 text-muted-foreground w-max min-w-full sm:w-auto sm:min-w-0">
-          <TabsTrigger value="general">General</TabsTrigger>
-          {canManageScoring && (
-            <TabsTrigger value="scoring">Scoring Policy</TabsTrigger>
-          )}
-          {canManageTemplates && (
-            <TabsTrigger value="templates">Templates</TabsTrigger>
-          )}
-          {canManageFestivalLive && (
-            <TabsTrigger value="festival-live">Festival Live</TabsTrigger>
-          )}
-        </TabsList>
-      </div>
+    <div className="flex flex-col md:flex-row gap-8 items-start">
+      <aside className="w-full md:w-56 shrink-0 sticky top-24">
+        <nav className="flex md:flex-col gap-1 overflow-x-auto pb-4 md:pb-0 hide-scrollbar">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = currentTab === item.value;
+            return (
+              <button
+                key={item.value}
+                onClick={() => handleTabChange(item.value)}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap",
+                  isActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <Icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-muted-foreground")} />
+                {item.label}
+              </button>
+            );
+          })}
+        </nav>
+      </aside>
 
-      <TabsContent value="general" className="mt-0 outline-none">
-        <SettingsForm festival={festival} />
-      </TabsContent>
-
-      {canManageScoring && (
-        <TabsContent value="scoring" className="mt-0 outline-none">
+      <main className="flex-1 min-w-0">
+        {currentTab === "general" && <SettingsForm festival={festival} activeTab="general" />}
+        {currentTab === "configuration" && <SettingsForm festival={festival} activeTab="configuration" />}
+        
+        {currentTab === "scoring" && canManageScoring && (
           <ScoringPolicyClient
             festivalId={festival.id}
             policy={policy}
             categories={categories}
             programmes={programmes}
           />
-        </TabsContent>
-      )}
+        )}
 
-      {canManageTemplates && (
-        <TabsContent value="templates" className="mt-0 outline-none">
+        {currentTab === "templates" && canManageTemplates && (
           <TemplatesClient
             festivalId={festival.id}
             festivalSlug={festival.slug}
             initialTemplates={templates}
             readOnly={false}
           />
-        </TabsContent>
-      )}
+        )}
 
-      {canManageFestivalLive && (
-        <TabsContent value="festival-live" className="mt-0 outline-none">
+        {currentTab === "festival-live" && canManageFestivalLive && (
           <FestivalLiveClient
             festivalId={festival.id}
             festivalSlug={festival.slug}
             publicSiteEnabled={festival.publicSiteEnabled ?? false}
             publicUrl={publicUrl}
           />
-        </TabsContent>
-      )}
-    </Tabs>
+        )}
+      </main>
+    </div>
   );
 }

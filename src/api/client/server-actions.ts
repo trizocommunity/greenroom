@@ -567,6 +567,7 @@ export function useUpdateFestivalSettings() {
       festivalId: string;
       data: {
         programmeAssignmentDeadline?: string | null;
+        studentCreationDeadline?: string | null;
         teamLeaderLimit?: number;
         announcerResultsPerStandings?: number;
         startDate?: string | null;

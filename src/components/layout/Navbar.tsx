@@ -70,13 +70,11 @@ export default function Navbar({ user: initialUser }: NavbarProps) {
     >
       <div className="mx-auto max-w-7xl px-4 md:px-6 h-18 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg gradient-brand text-white text-sm font-semibold shadow-primary-glow">
-            G
-          </span>
-          <span className="text-lg font-semibold tracking-tight text-heading">
-            Greenroom
-          </span>
+        <Link
+          href="/"
+          className="flex items-center gap-2 font-black text-2xl tracking-tighter uppercase bg-gradient-to-r from-primary via-secondary to-primary/80 bg-clip-text text-transparent hover:opacity-90 transition-opacity"
+        >
+          Greenroom
         </Link>
 
         {/* Desktop Nav */}
