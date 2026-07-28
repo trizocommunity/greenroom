@@ -5,7 +5,7 @@ import { ScoringPolicyClient } from "@/components/dashboard/judgment/ScoringPoli
 import { TemplatesClient } from "@/components/festival/posters/TemplatesClient";
 import { FestivalLiveClient } from "./FestivalLiveClient";
 import { SettingsForm } from "./SettingsForm";
-import { cn } from "@/core/utils";
+import { cn } from "@/core/utils/cn";
 import { Globe, Settings2, Sparkles, LayoutTemplate, Gavel } from "lucide-react";
 
 interface SettingsTabsProps {
@@ -66,6 +66,7 @@ export function SettingsTabs({
             const isActive = currentTab === item.value;
             return (
               <button
+                type="button"
                 key={item.value}
                 onClick={() => handleTabChange(item.value)}
                 className={cn(
