@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
+import { StagePickerCards } from "@/components/festival/stage-assignment/StagePickerCards";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,8 +26,8 @@ interface MemberDetailsDialogProps {
   stages?: { id: string; name: string }[];
   assignedStageIds?: string[];
   canAssignStages?: boolean;
-  onToggleStage?: (stageId: string, nextAssigned: boolean) => void;
-  pendingStageId?: string | null;
+  onSaveStages?: (newStageIds: string[]) => void;
+  isSaving?: boolean;
 }
 
 export function MemberDetailsDialog({
@@ -35,8 +37,8 @@ export function MemberDetailsDialog({
   stages = [],
   assignedStageIds = [],
   canAssignStages = false,
-  onToggleStage,
-  pendingStageId,
+  onSaveStages,
+  isSaving = false,
 }: MemberDetailsDialogProps) {
   const fullName = member.user?.fullName || member.fullName || "Unknown";
   const email = member.user?.email || member.email || "";
@@ -52,117 +54,106 @@ export function MemberDetailsDialog({
       .join("")
       .toUpperCase() || "U";
 
+  const [selectedStages, setSelectedStages] = useState<string[]>(assignedStageIds);
+
+  useEffect(() => {
+    if (open) {
+      setSelectedStages(assignedStageIds);
+    }
+  }, [open, assignedStageIds]);
+
+  const toggleStage = (id: string) => {
+    setSelectedStages((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+    );
+  };
+
+  const isAllAssigned = stages.length > 0 && selectedStages.length === stages.length;
+
+  const toggleAllStages = () => {
+    if (isAllAssigned) {
+      setSelectedStages([]);
+    } else {
+      setSelectedStages(stages.map((s) => s.id));
+    }
+  };
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent>
-        <DrawerHeader className="flex flex-row items-center gap-4 border-b border-border/60 pb-5 pt-1">
-          <Avatar className="h-16 w-16 shrink-0 border-2 border-background shadow-md ring-2 ring-primary/20 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+        <DrawerHeader className="flex flex-row items-start sm:items-center gap-3 border-b border-border/60 pb-4 pt-2">
+          <Avatar className="h-12 w-12 shrink-0 border border-border shadow-sm">
             {avatarUrl && <AvatarImage src={avatarUrl} alt={fullName} />}
-            <AvatarFallback className="bg-transparent text-lg font-bold text-primary">
+            <AvatarFallback className="bg-primary/10 text-sm font-bold text-primary">
               {initials}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <DrawerTitle className="truncate text-xl font-bold tracking-tight text-foreground">
+            <DrawerTitle className="truncate text-lg font-bold tracking-tight">
               {fullName}
             </DrawerTitle>
-            <DrawerDescription className="truncate text-sm text-muted-foreground mt-0.5">
+            <DrawerDescription className="truncate text-sm mt-0.5">
               {email}
             </DrawerDescription>
           </div>
         </DrawerHeader>
 
-        <div className="space-y-5 py-3 overflow-y-auto max-h-[60vh] px-4 -mx-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-xl border border-border/40 bg-muted/30 p-3.5 space-y-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Assigned Role
-              </span>
-              <div>
-                <FestivalRoleBadge festivalRole={member.role as any} />
-              </div>
-            </div>
-            <div className="rounded-xl border border-border/40 bg-muted/30 p-3.5 space-y-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Access Status
-              </span>
-              <div>
-                <Badge
-                  variant="outline"
-                  className={
-                    member.isActive
-                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-medium"
-                      : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 font-medium"
-                  }
-                >
-                  <span
-                    className={`mr-1.5 h-2 w-2 rounded-full ${
-                      member.isActive
-                        ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse"
-                        : "bg-amber-500"
-                    }`}
-                  />
-                  {member.isActive ? "Active" : "Inactive"}
-                </Badge>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-border/40 bg-muted/20 p-3.5 flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Joined On
-            </span>
-            <span className="text-sm font-semibold text-foreground">
-              {format(joinedAt, "MMMM d, yyyy")}
+        <div className="space-y-4 py-4 overflow-y-auto max-h-[60vh] px-4 -mx-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <FestivalRoleBadge festivalRole={member.role as any} />
+            <Badge
+              variant="outline"
+              className={
+                member.isActive
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-medium"
+                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 font-medium"
+              }
+            >
+              <span
+                className={`mr-1.5 h-1.5 w-1.5 rounded-full ${
+                  member.isActive ? "bg-emerald-500" : "bg-amber-500"
+                }`}
+              />
+              {member.isActive ? "Active" : "Inactive"}
+            </Badge>
+            <span className="text-xs text-muted-foreground ml-auto">
+              Joined {format(joinedAt, "MMM d, yyyy")}
             </span>
           </div>
 
           {member.role === "STAGE_MANAGER" && stages && (
-            <div className="space-y-2.5 mt-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">
-                {canAssignStages ? "Assign Stages" : "Assigned Stages"}
-              </span>
+            <div className="space-y-2 mt-2">
+              <div className="font-semibold text-sm">
+                Stages {canAssignStages && <span className="text-destructive">*</span>}
+              </div>
               {stages.length === 0 ? (
-                <div className="text-sm text-muted-foreground italic px-1">
+                <div className="text-sm text-muted-foreground italic">
                   No stages created yet.
                 </div>
               ) : !canAssignStages && assignedStageIds.length === 0 ? (
-                <div className="text-sm text-muted-foreground italic px-1">
+                <div className="text-sm text-muted-foreground italic">
                   No stages assigned.
                 </div>
+              ) : canAssignStages ? (
+                <StagePickerCards
+                  stages={stages}
+                  selectedIds={selectedStages}
+                  onChange={setSelectedStages}
+                />
               ) : (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   {stages.map((stage) => {
                     const isAssigned = assignedStageIds.includes(stage.id);
-                    const isPending = pendingStageId === stage.id;
-                    
-                    if (!canAssignStages && !isAssigned) return null;
+                    if (!isAssigned) return null;
 
                     return (
-                      <div 
-                        key={stage.id} 
-                        onClick={() => {
-                          if (canAssignStages && onToggleStage) {
-                            onToggleStage(stage.id, !isAssigned);
-                          }
-                        }}
-                        className={cn(
-                          "relative flex flex-col p-3 rounded-xl border transition-all",
-                          canAssignStages ? "cursor-pointer hover:border-primary/40 hover:bg-muted/50" : "",
-                          isAssigned 
-                            ? "border-primary bg-primary/5 text-primary shadow-sm" 
-                            : "border-border/60 bg-card text-muted-foreground hover:bg-muted/30",
-                          isPending ? "opacity-50 pointer-events-none" : ""
-                        )}
+                      <div
+                        key={stage.id}
+                        className="flex flex-col items-start gap-0.5 rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-left"
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-medium text-sm truncate">{stage.name}</span>
-                          {isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-                          ) : isAssigned ? (
-                            <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-                          ) : null}
-                        </div>
+                        <span className="truncate text-sm font-medium">
+                          {stage.name}
+                        </span>
                       </div>
                     );
                   })}
@@ -172,15 +163,26 @@ export function MemberDetailsDialog({
           )}
         </div>
 
-        <div className="flex justify-end pt-2 border-t border-border/40">
+        <div className="flex justify-end gap-2 pt-3 border-t border-border/60">
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="rounded-xl font-medium px-5"
+            disabled={isSaving}
           >
-            Close
+            {canAssignStages ? "Cancel" : "Close"}
           </Button>
+          {canAssignStages && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => onSaveStages?.(selectedStages)}
+              disabled={isSaving}
+            >
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          )}
         </div>
       </DrawerContent>
     </Drawer>

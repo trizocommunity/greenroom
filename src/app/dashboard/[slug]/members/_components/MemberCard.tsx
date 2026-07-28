@@ -50,7 +50,7 @@ export function MemberCard({
   const removeMember = useRemoveMember();
   const [isRevoking, setIsRevoking] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
-  const [pendingStageId, setPendingStageId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const isStageManager = member.role === "STAGE_MANAGER";
   const canAssignStages =
@@ -61,15 +61,24 @@ export function MemberCard({
   const assignManager = useAssignStageManager();
   const unassignManager = useUnassignStageManager();
 
-  const handleToggleStage = async (stageId: string, nextAssigned: boolean) => {
-    setPendingStageId(stageId);
+  const handleSaveStages = async (newStageIds: string[]) => {
+    setIsSaving(true);
     try {
-      if (nextAssigned) {
+      const currentAssignedIds = stageAssignments
+        .filter((a) => a.memberId === member.id)
+        .map((a) => a.stageId);
+
+      const toAssign = newStageIds.filter(id => !currentAssignedIds.includes(id));
+      const toUnassign = currentAssignedIds.filter(id => !newStageIds.includes(id));
+
+      for (const stageId of toAssign) {
         await assignManager.mutateAsync({
           festivalId,
           data: { stageId, memberId: member.id },
         });
-      } else {
+      }
+      
+      for (const stageId of toUnassign) {
         const existing = stageAssignments.find(
           (a) => a.stageId === stageId && a.memberId === member.id,
         );
@@ -80,10 +89,13 @@ export function MemberCard({
           });
         }
       }
+      
+      toast.success("Stage assignments updated");
+      setShowDetails(false);
     } catch (error: any) {
-      toast.error(error.message || "Failed to update stage assignment");
+      toast.error(error.message || "Failed to update stage assignments");
     } finally {
-      setPendingStageId(null);
+      setIsSaving(false);
     }
   };
 
@@ -172,15 +184,7 @@ export function MemberCard({
                 <Eye className="h-4 w-4 mr-2.5 text-muted-foreground" />
                 View Details
               </DropdownMenuItem>
-              {canAssignStages ? (
-                <DropdownMenuItem
-                  onSelect={() => setShowDetails(true)}
-                  className="cursor-pointer font-medium"
-                >
-                  <Radio className="h-4 w-4 mr-2.5 text-muted-foreground" />
-                  Assign Stages
-                </DropdownMenuItem>
-              ) : null}
+
               {!isOwner && !isReadOnly ? (
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive cursor-pointer font-medium"
@@ -267,8 +271,8 @@ export function MemberCard({
           .filter((a) => a.memberId === member.id)
           .map((a) => a.stageId)}
         canAssignStages={canAssignStages}
-        onToggleStage={handleToggleStage}
-        pendingStageId={pendingStageId}
+        onSaveStages={handleSaveStages}
+        isSaving={isSaving}
       />
     </div>
   );

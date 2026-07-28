@@ -1,5 +1,5 @@
-import { eq, inArray } from "drizzle-orm";
-import { Calendar, CheckCircle2, Gavel, Megaphone, Mic2, Radio } from "lucide-react";
+import { and, count, eq, inArray } from "drizzle-orm";
+import { Calendar, CheckCircle2, Gavel, Radio } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -12,13 +12,15 @@ import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
   festival as festivalTable,
+  judgmentConfig as judgmentConfigTable,
+  programmeReportingSession as prsTable,
   stage as stageTable,
 } from "@/core/database/schema";
 import type { Tier } from "@/core/types/app-enums";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
-import { StageManagerJudgesSection } from "./_components/StageManagerJudgesSection";
+import { StageManagerLiveMetrics } from "./_components/StageManagerLiveMetrics";
 
 export default async function StageManagerOverviewPage({
   params,
@@ -61,6 +63,37 @@ export default async function StageManagerOverviewPage({
 
   const basePath = `/dashboard/${slug}`;
 
+  const [reportingStartedCount, judgmentStartedCount] = assignedStageIds.length
+    ? await Promise.all([
+        db
+          .select({ value: count() })
+          .from(prsTable)
+          .where(
+            and(
+              eq(prsTable.festivalId, festival.id),
+              inArray(prsTable.stageId, assignedStageIds),
+              eq(prsTable.status, "IN_PROGRESS"),
+            ),
+          )
+          .then((rows) => rows[0]?.value ?? 0),
+        db
+          .select({ value: count() })
+          .from(judgmentConfigTable)
+          .innerJoin(
+            prsTable,
+            eq(judgmentConfigTable.reportingSessionId, prsTable.id),
+          )
+          .where(
+            and(
+              eq(judgmentConfigTable.festivalId, festival.id),
+              eq(judgmentConfigTable.status, "ACTIVE"),
+              inArray(prsTable.stageId, assignedStageIds),
+            ),
+          )
+          .then((rows) => rows[0]?.value ?? 0),
+      ])
+    : [0, 0];
+
   if (assignedStages.length === 0) {
     return (
       <div className="space-y-6">
@@ -96,6 +129,15 @@ export default async function StageManagerOverviewPage({
       <h1 className="text-xl sm:text-2xl font-bold tracking-tight mb-4">
         Stage Manager Overview
       </h1>
+
+      {canSchedule ? (
+        <StageManagerLiveMetrics
+          reportingHref={`${basePath}/event-works/reporting`}
+          judgmentHref={`${basePath}/event-works/judgment`}
+          reportingStartedCount={reportingStartedCount}
+          judgmentStartedCount={judgmentStartedCount}
+        />
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {!canSchedule ? (
@@ -172,11 +214,6 @@ export default async function StageManagerOverviewPage({
           </Link>
         ) : null}
       </div>
-
-      <StageManagerJudgesSection
-        festivalId={festival.id}
-        myStages={assignedStages}
-      />
     </div>
   );
 }
