@@ -1,11 +1,18 @@
 "use client";
 
 import { format } from "date-fns";
-import { Eye, Loader2, MoreVertical, Trash2 } from "lucide-react";
+import { Eye, Loader2, MoreVertical, Radio, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useRemoveMember } from "@/api/client/members";
+import {
+  useAssignStageManager,
+  useStageAssignments,
+  useUnassignStageManager,
+} from "@/api/client/stage-assignments";
+import { useStages } from "@/api/client/stages";
 import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
+import { StageAssignmentToggleDialog } from "@/components/festival/stage-assignment/StageAssignmentToggleDialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +31,7 @@ interface MemberCardProps {
   festivalId: string;
   isOwner: boolean;
   isReadOnly: boolean;
+  canManageStageAssignments?: boolean;
 }
 
 export function MemberCard({
@@ -31,10 +39,48 @@ export function MemberCard({
   festivalId,
   isOwner,
   isReadOnly,
+  canManageStageAssignments = false,
 }: MemberCardProps) {
   const removeMember = useRemoveMember();
   const [isRevoking, setIsRevoking] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [showAssignStages, setShowAssignStages] = useState(false);
+  const [pendingStageId, setPendingStageId] = useState<string | null>(null);
+
+  const isStageManager = member.role === "STAGE_MANAGER";
+  const canAssignStages =
+    isStageManager && canManageStageAssignments && !isReadOnly;
+
+  const { data: stages = [] } = useStages(festivalId);
+  const { data: stageAssignments = [] } = useStageAssignments(festivalId);
+  const assignManager = useAssignStageManager();
+  const unassignManager = useUnassignStageManager();
+
+  const handleToggleStage = async (stageId: string, nextAssigned: boolean) => {
+    setPendingStageId(stageId);
+    try {
+      if (nextAssigned) {
+        await assignManager.mutateAsync({
+          festivalId,
+          data: { stageId, memberId: member.id },
+        });
+      } else {
+        const existing = stageAssignments.find(
+          (a) => a.stageId === stageId && a.memberId === member.id,
+        );
+        if (existing) {
+          await unassignManager.mutateAsync({
+            festivalId,
+            assignmentId: existing.id,
+          });
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update stage assignment");
+    } finally {
+      setPendingStageId(null);
+    }
+  };
 
   const handleRevoke = async () => {
     setIsRevoking(true);
@@ -109,6 +155,15 @@ export function MemberCard({
                 <Eye className="h-4 w-4 mr-2.5 text-muted-foreground" />
                 View Details
               </DropdownMenuItem>
+              {canAssignStages ? (
+                <DropdownMenuItem
+                  onSelect={() => setShowAssignStages(true)}
+                  className="cursor-pointer font-medium"
+                >
+                  <Radio className="h-4 w-4 mr-2.5 text-muted-foreground" />
+                  Assign Stages
+                </DropdownMenuItem>
+              ) : null}
               {!isOwner && !isReadOnly ? (
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive cursor-pointer font-medium"
@@ -173,6 +228,32 @@ export function MemberCard({
             </span>
           </div>
         </div>
+
+        {isStageManager ? (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-muted-foreground mr-1">
+              Stages:
+            </span>
+            {stageAssignments.filter((a) => a.memberId === member.id)
+              .length === 0 ? (
+              <Badge variant="outline" className="text-xs font-normal">
+                Unassigned
+              </Badge>
+            ) : (
+              stageAssignments
+                .filter((a) => a.memberId === member.id)
+                .map((a) => (
+                  <Badge
+                    key={a.id}
+                    variant="secondary"
+                    className="text-xs font-normal"
+                  >
+                    {a.stage.name}
+                  </Badge>
+                ))
+            )}
+          </div>
+        ) : null}
       </div>
 
       <MemberDetailsDialog
@@ -180,6 +261,22 @@ export function MemberCard({
         open={showDetails}
         onOpenChange={setShowDetails}
       />
+
+      {canAssignStages && (
+        <StageAssignmentToggleDialog
+          open={showAssignStages}
+          onOpenChange={setShowAssignStages}
+          title={`Stages for ${fullName}`}
+          description="Only assigned stages will appear in this Stage Manager's dashboard, schedule, sessions, and reporting."
+          emptyMessage="No stages created yet. Add one from Stage Management first."
+          options={stages.map((s) => ({ id: s.id, label: s.name }))}
+          assignedIds={stageAssignments
+            .filter((a) => a.memberId === member.id)
+            .map((a) => a.stageId)}
+          pendingId={pendingStageId}
+          onToggle={handleToggleStage}
+        />
+      )}
     </div>
   );
 }

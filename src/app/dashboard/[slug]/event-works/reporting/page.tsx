@@ -15,6 +15,7 @@ import { parseStoredInstant } from "@/core/utils/date-time";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
 import { getProgrammeReportingBoardAction } from "@/features/programmes/actions/programme-reporting.actions";
+import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 
 export default async function ProgrammeReportingPage({
   params,
@@ -69,18 +70,37 @@ export default async function ProgrammeReportingPage({
     }),
   ]);
 
-  const normalizedBoard = (board as any[]).map((item: any) => ({
-    ...item,
-    startTime: item.startTime ? parseStoredInstant(item.startTime) : new Date(),
-    reportingSession: item.reportingSession
-      ? {
-          ...item.reportingSession,
-          windowEndsAt: item.reportingSession.windowEndsAt
-            ? parseStoredInstant(item.reportingSession.windowEndsAt)
-            : null,
-        }
-      : null,
-  })) as ReportingBoardItem[];
+  const accessibleStageIds = await StageAssignmentService.getAccessibleStageIds(
+    festival.id,
+    session,
+  );
+
+  const scopedStages =
+    accessibleStageIds === "all"
+      ? festivalStages
+      : festivalStages.filter((s) => accessibleStageIds.includes(s.id));
+
+  const normalizedBoard = (board as any[])
+    .filter(
+      (item: any) =>
+        accessibleStageIds === "all" ||
+        !item.stage ||
+        accessibleStageIds.includes(item.stage.id),
+    )
+    .map((item: any) => ({
+      ...item,
+      startTime: item.startTime
+        ? parseStoredInstant(item.startTime)
+        : new Date(),
+      reportingSession: item.reportingSession
+        ? {
+            ...item.reportingSession,
+            windowEndsAt: item.reportingSession.windowEndsAt
+              ? parseStoredInstant(item.reportingSession.windowEndsAt)
+              : null,
+          }
+        : null,
+    })) as ReportingBoardItem[];
 
   const assignments = assignmentRows.map((row) => ({
     id: row.id,
@@ -128,7 +148,7 @@ export default async function ProgrammeReportingPage({
         festivalId={festival.id}
         board={normalizedBoard as ReportingBoardItem[]}
         assignments={assignments}
-        festivalStages={festivalStages}
+        festivalStages={scopedStages}
       />
     </div>
   );

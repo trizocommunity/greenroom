@@ -12,6 +12,7 @@ import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import type { Tier } from "@/core/types/app-enums";
 import { parseStoredInstant } from "@/core/utils/date-time";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 
 async function getFestivalWithReportingAccess(festivalId: string) {
   const festival = await db.query.festival.findFirst({
@@ -116,6 +117,29 @@ export async function assertStageManagerAccess(
     member.user.email ||
     "Stage Manager"
   );
+}
+
+/**
+ * Same as assertStageManagerAccess, plus: a STAGE_MANAGER (not owner/admin/super_admin)
+ * must be assigned to `stageId` specifically. Pass a null/undefined stageId for
+ * festival-wide entries (e.g. non-stage schedule entries) that any manager may act on.
+ */
+export async function assertStageManagerAccessForStage(
+  festivalId: string,
+  stageId: string | null | undefined,
+): Promise<string> {
+  const actorName = await assertStageManagerAccess(festivalId);
+  if (!stageId) return actorName;
+
+  const session = await getSession();
+  const accessibleStageIds = await StageAssignmentService.getAccessibleStageIds(
+    festivalId,
+    session,
+  );
+  if (accessibleStageIds !== "all" && !accessibleStageIds.includes(stageId)) {
+    throw new AppError("You are not assigned to this stage.");
+  }
+  return actorName;
 }
 
 export async function assertReportingReopenAccess(

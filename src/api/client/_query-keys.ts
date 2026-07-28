@@ -35,6 +35,9 @@ export const queryKeys = {
   stages: {
     all: (festivalId: string) => ["stages", festivalId] as const,
   },
+  stageAssignments: {
+    all: (festivalId: string) => ["stage-assignments", festivalId] as const,
+  },
   schedule: {
     all: (festivalId: string, typeFilter?: string) =>
       ["schedule", festivalId, typeFilter] as const,

@@ -36,6 +36,7 @@ import {
   result,
   scheduleEntry,
   stage,
+  stageManagerAssignment,
   student,
   user,
   userLoginEvent,
@@ -184,6 +185,7 @@ export const stageRelations = relations(stage, ({ one, many }) => ({
   }),
   scheduleEntries: many(scheduleEntry),
   programmeReportingSessions: many(programmeReportingSession),
+  managerAssignments: many(stageManagerAssignment),
 }));
 
 export const scheduleEntryRelations = relations(
@@ -471,16 +473,38 @@ export const judgmentScoreRelations = relations(judgmentScore, ({ one }) => ({
   }),
 }));
 
-export const festivalMemberRelations = relations(festivalMember, ({ one }) => ({
-  festival: one(festival, {
-    fields: [festivalMember.festivalId],
-    references: [festival.id],
+export const festivalMemberRelations = relations(
+  festivalMember,
+  ({ one, many }) => ({
+    festival: one(festival, {
+      fields: [festivalMember.festivalId],
+      references: [festival.id],
+    }),
+    user: one(user, {
+      fields: [festivalMember.userId],
+      references: [user.id],
+    }),
+    stageAssignments: many(stageManagerAssignment),
   }),
-  user: one(user, {
-    fields: [festivalMember.userId],
-    references: [user.id],
+);
+
+export const stageManagerAssignmentRelations = relations(
+  stageManagerAssignment,
+  ({ one }) => ({
+    festival: one(festival, {
+      fields: [stageManagerAssignment.festivalId],
+      references: [festival.id],
+    }),
+    stage: one(stage, {
+      fields: [stageManagerAssignment.stageId],
+      references: [stage.id],
+    }),
+    member: one(festivalMember, {
+      fields: [stageManagerAssignment.memberId],
+      references: [festivalMember.id],
+    }),
   }),
-}));
+);
 
 export const festivalNewsRelations = relations(festivalNews, ({ one }) => ({
   festival: one(festival, {

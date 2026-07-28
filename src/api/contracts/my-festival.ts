@@ -24,7 +24,7 @@ export const myFestivalResponse = z.object({
 });
 
 export const joinedFestivalSchema = myFestivalSchema.extend({
-  memberRole: z.enum(["ADMIN", "ANNOUNCER", "STAGE_MANAGER", "OWNER"]),
+  memberRole: z.enum(["ADMIN", "ANNOUNCER", "STAGE_MANAGER", "MEDIA"]),
   memberSince: z.string(),
 });
 

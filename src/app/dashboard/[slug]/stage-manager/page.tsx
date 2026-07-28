@@ -1,5 +1,5 @@
-import { eq } from "drizzle-orm";
-import { Calendar, CheckCircle2, Megaphone, Mic2 } from "lucide-react";
+import { eq, inArray } from "drizzle-orm";
+import { Calendar, CheckCircle2, Megaphone, Mic2, Radio } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -10,10 +10,11 @@ import {
 } from "@/components/ui/card";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
-import { festival as festivalTable } from "@/core/database/schema";
+import { festival as festivalTable, stage as stageTable } from "@/core/database/schema";
 import type { Tier } from "@/core/types/app-enums";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 
 export default async function StageManagerOverviewPage({
   params,
@@ -32,17 +33,63 @@ export default async function StageManagerOverviewPage({
 
   const festival = await db.query.festival.findFirst({
     where: eq(festivalTable.slug, slug),
-    columns: { tier: true },
+    columns: { id: true, tier: true },
   });
+  if (!festival) notFound();
 
-  const canStages = festival
-    ? await getEffectiveFeatureEnabled(festival.tier as Tier, "stageManagement")
-    : false;
-  const canSchedule = festival
-    ? await getEffectiveFeatureEnabled(festival.tier as Tier, "schedule")
-    : false;
+  const assignedStageIds = session?.userId
+    ? await StageAssignmentService.getAssignedStageIds(
+        festival.id,
+        session.userId,
+      )
+    : [];
+  const assignedStages = assignedStageIds.length
+    ? await db.query.stage.findMany({
+        where: inArray(stageTable.id, assignedStageIds),
+        columns: { id: true, name: true },
+      })
+    : [];
+
+  const canStages = await getEffectiveFeatureEnabled(
+    festival.tier as Tier,
+    "stageManagement",
+  );
+  const canSchedule = await getEffectiveFeatureEnabled(
+    festival.tier as Tier,
+    "schedule",
+  );
 
   const basePath = `/dashboard/${slug}`;
+
+  if (assignedStages.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            Stage Manager Overview
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Manage stages and view the schedule for your festival (Standard
+            plan and above).
+          </p>
+        </div>
+        <Card className="border-dashed">
+          <CardHeader className="items-center text-center py-10">
+            <div className="p-3 rounded-full bg-muted mb-2">
+              <Radio className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <CardTitle className="text-base">
+              You haven&apos;t been assigned to a stage yet
+            </CardTitle>
+            <CardDescription className="max-w-sm">
+              A festival admin needs to assign you to a stage before you can
+              manage its schedule, sessions, or programme reporting.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -51,8 +98,10 @@ export default async function StageManagerOverviewPage({
           Stage Manager Overview
         </h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Manage stages and view the schedule for your festival (Standard plan
-          and above).
+          You manage:{" "}
+          <span className="font-medium text-foreground">
+            {assignedStages.map((s) => s.name).join(", ")}
+          </span>
         </p>
       </div>
 

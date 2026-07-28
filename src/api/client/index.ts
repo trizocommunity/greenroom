@@ -124,6 +124,11 @@ export {
   useVerifyJudgmentLinkPin,
 } from "./server-actions";
 export {
+  useAssignStageManager,
+  useStageAssignments,
+  useUnassignStageManager,
+} from "./stage-assignments";
+export {
   useCreateStage,
   useDeleteStage,
   useStages,

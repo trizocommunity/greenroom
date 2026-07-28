@@ -39,9 +39,17 @@ export default async function MembersPage({
     redirect(`/dashboard/${slug}?error=upgrade_required&feature=members`);
   }
 
+  const canManageStageAssignments = ["OWNER", "ADMIN", "SUPER_ADMIN"].includes(
+    userRole,
+  );
+
   return (
     <div className="pt-4 sm:pt-6">
-      <MembersClient festivalId={festival.id} userRole={userRole}>
+      <MembersClient
+        festivalId={festival.id}
+        userRole={userRole}
+        canManageStageAssignments={canManageStageAssignments}
+      >
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
             Members

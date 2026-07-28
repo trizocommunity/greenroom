@@ -96,6 +96,14 @@ export const POST = async (req: Request) => {
       })
       .returning();
 
+    if (process.env.NODE_ENV !== "production") {
+      const inviteUrl = `http://localhost:3000/invite/${token}`;
+      console.log(
+        `[DEV] Invitation: ${email} → ${festivalRecord.name} (${festivalRole})`,
+      );
+      console.log(`[DEV] Invite link: ${inviteUrl}`);
+    }
+
     try {
       await sendInvitationEmail(
         email,

@@ -2061,3 +2061,50 @@ export const festivalPosterTemplate = pgTable(
       .onDelete("cascade"),
   ],
 );
+
+// ─── 29. stage_manager_assignment (depends on: festival, stage, festival_member) ──
+
+export const stageManagerAssignment = pgTable(
+  "stage_manager_assignment",
+  {
+    id: text().primaryKey().notNull(),
+    festivalId: text().notNull(),
+    stageId: text().notNull(),
+    memberId: text().notNull(),
+    createdAt: timestamp({ precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("stage_manager_assignment_stageId_memberId_key").using(
+      "btree",
+      table.stageId.asc().nullsLast(),
+      table.memberId.asc().nullsLast(),
+    ),
+    index("stage_manager_assignment_memberId_idx").using(
+      "btree",
+      table.memberId.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "stage_manager_assignment_festivalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.stageId],
+      foreignColumns: [stage.id],
+      name: "stage_manager_assignment_stageId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.memberId],
+      foreignColumns: [festivalMember.id],
+      name: "stage_manager_assignment_memberId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);

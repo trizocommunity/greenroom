@@ -8,6 +8,7 @@ import {
   programmeNotification as notificationTable,
   programmeReportingSession as prsTable,
   programmeReportedParticipant as reportedParticipantTable,
+  scheduleEntry as scheduleEntryTable,
   student as studentTable,
 } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
@@ -15,6 +16,7 @@ import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import {
   assertReportingReopenAccess,
   assertStageManagerAccess,
+  assertStageManagerAccessForStage,
   assertStudentNotificationAccess,
 } from "@/features/programmes/actions/reporting-access";
 import { revalidateProgrammeReporting } from "@/features/programmes/actions/reporting-revalidation";
@@ -26,6 +28,22 @@ async function getProgrammeIdForReportingSession(reportingSessionId: string) {
     columns: { programmeId: true },
   });
   return session?.programmeId;
+}
+
+async function getStageIdForScheduleEntry(scheduleEntryId: string) {
+  const entry = await db.query.scheduleEntry.findFirst({
+    where: eq(scheduleEntryTable.id, scheduleEntryId),
+    columns: { stageId: true },
+  });
+  return entry?.stageId ?? null;
+}
+
+async function getStageIdForReportingSession(reportingSessionId: string) {
+  const session = await db.query.programmeReportingSession.findFirst({
+    where: eq(prsTable.id, reportingSessionId),
+    columns: { stageId: true },
+  });
+  return session?.stageId ?? null;
 }
 
 export async function getProgrammeReportingBoardAction(festivalId: string) {
@@ -42,7 +60,8 @@ export async function startProgrammeReportingAction(
   festivalId: string,
   scheduleEntryId: string,
 ) {
-  const actorName = await assertStageManagerAccess(festivalId);
+  const stageId = await getStageIdForScheduleEntry(scheduleEntryId);
+  const actorName = await assertStageManagerAccessForStage(festivalId, stageId);
   const res = await ProgrammeReportingService.start(scheduleEntryId, actorName);
   await createAuditLog({
     action: "OPEN_REPORTING",
@@ -58,7 +77,8 @@ export async function resetProgrammeReportingAction(
   festivalId: string,
   reportingSessionId: string,
 ) {
-  const actorName = await assertStageManagerAccess(festivalId);
+  const stageId = await getStageIdForReportingSession(reportingSessionId);
+  const actorName = await assertStageManagerAccessForStage(festivalId, stageId);
   const res = await ProgrammeReportingService.reset(
     reportingSessionId,
     actorName,
@@ -73,7 +93,8 @@ export async function markProgrammeParticipantAction(
   assignmentId: string,
   isReported: boolean,
 ) {
-  const actorName = await assertStageManagerAccess(festivalId);
+  const stageId = await getStageIdForReportingSession(reportingSessionId);
+  const actorName = await assertStageManagerAccessForStage(festivalId, stageId);
   await ProgrammeReportingService.markParticipant(
     reportingSessionId,
     assignmentId,
@@ -106,7 +127,8 @@ export async function markProgrammeAssignmentsBulkAction(
   assignmentIds: string[],
   isReported: boolean,
 ) {
-  const actorName = await assertStageManagerAccess(festivalId);
+  const stageId = await getStageIdForReportingSession(reportingSessionId);
+  const actorName = await assertStageManagerAccessForStage(festivalId, stageId);
   await ProgrammeReportingService.markParticipantsBulk(
     reportingSessionId,
     assignmentIds,
@@ -136,7 +158,8 @@ export async function closeProgrammeReportingAction(
   festivalId: string,
   reportingSessionId: string,
 ) {
-  const actorName = await assertStageManagerAccess(festivalId);
+  const stageId = await getStageIdForReportingSession(reportingSessionId);
+  const actorName = await assertStageManagerAccessForStage(festivalId, stageId);
   const res = await ProgrammeReportingService.close(
     reportingSessionId,
     actorName,
@@ -272,7 +295,11 @@ export async function scanAndReportStudentAction(
   chestNumber: string,
 ) {
   try {
-    const actorName = await assertStageManagerAccess(festivalId);
+    const stageId = await getStageIdForReportingSession(reportingSessionId);
+    const actorName = await assertStageManagerAccessForStage(
+      festivalId,
+      stageId,
+    );
     const normalizedChestNumber = chestNumber.trim().toUpperCase();
 
     if (!normalizedChestNumber) {
@@ -422,7 +449,8 @@ export async function getReportingStatsAction(
   festivalId: string,
   reportingSessionId: string,
 ) {
-  await assertStageManagerAccess(festivalId);
+  const stageId = await getStageIdForReportingSession(reportingSessionId);
+  await assertStageManagerAccessForStage(festivalId, stageId);
   const stats =
     await ProgrammeReportingService.getReportingStats(reportingSessionId);
   return { success: true, data: stats };
@@ -438,7 +466,8 @@ export async function assignCodeLettersWithSpinAction(
     code: string;
   }>,
 ) {
-  const actorName = await assertStageManagerAccess(festivalId);
+  const stageId = await getStageIdForReportingSession(reportingSessionId);
+  const actorName = await assertStageManagerAccessForStage(festivalId, stageId);
 
   const result = await ProgrammeReportingService.assignCodesWithSpin(
     reportingSessionId,
@@ -464,7 +493,8 @@ export async function resetSpinCodeLettersAction(
   festivalId: string,
   reportingSessionId: string,
 ) {
-  const actorName = await assertStageManagerAccess(festivalId);
+  const stageId = await getStageIdForReportingSession(reportingSessionId);
+  const actorName = await assertStageManagerAccessForStage(festivalId, stageId);
   const result = await ProgrammeReportingService.resetSpinCodeLetters(
     reportingSessionId,
     actorName,

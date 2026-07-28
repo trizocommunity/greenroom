@@ -19,6 +19,7 @@ export * from "./profile";
 export * from "./programmes";
 export * from "./results";
 export * from "./schedule";
+export * from "./stage-assignments";
 export * from "./stages";
 export * from "./students";
 export * from "./upload";

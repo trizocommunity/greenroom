@@ -1,6 +1,13 @@
 "use client";
 
-import { Edit, Megaphone, MoreVertical, Plus, Trash2 } from "lucide-react";
+import {
+  Edit,
+  Megaphone,
+  MoreVertical,
+  Plus,
+  Trash2,
+  Users,
+} from "lucide-react";
 
 interface Stage {
   id: string;
@@ -11,8 +18,15 @@ interface Stage {
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { useMembers } from "@/api/client/members";
+import {
+  useAssignStageManager,
+  useStageAssignments,
+  useUnassignStageManager,
+} from "@/api/client/stage-assignments";
 import { useDeleteStage } from "@/api/client/stages";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
+import { StageAssignmentToggleDialog } from "@/components/festival/stage-assignment/StageAssignmentToggleDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +37,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -37,16 +52,69 @@ import { StageDialog } from "./StageDialog";
 interface StagesClientProps {
   festivalId: string;
   stages: Stage[];
+  /** Only Owner/Admin/Super Admin may create, edit, or delete stage records. */
+  canManageStages: boolean;
 }
 
-export function StagesClient({ festivalId, stages }: StagesClientProps) {
-  const { isReadOnly } = useFestivalReadOnly();
+export function StagesClient({
+  festivalId,
+  stages,
+  canManageStages,
+}: StagesClientProps) {
+  const { isReadOnly: isSubscriptionReadOnly } = useFestivalReadOnly();
+  const isReadOnly = isSubscriptionReadOnly || !canManageStages;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedStage, setSelectedStage] = useState<Stage | undefined>(
     undefined,
   );
   const [stageToDelete, setStageToDelete] = useState<string | null>(null);
   const deleteStage = useDeleteStage();
+
+  const [managingStageId, setManagingStageId] = useState<string | null>(null);
+  const [pendingMemberId, setPendingMemberId] = useState<string | null>(null);
+  const { data: members = [] } = useMembers(festivalId);
+  const { data: stageAssignments = [] } = useStageAssignments(festivalId);
+  const assignManager = useAssignStageManager();
+  const unassignManager = useUnassignStageManager();
+
+  const stageManagers = members.filter(
+    (m) => m.role === "STAGE_MANAGER" && m.isActive,
+  );
+
+  const managersForStage = (stageId: string) =>
+    stageAssignments
+      .filter((a) => a.stageId === stageId)
+      .map((a) => a.member.user.displayName || a.member.user.fullName || a.member.user.email);
+
+  const handleToggleManager = async (
+    stageId: string,
+    memberId: string,
+    nextAssigned: boolean,
+  ) => {
+    setPendingMemberId(memberId);
+    try {
+      if (nextAssigned) {
+        await assignManager.mutateAsync({
+          festivalId,
+          data: { stageId, memberId },
+        });
+      } else {
+        const existing = stageAssignments.find(
+          (a) => a.stageId === stageId && a.memberId === memberId,
+        );
+        if (existing) {
+          await unassignManager.mutateAsync({
+            festivalId,
+            assignmentId: existing.id,
+          });
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update stage manager");
+    } finally {
+      setPendingMemberId(null);
+    }
+  };
 
   const handleCreate = () => {
     if (isReadOnly) return;
@@ -155,12 +223,18 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
                         <span className="sr-only">Actions</span>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuContent align="end" className="w-48">
                       {!isReadOnly && (
                         <>
                           <DropdownMenuItem onSelect={() => handleEdit(stage)}>
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => setManagingStageId(stage.id)}
+                          >
+                            <Users className="h-4 w-4 mr-2" />
+                            Manage managers
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
@@ -187,6 +261,28 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
                       {stage.createdBy || "System"}
                     </span>
                   </div>
+                </div>
+
+                {/* Assigned managers */}
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground mr-1">
+                    Managers:
+                  </span>
+                  {managersForStage(stage.id).length === 0 ? (
+                    <Badge variant="outline" className="text-xs font-normal">
+                      Unassigned
+                    </Badge>
+                  ) : (
+                    managersForStage(stage.id).map((name, i) => (
+                      <Badge
+                        key={`${stage.id}-manager-${i}`}
+                        variant="secondary"
+                        className="text-xs font-normal"
+                      >
+                        {name}
+                      </Badge>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -231,6 +327,30 @@ export function StagesClient({ festivalId, stages }: StagesClientProps) {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+      )}
+
+      {!isReadOnly && managingStageId && (
+        <StageAssignmentToggleDialog
+          open={!!managingStageId}
+          onOpenChange={(open) => !open && setManagingStageId(null)}
+          title={`Managers for ${
+            stages.find((s) => s.id === managingStageId)?.name ?? "stage"
+          }`}
+          description="Only assigned Stage Managers can operate this stage's schedule, sessions, and reporting."
+          emptyMessage="No Stage Manager members yet. Add one from the Members page first."
+          options={stageManagers.map((m) => ({
+            id: m.id,
+            label: m.fullName,
+            sublabel: m.email,
+          }))}
+          assignedIds={stageAssignments
+            .filter((a) => a.stageId === managingStageId)
+            .map((a) => a.memberId)}
+          pendingId={pendingMemberId}
+          onToggle={(memberId, nextAssigned) =>
+            handleToggleManager(managingStageId, memberId, nextAssigned)
+          }
+        />
       )}
     </div>
   );

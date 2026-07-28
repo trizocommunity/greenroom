@@ -1,6 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { ScheduleClient } from "@/components/festival/pre-event-works/schedule/ScheduleClient";
+import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { programme as programmeTable } from "@/core/database/schema";
 import type { Tier } from "@/core/types/app-enums";
@@ -8,6 +9,7 @@ import { findFestivalBySlug } from "@/features/festivals/repositories/festival.r
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 import { getScheduleEntries } from "@/features/schedule/actions/schedule.actions";
 import { getStages } from "@/features/stages/actions/stage.actions";
+import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 
 interface PageProps {
   params: Promise<{ slug: string }>;

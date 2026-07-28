@@ -14,12 +14,14 @@ import type { Member, PendingInvitation } from "./types";
 interface MembersClientProps {
   festivalId: string;
   userRole: string;
+  canManageStageAssignments?: boolean;
   children?: React.ReactNode;
 }
 
 export function MembersClient({
   festivalId,
   userRole,
+  canManageStageAssignments = false,
   children,
 }: MembersClientProps) {
   const { isReadOnly } = useFestivalReadOnly();
@@ -156,6 +158,7 @@ export function MembersClient({
                   festivalId={festivalId}
                   isOwner={isOwner}
                   isReadOnly={isReadOnly}
+                  canManageStageAssignments={canManageStageAssignments}
                 />
               ) : (
                 <PendingInvitationCard
