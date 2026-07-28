@@ -886,7 +886,7 @@ export function AssignProgrammesClient({
                       {selectedProgramme ? (
                         <>
                           <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="secondary" className="bg-muted/40">
+                            <Badge variant="outline">
                               Selected: {selectedProgramme.name}
                             </Badge>
                             <Badge variant="outline" className="text-xs">

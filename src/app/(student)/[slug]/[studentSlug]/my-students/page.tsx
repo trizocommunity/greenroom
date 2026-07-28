@@ -39,12 +39,7 @@ export default async function MyStudentsPage({
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">My Students</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          All students in your group (filter by category).
-        </p>
-      </div>
+
       <MyStudentsClient
         festivalId={festival.id}
         festivalSlug={festival.slug}

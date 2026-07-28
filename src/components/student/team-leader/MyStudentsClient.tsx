@@ -2,10 +2,8 @@
 
 import {
   Crown,
-  Download,
   ExternalLink,
   Eye,
-  FileDown,
   Link as LinkIcon,
   MoreVertical,
   Plus,
@@ -44,10 +42,6 @@ import {
 } from "@/components/ui/select";
 import { APP_URL } from "@/config/routes";
 import { useDeadlineLock } from "@/features/festivals/hooks/use-deadline-lock";
-import {
-  generateBulkQrPdf,
-  prepareStudentQrData,
-} from "@/features/students/services/qr-pdf-utils";
 import {
   getQrCodeContent,
   getStudentProfilePath,
@@ -105,98 +99,57 @@ export function MyStudentsClient({
   const [detailsStudent, setDetailsStudent] =
     useState<StudentForMyStudents | null>(null);
   const [qrStudent, setQrStudent] = useState<StudentForMyStudents | null>(null);
-  const [isDownloadingBulk, setIsDownloadingBulk] = useState(false);
 
   const visibleStudents = useMemo(() => {
     if (selectedCategoryId === "all") return students;
     return students.filter((s) => s.category?.id === selectedCategoryId);
   }, [students, selectedCategoryId]);
 
-  // Handle bulk PDF download
-  const handleBulkDownload = async () => {
-    try {
-      setIsDownloadingBulk(true);
-
-      // Prepare QR data for all visible students
-      const studentData = visibleStudents.map((s) => ({
-        name: s.name,
-        chestNumber: s.chestNumber || "N/A",
-        groupName: s.group?.name,
-        categoryName: s.category?.name,
-        profileUrl: getStudentProfileUrl(
-          APP_URL.replace(/\/$/, ""),
-          festivalSlug,
-          s,
-        ),
-      }));
-
-      const qrData = await prepareStudentQrData(studentData);
-
-      // Generate and download PDF
-      await generateBulkQrPdf({
-        festivalName: festivalSlug,
-        students: qrData,
-        fileName: `${festivalSlug}-team-qr-codes.pdf`,
-      });
-
-      toast.success("PDF downloaded successfully!");
-    } catch (error) {
-      console.error("Bulk download failed:", error);
-      toast.error("Failed to download PDF. Please try again.");
-    } finally {
-      setIsDownloadingBulk(false);
-    }
-  };
-
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <DeadlinesCard label="Students" deadline={deadline} isLockedOverride={runtimeIsReadOnly} />
-        <AddStudentDialog
-          festivalId={festivalId}
-          categories={allCategories}
-          disabled={runtimeIsReadOnly}
-          onCreated={() => router.refresh()}
-          trigger={
-            <Button size="sm" disabled={runtimeIsReadOnly}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Student
-            </Button>
-          }
-        />
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Select
-          value={selectedCategoryId}
-          onValueChange={setSelectedCategoryId}
-        >
-          <SelectTrigger className="h-10 w-full sm:w-[220px]">
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
-            {categories.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Bulk Download Button */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleBulkDownload}
-          disabled={isDownloadingBulk || visibleStudents.length === 0}
-          className="shrink-0"
-        >
-          <FileDown className="h-4 w-4 mr-2" />
-          {isDownloadingBulk
-            ? "Generating..."
-            : `Download All (${visibleStudents.length})`}
-        </Button>
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <h1 className="text-2xl font-bold tracking-tight">My Students</h1>
+          <Select
+            value={selectedCategoryId}
+            onValueChange={setSelectedCategoryId}
+          >
+            <SelectTrigger className="h-9 w-full sm:w-[200px]">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All categories</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+          <DeadlinesCard
+            label="Students"
+            deadline={deadline}
+            isLockedOverride={runtimeIsReadOnly}
+          />
+          <AddStudentDialog
+            festivalId={festivalId}
+            categories={allCategories}
+            disabled={runtimeIsReadOnly}
+            onCreated={() => router.refresh()}
+            trigger={
+              <Button
+                size="sm"
+                disabled={runtimeIsReadOnly}
+                className="w-full sm:w-auto h-9"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Student
+              </Button>
+            }
+          />
+        </div>
       </div>
 
       {visibleStudents.length === 0 ? (
@@ -239,42 +192,9 @@ export function MyStudentsClient({
                         <Eye className="h-4 w-4 mr-2" />
                         View Details
                       </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href={getStudentProfilePath(festivalSlug, s)}>
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Open Profile
-                        </Link>
-                      </DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => setQrStudent(s)}>
                         <QrCode className="h-4 w-4 mr-2" />
                         View QR (Chest #)
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onSelect={() => {
-                          const profileUrl = getStudentProfileUrl(
-                            APP_URL.replace(/\/$/, ""),
-                            festivalSlug,
-                            s,
-                          );
-                          navigator.clipboard.writeText(profileUrl);
-                          toast.success("Profile link copied!");
-                        }}
-                      >
-                        <LinkIcon className="h-4 w-4 mr-2" />
-                        Copy Profile URL
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onSelect={() => {
-                          const chestNumber =
-                            s.chestNumber || getQrCodeContent(s);
-                          const message = `Chest number: ${chestNumber}`;
-                          const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-                          window.open(whatsappUrl, "_blank");
-                          toast.success("Opening WhatsApp...");
-                        }}
-                      >
-                        <Share2 className="h-4 w-4 mr-2" />
-                        Share Chest Number
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

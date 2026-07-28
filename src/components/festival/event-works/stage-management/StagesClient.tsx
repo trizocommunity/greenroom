@@ -1,13 +1,15 @@
 "use client";
 
-import {
   Edit,
   Megaphone,
   MoreVertical,
   Plus,
   Trash2,
   Users,
+  Search,
+  X,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 interface Stage {
   id: string;
@@ -69,6 +71,17 @@ export function StagesClient({
   );
   const [stageToDelete, setStageToDelete] = useState<string | null>(null);
   const deleteStage = useDeleteStage();
+
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredStages = stages.filter((s) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.trim().toLowerCase();
+    return (
+      s.name.toLowerCase().includes(q) ||
+      (s.description?.toLowerCase().includes(q) ?? false)
+    );
+  });
 
   const [managingStageId, setManagingStageId] = useState<string | null>(null);
   const [pendingMemberId, setPendingMemberId] = useState<string | null>(null);
@@ -142,9 +155,9 @@ export function StagesClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold tracking-tight">Stage Management</h2>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
+          <h2 className="text-2xl font-bold tracking-tight">Stage Management</h2>
           <HowItWorksButton
             title="How Stage Management works"
             description="Stages are venues or slots where programmes and sessions run."
@@ -160,10 +173,31 @@ export function StagesClient({
               one stage before adding entries to the schedule.
             </p>
           </HowItWorksButton>
+        </div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search stages..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9"
+            />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
+                onClick={() => setSearchQuery("")}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
           <Button
             onClick={handleCreate}
             size="sm"
-            className="gap-2"
+            className="gap-2 shrink-0 h-9"
             disabled={isReadOnly}
           >
             <Plus className="h-4 w-4" />
@@ -188,7 +222,15 @@ export function StagesClient({
         </div>
       ) : (
         <div className="grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {stages.map((stage) => (
+          {filteredStages.length === 0 && stages.length > 0 && (
+            <div className="col-span-full flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg bg-muted/20">
+              <h3 className="text-lg font-semibold">No Stages Found</h3>
+              <p className="text-muted-foreground text-center max-w-sm mt-1 mb-4">
+                No stages found matching your search.
+              </p>
+            </div>
+          )}
+          {filteredStages.map((stage) => (
             <div
               key={stage.id}
               className="group/card relative flex flex-col overflow-hidden rounded-xl border border-border/80 bg-card text-card-foreground shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/20"

@@ -3,7 +3,6 @@
 import {
   eachDayOfInterval,
   format,
-  isSameDay,
   parseISO,
   startOfDay,
 } from "date-fns";
@@ -16,7 +15,9 @@ import {
   MoreVertical,
   Pencil,
   Plus,
+  Search,
   Trash2,
+  X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -174,6 +175,7 @@ export function ScheduleClient({
   const [activeStageId, setActiveStageId] = useState<string>(
     initialStageId ?? "",
   );
+  const [searchQuery, setSearchQuery] = useState("");
 
   const hasStages = stages.length > 0;
   const hasProgrammes = programmes.length > 0;
@@ -211,6 +213,17 @@ export function ScheduleClient({
     activeStageId === ""
       ? dayEntries
       : dayEntries.filter((e) => e.stageId === activeStageId);
+
+  const finalFilteredEntries = filteredDayEntries.filter((e) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.trim().toLowerCase();
+    const label = getEntryLabel(e).toLowerCase();
+    return (
+      label.includes(q) ||
+      (e.description?.toLowerCase().includes(q) ?? false) ||
+      (e.stage?.name?.toLowerCase().includes(q) ?? false)
+    );
+  });
 
   const handleCreate = async (data: {
     type: "PROGRAMME" | "SESSION";
@@ -343,7 +356,7 @@ export function ScheduleClient({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h2 className="text-2xl font-bold tracking-tight">Schedule</h2>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto shrink-0">
           <HowItWorksButton
             title="How the Schedule works"
             description="Build your festival programme by day, time, and stage."
@@ -366,6 +379,25 @@ export function ScheduleClient({
               Event Works → Sessions.
             </p>
           </HowItWorksButton>
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search schedule..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9"
+            />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
+                onClick={() => setSearchQuery("")}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
           <Button
             size="sm"
             onClick={() => {
@@ -393,7 +425,7 @@ export function ScheduleClient({
               }
               setAddOpen(true);
             }}
-            className="gap-2"
+            className="gap-2 h-9"
             disabled={!canAdd}
           >
             <Plus className="h-4 w-4" />
@@ -544,13 +576,13 @@ export function ScheduleClient({
                   )}
                 </CardTitle>
                 <CardDescription className="mt-0!">
-                  {filteredDayEntries.length} item
-                  {filteredDayEntries.length !== 1 ? "s" : ""}
-                  {activeStageId !== "" &&
-                    dayEntries.length !== filteredDayEntries.length && (
+                  {finalFilteredEntries.length} item
+                  {finalFilteredEntries.length !== 1 ? "s" : ""}
+                  {(activeStageId !== "" || searchQuery.trim() !== "") &&
+                    dayEntries.length !== finalFilteredEntries.length && (
                       <span className="text-muted-foreground">
                         {" "}
-                        on this stage
+                        matching filters
                       </span>
                     )}
                 </CardDescription>
@@ -561,7 +593,7 @@ export function ScheduleClient({
                   layout
                   transition={{ layout: { duration: 0.25 } }}
                 >
-                  {filteredDayEntries.map((entry) => (
+                  {finalFilteredEntries.map((entry) => (
                     <motion.li
                       key={entry.id}
                       layout
@@ -579,7 +611,7 @@ export function ScheduleClient({
                           onClick={() => moveEntry(entry, "up")}
                           disabled={
                             isReadOnly ||
-                            filteredDayEntries.indexOf(entry) === 0
+                            finalFilteredEntries.indexOf(entry) === 0
                           }
                           aria-label="Move up"
                         >
@@ -592,8 +624,8 @@ export function ScheduleClient({
                           onClick={() => moveEntry(entry, "down")}
                           disabled={
                             isReadOnly ||
-                            filteredDayEntries.indexOf(entry) ===
-                              filteredDayEntries.length - 1
+                            finalFilteredEntries.indexOf(entry) ===
+                              finalFilteredEntries.length - 1
                           }
                           aria-label="Move down"
                         >
@@ -652,11 +684,20 @@ export function ScheduleClient({
                               </TooltipTrigger>
                               <TooltipContent>
                                 {entry.createdBy && (
-                                  <p>Created by {entry.creatorUser?.displayName || entry.creatorUser?.fullName || entry.createdBy}</p>
+                                  <p>
+                                    Created by{" "}
+                                    {entry.creatorUser?.displayName ||
+                                      entry.creatorUser?.fullName ||
+                                      entry.createdBy}
+                                  </p>
                                 )}
                                 {entry.updatedBy && (
                                   <p>
-                                    Updated by {entry.updaterUser?.displayName || entry.updaterUser?.fullName || entry.updatedBy} on{" "}
+                                    Updated by{" "}
+                                    {entry.updaterUser?.displayName ||
+                                      entry.updaterUser?.fullName ||
+                                      entry.updatedBy}{" "}
+                                    on{" "}
                                     {entry.updatedAt &&
                                       format(
                                         parseStoredInstant(entry.updatedAt),

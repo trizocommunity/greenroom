@@ -10,6 +10,8 @@ import {
   Pencil,
   Plus,
   Trash2,
+  Search,
+  X,
 } from "lucide-react";
 import { useState } from "react";
 import {
@@ -38,6 +40,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ERROR_MESSAGES } from "@/core/errors/errors";
 import { StagePickerCards } from "@/components/festival/stage-assignment/StagePickerCards";
@@ -94,12 +97,8 @@ export function JudgesClient({
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<JudgeRow | null>(null);
   const [deleting, setDeleting] = useState<JudgeRow | null>(null);
-  const [viewingActivities, setViewingActivities] = useState<JudgeRow | null>(
-    null,
-  );
-  const [viewingProgrammes, setViewingProgrammes] = useState<JudgeRow | null>(
-    null,
-  );
+  const [viewingJudge, setViewingJudge] = useState<JudgeRow | null>(null);
+  const [viewTab, setViewTab] = useState("activities");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [stageIds, setStageIds] = useState<string[]>([]);
@@ -108,6 +107,16 @@ export function JudgesClient({
     name?: string;
     description?: string;
   }>({});
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredJudges = judges.filter((j) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.trim().toLowerCase();
+    return (
+      j.name.toLowerCase().includes(q) ||
+      (j.description?.toLowerCase().includes(q) ?? false)
+    );
+  });
 
   const trimmedName = name.trim();
   const trimmedDescription = description.trim();
@@ -224,16 +233,37 @@ export function JudgesClient({
 
   return (
     <div className="space-y-6 pt-2">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         {children}
-        <Button onClick={openCreate} disabled={isReadOnly}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Judge
-        </Button>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search judges..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9"
+            />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
+                onClick={() => setSearchQuery("")}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          <Button onClick={openCreate} disabled={isReadOnly} className="shrink-0 h-9">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Judge
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {judges.map((j) => (
+        {filteredJudges.map((j) => (
           <div
             key={j.id}
             className="group/card relative flex flex-col overflow-hidden rounded-xl border border-border/80 bg-card text-card-foreground shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/20"
@@ -265,16 +295,13 @@ export function JudgesClient({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
-                      onSelect={() => setViewingActivities(j as JudgeRow)}
+                      onSelect={() => {
+                        setViewTab("activities");
+                        setViewingJudge(j as JudgeRow);
+                      }}
                     >
                       <Eye className="h-4 w-4 mr-2" />
                       Activities
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onSelect={() => setViewingProgrammes(j as JudgeRow)}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      Programmes
                     </DropdownMenuItem>
                     {!isReadOnly ? (
                       <DropdownMenuItem
@@ -375,6 +402,10 @@ export function JudgesClient({
         <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
           No judges created yet.
         </div>
+      ) : filteredJudges.length === 0 ? (
+        <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
+          No judges found matching your search.
+        </div>
       ) : null}
 
       <Drawer open={formOpen} onOpenChange={handleFormOpenChange}>
@@ -458,128 +489,127 @@ export function JudgesClient({
       </Drawer>
 
       <Drawer
-        open={!!viewingActivities}
-        onOpenChange={(open) => !open && setViewingActivities(null)}
+        open={!!viewingJudge}
+        onOpenChange={(open) => !open && setViewingJudge(null)}
       >
         <DrawerContent>
-          {viewingActivities ? (
+          {viewingJudge ? (
             <>
               <DrawerHeader>
-                <DrawerTitle>{viewingActivities.name} - Activities</DrawerTitle>
+                <DrawerTitle>{viewingJudge.name}</DrawerTitle>
                 <DrawerDescription>
-                  Assigned judging activities and scoring progress.
+                  Judging activities, scoring progress, and assigned programmes.
                 </DrawerDescription>
               </DrawerHeader>
 
-              <div className="space-y-2">
-                <div className="space-y-2 max-h-72 overflow-auto pr-1">
-                  {viewingActivities.activities.length > 0 ? (
-                    viewingActivities.activities.map((activity) => (
-                      <div
-                        key={activity.configId}
-                        className="rounded-lg border p-3 flex items-center justify-between gap-3"
-                      >
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {activity.programme?.name ?? "Programme"}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {activity.stage?.name ?? "No stage"} ·{" "}
-                            {activity.judgingMode}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs text-muted-foreground">
-                            Judged points: {activity.judgedPointsCount}
-                          </p>
-                          <Badge variant="outline" className="mt-1">
-                            Avg: {activity.averagePoints ?? "-"}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No activities assigned.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </>
-          ) : null}
-        </DrawerContent>
-      </Drawer>
+              <Tabs
+                value={viewTab}
+                onValueChange={(value) => setViewTab(value as typeof viewTab)}
+              >
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="activities">
+                    Activities ({viewingJudge.activities.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="programmes">
+                    Programmes ({viewingJudge.programmes.length})
+                  </TabsTrigger>
+                </TabsList>
 
-      <Drawer
-        open={!!viewingProgrammes}
-        onOpenChange={(open) => !open && setViewingProgrammes(null)}
-      >
-        <DrawerContent>
-          {viewingProgrammes ? (
-            <>
-              <DrawerHeader>
-                <DrawerTitle>{viewingProgrammes.name} - Programmes</DrawerTitle>
-                <DrawerDescription>
-                  Programme-wise judging points and score averages.
-                </DrawerDescription>
-              </DrawerHeader>
-
-              <div className="space-y-2">
-                <div className="space-y-2 max-h-72 overflow-auto pr-1">
-                  {viewingProgrammes.programmes.length > 0 ? (
-                    viewingProgrammes.programmes.map((programme) => {
-                      const programmeActivities =
-                        viewingProgrammes.activities.filter(
-                          (activity) => activity.programme?.id === programme.id,
-                        );
-                      const totalPoints = programmeActivities.reduce(
-                        (sum, activity) => sum + activity.judgedPointsCount,
-                        0,
-                      );
-                      const avgPool = programmeActivities
-                        .map((activity) => activity.averagePoints)
-                        .filter((value): value is number => value !== null);
-                      const programmeAverage =
-                        avgPool.length > 0
-                          ? Number(
-                              (
-                                avgPool.reduce((sum, value) => sum + value, 0) /
-                                avgPool.length
-                              ).toFixed(2),
-                            )
-                          : null;
-
-                      return (
+                <TabsContent value="activities">
+                  <div className="space-y-2 max-h-72 overflow-auto pr-1">
+                    {viewingJudge.activities.length > 0 ? (
+                      viewingJudge.activities.map((activity) => (
                         <div
-                          key={programme.id}
+                          key={activity.configId}
                           className="rounded-lg border p-3 flex items-center justify-between gap-3"
                         >
-                          <div>
+                          <div className="min-w-0">
                             <p className="text-sm font-medium truncate">
-                              {programme.name}
+                              {activity.programme?.name ?? "Programme"}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              Activities: {programmeActivities.length}
+                              {activity.stage?.name ?? "No stage"} ·{" "}
+                              {activity.judgingMode}
                             </p>
                           </div>
                           <div className="text-right">
                             <p className="text-xs text-muted-foreground">
-                              Points: {totalPoints}
+                              Judged points: {activity.judgedPointsCount}
                             </p>
                             <Badge variant="outline" className="mt-1">
-                              Avg: {programmeAverage ?? "-"}
+                              Avg: {activity.averagePoints ?? "-"}
                             </Badge>
                           </div>
                         </div>
-                      );
-                    })
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No programmes assigned.
-                    </p>
-                  )}
-                </div>
-              </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No activities assigned.
+                      </p>
+                    )}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="programmes">
+                  <div className="space-y-2 max-h-72 overflow-auto pr-1">
+                    {viewingJudge.programmes.length > 0 ? (
+                      viewingJudge.programmes.map((programme) => {
+                        const programmeActivities =
+                          viewingJudge.activities.filter(
+                            (activity) =>
+                              activity.programme?.id === programme.id,
+                          );
+                        const totalPoints = programmeActivities.reduce(
+                          (sum, activity) => sum + activity.judgedPointsCount,
+                          0,
+                        );
+                        const avgPool = programmeActivities
+                          .map((activity) => activity.averagePoints)
+                          .filter((value): value is number => value !== null);
+                        const programmeAverage =
+                          avgPool.length > 0
+                            ? Number(
+                                (
+                                  avgPool.reduce(
+                                    (sum, value) => sum + value,
+                                    0,
+                                  ) / avgPool.length
+                                ).toFixed(2),
+                              )
+                            : null;
+
+                        return (
+                          <div
+                            key={programme.id}
+                            className="rounded-lg border p-3 flex items-center justify-between gap-3"
+                          >
+                            <div>
+                              <p className="text-sm font-medium truncate">
+                                {programme.name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Activities: {programmeActivities.length}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs text-muted-foreground">
+                                Points: {totalPoints}
+                              </p>
+                              <Badge variant="outline" className="mt-1">
+                                Avg: {programmeAverage ?? "-"}
+                              </Badge>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No programmes assigned.
+                      </p>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
             </>
           ) : null}
         </DrawerContent>
