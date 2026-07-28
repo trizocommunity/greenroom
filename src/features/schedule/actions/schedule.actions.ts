@@ -139,6 +139,8 @@ export async function getScheduleEntries(
         with: { category: true },
       },
       stage: true,
+      creatorUser: { columns: { fullName: true, displayName: true } },
+      updaterUser: { columns: { fullName: true, displayName: true } },
     },
     orderBy: [asc(scheduleEntryTable.startTime), asc(scheduleEntryTable.order)],
   });
@@ -158,6 +160,8 @@ export async function getScheduleEntriesPublic(
         with: { category: true },
       },
       stage: true,
+      creatorUser: { columns: { fullName: true, displayName: true } },
+      updaterUser: { columns: { fullName: true, displayName: true } },
     },
     orderBy: [asc(scheduleEntryTable.startTime), asc(scheduleEntryTable.order)],
   });

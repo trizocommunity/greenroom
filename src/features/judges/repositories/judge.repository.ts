@@ -20,7 +20,10 @@ export type FestivalJudgeWithAssignments = {
     averagePoints: number | null;
   }>;
   programmes: Array<{ id: string; name: string }>;
+  /** Stages this judge has actually judged at (derived from judgment history). */
   stages: Array<{ id: string; name: string }>;
+  /** Stages this judge is explicitly assigned to (judge_stage_assignment). */
+  assignedStages: Array<{ id: string; name: string }>;
 };
 
 export async function listFestivalJudgesWithAssignments(
@@ -41,6 +44,11 @@ export async function listFestivalJudgesWithAssignments(
               },
             },
           },
+        },
+      },
+      stageAssignments: {
+        with: {
+          stage: { columns: { id: true, name: true } },
         },
       },
     },
@@ -150,6 +158,7 @@ export async function listFestivalJudgesWithAssignments(
       activities,
       programmes: Array.from(programmeMap.values()),
       stages: Array.from(stageMap.values()),
+      assignedStages: judge.stageAssignments.map((row) => row.stage),
     };
   });
 }

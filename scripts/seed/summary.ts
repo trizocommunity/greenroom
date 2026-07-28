@@ -12,7 +12,6 @@ export type SeedSummary = {
   judges: number;
   sessions: number;
   programmes: number;
-  assignments: number;
 };
 
 export function printSeedSummary(
@@ -37,7 +36,6 @@ export function printSeedSummary(
   console.log(`Judges           : ${summary.judges}`);
   console.log(`Sessions         : ${summary.sessions}`);
   console.log(`Programmes       : ${summary.programmes}`);
-  console.log(`Assignments      : ${summary.assignments}`);
   console.log("──────────────────────────────────────────────────────────");
   console.log("PARTICIPANT LOGIN SHOWCASE (first leaders of each group):");
   for (const leader of showcase) {

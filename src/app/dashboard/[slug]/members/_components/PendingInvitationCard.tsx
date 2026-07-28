@@ -6,7 +6,6 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -51,26 +50,42 @@ export function PendingInvitationCard({
   const isExpired = invitation.status === "expired";
   const createdAt = parseStoredInstant(invitation.createdAt);
 
-  const statusColor = isExpired ? "#ef4444" : "#3b82f6";
-
   return (
-    <div className="group/card relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-blue-500/30">
-      {/* Accent bar removed per user request */}
-
-      <div className="flex flex-1 flex-col pl-5 pr-4 pt-5 pb-4">
-        {/* Top Header: Email + Dropdown Menu */}
+    <div className="group/card relative flex flex-col justify-between overflow-hidden rounded-2xl border border-dashed border-border bg-card/60 text-card-foreground shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-blue-500/40">
+      <div className="flex flex-1 flex-col px-5 pt-5 pb-4">
+        {/* Top Header: Icon avatar + Email + Dropdown Menu */}
         <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-col min-w-0 flex-1 pt-0.5">
-            <h3
-              className="font-semibold text-base leading-snug text-foreground truncate tracking-tight group-hover/card:text-blue-500 transition-colors"
-              title={invitation.email}
-            >
-              {invitation.email}
-            </h3>
-            <p className="text-xs text-muted-foreground truncate mt-0.5 font-medium flex items-center gap-1">
-              <Clock className="h-3 w-3 text-blue-500/80 shrink-0" />
-              Pending Invitation
-            </p>
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="relative shrink-0">
+              <Avatar className="h-11 w-11 ring-2 ring-border/60">
+                <AvatarFallback
+                  className={`${
+                    isExpired
+                      ? "bg-destructive/10 text-destructive"
+                      : "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                  }`}
+                >
+                  <Mail className="h-4 w-4" />
+                </AvatarFallback>
+              </Avatar>
+              <span
+                className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card ${
+                  isExpired ? "bg-destructive" : "bg-blue-500"
+                }`}
+              />
+            </div>
+            <div className="flex min-w-0 flex-col">
+              <h3
+                className="font-semibold text-base leading-snug text-foreground truncate tracking-tight group-hover/card:text-blue-500 transition-colors"
+                title={invitation.email}
+              >
+                {invitation.email}
+              </h3>
+              <p className="text-xs text-muted-foreground truncate mt-0.5 font-medium flex items-center gap-1">
+                <Clock className="h-3 w-3 text-blue-500/80 shrink-0" />
+                Pending Invitation
+              </p>
+            </div>
           </div>
 
           {!isOwner ? (
@@ -108,28 +123,24 @@ export function PendingInvitationCard({
 
         {/* Middle Section: Role & Status */}
         <div className="mt-4 pt-3 border-t border-border/40">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-            Role & Status
-          </p>
-          <div className="flex flex-wrap gap-2 items-center">
+          <div className="flex flex-wrap items-center gap-2">
             <FestivalRoleBadge festivalRole={invitation.festivalRole as any} />
-            <Badge
-              variant="outline"
-              className={
+            <span
+              className={`inline-flex items-center gap-1.5 text-xs font-medium ${
                 isExpired
-                  ? "bg-destructive/10 text-destructive border-destructive/30 px-2.5 py-0.5 rounded-full font-medium"
-                  : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30 px-2.5 py-0.5 rounded-full font-medium"
-              }
+                  ? "text-destructive"
+                  : "text-blue-600 dark:text-blue-400"
+              }`}
             >
               <span
-                className={`mr-1.5 h-1.5 w-1.5 rounded-full ${
+                className={`h-1.5 w-1.5 rounded-full ${
                   isExpired
                     ? "bg-destructive"
-                    : "bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.6)] animate-pulse"
+                    : "bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.6)]"
                 }`}
               />
               {isExpired ? "Expired" : "Pending"}
-            </Badge>
+            </span>
           </div>
         </div>
 

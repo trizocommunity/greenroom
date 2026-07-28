@@ -147,17 +147,25 @@ export function ProgrammeReportingClient({
   board,
   assignments,
   festivalStages,
+  initialStageId,
+  hideStageFilter,
 }: {
   festivalId: string;
   board: ReportingBoardItem[];
   assignments: ProgrammeReportingAssignmentRow[];
   /** All festival stages (filter dropdown); board alone only lists stages that appear on slots. */
   festivalStages: Array<{ id: string; name: string }>;
+  /** Pre-selects the stage filter (e.g. from the stage manager's banner selector). */
+  initialStageId?: string | null;
+  /** Hides the in-page stage filter — used when the banner selector already covers it. */
+  hideStageFilter?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [filterCategoryId, setFilterCategoryId] = useState<string>("ALL");
-  const [filterStageId, setFilterStageId] = useState<string>("ALL");
+  const [filterStageId, setFilterStageId] = useState<string>(
+    initialStageId ?? "ALL",
+  );
   const [filterType, setFilterType] = useState<"ALL" | "INDIVIDUAL" | "GROUP">(
     "ALL",
   );
@@ -1243,19 +1251,21 @@ export function ProgrammeReportingClient({
                 </SelectContent>
               </Select>
 
-              <Select value={filterStageId} onValueChange={setFilterStageId}>
-                <SelectTrigger className="h-8 text-[10px] uppercase font-bold tracking-tight">
-                  <SelectValue placeholder="Stage" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Stages</SelectItem>
-                  {stages.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {!hideStageFilter && (
+                <Select value={filterStageId} onValueChange={setFilterStageId}>
+                  <SelectTrigger className="h-8 text-[10px] uppercase font-bold tracking-tight">
+                    <SelectValue placeholder="Stage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Stages</SelectItem>
+                    {stages.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
 
               <Select
                 value={filterType}

@@ -1,7 +1,15 @@
 "use client";
 
 import { format } from "date-fns";
-import { Eye, Loader2, MoreVertical, Radio, Trash2 } from "lucide-react";
+import {
+  CalendarDays,
+  Eye,
+  Loader2,
+  MoreVertical,
+  Radio,
+  ShieldCheck,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useRemoveMember } from "@/api/client/members";
@@ -12,9 +20,7 @@ import {
 } from "@/api/client/stage-assignments";
 import { useStages } from "@/api/client/stages";
 import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
-import { StageAssignmentToggleDialog } from "@/components/festival/stage-assignment/StageAssignmentToggleDialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -44,7 +50,6 @@ export function MemberCard({
   const removeMember = useRemoveMember();
   const [isRevoking, setIsRevoking] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
-  const [showAssignStages, setShowAssignStages] = useState(false);
   const [pendingStageId, setPendingStageId] = useState<string | null>(null);
 
   const isStageManager = member.role === "STAGE_MANAGER";
@@ -108,29 +113,41 @@ export function MemberCard({
       .join("")
       .toUpperCase() || "U";
 
-  const statusColor = member.isActive ? "#10b981" : "#f59e0b";
-
   return (
     <div className="group/card relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30">
-      {/* Accent bar removed per user request */}
-
-      <div className="flex flex-1 flex-col pl-5 pr-4 pt-5 pb-4">
-        {/* Top Header: Name/Email + Dropdown Menu */}
+      <div className="flex flex-1 flex-col px-5 pt-5 pb-4">
+        {/* Top Header: Avatar + Name/Email + Dropdown Menu */}
         <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-col min-w-0 flex-1 pt-0.5">
-            <h3
-              className="font-semibold text-base leading-snug text-foreground truncate tracking-tight group-hover/card:text-primary transition-colors cursor-pointer"
-              onClick={() => setShowDetails(true)}
-              title={fullName}
-            >
-              {fullName}
-            </h3>
-            <p
-              className="text-xs text-muted-foreground truncate mt-0.5 font-medium"
-              title={email}
-            >
-              {email}
-            </p>
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="relative shrink-0">
+              <Avatar className="h-11 w-11 ring-2 ring-border/60">
+                {avatarUrl ? <AvatarImage src={avatarUrl} alt={fullName} /> : null}
+                <AvatarFallback className="bg-gradient-to-br from-primary/25 to-primary/10 text-sm font-semibold text-primary">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <span
+                className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card ${
+                  member.isActive ? "bg-emerald-500" : "bg-amber-500"
+                }`}
+                title={member.isActive ? "Active" : "Inactive"}
+              />
+            </div>
+            <div className="flex min-w-0 flex-col">
+              <h3
+                className="font-semibold text-base leading-snug text-foreground truncate tracking-tight group-hover/card:text-primary transition-colors cursor-pointer"
+                onClick={() => setShowDetails(true)}
+                title={fullName}
+              >
+                {fullName}
+              </h3>
+              <p
+                className="text-xs text-muted-foreground truncate mt-0.5 font-medium"
+                title={email}
+              >
+                {email}
+              </p>
+            </div>
           </div>
 
           <DropdownMenu>
@@ -157,7 +174,7 @@ export function MemberCard({
               </DropdownMenuItem>
               {canAssignStages ? (
                 <DropdownMenuItem
-                  onSelect={() => setShowAssignStages(true)}
+                  onSelect={() => setShowDetails(true)}
                   className="cursor-pointer font-medium"
                 >
                   <Radio className="h-4 w-4 mr-2.5 text-muted-foreground" />
@@ -184,72 +201,57 @@ export function MemberCard({
 
         {/* Middle Section: Role & Status */}
         <div className="mt-4 pt-3 border-t border-border/40">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-            Role & Status
-          </p>
-          <div className="flex flex-wrap gap-2 items-center">
+          <div className="flex flex-wrap items-center gap-2">
             <FestivalRoleBadge festivalRole={member.role as any} />
-            <Badge
-              variant="outline"
-              className={
+            <span
+              className={`inline-flex items-center gap-1.5 text-xs font-medium ${
                 member.isActive
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 px-2.5 py-0.5 rounded-full font-medium transition-colors"
-                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 px-2.5 py-0.5 rounded-full font-medium transition-colors"
-              }
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-amber-600 dark:text-amber-400"
+              }`}
             >
               <span
-                className={`mr-1.5 h-1.5 w-1.5 rounded-full ${
+                className={`h-1.5 w-1.5 rounded-full ${
                   member.isActive
-                    ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)] animate-pulse"
+                    ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]"
                     : "bg-amber-500"
                 }`}
               />
               {member.isActive ? "Active" : "Inactive"}
-            </Badge>
+            </span>
           </div>
         </div>
 
-        {/* Stats strip */}
-        <div className="mt-4 flex items-center gap-4 rounded-lg bg-muted/40 px-3 py-2.5 overflow-x-auto">
-          <div className="flex items-center gap-2">
-            <span className="text-sm whitespace-nowrap">
-              <span className="text-muted-foreground">Joined: </span>
-              <span className="font-medium text-foreground">
-                {format(joinedAt, "MMM d, yyyy")}
-              </span>
-            </span>
-          </div>
-          <div className="flex items-center gap-2 border-l border-border pl-4">
-            <span className="text-sm whitespace-nowrap">
-              <span className="text-muted-foreground">Access: </span>
-              <span className="font-medium text-foreground">
-                {member.isActive ? "Full Access" : "Disabled"}
-              </span>
-            </span>
-          </div>
+        {/* Meta row: joined + access */}
+        <div className="mt-3 flex items-center gap-3.5 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <CalendarDays className="h-3.5 w-3.5" />
+            {format(joinedAt, "MMM d, yyyy")}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            {member.isActive ? "Full Access" : "Disabled"}
+          </span>
         </div>
 
         {isStageManager ? (
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            <span className="text-xs text-muted-foreground mr-1">
-              Stages:
-            </span>
+          <div className="mt-3 flex flex-wrap items-center gap-1">
+            <Radio className="h-3 w-3 text-primary/70 shrink-0" />
             {stageAssignments.filter((a) => a.memberId === member.id)
               .length === 0 ? (
-              <Badge variant="outline" className="text-xs font-normal">
+              <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                 Unassigned
-              </Badge>
+              </span>
             ) : (
               stageAssignments
                 .filter((a) => a.memberId === member.id)
                 .map((a) => (
-                  <Badge
+                  <span
                     key={a.id}
-                    variant="secondary"
-                    className="text-xs font-normal"
+                    className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
                   >
                     {a.stage.name}
-                  </Badge>
+                  </span>
                 ))
             )}
           </div>
@@ -260,23 +262,14 @@ export function MemberCard({
         member={member}
         open={showDetails}
         onOpenChange={setShowDetails}
+        stages={stages}
+        assignedStageIds={stageAssignments
+          .filter((a) => a.memberId === member.id)
+          .map((a) => a.stageId)}
+        canAssignStages={canAssignStages}
+        onToggleStage={handleToggleStage}
+        pendingStageId={pendingStageId}
       />
-
-      {canAssignStages && (
-        <StageAssignmentToggleDialog
-          open={showAssignStages}
-          onOpenChange={setShowAssignStages}
-          title={`Stages for ${fullName}`}
-          description="Only assigned stages will appear in this Stage Manager's dashboard, schedule, sessions, and reporting."
-          emptyMessage="No stages created yet. Add one from Stage Management first."
-          options={stages.map((s) => ({ id: s.id, label: s.name }))}
-          assignedIds={stageAssignments
-            .filter((a) => a.memberId === member.id)
-            .map((a) => a.stageId)}
-          pendingId={pendingStageId}
-          onToggle={handleToggleStage}
-        />
-      )}
     </div>
   );
 }

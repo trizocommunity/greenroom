@@ -30,7 +30,7 @@ export async function handleProgrammeEntryMutation({
 
 export function revalidateSchedulePaths(festivalSlug: string) {
   revalidatePath(`/dashboard/${festivalSlug}/pre-event-works/schedule`);
-  revalidatePath(`/dashboard/${festivalSlug}/pre-event-works/sessions`);
   revalidatePath(`/${festivalSlug}/sessions`);
   revalidatePath(`/${festivalSlug}/programmes`);
 }
+

@@ -1,6 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -13,18 +14,29 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { parseStoredInstant } from "@/core/utils/date-time";
+import { cn } from "@/core/utils/cn";
 import type { Member } from "./types";
 
 interface MemberDetailsDialogProps {
   member: Member;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  stages?: { id: string; name: string }[];
+  assignedStageIds?: string[];
+  canAssignStages?: boolean;
+  onToggleStage?: (stageId: string, nextAssigned: boolean) => void;
+  pendingStageId?: string | null;
 }
 
 export function MemberDetailsDialog({
   member,
   open,
   onOpenChange,
+  stages = [],
+  assignedStageIds = [],
+  canAssignStages = false,
+  onToggleStage,
+  pendingStageId,
 }: MemberDetailsDialogProps) {
   const fullName = member.user?.fullName || member.fullName || "Unknown";
   const email = member.user?.email || member.email || "";
@@ -60,7 +72,7 @@ export function MemberDetailsDialog({
           </div>
         </DrawerHeader>
 
-        <div className="space-y-5 py-3">
+        <div className="space-y-5 py-3 overflow-y-auto max-h-[60vh] px-4 -mx-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="rounded-xl border border-border/40 bg-muted/30 p-3.5 space-y-1.5">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -104,6 +116,60 @@ export function MemberDetailsDialog({
               {format(joinedAt, "MMMM d, yyyy")}
             </span>
           </div>
+
+          {member.role === "STAGE_MANAGER" && stages && (
+            <div className="space-y-2.5 mt-2">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">
+                {canAssignStages ? "Assign Stages" : "Assigned Stages"}
+              </span>
+              {stages.length === 0 ? (
+                <div className="text-sm text-muted-foreground italic px-1">
+                  No stages created yet.
+                </div>
+              ) : !canAssignStages && assignedStageIds.length === 0 ? (
+                <div className="text-sm text-muted-foreground italic px-1">
+                  No stages assigned.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  {stages.map((stage) => {
+                    const isAssigned = assignedStageIds.includes(stage.id);
+                    const isPending = pendingStageId === stage.id;
+                    
+                    if (!canAssignStages && !isAssigned) return null;
+
+                    return (
+                      <div 
+                        key={stage.id} 
+                        onClick={() => {
+                          if (canAssignStages && onToggleStage) {
+                            onToggleStage(stage.id, !isAssigned);
+                          }
+                        }}
+                        className={cn(
+                          "relative flex flex-col p-3 rounded-xl border transition-all",
+                          canAssignStages ? "cursor-pointer hover:border-primary/40 hover:bg-muted/50" : "",
+                          isAssigned 
+                            ? "border-primary bg-primary/5 text-primary shadow-sm" 
+                            : "border-border/60 bg-card text-muted-foreground hover:bg-muted/30",
+                          isPending ? "opacity-50 pointer-events-none" : ""
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium text-sm truncate">{stage.name}</span>
+                          {isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                          ) : isAssigned ? (
+                            <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end pt-2 border-t border-border/40">

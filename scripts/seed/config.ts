@@ -4,7 +4,7 @@ export const SUPER_ADMIN_EMAIL = "trizocommunity@gmail.com";
 export const SUPER_ADMIN_NAME = "TRIZO Community Admin";
 
 export const FESTIVAL_OWNER_EMAIL = "Ahlussuffa.igs@gmail.com";
-export const FESTIVAL_OWNER_NAME = "Ahlussuffa IGS Admin";
+export const FESTIVAL_OWNER_NAME = "Ahlussuffa";
 
 export const INSTITUTION = {
   name: "Ahlussuffa Integrated Graduate Studies",
@@ -15,11 +15,11 @@ export const INSTITUTION = {
 };
 
 export const FESTIVAL = {
-  slug: "ahlussuffa-igs-pro-2026",
-  name: "Ahlussuffa IGS Grand Islamic Arts Festival 2026",
+  slug: "suffamehfil",
+  name: "SUFFA MEHFIL 2026",
   category: "Inter-Collegiate Islamic Arts Fest",
   description: "Annual Pro Tier Arts & Literary Festival by Ahlussuffa IGS.",
-  orgName: "Ahlussuffa IGS",
+  orgName: "Ahlussuffa",
   orgLocation: "Kozhikode, Kerala",
   tier: "PRO" as const,
   tierLabel: "Pro",
@@ -42,23 +42,11 @@ export const FESTIVAL_DAYS = [
   "2026-08-18",
 ];
 
-export const FESTIVAL_MEMBERS = [
-  {
-    email: "announcer.ahlussuffa@gmail.com",
-    name: "Ustadh Hamza Announcer",
-    role: "ANNOUNCER" as const,
-  },
-  {
-    email: "stagemanager.ahlussuffa@gmail.com",
-    name: "Tariq Stage Manager",
-    role: "STAGE_MANAGER" as const,
-  },
-  {
-    email: "media.ahlussuffa@gmail.com",
-    name: "Bilal Media Coord",
-    role: "MEDIA" as const,
-  },
-];
+export const FESTIVAL_MEMBERS: Array<{
+  email: string;
+  name: string;
+  role: "ADMIN" | "ANNOUNCER" | "STAGE_MANAGER" | "MEDIA";
+}> = [];
 
 export const CATEGORIES = [
   {

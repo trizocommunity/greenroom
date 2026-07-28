@@ -1,10 +1,14 @@
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { judgeInput } from "@/api/contracts/judges";
 import { badRequest, createProtectedHandler, ok } from "@/api/lib";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { db } from "@/core/database/client";
-import { judge as judgeTable } from "@/core/database/schema";
+import {
+  judge as judgeTable,
+  judgeStageAssignment,
+  stage as stageTable,
+} from "@/core/database/schema";
 import { listFestivalJudgesWithAssignments } from "@/features/judges/repositories/judge.repository";
 
 const handler = createProtectedHandler({
@@ -56,6 +60,26 @@ const handler = createProtectedHandler({
         updatedAt: now,
       })
       .returning();
+
+    if (created && parsed.data.stageIds?.length) {
+      const validStages = await db.query.stage.findMany({
+        where: and(
+          eq(stageTable.festivalId, festivalId),
+          inArray(stageTable.id, parsed.data.stageIds),
+        ),
+        columns: { id: true },
+      });
+      if (validStages.length > 0) {
+        await db.insert(judgeStageAssignment).values(
+          validStages.map((s) => ({
+            id: randomUUID(),
+            festivalId,
+            stageId: s.id,
+            judgeId: created.id,
+          })),
+        );
+      }
+    }
 
     return ok(created);
   },

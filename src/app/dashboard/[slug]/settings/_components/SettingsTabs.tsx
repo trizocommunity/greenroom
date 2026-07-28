@@ -27,6 +27,14 @@ interface SettingsTabsProps {
   canManageFestivalLive: boolean;
 }
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 export function SettingsTabs({
   festival,
   policy,
@@ -49,7 +57,7 @@ export function SettingsTabs({
     const params = new URLSearchParams(searchParams?.toString() || "");
     params.set("tab", value);
     router.replace(`${pathname || ""}?${params.toString()}`, { scroll: false });
-    
+
     // Complete the loading bar after a short delay since shallow routing is instant
     setTimeout(() => {
       done();
@@ -80,9 +88,32 @@ export function SettingsTabs({
   }
 
   return (
-    <div className="flex flex-col md:flex-row gap-8 items-start w-full">
-      <aside className="w-full md:w-64 shrink-0 md:order-last sticky top-16 md:top-28 z-20 bg-background/95 backdrop-blur md:backdrop-blur-none md:bg-transparent pt-2 md:pt-0 pb-2 md:pb-0 md:h-[calc(100vh-7rem)] overflow-y-auto hide-scrollbar border-b md:border-none mb-4 md:mb-0">
-        <nav className="flex md:flex-col gap-1 overflow-x-auto pb-2 md:pb-0 hide-scrollbar">
+    <div className="flex flex-col md:flex-row lg:gap-8 items-start w-full">
+      <aside className="w-full md:w-64 shrink-0 md:order-last md:sticky md:top-[88px] md:h-[calc(100vh-120px)] overflow-y-auto hide-scrollbar mb-6 md:mb-0">
+        {/* Mobile Dropdown */}
+        <div className="md:hidden">
+          <Select value={currentTab} onValueChange={handleTabChange}>
+            <SelectTrigger className="w-full bg-card h-12">
+              <SelectValue placeholder="Select section" />
+            </SelectTrigger>
+            <SelectContent>
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <SelectItem key={item.value} value={item.value}>
+                    <div className="flex items-center gap-2">
+                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      {item.label}
+                    </div>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Desktop Nav */}
+        <nav className="hidden md:flex flex-col gap-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentTab === item.value;
@@ -92,10 +123,10 @@ export function SettingsTabs({
                 key={item.value}
                 onClick={() => handleTabChange(item.value)}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap",
+                  "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
                   isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    ? "bg-primary/10 text-primary shadow-sm"
+                    : "bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
                 <Icon

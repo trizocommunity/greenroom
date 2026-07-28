@@ -16,6 +16,7 @@ import { getFestivalContext } from "@/features/festivals/services/festival-conte
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
 import { getProgrammeReportingBoardAction } from "@/features/programmes/actions/programme-reporting.actions";
 import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
+import { getStageFilterCookie } from "@/features/stages/stage-filter-cookie.server";
 
 export default async function ProgrammeReportingPage({
   params,
@@ -79,6 +80,14 @@ export default async function ProgrammeReportingPage({
     accessibleStageIds === "all"
       ? festivalStages
       : festivalStages.filter((s) => accessibleStageIds.includes(s.id));
+
+  const isStageManager = context.role === "STAGE_MANAGER";
+  const initialStageId = isStageManager
+    ? await getStageFilterCookie(
+        festival.id,
+        scopedStages.map((s) => s.id),
+      )
+    : null;
 
   const normalizedBoard = (board as any[])
     .filter(
@@ -149,6 +158,8 @@ export default async function ProgrammeReportingPage({
         board={normalizedBoard as ReportingBoardItem[]}
         assignments={assignments}
         festivalStages={scopedStages}
+        initialStageId={initialStageId}
+        hideStageFilter={isStageManager}
       />
     </div>
   );

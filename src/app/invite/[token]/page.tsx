@@ -17,18 +17,26 @@ export default function InvitePage() {
     festivalRole: string;
   } | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [isAccepting, setIsAccepting] = useState(false);
 
   const acceptInvitation = useCallback(() => {
+    setIsAccepting(true);
     api.invitations
       .accept({ token })
       .then((res) => {
         if (res.body.success) {
-          router.push(`/dashboard/${res.body.festivalSlug}`);
+          router.push(
+            res.body.requiresOnboarding
+              ? "/onboarding"
+              : `/dashboard/${res.body.festivalSlug}`,
+          );
         } else {
+          setIsAccepting(false);
           setError(res.body.error || "Failed to accept invitation");
         }
       })
       .catch(() => {
+        setIsAccepting(false);
         setError("Failed to accept invitation");
       });
   }, [router, token]);
@@ -82,7 +90,7 @@ export default function InvitePage() {
           return;
         }
 
-        // If logged in, accept immediately
+        // Already signed in — accept immediately, no extra confirmation needed.
         if (isAuthenticated) {
           acceptInvitation();
         }
@@ -138,16 +146,20 @@ export default function InvitePage() {
                 <strong>{inviteDetails.festivalRole}</strong>
               </p>
               <p className="text-sm text-muted-foreground">
-                Sign in to accept this invitation
+                This link was sent to {inviteDetails.email}. Accepting will
+                create your Greenroom account.
               </p>
             </div>
           )}
-          <a
-            href={`/login?email=${encodeURIComponent(inviteDetails?.email || "")}&redirect=/invite/${token}`}
-            className="inline-block mt-4 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+          <button
+            type="button"
+            onClick={acceptInvitation}
+            disabled={isAccepting}
+            className="inline-flex items-center gap-2 mt-4 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-60"
           >
-            Sign In to Accept
-          </a>
+            {isAccepting && <Loader2 className="h-4 w-4 animate-spin" />}
+            Accept Invitation
+          </button>
         </div>
       </div>
     );

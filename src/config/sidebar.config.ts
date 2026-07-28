@@ -193,12 +193,7 @@ export const getFestivalDashboardSidebarConfig = (
           icon: Calendar,
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
         },
-        {
-          title: "Sessions",
-          href: `${basePath}/pre-event-works/sessions`,
-          icon: CalendarDays,
-          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
-        },
+
         {
           title: "Judges",
           href: `${basePath}/pre-event-works/judges`,

@@ -22,11 +22,15 @@ export const judgeSchema = z.object({
     .array(z.object({ id: z.string(), name: z.string() }))
     .optional(),
   stages: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
+  assignedStages: z
+    .array(z.object({ id: z.string(), name: z.string() }))
+    .optional(),
 });
 
 export const judgeInput = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
+  stageIds: z.array(z.string()).optional(),
 });
 
 export type Judge = z.infer<typeof judgeSchema>;

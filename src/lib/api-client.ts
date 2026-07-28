@@ -149,6 +149,7 @@ export const api = {
       email: string;
       festivalId: string;
       festivalRole: string;
+      stageIds?: string[];
     }) => {
       const res = await fetch(`${noBaseURL}/api/v1/invitations`, {
         method: "POST",

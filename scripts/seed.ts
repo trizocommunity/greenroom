@@ -43,7 +43,7 @@ async function seed() {
 
   const sessionCount = await createSessions(db, festivalId, stages, SESSIONS);
 
-  const { programmeCount, assignmentCount } =
+  const { programmeCount } =
     await createProgrammesAndAssignments(
       db,
       festivalId,
@@ -68,7 +68,6 @@ async function seed() {
       judges: JUDGES.length,
       sessions: sessionCount,
       programmes: programmeCount,
-      assignments: assignmentCount,
     },
     students,
   );

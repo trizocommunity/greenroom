@@ -6,10 +6,11 @@ import { db } from "@/core/database/client";
 import { programme as programmeTable } from "@/core/database/schema";
 import type { Tier } from "@/core/types/app-enums";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 import { getScheduleEntries } from "@/features/schedule/actions/schedule.actions";
 import { getStages } from "@/features/stages/actions/stage.actions";
-import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
+import { getStageFilterCookie } from "@/features/stages/stage-filter-cookie.server";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -60,6 +61,20 @@ export default async function SchedulePage({ params }: PageProps) {
       categoryName: p.category?.name ?? null,
     }));
 
+  const session = await getSession();
+  const context = await getFestivalContext({
+    slugOrId: slug,
+    userId: session?.userId ?? null,
+    globalRole: session?.role ?? null,
+  });
+  const isStageManager = context?.role === "STAGE_MANAGER";
+  const initialStageId = isStageManager
+    ? await getStageFilterCookie(
+        festival.id,
+        stages.map((s) => s.id),
+      )
+    : null;
+
   return (
     <div className="container pt-4 sm:pt-6">
       <ScheduleClient
@@ -73,6 +88,8 @@ export default async function SchedulePage({ params }: PageProps) {
         }))}
         festivalStartDate={festival.startDate}
         festivalEndDate={festival.endDate}
+        initialStageId={initialStageId}
+        hideStageFilter={isStageManager}
       />
     </div>
   );

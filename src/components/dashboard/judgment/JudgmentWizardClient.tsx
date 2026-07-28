@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Eye, Link2, MoreVertical, Plus, RefreshCcw } from "lucide-react";
+import { Copy, Eye, Link2, MoreVertical, RefreshCcw } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -11,7 +11,6 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { queryKeys } from "@/api/client/_query-keys";
-import { useCreateJudge } from "@/api/client/judges";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import {
   Accordion,
@@ -38,7 +37,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { ERROR_MESSAGES } from "@/core/errors/errors";
 import type { ProgrammeJudgmentStatus } from "@/core/types/app-enums";
 import {
   formatStoredDateTime,
@@ -127,16 +125,10 @@ type JudgmentDashboardQueryData = {
   judgedProgrammes: JudgedProgrammeCard[];
 };
 
-function normalizeJudgeName(name: string) {
-  return name.trim().replace(/\s+/g, " ").toLocaleLowerCase();
-}
-
 function resetWizardForm() {
   return {
     step: 2 as 2 | 3 | 4,
     selectedJudgeIds: [] as string[],
-    newJudgeName: "",
-    newJudgeDescription: "",
     pinMode: "auto" as "auto" | "manual",
     manualPin: "",
     pinLength: 4 as 4 | 5 | 6,
@@ -210,9 +202,6 @@ export function JudgmentWizardClient({
   const [generatedPinByConfigId, setGeneratedPinByConfigId] = useState<
     Record<string, string>
   >({});
-  const [newJudgeName, setNewJudgeName] = useState("");
-  const [newJudgeDescription, setNewJudgeDescription] = useState("");
-  const [inlineJudgeError, setInlineJudgeError] = useState<string | null>(null);
   const [pinMode, setPinMode] = useState<"auto" | "manual">("auto");
   const [manualPin, setManualPin] = useState("");
   const [pinLength, setPinLength] = useState<4 | 5 | 6>(4);
@@ -221,7 +210,6 @@ export function JudgmentWizardClient({
   const [lastCreatedConfigId, setLastCreatedConfigId] = useState<string | null>(
     null,
   );
-  const createJudge = useCreateJudge();
   const dashboardQuery = useQuery<JudgmentDashboardQueryData>({
     queryKey: queryKeys.judgment.dashboard(festivalId),
     queryFn: () =>
@@ -342,8 +330,6 @@ export function JudgmentWizardClient({
     dialogOpen &&
     (selectedJudgeIds.length > 0 ||
       step !== 2 ||
-      newJudgeName.trim().length > 0 ||
-      newJudgeDescription.trim().length > 0 ||
       pinMode === "manual" ||
       manualPin.trim().length > 0);
 
@@ -356,8 +342,6 @@ export function JudgmentWizardClient({
     setWizardProgrammeId(programmeId);
     setStep(r.step);
     setSelectedJudgeIds(r.selectedJudgeIds);
-    setNewJudgeName(r.newJudgeName);
-    setNewJudgeDescription(r.newJudgeDescription);
     setPinMode(r.pinMode);
     setManualPin(r.manualPin);
     setPinLength(r.pinLength);
@@ -380,41 +364,6 @@ export function JudgmentWizardClient({
         ? prev.filter((id) => id !== judgeId)
         : [...prev, judgeId],
     );
-  };
-
-  const onInlineCreateJudge = async () => {
-    const trimmedName = newJudgeName.trim();
-    if (!trimmedName) {
-      setInlineJudgeError(ERROR_MESSAGES.JUDGE_NAME_REQUIRED);
-      return;
-    }
-    const duplicateJudge = judges.find(
-      (judge) =>
-        normalizeJudgeName(judge.name) === normalizeJudgeName(trimmedName),
-    );
-    if (duplicateJudge) {
-      setInlineJudgeError(ERROR_MESSAGES.JUDGE_NAME_DUPLICATE);
-      return;
-    }
-    setInlineJudgeError(null);
-    try {
-      await createJudge.mutateAsync({
-        festivalId,
-        data: {
-          name: trimmedName,
-          description: newJudgeDescription || undefined,
-        },
-      });
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.judgment.dashboard(festivalId),
-      });
-      toast.success("Judge created.");
-      setNewJudgeName("");
-      setNewJudgeDescription("");
-      setInlineJudgeError(null);
-    } catch (error: any) {
-      setInlineJudgeError(error?.message ?? ERROR_MESSAGES.DEFAULT);
-    }
   };
 
   const onGenerate = () => {
@@ -1042,45 +991,11 @@ export function JudgmentWizardClient({
                   </div>
                 </div>
 
-                <div className="space-y-1.5 rounded-md border p-2 bg-muted/10">
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Add judge
-                  </Label>
-                  <div className="grid gap-1.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center">
-                    <Input
-                      value={newJudgeName}
-                      onChange={(e) => {
-                        setNewJudgeName(e.target.value);
-                        if (inlineJudgeError) setInlineJudgeError(null);
-                      }}
-                      placeholder="Name"
-                      className="h-8 text-xs sm:text-sm"
-                    />
-                    <Input
-                      value={newJudgeDescription}
-                      onChange={(e) => {
-                        setNewJudgeDescription(e.target.value);
-                        if (inlineJudgeError) setInlineJudgeError(null);
-                      }}
-                      placeholder="Description (optional)"
-                      className="h-8 text-xs sm:text-sm"
-                    />
-                    <Button
-                      type="button"
-                      className="h-8 px-2.5 text-xs"
-                      onClick={onInlineCreateJudge}
-                      disabled={!newJudgeName.trim() || createJudge.isPending}
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add
-                    </Button>
-                  </div>
-                  {inlineJudgeError ? (
-                    <p className="text-xs text-destructive">
-                      {inlineJudgeError}
-                    </p>
-                  ) : null}
-                </div>
+                {judges.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    No judges yet — add one from the Judges page first.
+                  </p>
+                ) : null}
 
                 <Button
                   className="h-8 text-xs w-full sm:h-9"

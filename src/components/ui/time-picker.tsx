@@ -138,7 +138,7 @@ export function TimePicker({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={true}>
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -164,7 +164,7 @@ export function TimePicker({
           <div className="flex gap-2">
             <div
               ref={hourListRef}
-              className="h-48 w-16 overflow-y-auto rounded-md border border-input p-1 no-scrollbar space-y-1"
+              className="h-48 w-16 overflow-y-auto rounded-md border border-input p-1 space-y-1 overscroll-contain"
             >
               {hours.map((h) => {
                 const isSelected = selectedHour === h;
@@ -188,7 +188,7 @@ export function TimePicker({
             </div>
             <div
               ref={minuteListRef}
-              className="h-48 w-16 overflow-y-auto rounded-md border border-input p-1 no-scrollbar space-y-1"
+              className="h-48 w-16 overflow-y-auto rounded-md border border-input p-1 space-y-1 overscroll-contain"
             >
               {minutes.map((m) => {
                 const isSelected = selectedMinute === m;

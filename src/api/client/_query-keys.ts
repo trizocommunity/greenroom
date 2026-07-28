@@ -38,6 +38,10 @@ export const queryKeys = {
   stageAssignments: {
     all: (festivalId: string) => ["stage-assignments", festivalId] as const,
   },
+  judgeStageAssignments: {
+    all: (festivalId: string) =>
+      ["judge-stage-assignments", festivalId] as const,
+  },
   schedule: {
     all: (festivalId: string, typeFilter?: string) =>
       ["schedule", festivalId, typeFilter] as const,

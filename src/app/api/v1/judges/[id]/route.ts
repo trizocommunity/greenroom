@@ -1,12 +1,17 @@
 import "server-only";
 
-import { eq } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { and, eq, inArray } from "drizzle-orm";
 import { judgeInput } from "@/api/contracts/judges";
 import { badRequest, notFound, ok, unauthorized } from "@/api/lib";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
-import { judge as judgeTable } from "@/core/database/schema";
+import {
+  judge as judgeTable,
+  judgeStageAssignment,
+  stage as stageTable,
+} from "@/core/database/schema";
 
 export const PUT = async (
   req: Request,
@@ -60,6 +65,32 @@ export const PUT = async (
     })
     .where(eq(judgeTable.id, id))
     .returning();
+
+  if (parsed.data.stageIds !== undefined) {
+    await db
+      .delete(judgeStageAssignment)
+      .where(eq(judgeStageAssignment.judgeId, id));
+
+    if (parsed.data.stageIds.length > 0) {
+      const validStages = await db.query.stage.findMany({
+        where: and(
+          eq(stageTable.festivalId, festivalId),
+          inArray(stageTable.id, parsed.data.stageIds),
+        ),
+        columns: { id: true },
+      });
+      if (validStages.length > 0) {
+        await db.insert(judgeStageAssignment).values(
+          validStages.map((s) => ({
+            id: randomUUID(),
+            festivalId,
+            stageId: s.id,
+            judgeId: id,
+          })),
+        );
+      }
+    }
+  }
 
   return ok(updated);
 };

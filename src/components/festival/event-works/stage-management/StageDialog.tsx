@@ -6,8 +6,11 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
+import { useAssignStageManager } from "@/api/client/stage-assignments";
 import { useCreateStage, useUpdateStage } from "@/api/client/stages";
+import { useMembers } from "@/api/client/members";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Drawer,
   DrawerContent,
@@ -25,6 +28,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 const StageSchema = z.object({
@@ -51,6 +55,12 @@ export function StageDialog({
 }: StageDialogProps) {
   const createStage = useCreateStage();
   const updateStage = useUpdateStage();
+  const assignManager = useAssignStageManager();
+  const { data: members = [] } = useMembers(festivalId);
+  const stageManagers = members.filter(
+    (m) => m.role === "STAGE_MANAGER" && m.isActive,
+  );
+  const [selectedManagerIds, setSelectedManagerIds] = useState<string[]>([]);
   const isLoading = createStage.isPending || updateStage.isPending;
 
   const form = useForm({
@@ -74,6 +84,7 @@ export function StageDialog({
           name: "",
           description: "",
         });
+        setSelectedManagerIds([]);
       }
       form.trigger();
     }
@@ -89,7 +100,17 @@ export function StageDialog({
         });
         toast.success("Stage updated successfully");
       } else {
-        await createStage.mutateAsync({ festivalId, data });
+        const newStage = await createStage.mutateAsync({ festivalId, data });
+        if (selectedManagerIds.length > 0) {
+          await Promise.all(
+            selectedManagerIds.map((memberId) =>
+              assignManager.mutateAsync({
+                festivalId,
+                data: { stageId: newStage.id, memberId },
+              }),
+            ),
+          );
+        }
         toast.success("Stage created successfully");
       }
       onSuccess();
@@ -155,6 +176,46 @@ export function StageDialog({
                   </FormItem>
                 )}
               />
+
+              {!stageToEdit && stageManagers.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Assign to Stage Managers (Optional)</Label>
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {stageManagers.map((manager) => {
+                      const checked = selectedManagerIds.includes(manager.id);
+                      return (
+                        <div
+                          key={manager.id}
+                          className="flex items-center gap-2 rounded-md border px-3 py-2"
+                        >
+                          <Checkbox
+                            id={`stage-create-manager-${manager.id}`}
+                            checked={checked}
+                            onCheckedChange={(next) =>
+                              setSelectedManagerIds((prev) =>
+                                next === true
+                                  ? [...prev, manager.id]
+                                  : prev.filter((id) => id !== manager.id),
+                              )
+                            }
+                          />
+                          <Label
+                            htmlFor={`stage-create-manager-${manager.id}`}
+                            className="flex flex-col cursor-pointer min-w-0"
+                          >
+                            <span className="font-medium truncate">
+                              {manager.fullName}
+                            </span>
+                            <span className="text-xs text-muted-foreground truncate">
+                              {manager.email}
+                            </span>
+                          </Label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <DrawerFooter>

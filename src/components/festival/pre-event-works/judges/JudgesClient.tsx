@@ -18,6 +18,7 @@ import {
   useJudges,
   useUpdateJudge,
 } from "@/api/client";
+import { useStages } from "@/api/client/stages";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
@@ -36,8 +37,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ERROR_MESSAGES } from "@/core/errors/errors";
+import { StagePickerCards } from "@/components/festival/stage-assignment/StagePickerCards";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 
 type JudgeRow = {
@@ -55,6 +58,7 @@ type JudgeRow = {
   }>;
   programmes: Array<{ id: string; name: string }>;
   stages: Array<{ id: string; name: string }>;
+  assignedStages: Array<{ id: string; name: string }>;
 };
 
 function getInitials(name: string) {
@@ -83,6 +87,7 @@ export function JudgesClient({
 }) {
   const { isReadOnly } = useFestivalReadOnly();
   const { data: judges = [], isLoading } = useJudges(festivalId);
+  const { data: stages = [] } = useStages(festivalId);
   const createJudge = useCreateJudge();
   const updateJudge = useUpdateJudge();
   const deleteJudge = useDeleteJudge();
@@ -97,6 +102,7 @@ export function JudgesClient({
   );
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [stageIds, setStageIds] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [formErrors, setFormErrors] = useState<{
     name?: string;
@@ -105,10 +111,18 @@ export function JudgesClient({
 
   const trimmedName = name.trim();
   const trimmedDescription = description.trim();
+  const sameStageIds = (a: string[], b: string[]) =>
+    a.length === b.length && a.every((id) => b.includes(id));
   const hasFormChanges = editing
     ? trimmedName !== editing.name.trim() ||
-      trimmedDescription !== (editing.description ?? "").trim()
-    : trimmedName.length > 0 || trimmedDescription.length > 0;
+      trimmedDescription !== (editing.description ?? "").trim() ||
+      !sameStageIds(
+        stageIds,
+        editing.assignedStages.map((s) => s.id),
+      )
+    : trimmedName.length > 0 ||
+      trimmedDescription.length > 0 ||
+      stageIds.length > 0;
 
   const validateForm = () => {
     const nextErrors: { name?: string; description?: string } = {};
@@ -155,6 +169,7 @@ export function JudgesClient({
     setEditing(null);
     setName("");
     setDescription("");
+    setStageIds([]);
     setFormErrors({});
     setFormOpen(true);
   };
@@ -163,6 +178,7 @@ export function JudgesClient({
     setEditing(row);
     setName(row.name);
     setDescription(row.description ?? "");
+    setStageIds(row.assignedStages.map((s) => s.id));
     setFormErrors({});
     setFormOpen(true);
   };
@@ -178,6 +194,7 @@ export function JudgesClient({
           data: {
             name: trimmedName,
             description: trimmedDescription || undefined,
+            stageIds,
           },
         });
       } else {
@@ -186,6 +203,7 @@ export function JudgesClient({
           data: {
             name: trimmedName,
             description: trimmedDescription || undefined,
+            stageIds,
           },
         });
       }
@@ -284,11 +302,11 @@ export function JudgesClient({
 
               <div>
                 <p className="text-xs font-medium text-muted-foreground mb-2">
-                  Stage highlights
+                  Assigned stages
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {j.stages && j.stages.length > 0 ? (
-                    j.stages
+                  {j.assignedStages && j.assignedStages.length > 0 ? (
+                    j.assignedStages
                       .slice(0, 3)
                       .map((stage) => (
                         <Badge
@@ -300,13 +318,13 @@ export function JudgesClient({
                         </Badge>
                       ))
                       .concat(
-                        j.stages.length > 3
+                        j.assignedStages.length > 3
                           ? ([
                               <Badge
                                 key={`${j.id}-more-stages`}
                                 variant="outline"
                               >
-                                +{j.stages.length - 3} more
+                                +{j.assignedStages.length - 3} more
                               </Badge>,
                             ] as any)
                           : [],
@@ -342,7 +360,7 @@ export function JudgesClient({
                   <Megaphone className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="text-sm whitespace-nowrap">
                     <span className="font-semibold text-foreground">
-                      {j.stages?.length ?? 0}
+                      {j.assignedStages?.length ?? 0}
                     </span>
                     <span className="text-muted-foreground"> Stages</span>
                   </span>
@@ -408,6 +426,14 @@ export function JudgesClient({
               <p className="text-xs text-muted-foreground">
                 {trimmedDescription.length}/{JUDGE_DESCRIPTION_MAX_LENGTH}
               </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Stages (Optional)</Label>
+              <StagePickerCards
+                stages={stages}
+                selectedIds={stageIds}
+                onChange={setStageIds}
+              />
             </div>
           </div>
           <DrawerFooter>
