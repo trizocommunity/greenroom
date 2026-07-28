@@ -5,7 +5,9 @@ import { Loader2, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { useStages } from "@/api/client/stages";
 import { useFestival } from "@/components/festival/FestivalContext";
+import { StagePickerCards } from "@/components/festival/stage-assignment/StagePickerCards";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -49,6 +51,7 @@ export function AddMemberDialog({
   const createInvitation = useCreateInvitation();
   useFestival();
   const { isReadOnly } = useFestivalReadOnly();
+  const { data: stages = [] } = useStages(festivalId);
   const [open, setOpen] = useState(false);
 
   const form = useForm<InviteMemberFormValues>({
@@ -57,14 +60,18 @@ export function AddMemberDialog({
     defaultValues: {
       email: "",
       role: "STAGE_MANAGER",
+      stageIds: [],
     },
   });
 
   useEffect(() => {
     if (open) {
-      form.reset({ email: "", role: "STAGE_MANAGER" });
+      form.reset({ email: "", role: "STAGE_MANAGER", stageIds: [] });
     }
   }, [open, form]);
+
+  const role = form.watch("role");
+  const stageIds = form.watch("stageIds");
 
   const onSubmit = async (data: InviteMemberFormValues) => {
     try {
@@ -72,6 +79,7 @@ export function AddMemberDialog({
         email: data.email,
         festivalId,
         festivalRole: data.role,
+        stageIds: data.role === "STAGE_MANAGER" ? data.stageIds : undefined,
       });
       toast.success("Invitation sent successfully");
       setOpen(false);
@@ -184,6 +192,29 @@ export function AddMemberDialog({
                 </FormItem>
               )}
             />
+            {role === "STAGE_MANAGER" && (
+              <FormField
+                control={form.control}
+                name="stageIds"
+                render={() => (
+                  <FormItem>
+                    <FormLabel className="font-semibold">
+                      Stages <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <StagePickerCards
+                      stages={stages}
+                      selectedIds={stageIds}
+                      onChange={(next) =>
+                        form.setValue("stageIds", next, {
+                          shouldValidate: true,
+                        })
+                      }
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <div className="flex justify-end gap-2 pt-3 border-t border-border/40">
               <Button
                 type="button"

@@ -1,10 +1,21 @@
 import { z } from "zod";
 import { memberRoleEnum } from "@/api/contracts/members";
 
-export const InviteMemberSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  role: memberRoleEnum,
-});
+export const InviteMemberSchema = z
+  .object({
+    email: z.string().email("Please enter a valid email address"),
+    role: memberRoleEnum,
+    stageIds: z.array(z.string()).default([]),
+  })
+  .superRefine((data, ctx) => {
+    if (data.role === "STAGE_MANAGER" && data.stageIds.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["stageIds"],
+        message: "Select at least one stage for this stage manager",
+      });
+    }
+  });
 
 export type InviteMemberFormValues = z.infer<typeof InviteMemberSchema>;
 

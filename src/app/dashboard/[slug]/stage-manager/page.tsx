@@ -1,5 +1,5 @@
 import { eq, inArray } from "drizzle-orm";
-import { Calendar, CheckCircle2, Megaphone, Mic2, Radio } from "lucide-react";
+import { Calendar, CheckCircle2, Gavel, Megaphone, Mic2, Radio } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -10,11 +10,15 @@ import {
 } from "@/components/ui/card";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
-import { festival as festivalTable, stage as stageTable } from "@/core/database/schema";
+import {
+  festival as festivalTable,
+  stage as stageTable,
+} from "@/core/database/schema";
 import type { Tier } from "@/core/types/app-enums";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
+import { StageManagerJudgesSection } from "./_components/StageManagerJudgesSection";
 
 export default async function StageManagerOverviewPage({
   params,
@@ -65,7 +69,8 @@ export default async function StageManagerOverviewPage({
             Stage Manager Overview
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            View the schedule, sessions, and programme reporting for your assigned stages.
+            View the schedule, sessions, and programme reporting for your
+            assigned stages.
           </p>
         </div>
         <Card className="border-dashed">
@@ -88,24 +93,9 @@ export default async function StageManagerOverviewPage({
 
   return (
     <div className="space-y-6">
-      <div className="mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight mb-4">
-          Stage Manager Overview
-        </h1>
-        <div className="flex flex-col gap-2 p-5 rounded-xl border border-border bg-card/50 shadow-sm">
-          <p className="text-sm text-muted-foreground">
-            You are assigned to manage the following {assignedStages.length === 1 ? "stage" : "stages"}:
-          </p>
-          <div className="flex flex-wrap gap-2 mt-1">
-            {assignedStages.map((s) => (
-              <span key={s.id} className="inline-flex items-center px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-sm font-semibold border border-primary/20">
-                <Megaphone className="w-4 h-4 mr-2" />
-                {s.name}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
+      <h1 className="text-xl sm:text-2xl font-bold tracking-tight mb-4">
+        Stage Manager Overview
+      </h1>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {!canSchedule ? (
@@ -115,9 +105,8 @@ export default async function StageManagerOverviewPage({
                 Standard plan required
               </CardTitle>
               <CardDescription>
-                Schedule, sessions, and programme reporting
-                are included on Standard and Pro. Upgrade this festival to
-                access these tools.
+                Schedule, sessions, and programme reporting are included on
+                Standard and Pro. Upgrade this festival to access these tools.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -135,26 +124,6 @@ export default async function StageManagerOverviewPage({
                     <CardTitle>Schedule</CardTitle>
                     <CardDescription>
                       View programme slots and session times.
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-            </Card>
-          </Link>
-        ) : null}
-
-        {canSchedule ? (
-          <Link href={`${basePath}/pre-event-works/sessions`}>
-            <Card className="h-full transition-colors hover:bg-muted/50">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Mic2 className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle>Sessions</CardTitle>
-                    <CardDescription>
-                      Create and manage talks, ceremonies, and sessions.
                     </CardDescription>
                   </div>
                 </div>
@@ -182,7 +151,32 @@ export default async function StageManagerOverviewPage({
             </Card>
           </Link>
         ) : null}
+
+        {canSchedule ? (
+          <Link href={`${basePath}/event-works/judgment`}>
+            <Card className="h-full transition-colors hover:bg-muted/50">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Gavel className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle>Judgment</CardTitle>
+                    <CardDescription>
+                      Manage scores, judge evaluations, and final results.
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+          </Link>
+        ) : null}
       </div>
+
+      <StageManagerJudgesSection
+        festivalId={festival.id}
+        myStages={assignedStages}
+      />
     </div>
   );
 }

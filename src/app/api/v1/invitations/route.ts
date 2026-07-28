@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, lt } from "drizzle-orm";
+import { and, eq, inArray, lt } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
@@ -8,6 +8,7 @@ import {
   festival,
   festivalMember,
   pendingInvitation,
+  stage as stageTable,
 } from "@/core/database/schema";
 import { sendInvitationEmail } from "@/core/integrations/email";
 
@@ -25,13 +26,38 @@ export const POST = async (req: Request) => {
     }
 
     const body = await req.json();
-    const { email, festivalId, festivalRole } = body;
+    const { email, festivalId, festivalRole, stageIds } = body;
 
     if (!email || !festivalId || !festivalRole) {
       return NextResponse.json(
         { success: false, error: "Missing required fields" },
         { status: 400 },
       );
+    }
+
+    if (festivalRole === "STAGE_MANAGER") {
+      if (!Array.isArray(stageIds) || stageIds.length === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "At least one stage is required for a stage manager",
+          },
+          { status: 400 },
+        );
+      }
+      const validStages = await db.query.stage.findMany({
+        where: and(
+          eq(stageTable.festivalId, festivalId),
+          inArray(stageTable.id, stageIds),
+        ),
+        columns: { id: true },
+      });
+      if (validStages.length !== stageIds.length) {
+        return NextResponse.json(
+          { success: false, error: "One or more stages are invalid" },
+          { status: 400 },
+        );
+      }
     }
 
     const festivalRecord = await db.query.festival.findFirst({
@@ -93,6 +119,7 @@ export const POST = async (req: Request) => {
         invitedBy: session.userId,
         expiresAt,
         status: "pending",
+        metadata: festivalRole === "STAGE_MANAGER" ? { stageIds } : undefined,
       })
       .returning();
 
@@ -188,7 +215,10 @@ export const GET = async (req: Request) => {
       );
 
     const invitations = await db.query.pendingInvitation.findMany({
-      where: eq(pendingInvitation.festivalId, festivalId),
+      where: and(
+        eq(pendingInvitation.festivalId, festivalId),
+        inArray(pendingInvitation.status, ["pending", "expired"]),
+      ),
     });
 
     return NextResponse.json({ success: true, data: invitations });

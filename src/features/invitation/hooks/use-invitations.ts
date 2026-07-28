@@ -12,6 +12,7 @@ export const useCreateInvitation = () => {
       email: string;
       festivalId: string;
       festivalRole: "ADMIN" | "ANNOUNCER" | "STAGE_MANAGER" | "MEDIA";
+      stageIds?: string[];
     }) => api.invitations.create(data),
     onSuccess: async (_data, input) => {
       await qc.invalidateQueries({

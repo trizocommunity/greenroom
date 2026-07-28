@@ -17,6 +17,7 @@ import {
   group,
   institution,
   judge,
+  judgeStageAssignment,
   judgmentConfig,
   judgmentConfigJudge,
   judgmentLink,
@@ -186,6 +187,7 @@ export const stageRelations = relations(stage, ({ one, many }) => ({
   scheduleEntries: many(scheduleEntry),
   programmeReportingSessions: many(programmeReportingSession),
   managerAssignments: many(stageManagerAssignment),
+  judgeAssignments: many(judgeStageAssignment),
 }));
 
 export const scheduleEntryRelations = relations(
@@ -204,6 +206,16 @@ export const scheduleEntryRelations = relations(
       references: [stage.id],
     }),
     programmeReportingSessions: many(programmeReportingSession),
+    creatorUser: one(user, {
+      fields: [scheduleEntry.createdBy],
+      references: [user.id],
+      relationName: "scheduleEntryCreator",
+    }),
+    updaterUser: one(user, {
+      fields: [scheduleEntry.updatedBy],
+      references: [user.id],
+      relationName: "scheduleEntryUpdater",
+    }),
   }),
 );
 
@@ -406,6 +418,7 @@ export const judgeRelations = relations(judge, ({ one, many }) => ({
   }),
   judgmentConfigJudges: many(judgmentConfigJudge),
   judgmentScores: many(judgmentScore),
+  stageAssignments: many(judgeStageAssignment),
 }));
 
 export const judgmentConfigRelations = relations(
@@ -502,6 +515,24 @@ export const stageManagerAssignmentRelations = relations(
     member: one(festivalMember, {
       fields: [stageManagerAssignment.memberId],
       references: [festivalMember.id],
+    }),
+  }),
+);
+
+export const judgeStageAssignmentRelations = relations(
+  judgeStageAssignment,
+  ({ one }) => ({
+    festival: one(festival, {
+      fields: [judgeStageAssignment.festivalId],
+      references: [festival.id],
+    }),
+    stage: one(stage, {
+      fields: [judgeStageAssignment.stageId],
+      references: [stage.id],
+    }),
+    judge: one(judge, {
+      fields: [judgeStageAssignment.judgeId],
+      references: [judge.id],
     }),
   }),
 );

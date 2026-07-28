@@ -1,3 +1,4 @@
+import { inArray } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 // Removed unused breadcrumb imports
@@ -6,6 +7,7 @@ import { DashboardCelebration } from "@/components/festival/dashboard/DashboardC
 import { DashboardRightSidebar } from "@/components/festival/dashboard/DashboardRightSidebar";
 import { FestivalDashboardClientShell } from "@/components/festival/dashboard/FestivalDashboardClientShell";
 import { FestivalDashboardSidebar } from "@/components/festival/dashboard/FestivalDashboardSidebar";
+import { StageContextSelector } from "@/components/festival/dashboard/StageContextSelector";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { FestivalStatusBadge } from "@/components/festival/FestivalStatusBadge";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -17,11 +19,15 @@ import {
 import { TIER_CONFIG } from "@/config/pricing";
 import { getCurrentUser } from "@/core/auth/current-user";
 import { getSession } from "@/core/auth/session";
+import { db } from "@/core/database/client";
+import { stage as stageTable } from "@/core/database/schema";
 import { parseStoredInstant } from "@/core/utils/date-time";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 import { getEffectiveTierFeatures } from "@/features/plan-features/services/plan-features.service";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
+import { getStageFilterCookie } from "@/features/stages/stage-filter-cookie.server";
+import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 
 export default async function FestivalDashboardLayout({
   children,
@@ -105,6 +111,27 @@ export default async function FestivalDashboardLayout({
 
   const userRole = role;
 
+  // 4c. Stage manager's own stage filter (banner selector) — only relevant
+  // when they're assigned more than one stage.
+  let myStages: Array<{ id: string; name: string }> = [];
+  let currentStageId: string | null = null;
+  if (userRole === "STAGE_MANAGER") {
+    const assignedStageIds = await StageAssignmentService.getAssignedStageIds(
+      festival.id,
+      session.userId,
+    );
+    myStages = assignedStageIds.length
+      ? await db.query.stage.findMany({
+          where: inArray(stageTable.id, assignedStageIds),
+          columns: { id: true, name: true },
+        })
+      : [];
+    currentStageId = await getStageFilterCookie(
+      festival.id,
+      myStages.map((s) => s.id),
+    );
+  }
+
   // 4b. Fetch User Profile
   const currentUser = await getCurrentUser();
 
@@ -130,6 +157,13 @@ export default async function FestivalDashboardLayout({
 
               {/* Header Actions */}
               <div className="flex items-center gap-2">
+                {userRole === "STAGE_MANAGER" && myStages.length > 1 && (
+                  <StageContextSelector
+                    festivalId={festival.id}
+                    stages={myStages}
+                    currentStageId={currentStageId}
+                  />
+                )}
                 <ThemeToggle />
                 <FestivalStatusBadge
                   status={derivedStatus}
@@ -175,7 +209,7 @@ export default async function FestivalDashboardLayout({
               </div>
             </header>
 
-            <main className="flex flex-1 flex-col gap-4 md:gap-6 p-4 md:p-8 relative overflow-hidden">
+            <main className="flex flex-1 flex-col gap-4 md:gap-6 p-4 md:p-8 relative">
               <Suspense fallback={null}>
                 <DashboardCelebration />
               </Suspense>

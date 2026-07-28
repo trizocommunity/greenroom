@@ -224,6 +224,7 @@ export const pendingInvitation = pgTable(
     expiresAt: timestamp({ precision: 3, mode: "string" }).notNull(),
     acceptedAt: timestamp({ precision: 3, mode: "string" }),
     status: text().default("pending").notNull(),
+    metadata: jsonb().$type<{ stageIds?: string[] }>(),
     createdAt: timestamp({ precision: 3, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -2103,6 +2104,53 @@ export const stageManagerAssignment = pgTable(
       columns: [table.memberId],
       foreignColumns: [festivalMember.id],
       name: "stage_manager_assignment_memberId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
+// ─── 30. judge_stage_assignment (depends on: festival, stage, judge) ──────────
+
+export const judgeStageAssignment = pgTable(
+  "judge_stage_assignment",
+  {
+    id: text().primaryKey().notNull(),
+    festivalId: text().notNull(),
+    stageId: text().notNull(),
+    judgeId: text().notNull(),
+    createdAt: timestamp({ precision: 3, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("judge_stage_assignment_stageId_judgeId_key").using(
+      "btree",
+      table.stageId.asc().nullsLast(),
+      table.judgeId.asc().nullsLast(),
+    ),
+    index("judge_stage_assignment_judgeId_idx").using(
+      "btree",
+      table.judgeId.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "judge_stage_assignment_festivalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.stageId],
+      foreignColumns: [stage.id],
+      name: "judge_stage_assignment_stageId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.judgeId],
+      foreignColumns: [judge.id],
+      name: "judge_stage_assignment_judgeId_fkey",
     })
       .onUpdate("cascade")
       .onDelete("cascade"),

@@ -141,6 +141,13 @@
       "when": 1785230360257,
       "tag": "0019_fluffy_the_executioner",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1785234698367,
+      "tag": "0021_stiff_marauders",
+      "breakpoints": true
     }
   ]
 }
