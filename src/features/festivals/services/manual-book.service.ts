@@ -20,7 +20,7 @@ type ManualBookData = {
     endDate: string | null;
     status: string;
   };
-  students: Array<{
+  participants: Array<{
     name: string;
     email: string | null;
     phone: string | null;
@@ -85,7 +85,7 @@ export const ManualBookService = {
   async generateZip(data: ManualBookData): Promise<Buffer> {
     const files: Record<string, string> = {
       "festival.json": JSON.stringify(data.festival, null, 2),
-      "students.json": JSON.stringify(data.students, null, 2),
+      "participants.json": JSON.stringify(data.participants, null, 2),
       "programmes.json": JSON.stringify(data.programmes, null, 2),
       "categories.json": JSON.stringify(data.categories, null, 2),
       "groups.json": JSON.stringify(data.groups, null, 2),
@@ -140,8 +140,8 @@ export const ManualBookService = {
 
     y = this.addSection(
       doc,
-      "Students",
-      data.students.length,
+      "Participants",
+      data.participants.length,
       y,
       margin,
       pageW,

@@ -19,7 +19,7 @@ const services = [
   },
   {
     title: "Digital registration",
-    description: "Seamless on-spot and online registration for students.",
+    description: "Seamless on-spot and online registration for participants.",
     icon: Users,
   },
   {

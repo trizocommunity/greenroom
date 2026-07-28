@@ -1,7 +1,6 @@
 "use server";
 
-import { createHash, randomBytes, randomUUID } from "node:crypto";
-import bcrypt from "bcryptjs";
+import { randomUUID } from "node:crypto";
 import {
   and,
   asc,
@@ -13,28 +12,24 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import { jwtVerify, SignJWT } from "jose";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
-import { APP_URL } from "@/config/routes";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
+import { getStagePortalSessionFromCookie } from "@/core/auth/stage-portal-session";
 import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
   programmeCodeLetter as codeLetterTable,
   festival as festivalTable,
-  judge as judgeTable,
   judgmentConfigJudge as judgmentConfigJudgeTable,
   judgmentConfig as judgmentConfigTable,
-  judgmentLink as judgmentLinkTable,
   judgmentScore as judgmentScoreTable,
   programme as programmeTable,
   programmeReportedParticipant as reportedParticipantTable,
   programmeReportingSession as reportingSessionTable,
   result as resultTable,
 } from "@/core/database/schema";
-import { AppError } from "@/core/errors/errors";
+import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import type { ProgrammeJudgmentStatus } from "@/core/types/app-enums";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { listFestivalJudgesWithAssignments } from "@/features/judges/repositories/judge.repository";
@@ -43,12 +38,10 @@ import {
   resolveScoringPolicy,
   upsertScoringPolicyActionData,
 } from "@/features/judgment/services/scoring-policy.service";
+import { getStageIdForReportingSession } from "@/features/programmes/actions/programme-reporting.actions";
+import { assertStageManagerAccessForStage } from "@/features/programmes/actions/reporting-access";
 import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
 import { calculatePosition } from "@/features/results/services/results-calculator";
-
-function hashTokenSHA256(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
-}
 
 async function allAssignedJudgesHaveCompleteScores(
   configId: string,
@@ -74,63 +67,6 @@ async function allAssignedJudgesHaveCompleteScores(
     if (covered.size !== codeLetterIds.length) return false;
   }
   return true;
-}
-
-function generateJudgeToken(): string {
-  return randomBytes(32).toString("base64url");
-}
-
-function generatePin(length: number): string {
-  const min = 10 ** (length - 1);
-  const max = 10 ** length - 1;
-  return String(Math.floor(Math.random() * (max - min + 1)) + min);
-}
-
-function getJwtSecretKey(): Uint8Array {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) throw new Error("JWT_SECRET is not defined");
-  return new TextEncoder().encode(secret);
-}
-
-async function createJudgeLinkAccessSession(payload: {
-  linkId: string;
-  tokenHash: string;
-  deviceHash: string | null;
-  expiresAt: string;
-}) {
-  const token = await new SignJWT(payload)
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime(Math.floor(new Date(payload.expiresAt).getTime() / 1000))
-    .sign(getJwtSecretKey());
-
-  const cookieStore = await cookies();
-  cookieStore.set("judge_link_auth", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    expires: new Date(payload.expiresAt),
-    path: "/",
-  });
-}
-
-async function readJudgeLinkAccessSession() {
-  const cookieStore = await cookies();
-  const raw = cookieStore.get("judge_link_auth")?.value;
-  if (!raw) return null;
-  try {
-    const { payload } = await jwtVerify(raw, getJwtSecretKey(), {
-      algorithms: ["HS256"],
-    });
-    return payload as {
-      linkId: string;
-      tokenHash: string;
-      deviceHash: string | null;
-      expiresAt: string;
-    };
-  } catch {
-    return null;
-  }
 }
 
 export async function getJudgmentWizardDataAction(festivalId: string) {
@@ -200,7 +136,7 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
             programmeReportedParticipants: {
               orderBy: [asc(reportedParticipantTable.reportedAt)],
               with: {
-                student: {
+                participant: {
                   columns: { id: true, name: true, chestNumber: true },
                 },
                 group: { columns: { name: true } },
@@ -214,7 +150,7 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
   const sessionIds = latestClosedSessions.map((s) => s.id);
   const codeLettersBySessionId = new Map<
     string,
-    Array<{ code: string; studentIds: string[] }>
+    Array<{ code: string; participantIds: string[] }>
   >();
 
   if (sessionIds.length > 0) {
@@ -226,7 +162,7 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
       },
       with: {
         programmeCodeLetterRecipients: {
-          columns: { studentId: true },
+          columns: { participantId: true },
         },
       },
     });
@@ -235,7 +171,9 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
       const bucket = codeLettersBySessionId.get(row.reportingSessionId) ?? [];
       bucket.push({
         code: row.code,
-        studentIds: row.programmeCodeLetterRecipients.map((r) => r.studentId),
+        participantIds: row.programmeCodeLetterRecipients.map(
+          (r) => r.participantId,
+        ),
       });
       codeLettersBySessionId.set(row.reportingSessionId, bucket);
     }
@@ -265,11 +203,11 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
     if (reportingByProgrammeId.has(sessionRow.programmeId)) continue;
     const programmeType =
       programmeTypeById.get(sessionRow.programmeId) ?? "INDIVIDUAL";
-    const codeByStudentId = new Map<string, string>();
+    const codeByParticipantId = new Map<string, string>();
     const sessionCodeLetters = codeLettersBySessionId.get(sessionRow.id) ?? [];
     for (const codeLetter of sessionCodeLetters) {
-      for (const studentId of codeLetter.studentIds) {
-        codeByStudentId.set(studentId, codeLetter.code);
+      for (const participantId of codeLetter.participantIds) {
+        codeByParticipantId.set(participantId, codeLetter.code);
       }
     }
 
@@ -295,8 +233,8 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
                   ? `${groupName} - Team ${teamNo}`
                   : groupName
                 : `Team ${teamNo ?? "—"}`;
-              const codeLetter = r.student?.id
-                ? (codeByStudentId.get(r.student.id) ?? null)
+              const codeLetter = r.participant?.id
+                ? (codeByParticipantId.get(r.participant.id) ?? null)
                 : null;
 
               const existing = teamMap.get(key);
@@ -320,10 +258,10 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
         : sessionRow.programmeReportedParticipants
             .map((r) => {
               const teamNo = r.teamNumber ?? r.programmeAssignment?.teamNumber;
-              const label = r.student?.name
-                ? r.student.chestNumber
-                  ? `${r.student.name} (${r.student.chestNumber})`
-                  : r.student.name
+              const label = r.participant?.name
+                ? r.participant.chestNumber
+                  ? `${r.participant.name} (${r.participant.chestNumber})`
+                  : r.participant.name
                 : r.group?.name
                   ? teamNo
                     ? `${r.group.name} - Team ${teamNo}`
@@ -335,8 +273,8 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
                 label,
                 groupName: r.group?.name ?? null,
                 categoryName: null as string | null,
-                codeLetter: r.student?.id
-                  ? (codeByStudentId.get(r.student.id) ?? null)
+                codeLetter: r.participant?.id
+                  ? (codeByParticipantId.get(r.participant.id) ?? null)
                   : null,
               };
             })
@@ -389,7 +327,7 @@ export async function getActiveJudgmentConfigsAction(festivalId: string) {
   const configs = await db.query.judgmentConfig.findMany({
     where: and(
       eq(judgmentConfigTable.festivalId, festivalId),
-      eq(judgmentConfigTable.status, "ACTIVE"),
+      eq(judgmentConfigTable.status, "LIVE"),
     ),
     orderBy: [desc(judgmentConfigTable.createdAt)],
     with: {
@@ -402,11 +340,7 @@ export async function getActiveJudgmentConfigsAction(festivalId: string) {
           judge: { columns: { id: true, name: true } },
         },
       },
-      links: {
-        where: eq(judgmentLinkTable.isActive, true),
-        orderBy: [desc(judgmentLinkTable.createdAt)],
-        limit: 1,
-      },
+      scores: { columns: { id: true } },
     },
   });
 
@@ -419,10 +353,11 @@ export async function getActiveJudgmentConfigsAction(festivalId: string) {
     scoreLimit: c.scoreLimit,
     judgingMode: c.judgingMode as "SINGLE" | "GROUP",
     judges: c.judges.map((j) => ({ id: j.judge.id, name: j.judge.name })),
-    activeLinkId: c.links[0]?.id ?? null,
-    judgmentStatus: (c.links[0]?.id
-      ? "LINK_ACTIVE"
-      : "SCORING_IN_PROGRESS") as ProgrammeJudgmentStatus,
+    startedAt: c.startedAt,
+    startedBy: c.startedBy,
+    judgmentStatus: (c.scores.length > 0
+      ? "SCORING_IN_PROGRESS"
+      : "LIVE") as ProgrammeJudgmentStatus,
   }));
 }
 
@@ -598,90 +533,48 @@ export async function getJudgmentDashboardDataAction(festivalId: string) {
   };
 }
 
-export async function createJudgmentConfigurationAction(input: {
+/**
+ * Archives any LIVE config on the given stage (across all its programmes)
+ * and inserts a fresh LIVE config + judge assignments. Shared by
+ * startJudgmentAction and restartJudgmentAction so only one programme is
+ * ever "live" per stage at a time, matching the single-live-card portal UI.
+ */
+async function insertLiveJudgmentConfig(input: {
   festivalId: string;
   programmeId: string;
-  scoreLimit: number;
+  reportingSessionId: string;
+  stageId: string;
   judgeIds: string[];
-  judgingMode?: "SINGLE" | "GROUP";
-  manualPin?: string | null;
-  pinLength?: 4 | 5 | 6;
-  expiresInHours?: number;
-}) {
-  const session = await getSession();
-  await assertFestivalAccess(session, input.festivalId, {
-    requireWritable: true,
-  });
-
-  if (!Number.isFinite(input.scoreLimit) || input.scoreLimit <= 0) {
-    throw new AppError("Score limit must be greater than 0.");
-  }
-  if (!input.judgeIds.length)
-    throw new AppError("Please select at least one judge.");
-
-  const festival = await db.query.festival.findFirst({
-    where: eq(festivalTable.id, input.festivalId),
-    columns: { slug: true },
-  });
-  if (!festival) throw new AppError("Festival not found.");
-
-  const latestClosedReportingSession =
-    await db.query.programmeReportingSession.findFirst({
-      where: and(
-        eq(reportingSessionTable.programmeId, input.programmeId),
-        eq(reportingSessionTable.status, "CLOSED"),
-      ),
-      orderBy: [desc(reportingSessionTable.endedAt)],
-      columns: { id: true },
-    });
-  if (!latestClosedReportingSession) {
-    throw new AppError("No closed reporting session found for this programme.");
-  }
-
+  scoreLimit: number;
+  judgingMode: "SINGLE" | "GROUP";
+  startedBy: string;
+}): Promise<string> {
   const now = new Date().toISOString();
-  const token = generateJudgeToken();
-  const tokenHash = hashTokenSHA256(token);
-  const pin =
-    input.manualPin?.trim() || generatePin(Number(input.pinLength ?? 4));
-  if (!/^\d{4,6}$/.test(pin)) {
-    throw new AppError("PIN must be 4 to 6 digits.");
-  }
-  const pinHash = await bcrypt.hash(pin, 10);
-  const expiresAt = new Date(
-    Date.now() + Math.max(1, input.expiresInHours ?? 24) * 60 * 60 * 1000,
-  ).toISOString();
   const configId = randomUUID();
-  const linkId = randomUUID();
-  const existingActiveConfigs = await db.query.judgmentConfig.findMany({
-    where: and(
-      eq(judgmentConfigTable.festivalId, input.festivalId),
-      eq(judgmentConfigTable.programmeId, input.programmeId),
-      eq(judgmentConfigTable.status, "ACTIVE"),
-    ),
-    columns: { id: true },
-  });
-  const existingConfigIds = existingActiveConfigs.map((c) => c.id);
+
+  const liveConfigsOnStage = await db
+    .select({ id: judgmentConfigTable.id })
+    .from(judgmentConfigTable)
+    .innerJoin(
+      reportingSessionTable,
+      eq(judgmentConfigTable.reportingSessionId, reportingSessionTable.id),
+    )
+    .where(
+      and(
+        eq(reportingSessionTable.stageId, input.stageId),
+        eq(judgmentConfigTable.status, "LIVE"),
+      ),
+    );
 
   await db.transaction(async (tx) => {
-    await tx
-      .update(judgmentConfigTable)
-      .set({ status: "ARCHIVED", updatedAt: now })
-      .where(
-        and(
-          eq(judgmentConfigTable.festivalId, input.festivalId),
-          eq(judgmentConfigTable.programmeId, input.programmeId),
-          eq(judgmentConfigTable.status, "ACTIVE"),
-        ),
-      );
-
-    if (existingConfigIds.length > 0) {
+    if (liveConfigsOnStage.length > 0) {
       await tx
-        .update(judgmentLinkTable)
-        .set({ isActive: false, regeneratedAt: now })
+        .update(judgmentConfigTable)
+        .set({ status: "ARCHIVED", updatedAt: now } as any)
         .where(
-          and(
-            eq(judgmentLinkTable.isActive, true),
-            inArray(judgmentLinkTable.configId, existingConfigIds),
+          inArray(
+            judgmentConfigTable.id,
+            liveConfigsOnStage.map((c) => c.id),
           ),
         );
     }
@@ -690,11 +583,12 @@ export async function createJudgmentConfigurationAction(input: {
       id: configId,
       festivalId: input.festivalId,
       programmeId: input.programmeId,
-      reportingSessionId: latestClosedReportingSession.id,
+      reportingSessionId: input.reportingSessionId,
       scoreLimit: Math.round(input.scoreLimit),
-      judgingMode: input.judgingMode ?? "GROUP",
-      status: "ACTIVE",
-      createdBy: session?.userId ?? null,
+      judgingMode: input.judgingMode,
+      status: "LIVE",
+      startedAt: now,
+      startedBy: input.startedBy,
       createdAt: now,
       updatedAt: now,
     } as any);
@@ -706,294 +600,315 @@ export async function createJudgmentConfigurationAction(input: {
         judgeId,
       } as any);
     }
-
-    await tx.insert(judgmentLinkTable).values({
-      id: linkId,
-      configId,
-      tokenHash,
-      pinHash,
-      isActive: true,
-      expiresAt,
-      maxAttempts: 5,
-      attempts: 0,
-      lockedUntil: null,
-      boundDeviceHash: null,
-      createdAt: now,
-      regeneratedAt: null,
-    } as any);
   });
 
-  const base = APP_URL.replace(/\/$/, "");
-  const judgeUrl = `${base}/${festival.slug}/judge/${token}`;
-  revalidatePath(`/dashboard/${festival.slug}/event-works/judgment`);
-  return { configId, judgeUrl, judgePin: pin, expiresAt };
+  return configId;
 }
 
-export async function regenerateJudgmentConfigurationLinkAction(input: {
+export async function startJudgmentAction(input: {
   festivalId: string;
-  configId: string;
-  manualPin?: string | null;
-  pinLength?: 4 | 5 | 6;
-  expiresInHours?: number;
+  programmeId: string;
+  judgeIds: string[];
+  scoreLimit: number;
+  judgingMode?: "SINGLE" | "GROUP";
 }) {
-  const session = await getSession();
-  await assertFestivalAccess(session, input.festivalId, {
-    requireWritable: true,
-  });
-
-  const config = await db.query.judgmentConfig.findFirst({
-    where: and(
-      eq(judgmentConfigTable.id, input.configId),
-      eq(judgmentConfigTable.festivalId, input.festivalId),
-    ),
-    columns: { id: true, festivalId: true },
-  });
-  if (!config) throw new AppError("Judgment configuration not found.");
-
-  const festival = await db.query.festival.findFirst({
-    where: eq(festivalTable.id, config.festivalId),
-    columns: { slug: true },
-  });
-  if (!festival) throw new AppError("Festival not found.");
-
-  const now = new Date().toISOString();
-  const token = generateJudgeToken();
-  const tokenHash = hashTokenSHA256(token);
-  const pin =
-    input.manualPin?.trim() || generatePin(Number(input.pinLength ?? 4));
-  if (!/^\d{4,6}$/.test(pin)) {
-    throw new AppError("PIN must be 4 to 6 digits.");
+  if (!Number.isFinite(input.scoreLimit) || input.scoreLimit <= 0) {
+    throw new AppError("Score limit must be greater than 0.");
   }
-  const pinHash = await bcrypt.hash(pin, 10);
-  const expiresAt = new Date(
-    Date.now() + Math.max(1, input.expiresInHours ?? 24) * 60 * 60 * 1000,
-  ).toISOString();
-
-  await db.transaction(async (tx) => {
-    await tx
-      .update(judgmentLinkTable)
-      .set({ isActive: false, regeneratedAt: now })
-      .where(eq(judgmentLinkTable.configId, config.id));
-
-    await tx.insert(judgmentLinkTable).values({
-      id: randomUUID(),
-      configId: config.id,
-      tokenHash,
-      pinHash,
-      isActive: true,
-      expiresAt,
-      maxAttempts: 5,
-      attempts: 0,
-      lockedUntil: null,
-      boundDeviceHash: null,
-      createdAt: now,
-      regeneratedAt: null,
-    } as any);
-  });
-
-  const base = APP_URL.replace(/\/$/, "");
-  const judgeUrl = `${base}/${festival.slug}/judge/${token}`;
-  revalidatePath(`/dashboard/${festival.slug}/event-works/judgment`);
-  return { judgeUrl, judgePin: pin, expiresAt };
-}
-
-export async function getPublicJudgmentByTokenAction(params: {
-  festivalSlug: string;
-  token: string;
-}) {
-  const tokenHash = hashTokenSHA256(params.token);
-  const link = await db.query.judgmentLink.findFirst({
-    where: eq(judgmentLinkTable.tokenHash, tokenHash),
-    with: {
-      judgmentConfig: {
-        with: {
-          festival: { columns: { id: true, slug: true, name: true } },
-          programme: { columns: { id: true, name: true, type: true } },
-          judges: {
-            with: {
-              judge: { columns: { id: true, name: true, description: true } },
-            },
-          },
-        },
-      },
-    },
-  });
-  if (!link) return null;
-  if (link.judgmentConfig.festival.slug !== params.festivalSlug) return null;
-
-  const expiredByTime = new Date(link.expiresAt).getTime() <= Date.now();
-  if (!link.isActive || expiredByTime) {
-    return {
-      expired: true as const,
-      reason: expiredByTime ? ("time" as const) : ("closed" as const),
-      festival: link.judgmentConfig.festival,
-      programme: { name: link.judgmentConfig.programme.name },
-    };
+  if (!input.judgeIds.length) {
+    throw new AppError("Please select at least one judge.");
   }
 
-  const codeLetters = await db.query.programmeCodeLetter.findMany({
-    where: and(
-      eq(codeLetterTable.programmeId, link.judgmentConfig.programmeId),
-      eq(
-        codeLetterTable.reportingSessionId,
-        link.judgmentConfig.reportingSessionId,
+  const latestClosedReportingSession =
+    await db.query.programmeReportingSession.findFirst({
+      where: and(
+        eq(reportingSessionTable.programmeId, input.programmeId),
+        eq(reportingSessionTable.status, "CLOSED"),
       ),
-    ),
-    orderBy: [asc(codeLetterTable.issuedAt)],
-    with: { programmeCodeLetterRecipients: { columns: { studentId: true } } },
-  });
-
-  const existingScores = await db.query.judgmentScore.findMany({
-    where: eq(judgmentScoreTable.configId, link.configId),
-    columns: { judgeId: true, codeLetterId: true, score: true },
-  });
-
-  const accessSession = await readJudgeLinkAccessSession();
-  const isDeviceBound = Boolean(link.boundDeviceHash);
-  const isSessionValid =
-    Boolean(accessSession) &&
-    accessSession?.linkId === link.id &&
-    accessSession?.tokenHash === tokenHash &&
-    (!isDeviceBound || accessSession?.deviceHash === link.boundDeviceHash);
-  const isLocked =
-    Boolean(link.lockedUntil) &&
-    new Date(link.lockedUntil!).getTime() > Date.now();
-
-  return {
-    linkId: link.id,
-    configId: link.configId,
-    scoreLimit: link.judgmentConfig.scoreLimit,
-    judgingMode: (link.judgmentConfig.judgingMode ?? "GROUP") as
-      | "SINGLE"
-      | "GROUP",
-    festival: link.judgmentConfig.festival,
-    programme: link.judgmentConfig.programme,
-    judges: link.judgmentConfig.judges.map((j) => j.judge),
-    codeLetters: codeLetters.map((c) => ({ id: c.id, code: c.code })),
-    existingScores: isSessionValid ? existingScores : [],
-    requiresPin: !isSessionValid,
-    attemptsRemaining: Math.max(
-      0,
-      (link.maxAttempts ?? 5) - (link.attempts ?? 0),
-    ),
-    lockUntil: isLocked ? link.lockedUntil : null,
-    expiresAt: link.expiresAt,
-  };
-}
-
-export async function verifyJudgmentLinkPinAction(input: {
-  token: string;
-  pin: string;
-  deviceId?: string | null;
-}) {
-  const tokenHash = hashTokenSHA256(input.token);
-  const link = await db.query.judgmentLink.findFirst({
-    where: and(
-      eq(judgmentLinkTable.tokenHash, tokenHash),
-      eq(judgmentLinkTable.isActive, true),
-    ),
-    columns: {
-      id: true,
-      pinHash: true,
-      expiresAt: true,
-      attempts: true,
-      maxAttempts: true,
-      lockedUntil: true,
-      boundDeviceHash: true,
-    },
-  });
-  if (!link) throw new AppError("Invalid or expired link.");
-  if (new Date(link.expiresAt).getTime() <= Date.now()) {
-    throw new AppError("This judgment link has expired.");
+      orderBy: [desc(reportingSessionTable.endedAt)],
+      columns: { id: true, stageId: true },
+    });
+  if (!latestClosedReportingSession) {
+    throw new AppError("No closed reporting session found for this programme.");
   }
-  if (link.lockedUntil && new Date(link.lockedUntil).getTime() > Date.now()) {
-    throw new AppError("Too many attempts. Link is temporarily locked.");
-  }
-
-  const pin = input.pin.trim();
-  if (!/^\d{4,6}$/.test(pin))
-    throw new AppError("Enter a valid 4-6 digit PIN.");
-  const isValid = await bcrypt.compare(pin, link.pinHash);
-  const deviceHash = input.deviceId?.trim()
-    ? hashTokenSHA256(input.deviceId.trim())
-    : null;
-
-  if (!isValid) {
-    const nextAttempts = (link.attempts ?? 0) + 1;
-    const maxAttempts = link.maxAttempts ?? 5;
-    const shouldLock = nextAttempts >= maxAttempts;
-    const lockedUntil = shouldLock
-      ? new Date(Date.now() + 10 * 60 * 1000).toISOString()
-      : null;
-
-    await db
-      .update(judgmentLinkTable)
-      .set({
-        attempts: shouldLock ? 0 : nextAttempts,
-        lockedUntil,
-      } as any)
-      .where(eq(judgmentLinkTable.id, link.id));
-
-    if (shouldLock) {
-      throw new AppError(
-        "Too many incorrect attempts. Try again in 10 minutes.",
-      );
-    }
+  if (!latestClosedReportingSession.stageId) {
     throw new AppError(
-      `Incorrect PIN. ${maxAttempts - nextAttempts} attempts left.`,
+      "This programme isn't linked to a stage; the judge portal requires a stage assignment.",
     );
   }
 
-  await db
-    .update(judgmentLinkTable)
-    .set({
-      attempts: 0,
-      lockedUntil: null,
-      boundDeviceHash: link.boundDeviceHash ?? deviceHash,
-    } as any)
-    .where(eq(judgmentLinkTable.id, link.id));
+  const actorName = await assertStageManagerAccessForStage(
+    input.festivalId,
+    latestClosedReportingSession.stageId,
+  );
 
-  await createJudgeLinkAccessSession({
-    linkId: link.id,
-    tokenHash,
-    deviceHash,
-    expiresAt: link.expiresAt,
+  const configId = await insertLiveJudgmentConfig({
+    festivalId: input.festivalId,
+    programmeId: input.programmeId,
+    reportingSessionId: latestClosedReportingSession.id,
+    stageId: latestClosedReportingSession.stageId,
+    judgeIds: input.judgeIds,
+    scoreLimit: input.scoreLimit,
+    judgingMode: input.judgingMode ?? "GROUP",
+    startedBy: actorName,
   });
 
-  return { success: true };
+  await createAuditLog({
+    action: "START_JUDGMENT",
+    targetType: "PROGRAMME",
+    targetId: input.programmeId,
+    metadata: { configId, judgeIds: input.judgeIds },
+  }).catch((err) => console.error("[AuditLog] START_JUDGMENT failed", err));
+
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.id, input.festivalId),
+    columns: { slug: true },
+  });
+  if (festival) {
+    revalidatePath(`/dashboard/${festival.slug}/event-works/judgment`);
+  }
+
+  return { configId };
+}
+
+export async function restartJudgmentAction(input: {
+  festivalId: string;
+  programmeId: string;
+  judgeIds?: string[];
+}) {
+  const programmeRow = await db.query.programme.findFirst({
+    where: eq(programmeTable.id, input.programmeId),
+    columns: { status: true },
+  });
+  if (!programmeRow) throw new AppError(ERROR_MESSAGES.PROGRAMME_NOT_FOUND);
+  if (["PUBLISHED", "ANNOUNCED"].includes(programmeRow.status)) {
+    throw new AppError("Cannot restart judgment after results are published.");
+  }
+
+  const priorConfig = await db.query.judgmentConfig.findFirst({
+    where: and(
+      eq(judgmentConfigTable.festivalId, input.festivalId),
+      eq(judgmentConfigTable.programmeId, input.programmeId),
+    ),
+    orderBy: [desc(judgmentConfigTable.createdAt)],
+    columns: {
+      id: true,
+      reportingSessionId: true,
+      scoreLimit: true,
+      judgingMode: true,
+    },
+    with: { judges: { columns: { judgeId: true } } },
+  });
+  if (!priorConfig) {
+    throw new AppError("No previous judgment round found for this programme.");
+  }
+
+  const judgeIds = input.judgeIds?.length
+    ? input.judgeIds
+    : priorConfig.judges.map((j) => j.judgeId);
+  if (!judgeIds.length) {
+    throw new AppError("Please select at least one judge.");
+  }
+
+  const stageId = await getStageIdForReportingSession(
+    priorConfig.reportingSessionId,
+  );
+  if (!stageId) {
+    throw new AppError(
+      "This programme isn't linked to a stage; the judge portal requires a stage assignment.",
+    );
+  }
+
+  const actorName = await assertStageManagerAccessForStage(
+    input.festivalId,
+    stageId,
+  );
+
+  const configId = await insertLiveJudgmentConfig({
+    festivalId: input.festivalId,
+    programmeId: input.programmeId,
+    reportingSessionId: priorConfig.reportingSessionId,
+    stageId,
+    judgeIds,
+    scoreLimit: priorConfig.scoreLimit,
+    judgingMode: priorConfig.judgingMode as "SINGLE" | "GROUP",
+    startedBy: actorName,
+  });
+
+  await createAuditLog({
+    action: "START_JUDGMENT",
+    targetType: "PROGRAMME",
+    targetId: input.programmeId,
+    metadata: { configId, judgeIds, restarted: true },
+  }).catch((err) => console.error("[AuditLog] START_JUDGMENT failed", err));
+
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.id, input.festivalId),
+    columns: { slug: true },
+  });
+  if (festival) {
+    revalidatePath(`/dashboard/${festival.slug}/event-works/judgment`);
+  }
+
+  return { configId };
+}
+
+/**
+ * Confirms the caller holds a valid stage-portal session for the stage that
+ * owns `configId`, and that the config is still LIVE. This is the judge-side
+ * equivalent of the old link-token check — the stage-portal cookie is the
+ * credential, there's no per-programme token anymore.
+ */
+async function assertStagePortalAccessForConfig(configId: string) {
+  const stagePortalSession = await getStagePortalSessionFromCookie();
+  if (!stagePortalSession) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+
+  const config = await db.query.judgmentConfig.findFirst({
+    where: eq(judgmentConfigTable.id, configId),
+    columns: {
+      id: true,
+      programmeId: true,
+      reportingSessionId: true,
+      scoreLimit: true,
+      judgingMode: true,
+      status: true,
+    },
+  });
+  if (!config) throw new AppError("Judgment round not found.");
+  if (config.status !== "LIVE") {
+    throw new AppError("This judgment round is no longer live.");
+  }
+
+  const stageId = await getStageIdForReportingSession(
+    config.reportingSessionId,
+  );
+  if (!stageId || stageId !== stagePortalSession.stageId) {
+    throw new AppError(ERROR_MESSAGES.FORBIDDEN);
+  }
+
+  return config;
+}
+
+export async function getStagePortalDataAction() {
+  const stagePortalSession = await getStagePortalSessionFromCookie();
+  if (!stagePortalSession) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+
+  const stageId = stagePortalSession.stageId;
+
+  const liveConfigRow = await db
+    .select({ id: judgmentConfigTable.id })
+    .from(judgmentConfigTable)
+    .innerJoin(
+      reportingSessionTable,
+      eq(judgmentConfigTable.reportingSessionId, reportingSessionTable.id),
+    )
+    .where(
+      and(
+        eq(reportingSessionTable.stageId, stageId),
+        eq(judgmentConfigTable.status, "LIVE"),
+      ),
+    )
+    .limit(1);
+
+  const historyConfigRows = await db
+    .select({
+      id: judgmentConfigTable.id,
+      endedAt: judgmentConfigTable.endedAt,
+    })
+    .from(judgmentConfigTable)
+    .innerJoin(
+      reportingSessionTable,
+      eq(judgmentConfigTable.reportingSessionId, reportingSessionTable.id),
+    )
+    .where(
+      and(
+        eq(reportingSessionTable.stageId, stageId),
+        eq(judgmentConfigTable.status, "SUBMITTED"),
+      ),
+    )
+    .orderBy(desc(judgmentConfigTable.endedAt))
+    .limit(10);
+
+  const historyConfigIds = historyConfigRows.map((r) => r.id);
+  const historyConfigs =
+    historyConfigIds.length > 0
+      ? await db.query.judgmentConfig.findMany({
+          where: inArray(judgmentConfigTable.id, historyConfigIds),
+          with: {
+            programme: { columns: { name: true } },
+            judges: { with: { judge: { columns: { name: true } } } },
+          },
+        })
+      : [];
+  const historyById = new Map(historyConfigs.map((c) => [c.id, c]));
+  const history = historyConfigRows
+    .map((r) => {
+      const config = historyById.get(r.id);
+      if (!config) return null;
+      return {
+        configId: r.id,
+        programmeName: config.programme.name,
+        judgeNames: config.judges.map((j) => j.judge.name),
+        endedAt: r.endedAt,
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => Boolean(x));
+
+  const stage = { name: stagePortalSession.stage.name };
+
+  if (liveConfigRow.length === 0) {
+    return { status: "no-live-programme" as const, stage, history };
+  }
+
+  const config = await db.query.judgmentConfig.findFirst({
+    where: eq(judgmentConfigTable.id, liveConfigRow[0]!.id),
+    with: {
+      programme: { columns: { id: true, name: true, type: true } },
+      judges: { with: { judge: { columns: { id: true, name: true } } } },
+    },
+  });
+  if (!config) return { status: "no-live-programme" as const, stage, history };
+
+  const codeLetters = await db.query.programmeCodeLetter.findMany({
+    where: and(
+      eq(codeLetterTable.programmeId, config.programmeId),
+      eq(codeLetterTable.reportingSessionId, config.reportingSessionId),
+    ),
+    orderBy: [asc(codeLetterTable.issuedAt)],
+  });
+
+  const existingScores = await db.query.judgmentScore.findMany({
+    where: eq(judgmentScoreTable.configId, config.id),
+    columns: { judgeId: true, codeLetterId: true, score: true },
+  });
+
+  return {
+    status: "live" as const,
+    stage,
+    configId: config.id,
+    scoreLimit: config.scoreLimit,
+    judgingMode: (config.judgingMode ?? "GROUP") as "SINGLE" | "GROUP",
+    programme: config.programme,
+    judges: config.judges.map((j) => j.judge),
+    codeLetters: codeLetters.map((c) => ({ id: c.id, code: c.code })),
+    existingScores,
+    history,
+  };
 }
 
 export async function submitJudgeScoresAction(
   input: {
-    token: string;
+    configId: string;
     judgeId: string;
     scoresByCodeLetterId: Record<string, number>;
   },
   options?: { deactivateLink?: boolean },
 ) {
-  const tokenHash = hashTokenSHA256(input.token);
-  const link = await db.query.judgmentLink.findFirst({
-    where: and(
-      eq(judgmentLinkTable.tokenHash, tokenHash),
-      eq(judgmentLinkTable.isActive, true),
-    ),
-    with: {
-      judgmentConfig: {
-        columns: {
-          id: true,
-          programmeId: true,
-          reportingSessionId: true,
-          scoreLimit: true,
-          judgingMode: true,
-        },
-      },
-    },
-  });
-  if (!link) throw new AppError("Judgment link is invalid or expired.");
+  const config = await assertStagePortalAccessForConfig(input.configId);
 
   const judgeMembership = await db.query.judgmentConfigJudge.findFirst({
     where: and(
-      eq(judgmentConfigJudgeTable.configId, link.configId),
+      eq(judgmentConfigJudgeTable.configId, config.id),
       eq(judgmentConfigJudgeTable.judgeId, input.judgeId),
     ),
     columns: { id: true },
@@ -1002,11 +917,8 @@ export async function submitJudgeScoresAction(
 
   const codeLetters = await db.query.programmeCodeLetter.findMany({
     where: and(
-      eq(codeLetterTable.programmeId, link.judgmentConfig.programmeId),
-      eq(
-        codeLetterTable.reportingSessionId,
-        link.judgmentConfig.reportingSessionId,
-      ),
+      eq(codeLetterTable.programmeId, config.programmeId),
+      eq(codeLetterTable.reportingSessionId, config.reportingSessionId),
     ),
     with: { programmeCodeLetterRecipients: true },
   });
@@ -1019,14 +931,8 @@ export async function submitJudgeScoresAction(
     if (!codeLetterIds.has(codeLetterId)) {
       throw new AppError("Invalid code letter score payload.");
     }
-    if (
-      !Number.isFinite(score) ||
-      score < 0 ||
-      score > link.judgmentConfig.scoreLimit
-    ) {
-      throw new AppError(
-        `Score must be between 0 and ${link.judgmentConfig.scoreLimit}.`,
-      );
+    if (!Number.isFinite(score) || score < 0 || score > config.scoreLimit) {
+      throw new AppError(`Score must be between 0 and ${config.scoreLimit}.`);
     }
   }
 
@@ -1039,8 +945,7 @@ export async function submitJudgeScoresAction(
         .insert(judgmentScoreTable)
         .values({
           id: randomUUID(),
-          configId: link.configId,
-          linkId: link.id,
+          configId: config.id,
           judgeId: input.judgeId,
           codeLetterId,
           score,
@@ -1053,18 +958,18 @@ export async function submitJudgeScoresAction(
             judgmentScoreTable.judgeId,
             judgmentScoreTable.codeLetterId,
           ],
-          set: { score, updatedAt: now, submittedAt: now, linkId: link.id },
+          set: { score, updatedAt: now, submittedAt: now },
         });
     }
   });
 
-  // No session here — judge auth is link-token + judgeId, not getSession().
+  // No admin session here — judge auth is the stage-portal cookie + judgeId.
   await createAuditLog({
     action: "SUBMIT_JUDGE_SCORES",
     targetType: "JUDGMENT_SCORE",
-    targetId: link.configId,
+    targetId: config.id,
     metadata: {
-      programmeId: link.judgmentConfig.programmeId,
+      programmeId: config.programmeId,
       judgeId: input.judgeId,
       count: Object.keys(input.scoresByCodeLetterId).length,
     },
@@ -1074,7 +979,7 @@ export async function submitJudgeScoresAction(
   );
 
   const allScores = await db.query.judgmentScore.findMany({
-    where: eq(judgmentScoreTable.configId, link.configId),
+    where: eq(judgmentScoreTable.configId, config.id),
     columns: { codeLetterId: true, score: true },
   });
   const scoreByCodeLetter = new Map<string, number[]>();
@@ -1097,7 +1002,7 @@ export async function submitJudgeScoresAction(
   );
   const assignmentPoints = new Map<string, number>();
   const programmeRow = await db.query.programme.findFirst({
-    where: eq(programmeTable.id, link.judgmentConfig.programmeId),
+    where: eq(programmeTable.id, config.programmeId),
     columns: { festivalId: true, categoryId: true, type: true },
     with: { festival: { columns: { tier: true } } },
   });
@@ -1108,8 +1013,8 @@ export async function submitJudgeScoresAction(
     for (const recipient of cl.programmeCodeLetterRecipients) {
       const assignment = await db.query.programmeAssignment.findFirst({
         where: and(
-          eq(assignmentTable.programmeId, link.judgmentConfig.programmeId),
-          eq(assignmentTable.studentId, recipient.studentId),
+          eq(assignmentTable.programmeId, config.programmeId),
+          eq(assignmentTable.participantId, recipient.participantId),
         ),
         columns: { id: true },
       });
@@ -1133,7 +1038,7 @@ export async function submitJudgeScoresAction(
           .from(assignmentTable)
           .where(
             and(
-              eq(assignmentTable.programmeId, link.judgmentConfig.programmeId),
+              eq(assignmentTable.programmeId, config.programmeId),
               eq(assignmentTable.teamNumber, assignmentRow.teamNumber ?? 1),
               assignmentRow.groupId
                 ? eq(assignmentTable.groupId, assignmentRow.groupId)
@@ -1146,7 +1051,7 @@ export async function submitJudgeScoresAction(
       const policyResolved = await resolveScoringPolicy({
         festivalId: programmeRow.festivalId,
         programme: {
-          id: link.judgmentConfig.programmeId,
+          id: config.programmeId,
           categoryId: programmeRow.categoryId,
           type: programmeRow.type,
         },
@@ -1165,7 +1070,7 @@ export async function submitJudgeScoresAction(
         .values({
           id: randomUUID(),
           festivalId: programmeRow.festivalId,
-          programmeId: link.judgmentConfig.programmeId,
+          programmeId: config.programmeId,
           assignmentId,
           grade,
           position,
@@ -1196,17 +1101,14 @@ export async function submitJudgeScoresAction(
         .delete(resultTable)
         .where(
           and(
-            eq(resultTable.programmeId, link.judgmentConfig.programmeId),
+            eq(resultTable.programmeId, config.programmeId),
             notInArray(resultTable.assignmentId, judgedAssignmentIds),
           ),
         );
     }
   });
 
-  await updateProgrammeStatus(
-    link.judgmentConfig.programmeId,
-    link.judgmentConfig.reportingSessionId,
-  );
+  await updateProgrammeStatus(config.programmeId, config.reportingSessionId);
 
   const festival = await db.query.festival.findFirst({
     where: eq(festivalTable.id, programmeRow.festivalId),
@@ -1219,74 +1121,55 @@ export async function submitJudgeScoresAction(
     revalidatePath(`/${festival.slug}/results`);
   }
 
-  const mode = (link.judgmentConfig.judgingMode ?? "GROUP") as
-    | "SINGLE"
-    | "GROUP";
-  let shouldDeactivateLink: boolean;
+  const mode = (config.judgingMode ?? "GROUP") as "SINGLE" | "GROUP";
+  let shouldComplete: boolean;
   if (options?.deactivateLink === false) {
-    shouldDeactivateLink = false;
+    shouldComplete = false;
   } else if (options?.deactivateLink === true) {
-    shouldDeactivateLink = true;
+    shouldComplete = true;
   } else if (mode === "SINGLE") {
-    shouldDeactivateLink = await allAssignedJudgesHaveCompleteScores(
-      link.configId,
+    shouldComplete = await allAssignedJudgesHaveCompleteScores(
+      config.id,
       codeLetters.map((c) => c.id),
     );
   } else {
-    shouldDeactivateLink = true;
+    shouldComplete = true;
   }
 
-  if (shouldDeactivateLink) {
+  if (shouldComplete) {
     await db
-      .update(judgmentLinkTable)
-      .set({ isActive: false, regeneratedAt: now } as any)
-      .where(eq(judgmentLinkTable.id, link.id));
-    const cookieStore = await cookies();
-    cookieStore.delete("judge_link_auth");
+      .update(judgmentConfigTable)
+      .set({
+        status: "SUBMITTED",
+        endedAt: now,
+        endedBy: input.judgeId,
+        updatedAt: now,
+      } as any)
+      .where(eq(judgmentConfigTable.id, config.id));
   }
 
-  return { success: true as const, judgmentComplete: shouldDeactivateLink };
+  return { success: true as const, judgmentComplete: shouldComplete };
 }
 
 export async function previewJudgeSubmissionSummaryAction(input: {
-  token: string;
+  configId: string;
   scoresByJudgeId: Record<string, Record<string, number>>;
 }) {
-  const tokenHash = hashTokenSHA256(input.token);
-  const link = await db.query.judgmentLink.findFirst({
-    where: and(
-      eq(judgmentLinkTable.tokenHash, tokenHash),
-      eq(judgmentLinkTable.isActive, true),
-    ),
-    with: {
-      judgmentConfig: {
-        columns: {
-          id: true,
-          programmeId: true,
-          reportingSessionId: true,
-          scoreLimit: true,
-        },
-      },
-    },
-  });
-  if (!link) throw new AppError("Judgment link is invalid or expired.");
+  const config = await assertStagePortalAccessForConfig(input.configId);
 
   const assignedJudges = await db.query.judgmentConfigJudge.findMany({
-    where: eq(judgmentConfigJudgeTable.configId, link.configId),
+    where: eq(judgmentConfigJudgeTable.configId, config.id),
     columns: { judgeId: true },
   });
   const assignedJudgeIds = new Set(assignedJudges.map((row) => row.judgeId));
   if (assignedJudgeIds.size === 0) {
-    throw new AppError("No judges are assigned for this judgment link.");
+    throw new AppError("No judges are assigned for this judgment round.");
   }
 
   const codeLetters = await db.query.programmeCodeLetter.findMany({
     where: and(
-      eq(codeLetterTable.programmeId, link.judgmentConfig.programmeId),
-      eq(
-        codeLetterTable.reportingSessionId,
-        link.judgmentConfig.reportingSessionId,
-      ),
+      eq(codeLetterTable.programmeId, config.programmeId),
+      eq(codeLetterTable.reportingSessionId, config.reportingSessionId),
     ),
     with: { programmeCodeLetterRecipients: true },
   });
@@ -1303,20 +1186,14 @@ export async function previewJudgeSubmissionSummaryAction(input: {
       if (!validCodeLetterIds.has(codeLetterId)) {
         throw new AppError("Invalid code letter score payload.");
       }
-      if (
-        !Number.isFinite(score) ||
-        score < 0 ||
-        score > link.judgmentConfig.scoreLimit
-      ) {
-        throw new AppError(
-          `Score must be between 0 and ${link.judgmentConfig.scoreLimit}.`,
-        );
+      if (!Number.isFinite(score) || score < 0 || score > config.scoreLimit) {
+        throw new AppError(`Score must be between 0 and ${config.scoreLimit}.`);
       }
     }
   }
 
   const allScores = await db.query.judgmentScore.findMany({
-    where: eq(judgmentScoreTable.configId, link.configId),
+    where: eq(judgmentScoreTable.configId, config.id),
     columns: { judgeId: true, codeLetterId: true, score: true },
   });
   const mergedScores = new Map<string, number>();
@@ -1332,7 +1209,7 @@ export async function previewJudgeSubmissionSummaryAction(input: {
   }
 
   const programmeRow = await db.query.programme.findFirst({
-    where: eq(programmeTable.id, link.judgmentConfig.programmeId),
+    where: eq(programmeTable.id, config.programmeId),
     columns: { festivalId: true, categoryId: true, type: true },
   });
   if (!programmeRow) throw new AppError("Programme not found.");
@@ -1362,8 +1239,8 @@ export async function previewJudgeSubmissionSummaryAction(input: {
     if (firstRecipient) {
       const assignmentRow = await db.query.programmeAssignment.findFirst({
         where: and(
-          eq(assignmentTable.programmeId, link.judgmentConfig.programmeId),
-          eq(assignmentTable.studentId, firstRecipient.studentId),
+          eq(assignmentTable.programmeId, config.programmeId),
+          eq(assignmentTable.participantId, firstRecipient.participantId),
         ),
         columns: { groupId: true, teamNumber: true },
       });
@@ -1374,7 +1251,7 @@ export async function previewJudgeSubmissionSummaryAction(input: {
           .from(assignmentTable)
           .where(
             and(
-              eq(assignmentTable.programmeId, link.judgmentConfig.programmeId),
+              eq(assignmentTable.programmeId, config.programmeId),
               eq(assignmentTable.teamNumber, assignmentRow.teamNumber ?? 1),
               assignmentRow.groupId
                 ? eq(assignmentTable.groupId, assignmentRow.groupId)
@@ -1388,7 +1265,7 @@ export async function previewJudgeSubmissionSummaryAction(input: {
     const policyResolved = await resolveScoringPolicy({
       festivalId: programmeRow.festivalId,
       programme: {
-        id: link.judgmentConfig.programmeId,
+        id: config.programmeId,
         categoryId: programmeRow.categoryId,
         type: programmeRow.type,
       },
@@ -1410,7 +1287,7 @@ export async function previewJudgeSubmissionSummaryAction(input: {
 }
 
 export async function submitGroupJudgeScoresAction(input: {
-  token: string;
+  configId: string;
   scoresByJudgeId: Record<string, Record<string, number>>;
 }) {
   const judgeEntries = Object.entries(input.scoresByJudgeId);
@@ -1425,7 +1302,7 @@ export async function submitGroupJudgeScoresAction(input: {
     const [judgeId, scoresByCodeLetterId] = judgeEntries[i]!;
     last = await submitJudgeScoresAction(
       {
-        token: input.token,
+        configId: input.configId,
         judgeId,
         scoresByCodeLetterId,
       },

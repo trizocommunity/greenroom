@@ -1,4 +1,4 @@
-CREATE TYPE "public"."PosterTemplateStatus" AS ENUM('DRAFT', 'PUBLISHED');--> statement-breakpoint
+﻿CREATE TYPE "public"."PosterTemplateStatus" AS ENUM('DRAFT', 'PUBLISHED');--> statement-breakpoint
 CREATE TYPE "public"."PosterTemplateType" AS ENUM('RESULT', 'TEAM_POINTS', 'CANDIDATE_CARD');--> statement-breakpoint
 CREATE TYPE "public"."PublicDisplayMode" AS ENUM('programme_results', 'team_standings');--> statement-breakpoint
 ALTER TYPE "public"."FestivalRole" ADD VALUE 'MEDIA';--> statement-breakpoint
@@ -155,6 +155,6 @@ CREATE UNIQUE INDEX "group_festivalId_name_key" ON "group" USING btree ("festiva
 CREATE UNIQUE INDEX "payment_userId_purpose_pending_unique_idx" ON "payment" USING btree ("userId","purpose") WHERE "payment"."status" = 'PENDING' AND "payment"."used" = false;--> statement-breakpoint
 CREATE INDEX "programme_assignment_programmeId_teamNumber_idx" ON "programme_assignment" USING btree ("programmeId","teamNumber");--> statement-breakpoint
 CREATE INDEX "programme_notification_recipientUserId_createdAt_idx" ON "programme_notification" USING btree ("recipientUserId","createdAt" DESC NULLS FIRST);--> statement-breakpoint
-CREATE INDEX "programme_notification_recipientStudentId_createdAt_idx" ON "programme_notification" USING btree ("recipientStudentId","createdAt" DESC NULLS FIRST);--> statement-breakpoint
+CREATE INDEX "programme_notification_recipientParticipantId_createdAt_idx" ON "programme_notification" USING btree ("recipientParticipantId","createdAt" DESC NULLS FIRST);--> statement-breakpoint
 CREATE INDEX "result_programmeId_position_idx" ON "result" USING btree ("programmeId","position");--> statement-breakpoint
 CREATE UNIQUE INDEX "stage_festivalId_name_key" ON "stage" USING btree ("festivalId","name");

@@ -13,7 +13,7 @@ export async function enrichProgrammesAssignmentsResultCodeLetters<
   T extends {
     id: string;
     assignments: Array<{
-      student?: { id: string } | null;
+      participant?: { id: string } | null;
       result?: { codeLetter?: { code: string } | null } | null;
     }>;
   },
@@ -54,29 +54,29 @@ export async function enrichProgrammesAssignmentsResultCodeLetters<
       code: true,
     },
     with: {
-      programmeCodeLetterRecipients: { columns: { studentId: true } },
+      programmeCodeLetterRecipients: { columns: { participantId: true } },
     },
   });
 
-  const studentCodeByProgramme = new Map<string, Map<string, string>>();
+  const participantCodeByProgramme = new Map<string, Map<string, string>>();
   for (const progId of programmeIds) {
-    studentCodeByProgramme.set(progId, new Map());
+    participantCodeByProgramme.set(progId, new Map());
   }
 
   for (const cl of letters) {
     const latestForProg = latestSessionIdByProgramme.get(cl.programmeId);
     if (latestForProg !== cl.reportingSessionId) continue;
-    const map = studentCodeByProgramme.get(cl.programmeId)!;
+    const map = participantCodeByProgramme.get(cl.programmeId)!;
     for (const r of cl.programmeCodeLetterRecipients) {
-      map.set(r.studentId, cl.code);
+      map.set(r.participantId, cl.code);
     }
   }
 
   for (const p of programmes) {
-    const map = studentCodeByProgramme.get(p.id);
+    const map = participantCodeByProgramme.get(p.id);
     if (!map) continue;
     for (const a of p.assignments) {
-      const sid = a.student?.id;
+      const sid = a.participant?.id;
       if (!sid || !a.result) continue;
       const code = map.get(sid);
       if (code) {
@@ -98,7 +98,7 @@ export async function getFestivalResultsDataBySlug(slug: string) {
           category: true,
           assignments: {
             with: {
-              student: true,
+              participant: true,
               group: true,
               result: true,
             },

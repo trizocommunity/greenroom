@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Eye, Link2, MoreVertical, RefreshCcw } from "lucide-react";
+import { Eye, MoreVertical, Play, Plus, RefreshCcw } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -42,10 +42,11 @@ import {
   formatStoredDateTime,
   parseStoredInstant,
 } from "@/core/utils/date-time";
+import { createJudgeAction } from "@/features/judges/actions/judge.actions";
 import {
-  createJudgmentConfigurationAction,
   getJudgmentDashboardDataAction,
-  regenerateJudgmentConfigurationLinkAction,
+  restartJudgmentAction,
+  startJudgmentAction,
 } from "@/features/judgment/actions/judgment.actions";
 
 type Judge = { id: string; name: string; description?: string | null };
@@ -77,7 +78,8 @@ type ActiveConfig = {
   scoreLimit: number;
   judgingMode: "SINGLE" | "GROUP";
   judges: Array<{ id: string; name: string }>;
-  activeLinkId: string | null;
+  startedAt: string | null;
+  startedBy: string | null;
   judgmentStatus: ProgrammeJudgmentStatus;
 };
 type JudgedProgrammeCard = {
@@ -127,11 +129,7 @@ type JudgmentDashboardQueryData = {
 
 function resetWizardForm() {
   return {
-    step: 2 as 2 | 3 | 4,
     selectedJudgeIds: [] as string[],
-    pinMode: "auto" as "auto" | "manual",
-    manualPin: "",
-    pinLength: 4 as 4 | 5 | 6,
     judgingMode: "GROUP" as "SINGLE" | "GROUP",
   };
 }
@@ -163,8 +161,8 @@ export function JudgmentWizardClient({
         return "Awaiting judges";
       case "SCORING_IN_PROGRESS":
         return "Scoring in progress";
-      case "LINK_ACTIVE":
-        return "Link active";
+      case "LIVE":
+        return "Live";
       default:
         return "Not started";
     }
@@ -183,7 +181,7 @@ export function JudgmentWizardClient({
   );
   const [completedDetail, setCompletedDetail] =
     useState<JudgedProgrammeCard | null>(null);
-  const [reportedStudentsView, setReportedStudentsView] = useState<{
+  const [reportedParticipantsView, setReportedParticipantsView] = useState<{
     programmeName: string;
     programmeCategory: string | null;
     programmeType: "INDIVIDUAL" | "GROUP";
@@ -194,22 +192,10 @@ export function JudgmentWizardClient({
   );
   const [wizardKind, setWizardKind] = useState<"create" | "rejudge">("create");
 
-  const [step, setStep] = useState<2 | 3 | 4>(2);
   const [selectedJudgeIds, setSelectedJudgeIds] = useState<string[]>([]);
-  const [generatedUrlByConfigId, setGeneratedUrlByConfigId] = useState<
-    Record<string, string>
-  >({});
-  const [generatedPinByConfigId, setGeneratedPinByConfigId] = useState<
-    Record<string, string>
-  >({});
-  const [pinMode, setPinMode] = useState<"auto" | "manual">("auto");
-  const [manualPin, setManualPin] = useState("");
-  const [pinLength, setPinLength] = useState<4 | 5 | 6>(4);
   const [judgingMode, setJudgingMode] = useState<"SINGLE" | "GROUP">("GROUP");
-  /** Config id from the most recent successful generate in this dialog (covers pre-refresh). */
-  const [lastCreatedConfigId, setLastCreatedConfigId] = useState<string | null>(
-    null,
-  );
+  const [newJudgeName, setNewJudgeName] = useState("");
+  const [isAddingJudge, startAddJudgeTransition] = useTransition();
   const dashboardQuery = useQuery<JudgmentDashboardQueryData>({
     queryKey: queryKeys.judgment.dashboard(festivalId),
     queryFn: () =>
@@ -327,26 +313,20 @@ export function JudgmentWizardClient({
 
   const canGenerate = Boolean(wizardProgramme) && selectedJudgeIds.length > 0;
   const hasUnsavedWizardInputs =
-    dialogOpen &&
-    (selectedJudgeIds.length > 0 ||
-      step !== 2 ||
-      pinMode === "manual" ||
-      manualPin.trim().length > 0);
+    dialogOpen && (selectedJudgeIds.length > 0 || newJudgeName.trim().length > 0);
 
   const openWizardForProgramme = (
     programmeId: string,
     kind: "create" | "rejudge" = "create",
   ) => {
     const r = resetWizardForm();
+    const priorJudgeIds =
+      judgedByProgrammeId.get(programmeId)?.judges.map((j) => j.id) ?? [];
     setWizardKind(kind);
     setWizardProgrammeId(programmeId);
-    setStep(r.step);
-    setSelectedJudgeIds(r.selectedJudgeIds);
-    setPinMode(r.pinMode);
-    setManualPin(r.manualPin);
-    setPinLength(r.pinLength);
+    setSelectedJudgeIds(priorJudgeIds.length ? priorJudgeIds : r.selectedJudgeIds);
     setJudgingMode(r.judgingMode);
-    setLastCreatedConfigId(null);
+    setNewJudgeName("");
     setDialogOpen(true);
   };
 
@@ -354,8 +334,6 @@ export function JudgmentWizardClient({
     setDialogOpen(false);
     setWizardProgrammeId(null);
     setWizardKind("create");
-    setStep(2);
-    setLastCreatedConfigId(null);
   };
 
   const toggleJudge = (judgeId: string) => {
@@ -366,77 +344,55 @@ export function JudgmentWizardClient({
     );
   };
 
-  const onGenerate = () => {
+  const onAddJudge = () => {
+    const name = newJudgeName.trim();
+    if (!name) return;
+    startAddJudgeTransition(async () => {
+      try {
+        const created = await createJudgeAction(festivalId, { name });
+        if (created) {
+          setSelectedJudgeIds((prev) => [...prev, created.id]);
+        }
+        setNewJudgeName("");
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.judgment.dashboard(festivalId),
+        });
+        toast.success("Judge added.");
+      } catch (error: any) {
+        toast.error(error?.message ?? "Failed to add judge.");
+      }
+    });
+  };
+
+  const onStartJudgment = () => {
     if (!wizardProgramme) return;
     startTransition(async () => {
       try {
-        const result = await createJudgmentConfigurationAction({
-          festivalId,
-          programmeId: wizardProgramme.id,
-          scoreLimit: POLICY_SCORE_LIMIT,
-          judgeIds: selectedJudgeIds,
-          judgingMode,
-          manualPin: pinMode === "manual" ? manualPin : null,
-          pinLength,
-        });
-        setGeneratedUrlByConfigId((prev) => ({
-          ...prev,
-          [result.configId]: result.judgeUrl,
-        }));
-        setGeneratedPinByConfigId((prev) => ({
-          ...prev,
-          [result.configId]: result.judgePin,
-        }));
-        setLastCreatedConfigId(result.configId);
+        if (wizardKind === "rejudge") {
+          await restartJudgmentAction({
+            festivalId,
+            programmeId: wizardProgramme.id,
+            judgeIds: selectedJudgeIds,
+          });
+        } else {
+          await startJudgmentAction({
+            festivalId,
+            programmeId: wizardProgramme.id,
+            scoreLimit: POLICY_SCORE_LIMIT,
+            judgeIds: selectedJudgeIds,
+            judgingMode,
+          });
+        }
         await queryClient.invalidateQueries({
           queryKey: queryKeys.judgment.dashboard(festivalId),
         });
-        toast.success("Judgment link generated.");
-        setStep(4);
+        toast.success("Judgment started — live on the stage portal now.");
+        closeDialog();
       } catch (error: any) {
-        toast.error(error?.message ?? "Failed to generate judgment link.");
+        toast.error(error?.message ?? "Failed to start judgment.");
       }
     });
   };
-
-  const onRegenerate = (configId: string) => {
-    startTransition(async () => {
-      try {
-        const result = await regenerateJudgmentConfigurationLinkAction({
-          festivalId,
-          configId,
-          manualPin: pinMode === "manual" ? manualPin : null,
-          pinLength,
-        });
-        setGeneratedUrlByConfigId((prev) => ({
-          ...prev,
-          [configId]: result.judgeUrl,
-        }));
-        setGeneratedPinByConfigId((prev) => ({
-          ...prev,
-          [configId]: result.judgePin,
-        }));
-        setLastCreatedConfigId(configId);
-        await queryClient.invalidateQueries({
-          queryKey: queryKeys.judgment.dashboard(festivalId),
-        });
-        toast.success("Judgment link regenerated.");
-      } catch (error: any) {
-        toast.error(error?.message ?? "Failed to regenerate link.");
-      }
-    });
-  };
-
-  const activeForWizard = wizardProgrammeId
-    ? activeByProgrammeId.get(wizardProgrammeId)
-    : undefined;
-  const step4ConfigId = lastCreatedConfigId ?? activeForWizard?.id;
-  const dialogGeneratedUrl = step4ConfigId
-    ? generatedUrlByConfigId[step4ConfigId]
-    : undefined;
-  const dialogGeneratedPin = step4ConfigId
-    ? generatedPinByConfigId[step4ConfigId]
-    : undefined;
 
   useEffect(() => {
     registerDirtySource(dirtySourceId);
@@ -470,12 +426,6 @@ export function JudgmentWizardClient({
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {judgeProgrammes.map((p) => {
               const active = activeByProgrammeId.get(p.id);
-              const url = active
-                ? generatedUrlByConfigId[active.id]
-                : undefined;
-              const pin = active
-                ? generatedPinByConfigId[active.id]
-                : undefined;
               return (
                 <Card
                   key={p.id}
@@ -504,8 +454,8 @@ export function JudgmentWizardClient({
                       <>
                         <p className="rounded-md border bg-muted/20 px-2 py-1 text-[10px] leading-relaxed text-muted-foreground">
                           {active.judgingMode} · {active.judges.length} judge
-                          {active.judges.length !== 1 ? "s" : ""}
-                          {!active.activeLinkId ? " · link closed" : ""}
+                          {active.judges.length !== 1 ? "s" : ""} ·{" "}
+                          {judgmentStatusLabel(active.judgmentStatus)}
                         </p>
                         {p.reportingDetails ? (
                           <div className="space-y-0.5 text-[10px] text-muted-foreground">
@@ -523,98 +473,26 @@ export function JudgmentWizardClient({
                             </p>
                           </div>
                         ) : null}
-                        <div className="grid grid-cols-2 gap-1 sm:flex sm:flex-wrap sm:gap-1.5">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-6 px-2 text-[10px] sm:h-7 sm:px-2.5 sm:text-xs"
-                            onClick={() => {
-                              if (!p.reportingDetails) return;
-                              setReportedStudentsView({
-                                programmeName: p.name,
-                                programmeCategory: p.programmeCategory ?? null,
-                                programmeType: p.programmeType,
-                                details: p.reportingDetails,
-                              });
-                            }}
-                            disabled={!p.reportingDetails}
-                          >
-                            {p.programmeType === "GROUP"
-                              ? "View reported teams"
-                              : "View reported students"}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            className="h-6 px-2 text-[10px] sm:h-7 sm:px-2.5 sm:text-xs"
-                            onClick={async () => {
-                              if (!url) {
-                                toast.info(
-                                  "Regenerate first to copy a fresh URL.",
-                                );
-                                return;
-                              }
-                              await navigator.clipboard.writeText(url);
-                              toast.success("Link copied.");
-                            }}
-                            disabled={isPending}
-                          >
-                            <Copy className="mr-1 h-3 w-3" />
-                            Copy
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            className="h-6 px-2 text-[10px] sm:h-7 sm:px-2.5 sm:text-xs"
-                            onClick={async () => {
-                              if (!pin) {
-                                toast.info(
-                                  "Regenerate first to copy a fresh PIN.",
-                                );
-                                return;
-                              }
-                              await navigator.clipboard.writeText(pin);
-                              toast.success("PIN copied.");
-                            }}
-                            disabled={isPending}
-                          >
-                            <Copy className="mr-1 h-3 w-3" />
-                            Copy PIN
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            className="h-6 px-2 text-[10px] sm:h-7 sm:px-2.5 sm:text-xs"
-                            onClick={() => onRegenerate(active.id)}
-                            disabled={isPending}
-                          >
-                            <RefreshCcw className="mr-1 h-3 w-3" />
-                            Regenerate
-                          </Button>
-                        </div>
-                        {url ? (
-                          <div className="space-y-1 rounded-md border border-purple/40 bg-purple/10 px-2 py-1.5">
-                            <p
-                              className="truncate font-mono text-[9px] text-foreground sm:text-[10px]"
-                              title={url}
-                            >
-                              {url}
-                            </p>
-                            {pin ? (
-                              <p className="font-mono text-[10px] sm:text-[11px]">
-                                <span className="text-muted-foreground">
-                                  Pincode{" "}
-                                </span>
-                                <span className="font-semibold tracking-wider text-purple">
-                                  {pin}
-                                </span>
-                              </p>
-                            ) : null}
-                          </div>
-                        ) : null}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-6 px-2 text-[10px] sm:h-7 sm:px-2.5 sm:text-xs"
+                          onClick={() => {
+                            if (!p.reportingDetails) return;
+                            setReportedParticipantsView({
+                              programmeName: p.name,
+                              programmeCategory: p.programmeCategory ?? null,
+                              programmeType: p.programmeType,
+                              details: p.reportingDetails,
+                            });
+                          }}
+                          disabled={!p.reportingDetails}
+                        >
+                          {p.programmeType === "GROUP"
+                            ? "View reported teams"
+                            : "View reported participants"}
+                        </Button>
                       </>
                     ) : null}
                     <div className="mt-auto">
@@ -626,7 +504,7 @@ export function JudgmentWizardClient({
                           className="h-7 text-[11px] sm:h-8 sm:flex-1 sm:text-xs"
                           onClick={() => {
                             if (!p.reportingDetails) return;
-                            setReportedStudentsView({
+                            setReportedParticipantsView({
                               programmeName: p.name,
                               programmeCategory: p.programmeCategory ?? null,
                               programmeType: p.programmeType,
@@ -646,8 +524,8 @@ export function JudgmentWizardClient({
                               openWizardForProgramme(p.id, "create")
                             }
                           >
-                            <Link2 className="mr-1.5 h-3.5 w-3.5" />
-                            Generate link
+                            <Play className="mr-1.5 h-3.5 w-3.5" />
+                            Start Judgment
                           </Button>
                         ) : null}
                       </div>
@@ -843,41 +721,44 @@ export function JudgmentWizardClient({
       </div>
 
       <Dialog
-        open={Boolean(reportedStudentsView)}
-        onOpenChange={(open) => !open && setReportedStudentsView(null)}
+        open={Boolean(reportedParticipantsView)}
+        onOpenChange={(open) => !open && setReportedParticipantsView(null)}
       >
         <DialogContent className="max-h-[min(90dvh,720px)] w-[calc(100%-1rem)] max-w-lg overflow-y-auto p-4 sm:w-[calc(100%-1.5rem)] sm:p-6">
-          {reportedStudentsView ? (
+          {reportedParticipantsView ? (
             <>
               <DialogHeader>
-                <DialogTitle>{reportedStudentsView.programmeName}</DialogTitle>
+                <DialogTitle>
+                  {reportedParticipantsView.programmeName}
+                </DialogTitle>
                 <DialogDescription>
-                  Stage {reportedStudentsView.details.stageName ?? "—"} ·{" "}
-                  {reportedStudentsView.details.scheduleStart
+                  Stage {reportedParticipantsView.details.stageName ?? "—"} ·{" "}
+                  {reportedParticipantsView.details.scheduleStart
                     ? formatCardDateTime(
-                        reportedStudentsView.details.scheduleStart,
+                        reportedParticipantsView.details.scheduleStart,
                       )
                     : "No schedule time"}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3 pt-2">
                 <p className="text-sm text-muted-foreground">
-                  {reportedStudentsView.programmeType === "GROUP"
-                    ? `Reported teams (${reportedStudentsView.details.reportedCount})`
-                    : `Reported students (${reportedStudentsView.details.reportedCount})`}
+                  {reportedParticipantsView.programmeType === "GROUP"
+                    ? `Reported teams (${reportedParticipantsView.details.reportedCount})`
+                    : `Reported participants (${reportedParticipantsView.details.reportedCount})`}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Category: {reportedStudentsView.programmeCategory ?? "—"}
+                  Category: {reportedParticipantsView.programmeCategory ?? "—"}
                 </p>
-                {reportedStudentsView.details.reportedEntries.length === 0 ? (
+                {reportedParticipantsView.details.reportedEntries.length ===
+                0 ? (
                   <Card>
                     <CardContent className="p-4 text-sm text-muted-foreground">
-                      No reported student details available.
+                      No reported participant details available.
                     </CardContent>
                   </Card>
                 ) : (
                   <div className="max-h-[min(56vh,26rem)] space-y-1 overflow-y-auto rounded-lg border bg-card p-1.5">
-                    {reportedStudentsView.details.reportedEntries.map(
+                    {reportedParticipantsView.details.reportedEntries.map(
                       (entry) => (
                         <div
                           key={`${entry.label}-${entry.codeLetter ?? "na"}`}
@@ -888,16 +769,19 @@ export function JudgmentWizardClient({
                               {entry.label}
                             </p>
                             <span className="shrink-0 rounded border bg-muted px-2 py-0.5 font-mono text-xs font-semibold text-foreground">
-                              {reportedStudentsView.programmeType === "GROUP"
+                              {reportedParticipantsView.programmeType ===
+                              "GROUP"
                                 ? `Team ${entry.codeLetter ?? "—"}`
                                 : (entry.codeLetter ?? "—")}
                             </span>
                           </div>
-                          {reportedStudentsView.programmeType === "GROUP" ? (
+                          {reportedParticipantsView.programmeType ===
+                          "GROUP" ? (
                             <div className="mt-1 text-[10px] leading-tight text-muted-foreground">
                               <p className="truncate">
                                 Group ·{" "}
-                                {reportedStudentsView.programmeCategory ?? "—"}
+                                {reportedParticipantsView.programmeCategory ??
+                                  "—"}
                               </p>
                             </div>
                           ) : (
@@ -905,7 +789,7 @@ export function JudgmentWizardClient({
                               <p className="truncate">
                                 Individual · {entry.groupName ?? "—"} ·{" "}
                                 {entry.categoryName ??
-                                  reportedStudentsView.programmeCategory ??
+                                  reportedParticipantsView.programmeCategory ??
                                   "—"}
                               </p>
                             </div>
@@ -930,9 +814,7 @@ export function JudgmentWizardClient({
         <DialogContent className="max-h-[min(90dvh,720px)] w-[calc(100%-1rem)] max-w-lg overflow-y-auto p-4 sm:w-[calc(100%-1.5rem)] sm:p-6">
           <DialogHeader>
             <DialogTitle>
-              {wizardKind === "rejudge"
-                ? "Rejudge — new link"
-                : "Generate judge link"}
+              {wizardKind === "rejudge" ? "Rejudge" : "Start Judgment"}
             </DialogTitle>
             <DialogDescription>
               {wizardProgramme ? (
@@ -946,260 +828,108 @@ export function JudgmentWizardClient({
                   </span>
                 </>
               ) : (
-                "Select score limit and judges, then generate."
+                "Select judges, then start."
               )}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3 pt-1 sm:space-y-4 sm:pt-2">
-            <p className="text-xs text-muted-foreground sm:text-sm">
-              Step {step - 1} of 3
-            </p>
-
-            {step === 2 ? (
-              <div className="space-y-3">
-                <div className="rounded-md border bg-muted/20 px-2.5 py-2">
-                  <p className="text-[11px] text-muted-foreground">
-                    Score limit is enforced by scoring policy.
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-foreground">
-                    Selected judges: {selectedJudgeIds.length}
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Select judges
-                  </Label>
-                  <div className="grid max-h-[170px] gap-1.5 overflow-y-auto rounded-md border p-1.5 sm:max-h-[210px]">
-                    {judges.map((j) => (
-                      <label
-                        key={j.id}
-                        className={`flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs transition-colors sm:text-sm ${
-                          selectedJudgeIds.includes(j.id)
-                            ? "border-purple/60 bg-purple/10"
-                            : "bg-background"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedJudgeIds.includes(j.id)}
-                          onChange={() => toggleJudge(j.id)}
-                        />
-                        <span className="font-medium">{j.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                Judges ({selectedJudgeIds.length} selected)
+              </Label>
+              <div className="grid max-h-[170px] gap-1.5 overflow-y-auto rounded-md border p-1.5 sm:max-h-[210px]">
+                {judges.map((j) => (
+                  <label
+                    key={j.id}
+                    className={`flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs transition-colors sm:text-sm ${
+                      selectedJudgeIds.includes(j.id)
+                        ? "border-purple/60 bg-purple/10"
+                        : "bg-background"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedJudgeIds.includes(j.id)}
+                      onChange={() => toggleJudge(j.id)}
+                    />
+                    <span className="font-medium">{j.name}</span>
+                  </label>
+                ))}
                 {judges.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">
-                    No judges yet — add one from the Judges page first.
+                  <p className="px-1 py-1 text-xs text-muted-foreground">
+                    No judges yet — add one below.
                   </p>
                 ) : null}
-
+              </div>
+              <div className="flex gap-1.5">
+                <Input
+                  value={newJudgeName}
+                  onChange={(e) => setNewJudgeName(e.target.value)}
+                  placeholder="New judge name"
+                  className="h-8 text-xs sm:h-9 sm:text-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      onAddJudge();
+                    }
+                  }}
+                />
                 <Button
-                  className="h-8 text-xs w-full sm:h-9"
                   type="button"
-                  onClick={() => setStep(3)}
-                  disabled={!canGenerate}
+                  variant="outline"
+                  size="sm"
+                  className="h-8 shrink-0 text-xs sm:h-9"
+                  onClick={onAddJudge}
+                  disabled={isAddingJudge || !newJudgeName.trim()}
                 >
-                  Continue
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  Add
                 </Button>
               </div>
-            ) : null}
+            </div>
 
-            {step === 3 ? (
-              <div className="space-y-3">
-                <div className="space-y-2 rounded-lg border border-border/70 bg-muted/10 p-2.5">
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Judging mode
-                  </Label>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <button
-                      type="button"
-                      className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${judgingMode === "SINGLE" ? "border-purple/60 bg-purple/10" : "bg-background hover:bg-muted/40"}`}
-                      onClick={() => setJudgingMode("SINGLE")}
-                    >
-                      <p className="font-medium">Single</p>
-                      <p className="text-xs text-muted-foreground">
-                        Each judge scores independently.
-                      </p>
-                    </button>
-                    <button
-                      type="button"
-                      className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${judgingMode === "GROUP" ? "border-purple/60 bg-purple/10" : "bg-background hover:bg-muted/40"}`}
-                      onClick={() => setJudgingMode("GROUP")}
-                    >
-                      <p className="font-medium">Group</p>
-                      <p className="text-xs text-muted-foreground">
-                        Shared screen, all judges at once.
-                      </p>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-2 rounded-lg border border-border/70 bg-muted/10 p-2.5">
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Pincode
-                  </Label>
-                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                    <Button
-                      type="button"
-                      variant={pinMode === "auto" ? "default" : "outline"}
-                      size="sm"
-                      className="h-8 text-xs"
-                      onClick={() => setPinMode("auto")}
-                    >
-                      Auto
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={pinMode === "manual" ? "default" : "outline"}
-                      size="sm"
-                      className="h-8 text-xs"
-                      onClick={() => setPinMode("manual")}
-                    >
-                      Manual
-                    </Button>
-                    <select
-                      className="col-span-2 h-8 rounded-md border bg-background px-2 text-xs sm:col-span-1 sm:h-9 sm:text-sm"
-                      value={pinLength}
-                      onChange={(e) =>
-                        setPinLength(Number(e.target.value) as 4 | 5 | 6)
-                      }
-                    >
-                      <option value={4}>4 digits</option>
-                      <option value={5}>5 digits</option>
-                      <option value={6}>6 digits</option>
-                    </select>
-                  </div>
-                  {pinMode === "manual" ? (
-                    <Input
-                      value={manualPin}
-                      onChange={(e) =>
-                        setManualPin(
-                          e.target.value.replace(/\D/g, "").slice(0, 6),
-                        )
-                      }
-                      placeholder="4–6 digit PIN"
-                      inputMode="numeric"
-                      className="h-8 text-xs sm:h-9 sm:text-sm"
-                    />
-                  ) : null}
-                </div>
-
-                <div className="flex gap-2 pt-1">
-                  <Button
-                    className="h-8 flex-1 text-xs sm:h-9 sm:flex-none"
-                    type="button"
-                    variant="outline"
-                    onClick={() => setStep(2)}
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    className="h-8 flex-1 text-xs sm:h-9 sm:flex-none"
-                    type="button"
-                    onClick={onGenerate}
-                    disabled={
-                      !canGenerate ||
-                      isPending ||
-                      (pinMode === "manual" && !/^\d{4,6}$/.test(manualPin))
-                    }
-                  >
-                    Generate link
-                  </Button>
-                </div>
+            <div className="space-y-2 rounded-lg border border-border/70 bg-muted/10 p-2.5">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                Judging mode
+              </Label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${judgingMode === "SINGLE" ? "border-purple/60 bg-purple/10" : "bg-background hover:bg-muted/40"}`}
+                  onClick={() => setJudgingMode("SINGLE")}
+                >
+                  <p className="font-medium">Single</p>
+                  <p className="text-xs text-muted-foreground">
+                    Each judge scores independently.
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${judgingMode === "GROUP" ? "border-purple/60 bg-purple/10" : "bg-background hover:bg-muted/40"}`}
+                  onClick={() => setJudgingMode("GROUP")}
+                >
+                  <p className="font-medium">Group</p>
+                  <p className="text-xs text-muted-foreground">
+                    Shared screen, all judges at once.
+                  </p>
+                </button>
               </div>
-            ) : null}
+            </div>
 
-            {step === 4 ? (
-              <div className="space-y-3">
-                <p className="text-xs text-muted-foreground sm:text-sm">
-                  Share the link and PIN with judges. Copy now — the PIN is not
-                  stored in plain text.
-                </p>
-                {dialogGeneratedUrl ? (
-                  <div className="space-y-2 rounded-lg border border-purple/40 bg-purple/10 p-3 text-xs shadow-sm">
-                    <div className="rounded-md border border-purple/20 bg-background/70 p-2">
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                        Judge link
-                      </p>
-                      <p className="mt-1 break-all font-mono text-[11px] text-foreground">
-                        {dialogGeneratedUrl}
-                      </p>
-                    </div>
-                    {dialogGeneratedPin ? (
-                      <div className="rounded-md border border-purple/20 bg-background/70 p-2">
-                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                          Pincode
-                        </p>
-                        <p className="mt-1 font-mono text-base font-bold tracking-widest text-purple">
-                          {dialogGeneratedPin}
-                        </p>
-                      </div>
-                    ) : null}
-                    <div className="flex flex-wrap gap-1.5 pt-1 sm:gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          await navigator.clipboard.writeText(
-                            dialogGeneratedUrl,
-                          );
-                          toast.success("Link copied.");
-                        }}
-                      >
-                        <Copy className="h-3.5 w-3.5 mr-1" />
-                        Copy link
-                      </Button>
-                      {dialogGeneratedPin ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={async () => {
-                            await navigator.clipboard.writeText(
-                              dialogGeneratedPin,
-                            );
-                            toast.success("PIN copied.");
-                          }}
-                        >
-                          Copy pincode
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                ) : null}
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    className="h-8 text-xs sm:h-9 sm:text-sm"
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      const r = resetWizardForm();
-                      setStep(r.step);
-                      setSelectedJudgeIds(r.selectedJudgeIds);
-                      setPinMode(r.pinMode);
-                      setManualPin(r.manualPin);
-                      setPinLength(r.pinLength);
-                      setJudgingMode(r.judgingMode);
-                      setLastCreatedConfigId(null);
-                    }}
-                  >
-                    New link (same programme)
-                  </Button>
-                  <Button
-                    className="h-8 text-xs sm:h-9 sm:text-sm"
-                    type="button"
-                    onClick={closeDialog}
-                  >
-                    Done
-                  </Button>
-                </div>
-              </div>
-            ) : null}
+            <Button
+              className="h-9 w-full text-xs sm:text-sm"
+              type="button"
+              onClick={onStartJudgment}
+              disabled={!canGenerate || isPending}
+            >
+              <Play className="mr-1.5 h-3.5 w-3.5" />
+              {isPending
+                ? "Starting…"
+                : wizardKind === "rejudge"
+                  ? "Restart judgment"
+                  : "Start judgment"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

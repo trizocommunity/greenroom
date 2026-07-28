@@ -1,4 +1,4 @@
-# STANDARD Plan
+﻿# STANDARD Plan
 
 **Purpose:** Mid-tier festival plan. Single source of truth for spec, behavior, and how it is enforced in the codebase.
 
@@ -10,14 +10,14 @@
 
 | Item | Value |
 |------|--------|
-| **Price** | ₹3,000 |
+| **Price** | â‚¹3,000 |
 | **Duration** | 30 days (active) |
 
 ### Limits
 
 | Resource | Limit |
 |----------|--------|
-| Students | 500 |
+| Participants | 500 |
 | Programmes | 250 |
 | Events | 25 |
 | Stages | 20 |
@@ -42,33 +42,33 @@ STANDARD adds (or expands) the following over BASIC:
 
 | Area | Feature | BASIC | STANDARD |
 |------|---------|-------|----------|
-| Pre-Works | Student profile (dashboard) | ❌ | ✅ `viewStudentProfile` |
-| Pre-Works | Public student profile `/{slug}/{studentSlug}` | ❌ | ✅ `publicStudentProfile` |
-| Pre-Works | Stage Management | ❌ | ✅ |
-| Pre-Works | Schedule / Sessions | ❌ | ✅ |
-| Pre-Works | QR Codes | ❌ | ✅ |
-| Team | Members (max 3) | ❌ (max 1) | ✅ |
-| Import/Export | Student bulk upload | ❌ | ✅ |
-| Import/Export | Programme bulk upload | ❌ | ✅ |
-| Import/Export | Excel export | ❌ | ✅ |
-| Landing & Content | Full landing page | ❌ | ✅ `fullLandingPage` |
-| Landing & Content | Gallery | ❌ | ✅ |
-| Landing & Content | News | ❌ | ✅ |
-| Branding | Custom URL | ❌ | ✅ |
-| Branding | Custom colors | ❌ | ✅ |
-| Event-Works | Live scoreboard / Leaderboard | ❌ | ✅ |
-| Settings | Festival settings | ❌ | ✅ |
-| Settings | Advanced settings | ❌ | ✅ |
-| Settings | Programme assignment deadline | ❌ | ✅ |
-| Certificates | Auto certificates | ❌ | ✅ |
-| Communication | Email notifications | ❌ | ✅ |
+| Pre-Works | Participant profile (dashboard) | âŒ | âœ… `viewParticipantProfile` |
+| Pre-Works | Public participant profile `/{slug}/{participantSlug}` | âŒ | âœ… `publicParticipantProfile` |
+| Pre-Works | Stage Management | âŒ | âœ… |
+| Pre-Works | Schedule / Sessions | âŒ | âœ… |
+| Pre-Works | QR Codes | âŒ | âœ… |
+| Team | Members (max 3) | âŒ (max 1) | âœ… |
+| Import/Export | Participant bulk upload | âŒ | âœ… |
+| Import/Export | Programme bulk upload | âŒ | âœ… |
+| Import/Export | Excel export | âŒ | âœ… |
+| Landing & Content | Full landing page | âŒ | âœ… `fullLandingPage` |
+| Landing & Content | Media | âŒ | âœ… |
+| Landing & Content | News | âŒ | âœ… |
+| Branding | Custom URL | âŒ | âœ… |
+| Branding | Custom colors | âŒ | âœ… |
+| Event-Works | Live scoreboard / Leaderboard | âŒ | âœ… |
+| Settings | Festival settings | âŒ | âœ… |
+| Settings | Advanced settings | âŒ | âœ… |
+| Settings | Programme assignment deadline | âŒ | âœ… |
+| Certificates | Auto certificates | âŒ | âœ… |
+| Communication | Email notifications | âŒ | âœ… |
 | Support | Support level | whatsapp | email; `supportResponseTime: 12` |
 
 STANDARD does **not** include (PRO only): roleBasedAccess, custom domain, white-label, API access, webhooks, live results, multi-festival management, advanced analytics, custom reports, custom certificate templates, bulk certificate generation, landing page builder, SMS/bulk notifications.
 
 ---
 
-## 3. How It’s Enforced in the Codebase
+## 3. How Itâ€™s Enforced in the Codebase
 
 ### 3.1 Config and feature resolution
 
@@ -77,20 +77,20 @@ STANDARD does **not** include (PRO only): roleBasedAccess, custom domain, white-
 
 ### 3.2 Client (UI) gating
 
-- **Sidebar:** `FestivalDashboardSidebar` uses `useFeatures()` and shows Settings, Members, Stage Management, Schedule, Sessions, QR Codes, Gallery, News, Leaderboard when the effective feature flags are true (STANDARD has them enabled).
-- **Feature gates:** Components use `useFeature(...)` or `FeatureGate` for bulk uploads, Excel export, QR, student profile links, etc., so STANDARD sees these; BASIC does not.
+- **Sidebar:** `FestivalDashboardSidebar` uses `useFeatures()` and shows Settings, Members, Stage Management, Schedule, Sessions, QR Codes, Media, News, Leaderboard when the effective feature flags are true (STANDARD has them enabled).
+- **Feature gates:** Components use `useFeature(...)` or `FeatureGate` for bulk uploads, Excel export, QR, participant profile links, etc., so STANDARD sees these; BASIC does not.
 
 ### 3.3 Server-side enforcement
 
-- **Pages:** Routes for settings, members, gallery, news, stage-management, schedule, sessions, qr-codes, leaderboard, and student profile (dashboard and public) check access via `getEffectiveFeatureEnabled(festival.tier, feature)` or `FeatureService.isFeatureEnabled(festival.tier, feature)` and redirect or `notFound()` when disabled.
-- **Actions:** Excel export (`student.actions.ts`), gallery, news, schedule, QR, team/member actions validate tier/feature and limits.
-- **Limits:** Students, programmes, events, stages, categories use `TIER_CONFIG[tier].limits` and services such as `usage-counter.service.ts`, `student.service.ts`, `category.service.ts`.
+- **Pages:** Routes for settings, members, media, news, stage-management, schedule, sessions, qr-codes, leaderboard, and participant profile (dashboard and public) check access via `getEffectiveFeatureEnabled(festival.tier, feature)` or `FeatureService.isFeatureEnabled(festival.tier, feature)` and redirect or `notFound()` when disabled.
+- **Actions:** Excel export (`participant.actions.ts`), media, news, schedule, QR, team/member actions validate tier/feature and limits.
+- **Limits:** Participants, programmes, events, stages, categories use `TIER_CONFIG[tier].limits` and services such as `usage-counter.service.ts`, `participant.service.ts`, `category.service.ts`.
 
 ### 3.4 Consistency note: two sources of truth
 
-- **FeatureService** (`lib/features.ts`): reads only `TIER_CONFIG` (no overrides). Used in some flows (e.g. Excel export, student profile checks).
-- **getEffectiveFeatureEnabled** (`plan-features.service.ts`): config + DB overrides. Used in gallery, news, schedule, QR, stage, leaderboard, etc.
-- **Recommendation:** For consistent behavior with Super Admin overrides, prefer `getEffectiveFeatureEnabled` (or a shared helper that uses the same matrix) everywhere, including Excel export and student profile. Alternatively, document where overrides do and do not apply.
+- **FeatureService** (`lib/features.ts`): reads only `TIER_CONFIG` (no overrides). Used in some flows (e.g. Excel export, participant profile checks).
+- **getEffectiveFeatureEnabled** (`plan-features.service.ts`): config + DB overrides. Used in media, news, schedule, QR, stage, leaderboard, etc.
+- **Recommendation:** For consistent behavior with Super Admin overrides, prefer `getEffectiveFeatureEnabled` (or a shared helper that uses the same matrix) everywhere, including Excel export and participant profile. Alternatively, document where overrides do and do not apply.
 
 ---
 
@@ -98,10 +98,10 @@ STANDARD does **not** include (PRO only): roleBasedAccess, custom domain, white-
 
 | Area | Mechanism |
 |------|-----------|
-| Sidebar (Stage, Schedule, QR, Settings, Members, Gallery, News, Leaderboard) | `FestivalDashboardSidebar` + `useFeatures()` from context (`effectiveFeatures`) |
-| Pages (QR, Stage, Schedule, Gallery, News, Leaderboard, Student profile) | Server: `getEffectiveFeatureEnabled(tier, feature)` or `FeatureService.isFeatureEnabled` → redirect/notFound |
-| Actions (Excel, Gallery, News, Schedule, Events, Team/Members) | Server: feature check + limits |
-| Limits (students, programmes, etc.) | `TIER_CONFIG.STANDARD.limits` in services/actions |
+| Sidebar (Stage, Schedule, QR, Settings, Members, Media, News, Leaderboard) | `FestivalDashboardSidebar` + `useFeatures()` from context (`effectiveFeatures`) |
+| Pages (QR, Stage, Schedule, Media, News, Leaderboard, Participant profile) | Server: `getEffectiveFeatureEnabled(tier, feature)` or `FeatureService.isFeatureEnabled` â†’ redirect/notFound |
+| Actions (Excel, Media, News, Schedule, Events, Team/Members) | Server: feature check + limits |
+| Limits (participants, programmes, etc.) | `TIER_CONFIG.STANDARD.limits` in services/actions |
 
 ---
 
@@ -117,16 +117,16 @@ Same as BASIC, plus any STANDARD-specific action or page that gates on tier/feat
 | Client hooks | `src/hooks/useFeature.ts` |
 | Sidebar | `src/components/festival/dashboard/FestivalDashboardSidebar.tsx` |
 | Team/member limits | `src/server/actions/team.actions.ts`, `src/server/services/member.service.ts` |
-| Excel export | `src/server/actions/student.actions.ts` |
-| Gallery / News / Schedule / QR / Leaderboard | Corresponding actions and dashboard pages |
+| Excel export | `src/server/actions/participant.actions.ts` |
+| Media / News / Schedule / QR / Leaderboard | Corresponding actions and dashboard pages |
 
 ---
 
 ## 6. Recommended follow-ups (from prior analysis)
 
 1. **Cleanup cron:** If STANDARD (or PRO) is ever given a read-only period after expiry, make the cleanup job tier-aware: delete only BASIC on expiry; for STANDARD/PRO, mark as EXPIRED and delete only after `dataRetentionDays` (if applicable).
-2. **Read-only enforcement:** If read-only is reintroduced, call `ensureFestivalWritable(festivalId)` (or equivalent) in all mutation actions (students, programmes, results, schedule, gallery, news, events) so that during the read-only window no creates/updates/deletes are allowed.
-3. **Unify feature checks:** Prefer one effective-feature source (e.g. `getEffectiveFeatureEnabled`) for all feature gating so Super Admin overrides apply consistently (including Excel export and student profile).
+2. **Read-only enforcement:** If read-only is reintroduced, call `ensureFestivalWritable(festivalId)` (or equivalent) in all mutation actions (participants, programmes, results, schedule, media, news, events) so that during the read-only window no creates/updates/deletes are allowed.
+3. **Unify feature checks:** Prefer one effective-feature source (e.g. `getEffectiveFeatureEnabled`) for all feature gating so Super Admin overrides apply consistently (including Excel export and participant profile).
 
 ---
 

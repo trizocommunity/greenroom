@@ -10,13 +10,13 @@ export const requestAccessInput = z.object({
 export const requestAccessResponse = z.discriminatedUnion("status", [
   z.object({
     status: z.literal("AUTHENTICATED"),
-    studentSlug: z.string(),
+    participantSlug: z.string(),
     festivalName: z.string(),
     expiresAt: z.string(),
   }),
   z.object({
     status: z.literal("OTP_REQUIRED"),
-    studentSlug: z.string(),
+    participantSlug: z.string(),
     festivalName: z.string(),
     debugOtp: z.string().optional(),
   }),
@@ -24,13 +24,13 @@ export const requestAccessResponse = z.discriminatedUnion("status", [
 
 export const verifyOtpInput = z.object({
   festivalSlug: z.string().min(1),
-  studentSlug: z.string().min(1),
+  participantSlug: z.string().min(1),
   otp: z.string().regex(/^\d{6}$/, "OTP must be a 6-digit code"),
 });
 
 export const verifyOtpResponse = z.object({
   success: z.literal(true),
-  studentSlug: z.string(),
+  participantSlug: z.string(),
   isTeamLeader: z.boolean(),
   expiresAt: z.string(),
 });

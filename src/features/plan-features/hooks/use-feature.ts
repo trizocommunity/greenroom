@@ -154,8 +154,8 @@ export function useFeatures() {
     canExportExcel: useFeature("excelExport"),
 
     // Import capabilities
-    canImportCsv: useFeature("studentImport"),
-    canBulkUploadStudents: useFeature("studentBulkUpload"),
+    canImportCsv: useFeature("participantImport"),
+    canBulkUploadParticipants: useFeature("participantBulkUpload"),
     canBulkUploadProgrammes: useFeature("programmeBulkUpload"),
 
     // UI Access
@@ -172,7 +172,7 @@ export function useFeatures() {
     hasLiveResults: useFeature("liveResults"),
     canUseAdvancedSettings: useFeature("advancedSettings"),
     canUseCustomColors: useFeature("customColors"),
-    canManageGallery: useFeature("gallery"),
+    canManageMedia: useFeature("media"),
     canManageNews: useFeature("news"),
     // Support
     supportLevel: useFeatureValue<string>("supportLevel"),

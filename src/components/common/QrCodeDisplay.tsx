@@ -23,9 +23,9 @@ export interface QrCodeDisplayProps {
   size?: number;
   /** Show a "View" icon button that opens a dialog with larger QR and optional link */
   showViewButton?: boolean;
-  /** When View is clicked, open this URL (e.g. student profile page). Shown in dialog. */
+  /** When View is clicked, open this URL (e.g. participant profile page). Shown in dialog. */
   viewHref?: string;
-  /** Label for the view action (e.g. "Open student page") */
+  /** Label for the view action (e.g. "Open participant page") */
   viewLabel?: string;
   /** Highlight the view button (primary styling) */
   highlightViewButton?: boolean;

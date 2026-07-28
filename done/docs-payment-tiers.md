@@ -1,4 +1,4 @@
-# Create TIER Payment Documentation
+﻿# Create TIER Payment Documentation
 
 ## Context
 
@@ -15,7 +15,7 @@ Need comprehensive documentation for BASIC, STANDARD, and PRO payment tiers.
 
 ### Step 1: Create `docs/TIER.md` - Unified Tier Overview
 - [ ] Document all three tiers with comparison table
-- [ ] Include: price, duration, limits (students, programmes, events, stages, storage, categories)
+- [ ] Include: price, duration, limits (participants, programmes, events, stages, storage, categories)
 - [ ] Document support tiers (WhatsApp 24h, Email 12h, Priority 4h)
 - [ ] Note current stage: only PRO integrated, BASIC/STANDARD coded but hidden
 

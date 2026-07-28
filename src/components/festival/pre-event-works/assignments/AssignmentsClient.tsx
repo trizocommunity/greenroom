@@ -8,8 +8,8 @@ import { toast } from "sonner";
 import { useAssignments, useDeleteAssignment } from "@/api/client/assignments";
 import { useCategories } from "@/api/client/categories";
 import { useGroups } from "@/api/client/groups";
+import { useParticipants } from "@/api/client/participants";
 import { useProgrammes } from "@/api/client/programmes";
-import { useStudents } from "@/api/client/students";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { DeadlinesCard } from "@/components/festival/pre-event-works/DeadlinesCard";
 import { ProgrammeActivityTimeline } from "@/components/festival/pre-event-works/programmes/ProgrammeActivityTimeline";
@@ -207,10 +207,10 @@ export function AssignmentsClient({
   const { data: programmes = [] } = useProgrammes(festivalId);
   const { data: categories = [] } = useCategories(festivalId);
   const { data: groups = [] } = useGroups(festivalId);
-  const { data: students = [], isLoading: isStudentsLoading } =
-    useStudents(festivalId);
+  const { data: participants = [], isLoading: isParticipantsLoading } =
+    useParticipants(festivalId);
 
-  const isLoading = isAssignmentsLoading || isStudentsLoading;
+  const isLoading = isAssignmentsLoading || isParticipantsLoading;
 
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<
@@ -266,7 +266,7 @@ export function AssignmentsClient({
   const filteredAssignments = useMemo(() => {
     return assignments.filter((a: any) => {
       if (filterGroup !== "ALL") {
-        const assignmentGroupId = a.group?.id || a.student?.groupId;
+        const assignmentGroupId = a.group?.id || a.participant?.groupId;
         if (assignmentGroupId !== filterGroup) return false;
       }
       if (filterCategory !== "ALL") {
@@ -278,12 +278,12 @@ export function AssignmentsClient({
       }
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
-        const studentName = a.student?.name?.toLowerCase() || "";
+        const participantName = a.participant?.name?.toLowerCase() || "";
         const programmeName = a.programme?.name?.toLowerCase() || "";
         const groupName =
-          (a.group?.name || a.student?.group?.name)?.toLowerCase() || "";
+          (a.group?.name || a.participant?.group?.name)?.toLowerCase() || "";
         if (
-          !studentName.includes(query) &&
+          !participantName.includes(query) &&
           !programmeName.includes(query) &&
           !groupName.includes(query)
         ) {
@@ -311,11 +311,12 @@ export function AssignmentsClient({
 
     for (const a of filteredAssignments) {
       if (a.programme?.type === "GROUP") {
-        const gid = a.group?.id || a.student?.groupId;
+        const gid = a.group?.id || a.participant?.groupId;
         if (!gid) continue;
         const tn = a.teamNumber ?? 1;
         const key = `${a.programmeId}-${gid}-${tn}`;
-        const groupName = a.group?.name || a.student?.group?.name || "Unknown";
+        const groupName =
+          a.group?.name || a.participant?.group?.name || "Unknown";
         if (!teamMap.has(key)) {
           teamMap.set(key, {
             programme: a.programme,
@@ -440,17 +441,20 @@ export function AssignmentsClient({
       const catInfo = categories.find((cat: any) => cat.id === c.categoryId);
       const isGeneral = catInfo?.type === "GENERAL";
 
-      // Eligible student pool for this programme's category
-      const eligibleStudents =
+      // Eligible participant pool for this programme's category
+      const eligibleParticipants =
         isGeneral || !c.categoryId
-          ? students
-          : students.filter((s: any) => s.categoryId === c.categoryId);
+          ? participants
+          : participants.filter((s: any) => s.categoryId === c.categoryId);
 
-      // Group students by groupId to calculated group-wise capacity
-      const studentCountByGroup = new Map<string, number>();
-      for (const s of eligibleStudents) {
+      // Group participants by groupId to calculated group-wise capacity
+      const participantCountByGroup = new Map<string, number>();
+      for (const s of eligibleParticipants) {
         const gid = s.groupId ?? "";
-        studentCountByGroup.set(gid, (studentCountByGroup.get(gid) || 0) + 1);
+        participantCountByGroup.set(
+          gid,
+          (participantCountByGroup.get(gid) || 0) + 1,
+        );
       }
 
       let totalTarget = 0;
@@ -459,25 +463,25 @@ export function AssignmentsClient({
 
       if (c.programmeType === "GROUP") {
         const maxTeams = progInfo?.maxTeamsPerGroup || 1;
-        const maxStudentsPerTeam = progInfo?.maxStudentsPerTeam || 1;
+        const maxParticipantsPerTeam = progInfo?.maxParticipantsPerTeam || 1;
 
-        // A group can form a team if they have at least 1 student (ignoring strict size for now as per usual festival flow)
-        // Or should we be strict? Usually, if they have any students, they are expected to form teams up to max.
-        // Let's count groups that have at least one eligible student.
-        const eligibleGroupsCount = studentCountByGroup.size;
+        // A group can form a team if they have at least 1 participant (ignoring strict size for now as per usual festival flow)
+        // Or should we be strict? Usually, if they have any participants, they are expected to form teams up to max.
+        // Let's count groups that have at least one eligible participant.
+        const eligibleGroupsCount = participantCountByGroup.size;
         totalTarget = eligibleGroupsCount * maxTeams;
         currentProgress = c.teamCount;
         label = `${currentProgress}/${totalTarget} Team${totalTarget !== 1 ? "s" : ""}`;
       } else {
         const maxPerGroup = progInfo?.maxParticipantsPerGroup || 1;
 
-        // Total target is the sum of min(maxPerGroup, studentsInGroup) for all groups
-        studentCountByGroup.forEach((count) => {
+        // Total target is the sum of min(maxPerGroup, participantsInGroup) for all groups
+        participantCountByGroup.forEach((count) => {
           totalTarget += Math.min(maxPerGroup, count);
         });
 
         currentProgress = c.attendeesCount;
-        label = `${currentProgress}/${totalTarget} Student${totalTarget !== 1 ? "s" : ""}`;
+        label = `${currentProgress}/${totalTarget} Participant${totalTarget !== 1 ? "s" : ""}`;
       }
 
       c.progress =
@@ -492,7 +496,9 @@ export function AssignmentsClient({
           ? progInfo?.maxTeamsPerGroup || 1
           : progInfo?.maxParticipantsPerGroup || 1;
 
-      const breakdown: GroupBreakdown[] = Array.from(studentCountByGroup.keys())
+      const breakdown: GroupBreakdown[] = Array.from(
+        participantCountByGroup.keys(),
+      )
         .map((gId) => {
           const group = groups.find((g: any) => g.id === gId);
           if (!group) return null;
@@ -507,11 +513,11 @@ export function AssignmentsClient({
               (r): r is IndividualAssignmentRow =>
                 r.kind === "individual" &&
                 (r.assignment.groupId === gId ||
-                  r.assignment.student?.groupId === gId),
+                  r.assignment.participant?.groupId === gId),
             ).length;
           }
 
-          const groupTotal = studentCountByGroup.get(gId) || 0;
+          const groupTotal = participantCountByGroup.get(gId) || 0;
           const target =
             c.programmeType === "GROUP" ? limit : Math.min(limit, groupTotal);
 
@@ -544,7 +550,7 @@ export function AssignmentsClient({
     });
 
     return cards;
-  }, [tableRows, students, programmes, categories, groups]);
+  }, [tableRows, participants, programmes, categories, groups]);
 
   const hasFilters =
     filterGroup !== "ALL" ||
@@ -577,7 +583,7 @@ export function AssignmentsClient({
         categories={categories}
         groups={groups}
         programmes={programmes}
-        students={students}
+        participants={participants}
         assignments={assignments}
       />
 
@@ -589,23 +595,23 @@ export function AssignmentsClient({
               Programme Assignments
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
-              Manage student assignments to programmes.
+              Manage participant assignments to programmes.
             </p>
           </div>
         )}
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <HowItWorksButton
             title="How Assignments work"
-            description="Assign students or teams to programmes."
+            description="Assign participants or teams to programmes."
           >
             <p className="text-sm text-muted-foreground">
-              <strong>Individual programmes:</strong> Assign one student per
-              entry. Each row is one student.
+              <strong>Individual programmes:</strong> Assign one participant per
+              entry. Each row is one participant.
             </p>
             <p className="text-sm text-muted-foreground">
               <strong>Team programmes:</strong> Assign teams. Each team can have
               multiple members; one result per team. Use &quot;New
-              assignment&quot; to pick a programme, then add students to the
+              assignment&quot; to pick a programme, then add participants to the
               queue to form teams.
             </p>
           </HowItWorksButton>
@@ -733,7 +739,7 @@ export function AssignmentsClient({
         title="Remove assignment"
         description={
           deleteTarget?.kind === "individual"
-            ? `Remove ${deleteTarget.assignment.student?.name} from ${deleteTarget.assignment.programme?.name}?`
+            ? `Remove ${deleteTarget.assignment.participant?.name} from ${deleteTarget.assignment.programme?.name}?`
             : ""
         }
         onDelete={async () => {
@@ -894,7 +900,7 @@ export function AssignmentsClient({
                           <div key={`${groupId}:${teamNumber}`}>
                             Team {teamNumber}:{" "}
                             <span className="font-medium">
-                              {lead.studentName}
+                              {lead.participantName}
                             </span>{" "}
                             {lead.chestNumber ? `(#${lead.chestNumber})` : ""}
                           </div>
@@ -959,18 +965,20 @@ export function AssignmentsClient({
                       );
                       const isGeneral = catInfo?.type === "GENERAL";
 
-                      const eligibleStudents =
+                      const eligibleParticipants =
                         isGeneral || !selectedProgrammeCard.categoryId
-                          ? students
-                          : students.filter(
+                          ? participants
+                          : participants.filter(
                               (s: any) =>
                                 s.categoryId ===
                                 selectedProgrammeCard.categoryId,
                             );
 
-                      // Groups that have at least one eligible student
+                      // Groups that have at least one eligible participant
                       const eligibleGroupIds = Array.from(
-                        new Set(eligibleStudents.map((s: any) => s.groupId)),
+                        new Set(
+                          eligibleParticipants.map((s: any) => s.groupId),
+                        ),
                       );
 
                       const limit =
@@ -995,18 +1003,19 @@ export function AssignmentsClient({
                               (r): r is IndividualAssignmentRow =>
                                 r.kind === "individual" &&
                                 (r.assignment.groupId === gId ||
-                                  r.assignment.student?.groupId === gId),
+                                  r.assignment.participant?.groupId === gId),
                             ).length;
                           }
 
                           // Target for THIS specific group
-                          const groupStudentCount = eligibleStudents.filter(
-                            (s: any) => s.groupId === gId,
-                          ).length;
+                          const groupParticipantCount =
+                            eligibleParticipants.filter(
+                              (s: any) => s.groupId === gId,
+                            ).length;
                           const target =
                             selectedProgrammeCard.programmeType === "GROUP"
                               ? limit
-                              : Math.min(limit, groupStudentCount);
+                              : Math.min(limit, groupParticipantCount);
 
                           const percent =
                             target > 0
@@ -1064,9 +1073,9 @@ export function AssignmentsClient({
                     .filter((r) => {
                       const q = detailsSearch.trim().toLowerCase();
                       if (!q) return true;
-                      const s = r.assignment.student;
+                      const s = r.assignment.participant;
                       const g =
-                        r.assignment.group || r.assignment.student?.group;
+                        r.assignment.group || r.assignment.participant?.group;
                       return (
                         (s?.name ?? "").toLowerCase().includes(q) ||
                         (s?.chestNumber ?? "").toLowerCase().includes(q) ||
@@ -1081,9 +1090,9 @@ export function AssignmentsClient({
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-medium truncate">
-                              {r.assignment.student?.name ?? "—"}
+                              {r.assignment.participant?.name ?? "—"}
                             </span>
-                            {r.assignment.student?.isTeamLeader && (
+                            {r.assignment.participant?.isTeamLeader && (
                               <Badge
                                 variant="secondary"
                                 className="h-4 px-1 text-[9px] uppercase font-bold bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
@@ -1093,9 +1102,9 @@ export function AssignmentsClient({
                             )}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            #{r.assignment.student?.chestNumber ?? "—"} ·{" "}
+                            #{r.assignment.participant?.chestNumber ?? "—"} ·{" "}
                             {r.assignment.group?.name ||
-                              r.assignment.student?.group?.name ||
+                              r.assignment.participant?.group?.name ||
                               "—"}{" "}
                             ·{" "}
                             {r.assignment.assignedAt
@@ -1140,7 +1149,7 @@ export function AssignmentsClient({
                       if (row.groupName.toLowerCase().includes(q)) return true;
                       if (`team ${row.teamNumber}`.includes(q)) return true;
                       return row.assignments.some((a: any) => {
-                        const s = a.student;
+                        const s = a.participant;
                         return (
                           (s?.name ?? "").toLowerCase().includes(q) ||
                           (s?.chestNumber ?? "").toLowerCase().includes(q)
@@ -1188,12 +1197,12 @@ export function AssignmentsClient({
                               className="text-xs flex items-center gap-1.5"
                             >
                               <span>
-                                {a.student?.name ?? "—"}{" "}
+                                {a.participant?.name ?? "—"}{" "}
                                 <span className="text-muted-foreground">
-                                  (#{a.student?.chestNumber ?? "—"})
+                                  (#{a.participant?.chestNumber ?? "—"})
                                 </span>
                               </span>
-                              {a.student?.isTeamLeader && (
+                              {a.participant?.isTeamLeader && (
                                 <Badge
                                   variant="secondary"
                                   className="h-3.5 px-1 text-[8px] uppercase font-bold bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
@@ -1204,8 +1213,8 @@ export function AssignmentsClient({
                               {canUseTeamLead &&
                                 programmeDetail?.teamLeads[row.groupId]?.[
                                   row.teamNumber
-                                ]?.studentId ===
-                                  (a.student?.id ?? a.studentId) && (
+                                ]?.participantId ===
+                                  (a.participant?.id ?? a.participantId) && (
                                   <Badge
                                     variant="secondary"
                                     className="h-3.5 px-1 text-[8px] uppercase font-bold bg-primary/10 text-primary border-primary/30"

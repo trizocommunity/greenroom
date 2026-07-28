@@ -54,7 +54,7 @@ interface UpdateProfileDialogProps {
 
 const PERSONAL_ROLES = [
   { value: "TEACHER", label: "Teacher" },
-  { value: "STUDENT", label: "Student" },
+  { value: "PARTICIPANT", label: "Participant" },
   { value: "JUDGE", label: "Judge" },
   { value: "INDEPENDENT", label: "Independent" },
   { value: "OTHER", label: "Other" },

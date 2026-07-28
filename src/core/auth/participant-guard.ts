@@ -1,21 +1,21 @@
 import { redirect } from "next/navigation";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
-import { findStudentByFestivalAndProfileSlug } from "@/features/students/repositories/student.repository";
+import { findParticipantByFestivalAndProfileSlug } from "@/features/participants/repositories/participant.repository";
 import { getParticipantSessionFromCookie } from "./participant-session";
 
 export type ParticipantAuthContext = {
   session: NonNullable<
     Awaited<ReturnType<typeof getParticipantSessionFromCookie>>
   >;
-  student: NonNullable<
-    Awaited<ReturnType<typeof findStudentByFestivalAndProfileSlug>>
+  participant: NonNullable<
+    Awaited<ReturnType<typeof findParticipantByFestivalAndProfileSlug>>
   >;
   festival: NonNullable<Awaited<ReturnType<typeof findFestivalBySlug>>>;
 };
 
 export async function requireParticipantAuth(
   festivalSlug: string,
-  studentSlug: string,
+  participantSlug: string,
   requireTeamLeader: boolean = false,
 ): Promise<ParticipantAuthContext> {
   const session = await getParticipantSessionFromCookie();
@@ -28,7 +28,7 @@ export async function requireParticipantAuth(
     redirect(`/${festivalSlug}/login`);
   }
 
-  if (session.student.profileSlug !== studentSlug) {
+  if (session.participant.profileSlug !== participantSlug) {
     redirect(`/${festivalSlug}/login`);
   }
 
@@ -37,17 +37,17 @@ export async function requireParticipantAuth(
     redirect(`/${festivalSlug}/login`);
   }
 
-  const student = await findStudentByFestivalAndProfileSlug(
+  const participant = await findParticipantByFestivalAndProfileSlug(
     festival.id,
-    studentSlug,
+    participantSlug,
   );
-  if (!student) {
+  if (!participant) {
     redirect(`/${festivalSlug}/login`);
   }
 
-  if (requireTeamLeader && !student.isTeamLeader) {
-    redirect(`/${festivalSlug}/${studentSlug}`);
+  if (requireTeamLeader && !participant.isTeamLeader) {
+    redirect(`/${festivalSlug}/${participantSlug}`);
   }
 
-  return { session, student, festival };
+  return { session, participant, festival };
 }

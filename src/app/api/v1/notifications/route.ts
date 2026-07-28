@@ -5,21 +5,24 @@ import { markAllReadInput } from "@/api/contracts/notifications";
 import { badRequest, createProtectedHandler, ok } from "@/api/lib";
 import { db } from "@/core/database/client";
 import { programmeNotification } from "@/core/database/schema";
-import { assertStudentNotificationAccess } from "@/features/programmes/actions/reporting-access";
+import { assertParticipantNotificationAccess } from "@/features/programmes/actions/reporting-access";
 
 const handler = createProtectedHandler({
   async GET({ request }) {
     const url = new URL(request.url);
-    const studentId = url.searchParams.get("studentId");
+    const participantId = url.searchParams.get("participantId");
 
-    if (!studentId) {
-      return badRequest("MISSING_PARAM", "studentId query param is required");
+    if (!participantId) {
+      return badRequest(
+        "MISSING_PARAM",
+        "participantId query param is required",
+      );
     }
 
-    await assertStudentNotificationAccess(studentId);
+    await assertParticipantNotificationAccess(participantId);
 
     const notifications = await db.query.programmeNotification.findMany({
-      where: eq(programmeNotification.recipientStudentId, studentId),
+      where: eq(programmeNotification.recipientParticipantId, participantId),
       orderBy: [desc(programmeNotification.createdAt)],
       limit: 50,
     });
@@ -36,13 +39,13 @@ const handler = createProtectedHandler({
       return badRequest("INVALID_INPUT", parsed.error.message);
     }
 
-    const { studentId } = parsed.data;
-    await assertStudentNotificationAccess(studentId);
+    const { participantId } = parsed.data;
+    await assertParticipantNotificationAccess(participantId);
 
     await db
       .update(programmeNotification)
       .set({ isRead: true })
-      .where(eq(programmeNotification.recipientStudentId, studentId));
+      .where(eq(programmeNotification.recipientParticipantId, participantId));
 
     return ok({ success: true });
   },

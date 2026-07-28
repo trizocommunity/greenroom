@@ -58,7 +58,7 @@ export function useBulkCreateAssignments() {
   >({
     mutationFn: async ({ festivalId, data }) => {
       // Bulk creation can involve many programmes, each running a programme
-      // lookup + student lookup + existing-assignment lookup + per-row inserts
+      // lookup + participant lookup + existing-assignment lookup + per-row inserts
       // + audit-log writes inside a single transaction. The shared client's
       // 10s timeout is too tight for non-trivial batches, so override per-call.
       const response = await apiClient.post<ApiResponse<BulkCreateResult>>(

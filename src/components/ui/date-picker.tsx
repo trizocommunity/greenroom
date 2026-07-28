@@ -157,14 +157,13 @@ export function DateOfBirthPicker({
   // highlights the day — it does NOT move the caption. We track the month
   // and snap it to the bound date each time the popover opens so the caption
   // shows e.g. 2008 (not the current year) for a stored DOB.
-  const [displayedMonth, setDisplayedMonth] = React.useState<
-    Date | undefined
-  >(undefined);
+  const [displayedMonth, setDisplayedMonth] = React.useState<Date | undefined>(
+    undefined,
+  );
   const today = new Date();
   // Defensive: an Invalid Date instance is truthy but `format()` would throw.
   // Treat it as "no date" until the caller passes a real one.
-  const safeDate =
-    date && !Number.isNaN(date.getTime()) ? date : undefined;
+  const safeDate = date && !Number.isNaN(date.getTime()) ? date : undefined;
 
   // Snap the calendar to the bound date's month whenever the popover opens
   // or the bound date changes from outside.
@@ -188,11 +187,7 @@ export function DateOfBirthPicker({
           )}
         >
           <CalendarIcon />
-          {safeDate ? (
-            format(safeDate, "PPP")
-          ) : (
-            <span>{placeholder}</span>
-          )}
+          {safeDate ? format(safeDate, "PPP") : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">

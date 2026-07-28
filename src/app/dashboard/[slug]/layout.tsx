@@ -26,8 +26,8 @@ import { getFestivalContext } from "@/features/festivals/services/festival-conte
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 import { getEffectiveTierFeatures } from "@/features/plan-features/services/plan-features.service";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
-import { getStageFilterCookie } from "@/features/stages/stage-filter-cookie.server";
 import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
+import { getStageFilterCookie } from "@/features/stages/stage-filter-cookie.server";
 
 export default async function FestivalDashboardLayout({
   children,
@@ -95,16 +95,16 @@ export default async function FestivalDashboardLayout({
     orgLocation: null,
     establishedYear: null,
     // New Stats from Festival
-    studentsCount: festival.studentsCount || 0,
+    participantsCount: festival.participantsCount || 0,
     programmesCount: festival.programmesCount || 0,
     stagesCount: festival.stagesCount || 0,
     limits: {
-      maxStudents: tierLimits.students,
+      maxParticipants: tierLimits.participants,
       maxProgrammes: tierLimits.programmes,
       maxStages: tierLimits.stages,
       maxStorageMB: tierLimits.storageMB,
     },
-    studentCreationDeadline: festival.studentCreationDeadline,
+    participantCreationDeadline: festival.participantCreationDeadline,
     programmeAssignmentDeadline: festival.programmeAssignmentDeadline,
     effectiveFeatures,
   };
@@ -197,7 +197,7 @@ export default async function FestivalDashboardLayout({
                   }
                   userRole={userRole}
                   usage={{
-                    studentsCount: festival._count?.students || 0,
+                    participantsCount: festival._count?.participants || 0,
                     programmesCount: festival._count?.programmes || 0,
                     stagesCount: festival.stagesCount || 0,
                     storageUsedMB: festival.storageUsedMb ?? 0,

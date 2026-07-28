@@ -29,13 +29,13 @@ export async function prefetchFestival(id: string) {
   });
 }
 
-export async function prefetchStudents(festivalId: string) {
+export async function prefetchParticipants(festivalId: string) {
   const queryClient = getQueryClient();
   await queryClient.prefetchQuery({
-    queryKey: queryKeys.students.all(festivalId),
+    queryKey: queryKeys.participants.all(festivalId),
     queryFn: async () => {
       const response = await apiClient.get<ApiResponse<unknown>>(
-        `/students?festivalId=${encodeURIComponent(festivalId)}`,
+        `/participants?festivalId=${encodeURIComponent(festivalId)}`,
       );
       return handleApiResponse(response.data);
     },

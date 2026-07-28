@@ -71,7 +71,7 @@ export function buildTeamPointsBindings(input: {
 
 export function buildCandidateCardBindings(input: {
   festivalName: string;
-  studentName: string;
+  participantName: string;
   chestNumber: string;
   teamName: string;
   qrPayload: string;
@@ -80,7 +80,7 @@ export function buildCandidateCardBindings(input: {
   return {
     festName: input.festivalName,
     categoryName: input.categoryName ?? "—",
-    studentName: input.studentName,
+    participantName: input.participantName,
     chestNumber: input.chestNumber,
     teamName: input.teamName,
     placeName: input.teamName,

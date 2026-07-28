@@ -2,7 +2,7 @@
 
 import { Eye, Loader2, Users } from "lucide-react";
 import { useState } from "react";
-import { useStudents } from "@/api/client/students";
+import { useParticipants } from "@/api/client/participants";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,7 +36,7 @@ interface Member {
   user: User;
 }
 
-interface Student {
+interface Participant {
   id: string;
   name: string | null;
   chestNumber?: string | null;
@@ -68,11 +68,11 @@ export function GroupDetailsDialog({
   open: controlledOpen,
   onOpenChange: setControlledOpen,
 }: GroupDetailsDialogProps) {
-  const { data: students = [], isLoading } = useStudents(festivalId);
+  const { data: participants = [], isLoading } = useParticipants(festivalId);
   const canAssignTeamLeaders = useFeature("members");
 
-  const groupStudents = students.filter(
-    (p: Student) => p.group?.id === group.id || p.groupId === group.id,
+  const groupParticipants = participants.filter(
+    (p: Participant) => p.group?.id === group.id || p.groupId === group.id,
   );
 
   const isControlled = controlledOpen !== undefined;
@@ -101,14 +101,16 @@ export function GroupDetailsDialog({
               </DrawerTitle>
             </div>
           </div>
-          <DrawerDescription>{groupStudents.length} Students</DrawerDescription>
+          <DrawerDescription>
+            {groupParticipants.length} Participants
+          </DrawerDescription>
         </DrawerHeader>
 
         <div className="flex-1 overflow-hidden mt-4 min-h-0">
           <div className="flex flex-col gap-4 overflow-hidden h-full">
             <h4 className="font-semibold text-sm flex items-center gap-2">
               <Users className="h-4 w-4 shrink-0" />
-              Students ({groupStudents.length})
+              Participants ({groupParticipants.length})
             </h4>
 
             <ScrollArea className="flex-1 border rounded-md">
@@ -120,12 +122,12 @@ export function GroupDetailsDialog({
                 <>
                   {/* Mobile: list of cards */}
                   <div className="block md:hidden divide-y">
-                    {groupStudents.length === 0 ? (
+                    {groupParticipants.length === 0 ? (
                       <div className="py-8 text-center text-muted-foreground text-sm">
-                        No students found in this group.
+                        No participants found in this group.
                       </div>
                     ) : (
-                      groupStudents.map((p: Student) => (
+                      groupParticipants.map((p: Participant) => (
                         <div
                           key={p.id}
                           className="p-3 flex items-center justify-between gap-2"
@@ -159,7 +161,7 @@ export function GroupDetailsDialog({
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {groupStudents.map((p: Student) => (
+                        {groupParticipants.map((p: Participant) => (
                           <TableRow key={p.id}>
                             <TableCell className="font-medium">
                               {p.chestNumber || "-"}
@@ -183,13 +185,13 @@ export function GroupDetailsDialog({
                             </TableCell>
                           </TableRow>
                         ))}
-                        {groupStudents.length === 0 && (
+                        {groupParticipants.length === 0 && (
                           <TableRow>
                             <TableCell
                               colSpan={3}
                               className="h-24 text-center text-muted-foreground"
                             >
-                              No students found in this group.
+                              No participants found in this group.
                             </TableCell>
                           </TableRow>
                         )}

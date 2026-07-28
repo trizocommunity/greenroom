@@ -6,18 +6,18 @@ import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
   programmeNotification as notificationTable,
+  participant as participantTable,
   programmeReportingSession as prsTable,
   programmeReportedParticipant as reportedParticipantTable,
   scheduleEntry as scheduleEntryTable,
-  student as studentTable,
 } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import {
+  assertParticipantNotificationAccess,
   assertReportingReopenAccess,
   assertStageManagerAccess,
   assertStageManagerAccessForStage,
-  assertStudentNotificationAccess,
 } from "@/features/programmes/actions/reporting-access";
 import { revalidateProgrammeReporting } from "@/features/programmes/actions/reporting-revalidation";
 import { ProgrammeReportingService } from "@/features/programmes/services/programme-reporting.service";
@@ -38,7 +38,9 @@ async function getStageIdForScheduleEntry(scheduleEntryId: string) {
   return entry?.stageId ?? null;
 }
 
-async function getStageIdForReportingSession(reportingSessionId: string) {
+export async function getStageIdForReportingSession(
+  reportingSessionId: string,
+) {
   const session = await db.query.programmeReportingSession.findFirst({
     where: eq(prsTable.id, reportingSessionId),
     columns: { stageId: true },
@@ -204,23 +206,23 @@ export async function reopenProgrammeReportingByProgrammeAction(
   return { success: true, data: res };
 }
 
-export async function getStudentProgrammeNotificationsAction(
-  studentId: string,
+export async function getParticipantProgrammeNotificationsAction(
+  participantId: string,
 ) {
-  await assertStudentNotificationAccess(studentId);
+  await assertParticipantNotificationAccess(participantId);
 
   return db.query.programmeNotification.findMany({
-    where: eq(notificationTable.recipientStudentId, studentId),
+    where: eq(notificationTable.recipientParticipantId, participantId),
     orderBy: [desc(notificationTable.createdAt)],
     limit: 50,
   });
 }
 
-export async function markStudentProgrammeNotificationReadAction(
-  studentId: string,
+export async function markParticipantProgrammeNotificationReadAction(
+  participantId: string,
   notificationId: string,
 ) {
-  await assertStudentNotificationAccess(studentId);
+  await assertParticipantNotificationAccess(participantId);
   await db
     .update(notificationTable)
     .set({
@@ -229,16 +231,16 @@ export async function markStudentProgrammeNotificationReadAction(
     .where(
       and(
         eq(notificationTable.id, notificationId),
-        eq(notificationTable.recipientStudentId, studentId),
+        eq(notificationTable.recipientParticipantId, participantId),
       ),
     );
   return { success: true };
 }
 
-export async function markAllStudentProgrammeNotificationsReadAction(
-  studentId: string,
+export async function markAllParticipantProgrammeNotificationsReadAction(
+  participantId: string,
 ) {
-  await assertStudentNotificationAccess(studentId);
+  await assertParticipantNotificationAccess(participantId);
   await db
     .update(notificationTable)
     .set({
@@ -246,17 +248,19 @@ export async function markAllStudentProgrammeNotificationsReadAction(
     })
     .where(
       and(
-        eq(notificationTable.recipientStudentId, studentId),
+        eq(notificationTable.recipientParticipantId, participantId),
         eq(notificationTable.isRead, false),
       ),
     );
   return { success: true };
 }
 
-export async function getStudentOngoingProgrammesAction(studentId: string) {
-  await assertStudentNotificationAccess(studentId);
+export async function getParticipantOngoingProgrammesAction(
+  participantId: string,
+) {
+  await assertParticipantNotificationAccess(participantId);
   const assignments = await db.query.programmeAssignment.findMany({
-    where: eq(assignmentTable.studentId, studentId),
+    where: eq(assignmentTable.participantId, participantId),
     columns: { programmeId: true },
   });
   const programmeIds = Array.from(
@@ -273,12 +277,12 @@ export async function getStudentOngoingProgrammesAction(studentId: string) {
       programme: { columns: { id: true, name: true, status: true } },
       stage: { columns: { id: true, name: true } },
       programmeCodeLetters: {
-        where: sql`EXISTS (SELECT 1 FROM programme_code_letter_recipient WHERE code_letter_id = programme_code_letter.id AND student_id = ${studentId})`,
+        where: sql`EXISTS (SELECT 1 FROM programme_code_letter_recipient WHERE code_letter_id = programme_code_letter.id AND participant_id = ${participantId})`,
         orderBy: [desc(sql`issued_at`)],
         limit: 8,
         with: {
           programmeCodeLetterRecipients: {
-            where: eq(sql`student_id`, studentId),
+            where: eq(sql`participant_id`, participantId),
           },
         },
       },
@@ -289,7 +293,7 @@ export async function getStudentOngoingProgrammesAction(studentId: string) {
   return sessions;
 }
 
-export async function scanAndReportStudentAction(
+export async function scanAndReportParticipantAction(
   festivalId: string,
   reportingSessionId: string,
   chestNumber: string,
@@ -310,10 +314,10 @@ export async function scanAndReportStudentAction(
       };
     }
 
-    const student = await db.query.student.findFirst({
+    const participant = await db.query.participant.findFirst({
       where: and(
-        eq(studentTable.festivalId, festivalId),
-        sql`UPPER(${studentTable.chestNumber}) = ${normalizedChestNumber}`,
+        eq(participantTable.festivalId, festivalId),
+        sql`UPPER(${participantTable.chestNumber}) = ${normalizedChestNumber}`,
       ),
       with: {
         group: { columns: { id: true, name: true } },
@@ -321,11 +325,11 @@ export async function scanAndReportStudentAction(
       },
     });
 
-    if (!student) {
+    if (!participant) {
       return {
         success: false,
-        error: `No student found with chest number: ${normalizedChestNumber}`,
-        reason: "STUDENT_NOT_FOUND",
+        error: `No participant found with chest number: ${normalizedChestNumber}`,
+        reason: "PARTICIPANT_NOT_FOUND",
         chestNumber: normalizedChestNumber,
       };
     }
@@ -357,21 +361,21 @@ export async function scanAndReportStudentAction(
     const assignment = await db.query.programmeAssignment.findFirst({
       where: and(
         eq(assignmentTable.programmeId, session.programmeId),
-        eq(assignmentTable.studentId, student.id),
+        eq(assignmentTable.participantId, participant.id),
       ),
     });
 
     if (!assignment) {
       return {
         success: false,
-        error: `${student.name} is not assigned to "${session.programme?.name}"`,
+        error: `${participant.name} is not assigned to "${session.programme?.name}"`,
         reason: "NOT_ASSIGNED_TO_PROGRAMME",
-        student: {
-          id: student.id,
-          name: student.name,
-          chestNumber: student.chestNumber,
-          groupName: student.group?.name,
-          categoryName: student.category?.name,
+        participant: {
+          id: participant.id,
+          name: participant.name,
+          chestNumber: participant.chestNumber,
+          groupName: participant.group?.name,
+          categoryName: participant.category?.name,
         },
         programme: {
           id: session.programmeId,
@@ -391,13 +395,13 @@ export async function scanAndReportStudentAction(
     if (existingReport) {
       return {
         success: false,
-        error: `${student.name} has already been reported`,
+        error: `${participant.name} has already been reported`,
         reason: "ALREADY_REPORTED",
-        student: {
-          id: student.id,
-          name: student.name,
-          chestNumber: student.chestNumber,
-          groupName: student.group?.name,
+        participant: {
+          id: participant.id,
+          name: participant.name,
+          chestNumber: participant.chestNumber,
+          groupName: participant.group?.name,
         },
         programme: {
           id: session.programmeId,
@@ -417,13 +421,13 @@ export async function scanAndReportStudentAction(
 
     return {
       success: true,
-      message: `${student.name} reported successfully`,
-      student: {
-        id: student.id,
-        name: student.name,
-        chestNumber: student.chestNumber,
-        groupName: student.group?.name,
-        categoryName: student.category?.name,
+      message: `${participant.name} reported successfully`,
+      participant: {
+        id: participant.id,
+        name: participant.name,
+        chestNumber: participant.chestNumber,
+        groupName: participant.group?.name,
+        categoryName: participant.category?.name,
       },
       programme: {
         id: session.programmeId,
@@ -462,7 +466,7 @@ export async function assignCodeLettersWithSpinAction(
   codeAssignments: Array<{
     teamNumber: number | null;
     groupId?: string | null;
-    studentId?: string | null;
+    participantId?: string | null;
     code: string;
   }>,
 ) {

@@ -33,7 +33,7 @@ interface AdminFestivalCardProps {
     status: string;
     createdAt: string | Date;
     user: { email: string };
-    studentsCount?: number;
+    participantsCount?: number;
     programmesCount?: number;
     stagesCount?: number;
   };
@@ -135,10 +135,10 @@ export function AdminFestivalCard({ festival }: AdminFestivalCardProps) {
           <div className="p-3 rounded-xl bg-muted/30 border border-border/50 text-center space-y-1">
             <Users className="w-4 h-4 mx-auto text-primary/60" />
             <div className="text-lg font-black leading-none">
-              {festival.studentsCount || 0}
+              {festival.participantsCount || 0}
             </div>
             <div className="text-[9px] uppercase tracking-tighter font-bold text-muted-foreground/60">
-              Students
+              Participants
             </div>
           </div>
           <div className="p-3 rounded-xl bg-muted/30 border border-border/50 text-center space-y-1">

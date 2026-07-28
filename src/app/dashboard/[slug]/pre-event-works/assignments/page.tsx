@@ -5,8 +5,8 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { AssignmentsClient } from "@/components/festival/pre-event-works/assignments/AssignmentsClient";
 import { db } from "@/core/database/client";
 import {
+  participant as participantTable,
   programme as programmeTable,
-  student as studentTable,
 } from "@/core/database/schema";
 import { parseStoredInstant } from "@/core/utils/date-time";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
@@ -30,7 +30,7 @@ export default async function AssignmentsPage({
     return (
       <EmptyState
         title="No Programmes Found"
-        description="You need to create programmes before you can assign students."
+        description="You need to create programmes before you can assign participants."
         actionLabel="Create Programmes"
         actionLink={`/dashboard/${festival.slug}/pre-event-works/programmes`}
         icon={CalendarRange}
@@ -38,19 +38,19 @@ export default async function AssignmentsPage({
     );
   }
 
-  // Check for students
-  const [studentCountResult] = await db
+  // Check for participants
+  const [participantCountResult] = await db
     .select({ c: count() })
-    .from(studentTable)
-    .where(eq(studentTable.festivalId, festival.id));
+    .from(participantTable)
+    .where(eq(participantTable.festivalId, festival.id));
 
-  if (studentCountResult.c === 0) {
+  if (participantCountResult.c === 0) {
     return (
       <EmptyState
-        title="No Students Found"
-        description="You need to create students before you can assign them to programmes."
-        actionLabel="Create Students"
-        actionLink={`/dashboard/${festival.slug}/pre-event-works/students`}
+        title="No Participants Found"
+        description="You need to create participants before you can assign them to programmes."
+        actionLabel="Create Participants"
+        actionLink={`/dashboard/${festival.slug}/pre-event-works/participants`}
         icon={Users}
       />
     );

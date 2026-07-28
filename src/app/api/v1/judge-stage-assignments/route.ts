@@ -1,7 +1,7 @@
 import { assignJudgeStageInput } from "@/api/contracts/judge-stage-assignments";
 import { badRequest, createProtectedHandler, ok } from "@/api/lib";
-import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 import { JudgeStageAssignmentService } from "@/features/stages/services/judge-stage-assignment.service";
+import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 
 const handler = createProtectedHandler({
   async GET({ user, request }) {

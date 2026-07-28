@@ -9,8 +9,8 @@ import {
   festival,
   festivalMember,
   pendingInvitation,
-  stage as stageTable,
   stageManagerAssignment,
+  stage as stageTable,
   user as userTable,
 } from "@/core/database/schema";
 

@@ -15,14 +15,14 @@ describe("getPostAuthRoute", () => {
   });
 
   it("routes USER without onboarding to /profile", () => {
-    expect(
-      getPostAuthRoute({ role: "USER", requiresOnboarding: false }),
-    ).toBe(POST_AUTH_ROUTES.PROFILE);
+    expect(getPostAuthRoute({ role: "USER", requiresOnboarding: false })).toBe(
+      POST_AUTH_ROUTES.PROFILE,
+    );
   });
 
   it("routes USER with onboarding pending to /onboarding", () => {
-    expect(
-      getPostAuthRoute({ role: "USER", requiresOnboarding: true }),
-    ).toBe(POST_AUTH_ROUTES.ONBOARDING);
+    expect(getPostAuthRoute({ role: "USER", requiresOnboarding: true })).toBe(
+      POST_AUTH_ROUTES.ONBOARDING,
+    );
   });
 });

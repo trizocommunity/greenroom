@@ -32,7 +32,7 @@ export async function appointTeamLeadAction(
     programmeId: string;
     groupId: string;
     teamNumber: number;
-    studentId: string;
+    participantId: string;
   },
 ) {
   await assertProTierForTeamLead(festivalId);
@@ -50,7 +50,7 @@ export async function replaceTeamLeadAction(
     programmeId: string;
     groupId: string;
     teamNumber: number;
-    studentId: string;
+    participantId: string;
   },
 ) {
   await assertProTierForTeamLead(festivalId);

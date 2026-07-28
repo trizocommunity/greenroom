@@ -245,11 +245,11 @@ export function ResultsExploreClient({
         if (!assignment.result) return;
         const teamId = getTeamIdentifier(assignment, "GROUP");
         if (!teamMap.has(teamId)) {
-          const studentAndTeam = `${assignment.student?.name || "Unknown"} and team`;
+          const participantAndTeam = `${assignment.participant?.name || "Unknown"} and team`;
           const groupName = assignment.group?.name || "";
           teamMap.set(teamId, {
             assignmentId: assignment.id,
-            displayName: studentAndTeam,
+            displayName: participantAndTeam,
             subText: groupName,
             chestNumber: "",
             codeLetter: assignment.result?.codeLetter?.code ?? "-",
@@ -272,10 +272,10 @@ export function ResultsExploreClient({
         const result = assignment.result!;
         return {
           assignmentId: assignment.id,
-          displayName: assignment.student?.name || "Unknown",
+          displayName: assignment.participant?.name || "Unknown",
           subText: "",
-          chestNumber: assignment.student?.chestNumber
-            ? `#${assignment.student.chestNumber}`
+          chestNumber: assignment.participant?.chestNumber
+            ? `#${assignment.participant.chestNumber}`
             : "",
           codeLetter: result.codeLetter?.code ?? "-",
           grade: result.grade,

@@ -5,6 +5,7 @@ import { badRequest, createProtectedHandler, ok } from "@/api/lib";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { db } from "@/core/database/client";
 import { stage } from "@/core/database/schema";
+import { provisionStagePortalCredential } from "@/features/stage-portal/actions/stage-portal-credential.actions";
 
 const handler = createProtectedHandler({
   async GET({ user, request }) {
@@ -46,6 +47,11 @@ const handler = createProtectedHandler({
         updatedAt: now,
       })
       .returning();
+
+    await provisionStagePortalCredential({
+      festivalId,
+      stageId: newStage.id,
+    });
 
     return ok(newStage);
   },

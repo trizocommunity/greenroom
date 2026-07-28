@@ -101,8 +101,7 @@ export function FestivalDashboardSidebar({
           return false;
 
         // Content
-        if (item.title === "Gallery" && !features.canManageGallery)
-          return false;
+        if (item.title === "Media" && !features.canManageMedia) return false;
         if (item.title === "News" && !features.canManageNews) return false;
         if (item.title === "Sessions" && !features.canManageSchedule)
           return false;

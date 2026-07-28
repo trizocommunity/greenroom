@@ -1,6 +1,9 @@
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
-import { group as groups, student as students } from "@/core/database/schema";
+import {
+  group as groups,
+  participant as participants,
+} from "@/core/database/schema";
 
 export async function createGroup(
   data: Omit<typeof groups.$inferInsert, "id" | "updatedAt"> & {
@@ -40,12 +43,12 @@ export async function deleteGroup(id: string) {
 export async function findGroupById(id: string) {
   const group = await db.query.group.findFirst({
     where: eq(groups.id, id),
-    with: { students: { columns: { id: true } } },
+    with: { participants: { columns: { id: true } } },
   });
 
   if (!group) return null;
-  const { students: st, ...rest } = group;
-  return { ...rest, _count: { students: st.length } };
+  const { participants: st, ...rest } = group;
+  return { ...rest, _count: { participants: st.length } };
 }
 
 export async function findGroupsByFestival(festivalId: string) {
@@ -53,16 +56,16 @@ export async function findGroupsByFestival(festivalId: string) {
     where: eq(groups.festivalId, festivalId),
     orderBy: [desc(groups.createdAt)],
     with: {
-      students: { columns: { id: true, name: true, isTeamLeader: true } },
+      participants: { columns: { id: true, name: true, isTeamLeader: true } },
     },
   });
 
   return results.map((grp) => {
-    const { students: st, ...rest } = grp;
+    const { participants: st, ...rest } = grp;
     return {
       ...rest,
-      _count: { students: st.length },
-      students: st.filter((s) => s.isTeamLeader),
+      _count: { participants: st.length },
+      participants: st.filter((s) => s.isTeamLeader),
     };
   });
 }

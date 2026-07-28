@@ -7,11 +7,11 @@ export const programmeCategorySchema = z.object({
 
 export const programmeAssignmentSchema = z.object({
   id: z.string(),
-  studentId: z.string().nullable(),
+  participantId: z.string().nullable(),
   groupId: z.string().nullable(),
   teamNumber: z.number().int().positive().nullable(),
   assignedAt: z.string().nullable(),
-  student: z
+  participant: z
     .object({
       id: z.string(),
       name: z.string().nullable(),
@@ -29,7 +29,7 @@ export const programmeSchema = z.object({
   stageType: z.enum(["STAGE", "NON_STAGE"]),
   maxParticipantsPerGroup: z.number().int().positive().nullable(),
   maxTeamsPerGroup: z.number().int().positive().nullable(),
-  maxStudentsPerTeam: z.number().int().positive().nullable(),
+  maxParticipantsPerTeam: z.number().int().positive().nullable(),
   maxPoints: z.number().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -44,7 +44,7 @@ export const createProgrammeInput = z.object({
   stageType: z.enum(["STAGE", "NON_STAGE"]).default("NON_STAGE"),
   maxParticipantsPerGroup: z.number().int().positive().optional(),
   maxTeamsPerGroup: z.number().int().positive().optional(),
-  maxStudentsPerTeam: z.number().int().positive().optional(),
+  maxParticipantsPerTeam: z.number().int().positive().optional(),
   maxPoints: z.number().optional(),
 });
 

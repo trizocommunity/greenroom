@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  eachDayOfInterval,
-  format,
-  parseISO,
-  startOfDay,
-} from "date-fns";
+import { eachDayOfInterval, format, parseISO, startOfDay } from "date-fns";
 import { motion } from "framer-motion";
 import {
   Calendar,

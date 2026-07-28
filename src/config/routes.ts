@@ -27,7 +27,7 @@ export const authRoutes = ["/login"];
 export const festivalRoutes = [
   "/about",
   "/news",
-  "/gallery",
+  "/media",
   "/sessions",
   "/results",
 ];

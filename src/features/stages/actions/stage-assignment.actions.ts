@@ -5,7 +5,11 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { festival as festivalTable } from "@/core/database/schema";
-import { AppError, ERROR_MESSAGES, handleActionError } from "@/core/errors/errors";
+import {
+  AppError,
+  ERROR_MESSAGES,
+  handleActionError,
+} from "@/core/errors/errors";
 import type { ActionResponse } from "@/core/types/actions";
 import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 
@@ -24,7 +28,9 @@ async function revalidateStageAssignmentPaths(festivalId: string) {
 export async function getStageAssignmentsAction(
   festivalId: string,
 ): Promise<
-  ActionResponse<Awaited<ReturnType<typeof StageAssignmentService.listForFestival>>>
+  ActionResponse<
+    Awaited<ReturnType<typeof StageAssignmentService.listForFestival>>
+  >
 > {
   try {
     const session = await getSession();

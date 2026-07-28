@@ -36,7 +36,7 @@ import {
 import { publishTeamStandings } from "@/features/results/actions/results.actions";
 import {
   filterResultsForLeaderboard,
-  getStudentLeaderboardView,
+  getParticipantLeaderboardView,
   getTeamDeskLeaderboardView,
   isResultVisibleForLeaderboard,
   type LeaderboardResultView,
@@ -80,8 +80,8 @@ function buildTeamStandings(
     if (a.group) {
       teamName = a.group.name;
       isGroup = true;
-    } else if (a.student) {
-      teamName = a.student.name ?? "Unknown";
+    } else if (a.participant) {
+      teamName = a.participant.name ?? "Unknown";
     } else return;
 
     if (!standings[teamName]) {
@@ -217,9 +217,9 @@ interface LeaderboardClientProps {
   publishedStandings?: any[];
   categories?: { id: string; name: string; type?: string }[];
   groups?: { id: string; name: string }[];
-  defaultStudentFilterCategory?: string;
-  defaultStudentFilterGroup?: string;
-  hideStudentFilters?: boolean;
+  defaultParticipantFilterCategory?: string;
+  defaultParticipantFilterGroup?: string;
+  hideParticipantFilters?: boolean;
   readOnly?: boolean;
   hideLiveStandings?: boolean;
   publicDisplayMode?: "programme_results" | "team_standings";
@@ -235,9 +235,9 @@ export function LeaderboardClient({
   publishedStandings = [],
   categories = [],
   groups = [],
-  defaultStudentFilterCategory,
-  defaultStudentFilterGroup,
-  hideStudentFilters = false,
+  defaultParticipantFilterCategory,
+  defaultParticipantFilterGroup,
+  hideParticipantFilters = false,
   readOnly = false,
   hideLiveStandings = false,
   publicDisplayMode = "programme_results",
@@ -251,11 +251,10 @@ export function LeaderboardClient({
   const effectiveReadOnly = readOnly || lifecycleReadOnly;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [studentFilterCategory, setStudentFilterCategory] = useState<string>(
-    defaultStudentFilterCategory ?? "all",
-  );
-  const [studentFilterGroup, setStudentFilterGroup] = useState<string>(
-    defaultStudentFilterGroup ?? "all",
+  const [participantFilterCategory, setParticipantFilterCategory] =
+    useState<string>(defaultParticipantFilterCategory ?? "all");
+  const [participantFilterGroup, setParticipantFilterGroup] = useState<string>(
+    defaultParticipantFilterGroup ?? "all",
   );
 
   const festivalContext = useFestival();
@@ -272,26 +271,26 @@ export function LeaderboardClient({
         results,
         tier,
         getTeamDeskLeaderboardView(tier),
-        studentFilterGroup,
+        participantFilterGroup,
       ),
-    [results, tier, studentFilterGroup],
+    [results, tier, participantFilterGroup],
   );
 
   const announcedTeamStandings = useMemo(
     () =>
       isBasicTier
         ? []
-        : buildTeamStandings(results, tier, "onAir", studentFilterGroup),
-    [results, tier, studentFilterGroup, isBasicTier],
+        : buildTeamStandings(results, tier, "onAir", participantFilterGroup),
+    [results, tier, participantFilterGroup, isBasicTier],
   );
 
-  // Top students by points (published results only), filterable by category and group.
+  // Top participants by points (published results only), filterable by category and group.
   // Only count points from INDIVIDUAL programmes; exclude GROUP programme points.
-  const studentStandings = useMemo(() => {
-    const byStudent: Record<
+  const participantStandings = useMemo(() => {
+    const byParticipant: Record<
       string,
       {
-        studentId: string;
+        participantId: string;
         name: string;
         chestNumber: string | null;
         groupName: string | null;
@@ -301,35 +300,41 @@ export function LeaderboardClient({
       }
     > = {};
 
-    const studentView = getStudentLeaderboardView(tier);
+    const participantView = getParticipantLeaderboardView(tier);
 
     results.forEach((r) => {
       const a = assignmentOf(r);
-      if (!isResultVisibleForLeaderboard(r, tier, studentView) || !a?.student)
+      if (
+        !isResultVisibleForLeaderboard(r, tier, participantView) ||
+        !a?.participant
+      )
         return;
       if (r.programme?.type !== "INDIVIDUAL") return;
 
-      // Filter by student's category (the category the student belongs to)
+      // Filter by participant's category (the category the participant belongs to)
       if (
-        studentFilterCategory !== "all" &&
-        a.student?.categoryId !== studentFilterCategory
+        participantFilterCategory !== "all" &&
+        a.participant?.categoryId !== participantFilterCategory
       )
         return;
-      // Filter by student's group
-      if (studentFilterGroup !== "all" && a.groupId !== studentFilterGroup)
+      // Filter by participant's group
+      if (
+        participantFilterGroup !== "all" &&
+        a.groupId !== participantFilterGroup
+      )
         return;
 
-      const sid = a.student.id;
-      const name = a.student.name ?? "Unknown";
-      const chestNumber = a.student.chestNumber ?? null;
+      const sid = a.participant.id;
+      const name = a.participant.name ?? "Unknown";
+      const chestNumber = a.participant.chestNumber ?? null;
       const groupName = a.group?.name ?? null;
       const groupColor = a.group?.color ?? null;
-      // Each student has one category (from their profile)
-      const categoryName = a.student?.category?.name ?? null;
+      // Each participant has one category (from their profile)
+      const categoryName = a.participant?.category?.name ?? null;
 
-      if (!byStudent[sid]) {
-        byStudent[sid] = {
-          studentId: sid,
+      if (!byParticipant[sid]) {
+        byParticipant[sid] = {
+          participantId: sid,
           name,
           chestNumber,
           groupName,
@@ -338,28 +343,28 @@ export function LeaderboardClient({
           points: 0,
         };
       }
-      byStudent[sid].points += resultPointsOf(r);
+      byParticipant[sid].points += resultPointsOf(r);
     });
 
-    return Object.values(byStudent)
+    return Object.values(byParticipant)
       .sort((a, b) => b.points - a.points)
       .map((row, index) => ({ ...row, rank: index + 1 }));
-  }, [results, tier, studentFilterCategory, studentFilterGroup]);
+  }, [results, tier, participantFilterCategory, participantFilterGroup]);
 
-  const hasStudentFilters =
-    studentFilterCategory !== "all" || studentFilterGroup !== "all";
-  const clearStudentFilters = () => {
-    setStudentFilterCategory("all");
-    setStudentFilterGroup("all");
+  const hasParticipantFilters =
+    participantFilterCategory !== "all" || participantFilterGroup !== "all";
+  const clearParticipantFilters = () => {
+    setParticipantFilterCategory("all");
+    setParticipantFilterGroup("all");
   };
 
   const publishedStandingsFiltered = useMemo(() => {
     if (!groups?.length) return publishedStandings;
-    if (studentFilterGroup === "all") return publishedStandings;
-    const groupName = groups.find((g) => g.id === studentFilterGroup)?.name;
+    if (participantFilterGroup === "all") return publishedStandings;
+    const groupName = groups.find((g) => g.id === participantFilterGroup)?.name;
     if (!groupName) return [];
     return (publishedStandings ?? []).filter((t: any) => t?.name === groupName);
-  }, [groups, publishedStandings, studentFilterGroup]);
+  }, [groups, publishedStandings, participantFilterGroup]);
 
   const hasStandingsChanges = useMemo(() => {
     const normalize = (items: Array<{ name: string; points: number }>) =>
@@ -418,7 +423,7 @@ export function LeaderboardClient({
               Leaderboard
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
-              Team and student standings from published results.
+              Team and participant standings from published results.
             </p>
           </div>
         )}
@@ -434,8 +439,8 @@ export function LeaderboardClient({
                 Marks or the announcement desk.
               </p>
               <p className="text-sm text-muted-foreground">
-                <strong>On-air standings</strong> and top students count only
-                results that are both published and announced on-air.
+                <strong>On-air standings</strong> and top participants count
+                only results that are both published and announced on-air.
               </p>
               <p className="text-sm text-muted-foreground">
                 <strong>Publish Standings</strong> copies the desk snapshot to
@@ -682,19 +687,19 @@ export function LeaderboardClient({
         </div>
       </section>
 
-      {/* Top students by points */}
+      {/* Top participants by points */}
       <section className="space-y-3 pt-5">
         <Card className="p-0 overflow-hidden border-primary/20">
           <div className="flex flex-col gap-3 p-3 border-b bg-muted/30 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="font-bold flex items-center gap-2 text-foreground">
               <Medal className="w-4 h-4 text-primary" />
-              Top students by points
+              Top participants by points
             </h3>
-            {!hideStudentFilters ? (
+            {!hideParticipantFilters ? (
               <div className="flex flex-wrap items-center gap-2">
                 <Select
-                  value={studentFilterCategory}
-                  onValueChange={setStudentFilterCategory}
+                  value={participantFilterCategory}
+                  onValueChange={setParticipantFilterCategory}
                 >
                   <SelectTrigger className="h-8 text-xs w-[140px]">
                     <SelectValue placeholder="Category" />
@@ -714,8 +719,8 @@ export function LeaderboardClient({
                   </SelectContent>
                 </Select>
                 <Select
-                  value={studentFilterGroup}
-                  onValueChange={setStudentFilterGroup}
+                  value={participantFilterGroup}
+                  onValueChange={setParticipantFilterGroup}
                 >
                   <SelectTrigger className="h-8 text-xs w-[130px]">
                     <SelectValue placeholder="Group" />
@@ -729,12 +734,12 @@ export function LeaderboardClient({
                     ))}
                   </SelectContent>
                 </Select>
-                {hasStudentFilters && (
+                {hasParticipantFilters && (
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={clearStudentFilters}
+                    onClick={clearParticipantFilters}
                     title="Clear filters"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -748,7 +753,7 @@ export function LeaderboardClient({
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-14 text-center">#</TableHead>
-                  <TableHead>Student</TableHead>
+                  <TableHead>Participant</TableHead>
                   <TableHead className="hidden sm:table-cell">
                     Category
                   </TableHead>
@@ -757,10 +762,10 @@ export function LeaderboardClient({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {studentStandings.length > 0 ? (
-                  studentStandings.map((row, idx) => (
+                {participantStandings.length > 0 ? (
+                  participantStandings.map((row, idx) => (
                     <TableRow
-                      key={row.studentId}
+                      key={row.participantId}
                       className={cn(
                         idx < 3 && "bg-primary/5",
                         idx === 0 && "border-l-4 border-l-yellow-500",
@@ -837,11 +842,11 @@ export function LeaderboardClient({
                       colSpan={5}
                       className="h-24 text-center text-muted-foreground"
                     >
-                      {hasStudentFilters
-                        ? "No students match the selected filters."
+                      {hasParticipantFilters
+                        ? "No participants match the selected filters."
                         : isBasicTier
-                          ? "No published student results yet."
-                          : "No on-air student results yet."}
+                          ? "No published participant results yet."
+                          : "No on-air participant results yet."}
                     </TableCell>
                   </TableRow>
                 )}
@@ -850,10 +855,10 @@ export function LeaderboardClient({
           </div>
 
           <div className="md:hidden p-3 space-y-2">
-            {studentStandings.length > 0 ? (
-              studentStandings.map((row, idx) => (
+            {participantStandings.length > 0 ? (
+              participantStandings.map((row, idx) => (
                 <div
-                  key={row.studentId}
+                  key={row.participantId}
                   className={cn(
                     "flex items-start justify-between gap-3 rounded-lg border px-3 py-2",
                     idx < 3
@@ -909,11 +914,11 @@ export function LeaderboardClient({
               ))
             ) : (
               <p className="text-sm text-muted-foreground text-center py-6">
-                {hasStudentFilters
-                  ? "No students match the selected filters."
+                {hasParticipantFilters
+                  ? "No participants match the selected filters."
                   : isBasicTier
-                    ? "No published student results yet."
-                    : "No on-air student results yet."}
+                    ? "No published participant results yet."
+                    : "No on-air participant results yet."}
               </p>
             )}
           </div>

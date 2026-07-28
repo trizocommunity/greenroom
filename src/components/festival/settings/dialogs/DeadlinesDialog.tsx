@@ -22,14 +22,14 @@ interface DeadlinesDialogProps {
   festival: {
     id: string;
     programmeAssignmentDeadline?: Date | string | null;
-    studentCreationDeadline?: Date | string | null;
+    participantCreationDeadline?: Date | string | null;
     startDate?: Date | string | null;
     createdAt?: Date | string | null;
   };
   onSuccess?: () => void;
   trigger?: React.ReactNode;
   isFeatureEnabled?: boolean;
-  isStudentDeadlineFeatureEnabled?: boolean;
+  isParticipantDeadlineFeatureEnabled?: boolean;
 }
 
 export function DeadlinesDialog({
@@ -37,7 +37,7 @@ export function DeadlinesDialog({
   onSuccess,
   trigger,
   isFeatureEnabled = true,
-  isStudentDeadlineFeatureEnabled = true,
+  isParticipantDeadlineFeatureEnabled = true,
 }: DeadlinesDialogProps) {
   const [open, setOpen] = useState(false);
   const [programmeAssignmentDeadline, setProgrammeAssignmentDeadline] =
@@ -46,10 +46,10 @@ export function DeadlinesDialog({
         ? parseStoredInstant(festival.programmeAssignmentDeadline)
         : null,
     );
-  const [studentCreationDeadline, setStudentCreationDeadline] =
+  const [participantCreationDeadline, setParticipantCreationDeadline] =
     useState<Date | null>(
-      festival.studentCreationDeadline
-        ? parseStoredInstant(festival.studentCreationDeadline)
+      festival.participantCreationDeadline
+        ? parseStoredInstant(festival.participantCreationDeadline)
         : null,
     );
   const [isSaving, setIsSaving] = useState(false);
@@ -76,8 +76,8 @@ export function DeadlinesDialog({
         programmeAssignmentDeadline: programmeAssignmentDeadline
           ? programmeAssignmentDeadline.toISOString()
           : null,
-        studentCreationDeadline: studentCreationDeadline
-          ? studentCreationDeadline.toISOString()
+        participantCreationDeadline: participantCreationDeadline
+          ? participantCreationDeadline.toISOString()
           : null,
       });
 
@@ -109,7 +109,8 @@ export function DeadlinesDialog({
         <DrawerHeader>
           <DrawerTitle>Deadlines</DrawerTitle>
           <DrawerDescription>
-            Set deadlines for programme assignments and student registration.
+            Set deadlines for programme assignments and participant
+            registration.
           </DrawerDescription>
         </DrawerHeader>
 
@@ -132,22 +133,22 @@ export function DeadlinesDialog({
                 disabled={festivalHasStarted}
               />
               <p className="text-sm text-muted-foreground">
-                Team Leaders cannot assign students to programmes after this
+                Team Leaders cannot assign participants to programmes after this
                 time.
               </p>
             </div>
           )}
-          {isStudentDeadlineFeatureEnabled && (
+          {isParticipantDeadlineFeatureEnabled && (
             <div className="space-y-2">
-              <Label htmlFor="studentCreationDeadline">
-                Student Registration Deadline
+              <Label htmlFor="participantCreationDeadline">
+                Participant Registration Deadline
               </Label>
               <DateTimePicker
-                id="studentCreationDeadline"
-                value={studentCreationDeadline}
+                id="participantCreationDeadline"
+                value={participantCreationDeadline}
                 onChange={(value) => {
                   if (festivalHasStarted) return;
-                  setStudentCreationDeadline(value);
+                  setParticipantCreationDeadline(value);
                 }}
                 placeholder="Pick deadline"
                 from={durationStart}
@@ -155,7 +156,7 @@ export function DeadlinesDialog({
                 disabled={festivalHasStarted}
               />
               <p className="text-sm text-muted-foreground">
-                Team Leaders cannot add new students after this time.
+                Team Leaders cannot add new participants after this time.
               </p>
             </div>
           )}

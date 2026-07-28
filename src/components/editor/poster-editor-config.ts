@@ -177,7 +177,7 @@ export const FEST_ADMIN_FIELDS: FestAdminFieldDef[] = [
     templateTypes: ["TEAM_POINTS"],
   },
   {
-    key: "studentName",
+    key: "participantName",
     label: "Name",
     icon: "Aa",
     preview: "Candidate Name",
@@ -212,6 +212,6 @@ export const MOCK_BINDINGS: Record<string, string> = {
   teamName: "House Blue",
   teamRank: "1",
   teamPoints: "128",
-  studentName: "Fatima Rahman",
+  participantName: "Fatima Rahman",
   qrCode: "A-042",
 };

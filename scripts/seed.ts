@@ -7,11 +7,11 @@ import {
   recordProPayment,
   upsertPurchaseSummary,
 } from "./seed/festival";
+import { createParticipants } from "./seed/participants";
 import {
   createProgrammesAndAssignments,
   createSessions,
 } from "./seed/programmes";
-import { createStudents } from "./seed/students";
 import { printSeedSummary, updateFestivalUsageCounts } from "./seed/summary";
 import {
   createCategories,
@@ -39,22 +39,26 @@ async function seed() {
   const stages = await createStages(db, festivalId);
   await createJudges(db, festivalId, JUDGES);
 
-  const students = await createStudents(db, festivalId, categories, groups);
+  const participants = await createParticipants(
+    db,
+    festivalId,
+    categories,
+    groups,
+  );
 
   const sessionCount = await createSessions(db, festivalId, stages, SESSIONS);
 
-  const { programmeCount } =
-    await createProgrammesAndAssignments(
-      db,
-      festivalId,
-      categories,
-      stages,
-      groups,
-      students,
-    );
+  const { programmeCount } = await createProgrammesAndAssignments(
+    db,
+    festivalId,
+    categories,
+    stages,
+    groups,
+    participants,
+  );
 
   await updateFestivalUsageCounts(db, festivalId, {
-    students: students.length,
+    participants: participants.length,
     programmes: programmeCount,
     stages: stages.length,
   });
@@ -63,13 +67,14 @@ async function seed() {
     {
       categories: categories.length,
       groups: groups.length,
-      students: students.length,
-      leaders: students.filter((s) => s.isTeamLeader).length,
+      participants: participants.length,
+      leaders: participants.filter((s) => s.isTeamLeader).length,
       judges: JUDGES.length,
       sessions: sessionCount,
       programmes: programmeCount,
     },
-    students,
+    participants,
+    stages,
   );
 
   await pool.end();

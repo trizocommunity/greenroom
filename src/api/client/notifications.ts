@@ -10,16 +10,16 @@ import { apiClient, handleApiResponse } from "@/lib/api-client";
 import { STALE_TIME } from "@/lib/query-utils";
 import { queryKeys } from "./_query-keys";
 
-export function useNotifications(studentId: string) {
+export function useNotifications(participantId: string) {
   return useQuery<Notification[]>({
-    queryKey: queryKeys.notifications.all(studentId),
+    queryKey: queryKeys.notifications.all(participantId),
     queryFn: async () => {
       const response = await apiClient.get<ApiResponse<Notification[]>>(
-        `/notifications?studentId=${encodeURIComponent(studentId)}`,
+        `/notifications?participantId=${encodeURIComponent(participantId)}`,
       );
       return handleApiResponse(response.data);
     },
-    enabled: !!studentId,
+    enabled: !!participantId,
     staleTime: STALE_TIME.fast,
     refetchInterval: 30 * 1000,
     refetchOnWindowFocus: true,
@@ -36,9 +36,9 @@ export function useMarkNotificationRead() {
       );
       return handleApiResponse(response.data);
     },
-    onSuccess: (_data, { studentId }) => {
+    onSuccess: (_data, { participantId }) => {
       qc.invalidateQueries({
-        queryKey: queryKeys.notifications.all(studentId),
+        queryKey: queryKeys.notifications.all(participantId),
       });
     },
     onError: (error) => {
@@ -57,9 +57,9 @@ export function useMarkAllNotificationsRead() {
       );
       return handleApiResponse(response.data);
     },
-    onSuccess: (_data, { studentId }) => {
+    onSuccess: (_data, { participantId }) => {
       qc.invalidateQueries({
-        queryKey: queryKeys.notifications.all(studentId),
+        queryKey: queryKeys.notifications.all(participantId),
       });
     },
     onError: (error) => {

@@ -13,9 +13,9 @@ export function useStageAssignments(festivalId: string) {
   return useQuery<StageManagerAssignment[]>({
     queryKey: queryKeys.stageAssignments.all(festivalId),
     queryFn: async () => {
-      const response = await apiClient.get<ApiResponse<StageManagerAssignment[]>>(
-        `/stage-assignments?festivalId=${encodeURIComponent(festivalId)}`,
-      );
+      const response = await apiClient.get<
+        ApiResponse<StageManagerAssignment[]>
+      >(`/stage-assignments?festivalId=${encodeURIComponent(festivalId)}`);
       return handleApiResponse(response.data);
     },
     enabled: !!festivalId,
@@ -31,10 +31,11 @@ export function useAssignStageManager() {
     { festivalId: string; data: AssignStageManagerInput }
   >({
     mutationFn: async ({ festivalId, data }) => {
-      const response = await apiClient.post<ApiResponse<StageManagerAssignment>>(
-        `/stage-assignments?festivalId=${encodeURIComponent(festivalId)}`,
-        { data },
-      );
+      const response = await apiClient.post<
+        ApiResponse<StageManagerAssignment>
+      >(`/stage-assignments?festivalId=${encodeURIComponent(festivalId)}`, {
+        data,
+      });
       return handleApiResponse(response.data);
     },
     onSuccess: (_data, { festivalId }) => {
@@ -50,24 +51,22 @@ export function useAssignStageManager() {
 
 export function useUnassignStageManager() {
   const qc = useQueryClient();
-  return useMutation<
-    void,
-    Error,
-    { festivalId: string; assignmentId: string }
-  >({
-    mutationFn: async ({ festivalId, assignmentId }) => {
-      const response = await apiClient.delete<ApiResponse<void>>(
-        `/stage-assignments/${assignmentId}?festivalId=${encodeURIComponent(festivalId)}`,
-      );
-      return handleApiResponse(response.data);
+  return useMutation<void, Error, { festivalId: string; assignmentId: string }>(
+    {
+      mutationFn: async ({ festivalId, assignmentId }) => {
+        const response = await apiClient.delete<ApiResponse<void>>(
+          `/stage-assignments/${assignmentId}?festivalId=${encodeURIComponent(festivalId)}`,
+        );
+        return handleApiResponse(response.data);
+      },
+      onSuccess: (_data, { festivalId }) => {
+        qc.invalidateQueries({
+          queryKey: queryKeys.stageAssignments.all(festivalId),
+        });
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
     },
-    onSuccess: (_data, { festivalId }) => {
-      qc.invalidateQueries({
-        queryKey: queryKeys.stageAssignments.all(festivalId),
-      });
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
+  );
 }

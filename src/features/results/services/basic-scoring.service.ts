@@ -189,7 +189,7 @@ export async function assertProgrammeReadyToPublish(programmeId: string) {
   }
   if (resultTotal < assignmentTotal) {
     throw new AppError(
-      "Publish when every assigned student or team has a saved score.",
+      "Publish when every assigned participant or team has a saved score.",
     );
   }
 }

@@ -14,18 +14,18 @@ import {
   category as categories,
   expiredFestivalManualBook,
   expiredFestivalResult,
-  festivalGalleryImage,
   festivalLifecycleEvent,
+  festivalMediaImage,
   festivalMember,
   festivalNews,
   festival as festivals,
   group as groups,
+  participant as participants,
   programmeAssignment,
   programme as programmes,
   result as results,
   scheduleEntry,
   stage as stages,
-  student as students,
 } from "@/core/database/schema";
 import { getPublicFestivalResults } from "@/features/festivals/loaders/festival-results.loader";
 
@@ -131,7 +131,7 @@ export const FestivalExpirationService = {
     if (!festival || festival.status === "EXPIRED") return;
 
     const [
-      studentsData,
+      participantsData,
       programmesData,
       categoriesData,
       groupsData,
@@ -139,7 +139,9 @@ export const FestivalExpirationService = {
       scheduleData,
       resultsData,
     ] = await Promise.all([
-      db.query.student.findMany({ where: eq(students.festivalId, festivalId) }),
+      db.query.participant.findMany({
+        where: eq(participants.festivalId, festivalId),
+      }),
       db.query.programme.findMany({
         where: eq(programmes.festivalId, festivalId),
       }),
@@ -158,7 +160,7 @@ export const FestivalExpirationService = {
 
     const manualBookData = {
       festival,
-      students: studentsData,
+      participants: participantsData,
       programmes: programmesData,
       categories: categoriesData,
       groups: groupsData,
@@ -198,13 +200,15 @@ export const FestivalExpirationService = {
       await tx
         .delete(scheduleEntry)
         .where(eq(scheduleEntry.festivalId, festivalId));
-      await tx.delete(students).where(eq(students.festivalId, festivalId));
+      await tx
+        .delete(participants)
+        .where(eq(participants.festivalId, festivalId));
       await tx.delete(programmes).where(eq(programmes.festivalId, festivalId));
       await tx.delete(categories).where(eq(categories.festivalId, festivalId));
       await tx.delete(groups).where(eq(groups.festivalId, festivalId));
       await tx
-        .delete(festivalGalleryImage)
-        .where(eq(festivalGalleryImage.festivalId, festivalId));
+        .delete(festivalMediaImage)
+        .where(eq(festivalMediaImage.festivalId, festivalId));
       await tx
         .delete(festivalNews)
         .where(eq(festivalNews.festivalId, festivalId));
@@ -232,7 +236,7 @@ export const FestivalExpirationService = {
         .set({
           status: "EXPIRED",
           expiredAt: now.toISOString(),
-          studentsCount: 0,
+          participantsCount: 0,
           programmesCount: 0,
           stagesCount: 0,
           storageUsedMb: 0,

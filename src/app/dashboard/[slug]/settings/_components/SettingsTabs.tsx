@@ -1,19 +1,19 @@
 "use client";
 
+import {
+  Gavel,
+  Globe,
+  LayoutTemplate,
+  Settings2,
+  Sparkles,
+} from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTopLoader } from "nextjs-toploader";
 import { ScoringPolicyClient } from "@/components/dashboard/judgment/ScoringPolicyClient";
 import { TemplatesClient } from "@/components/festival/posters/TemplatesClient";
+import { cn } from "@/core/utils/cn";
 import { FestivalLiveClient } from "./FestivalLiveClient";
 import { SettingsForm } from "./SettingsForm";
-import { cn } from "@/core/utils/cn";
-import {
-  Globe,
-  Settings2,
-  Sparkles,
-  LayoutTemplate,
-  Gavel,
-} from "lucide-react";
 
 interface SettingsTabsProps {
   festival: any;

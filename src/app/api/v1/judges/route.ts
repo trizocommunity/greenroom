@@ -5,8 +5,8 @@ import { badRequest, createProtectedHandler, ok } from "@/api/lib";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { db } from "@/core/database/client";
 import {
-  judge as judgeTable,
   judgeStageAssignment,
+  judge as judgeTable,
   stage as stageTable,
 } from "@/core/database/schema";
 import { listFestivalJudgesWithAssignments } from "@/features/judges/repositories/judge.repository";

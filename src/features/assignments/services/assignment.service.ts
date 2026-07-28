@@ -4,10 +4,10 @@ import { db } from "@/core/database/client";
 import {
   category as categoryTable,
   group as groupTable,
+  participant as participantTable,
   programmeAssignment,
   programme as programmeTable,
   programmeTeamLead as programmeTeamLeadTable,
-  student as studentTable,
 } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import {
@@ -17,12 +17,12 @@ import {
   findAssignmentsByProgramme,
 } from "@/features/assignments/repositories/assignment.repository";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
+import { findParticipantById } from "@/features/participants/repositories/participant.repository";
 import { isProTier } from "@/features/plan-features/services/tier";
 import type { TeamLeadAppointerRole } from "@/features/programme-team-leads/services/programme-team-lead.service";
 import { ProgrammeTeamLeadService } from "@/features/programme-team-leads/services/programme-team-lead.service";
 import { findProgrammeById } from "@/features/programmes/repositories/programme.repository";
 import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
-import { findStudentById } from "@/features/students/repositories/student.repository";
 
 export const AssignmentService = {
   async getAll(festivalId: string) {
@@ -34,7 +34,7 @@ export const AssignmentService = {
             category: true,
           },
         },
-        student: {
+        participant: {
           with: {
             category: true,
             group: true,
@@ -72,16 +72,16 @@ export const AssignmentService = {
         eq(programmeAssignment.teamNumber, teamNumber),
       ),
       with: {
-        student: { with: { category: true } },
+        participant: { with: { category: true } },
       },
     });
     return assignments
-      .filter((a) => a.student != null)
+      .filter((a) => a.participant != null)
       .map((a) => ({
-        id: a.student!.id,
-        name: a.student!.name,
-        chestNumber: a.student!.chestNumber,
-        categoryName: a.student!.category?.name,
+        id: a.participant!.id,
+        name: a.participant!.name,
+        chestNumber: a.participant!.chestNumber,
+        categoryName: a.participant!.category?.name,
       }));
   },
 
@@ -89,9 +89,9 @@ export const AssignmentService = {
     festivalId: string,
     data: {
       programmeId: string;
-      studentId?: string;
+      participantId?: string;
       groupId?: string;
-      /** Required for GROUP programmes when assigning a student (integer ≥ 1). */
+      /** Required for GROUP programmes when assigning a participant (integer ≥ 1). */
       teamNumber?: number;
     },
     actor?: { createdByEmail?: string; createdByName?: string },
@@ -104,33 +104,33 @@ export const AssignmentService = {
     if (!programme || programme.festivalId !== festivalId)
       throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_PROGRAMME);
 
-    if (!data.studentId && !data.groupId) {
+    if (!data.participantId && !data.groupId) {
       throw new AppError(ERROR_MESSAGES.ASSIGNMENT_REQUIRES_PARTICIPANT);
     }
 
-    if (data.studentId) {
-      const student = await findStudentById(data.studentId);
-      if (!student || student.festivalId !== festivalId)
-        throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_STUDENT);
+    if (data.participantId) {
+      const participant = await findParticipantById(data.participantId);
+      if (!participant || participant.festivalId !== festivalId)
+        throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_PARTICIPANT);
 
       const isGeneral = programme.category.type === "GENERAL";
 
       if (
         programme.type === "INDIVIDUAL" &&
-        student.groupId &&
+        participant.groupId &&
         programme.maxParticipantsPerGroup
       ) {
         const [result] = await db
           .select({ count: count() })
           .from(programmeAssignment)
           .innerJoin(
-            studentTable,
-            eq(programmeAssignment.studentId, studentTable.id),
+            participantTable,
+            eq(programmeAssignment.participantId, participantTable.id),
           )
           .where(
             and(
               eq(programmeAssignment.programmeId, data.programmeId),
-              eq(studentTable.groupId, student.groupId),
+              eq(participantTable.groupId, participant.groupId),
             ),
           );
 
@@ -141,13 +141,13 @@ export const AssignmentService = {
         }
       }
 
-      if (!isGeneral && programme.categoryId !== student.categoryId) {
+      if (!isGeneral && programme.categoryId !== participant.categoryId) {
         throw new AppError(ERROR_MESSAGES.ASSIGNMENT_CATEGORY_MISMATCH);
       }
 
       const exists = await checkAssignmentExists(
         data.programmeId,
-        data.studentId,
+        data.participantId,
       );
       if (exists) throw new AppError(ERROR_MESSAGES.ASSIGNMENT_ALREADY_EXISTS);
 
@@ -161,7 +161,7 @@ export const AssignmentService = {
           tn < 1
         ) {
           throw new AppError(
-            "Group programmes require a team number (integer ≥ 1) when assigning a student.",
+            "Group programmes require a team number (integer ≥ 1) when assigning a participant.",
           );
         }
         teamNumber = tn;
@@ -176,9 +176,9 @@ export const AssignmentService = {
       const created = await createAssignment({
         festivalId,
         programmeId: data.programmeId,
-        studentId: data.studentId,
+        participantId: data.participantId,
         teamNumber,
-        ...(student.groupId ? { groupId: student.groupId } : {}),
+        ...(participant.groupId ? { groupId: participant.groupId } : {}),
         assignedAt: new Date().toISOString(),
         ...(actor?.createdByEmail
           ? { createdByEmail: actor.createdByEmail }
@@ -206,7 +206,7 @@ export const AssignmentService = {
   async update(
     id: string,
     festivalId: string,
-    data: { programmeId?: string; studentId?: string; groupId?: string },
+    data: { programmeId?: string; participantId?: string; groupId?: string },
   ) {
     const festival = await findFestivalById(festivalId);
     if (festival?.status === "EXPIRED")
@@ -214,7 +214,7 @@ export const AssignmentService = {
 
     const existing = await db.query.programmeAssignment.findFirst({
       where: eq(programmeAssignment.id, id),
-      with: { student: true, programme: true },
+      with: { participant: true, programme: true },
     });
 
     if (!existing) throw new AppError(ERROR_MESSAGES.ASSIGNMENT_NOT_FOUND);
@@ -222,8 +222,10 @@ export const AssignmentService = {
       throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_FESTIVAL);
 
     const newProgrammeId = data.programmeId || existing.programmeId;
-    const newStudentId =
-      data.studentId !== undefined ? data.studentId : existing.studentId;
+    const newParticipantId =
+      data.participantId !== undefined
+        ? data.participantId
+        : existing.participantId;
     const newGroupId =
       data.groupId !== undefined ? data.groupId : existing.groupId;
 
@@ -231,33 +233,33 @@ export const AssignmentService = {
     if (!programme || programme.festivalId !== festivalId)
       throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_PROGRAMME);
 
-    if (!newStudentId && !newGroupId) {
+    if (!newParticipantId && !newGroupId) {
       throw new AppError(ERROR_MESSAGES.ASSIGNMENT_REQUIRES_PARTICIPANT);
     }
 
-    if (newStudentId) {
-      const student = await findStudentById(newStudentId);
-      if (!student || student.festivalId !== festivalId)
-        throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_STUDENT);
+    if (newParticipantId) {
+      const participant = await findParticipantById(newParticipantId);
+      if (!participant || participant.festivalId !== festivalId)
+        throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_PARTICIPANT);
 
       const isGeneral = programme.category.type === "GENERAL";
-      if (!isGeneral && programme.categoryId !== student.categoryId) {
+      if (!isGeneral && programme.categoryId !== participant.categoryId) {
         throw new AppError(ERROR_MESSAGES.ASSIGNMENT_CATEGORY_MISMATCH);
       }
 
       if (
         newProgrammeId !== existing.programmeId ||
-        newStudentId !== existing.studentId
+        newParticipantId !== existing.participantId
       ) {
         const exists = await checkAssignmentExists(
           newProgrammeId,
-          newStudentId,
+          newParticipantId,
         );
         if (exists) {
           const conflict = await db.query.programmeAssignment.findFirst({
             where: and(
               eq(programmeAssignment.programmeId, newProgrammeId),
-              eq(programmeAssignment.studentId, newStudentId),
+              eq(programmeAssignment.participantId, newParticipantId),
             ),
           });
           if (conflict && conflict.id !== id)
@@ -270,7 +272,7 @@ export const AssignmentService = {
           .update(programmeAssignment)
           .set({
             programmeId: newProgrammeId,
-            studentId: newStudentId,
+            participantId: newParticipantId,
             groupId: null,
             updatedAt: new Date().toISOString(),
           })
@@ -288,7 +290,7 @@ export const AssignmentService = {
         .update(programmeAssignment)
         .set({
           programmeId: newProgrammeId,
-          studentId: null,
+          participantId: null,
           groupId: newGroupId!,
           updatedAt: new Date().toISOString(),
         })
@@ -305,7 +307,7 @@ export const AssignmentService = {
     id: string,
     _festivalId?: string,
     options?: {
-      replacementLeadStudentId?: string;
+      replacementLeadParticipantId?: string;
       appointer?: {
         appointedBy: string;
         appointedByRole: TeamLeadAppointerRole;
@@ -323,7 +325,7 @@ export const AssignmentService = {
     if (
       existing.programme?.type === "GROUP" &&
       existing.groupId &&
-      existing.studentId
+      existing.participantId
     ) {
       const lead = await db.query.programmeTeamLead.findFirst({
         where: and(
@@ -333,7 +335,7 @@ export const AssignmentService = {
         ),
       });
 
-      if (lead && lead.studentId === existing.studentId) {
+      if (lead && lead.participantId === existing.participantId) {
         const [{ c: remainingCount }] = await db
           .select({ c: count() })
           .from(programmeAssignment)
@@ -348,14 +350,14 @@ export const AssignmentService = {
 
         if (remainingCount === 0) {
           throw new AppError(
-            "This student is the only member of the team. Delete the whole team instead of removing its last member.",
+            "This participant is the only member of the team. Delete the whole team instead of removing its last member.",
             "TEAM_WOULD_BE_EMPTY",
           );
         }
 
-        if (!options?.replacementLeadStudentId) {
+        if (!options?.replacementLeadParticipantId) {
           throw new AppError(
-            "This student is the team lead. Appoint a replacement lead before removing them.",
+            "This participant is the team lead. Appoint a replacement lead before removing them.",
             "LEAD_MUST_BE_REPLACED",
           );
         }
@@ -372,7 +374,7 @@ export const AssignmentService = {
               programmeId: existing.programmeId,
               groupId: existing.groupId!,
               teamNumber: existing.teamNumber,
-              studentId: options.replacementLeadStudentId!,
+              participantId: options.replacementLeadParticipantId!,
               ...options.appointer!,
             },
             tx,
@@ -431,8 +433,8 @@ export const AssignmentService = {
     return { count: result.length };
   },
 
-  async assign(festivalId: string, programmeId: string, studentId: string) {
-    return this.create(festivalId, { programmeId, studentId });
+  async assign(festivalId: string, programmeId: string, participantId: string) {
+    return this.create(festivalId, { programmeId, participantId });
   },
 
   async remove(id: string, festivalId?: string) {
@@ -443,12 +445,12 @@ export const AssignmentService = {
     festivalId: string,
     assignments: {
       programmeId: string;
-      studentId: string;
+      participantId: string;
       teamNumber?: number;
     }[],
     actor?: { createdByEmail?: string; createdByName?: string },
     options?: {
-      /** GROUP programmes only, keyed by `${programmeId}:${groupId}:${teamNumber}` -> lead studentId. */
+      /** GROUP programmes only, keyed by `${programmeId}:${groupId}:${teamNumber}` -> lead participantId. */
       teamLeadsByTeam?: Record<string, string>;
       appointer?: {
         appointedBy: string;
@@ -485,14 +487,14 @@ export const AssignmentService = {
         }
 
         const isGeneral = programme.category.type === "GENERAL";
-        const studentIds = progAssignments.map((a) => a.studentId);
-        const students = await tx.query.student.findMany({
-          where: inArray(studentTable.id, studentIds),
+        const participantIds = progAssignments.map((a) => a.participantId);
+        const participants = await tx.query.participant.findMany({
+          where: inArray(participantTable.id, participantIds),
         });
-        const studentMap = new Map(students.map((s) => [s.id, s]));
+        const participantMap = new Map(participants.map((s) => [s.id, s]));
 
         const groupIds = new Set<string>();
-        students.forEach((s) => {
+        participants.forEach((s) => {
           if (s.groupId) groupIds.add(s.groupId);
         });
 
@@ -504,26 +506,26 @@ export const AssignmentService = {
                 groupIds.size > 0
                   ? inArray(programmeAssignment.groupId, Array.from(groupIds))
                   : undefined,
-                // Drizzle relational query doesn't support nested student.groupId check easily in 'where'
+                // Drizzle relational query doesn't support nested participant.groupId check easily in 'where'
                 // We'll use a more direct approach if needed, but let's try to filter in JS or use sql
               ),
             ),
-            with: { student: { columns: { groupId: true } } },
+            with: { participant: { columns: { groupId: true } } },
           },
         );
 
         // Wait, the OR condition above is tricky. Let's use standard SQL for better control.
         const existingRaw = await tx
           .select({
-            studentId: programmeAssignment.studentId,
+            participantId: programmeAssignment.participantId,
             groupId: programmeAssignment.groupId,
             teamNumber: programmeAssignment.teamNumber,
-            studentGroupId: studentTable.groupId,
+            participantGroupId: participantTable.groupId,
           })
           .from(programmeAssignment)
           .leftJoin(
-            studentTable,
-            eq(programmeAssignment.studentId, studentTable.id),
+            participantTable,
+            eq(programmeAssignment.participantId, participantTable.id),
           )
           .where(
             and(
@@ -533,7 +535,7 @@ export const AssignmentService = {
                   ? inArray(programmeAssignment.groupId, Array.from(groupIds))
                   : undefined,
                 groupIds.size > 0
-                  ? inArray(studentTable.groupId, Array.from(groupIds))
+                  ? inArray(participantTable.groupId, Array.from(groupIds))
                   : undefined,
               ),
             ),
@@ -541,10 +543,10 @@ export const AssignmentService = {
 
         const participantsPerGroup = new Map<string, number>();
         const teamsPerGroup = new Map<string, Set<number>>();
-        const studentsPerTeam = new Map<string, number>();
+        const participantsPerTeam = new Map<string, number>();
 
         existingRaw.forEach((a) => {
-          const gid = a.groupId || a.studentGroupId;
+          const gid = a.groupId || a.participantGroupId;
           if (!gid) return;
 
           participantsPerGroup.set(
@@ -557,18 +559,21 @@ export const AssignmentService = {
 
           if (a.teamNumber) {
             const key = `${gid}_${a.teamNumber}`;
-            studentsPerTeam.set(key, (studentsPerTeam.get(key) || 0) + 1);
+            participantsPerTeam.set(
+              key,
+              (participantsPerTeam.get(key) || 0) + 1,
+            );
           }
         });
 
-        const processedStudentIds = new Set<string>();
+        const processedParticipantIds = new Set<string>();
         const touchedTeams = new Map<
           string,
           { groupId: string; teamNumber: number }
         >();
 
         for (const assignment of progAssignments) {
-          const { studentId } = assignment;
+          const { participantId } = assignment;
           let teamNumber: number;
           if (programme.type === "GROUP") {
             const tn = assignment.teamNumber;
@@ -587,23 +592,23 @@ export const AssignmentService = {
             const tn = assignment.teamNumber ?? 1;
             teamNumber = Number.isInteger(tn) && tn >= 1 ? tn : 1;
           }
-          const student = studentMap.get(studentId);
+          const participant = participantMap.get(participantId);
 
-          if (!student || student.festivalId !== festivalId) {
-            throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_STUDENT);
+          if (!participant || participant.festivalId !== festivalId) {
+            throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_PARTICIPANT);
           }
 
-          if (!isGeneral && programme.categoryId !== student.categoryId) {
+          if (!isGeneral && programme.categoryId !== participant.categoryId) {
             throw new AppError(ERROR_MESSAGES.ASSIGNMENT_CATEGORY_MISMATCH);
           }
 
-          const studentGroupId = student.groupId;
+          const participantGroupId = participant.groupId;
 
-          if (studentGroupId) {
+          if (participantGroupId) {
             if (programme.type === "GROUP") {
               if (programme.maxTeamsPerGroup) {
                 const currentTeams =
-                  teamsPerGroup.get(studentGroupId) || new Set();
+                  teamsPerGroup.get(participantGroupId) || new Set();
                 if (!currentTeams.has(teamNumber)) {
                   if (currentTeams.size >= programme.maxTeamsPerGroup) {
                     throw new AppError(
@@ -611,41 +616,41 @@ export const AssignmentService = {
                     );
                   }
                   currentTeams.add(teamNumber);
-                  teamsPerGroup.set(studentGroupId, currentTeams);
+                  teamsPerGroup.set(participantGroupId, currentTeams);
                 }
               }
 
-              if (programme.maxStudentsPerTeam) {
-                const key = `${studentGroupId}_${teamNumber}`;
-                const currentCount = studentsPerTeam.get(key) || 0;
-                if (currentCount >= programme.maxStudentsPerTeam) {
+              if (programme.maxParticipantsPerTeam) {
+                const key = `${participantGroupId}_${teamNumber}`;
+                const currentCount = participantsPerTeam.get(key) || 0;
+                if (currentCount >= programme.maxParticipantsPerTeam) {
                   throw new AppError(
                     `Max team size reached for Team ${teamNumber}`,
                   );
                 }
-                studentsPerTeam.set(key, currentCount + 1);
+                participantsPerTeam.set(key, currentCount + 1);
               }
             } else {
               if (programme.maxParticipantsPerGroup) {
                 const currentCount =
-                  participantsPerGroup.get(studentGroupId) || 0;
+                  participantsPerGroup.get(participantGroupId) || 0;
                 if (currentCount >= programme.maxParticipantsPerGroup) {
                   throw new AppError(
                     `Group limit reached for ${programme.name}`,
                   );
                 }
-                participantsPerGroup.set(studentGroupId, currentCount + 1);
+                participantsPerGroup.set(participantGroupId, currentCount + 1);
               }
             }
           }
 
           if (
-            existingRaw.some((e) => e.studentId === studentId) ||
-            processedStudentIds.has(studentId)
+            existingRaw.some((e) => e.participantId === participantId) ||
+            processedParticipantIds.has(participantId)
           ) {
             throw new AppError(ERROR_MESSAGES.ASSIGNMENT_ALREADY_EXISTS);
           }
-          processedStudentIds.add(studentId);
+          processedParticipantIds.add(participantId);
 
           const created = (
             await tx
@@ -654,7 +659,7 @@ export const AssignmentService = {
                 id: randomUUID(),
                 festivalId,
                 programmeId,
-                studentId,
+                participantId,
                 teamNumber,
                 assignedAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
@@ -664,17 +669,22 @@ export const AssignmentService = {
                 ...(actor?.createdByName
                   ? { createdByName: actor.createdByName }
                   : {}),
-                ...(student.groupId ? { groupId: student.groupId } : {}),
+                ...(participant.groupId
+                  ? { groupId: participant.groupId }
+                  : {}),
               })
               .returning()
           )[0];
           finalResults.push(created);
 
-          if (programme.type === "GROUP" && studentGroupId) {
-            touchedTeams.set(`${programmeId}:${studentGroupId}:${teamNumber}`, {
-              groupId: studentGroupId,
-              teamNumber,
-            });
+          if (programme.type === "GROUP" && participantGroupId) {
+            touchedTeams.set(
+              `${programmeId}:${participantGroupId}:${teamNumber}`,
+              {
+                groupId: participantGroupId,
+                teamNumber,
+              },
+            );
           }
         }
 
@@ -689,8 +699,8 @@ export const AssignmentService = {
             });
             if (existingLead) continue;
 
-            const leadStudentId = teamLeadsByTeam[key];
-            if (!leadStudentId) {
+            const leadParticipantId = teamLeadsByTeam[key];
+            if (!leadParticipantId) {
               throw new AppError(
                 "Each team must have a lead selected before saving.",
                 "EACH_TEAM_MUST_HAVE_LEAD",
@@ -708,7 +718,7 @@ export const AssignmentService = {
                 programmeId,
                 groupId,
                 teamNumber,
-                studentId: leadStudentId,
+                participantId: leadParticipantId,
                 ...options.appointer,
               },
               tx,

@@ -6,10 +6,10 @@ export const queryKeys = {
     all: ["festivals"] as const,
     detail: (id: string) => ["festivals", id] as const,
   },
-  students: {
-    all: (festivalId: string) => ["students", festivalId] as const,
-    detail: (festivalId: string, studentId: string) =>
-      ["students", festivalId, studentId] as const,
+  participants: {
+    all: (festivalId: string) => ["participants", festivalId] as const,
+    detail: (festivalId: string, participantId: string) =>
+      ["participants", festivalId, participantId] as const,
   },
   groups: {
     all: (festivalId: string) => ["groups", festivalId] as const,
@@ -55,7 +55,7 @@ export const queryKeys = {
       ["judgment", "dashboard", festivalId] as const,
   },
   notifications: {
-    all: (studentId: string) => ["notifications", studentId] as const,
+    all: (participantId: string) => ["notifications", participantId] as const,
   },
   payments: {
     all: ["payments"] as const,
@@ -65,8 +65,8 @@ export const queryKeys = {
   billing: {
     unusedCredit: ["billing", "unusedCredit"] as const,
   },
-  gallery: {
-    all: (festivalId: string) => ["gallery", festivalId] as const,
+  media: {
+    all: (festivalId: string) => ["media", festivalId] as const,
   },
   news: {
     all: (festivalId: string) => ["news", festivalId] as const,
@@ -81,7 +81,7 @@ export const queryKeys = {
   teamLeader: {
     festivals: ["team-leader", "festivals"] as const,
     dashboard: ["team-leader", "dashboard"] as const,
-    students: ["team-leader", "students"] as const,
+    participants: ["team-leader", "participants"] as const,
   },
   superAdmin: {
     analytics: ["super-admin", "analytics"] as const,

@@ -50,10 +50,10 @@ export function FestivalFooter({ festival }: FestivalFooterProps) {
               Results
             </Link>
             <Link
-              href={`/${festival.slug}/gallery`}
+              href={`/${festival.slug}/media`}
               className="hover:text-foreground"
             >
-              Gallery
+              Media
             </Link>
           </nav>
           <p className="text-xs text-muted-foreground">

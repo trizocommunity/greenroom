@@ -10,9 +10,8 @@ const handler = createProtectedHandler({
       return badRequest("MISSING_PARAM", "festivalId is required");
 
     await StageAssignmentService.getAccessibleStageIds(festivalId, user);
-    const assignments = await StageAssignmentService.listForFestival(
-      festivalId,
-    );
+    const assignments =
+      await StageAssignmentService.listForFestival(festivalId);
     return ok(assignments);
   },
 

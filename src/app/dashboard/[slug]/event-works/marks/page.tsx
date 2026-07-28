@@ -7,7 +7,6 @@ import { BasicMarksClient } from "@/components/dashboard/marks/BasicMarksClient"
 import { db } from "@/core/database/client";
 import {
   festival as festivalTable,
-  programmeJudgeSession as pjsTable,
   programme as programmeTable,
 } from "@/core/database/schema";
 import { getScoringPolicyAction } from "@/features/judgment/actions/judgment.actions";
@@ -44,15 +43,10 @@ export default async function MarksRedirectPage({
           category: true,
           assignments: {
             with: {
-              student: true,
+              participant: true,
               group: true,
               result: true,
             },
-          },
-          programmeJudgeSessions: {
-            where: (pjs, { isNull }) => isNull(pjs.usedAt),
-            orderBy: [desc(pjsTable.startedAt)],
-            limit: 1,
           },
         },
         orderBy: [desc(programmeTable.createdAt)],
@@ -128,7 +122,7 @@ export default async function MarksRedirectPage({
       return (
         <EmptyState
           title="No Assignments Found"
-          description="Assign students to programmes in Pre Event Works before entering scores."
+          description="Assign participants to programmes in Pre Event Works before entering scores."
           actionLabel="Go to Assignments"
           actionLink={`/dashboard/${slug}/pre-event-works/assignments`}
           icon={ClipboardList}

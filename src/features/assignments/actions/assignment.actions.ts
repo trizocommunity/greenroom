@@ -9,8 +9,8 @@ import {
   programmeAssignment as assignmentTable,
   category as categoryTable,
   group as groupTable,
+  participant as participantTable,
   programme as programmeTable,
-  student as studentTable,
   user as userTable,
 } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
@@ -23,7 +23,7 @@ import { assertFestivalMutationAllowed } from "@/features/festivals/services/fes
 function auditActorForContext(actorContext: AssignmentActorContext) {
   return actorContext.type === "user"
     ? undefined
-    : { actorId: actorContext.studentId, actorRole: "TEAM_LEADER" };
+    : { actorId: actorContext.participantId, actorRole: "TEAM_LEADER" };
 }
 
 export async function resolveAppointerContext(
@@ -39,7 +39,7 @@ export async function resolveAppointerContext(
     };
   }
   return {
-    appointedBy: actorContext.studentId,
+    appointedBy: actorContext.participantId,
     appointedByRole: "TEAM_LEADER" as const,
     appointedByName: "Team Leader",
     appointedByEmail: undefined,
@@ -73,7 +73,7 @@ function assertAssignmentWindowOpen(
 
 export type AssignmentActorContext =
   | { type: "user"; userId: string }
-  | { type: "teamLeader"; studentId: string; groupId: string };
+  | { type: "teamLeader"; participantId: string; groupId: string };
 
 export async function resolveAssignmentActorContext(
   festivalId: string,
@@ -92,17 +92,17 @@ export async function resolveAssignmentActorContext(
     !tlSession ||
     tlSession.revokedAt ||
     parseStoredInstant(tlSession.expiresAt) <= new Date() ||
-    !tlSession.student?.isTeamLeader ||
+    !tlSession.participant?.isTeamLeader ||
     tlSession.festivalId !== festivalId ||
-    !tlSession.student.groupId
+    !tlSession.participant.groupId
   ) {
     throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
   }
 
   return {
     type: "teamLeader",
-    studentId: tlSession.studentId,
-    groupId: tlSession.student.groupId,
+    participantId: tlSession.participantId,
+    groupId: tlSession.participant.groupId,
   };
 }
 
@@ -114,8 +114,8 @@ export async function getAssignmentsAction(festivalId: string) {
     const groupId =
       a?.groupId ??
       a?.group?.id ??
-      a?.student?.groupId ??
-      a?.student?.group?.id;
+      a?.participant?.groupId ??
+      a?.participant?.group?.id;
     return groupId === actor.groupId;
   });
 }
@@ -124,7 +124,7 @@ export async function createAssignmentAction(
   festivalId: string,
   data: {
     programmeId: string;
-    studentId?: string;
+    participantId?: string;
     groupId?: string;
     teamNumber?: number;
   },
@@ -147,7 +147,7 @@ export async function createAssignmentAction(
   assertAssignmentWindowOpen(festival);
 
   // Validate Dependencies
-  const [categoryCount, groupCount, programmeCount, studentCount] =
+  const [categoryCount, groupCount, programmeCount, participantCount] =
     await Promise.all([
       db
         .select({ c: count() })
@@ -163,28 +163,28 @@ export async function createAssignmentAction(
         .where(eq(programmeTable.festivalId, festivalId)),
       db
         .select({ c: count() })
-        .from(studentTable)
-        .where(eq(studentTable.festivalId, festivalId)),
+        .from(participantTable)
+        .where(eq(participantTable.festivalId, festivalId)),
     ]);
 
   if (
     categoryCount[0].c === 0 ||
     groupCount[0].c === 0 ||
     programmeCount[0].c === 0 ||
-    studentCount[0].c === 0
+    participantCount[0].c === 0
   ) {
     throw new AppError(ERROR_MESSAGES.ASSIGNMENT_DEPENDENCIES_MISSING);
   }
 
-  if (actorContext.type === "teamLeader" && data.studentId) {
-    const student = await db.query.student.findFirst({
-      where: eq(studentTable.id, data.studentId),
+  if (actorContext.type === "teamLeader" && data.participantId) {
+    const participant = await db.query.participant.findFirst({
+      where: eq(participantTable.id, data.participantId),
       columns: { id: true, festivalId: true, groupId: true },
     });
     if (
-      !student ||
-      student.festivalId !== festivalId ||
-      student.groupId !== actorContext.groupId
+      !participant ||
+      participant.festivalId !== festivalId ||
+      participant.groupId !== actorContext.groupId
     ) {
       throw new AppError(ERROR_MESSAGES.FORBIDDEN);
     }
@@ -192,12 +192,17 @@ export async function createAssignmentAction(
 
   const created = await AssignmentService.create(festivalId, data, actor);
   await createAuditLog({
-    action: "ASSIGN_STUDENTS",
+    action: "ASSIGN_PARTICIPANTS",
     targetType: "PROGRAMME_ASSIGNMENT",
     targetId: created.id,
-    metadata: { programmeId: data.programmeId, studentId: data.studentId },
+    metadata: {
+      programmeId: data.programmeId,
+      participantId: data.participantId,
+    },
     actor: auditActorForContext(actorContext),
-  }).catch((err) => console.error("[AuditLog] ASSIGN_STUDENTS failed", err));
+  }).catch((err) =>
+    console.error("[AuditLog] ASSIGN_PARTICIPANTS failed", err),
+  );
   return created;
 }
 
@@ -205,7 +210,7 @@ export async function bulkCreateAssignmentAction(
   festivalId: string,
   assignments: {
     programmeId: string;
-    studentId: string;
+    participantId: string;
     teamNumber?: number;
   }[],
   teamLeadsByTeam?: Record<string, string>,
@@ -230,17 +235,19 @@ export async function bulkCreateAssignmentAction(
   if (assignments.length === 0) return [];
 
   if (actorContext.type === "teamLeader") {
-    const studentIds = Array.from(new Set(assignments.map((a) => a.studentId)));
-    const students = await db.query.student.findMany({
+    const participantIds = Array.from(
+      new Set(assignments.map((a) => a.participantId)),
+    );
+    const participants = await db.query.participant.findMany({
       where: and(
-        eq(studentTable.festivalId, festivalId),
-        inArray(studentTable.id, studentIds),
+        eq(participantTable.festivalId, festivalId),
+        inArray(participantTable.id, participantIds),
       ),
       columns: { id: true, festivalId: true, groupId: true },
     });
     if (
-      students.length !== studentIds.length ||
-      students.some(
+      participants.length !== participantIds.length ||
+      participants.some(
         (s) =>
           s.festivalId !== festivalId || s.groupId !== actorContext.groupId,
       )
@@ -267,13 +274,13 @@ export async function bulkCreateAssignmentAction(
   await Promise.all(
     Array.from(countByProgramme.entries()).map(([programmeId, count]) =>
       createAuditLog({
-        action: "ASSIGN_STUDENTS",
+        action: "ASSIGN_PARTICIPANTS",
         targetType: "PROGRAMME_ASSIGNMENT",
         targetId: programmeId,
         metadata: { programmeId, count },
         actor: auditActorForContext(actorContext),
       }).catch((err) =>
-        console.error("[AuditLog] ASSIGN_STUDENTS failed", err),
+        console.error("[AuditLog] ASSIGN_PARTICIPANTS failed", err),
       ),
     ),
   );
@@ -283,7 +290,7 @@ export async function bulkCreateAssignmentAction(
 export async function deleteAssignmentAction(
   festivalId: string,
   id: string,
-  replacementLeadStudentId?: string,
+  replacementLeadParticipantId?: string,
 ) {
   const actorContext = await resolveAssignmentActorContext(festivalId, {
     requireWritable: true,
@@ -298,11 +305,11 @@ export async function deleteAssignmentAction(
   if (actorContext.type === "teamLeader") {
     const assignment = await db.query.programmeAssignment.findFirst({
       where: eq(assignmentTable.id, id),
-      with: { student: true, group: true },
+      with: { participant: true, group: true },
     });
     const assignmentGroupId =
       assignment?.groupId ??
-      assignment?.student?.groupId ??
+      assignment?.participant?.groupId ??
       assignment?.group?.id;
     if (
       !assignment ||
@@ -316,7 +323,7 @@ export async function deleteAssignmentAction(
   const appointer = await resolveAppointerContext(actorContext);
 
   const deleted = await AssignmentService.delete(id, festivalId, {
-    replacementLeadStudentId,
+    replacementLeadParticipantId,
     appointer,
   });
   await createAuditLog({
@@ -325,7 +332,7 @@ export async function deleteAssignmentAction(
     targetId: id,
     metadata: {
       programmeId: deleted?.programmeId,
-      studentId: deleted?.studentId,
+      participantId: deleted?.participantId,
     },
     actor: auditActorForContext(actorContext),
   }).catch((err) => console.error("[AuditLog] REMOVE_ASSIGNMENT failed", err));
@@ -372,7 +379,7 @@ export async function updateAssignmentAction(
   id: string,
   data: {
     programmeId?: string;
-    studentId?: string;
+    participantId?: string;
     groupId?: string;
   },
 ) {
@@ -389,10 +396,12 @@ export async function updateAssignmentAction(
   if (actorContext.type === "teamLeader") {
     const existing = await db.query.programmeAssignment.findFirst({
       where: eq(assignmentTable.id, id),
-      with: { student: true, group: true },
+      with: { participant: true, group: true },
     });
     const existingGroupId =
-      existing?.groupId ?? existing?.student?.groupId ?? existing?.group?.id;
+      existing?.groupId ??
+      existing?.participant?.groupId ??
+      existing?.group?.id;
     if (
       !existing ||
       existing.festivalId !== festivalId ||
@@ -401,15 +410,15 @@ export async function updateAssignmentAction(
       throw new AppError(ERROR_MESSAGES.FORBIDDEN);
     }
 
-    if (data.studentId) {
-      const student = await db.query.student.findFirst({
-        where: eq(studentTable.id, data.studentId),
+    if (data.participantId) {
+      const participant = await db.query.participant.findFirst({
+        where: eq(participantTable.id, data.participantId),
         columns: { festivalId: true, groupId: true },
       });
       if (
-        !student ||
-        student.festivalId !== festivalId ||
-        student.groupId !== actorContext.groupId
+        !participant ||
+        participant.festivalId !== festivalId ||
+        participant.groupId !== actorContext.groupId
       ) {
         throw new AppError(ERROR_MESSAGES.FORBIDDEN);
       }
@@ -448,9 +457,9 @@ export async function getProgrammeTeamMembersAction(
     !tlSession ||
     tlSession.revokedAt ||
     parseStoredInstant(tlSession.expiresAt) <= new Date() ||
-    !tlSession.student?.isTeamLeader ||
+    !tlSession.participant?.isTeamLeader ||
     tlSession.festivalId !== festivalId ||
-    tlSession.student.groupId !== groupId
+    tlSession.participant.groupId !== groupId
   ) {
     throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
   }

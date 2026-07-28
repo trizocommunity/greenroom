@@ -92,7 +92,7 @@ export async function createProgrammeAction(
     stageType?: string;
     maxParticipantsPerGroup?: number;
     maxTeamsPerGroup?: number;
-    maxStudentsPerTeam?: number;
+    maxParticipantsPerTeam?: number;
     maxPoints?: number;
   },
 ) {
@@ -121,7 +121,7 @@ export async function createProgrammeAction(
       stageType: (data.stageType as "STAGE" | "NON_STAGE") || "STAGE",
       maxParticipantsPerGroup: data.maxParticipantsPerGroup,
       maxTeamsPerGroup: data.maxTeamsPerGroup,
-      maxStudentsPerTeam: data.maxStudentsPerTeam,
+      maxParticipantsPerTeam: data.maxParticipantsPerTeam,
     },
     actor,
   );
@@ -149,7 +149,7 @@ export async function bulkCreateProgrammesAction(
     stageType: string;
     maxParticipantsPerGroup?: number;
     maxTeamsPerGroup?: number;
-    maxStudentsPerTeam?: number;
+    maxParticipantsPerTeam?: number;
   }[],
 ) {
   const session = await getSession();
@@ -162,7 +162,7 @@ export async function bulkCreateProgrammesAction(
     stageType: (p.stageType as "STAGE" | "NON_STAGE") || "STAGE",
     maxParticipantsPerGroup: p.maxParticipantsPerGroup,
     maxTeamsPerGroup: p.maxTeamsPerGroup,
-    maxStudentsPerTeam: p.maxStudentsPerTeam,
+    maxParticipantsPerTeam: p.maxParticipantsPerTeam,
   }));
 
   try {
@@ -196,7 +196,7 @@ export async function updateProgrammeAction(
     stageType?: string;
     maxParticipantsPerGroup?: number;
     maxTeamsPerGroup?: number;
-    maxStudentsPerTeam?: number;
+    maxParticipantsPerTeam?: number;
     maxPoints?: number;
   },
 ) {
@@ -214,7 +214,7 @@ export async function updateProgrammeAction(
       : undefined,
     maxParticipantsPerGroup: data.maxParticipantsPerGroup,
     maxTeamsPerGroup: data.maxTeamsPerGroup,
-    maxStudentsPerTeam: data.maxStudentsPerTeam,
+    maxParticipantsPerTeam: data.maxParticipantsPerTeam,
   });
 
   await createAuditLog({

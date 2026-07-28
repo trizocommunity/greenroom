@@ -4,7 +4,7 @@ const RESULT_HINT =
   "Winner and programme names are placeholders until you publish results for at least one item.";
 
 const CANDIDATE_HINT =
-  "Candidate details are placeholders until students have chest numbers in this festival.";
+  "Candidate details are placeholders until participants have chest numbers in this festival.";
 
 const TEAM_HINT =
   "Team names and points are placeholders until group standings are published.";
@@ -55,7 +55,7 @@ export function buildResultPlaceholderBindings(
   };
 }
 
-/** Candidate card preview when no students with chest numbers exist. */
+/** Candidate card preview when no participants with chest numbers exist. */
 export function buildCandidatePlaceholderBindings(
   festivalName: string,
   festDate: string,
@@ -67,7 +67,7 @@ export function buildCandidatePlaceholderBindings(
     bindings: {
       ...festMeta(festivalName, festDate, festLocation),
       categoryName: "Sample category",
-      studentName: "Candidate name",
+      participantName: "Candidate name",
       chestNumber: "0000",
       teamName: "Team name",
       placeName: "Team name",

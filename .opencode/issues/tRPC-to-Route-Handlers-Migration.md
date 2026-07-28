@@ -1,4 +1,4 @@
-# tRPC → Next.js Route Handlers Migration
+﻿# tRPC â†’ Next.js Route Handlers Migration
 
 **Date:** 2026-07-13
 **Status:** In Progress
@@ -13,22 +13,22 @@ Migrate from tRPC to Next.js Route Handlers + React Query. Remove tRPC entirely,
 |----------|--------|
 | Type Safety | Shared Zod schemas in `src/api/contracts/` (manual sync) |
 | API URL Structure | `/api/v1/[domain]` |
-| Response Envelope | `ApiResponse<T>` — `{ success: true, data: T } \| { success: false, error: { code, message } }` |
+| Response Envelope | `ApiResponse<T>` â€” `{ success: true, data: T } \| { success: false, error: { code, message } }` |
 | Auth Middleware | `createHandler()` factory |
 | Hooks Location | `src/api/client/[domain].ts` |
 | Cron Endpoints | `GET /api/v1/cron/[action]` with `X-Cron-Secret` header |
 
 ---
 
-## Phase 0: Foundation ✅ DONE
+## Phase 0: Foundation âœ… DONE
 
-- [x] `src/api/contracts/_shared.ts` — common Zod schemas
-- [x] `src/api/lib/response.ts` — ApiResponse helpers
-- [x] `src/api/lib/create-handler.ts` — handler factories (createHandler, createProtectedHandler, createAdminHandler, createCronHandler)
-- [x] `src/api/lib/index.ts` — barrel exports
-- [x] `src/api/client/_query-client.ts` — React Query config
-- [x] `src/api/client/index.ts` — barrel exports
-- [x] `src/app/api/v1/` — scaffold 22 domain folders
+- [x] `src/api/contracts/_shared.ts` â€” common Zod schemas
+- [x] `src/api/lib/response.ts` â€” ApiResponse helpers
+- [x] `src/api/lib/create-handler.ts` â€” handler factories (createHandler, createProtectedHandler, createAdminHandler, createCronHandler)
+- [x] `src/api/lib/index.ts` â€” barrel exports
+- [x] `src/api/client/_query-client.ts` â€” React Query config
+- [x] `src/api/client/index.ts` â€” barrel exports
+- [x] `src/app/api/v1/` â€” scaffold 22 domain folders
 
 ---
 
@@ -38,28 +38,28 @@ Extract Zod schemas from tRPC routers into `src/api/contracts/[domain].ts`.
 
 ### Tasks
 
-- [ ] `src/api/contracts/auth.ts` — Extract from `src/trpc/routers/auth.ts`
-- [ ] `src/api/contracts/festivals.ts` — Extract from `src/trpc/routers/festivals.ts`
-- [ ] `src/api/contracts/students.ts` — Extract from `src/trpc/routers/students.ts`
-- [ ] `src/api/contracts/groups.ts` — Extract from `src/trpc/routers/groups.ts`
-- [ ] `src/api/contracts/categories.ts` — Extract from `src/trpc/routers/categories.ts`
-- [ ] `src/api/contracts/assignments.ts` — Extract from `src/trpc/routers/assignments.ts`
-- [ ] `src/api/contracts/programmes.ts` — Extract from `src/trpc/routers/programmes.ts`
-- [ ] `src/api/contracts/judges.ts` — Extract from `src/trpc/routers/judges.ts`
-- [ ] `src/api/contracts/members.ts` — Extract from `src/trpc/routers/members.ts`
-- [ ] `src/api/contracts/stages.ts` — Extract from `src/trpc/routers/stages.ts`
-- [ ] `src/api/contracts/schedule.ts` — Extract from `src/trpc/routers/schedule.ts`
-- [ ] `src/api/contracts/results.ts` — Extract from `src/trpc/routers/results.ts`
-- [ ] `src/api/contracts/notifications.ts` — Extract from `src/trpc/routers/notifications.ts`
-- [ ] `src/api/contracts/payments.ts` — Extract from `src/trpc/routers/payments.ts`
-- [ ] `src/api/contracts/billing.ts` — Extract from `src/trpc/routers/billing.ts`
-- [ ] `src/api/contracts/gallery.ts` — Extract from `src/trpc/routers/gallery.ts`
-- [ ] `src/api/contracts/news.ts` — Extract from `src/trpc/routers/news.ts`
-- [ ] `src/api/contracts/upload.ts` — Extract from `src/trpc/routers/upload.ts`
-- [ ] `src/api/contracts/profile.ts` — Extract from `src/trpc/routers/profile.ts`
-- [ ] `src/api/contracts/my-festival.ts` — Extract from `src/trpc/routers/my-festival.ts`
-- [ ] `src/api/contracts/team-leader.ts` — Extract from `src/trpc/routers/team-leader.ts`
-- [ ] `src/api/contracts/cron.ts` — Extract from `src/trpc/routers/cron.ts`
+- [ ] `src/api/contracts/auth.ts` â€” Extract from `src/trpc/routers/auth.ts`
+- [ ] `src/api/contracts/festivals.ts` â€” Extract from `src/trpc/routers/festivals.ts`
+- [ ] `src/api/contracts/participants.ts` â€” Extract from `src/trpc/routers/participants.ts`
+- [ ] `src/api/contracts/groups.ts` â€” Extract from `src/trpc/routers/groups.ts`
+- [ ] `src/api/contracts/categories.ts` â€” Extract from `src/trpc/routers/categories.ts`
+- [ ] `src/api/contracts/assignments.ts` â€” Extract from `src/trpc/routers/assignments.ts`
+- [ ] `src/api/contracts/programmes.ts` â€” Extract from `src/trpc/routers/programmes.ts`
+- [ ] `src/api/contracts/judges.ts` â€” Extract from `src/trpc/routers/judges.ts`
+- [ ] `src/api/contracts/members.ts` â€” Extract from `src/trpc/routers/members.ts`
+- [ ] `src/api/contracts/stages.ts` â€” Extract from `src/trpc/routers/stages.ts`
+- [ ] `src/api/contracts/schedule.ts` â€” Extract from `src/trpc/routers/schedule.ts`
+- [ ] `src/api/contracts/results.ts` â€” Extract from `src/trpc/routers/results.ts`
+- [ ] `src/api/contracts/notifications.ts` â€” Extract from `src/trpc/routers/notifications.ts`
+- [ ] `src/api/contracts/payments.ts` â€” Extract from `src/trpc/routers/payments.ts`
+- [ ] `src/api/contracts/billing.ts` â€” Extract from `src/trpc/routers/billing.ts`
+- [ ] `src/api/contracts/media.ts` â€” Extract from `src/trpc/routers/media.ts`
+- [ ] `src/api/contracts/news.ts` â€” Extract from `src/trpc/routers/news.ts`
+- [ ] `src/api/contracts/upload.ts` â€” Extract from `src/trpc/routers/upload.ts`
+- [ ] `src/api/contracts/profile.ts` â€” Extract from `src/trpc/routers/profile.ts`
+- [ ] `src/api/contracts/my-festival.ts` â€” Extract from `src/trpc/routers/my-festival.ts`
+- [ ] `src/api/contracts/team-leader.ts` â€” Extract from `src/trpc/routers/team-leader.ts`
+- [ ] `src/api/contracts/cron.ts` â€” Extract from `src/trpc/routers/cron.ts`
 
 ### Contract Schema Pattern
 
@@ -89,9 +89,9 @@ Implement `src/app/api/v1/[domain]/route.ts` for all 22 domains.
 
 ### Tasks
 
-- [ ] `src/app/api/v1/auth/route.ts` — login, register, logout, me, etc.
+- [ ] `src/app/api/v1/auth/route.ts` â€” login, register, logout, me, etc.
 - [ ] `src/app/api/v1/festivals/route.ts`
-- [ ] `src/app/api/v1/students/route.ts`
+- [ ] `src/app/api/v1/participants/route.ts`
 - [ ] `src/app/api/v1/groups/route.ts`
 - [ ] `src/app/api/v1/categories/route.ts`
 - [ ] `src/app/api/v1/assignments/route.ts`
@@ -104,13 +104,13 @@ Implement `src/app/api/v1/[domain]/route.ts` for all 22 domains.
 - [ ] `src/app/api/v1/notifications/route.ts`
 - [ ] `src/app/api/v1/payments/route.ts`
 - [ ] `src/app/api/v1/billing/route.ts`
-- [ ] `src/app/api/v1/gallery/route.ts`
+- [ ] `src/app/api/v1/media/route.ts`
 - [ ] `src/app/api/v1/news/route.ts`
 - [ ] `src/app/api/v1/upload/route.ts`
 - [ ] `src/app/api/v1/profile/route.ts`
 - [ ] `src/app/api/v1/my-festival/route.ts`
 - [ ] `src/app/api/v1/team-leader/route.ts`
-- [ ] `src/app/api/v1/cron/route.ts` — uses createCronHandler
+- [ ] `src/app/api/v1/cron/route.ts` â€” uses createCronHandler
 
 ### Handler Pattern
 
@@ -145,9 +145,9 @@ Create `src/api/client/[domain].ts` files with typed hooks for all 22 domains.
 
 ### Tasks
 
-- [ ] `src/api/client/auth.ts` — useLogin, useLogout, useMe, useRegister
-- [ ] `src/api/client/festivals.ts` — useFestivals, useCreateFestival, useUpdateFestival, useDeleteFestival
-- [ ] `src/api/client/students.ts` — useStudents, useCreateStudent, useBulkCreateStudents, etc.
+- [ ] `src/api/client/auth.ts` â€” useLogin, useLogout, useMe, useRegister
+- [ ] `src/api/client/festivals.ts` â€” useFestivals, useCreateFestival, useUpdateFestival, useDeleteFestival
+- [ ] `src/api/client/participants.ts` â€” useParticipants, useCreateParticipant, useBulkCreateParticipants, etc.
 - [ ] `src/api/client/groups.ts`
 - [ ] `src/api/client/categories.ts`
 - [ ] `src/api/client/assignments.ts`
@@ -160,7 +160,7 @@ Create `src/api/client/[domain].ts` files with typed hooks for all 22 domains.
 - [ ] `src/api/client/notifications.ts`
 - [ ] `src/api/client/payments.ts`
 - [ ] `src/api/client/billing.ts`
-- [ ] `src/api/client/gallery.ts`
+- [ ] `src/api/client/media.ts`
 - [ ] `src/api/client/news.ts`
 - [ ] `src/api/client/upload.ts`
 - [ ] `src/api/client/profile.ts`
@@ -216,7 +216,7 @@ Update all imports from old tRPC hooks to new `src/api/client/` hooks.
 ### Tasks
 
 - [ ] Update imports in `src/features/festivals/**/*.tsx`
-- [ ] Update imports in `src/features/students/**/*.tsx`
+- [ ] Update imports in `src/features/participants/**/*.tsx`
 - [ ] Update imports in `src/features/groups/**/*.tsx`
 - [ ] Update imports in `src/features/categories/**/*.tsx`
 - [ ] Update imports in `src/features/assignments/**/*.tsx`
@@ -253,7 +253,7 @@ import { useFestivals, useCreateFestival } from "@/api/client/festivals";
 
 ### Files to Update
 
-- `src/app/layout.tsx` — Replace TRPC provider
+- `src/app/layout.tsx` â€” Replace TRPC provider
 - Any component using `useTRPC` or `useTRPCClient`
 
 ---
@@ -275,10 +275,10 @@ import { useFestivals, useCreateFestival } from "@/api/client/festivals";
 ## Verification
 
 After each phase:
-- [ ] `npm run lint` — zero warnings
+- [ ] `npm run lint` â€” zero warnings
 - [ ] Manual smoke test
 
 After Phase 6:
-- [ ] `npm run build` — successful
+- [ ] `npm run build` â€” successful
 - [ ] All features functional
 - [ ] Zero tRPC imports remaining

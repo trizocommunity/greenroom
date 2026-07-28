@@ -4,7 +4,7 @@ export const uploadFolderEnum = z.enum([
   "logo",
   "hero",
   "news",
-  "gallery",
+  "media",
   "poster",
 ]);
 

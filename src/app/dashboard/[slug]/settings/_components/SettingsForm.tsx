@@ -39,9 +39,9 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
     resolvedTier,
     "programmeAssignmentDeadline",
   );
-  const isStudentDeadlineEnabled = FeatureService.isFeatureEnabled(
+  const isParticipantDeadlineEnabled = FeatureService.isFeatureEnabled(
     resolvedTier,
-    "studentCreationDeadline",
+    "participantCreationDeadline",
   );
   const isAdvancedSettingsEnabled = FeatureService.isFeatureEnabled(
     resolvedTier,
@@ -187,7 +187,8 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
           <div className="flex-1">
             <h3 className="text-base font-medium mb-1">Deadlines</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Set deadlines for programme assignments and student registration.
+              Set deadlines for programme assignments and participant
+              registration.
             </p>
             <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm">
               <div>
@@ -205,12 +206,12 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
               </div>
               <div>
                 <p className="text-muted-foreground text-xs mb-1">
-                  Student Registration
+                  Participant Registration
                 </p>
                 <p className="font-medium">
-                  {festival.studentCreationDeadline
+                  {festival.participantCreationDeadline
                     ? format(
-                        new Date(festival.studentCreationDeadline),
+                        new Date(festival.participantCreationDeadline),
                         "dd/MM/yyyy HH:mm",
                       )
                     : "—"}
@@ -223,7 +224,7 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
               festival={festival}
               onSuccess={handleSuccess}
               isFeatureEnabled={isProgrammeDeadlineEnabled}
-              isStudentDeadlineFeatureEnabled={isStudentDeadlineEnabled}
+              isParticipantDeadlineFeatureEnabled={isParticipantDeadlineEnabled}
             />
           </div>
         </div>

@@ -12,7 +12,7 @@ const handler = createHandler({
     if (!parsed.success)
       return badRequest("INVALID_INPUT", parsed.error.message);
 
-    const { rawToken, expiresAt, studentSlug, isTeamLeader } =
+    const { rawToken, expiresAt, participantSlug, isTeamLeader } =
       await ParticipantLoginService.verifyOtp({
         ...parsed.data,
         ipAddress: request.headers.get("x-forwarded-for") ?? null,
@@ -22,7 +22,7 @@ const handler = createHandler({
     await setParticipantSessionCookie(rawToken, expiresAt);
     return ok({
       success: true,
-      studentSlug,
+      participantSlug,
       isTeamLeader,
       expiresAt: expiresAt.toISOString(),
     });

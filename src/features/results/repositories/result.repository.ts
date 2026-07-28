@@ -32,7 +32,7 @@ async function findByFestival(festivalId: string, publishedOnly = false) {
     with: {
       programmeAssignment: {
         with: {
-          student: true,
+          participant: true,
           group: true,
         },
       },
@@ -54,7 +54,7 @@ async function findByProgramme(programmeId: string) {
     with: {
       programmeAssignment: {
         with: {
-          student: true,
+          participant: true,
           group: true,
         },
       },
@@ -147,7 +147,7 @@ async function upsert(_assignmentId: string, data: ResultInput) {
     where: eq(results.id, result[0].id),
     with: {
       programmeAssignment: {
-        with: { student: true, group: true },
+        with: { participant: true, group: true },
       },
       programme: true,
     },

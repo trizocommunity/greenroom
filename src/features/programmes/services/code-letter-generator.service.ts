@@ -27,7 +27,7 @@ export function shuffleInPlace<T>(arr: T[]): void {
   }
 }
 
-export type CodeLetterEntry = { studentId: string; code: string };
+export type CodeLetterEntry = { participantId: string; code: string };
 
 export const CodeLetterGeneratorService = {
   async generateForIndividualSession(
@@ -36,16 +36,16 @@ export const CodeLetterGeneratorService = {
       festivalId: string;
       programmeId: string;
     },
-    reportedParticipants: Array<{ studentId: string | null }>,
+    reportedParticipants: Array<{ participantId: string | null }>,
     actorName: string,
     txIn?: any,
   ): Promise<CodeLetterEntry[]> {
-    const studentCodes: CodeLetterEntry[] = [];
+    const participantCodes: CodeLetterEntry[] = [];
     const nowStr = new Date().toISOString();
 
-    // Filter out rows without studentId
+    // Filter out rows without participantId
     const shuffled = reportedParticipants.filter(
-      (r): r is { studentId: string } => Boolean(r.studentId),
+      (r): r is { participantId: string } => Boolean(r.participantId),
     );
     shuffleInPlace(shuffled);
 
@@ -59,16 +59,16 @@ export const CodeLetterGeneratorService = {
       });
 
       const usedCodes = new Set(existing.map((e: any) => e.code));
-      const assignedStudentIds = new Set<string>();
+      const assignedParticipantIds = new Set<string>();
       for (const e of existing) {
         for (const r of e.programmeCodeLetterRecipients) {
-          assignedStudentIds.add(r.studentId);
+          assignedParticipantIds.add(r.participantId);
         }
       }
 
       // 2. Filter out participants who already have codes
       const toAssign = shuffled.filter(
-        (s) => !assignedStudentIds.has(s.studentId),
+        (s) => !assignedParticipantIds.has(s.participantId),
       );
       if (toAssign.length === 0) return;
 
@@ -95,11 +95,11 @@ export const CodeLetterGeneratorService = {
         await tx.insert(codeLetterRecipientTable).values({
           id: randomUUID(),
           codeLetterId: codeLetterId,
-          studentId: row.studentId,
+          participantId: row.participantId,
           updatedAt: nowStr,
         } as any);
 
-        studentCodes.push({ studentId: row.studentId, code });
+        participantCodes.push({ participantId: row.participantId, code });
       }
     };
 
@@ -111,7 +111,7 @@ export const CodeLetterGeneratorService = {
       });
     }
 
-    return studentCodes;
+    return participantCodes;
   },
 
   async generateForGroupSession(
@@ -121,14 +121,14 @@ export const CodeLetterGeneratorService = {
       programmeId: string;
     },
     reportedParticipants: Array<{
-      studentId: string | null;
+      participantId: string | null;
       groupId: string | null;
       teamNumber: number | null;
     }>,
     actorName: string,
     txIn?: any,
   ): Promise<CodeLetterEntry[]> {
-    const studentCodes: CodeLetterEntry[] = [];
+    const participantCodes: CodeLetterEntry[] = [];
     const nowStr = new Date().toISOString();
 
     const run = async (tx: any) => {
@@ -141,31 +141,32 @@ export const CodeLetterGeneratorService = {
       });
 
       const usedCodes = new Set(existing.map((e: any) => e.code));
-      const assignedStudentIds = new Set<string>();
+      const assignedParticipantIds = new Set<string>();
       for (const e of existing) {
         for (const r of e.programmeCodeLetterRecipients) {
-          assignedStudentIds.add(r.studentId);
+          assignedParticipantIds.add(r.participantId);
         }
       }
 
       // 2. Group by team
-      type TeamBucket = { studentIds: Set<string> };
+      type TeamBucket = { participantIds: Set<string> };
       const byTeam = new Map<string, TeamBucket>();
 
       for (const row of reportedParticipants) {
-        // Skip students who already have a code
-        if (row.studentId && assignedStudentIds.has(row.studentId)) continue;
+        // Skip participants who already have a code
+        if (row.participantId && assignedParticipantIds.has(row.participantId))
+          continue;
 
         const teamKey =
           row.groupId != null && row.teamNumber != null
             ? `${row.groupId}\0${row.teamNumber}`
-            : `legacy:${row.studentId}`;
+            : `legacy:${row.participantId}`;
         let bucket = byTeam.get(teamKey);
         if (!bucket) {
-          bucket = { studentIds: new Set<string>() };
+          bucket = { participantIds: new Set<string>() };
           byTeam.set(teamKey, bucket);
         }
-        if (row.studentId) bucket.studentIds.add(row.studentId);
+        if (row.participantId) bucket.participantIds.add(row.participantId);
       }
 
       const teamBuckets = Array.from(byTeam.values());
@@ -192,14 +193,14 @@ export const CodeLetterGeneratorService = {
           issuedBy: actorName,
           updatedAt: nowStr,
         } as any);
-        for (const studentId of bucket.studentIds) {
+        for (const participantId of bucket.participantIds) {
           await tx.insert(codeLetterRecipientTable).values({
             id: randomUUID(),
             codeLetterId: codeLetterId,
-            studentId,
+            participantId,
             updatedAt: nowStr,
           } as any);
-          studentCodes.push({ studentId, code });
+          participantCodes.push({ participantId, code });
         }
       }
     };
@@ -212,7 +213,7 @@ export const CodeLetterGeneratorService = {
       });
     }
 
-    return studentCodes;
+    return participantCodes;
   },
 
   async generateFromSpinWheel(
@@ -224,29 +225,29 @@ export const CodeLetterGeneratorService = {
     codeAssignments: Array<{
       teamNumber: number | null;
       groupId?: string | null;
-      studentId?: string | null;
+      participantId?: string | null;
       code: string;
     }>,
     reportedParticipants: Array<{
-      studentId: string | null;
+      participantId: string | null;
       groupId: string | null;
       teamNumber: number | null;
     }>,
     actorName: string,
     txIn?: any,
   ): Promise<CodeLetterEntry[]> {
-    const studentCodes: CodeLetterEntry[] = [];
+    const participantCodes: CodeLetterEntry[] = [];
     const nowStr = new Date().toISOString();
 
     const run = async (tx: any) => {
       for (const assignment of codeAssignments) {
-        let teamParticipants: Array<{ studentId: string | null }> = [];
+        let teamParticipants: Array<{ participantId: string | null }> = [];
 
-        // Prefer a single student (spin per participant). Team-wide assignment only
-        // when no studentId is provided (legacy / bulk).
-        if (assignment.studentId) {
+        // Prefer a single participant (spin per participant). Team-wide assignment only
+        // when no participantId is provided (legacy / bulk).
+        if (assignment.participantId) {
           teamParticipants = reportedParticipants.filter(
-            (p) => p.studentId === assignment.studentId,
+            (p) => p.participantId === assignment.participantId,
           );
         } else if (
           assignment.teamNumber !== null &&
@@ -258,7 +259,7 @@ export const CodeLetterGeneratorService = {
               assignment.groupId !== null &&
               p.groupId === assignment.groupId &&
               p.teamNumber === assignment.teamNumber &&
-              p.studentId !== null,
+              p.participantId !== null,
           );
         }
 
@@ -278,15 +279,15 @@ export const CodeLetterGeneratorService = {
         } as any);
 
         for (const participant of teamParticipants) {
-          if (participant.studentId) {
+          if (participant.participantId) {
             await tx.insert(codeLetterRecipientTable).values({
               id: randomUUID(),
               codeLetterId: codeLetterId,
-              studentId: participant.studentId,
+              participantId: participant.participantId,
               updatedAt: nowStr,
             } as any);
-            studentCodes.push({
-              studentId: participant.studentId,
+            participantCodes.push({
+              participantId: participant.participantId,
               code: assignment.code,
             });
           }
@@ -302,7 +303,7 @@ export const CodeLetterGeneratorService = {
       });
     }
 
-    return studentCodes;
+    return participantCodes;
   },
 
   async clearSessionCodeLetters(reportingSessionId: string): Promise<void> {

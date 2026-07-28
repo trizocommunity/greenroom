@@ -1,4 +1,4 @@
-# PRO Plan
+﻿# PRO Plan
 
 **Purpose:** Enterprise-grade festival plan with maximum capacity and advanced features. Single source of truth for spec, behavior, and how it is enforced in the codebase.
 
@@ -10,7 +10,7 @@
 
 | Item | Value |
 |------|-------|
-| **Price** | ₹6,000 |
+| **Price** | â‚¹6,000 |
 | **Duration** | 30 days (active) |
 | **Target** | Established festivals, institutions, multi-event organizers |
 
@@ -18,7 +18,7 @@
 
 | Resource | Limit |
 |----------|-------|
-| Students | 2,000 |
+| Participants | 2,000 |
 | Programmes | 1,000 |
 | Events | 100 |
 | Stages | 50 |
@@ -42,10 +42,10 @@
 
 ### Included (PRO)
 
-- **Pre-Works:** Categories, Groups, Students, Student Profile (dashboard + public), Programmes, Assignments.
+- **Pre-Works:** Categories, Groups, Participants, Participant Profile (dashboard + public), Programmes, Assignments.
 - **Event-Works:** Scoring Policy, Scoring, Chest Numbers, Leaderboard, Stage Management, Schedule/Sessions.
-- **Import/Export:** Student import, Student bulk upload, Programme bulk upload, PDF export, Excel export.
-- **Landing & Content:** Basic public page, Full landing page, Landing page builder, Gallery, News.
+- **Import/Export:** Participant import, Participant bulk upload, Programme bulk upload, PDF export, Excel export.
+- **Landing & Content:** Basic public page, Full landing page, Landing page builder, Media, News.
 - **Certificates & QR:** QR Codes, Auto certificates, Custom certificate templates, Bulk certificate generation.
 - **Branding:** Logo upload, Custom URL, Custom domain, Custom colors, White-label.
 - **Communication:** Email notifications, WhatsApp support, SMS notifications, Bulk notifications.
@@ -66,21 +66,21 @@ PRO adds (or expands) the following over STANDARD:
 
 | Area | Feature | STANDARD | PRO |
 |------|---------|:--------:|:---:|
-| Team | Role-Based Access Control | ❌ | ✅ |
-| Team | Unlimited members | ❌ (max 3) | ✅ |
-| Import/Export | Bulk certificate generation | ❌ | ✅ |
-| Landing & Content | Landing page builder | ❌ | ✅ |
-| Reporting | Advanced analytics | ❌ | ✅ |
-| Reporting | Custom reports | ❌ | ✅ |
-| Certificates | Custom certificate templates | ❌ | ✅ |
-| Branding | Custom domain | ❌ | ✅ |
-| Branding | White-label | ❌ | ✅ |
-| Communication | SMS notifications | ❌ | ✅ |
-| Communication | Bulk notifications | ❌ | ✅ |
-| Advanced | API access | ❌ | ✅ |
-| Advanced | Webhooks | ❌ | ✅ |
-| Advanced | Live results | ❌ | ✅ |
-| Advanced | Multi-festival management | ❌ | ✅ |
+| Team | Role-Based Access Control | âŒ | âœ… |
+| Team | Unlimited members | âŒ (max 3) | âœ… |
+| Import/Export | Bulk certificate generation | âŒ | âœ… |
+| Landing & Content | Landing page builder | âŒ | âœ… |
+| Reporting | Advanced analytics | âŒ | âœ… |
+| Reporting | Custom reports | âŒ | âœ… |
+| Certificates | Custom certificate templates | âŒ | âœ… |
+| Branding | Custom domain | âŒ | âœ… |
+| Branding | White-label | âŒ | âœ… |
+| Communication | SMS notifications | âŒ | âœ… |
+| Communication | Bulk notifications | âŒ | âœ… |
+| Advanced | API access | âŒ | âœ… |
+| Advanced | Webhooks | âŒ | âœ… |
+| Advanced | Live results | âŒ | âœ… |
+| Advanced | Multi-festival management | âŒ | âœ… |
 | Support | Priority support | email (12h) | priority (4h) |
 
 ---
@@ -97,14 +97,14 @@ PRO adds (or expands) the following over STANDARD:
 ### 4.2 Client (UI) gating
 
 - **Hook:** `useFeature(featurePath)` and `useFeatures()` in `src/hooks/useFeature.ts`. They use `festival.effectiveFeatures` first (so Super Admin overrides apply), then fall back to `FeatureService.isFeatureEnabled(tier, featurePath)`.
-- **Sidebar:** `FestivalDashboardSidebar` uses `useFeatures()` and shows all PRO features including Settings, Members, Stage Management, Schedule, Sessions, QR Codes, Gallery, News, Analytics, etc.
+- **Sidebar:** `FestivalDashboardSidebar` uses `useFeatures()` and shows all PRO features including Settings, Members, Stage Management, Schedule, Sessions, QR Codes, Media, News, Analytics, etc.
 - **RBAC:** PRO's `roleBasedAccess: true` enables role-based permission checks in member management and feature access.
 
 ### 4.3 Server-side enforcement
 
-- **Routes:** Pages under `/dashboard/[slug]/settings`, `/dashboard/[slug]/members`, `/dashboard/[slug]/content/gallery`, `/dashboard/[slug]/content/news`, `/dashboard/[slug]/pre-works/stage-management`, `/dashboard/[slug]/pre-works/schedule`, `/dashboard/[slug]/event-works/qr-codes`, `/dashboard/[slug]/analytics`, and admin routes check feature access (via `getEffectiveFeatureEnabled` or `FeatureService.isFeatureEnabled`) and grant access for PRO (all features enabled).
+- **Routes:** Pages under `/dashboard/[slug]/settings`, `/dashboard/[slug]/members`, `/dashboard/[slug]/content/media`, `/dashboard/[slug]/content/news`, `/dashboard/[slug]/pre-works/stage-management`, `/dashboard/[slug]/pre-works/schedule`, `/dashboard/[slug]/event-works/qr-codes`, `/dashboard/[slug]/analytics`, and admin routes check feature access (via `getEffectiveFeatureEnabled` or `FeatureService.isFeatureEnabled`) and grant access for PRO (all features enabled).
 - **Actions:** Server actions (e.g. API endpoints, webhooks, bulk operations) validate tier/feature (and limits) before performing mutations.
-- **Limits:** Student/programme/event/stage/category limits are enforced using `TIER_CONFIG[tier].limits` and services such as `usage-counter.service.ts` and `student.service.ts`.
+- **Limits:** Participant/programme/event/stage/category limits are enforced using `TIER_CONFIG[tier].limits` and services such as `usage-counter.service.ts` and `participant.service.ts`.
 - **Multi-festival:** PRO users can manage multiple festivals; festival switching UI and cross-festival operations are available.
 
 ### 4.4 Public landing page
@@ -134,11 +134,11 @@ PRO adds (or expands) the following over STANDARD:
 
 ## 6. User Journey (Summary)
 
-1. **Purchase:** User selects PRO (₹6,000) → payment → festival created with 30-day validity.
-2. **Setup:** Configure landing page builder → import students (bulk CSV) → create programmes → assign team members with roles.
-3. **Configuration:** Set up custom domain, white-label branding, schedule with sessions, QR codes, gallery/news content.
-4. **Event:** Configure scoring → enter scores per programme → view live results and leaderboard → generate bulk certificates.
-5. **Post-event:** Export advanced analytics and custom reports → share via API/webhooks.
+1. **Purchase:** User selects PRO (â‚¹6,000) â†’ payment â†’ festival created with 30-day validity.
+2. **Setup:** Configure landing page builder â†’ import participants (bulk CSV) â†’ create programmes â†’ assign team members with roles.
+3. **Configuration:** Set up custom domain, white-label branding, schedule with sessions, QR codes, media/news content.
+4. **Event:** Configure scoring â†’ enter scores per programme â†’ view live results and leaderboard â†’ generate bulk certificates.
+5. **Post-event:** Export advanced analytics and custom reports â†’ share via API/webhooks.
 6. **Expiry:** After 30 days, access redirects to profile; tier-aware cleanup may delete PRO festival data.
 
 ---

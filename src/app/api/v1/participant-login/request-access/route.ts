@@ -18,7 +18,7 @@ const handler = createHandler({
       await setParticipantSessionCookie(result.rawToken, result.expiresAt);
       return ok({
         status: "AUTHENTICATED",
-        studentSlug: result.studentSlug,
+        participantSlug: result.participantSlug,
         festivalName: result.festivalName,
         expiresAt: result.expiresAt.toISOString(),
       });
@@ -26,7 +26,7 @@ const handler = createHandler({
 
     return ok({
       status: "OTP_REQUIRED",
-      studentSlug: result.studentSlug,
+      participantSlug: result.participantSlug,
       festivalName: result.festivalName,
       debugOtp: result.debugOtp,
     });

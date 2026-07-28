@@ -14,7 +14,7 @@ export interface AppointTeamLeadInput {
   programmeId: string;
   groupId: string;
   teamNumber: number;
-  studentId: string;
+  participantId: string;
   appointedBy: string;
   appointedByRole: TeamLeadAppointerRole;
   appointedByName?: string;
@@ -25,7 +25,7 @@ export interface ReplaceTeamLeadInput {
   programmeId: string;
   groupId: string;
   teamNumber: number;
-  studentId: string;
+  participantId: string;
   appointedBy: string;
   appointedByRole: TeamLeadAppointerRole;
   appointedByName?: string;
@@ -56,19 +56,19 @@ async function assertGroupProgramme(executor: any, programmeId: string) {
   return programme;
 }
 
-async function assertStudentInTeam(
+async function assertParticipantInTeam(
   executor: any,
   programmeId: string,
   groupId: string,
   teamNumber: number,
-  studentId: string,
+  participantId: string,
 ) {
   const member = await executor.query.programmeAssignment.findFirst({
     where: and(
       eq(assignmentTable.programmeId, programmeId),
       eq(assignmentTable.groupId, groupId),
       eq(assignmentTable.teamNumber, teamNumber),
-      eq(assignmentTable.studentId, studentId),
+      eq(assignmentTable.participantId, participantId),
     ),
   });
   if (!member) {
@@ -86,12 +86,12 @@ function auditActor(role: TeamLeadAppointerRole, actorId: string) {
 export const ProgrammeTeamLeadService = {
   async appointTeamLead(input: AppointTeamLeadInput, executor: any = db) {
     await assertGroupProgramme(executor, input.programmeId);
-    await assertStudentInTeam(
+    await assertParticipantInTeam(
       executor,
       input.programmeId,
       input.groupId,
       input.teamNumber,
-      input.studentId,
+      input.participantId,
     );
 
     const existing = await executor.query.programmeTeamLead.findFirst({
@@ -117,7 +117,7 @@ export const ProgrammeTeamLeadService = {
         programmeId: input.programmeId,
         groupId: input.groupId,
         teamNumber: input.teamNumber,
-        studentId: input.studentId,
+        participantId: input.participantId,
         appointedBy: input.appointedBy,
         appointedByRole: input.appointedByRole,
         appointedByName: input.appointedByName,
@@ -136,7 +136,7 @@ export const ProgrammeTeamLeadService = {
         programmeId: input.programmeId,
         groupId: input.groupId,
         teamNumber: input.teamNumber,
-        studentId: input.studentId,
+        participantId: input.participantId,
       },
       actor: auditActor(input.appointedByRole, input.appointedBy),
     }).catch((err) =>
@@ -148,12 +148,12 @@ export const ProgrammeTeamLeadService = {
 
   async replaceTeamLead(input: ReplaceTeamLeadInput, executor: any = db) {
     await assertGroupProgramme(executor, input.programmeId);
-    await assertStudentInTeam(
+    await assertParticipantInTeam(
       executor,
       input.programmeId,
       input.groupId,
       input.teamNumber,
-      input.studentId,
+      input.participantId,
     );
 
     const existing = await executor.query.programmeTeamLead.findFirst({
@@ -174,7 +174,7 @@ export const ProgrammeTeamLeadService = {
     const [row] = await executor
       .update(programmeTeamLead)
       .set({
-        studentId: input.studentId,
+        participantId: input.participantId,
         appointedBy: input.appointedBy,
         appointedByRole: input.appointedByRole,
         appointedByName: input.appointedByName,
@@ -193,8 +193,8 @@ export const ProgrammeTeamLeadService = {
         programmeId: input.programmeId,
         groupId: input.groupId,
         teamNumber: input.teamNumber,
-        previousStudentId: existing.studentId,
-        studentId: input.studentId,
+        previousParticipantId: existing.participantId,
+        participantId: input.participantId,
       },
       actor: auditActor(input.appointedByRole, input.appointedBy),
     }).catch((err) =>
@@ -226,7 +226,7 @@ export const ProgrammeTeamLeadService = {
         programmeId: input.programmeId,
         groupId: input.groupId,
         teamNumber: input.teamNumber,
-        studentId: existing.studentId,
+        participantId: existing.participantId,
       },
       actor: auditActor(input.removedByRole, input.removedBy),
     }).catch((err) => console.error("[AuditLog] REMOVE_TEAM_LEAD failed", err));
@@ -251,7 +251,7 @@ export const ProgrammeTeamLeadService = {
     const rows = await executor.query.programmeTeamLead.findMany({
       where: eq(programmeTeamLead.programmeId, programmeId),
       with: {
-        student: { columns: { id: true, name: true, chestNumber: true } },
+        participant: { columns: { id: true, name: true, chestNumber: true } },
       },
     });
 
@@ -259,16 +259,20 @@ export const ProgrammeTeamLeadService = {
       string,
       Record<
         number,
-        { studentId: string; studentName: string; chestNumber: string | null }
+        {
+          participantId: string;
+          participantName: string;
+          chestNumber: string | null;
+        }
       >
     > = {};
 
     for (const row of rows as any[]) {
       grouped[row.groupId] ??= {};
       grouped[row.groupId][row.teamNumber] = {
-        studentId: row.studentId,
-        studentName: row.student?.name ?? "",
-        chestNumber: row.student?.chestNumber ?? null,
+        participantId: row.participantId,
+        participantName: row.participant?.name ?? "",
+        chestNumber: row.participant?.chestNumber ?? null,
       };
     }
 

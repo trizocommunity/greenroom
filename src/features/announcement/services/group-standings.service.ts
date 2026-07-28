@@ -9,7 +9,7 @@ type LeaderboardResultRow = {
   programme?: { id: string; type: "INDIVIDUAL" | "GROUP" } | null;
   programmeAssignment?: {
     group?: { id: string; name: string } | null;
-    student?: { fullName?: string | null; name?: string | null } | null;
+    participant?: { fullName?: string | null; name?: string | null } | null;
     teamNumber?: number | null;
   } | null;
 };
@@ -43,8 +43,9 @@ export function computeAnnouncedTeamStandings(
     if (group?.name) {
       teamName = group.name;
       isGroup = true;
-    } else if (assignment?.student) {
-      teamName = assignment.student.fullName || assignment.student.name || null;
+    } else if (assignment?.participant) {
+      teamName =
+        assignment.participant.fullName || assignment.participant.name || null;
     }
     if (!teamName) continue;
 

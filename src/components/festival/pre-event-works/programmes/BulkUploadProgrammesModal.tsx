@@ -47,7 +47,7 @@ interface ProgrammeData {
   stageType: StageType;
   maxParticipantsPerGroup: number;
   maxTeamsPerGroup: number;
-  maxStudentsPerTeam: number;
+  maxParticipantsPerTeam: number;
 }
 
 const ProgrammeSchema = z
@@ -58,7 +58,7 @@ const ProgrammeSchema = z
     stageType: z.enum(["STAGE", "NON_STAGE"]),
     maxParticipantsPerGroup: z.coerce.number(),
     maxTeamsPerGroup: z.coerce.number(),
-    maxStudentsPerTeam: z.coerce.number(),
+    maxParticipantsPerTeam: z.coerce.number(),
   })
   .superRefine((data, ctx) => {
     if (data.type === "INDIVIDUAL") {
@@ -77,11 +77,11 @@ const ProgrammeSchema = z
           path: ["maxTeamsPerGroup"],
         });
       }
-      if (data.maxStudentsPerTeam < 1) {
+      if (data.maxParticipantsPerTeam < 1) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Must be at least 1",
-          path: ["maxStudentsPerTeam"],
+          path: ["maxParticipantsPerTeam"],
         });
       }
     }
@@ -112,7 +112,7 @@ function ProgrammeEditForm({
       stageType: data.stageType,
       maxParticipantsPerGroup: data.maxParticipantsPerGroup,
       maxTeamsPerGroup: data.maxTeamsPerGroup,
-      maxStudentsPerTeam: data.maxStudentsPerTeam,
+      maxParticipantsPerTeam: data.maxParticipantsPerTeam,
     },
   });
 
@@ -124,7 +124,7 @@ function ProgrammeEditForm({
       stageType: data.stageType,
       maxParticipantsPerGroup: data.maxParticipantsPerGroup,
       maxTeamsPerGroup: data.maxTeamsPerGroup,
-      maxStudentsPerTeam: data.maxStudentsPerTeam,
+      maxParticipantsPerTeam: data.maxParticipantsPerTeam,
     });
   }, [data, form]);
 
@@ -141,7 +141,7 @@ function ProgrammeEditForm({
       stageType: values.stageType,
       maxParticipantsPerGroup: values.maxParticipantsPerGroup,
       maxTeamsPerGroup: values.maxTeamsPerGroup,
-      maxStudentsPerTeam: values.maxStudentsPerTeam,
+      maxParticipantsPerTeam: values.maxParticipantsPerTeam,
     });
   };
 
@@ -270,10 +270,10 @@ function ProgrammeEditForm({
               />
               <FormField
                 control={form.control}
-                name="maxStudentsPerTeam"
+                name="maxParticipantsPerTeam"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Max Students (per Team)</FormLabel>
+                    <FormLabel>Max Participants (per Team)</FormLabel>
                     <FormControl>
                       <Input type="number" {...field} />
                     </FormControl>
@@ -370,7 +370,7 @@ export function BulkUploadProgrammesModal({
     // 4. Force manual configuration (initialize to 0)
     const maxParticipantsPerGroup = 0;
     const maxTeamsPerGroup = 0;
-    const maxStudentsPerTeam = 0;
+    const maxParticipantsPerTeam = 0;
 
     return {
       id: "",
@@ -382,7 +382,7 @@ export function BulkUploadProgrammesModal({
         stageType,
         maxParticipantsPerGroup,
         maxTeamsPerGroup,
-        maxStudentsPerTeam,
+        maxParticipantsPerTeam,
         categoryId: category?.id,
       },
       isValid: false, // Always false initially to force configuration
@@ -470,7 +470,7 @@ export function BulkUploadProgrammesModal({
       stageType: p.stageType,
       maxParticipantsPerGroup: p.maxParticipantsPerGroup,
       maxTeamsPerGroup: p.maxTeamsPerGroup,
-      maxStudentsPerTeam: p.maxStudentsPerTeam,
+      maxParticipantsPerTeam: p.maxParticipantsPerTeam,
     }));
 
     const result = await bulkCreateProgrammesAction(
@@ -553,7 +553,7 @@ export function BulkUploadProgrammesModal({
                     Max Teams/Group: {item.maxTeamsPerGroup}
                   </span>
                   <span className="bg-zinc-500/20 text-zinc-300 px-2 py-0.5 rounded border border-zinc-500/30">
-                    Students/Team: {item.maxStudentsPerTeam}
+                    Participants/Team: {item.maxParticipantsPerTeam}
                   </span>
                 </>
               )}

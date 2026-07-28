@@ -40,7 +40,7 @@ interface AssignmentModalProps {
   isReadOnly?: boolean;
   categories: { id: string; name: string; type?: string | null }[];
   programmes: any[];
-  students: any[];
+  participants: any[];
   assignments: any[];
   /** Omit/empty to skip the Group step and scope everything via fixedGroupId instead. */
   groups?: { id: string; name: string }[];
@@ -52,8 +52,8 @@ interface QueueItem {
   id: string; // temp id
   programmeId: string;
   programmeName: string;
-  studentId: string;
-  studentName: string;
+  participantId: string;
+  participantName: string;
   groupId?: string; // For reference
   groupName?: string;
   teamNumber: number;
@@ -70,7 +70,7 @@ export function AssignmentModal({
   isReadOnly = false,
   categories,
   programmes,
-  students,
+  participants,
   assignments,
   groups = [],
   fixedGroupId,
@@ -79,14 +79,14 @@ export function AssignmentModal({
 
   // Whether to show the "Group" step at all — admin dialogs pick a group;
   // team-leader dialogs are pre-scoped to their own group via fixedGroupId.
-  // Wizard order: Category (1) → Group (2) → Programme (3) → Students (4).
+  // Wizard order: Category (1) → Group (2) → Programme (3) → Participants (4).
   // When the dialog is pre-scoped to a single group (fixedGroupId), the Group
   // step is hidden and the remaining steps renumber down.
   const hasGroupStep = !fixedGroupId && groups.length > 0;
   const categoryStepNum = 1;
   const groupStepNum = hasGroupStep ? 2 : 1;
   const programmeStepNum = hasGroupStep ? 3 : 2;
-  const studentStepNum = hasGroupStep ? 4 : 3;
+  const participantStepNum = hasGroupStep ? 4 : 3;
 
   // State
   const [view, setView] = useState<ModalView>("SELECTION");
@@ -95,9 +95,9 @@ export function AssignmentModal({
     fixedGroupId ?? "",
   );
   const [selectedProgrammeId, setSelectedProgrammeId] = useState<string>("");
-  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(
-    new Set(),
-  );
+  const [selectedParticipantIds, setSelectedParticipantIds] = useState<
+    Set<string>
+  >(new Set());
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -131,34 +131,35 @@ export function AssignmentModal({
     return programmes.filter((p: any) => p.categoryId === selectedCategoryId);
   }, [programmes, selectedCategoryId, selectedGroupId, hasGroupStep]);
 
-  const filteredStudents = useMemo(() => {
+  const filteredParticipants = useMemo(() => {
     if (!selectedGroupId) return [];
 
-    // When fixedGroupId is set, the caller already scoped `students` to the
-    // right group (team-leader students have no groupId field at all).
-    let eligibleStudents = fixedGroupId
-      ? students
-      : students.filter((s: any) => s.groupId === selectedGroupId);
+    // When fixedGroupId is set, the caller already scoped `participants` to the
+    // right group (team-leader participants have no groupId field at all).
+    let eligibleParticipants = fixedGroupId
+      ? participants
+      : participants.filter((s: any) => s.groupId === selectedGroupId);
 
-    // GENERAL-type categories are open to students from any category;
-    // SINGLE-type categories only accept students from that exact category.
+    // GENERAL-type categories are open to participants from any category;
+    // SINGLE-type categories only accept participants from that exact category.
     if (selectedCategoryId && selectedCategoryType !== "GENERAL") {
-      eligibleStudents = eligibleStudents.filter(
+      eligibleParticipants = eligibleParticipants.filter(
         (s: any) => s.categoryId === selectedCategoryId,
       );
     }
 
     // Now adding status information to sorting
-    return eligibleStudents
+    return eligibleParticipants
       .map((s: any) => {
         // Checking if already assigned to this programme (DB)
         const isAssignedDB = assignments.some(
           (a: any) =>
-            a.programmeId === selectedProgrammeId && a.studentId === s.id,
+            a.programmeId === selectedProgrammeId && a.participantId === s.id,
         );
         // Checking if in Queue
         const isInQueue = queue.some(
-          (q) => q.programmeId === selectedProgrammeId && q.studentId === s.id,
+          (q) =>
+            q.programmeId === selectedProgrammeId && q.participantId === s.id,
         );
 
         return { ...s, isAssigned: isAssignedDB || isInQueue };
@@ -168,7 +169,7 @@ export function AssignmentModal({
         return Number(a.isAssigned) - Number(b.isAssigned);
       });
   }, [
-    students,
+    participants,
     assignments,
     queue,
     selectedGroupId,
@@ -196,8 +197,8 @@ export function AssignmentModal({
       return {
         type: "GROUP",
         maxTeams: selectedProgramme.maxTeamsPerGroup || 1,
-        maxPerTeam: selectedProgramme.maxStudentsPerTeam || 1,
-        label: `Max Teams: ${selectedProgramme.maxTeamsPerGroup || 1} | Size: ${selectedProgramme.maxStudentsPerTeam || 1}`,
+        maxPerTeam: selectedProgramme.maxParticipantsPerTeam || 1,
+        label: `Max Teams: ${selectedProgramme.maxTeamsPerGroup || 1} | Size: ${selectedProgramme.maxParticipantsPerTeam || 1}`,
       };
     }
   }, [selectedProgramme]);
@@ -216,7 +217,7 @@ export function AssignmentModal({
       (a: any) =>
         a.programmeId === selectedProgrammeId &&
         (a.groupId === selectedGroupId ||
-          a.student?.groupId === selectedGroupId),
+          a.participant?.groupId === selectedGroupId),
     );
 
     const queueAssignments = queue.filter(
@@ -224,7 +225,7 @@ export function AssignmentModal({
         q.programmeId === selectedProgrammeId && q.groupId === selectedGroupId,
     );
 
-    const currentSelectionCount = selectedStudentIds.size;
+    const currentSelectionCount = selectedParticipantIds.size;
     const totalCurrentCount =
       dbAssignments.length + queueAssignments.length + currentSelectionCount;
 
@@ -281,7 +282,7 @@ export function AssignmentModal({
       // Wait, for `canAssign` (rendering the list enabled/disabled), we just check if AT LEAST ONE slot exists
       // AFTER accounting for current selection.
 
-      // Let's conceptually "fill" spots with selected students
+      // Let's conceptually "fill" spots with selected participants
       let pending = currentSelectionCount;
 
       let targetTeamForNext = -1;
@@ -295,7 +296,7 @@ export function AssignmentModal({
         const remaining = Math.max(0, capacity - used);
 
         if (pending > 0) {
-          // Selected students take these spots
+          // Selected participants take these spots
           const take = Math.min(pending, remaining);
           used += take;
           pending -= take;
@@ -313,7 +314,7 @@ export function AssignmentModal({
       }
 
       if (pending > 0) {
-        // We couldn't even fit the SELECTED students
+        // We couldn't even fit the SELECTED participants
         return {
           canAssign: false,
           limitReached: true,
@@ -337,20 +338,20 @@ export function AssignmentModal({
     queue,
     selectedProgrammeId,
     selectedGroupId,
-    selectedStudentIds.size,
+    selectedParticipantIds.size,
     selectedProgramme,
   ]);
 
   // Handler for adding to queue - MUST USE AUTO-ASSIGN
   const handleAddToQueue = () => {
-    addStudentsToQueue(selectedStudentIds);
+    addParticipantsToQueue(selectedParticipantIds);
   };
 
   // Generic queue impl, used by both the manual "Add to Queue" button and the
-  // "Add all eligible" quick action. Takes an explicit set of student IDs so
+  // "Add all eligible" quick action. Takes an explicit set of participant IDs so
   // the bulk path can supply it directly without waiting on a batched state
   // update.
-  const addStudentsToQueue = (ids: Set<string>) => {
+  const addParticipantsToQueue = (ids: Set<string>) => {
     if (isReadOnly) return;
     if (!selectedProgramme || ids.size === 0) return;
     if (
@@ -373,7 +374,7 @@ export function AssignmentModal({
       (a: any) =>
         a.programmeId === selectedProgrammeId &&
         (a.groupId === selectedGroupId ||
-          a.student?.groupId === selectedGroupId),
+          a.participant?.groupId === selectedGroupId),
     );
     const queueAssignments = queue.filter(
       (q) =>
@@ -394,13 +395,14 @@ export function AssignmentModal({
     }
 
     Array.from(ids).forEach((sId) => {
-      const student = students.find((s: any) => s.id === sId);
-      if (!student) return;
+      const participant = participants.find((s: any) => s.id === sId);
+      if (!participant) return;
 
       // Check if already in queue (sanity check)
       if (
         queue.some(
-          (q) => q.programmeId === selectedProgrammeId && q.studentId === sId,
+          (q) =>
+            q.programmeId === selectedProgrammeId && q.participantId === sId,
         )
       )
         return;
@@ -414,7 +416,7 @@ export function AssignmentModal({
           const used = teamUsage.get(i) || 0;
           if (used < (limitInfo.maxPerTeam || 0)) {
             assignedTeam = i;
-            teamUsage.set(i, used + 1); // Increment usage for next student in this batch
+            teamUsage.set(i, used + 1); // Increment usage for next participant in this batch
             found = true;
             break;
           }
@@ -422,7 +424,7 @@ export function AssignmentModal({
         if (!found) {
           // Should not happen if UI disabled correctly, but fail safe
           toast.error(
-            `Could not auto-assign team for ${student.name}. Limits reached.`,
+            `Could not auto-assign team for ${participant.name}. Limits reached.`,
           );
           return;
         }
@@ -432,8 +434,8 @@ export function AssignmentModal({
         id: Math.random().toString(36).substr(2, 9),
         programmeId: selectedProgrammeId,
         programmeName: selectedProgramme.name,
-        studentId: sId,
-        studentName: student.name ?? "",
+        participantId: sId,
+        participantName: participant.name ?? "",
         groupId: selectedGroupId,
         groupName: selectedGroup?.name,
         teamNumber: assignedTeam, // Auto-assigned
@@ -444,18 +446,18 @@ export function AssignmentModal({
 
     if (newItems.length === 0) return;
     setQueue((prev) => [...prev, ...newItems]);
-    if (ids === selectedStudentIds) setSelectedStudentIds(new Set()); // Clear selection only for the manual path
+    if (ids === selectedParticipantIds) setSelectedParticipantIds(new Set()); // Clear selection only for the manual path
     toast.success(`Added ${newItems.length} to queue`);
   };
 
   // "Add all eligible" quick action — selects every eligible (unassigned,
-  // not-yet-queued) student and queues them in one go, respecting the
+  // not-yet-queued) participant and queues them in one go, respecting the
   // programme's per-group capacity. For programmes that are already full the
   // button is disabled.
   const eligibleUnassignedCount = useMemo(() => {
     if (!selectedProgramme) return 0;
-    return filteredStudents.filter((s: any) => !s.isAssigned).length;
-  }, [filteredStudents, selectedProgramme]);
+    return filteredParticipants.filter((s: any) => !s.isAssigned).length;
+  }, [filteredParticipants, selectedProgramme]);
 
   // Total slots the group still has on this programme (across all teams).
   // Used both to surface "capacity full" and to clamp the "add all" batch.
@@ -465,7 +467,7 @@ export function AssignmentModal({
       (a: any) =>
         a.programmeId === selectedProgrammeId &&
         (a.groupId === selectedGroupId ||
-          a.student?.groupId === selectedGroupId),
+          a.participant?.groupId === selectedGroupId),
     ).length;
     const queueCount = queue.filter(
       (q) =>
@@ -491,15 +493,15 @@ export function AssignmentModal({
       toast.info("Programme capacity is full for this group");
       return;
     }
-    const eligibleIds = filteredStudents
+    const eligibleIds = filteredParticipants
       .filter((s: any) => !s.isAssigned)
       .slice(0, remainingProgrammeSlots)
       .map((s: any) => s.id);
     if (eligibleIds.length === 0) {
-      toast.info("No eligible (unassigned) students to add");
+      toast.info("No eligible (unassigned) participants to add");
       return;
     }
-    addStudentsToQueue(new Set(eligibleIds));
+    addParticipantsToQueue(new Set(eligibleIds));
   };
 
   const isLimitReached = assignmentState.limitReached || false;
@@ -518,7 +520,7 @@ export function AssignmentModal({
         data: {
           assignments: queue.map((item) => ({
             programmeId: item.programmeId,
-            studentId: item.studentId,
+            participantId: item.participantId,
             teamNumber: item.teamNumber,
           })),
         },
@@ -527,7 +529,7 @@ export function AssignmentModal({
       onOpenChange(false);
       // Reset form
       setSelectedProgrammeId("");
-      setSelectedStudentIds(new Set());
+      setSelectedParticipantIds(new Set());
       setView("SELECTION");
     } catch (error) {
       console.error(error);
@@ -537,11 +539,11 @@ export function AssignmentModal({
     }
   };
 
-  const toggleStudent = (studentId: string) => {
+  const toggleParticipant = (participantId: string) => {
     if (isReadOnly) return;
-    const next = new Set(selectedStudentIds);
-    if (next.has(studentId)) {
-      next.delete(studentId);
+    const next = new Set(selectedParticipantIds);
+    if (next.has(participantId)) {
+      next.delete(participantId);
     } else {
       if (isLimitReached) {
         // Double check: if unchecked, we can always uncheck.
@@ -549,9 +551,9 @@ export function AssignmentModal({
         // But if we are here, and limit reached, we simply don't add.
         return;
       }
-      next.add(studentId);
+      next.add(participantId);
     }
-    setSelectedStudentIds(next);
+    setSelectedParticipantIds(next);
   };
 
   return (
@@ -563,7 +565,7 @@ export function AssignmentModal({
             <DialogTitle className="text-xl">New Assignment</DialogTitle>
             <DialogDescription>
               {view === "SELECTION"
-                ? "Select students and add to queue."
+                ? "Select participants and add to queue."
                 : "Review and confirm assignments."}
             </DialogDescription>
           </div>
@@ -618,7 +620,7 @@ export function AssignmentModal({
                     onValueChange={(val) => {
                       setSelectedCategoryId(val);
                       setSelectedProgrammeId("");
-                      setSelectedStudentIds(new Set());
+                      setSelectedParticipantIds(new Set());
                     }}
                     disabled={isReadOnly}
                   >
@@ -636,7 +638,7 @@ export function AssignmentModal({
                   </Select>
                   {selectedCategoryType === "GENERAL" && (
                     <p className="text-xs text-muted-foreground">
-                      General — open to students from any category.
+                      General — open to participants from any category.
                     </p>
                   )}
                 </div>
@@ -660,7 +662,7 @@ export function AssignmentModal({
                           // Group comes after Category now — only reset
                           // downstream selections, keep the category.
                           setSelectedProgrammeId("");
-                          setSelectedStudentIds(new Set());
+                          setSelectedParticipantIds(new Set());
                         }}
                         disabled={isReadOnly || !selectedCategoryId}
                       >
@@ -715,8 +717,7 @@ export function AssignmentModal({
                   <h3 className="text-sm font-semibold">Select Programme</h3>
                 </div>
                 <ScrollArea className="flex-1 p-6">
-                  {!selectedCategoryId ||
-                  (hasGroupStep && !selectedGroupId) ? (
+                  {!selectedCategoryId || (hasGroupStep && !selectedGroupId) ? (
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
                       <Grid2X2 className="h-8 w-8 opacity-20" />
                       <p>
@@ -740,7 +741,7 @@ export function AssignmentModal({
                           onClick={() => {
                             if (isReadOnly) return;
                             setSelectedProgrammeId(p.id);
-                            setSelectedStudentIds(new Set());
+                            setSelectedParticipantIds(new Set());
                           }}
                           className={cn(
                             "flex flex-col items-start text-left p-4 rounded-lg border transition-all hover:shadow-md",
@@ -783,7 +784,7 @@ export function AssignmentModal({
                                   Teams: {p.maxTeamsPerGroup}
                                 </span>
                                 <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                                  Size: {p.maxStudentsPerTeam}
+                                  Size: {p.maxParticipantsPerTeam}
                                 </span>
                               </div>
                             )}
@@ -795,18 +796,18 @@ export function AssignmentModal({
                 </ScrollArea>
               </div>
 
-              {/* Right Bar: Students */}
+              {/* Right Bar: Participants */}
               <div className="h-full flex flex-col min-h-0 border-t lg:border-t-0">
                 <div className="px-6 py-3 gap-3 border-l-0 lg:border-l border-b flex bg-muted/5 flex-col xl:flex-row items-start xl:items-center justify-between w-full shrink-0">
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">
                       <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
-                        {studentStepNum}
+                        {participantStepNum}
                       </div>
                       <h3 className="text-sm font-semibold">
                         {selectedProgramme?.type === "GROUP"
                           ? "Select members"
-                          : "Select students"}
+                          : "Select participants"}
                       </h3>
                     </div>
                     {selectedProgramme?.type === "GROUP" &&
@@ -848,10 +849,13 @@ export function AssignmentModal({
                         }
                         onClick={handleAddAllEligible}
                         className="h-8"
-                        title="Queue every eligible (unassigned, not yet on this programme) student for the selected programme in one click — capped at the group's remaining capacity."
+                        title="Queue every eligible (unassigned, not yet on this programme) participant for the selected programme in one click — capped at the group's remaining capacity."
                       >
                         <Plus className="h-3 w-3 mr-1" /> Add all eligible (
-                        {Math.min(eligibleUnassignedCount, remainingProgrammeSlots)}
+                        {Math.min(
+                          eligibleUnassignedCount,
+                          remainingProgrammeSlots,
+                        )}
                         )
                       </Button>
                       <Button
@@ -859,7 +863,7 @@ export function AssignmentModal({
                         disabled={
                           isReadOnly ||
                           !selectedProgramme ||
-                          selectedStudentIds.size === 0
+                          selectedParticipantIds.size === 0
                         }
                         onClick={handleAddToQueue}
                         className="h-8"
@@ -875,18 +879,19 @@ export function AssignmentModal({
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
                       <Users className="h-8 w-8 opacity-20" />
                       <p>
-                        Select a programme above to start selecting students.
+                        Select a programme above to start selecting
+                        participants.
                       </p>
                     </div>
-                  ) : filteredStudents.length === 0 ? (
+                  ) : filteredParticipants.length === 0 ? (
                     <p className="text-sm text-muted-foreground italic text-center py-10">
-                      No eligible students found in this group.
+                      No eligible participants found in this group.
                     </p>
                   ) : (
                     <div className="flex flex-wrap w-full  gap-3">
-                      {filteredStudents.map((s: any) => {
+                      {filteredParticipants.map((s: any) => {
                         // Determine visual state
-                        const isSelected = selectedStudentIds.has(s.id);
+                        const isSelected = selectedParticipantIds.has(s.id);
                         const isAssigned = s.isAssigned;
                         // Disabled if: (Limit reached AND not selected) OR (Already Assigned)
                         // Disabled if: (Limit reached AND not selected) OR (Already Assigned)
@@ -899,7 +904,9 @@ export function AssignmentModal({
                           <button
                             type="button"
                             key={s.id}
-                            onClick={() => !isDisabled && toggleStudent(s.id)}
+                            onClick={() =>
+                              !isDisabled && toggleParticipant(s.id)
+                            }
                             disabled={isDisabled}
                             className={cn(
                               "relative group p-3 rounded-md border text-sm transition-all cursor-pointer flex items-center justify-between gap-2 overflow-hidden w-full text-left",
@@ -970,7 +977,9 @@ export function AssignmentModal({
                               {idx + 1}.
                             </span>
                             <div>
-                              <p className="font-medium">{item.studentName}</p>
+                              <p className="font-medium">
+                                {item.participantName}
+                              </p>
                               <div className="flex gap-2 text-xs text-muted-foreground mt-0.5">
                                 <span>{item.programmeName}</span>
                                 {item.groupName && (

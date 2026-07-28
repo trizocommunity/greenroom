@@ -33,4 +33,3 @@ export function revalidateSchedulePaths(festivalSlug: string) {
   revalidatePath(`/${festivalSlug}/sessions`);
   revalidatePath(`/${festivalSlug}/programmes`);
 }
-

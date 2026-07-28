@@ -21,7 +21,7 @@ type AuditAction =
   | "CREATE_PROGRAMME"
   | "UPDATE_PROGRAMME"
   | "DELETE_PROGRAMME"
-  | "ASSIGN_STUDENTS"
+  | "ASSIGN_PARTICIPANTS"
   | "REMOVE_ASSIGNMENT"
   | "APPOINT_TEAM_LEAD"
   | "REPLACE_TEAM_LEAD"
@@ -31,6 +31,7 @@ type AuditAction =
   | "MARK_REPORTED"
   | "ISSUE_CODE_LETTER"
   | "SUBMIT_JUDGE_SCORES"
+  | "START_JUDGMENT"
   | "SAVE_RESULT"
   | "PUBLISH_RESULTS"
   | "ANNOUNCE_RESULTS";
@@ -50,7 +51,7 @@ type TargetType =
  * Identifies the actor for contexts with no admin session cookie — the
  * team-leader OTP portal (participant session, no `user` row) and judge
  * score submission (link-token + judgeId, no session at all). `actorId` is
- * a free-text column (no FK), so a student/judge id is valid here.
+ * a free-text column (no FK), so a participant/judge id is valid here.
  */
 interface ActorOverride {
   actorId: string;

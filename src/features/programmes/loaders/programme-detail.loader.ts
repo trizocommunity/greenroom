@@ -8,12 +8,12 @@ import {
   judge as judgeTable,
   judgmentConfig as judgmentConfigTable,
   judgmentScore as judgmentScoreTable,
+  participant as participantTable,
   programme as programmeTable,
   programmeTeamLead as programmeTeamLeadTable,
   programmeReportedParticipant as reportedParticipantTable,
   programmeReportingSession as reportingSessionTable,
   result as resultTable,
-  student as studentTable,
   user as userTable,
 } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
@@ -59,7 +59,11 @@ export interface ProgrammeDetailForDrawer {
     string,
     Record<
       number,
-      { studentId: string; studentName: string; chestNumber: string | null }
+      {
+        participantId: string;
+        participantName: string;
+        chestNumber: string | null;
+      }
     >
   >;
   auditTimeline: Array<{
@@ -74,12 +78,12 @@ export interface ProgrammeDetailForDrawer {
 
 async function resolveActorName(actorId: string, actorRole: string) {
   if (actorRole === "TEAM_LEADER") {
-    const student = await db.query.student.findFirst({
-      where: eq(studentTable.id, actorId),
+    const participant = await db.query.participant.findFirst({
+      where: eq(participantTable.id, actorId),
       columns: { name: true },
     });
     return {
-      name: student?.name ?? "Team Leader",
+      name: participant?.name ?? "Team Leader",
       email: null as string | null,
     };
   }
@@ -187,7 +191,7 @@ export async function getProgrammeDetailForDrawer(
     db.query.programmeTeamLead.findMany({
       where: eq(programmeTeamLeadTable.programmeId, programmeId),
       with: {
-        student: { columns: { id: true, name: true, chestNumber: true } },
+        participant: { columns: { id: true, name: true, chestNumber: true } },
       },
     }),
     db.query.result.findMany({
@@ -217,9 +221,9 @@ export async function getProgrammeDetailForDrawer(
   for (const row of teamLeadRows as any[]) {
     teamLeads[row.groupId] ??= {};
     teamLeads[row.groupId][row.teamNumber] = {
-      studentId: row.studentId,
-      studentName: row.student?.name ?? "",
-      chestNumber: row.student?.chestNumber ?? null,
+      participantId: row.participantId,
+      participantName: row.participant?.name ?? "",
+      chestNumber: row.participant?.chestNumber ?? null,
     };
   }
 

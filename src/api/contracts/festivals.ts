@@ -56,7 +56,7 @@ export const dashboardOverviewInput = z.object({
 });
 
 export const dashboardOverviewSchema = z.object({
-  totalStudents: z.number(),
+  totalParticipants: z.number(),
   totalGroups: z.number(),
   totalCategories: z.number(),
   totalProgrammes: z.number(),

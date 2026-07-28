@@ -113,7 +113,7 @@ export type ProgrammeReportingStatus =
 
 export const ProgrammeJudgmentStatus = {
   NOT_STARTED: "NOT_STARTED",
-  LINK_ACTIVE: "LINK_ACTIVE",
+  LIVE: "LIVE",
   SCORING_IN_PROGRESS: "SCORING_IN_PROGRESS",
   AWAITING_JUDGES: "AWAITING_JUDGES",
   COMPLETED: "COMPLETED",

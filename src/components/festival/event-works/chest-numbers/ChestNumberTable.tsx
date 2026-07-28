@@ -22,10 +22,10 @@ import {
 } from "@/components/ui/table";
 
 interface ChestNumberTableProps {
-  students: any[];
+  participants: any[];
 }
 
-export function ChestNumberTable({ students }: ChestNumberTableProps) {
+export function ChestNumberTable({ participants }: ChestNumberTableProps) {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [groupFilter, setGroupFilter] = useState<string>("all");
 
@@ -33,7 +33,7 @@ export function ChestNumberTable({ students }: ChestNumberTableProps) {
   const options = useMemo(() => {
     const cats = new Set<string>();
     const grps = new Set<string>();
-    students.forEach((s) => {
+    participants.forEach((s) => {
       if (s.category?.name) cats.add(s.category.name);
       if (s.group?.name) grps.add(s.group.name);
     });
@@ -41,17 +41,17 @@ export function ChestNumberTable({ students }: ChestNumberTableProps) {
       categories: Array.from(cats).sort(),
       groups: Array.from(grps).sort(),
     };
-  }, [students]);
+  }, [participants]);
 
   // Filter Data
-  const filteredStudents = useMemo(() => {
-    return students.filter((s) => {
+  const filteredParticipants = useMemo(() => {
+    return participants.filter((s) => {
       const matchCat =
         categoryFilter === "all" || s.category?.name === categoryFilter;
       const matchGrp = groupFilter === "all" || s.group?.name === groupFilter;
       return matchCat && matchGrp;
     });
-  }, [students, categoryFilter, groupFilter]);
+  }, [participants, categoryFilter, groupFilter]);
 
   const clearFilters = () => {
     setCategoryFilter("all");
@@ -65,8 +65,8 @@ export function ChestNumberTable({ students }: ChestNumberTableProps) {
       <CardHeader className="p-3 border-b bg-muted/5">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-muted-foreground mr-auto">
-            {filteredStudents.length} row
-            {filteredStudents.length !== 1 ? "s" : ""}
+            {filteredParticipants.length} row
+            {filteredParticipants.length !== 1 ? "s" : ""}
           </span>
           <Select value={groupFilter} onValueChange={setGroupFilter}>
             <SelectTrigger className="h-8 w-[130px] text-xs">
@@ -118,15 +118,15 @@ export function ChestNumberTable({ students }: ChestNumberTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredStudents.map((student) => (
-              <TableRow key={student.id}>
+            {filteredParticipants.map((participant) => (
+              <TableRow key={participant.id}>
                 <TableCell>
-                  {student.chestNumber ? (
+                  {participant.chestNumber ? (
                     <Badge
                       variant="outline"
                       className="font-mono text-base px-2.5 py-0.5 bg-primary/10 border-primary/20 text-primary"
                     >
-                      {student.chestNumber}
+                      {participant.chestNumber}
                     </Badge>
                   ) : (
                     <span className="text-muted-foreground italic text-xs">
@@ -134,22 +134,24 @@ export function ChestNumberTable({ students }: ChestNumberTableProps) {
                     </span>
                   )}
                 </TableCell>
-                <TableCell className="font-medium">{student.name}</TableCell>
+                <TableCell className="font-medium">
+                  {participant.name}
+                </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <span
                       className="w-2 h-2 rounded-full"
                       style={{
-                        backgroundColor: student.group?.color || "#2563eb",
+                        backgroundColor: participant.group?.color || "#2563eb",
                       }}
                     />
-                    {student.group?.name || "-"}
+                    {participant.group?.name || "-"}
                   </div>
                 </TableCell>
-                <TableCell>{student.category?.name || "-"}</TableCell>
+                <TableCell>{participant.category?.name || "-"}</TableCell>
               </TableRow>
             ))}
-            {filteredStudents.length === 0 && (
+            {filteredParticipants.length === 0 && (
               <TableRow>
                 <TableCell
                   colSpan={4}
@@ -157,7 +159,7 @@ export function ChestNumberTable({ students }: ChestNumberTableProps) {
                 >
                   <div className="flex flex-col items-center justify-center gap-2">
                     <FileText className="h-8 w-8 text-muted-foreground/50" />
-                    <p>No students found matching filters.</p>
+                    <p>No participants found matching filters.</p>
                   </div>
                 </TableCell>
               </TableRow>

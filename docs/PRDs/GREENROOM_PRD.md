@@ -1,4 +1,4 @@
-# Greenroom — Product Requirements Document
+﻿# Greenroom â€” Product Requirements Document
 
 > **Status:** Complete
 > **Version:** 1.0
@@ -23,7 +23,7 @@
 
 ### 1.1 Product Vision
 
-Greenroom is a multi-tenant SaaS platform for festival, competition, and event organizers — primarily targeting Indian cultural/educational festivals (e.g., Islamic religious cultural events, school annual day competitions, inter-college festivals). Organizers subscribe to a plan, create a festival, manage participants and programmes, collect judged scores, and publish results — all through a branded public portal — without engineering involvement.
+Greenroom is a multi-tenant SaaS platform for festival, competition, and event organizers â€” primarily targeting Indian cultural/educational festivals (e.g., Islamic religious cultural events, school annual day competitions, inter-college festivals). Organizers subscribe to a plan, create a festival, manage participants and programmes, collect judged scores, and publish results â€” all through a branded public portal â€” without engineering involvement.
 
 ### 1.2 Target Users
 
@@ -33,8 +33,8 @@ Greenroom is a multi-tenant SaaS platform for festival, competition, and event o
 | **Festival Owner** | The primary paying customer. Creates and owns a festival instance. |
 | **Festival Member** | Additional organizers/colleagues invited by the owner (STANDARD/PRO). Roles: `ORGANIZER`, `ANNOUNCER`, `JUDGE`. RBAC is PRO-only. |
 | **Judge** | External evaluator with a PIN-protected judge portal (`/judge/[token]`). Enters scores for assigned programmes. |
-| **Student/Participant** | Has a public profile page (`/{slug}/{studentSlug}`) showing assigned programmes and results. STANDARD+ only. |
-| **Public Visitor** | Anonymous user visiting the festival's public site (`/{slug}`). Sees landing page, results, gallery, news, and schedule. |
+| **Participant/Participant** | Has a public profile page (`/{slug}/{participantSlug}`) showing assigned programmes and results. STANDARD+ only. |
+| **Public Visitor** | Anonymous user visiting the festival's public site (`/{slug}`). Sees landing page, results, media, news, and schedule. |
 
 ### 1.3 Tech Stack
 
@@ -56,24 +56,24 @@ Greenroom is a multi-tenant SaaS platform for festival, competition, and event o
 
 ```
 user
-  └── festival (owned, 1:many)
-        ├── festival_member (team, 1:many)
-        ├── festival_lifecycle_event (audit trail, 1:many)
-        ├── category (1:many)
-        ├── group (1:many)
-        ├── student (1:many)
-        ├── programme (1:many)
-        │     ├── programme_assignment (1:many)
-        │     └── schedule_entry (1:many)
-        ├── stage (1:many)
-        ├── judge (1:many)
-        ├── judgment_config (1:many)
-        ├── result (1:many)
-        ├── festival_gallery_image (1:many)
-        ├── festival_news (1:many)
-        ├── festival_poster_template (1:many)
-        ├── festival_scoring_policy (1:1)
-        └── festival_scoring_award_rule (1:many)
+  â””â”€â”€ festival (owned, 1:many)
+        â”œâ”€â”€ festival_member (team, 1:many)
+        â”œâ”€â”€ festival_lifecycle_event (audit trail, 1:many)
+        â”œâ”€â”€ category (1:many)
+        â”œâ”€â”€ group (1:many)
+        â”œâ”€â”€ participant (1:many)
+        â”œâ”€â”€ programme (1:many)
+        â”‚     â”œâ”€â”€ programme_assignment (1:many)
+        â”‚     â””â”€â”€ schedule_entry (1:many)
+        â”œâ”€â”€ stage (1:many)
+        â”œâ”€â”€ judge (1:many)
+        â”œâ”€â”€ judgment_config (1:many)
+        â”œâ”€â”€ result (1:many)
+        â”œâ”€â”€ festival_media_image (1:many)
+        â”œâ”€â”€ festival_news (1:many)
+        â”œâ”€â”€ festival_poster_template (1:many)
+        â”œâ”€â”€ festival_scoring_policy (1:1)
+        â””â”€â”€ festival_scoring_award_rule (1:many)
 system_config (global key-value overrides per festival/tier)
 audit_log (global)
 ```
@@ -85,38 +85,38 @@ audit_log (global)
 ### 2.1 Request Lifecycle
 
 ```
-Browser → Next.js Middleware (JWT verification, festival access check)
-        → Route Handler / Server Action
-              → Service Layer (business logic)
-              → Repository/Model Layer (Drizzle queries)
-              → PostgreSQL
+Browser â†’ Next.js Middleware (JWT verification, festival access check)
+        â†’ Route Handler / Server Action
+              â†’ Service Layer (business logic)
+              â†’ Repository/Model Layer (Drizzle queries)
+              â†’ PostgreSQL
 ```
 
 ### 2.2 Module Dependency Map
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         UI Layer                                 │
-│  (Next.js App Router pages + shadcn/ui components)              │
-└──────────────────────────┬────────────────────────────────────────┘
-                           │ server actions / api routes
-┌──────────────────────────▼────────────────────────────────────────┐
-│                     Service Layer                                 │
-│  auth.service │ festival-lifecycle │ plan-features │ billing     │
-│  student │ programme │ group │ category │ stage │ schedule      │
-│  scoring-policy │ results │ leaderboard │ announcement           │
-│  notification │ payment │ judge │ admin                         │
-└──────────────────────────┬────────────────────────────────────────┘
-                           │
-┌──────────────────────────▼────────────────────────────────────────┐
-│                   Repository / Model Layer                        │
-│  (drizzle-orm queries per entity)                                │
-└──────────────────────────┬────────────────────────────────────────┘
-                           │
-┌──────────────────────────▼────────────────────────────────────────┐
-│                      PostgreSQL                                   │
-│  festival │ user │ student │ programme │ result │ etc.           │
-└─────────────────────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚                         UI Layer                                 â”‚
+â”‚  (Next.js App Router pages + shadcn/ui components)              â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                           â”‚ server actions / api routes
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚                     Service Layer                                 â”‚
+â”‚  auth.service â”‚ festival-lifecycle â”‚ plan-features â”‚ billing     â”‚
+â”‚  participant â”‚ programme â”‚ group â”‚ category â”‚ stage â”‚ schedule      â”‚
+â”‚  scoring-policy â”‚ results â”‚ leaderboard â”‚ announcement           â”‚
+â”‚  notification â”‚ payment â”‚ judge â”‚ admin                         â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                           â”‚
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚                   Repository / Model Layer                        â”‚
+â”‚  (drizzle-orm queries per entity)                                â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                           â”‚
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚                      PostgreSQL                                   â”‚
+â”‚  festival â”‚ user â”‚ participant â”‚ programme â”‚ result â”‚ etc.           â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ### 2.3 Route Groups (App Router)
@@ -129,7 +129,7 @@ Browser → Next.js Middleware (JWT verification, festival access check)
 | `(admin)` | `/super-admin/*` | Super Admin dashboard |
 | `dashboard/[slug]` | `/dashboard/*` | Authenticated festival management |
 | `(festivalPublic)` | `/[slug]/*` | Public festival portal (read-only) |
-| `(student)` | `/[slug]/[studentSlug]` | Student profile page (STANDARD+) |
+| `(participant)` | `/[slug]/[participantSlug]` | Participant profile page (STANDARD+) |
 | Judge Portal | `/judge/[token]` | PIN-protected judge scoring |
 | API | `/api/*` | File upload webhook, payment webhook |
 
@@ -137,9 +137,9 @@ Browser → Next.js Middleware (JWT verification, festival access check)
 
 - **Server Actions** for all mutations (create/update/delete across all entities)
 - **Feature flags** gate entire routes and UI sections (not just buttons)
-- **Programme status lifecycle**: `DRAFT → ASSIGNED → SCHEDULED → IN_PROGRESS → COMPLETED → PASSED`
-- **Festival lifecycle**: `SETUP → READY → ACTIVE → COMPLETED → EXPIRED`
-- **Denormalized counts** on `festival` table (`studentsCount`, `stagesCount`, `programmesCount`) updated via triggers/services
+- **Programme status lifecycle**: `DRAFT â†’ ASSIGNED â†’ SCHEDULED â†’ IN_PROGRESS â†’ COMPLETED â†’ PASSED`
+- **Festival lifecycle**: `SETUP â†’ READY â†’ ACTIVE â†’ COMPLETED â†’ EXPIRED`
+- **Denormalized counts** on `festival` table (`participantsCount`, `stagesCount`, `programmesCount`) updated via triggers/services
 
 ---
 
@@ -149,44 +149,44 @@ Browser → Next.js Middleware (JWT verification, festival access check)
 
 | Feature | BASIC | STANDARD | PRO |
 |---------|-------|----------|-----|
-| **Price** | ₹1,500 | ₹3,000 | ₹6,000 |
+| **Price** | â‚¹1,500 | â‚¹3,000 | â‚¹6,000 |
 | **Duration** | 30 days | 30 days | 30 days |
-| **Students** | 250 | 500 | 2,000 |
+| **Participants** | 250 | 500 | 2,000 |
 | **Programmes** | 100 | 250 | 1,000 |
 | **Events** | 10 | 25 | 100 |
 | **Stages** | 10 | 20 | 50 |
 | **Storage** | 512 MB | 2 GB | 10 GB |
 | **Categories** | 5 | 10 | 50 |
 | **Team members** | 1 (owner only) | 3 | Unlimited |
-| **Role-based access** | ❌ | ❌ | ✅ |
-| **Student profile** | ❌ | ✅ | ✅ |
-| **Public student profile** | ❌ | ✅ | ✅ |
-| **Stage Management** | ❌ | ✅ | ✅ |
-| **Schedule/Sessions** | ❌ | ✅ | ✅ |
-| **QR Codes** | ❌ | ✅ | ✅ |
-| **Bulk student upload** | ❌ | ✅ | ✅ |
-| **Bulk programme upload** | ❌ | ✅ | ✅ |
-| **Excel export** | ❌ | ✅ | ✅ |
-| **Full landing page** | ❌ | ✅ | ✅ |
-| **Gallery** | ❌ | ✅ | ✅ |
-| **News** | ❌ | ✅ | ✅ |
-| **Custom URL** | ❌ | ✅ | ✅ |
-| **Custom colors** | ❌ | ✅ | ✅ |
-| **Live scoreboard** | ✅ | ✅ | ✅ |
-| **Auto certificates** | ❌ | ✅ | ✅ |
-| **Custom certificate templates** | ❌ | ❌ | ✅ |
-| **Bulk certificate generation** | ❌ | ❌ | ✅ |
-| **Advanced analytics** | ❌ | ❌ | ✅ |
-| **Custom reports** | ❌ | ❌ | ✅ |
-| **Custom domain** | ❌ | ❌ | ✅ |
-| **White-label** | ❌ | ❌ | ✅ |
-| **API access** | ❌ | ❌ | ✅ |
-| **Webhooks** | ❌ | ❌ | ✅ |
-| **Live results** | ❌ | ❌ | ✅ |
-| **Multi-festival management** | ❌ | ❌ | ✅ |
-| **Design templates** | ✅ | ✅ | ✅ |
-| **Email notifications** | ❌ | ✅ | ✅ |
-| **SMS/bulk notifications** | ❌ | ❌ | ✅ |
+| **Role-based access** | âŒ | âŒ | âœ… |
+| **Participant profile** | âŒ | âœ… | âœ… |
+| **Public participant profile** | âŒ | âœ… | âœ… |
+| **Stage Management** | âŒ | âœ… | âœ… |
+| **Schedule/Sessions** | âŒ | âœ… | âœ… |
+| **QR Codes** | âŒ | âœ… | âœ… |
+| **Bulk participant upload** | âŒ | âœ… | âœ… |
+| **Bulk programme upload** | âŒ | âœ… | âœ… |
+| **Excel export** | âŒ | âœ… | âœ… |
+| **Full landing page** | âŒ | âœ… | âœ… |
+| **Media** | âŒ | âœ… | âœ… |
+| **News** | âŒ | âœ… | âœ… |
+| **Custom URL** | âŒ | âœ… | âœ… |
+| **Custom colors** | âŒ | âœ… | âœ… |
+| **Live scoreboard** | âœ… | âœ… | âœ… |
+| **Auto certificates** | âŒ | âœ… | âœ… |
+| **Custom certificate templates** | âŒ | âŒ | âœ… |
+| **Bulk certificate generation** | âŒ | âŒ | âœ… |
+| **Advanced analytics** | âŒ | âŒ | âœ… |
+| **Custom reports** | âŒ | âŒ | âœ… |
+| **Custom domain** | âŒ | âŒ | âœ… |
+| **White-label** | âŒ | âŒ | âœ… |
+| **API access** | âŒ | âŒ | âœ… |
+| **Webhooks** | âŒ | âŒ | âœ… |
+| **Live results** | âŒ | âŒ | âœ… |
+| **Multi-festival management** | âŒ | âŒ | âœ… |
+| **Design templates** | âœ… | âœ… | âœ… |
+| **Email notifications** | âŒ | âœ… | âœ… |
+| **SMS/bulk notifications** | âŒ | âŒ | âœ… |
 | **Support** | WhatsApp | Email (12h SLA) | Priority (4h SLA) |
 | **Post-expiry access** | Delete | Delete | Delete |
 
@@ -196,7 +196,7 @@ Browser → Next.js Middleware (JWT verification, festival access check)
 
 | Resource | Limit |
 |----------|-------|
-| Students | 250 |
+| Participants | 250 |
 | Programmes | 100 |
 | Events | 10 |
 | Stages | 10 |
@@ -205,7 +205,7 @@ Browser → Next.js Middleware (JWT verification, festival access check)
 
 **Post-expiry:** `postExpiryAccess: "delete"`, `dataRetentionDays: 0`. Expired festivals redirect to `/profile?error=expired`; all data is deleted.
 
-**Included features:** Categories, Groups, Students, Programme Assignments, Scoring Policy, Marks Entry, Chest Numbers, Leaderboard, CSV student import, PDF export, logo upload, basic public landing page (title + results).
+**Included features:** Categories, Groups, Participants, Programme Assignments, Scoring Policy, Marks Entry, Chest Numbers, Leaderboard, CSV participant import, PDF export, logo upload, basic public landing page (title + results).
 
 ### 3.3 STANDARD Plan
 
@@ -213,7 +213,7 @@ Browser → Next.js Middleware (JWT verification, festival access check)
 
 | Resource | Limit |
 |----------|-------|
-| Students | 500 |
+| Participants | 500 |
 | Programmes | 250 |
 | Events | 25 |
 | Stages | 20 |
@@ -222,7 +222,7 @@ Browser → Next.js Middleware (JWT verification, festival access check)
 
 **Post-expiry:** `postExpiryAccess: "delete"`, `dataRetentionDays: 0`.
 
-**Adds over BASIC:** Stage Management, Schedule/Sessions, QR Codes, Bulk student/programme upload, Excel export, Full landing page, Gallery, News, Custom URL, Custom colors, Student profile (dashboard + public), Email notifications.
+**Adds over BASIC:** Stage Management, Schedule/Sessions, QR Codes, Bulk participant/programme upload, Excel export, Full landing page, Media, News, Custom URL, Custom colors, Participant profile (dashboard + public), Email notifications.
 
 ### 3.4 PRO Plan
 
@@ -230,7 +230,7 @@ Browser → Next.js Middleware (JWT verification, festival access check)
 
 | Resource | Limit |
 |----------|-------|
-| Students | 2,000 |
+| Participants | 2,000 |
 | Programmes | 1,000 |
 | Events | 100 |
 | Stages | 50 |
@@ -250,9 +250,9 @@ Browser → Next.js Middleware (JWT verification, festival access check)
 **Stack:** `jose` for JWT (HS256), HTTP-only `session` cookie, `bcryptjs` for password hashing.
 
 **Flows:**
-- Register → account created → email verification (future)
-- Login → JWT issued with `{ userId, role }` → stored in HTTP-only cookie
-- Forgot password → Resend email with reset link → `password_reset_token` table
+- Register â†’ account created â†’ email verification (future)
+- Login â†’ JWT issued with `{ userId, role }` â†’ stored in HTTP-only cookie
+- Forgot password â†’ Resend email with reset link â†’ `password_reset_token` table
 - Middleware (`src/middleware.ts`) verifies JWT on all protected routes
 
 **Roles (App-level enums):**
@@ -280,11 +280,11 @@ Browser → Next.js Middleware (JWT verification, festival access check)
 
 ### 4.2 Festival Lifecycle
 
-**States:** `SETUP → READY → ACTIVE → COMPLETED → EXPIRED`
+**States:** `SETUP â†’ READY â†’ ACTIVE â†’ COMPLETED â†’ EXPIRED`
 
 A festival starts in `SETUP` (created via onboarding wizard but payment not yet completed). Upon successful payment, it transitions to `READY`. Once the event starts date is reached, it becomes `ACTIVE`. When `expiresAt` passes, it becomes `EXPIRED`.
 
-**Denormalized counters** on `festival`: `studentsCount`, `stagesCount`, `programmesCount`, `judgesCount`, `storageUsedMb`. These are updated by the relevant service layers rather than being counted at read time.
+**Denormalized counters** on `festival`: `participantsCount`, `stagesCount`, `programmesCount`, `judgesCount`, `storageUsedMb`. These are updated by the relevant service layers rather than being counted at read time.
 
 **Festival settings** include: `institutionName`, `institutionType`, `location`, `startDate`, `endDate`, `branding` (JSON: logo, colors), `rules` (JSON), `structure` (JSON), `maxResultScore`, `scoringSystem` (`SCORE_BASED` or `GRADE_BASED`), `publicDisplayMode`, `chestNumberSettings`.
 
@@ -302,7 +302,7 @@ A festival starts in `SETUP` (created via onboarding wizard but payment not yet 
 
 #### Groups
 
-Organizers create groups (teams/schools/affiliations) that students belong to. Groups have a name, color, and a `seriesStart` number for chest number generation.
+Organizers create groups (teams/schools/affiliations) that participants belong to. Groups have a name, color, and a `seriesStart` number for chest number generation.
 
 - Route: `/dashboard/[slug]/pre-event-works/groups`
 - Service: `src/features/groups/services/group.service.ts`
@@ -310,26 +310,26 @@ Organizers create groups (teams/schools/affiliations) that students belong to. G
 
 #### Categories
 
-Categories define the type of programme (e.g., "Qiraath", "Naat", "Quiz", "Debate"). A category can be `SINGLE` (individual student) or group-based (`TEAM` or `GROUP` from `CategoryType` enum).
+Categories define the type of programme (e.g., "Qiraath", "Naat", "Quiz", "Debate"). A category can be `SINGLE` (individual participant) or group-based (`TEAM` or `GROUP` from `CategoryType` enum).
 
 - Route: `/dashboard/[slug]/pre-event-works/categories`
 - Service: `src/features/categories/services/category.service.ts`
 - Repository: `src/features/categories/repositories/category.repository.ts`
 
-#### Students
+#### Participants
 
-Students are the participants. Each belongs to a `Group`. Fields include: name, slug (for public URL), chest number (auto-assigned from group series), and category. STANDARD+ also enables per-student QR code PDF generation.
+Participants are the participants. Each belongs to a `Group`. Fields include: name, slug (for public URL), chest number (auto-assigned from group series), and category. STANDARD+ also enables per-participant QR code PDF generation.
 
-- Route: `/dashboard/[slug]/pre-event-works/students`
-- Service: `src/features/students/services/student.service.ts`
-- Repository: `src/features/students/repositories/student.repository.ts`
-- QR actions: `src/features/students/actions/qr.actions.ts`
+- Route: `/dashboard/[slug]/pre-event-works/participants`
+- Service: `src/features/participants/services/participant.service.ts`
+- Repository: `src/features/participants/repositories/participant.repository.ts`
+- QR actions: `src/features/participants/actions/qr.actions.ts`
 
 #### Programmes
 
 Programmes are the competitive events (e.g., "Senior Naat Competition"). Each programme is tied to a `Category`, has a `ProgrammeType` (`INDIVIDUAL` or `GROUP`), `stageType`, status, `maxScore`, and `status` lifecycle.
 
-**Programme status lifecycle:** `DRAFT → ASSIGNED → SCHEDULED → IN_PROGRESS → COMPLETED → PASSED`
+**Programme status lifecycle:** `DRAFT â†’ ASSIGNED â†’ SCHEDULED â†’ IN_PROGRESS â†’ COMPLETED â†’ PASSED`
 
 A programme must be `SCHEDULED` or later to appear in Event-Works on STANDARD/PRO plans.
 
@@ -338,7 +338,7 @@ A programme must be `SCHEDULED` or later to appear in Event-Works on STANDARD/PR
 
 #### Assignments
 
-Links students/groups to programmes. Without assignments, a programme cannot receive scores. Assignment creation triggers `updateProgrammeStatus`.
+Links participants/groups to programmes. Without assignments, a programme cannot receive scores. Assignment creation triggers `updateProgrammeStatus`.
 
 - Route: `/dashboard/[slug]/pre-event-works/assignments`
 - Service: `src/features/assignments/services/assignment.service.ts`
@@ -369,10 +369,10 @@ Available STANDARD+. Organizers add judges (name, description). Judges receive a
 
 #### Chest Numbers
 
-Students receive chest numbers based on their group's `seriesStart` + offset. Chest number settings are stored in `festival.chestNumberSettings` (JSON).
+Participants receive chest numbers based on their group's `seriesStart` + offset. Chest number settings are stored in `festival.chestNumberSettings` (JSON).
 
 - Route: `/dashboard/[slug]/pre-event-works/chest-numbers`
-- Actions: `src/features/students/actions/chest-number.actions.ts`
+- Actions: `src/features/participants/actions/chest-number.actions.ts`
 
 ### 4.4 Event-Works
 
@@ -395,8 +395,8 @@ Judges enter scores via `/judge/[token]` (PIN-protected). Score entry creates/up
 #### Results
 
 Results can be viewed in two modes:
-- **Management** (`/dashboard/[slug]/event-works/results`) — organizers view all results, publish/unpublish per programme
-- **Explore** (`/dashboard/[slug]/event-works/results`) — filter and drill into specific programmes
+- **Management** (`/dashboard/[slug]/event-works/results`) â€” organizers view all results, publish/unpublish per programme
+- **Explore** (`/dashboard/[slug]/event-works/results`) â€” filter and drill into specific programmes
 
 Publishing marks a programme's results as public and triggers leaderboard recalculation.
 
@@ -443,10 +443,10 @@ A live view (`/dashboard/[slug]/festival-live`) for displaying real-time results
 | `/[slug]/programmes/[day]` | Programmes filtered by day (from schedule) |
 | `/[slug]/sessions` | Session cards (schedule entries grouped by time) |
 | `/[slug]/results` | Published results |
-| `/[slug]/gallery` | Gallery images (STANDARD+) |
+| `/[slug]/media` | Media images (STANDARD+) |
 | `/[slug]/news` | News articles (STANDARD+) |
 | `/[slug]/about` | About section |
-| `/[slug]/[studentSlug]` | Student public profile (STANDARD+) |
+| `/[slug]/[participantSlug]` | Participant public profile (STANDARD+) |
 
 - Service: `src/features/festivals/services/festival-public-validation.service.ts`
 
@@ -465,9 +465,9 @@ Published result posters are available for every announced result on the public 
 **Provider:** Razorpay
 
 **Flows:**
-1. **Plan purchase** — User selects plan → Razorpay Checkout → webhook confirms payment → `Payment` record created → festival upgraded
-2. **Plan upgrade** — Same flow; `tier` and `tierLabel` on `festival` are updated
-3. **Renewal** — Not yet implemented (current: all plans are 30-day one-off)
+1. **Plan purchase** â€” User selects plan â†’ Razorpay Checkout â†’ webhook confirms payment â†’ `Payment` record created â†’ festival upgraded
+2. **Plan upgrade** â€” Same flow; `tier` and `tierLabel` on `festival` are updated
+3. **Renewal** â€” Not yet implemented (current: all plans are 30-day one-off)
 
 **Key tables:** `payment`, `billing_record`
 **Config:** `src/config/pricing.ts` defines prices
@@ -504,17 +504,17 @@ Full platform administration at `/super-admin/*`:
 - Actions: `src/features/admin/actions/admin.actions.ts`, `admin-user.actions.ts`
 - Feature overrides: `src/config/plan-features.config.ts` + `src/features/plan-features/services/plan-features.service.ts`
 
-### 4.10 Student Profile (STANDARD+)
+### 4.10 Participant Profile (STANDARD+)
 
-Students get a personal dashboard (`/dashboard/[slug]/pre-event-works/students/[studentSlug]`) showing:
+Participants get a personal dashboard (`/dashboard/[slug]/pre-event-works/participants/[participantSlug]`) showing:
 - Assigned programmes
 - Scores received per programme
 - Leaderboard position
 - Notifications (if any)
 
-Public profile at `/[slug]/[studentSlug]` is accessible without auth.
+Public profile at `/[slug]/[participantSlug]` is accessible without auth.
 
-- Service: `src/features/students/services/student-profile-url.ts`
+- Service: `src/features/participants/services/participant-profile-url.ts`
 
 ---
 
@@ -524,9 +524,9 @@ Public profile at `/[slug]/[studentSlug]` is accessible without auth.
 
 **Two sources of truth:**
 
-1. **`FeatureService.isFeatureEnabled(tier, feature)`** — `src/lib/features.ts` / `src/features/plan-features/services/features.ts`. Reads only from `TIER_CONFIG`. Used in some flows (Excel export, student profile checks).
+1. **`FeatureService.isFeatureEnabled(tier, feature)`** â€” `src/lib/features.ts` / `src/features/plan-features/services/features.ts`. Reads only from `TIER_CONFIG`. Used in some flows (Excel export, participant profile checks).
 
-2. **`getEffectiveFeatureEnabled(tier, feature)`** — `src/server/services/plan-features.service.ts` / `src/features/plan-features/services/plan-features.service.ts`. Merges `TIER_CONFIG` with Super Admin overrides from `SystemConfig`. Used in gallery, news, schedule, QR, stage, leaderboard, and most route-level checks.
+2. **`getEffectiveFeatureEnabled(tier, feature)`** â€” `src/server/services/plan-features.service.ts` / `src/features/plan-features/services/plan-features.service.ts`. Merges `TIER_CONFIG` with Super Admin overrides from `SystemConfig`. Used in media, news, schedule, QR, stage, leaderboard, and most route-level checks.
 
 **Recommendation (from existing plan docs):** Prefer `getEffectiveFeatureEnabled` everywhere for consistent behavior with Super Admin overrides.
 
@@ -535,7 +535,7 @@ Public profile at `/[slug]/[studentSlug]` is accessible without auth.
 | Layer | Mechanism |
 |-------|-----------|
 | **Sidebar** | `FestivalDashboardSidebar` reads `effectiveFeatures` from `FestivalProvider` context; conditionally renders nav items |
-| **Route** | Server components check `getEffectiveFeatureEnabled` or `FeatureService.isFeatureEnabled` → `redirect()` or `notFound()` |
+| **Route** | Server components check `getEffectiveFeatureEnabled` or `FeatureService.isFeatureEnabled` â†’ `redirect()` or `notFound()` |
 | **Server Action** | Actions validate tier/feature before performing mutations (e.g., Excel export, team member count) |
 | **Client Component** | `useFeature(feature)` hook or `<FeatureGate>` component for inline UI gating |
 | **Limits** | `TIER_CONFIG[tier].limits` enforced via `usage-counter.service.ts` before writes |
@@ -543,23 +543,23 @@ Public profile at `/[slug]/[studentSlug]` is accessible without auth.
 ### 5.3 Consistency Issues (Known)
 
 - `FeatureService` (config-only) and `getEffectiveFeatureEnabled` (config + overrides) are used interchangeably in different parts of the codebase. Super Admin overrides may not apply consistently to all features (e.g., Excel export uses config-only source).
-- `festivalSettings: true` is set in `TIER_CONFIG.BASIC` but the settings page route is gated off via the feature flag anyway — the boolean being `true` here is intentional per plan docs but redundant.
+- `festivalSettings: true` is set in `TIER_CONFIG.BASIC` but the settings page route is gated off via the feature flag anyway â€” the boolean being `true` here is intentional per plan docs but redundant.
 
 ### 5.4 Plan Feature Toggle Keys
 
 Super Admins can toggle the following features per-festival via `/super-admin/plan-features`:
 
 ```
-categories, groups, students, programmes, assignments,
+categories, groups, participants, programmes, assignments,
 chestNumbers, results, stageManagement, schedule,
 members, roleBasedAccess,
-studentImport, studentBulkUpload, programmeBulkUpload,
+participantImport, participantBulkUpload, programmeBulkUpload,
 pdfExport, excelExport,
 emailNotifications, whatsappSupport, smsNotifications, bulkNotifications,
 advancedAnalytics, customReports,
 qrCodes, autoCertificates, customCertificateTemplates, bulkCertificateGeneration,
 publicLandingPage, fullLandingPage, landingPageBuilder,
-gallery, news,
+media, news,
 customUrl, customDomain, logoUpload, customColors, whiteLabel,
 apiAccess, webhooks, liveScoreboard, liveResults, multiFestivalManagement,
 festivalSettings, advancedSettings, programmeAssignmentDeadline
@@ -608,17 +608,17 @@ All significant mutations are logged to `audit_log`:
 1. Push to GitHub (`trizocommunity/greenroom`)
 2. Import project in vercel.com
 3. Add environment variables:
-   - `DATABASE_URL` — PostgreSQL connection string
-   - `JWT_SECRET` — long random string
+   - `DATABASE_URL` â€” PostgreSQL connection string
+   - `JWT_SECRET` â€” long random string
    - `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET`
    - `RESEND_API_KEY`
-4. Deploy ✅
+4. Deploy âœ…
 
 ### 7.2 Railway
 
-1. Create new project → connect GitHub repo
+1. Create new project â†’ connect GitHub repo
 2. Add `DATABASE_URL` environment variable
-3. Deploy ✅
+3. Deploy âœ…
 
 ### 7.3 Environment Variables
 
@@ -650,7 +650,7 @@ npm run db:studio   # open Drizzle Studio
 
 ### 8.1 Feature Check Unification
 
-`FeatureService` (config-only) and `getEffectiveFeatureEnabled` (config + overrides) are used inconsistently across the codebase. Super Admin overrides via `/super-admin/plan-features` may not apply to all features (e.g., Excel export, student profile). **Recommendation:** Unify on `getEffectiveFeatureEnabled` everywhere, or clearly document which path each feature uses.
+`FeatureService` (config-only) and `getEffectiveFeatureEnabled` (config + overrides) are used inconsistently across the codebase. Super Admin overrides via `/super-admin/plan-features` may not apply to all features (e.g., Excel export, participant profile). **Recommendation:** Unify on `getEffectiveFeatureEnabled` everywhere, or clearly document which path each feature uses.
 
 ### 8.2 Post-Expiry Read-Only Window
 
@@ -693,9 +693,9 @@ User registration creates an account immediately. Email verification (sending a 
 | Middleware | `src/middleware.ts` |
 | Payment | `src/features/payments/services/razorpay.service.ts` |
 | Billing | `src/features/billing/services/billing.service.ts` |
-| Students | `src/features/students/services/student.service.ts` |
-| Student profile | `src/features/students/services/student-profile-url.ts` |
-| QR codes | `src/features/students/actions/qr.actions.ts` |
+| Participants | `src/features/participants/services/participant.service.ts` |
+| Participant profile | `src/features/participants/services/participant-profile-url.ts` |
+| QR codes | `src/features/participants/actions/qr.actions.ts` |
 | Programmes | `src/features/programmes/services/programme.service.ts` |
 | Programme status | `src/features/programmes/services/programme-status.service.ts` |
 | Groups | `src/features/groups/services/group.service.ts` |
@@ -717,7 +717,7 @@ User registration creates an account immediately. Email verification (sending a 
 | Audit log | `src/features/auth/services/audit-log.service.ts` |
 | Public festival | `src/features/festivals/services/festival-public-validation.service.ts` |
 | News | `src/features/news/actions/news.actions.ts` |
-| Gallery | `src/features/gallery/services/gallery.service.ts` |
+| Media | `src/features/media/services/media.service.ts` |
 | Plan features config | `src/config/plan-features.config.ts` |
 | Plan features overrides | `src/features/plan-features/services/plan-features.service.ts` |
 | Plan features actions | `src/features/plan-features/actions/plan-features.actions.ts` |

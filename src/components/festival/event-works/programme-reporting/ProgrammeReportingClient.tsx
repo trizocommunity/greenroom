@@ -69,7 +69,7 @@ import {
   resetSpinCodeLettersAction,
   startProgrammeReportingAction,
 } from "@/features/programmes/actions/programme-reporting.actions";
-import { getCodeForStudentFromLetters } from "@/features/programmes/services/programme-reporting-code";
+import { getCodeForParticipantFromLetters } from "@/features/programmes/services/programme-reporting-code";
 import { CodeLetterSpinWheel } from "./CodeLetterSpinWheel";
 import { QrScanner } from "./QrScanner";
 import { ReportingBoardList } from "./ReportingBoardList";
@@ -472,13 +472,13 @@ export function ProgrammeReportingClient({
         ) ?? [],
       );
       const assignedCodes = item.reportingSession?.programmeCodeLetters ?? [];
-      const codeByStudentId = new Map<string, string>();
-      const spunAtByStudentId = new Map<string, string>();
+      const codeByParticipantId = new Map<string, string>();
+      const spunAtByParticipantId = new Map<string, string>();
       for (const c of assignedCodes) {
         for (const recipient of c.programmeCodeLetterRecipients) {
-          codeByStudentId.set(recipient.studentId, c.code);
+          codeByParticipantId.set(recipient.participantId, c.code);
           if (c.issuedAt) {
-            spunAtByStudentId.set(recipient.studentId, c.issuedAt);
+            spunAtByParticipantId.set(recipient.participantId, c.issuedAt);
           }
         }
       }
@@ -499,8 +499,8 @@ export function ProgrammeReportingClient({
               }, new Map<string, ProgrammeReportingAssignmentRow[]>()),
             ).map(([, members]) => {
               const lead = members[0];
-              const firstStudentId =
-                members.find((m) => m.studentId)?.studentId ?? null;
+              const firstParticipantId =
+                members.find((m) => m.participantId)?.participantId ?? null;
               return {
                 label:
                   lead?.teamNumber && lead.teamNumber > 0
@@ -508,16 +508,16 @@ export function ProgrammeReportingClient({
                     : (lead?.groupName ?? "Team"),
                 group: lead?.groupName ?? "—",
                 code:
-                  (firstStudentId
-                    ? codeByStudentId.get(firstStudentId)
+                  (firstParticipantId
+                    ? codeByParticipantId.get(firstParticipantId)
                     : null) ?? "—",
               };
             })
           : programmeAssignments.map((row) => ({
-              label: row.studentName ?? "—",
+              label: row.participantName ?? "—",
               group: row.groupName ?? "—",
-              code: row.studentId
-                ? (codeByStudentId.get(row.studentId) ?? "—")
+              code: row.participantId
+                ? (codeByParticipantId.get(row.participantId) ?? "—")
                 : "—",
             }));
 
@@ -542,13 +542,13 @@ export function ProgrammeReportingClient({
               const firstReported = members
                 .map((m) => reportedByAssignmentId.get(m.id))
                 .find(Boolean);
-              const firstStudentId =
-                members.find((m) => m.studentId)?.studentId ?? null;
-              const code = firstStudentId
-                ? (codeByStudentId.get(firstStudentId) ?? "—")
+              const firstParticipantId =
+                members.find((m) => m.participantId)?.participantId ?? null;
+              const code = firstParticipantId
+                ? (codeByParticipantId.get(firstParticipantId) ?? "—")
                 : "—";
-              const spunAt = firstStudentId
-                ? (spunAtByStudentId.get(firstStudentId) ?? null)
+              const spunAt = firstParticipantId
+                ? (spunAtByParticipantId.get(firstParticipantId) ?? null)
                 : null;
               const teamLabel = lead?.teamNumber
                 ? `Team ${lead.teamNumber}`
@@ -566,15 +566,15 @@ export function ProgrammeReportingClient({
             })
           : programmeAssignments.map((row) => {
               const reported = reportedByAssignmentId.get(row.id);
-              const code = row.studentId
-                ? (codeByStudentId.get(row.studentId) ?? "—")
+              const code = row.participantId
+                ? (codeByParticipantId.get(row.participantId) ?? "—")
                 : "—";
-              const spunAt = row.studentId
-                ? (spunAtByStudentId.get(row.studentId) ?? null)
+              const spunAt = row.participantId
+                ? (spunAtByParticipantId.get(row.participantId) ?? null)
                 : null;
               return {
                 key: row.id,
-                label: row.studentName ?? "—",
+                label: row.participantName ?? "—",
                 chestOrTeam: row.chestNumber
                   ? `Chest ${row.chestNumber}`
                   : "Chest —",
@@ -694,8 +694,8 @@ export function ProgrammeReportingClient({
       if ((a.teamNumber ?? 0) !== (b.teamNumber ?? 0)) {
         return (a.teamNumber ?? 0) - (b.teamNumber ?? 0);
       }
-      return (a.studentName ?? "").localeCompare(
-        b.studentName ?? "",
+      return (a.participantName ?? "").localeCompare(
+        b.participantName ?? "",
         undefined,
         { sensitivity: "base" },
       );
@@ -712,8 +712,8 @@ export function ProgrammeReportingClient({
         key: a.id,
         mode: "individual" as const,
         assignmentId: a.id,
-        studentId: a.studentId,
-        nameColumn: a.studentName ?? "—",
+        participantId: a.participantId,
+        nameColumn: a.participantName ?? "—",
         groupName: a.groupName,
         teamCell: a.teamNumber ?? "—",
         isReported: a.isReported,
@@ -732,8 +732,8 @@ export function ProgrammeReportingClient({
       ([teamKey, members]) => {
         const lead = members[0]!;
         const teamNumber = lead.teamNumber ?? 0;
-        const teamStudentIds = members
-          .map((m) => m.studentId)
+        const teamParticipantIds = members
+          .map((m) => m.participantId)
           .filter((id): id is string => Boolean(id));
         return {
           key: teamKey,
@@ -741,7 +741,7 @@ export function ProgrammeReportingClient({
           assignmentId: lead.id,
           groupId: lead.groupId,
           teamNumber,
-          teamStudentIds,
+          teamParticipantIds,
           nameColumn:
             teamNumber > 0
               ? `${lead.groupName ?? "Group"} · Team ${teamNumber}`
@@ -783,12 +783,12 @@ export function ProgrammeReportingClient({
 
     const hasCodeForRow = (row: RosterTableRow) => {
       if (row.mode === "team") {
-        return row.teamStudentIds.some(
-          (sid) => getCodeForStudentFromLetters(letters, sid) != null,
+        return row.teamParticipantIds.some(
+          (sid) => getCodeForParticipantFromLetters(letters, sid) != null,
         );
       }
-      return row.studentId
-        ? getCodeForStudentFromLetters(letters, row.studentId) != null
+      return row.participantId
+        ? getCodeForParticipantFromLetters(letters, row.participantId) != null
         : false;
     };
 
@@ -852,8 +852,10 @@ export function ProgrammeReportingClient({
         teamNumber:
           activeSpinRow.mode === "team" ? activeSpinRow.teamNumber : null,
         groupId: activeSpinRow.mode === "team" ? activeSpinRow.groupId : null,
-        studentId:
-          activeSpinRow.mode === "individual" ? activeSpinRow.studentId : null,
+        participantId:
+          activeSpinRow.mode === "individual"
+            ? activeSpinRow.participantId
+            : null,
         code,
       };
 
@@ -888,14 +890,14 @@ export function ProgrammeReportingClient({
   function getIssuedCodeForRow(row: RosterTableRow): string | null {
     const letters = session?.programmeCodeLetters ?? [];
     if (row.mode === "team") {
-      for (const sid of row.teamStudentIds) {
-        const code = getCodeForStudentFromLetters(letters, sid);
+      for (const sid of row.teamParticipantIds) {
+        const code = getCodeForParticipantFromLetters(letters, sid);
         if (code) return code;
       }
       return null;
     }
-    return row.studentId
-      ? getCodeForStudentFromLetters(letters, row.studentId)
+    return row.participantId
+      ? getCodeForParticipantFromLetters(letters, row.participantId)
       : null;
   }
 
@@ -913,12 +915,15 @@ export function ProgrammeReportingClient({
     const letters = session?.programmeCodeLetters ?? [];
     const hasIssuedCode =
       pendingRow.mode === "team"
-        ? pendingRow.teamStudentIds.some(
-            (studentId) =>
-              getCodeForStudentFromLetters(letters, studentId) != null,
+        ? pendingRow.teamParticipantIds.some(
+            (participantId) =>
+              getCodeForParticipantFromLetters(letters, participantId) != null,
           )
-        : pendingRow.studentId != null
-          ? getCodeForStudentFromLetters(letters, pendingRow.studentId) != null
+        : pendingRow.participantId != null
+          ? getCodeForParticipantFromLetters(
+              letters,
+              pendingRow.participantId,
+            ) != null
           : false;
 
     if (hasIssuedCode) {
@@ -1020,7 +1025,7 @@ export function ProgrammeReportingClient({
     const assignments = rowsNeedingCode.map((row, index) => ({
       teamNumber: row.mode === "team" ? row.teamNumber : null,
       groupId: row.mode === "team" ? row.groupId : null,
-      studentId: row.mode === "individual" ? row.studentId : null,
+      participantId: row.mode === "individual" ? row.participantId : null,
       code: shuffledCodes[index]!,
     }));
 
@@ -1069,7 +1074,7 @@ export function ProgrammeReportingClient({
           toast.success(
             programmeType === "GROUP"
               ? "Reporting ended — each reported team received one code letter."
-              : "Reporting ended — code letters issued to reported students.",
+              : "Reporting ended — code letters issued to reported participants.",
           );
           router.refresh();
         } else toast.error("Failed to submit reporting");
@@ -1608,7 +1613,7 @@ export function ProgrammeReportingClient({
                   {isPreStart ? (
                     <p className="text-xs text-muted-foreground">
                       {assignmentsWithReported.length === 0
-                        ? "No assignments yet — add students in Pre Event Works first."
+                        ? "No assignments yet — add participants in Pre Event Works first."
                         : `${assignmentsWithReported.length} on roster. Start when you’re ready.`}
                     </p>
                   ) : null}

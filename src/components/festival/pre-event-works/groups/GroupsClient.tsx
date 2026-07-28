@@ -68,7 +68,7 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
         {groups.map((group: any) => {
           const groupColor = group.color || "#2563eb";
           const teamLeaders =
-            group.students?.filter((p: any) => p.isTeamLeader) ?? [];
+            group.participants?.filter((p: any) => p.isTeamLeader) ?? [];
           return (
             <div
               key={group.id}
@@ -167,11 +167,12 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
                     <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <span className="text-sm">
                       <span className="font-semibold text-foreground">
-                        {group._count?.students ?? 0}
+                        {group._count?.participants ?? 0}
                       </span>
                       <span className="text-muted-foreground">
                         {" "}
-                        student{(group._count?.students ?? 0) !== 1 ? "s" : ""}
+                        participant
+                        {(group._count?.participants ?? 0) !== 1 ? "s" : ""}
                       </span>
                     </span>
                   </div>
@@ -187,7 +188,8 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
             </div>
             <h3 className="mt-4 text-lg font-semibold">No groups yet</h3>
             <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-              Create a group to start adding students (e.g. school or college).
+              Create a group to start adding participants (e.g. school or
+              college).
             </p>
             <div className="mt-6">
               <GroupDialog
@@ -224,7 +226,7 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
       {!isReadOnly && actionGroup?.action === "delete" && actionGroup.group && (
         <DeleteDialog
           title="Delete Group"
-          description="Are you sure you want to delete this group? This will also delete all students in this group."
+          description="Are you sure you want to delete this group? This will also delete all participants in this group."
           onDelete={async () => {
             await deleteGroup.mutateAsync({
               festivalId,

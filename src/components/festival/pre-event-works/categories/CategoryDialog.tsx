@@ -216,7 +216,7 @@ export function CategoryDialog({
                     <FormLabel>Description (Optional)</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="e.g. For students below 12 years"
+                        placeholder="e.g. For participants below 12 years"
                         disabled={readOnly || isLoading}
                         {...field}
                       />

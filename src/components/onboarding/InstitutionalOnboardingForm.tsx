@@ -275,7 +275,7 @@ export function InstitutionalOnboardingForm() {
             disabled={isPending}
           >
             <SelectTrigger className="rounded-lg sm:rounded-xl border-border/60 bg-secondary/20 dark:bg-secondary/30 text-foreground h-10 sm:h-11 px-3 text-xs sm:text-sm w-full">
-              <SelectValue placeholder="Students" />
+              <SelectValue placeholder="Participants" />
             </SelectTrigger>
             <SelectContent className="rounded-xl border-border/60">
               {SIZE_RANGES.map((size) => (
@@ -284,7 +284,7 @@ export function InstitutionalOnboardingForm() {
                   value={size.value}
                   className="text-xs sm:text-sm"
                 >
-                  {size.label} students
+                  {size.label} participants
                 </SelectItem>
               ))}
             </SelectContent>

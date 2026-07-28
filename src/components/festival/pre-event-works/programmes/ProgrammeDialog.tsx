@@ -62,7 +62,7 @@ const ProgrammeBaseSchema = z.object({
   // Defaults apply when fields are hidden (GROUP vs INDIVIDUAL); missing values become NaN without these.
   maxParticipantsPerGroup: z.coerce.number().min(0).default(1),
   maxTeamsPerGroup: z.coerce.number().min(0).default(1),
-  maxStudentsPerTeam: z.coerce.number().min(0).default(1),
+  maxParticipantsPerTeam: z.coerce.number().min(0).default(1),
 });
 
 const ProgrammeSchema = ProgrammeBaseSchema.superRefine((data, ctx) => {
@@ -82,11 +82,11 @@ const ProgrammeSchema = ProgrammeBaseSchema.superRefine((data, ctx) => {
         path: ["maxTeamsPerGroup"],
       });
     }
-    if (data.maxStudentsPerTeam < 1) {
+    if (data.maxParticipantsPerTeam < 1) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Must be at least 1",
-        path: ["maxStudentsPerTeam"],
+        path: ["maxParticipantsPerTeam"],
       });
     }
   }
@@ -134,7 +134,7 @@ export function ProgrammeDialog({
       stageType: "STAGE",
       maxParticipantsPerGroup: 1,
       maxTeamsPerGroup: 1,
-      maxStudentsPerTeam: 1,
+      maxParticipantsPerTeam: 1,
     },
   });
 
@@ -167,7 +167,7 @@ export function ProgrammeDialog({
           stageType: programme.stageType || "STAGE",
           maxParticipantsPerGroup: programme.maxParticipantsPerGroup || 1,
           maxTeamsPerGroup: programme.maxTeamsPerGroup || 1,
-          maxStudentsPerTeam: programme.maxStudentsPerTeam || 1,
+          maxParticipantsPerTeam: programme.maxParticipantsPerTeam || 1,
         });
       } else {
         form.reset({
@@ -177,7 +177,7 @@ export function ProgrammeDialog({
           stageType: "STAGE",
           maxParticipantsPerGroup: 1,
           maxTeamsPerGroup: 1,
-          maxStudentsPerTeam: 1,
+          maxParticipantsPerTeam: 1,
         });
       }
       form.trigger();
@@ -195,12 +195,12 @@ export function ProgrammeDialog({
         }
       } else {
         const teams = form.getValues("maxTeamsPerGroup");
-        const students = form.getValues("maxStudentsPerTeam");
+        const participants = form.getValues("maxParticipantsPerTeam");
         if (teams === undefined || Number.isNaN(Number(teams))) {
           form.setValue("maxTeamsPerGroup", 1, { shouldValidate: true });
         }
-        if (students === undefined || Number.isNaN(Number(students))) {
-          form.setValue("maxStudentsPerTeam", 1, { shouldValidate: true });
+        if (participants === undefined || Number.isNaN(Number(participants))) {
+          form.setValue("maxParticipantsPerTeam", 1, { shouldValidate: true });
         }
       }
     },
@@ -280,8 +280,10 @@ export function ProgrammeDialog({
                 <div className="font-medium">{details.maxTeamsPerGroup}</div>
               </div>
               <div className="space-y-1">
-                <span className="text-muted-foreground">Students/Team</span>
-                <div className="font-medium">{details.maxStudentsPerTeam}</div>
+                <span className="text-muted-foreground">Participants/Team</span>
+                <div className="font-medium">
+                  {details.maxParticipantsPerTeam}
+                </div>
               </div>
             </>
           )}
@@ -290,7 +292,7 @@ export function ProgrammeDialog({
         <div className="space-y-2 flex flex-col flex-1 min-h-0">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-semibold">
-              Assigned Students ({assignments.length})
+              Assigned Participants ({assignments.length})
             </h4>
           </div>
           <div className="rounded-md border flex-1 min-h-[200px] max-h-[350px] overflow-hidden flex flex-col">
@@ -299,7 +301,7 @@ export function ProgrammeDialog({
                 <TableHeader className="bg-muted/50 sticky top-0 z-10">
                   <TableRow>
                     <TableHead className="w-[50px]">#</TableHead>
-                    <TableHead>Student</TableHead>
+                    <TableHead>Participant</TableHead>
                     <TableHead>Group</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -310,20 +312,21 @@ export function ProgrammeDialog({
                         {index + 1}
                       </TableCell>
                       <TableCell className="font-medium">
-                        {assignment.student?.name}
+                        {assignment.participant?.name}
                       </TableCell>
                       <TableCell>
-                        {assignment.student?.group ? (
+                        {assignment.participant?.group ? (
                           <div className="flex items-center gap-2">
                             <span
                               className="h-2 w-2 rounded-full"
                               style={{
                                 backgroundColor:
-                                  assignment.student.group.color || "#2563eb",
+                                  assignment.participant.group.color ||
+                                  "#2563eb",
                               }}
                             />
                             <span className="font-medium">
-                              {assignment.student.group.name}
+                              {assignment.participant.group.name}
                             </span>
                           </div>
                         ) : (
@@ -583,10 +586,10 @@ export function ProgrammeDialog({
 
                       <FormField
                         control={form.control}
-                        name="maxStudentsPerTeam"
+                        name="maxParticipantsPerTeam"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Max Students Per Team</FormLabel>
+                            <FormLabel>Max Participants Per Team</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"

@@ -6,9 +6,9 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
+import { useMembers } from "@/api/client/members";
 import { useAssignStageManager } from "@/api/client/stage-assignments";
 import { useCreateStage, useUpdateStage } from "@/api/client/stages";
-import { useMembers } from "@/api/client/members";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {

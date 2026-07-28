@@ -66,10 +66,10 @@ function ProgrammeResultsPreview({
             </span>
           </div>
           {programme.type === "GROUP" &&
-            r.studentNames &&
-            r.studentNames.length > 0 && (
+            r.participantNames &&
+            r.participantNames.length > 0 && (
               <span className="text-[11px] text-muted-foreground pl-1">
-                Members: {r.studentNames.join(", ")}
+                Members: {r.participantNames.join(", ")}
               </span>
             )}
         </li>
@@ -374,7 +374,7 @@ export function AnnouncementDeskClient({
 
                           if (reviewProgramme.type === "GROUP") {
                             const firstMember =
-                              r.studentNames?.[0] || "Unknown";
+                              r.participantNames?.[0] || "Unknown";
                             teamNameDisplay = `${firstMember} & team`;
                           } else {
                             teamNameDisplay = r.winnerName;

@@ -155,7 +155,7 @@ export function createPresetDocument(
 
     elements.push(
       accentBar(0, 12, highlightFill, meta.width),
-      fieldText("studentName", 56, 340, 64, {
+      fieldText("participantName", 56, 340, 64, {
         fontStyle: "bold",
         fill: titleFill,
         fontFamily: scheme.titleFontFamily,

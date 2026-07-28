@@ -1,4 +1,4 @@
-{
+﻿{
   "id": "3645107f-599e-4d4a-ab13-67a39e360d73",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
@@ -420,14 +420,14 @@
           "notNull": true,
           "default": "'Standard'"
         },
-        "studentCreationDeadline": {
-          "name": "studentCreationDeadline",
+        "participantCreationDeadline": {
+          "name": "participantCreationDeadline",
           "type": "timestamp(3)",
           "primaryKey": false,
           "notNull": false
         },
-        "studentsCount": {
-          "name": "studentsCount",
+        "participantsCount": {
+          "name": "participantsCount",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -662,8 +662,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.festival_gallery_image": {
-      "name": "festival_gallery_image",
+    "public.festival_media_image": {
+      "name": "festival_media_image",
       "schema": "",
       "columns": {
         "id": {
@@ -707,9 +707,9 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "festival_gallery_image_festivalId_fkey": {
-          "name": "festival_gallery_image_festivalId_fkey",
-          "tableFrom": "festival_gallery_image",
+        "festival_media_image_festivalId_fkey": {
+          "name": "festival_media_image_festivalId_fkey",
+          "tableFrom": "festival_media_image",
           "tableTo": "festival",
           "columnsFrom": ["festivalId"],
           "columnsTo": ["id"],
@@ -1493,8 +1493,8 @@
           "notNull": true,
           "default": 1
         },
-        "maxStudentsPerTeam": {
-          "name": "maxStudentsPerTeam",
+        "maxParticipantsPerTeam": {
+          "name": "maxParticipantsPerTeam",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -1626,8 +1626,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "studentId": {
-          "name": "studentId",
+        "participantId": {
+          "name": "participantId",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -1667,8 +1667,8 @@
         }
       },
       "indexes": {
-        "programme_assignment_programmeId_studentId_key": {
-          "name": "programme_assignment_programmeId_studentId_key",
+        "programme_assignment_programmeId_participantId_key": {
+          "name": "programme_assignment_programmeId_participantId_key",
           "columns": [
             {
               "expression": "programmeId",
@@ -1677,7 +1677,7 @@
               "nulls": "last"
             },
             {
-              "expression": "studentId",
+              "expression": "participantId",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1717,11 +1717,11 @@
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
-        "programme_assignment_studentId_fkey": {
-          "name": "programme_assignment_studentId_fkey",
+        "programme_assignment_participantId_fkey": {
+          "name": "programme_assignment_participantId_fkey",
           "tableFrom": "programme_assignment",
-          "tableTo": "student",
-          "columnsFrom": ["studentId"],
+          "tableTo": "participant",
+          "columnsFrom": ["participantId"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
@@ -1900,8 +1900,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "studentId": {
-          "name": "studentId",
+        "participantId": {
+          "name": "participantId",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -1915,8 +1915,8 @@
         }
       },
       "indexes": {
-        "programme_code_letter_recipient_codeLetterId_studentId_key": {
-          "name": "programme_code_letter_recipient_codeLetterId_studentId_key",
+        "programme_code_letter_recipient_codeLetterId_participantId_key": {
+          "name": "programme_code_letter_recipient_codeLetterId_participantId_key",
           "columns": [
             {
               "expression": "codeLetterId",
@@ -1925,7 +1925,7 @@
               "nulls": "last"
             },
             {
-              "expression": "studentId",
+              "expression": "participantId",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1936,11 +1936,11 @@
           "method": "btree",
           "with": {}
         },
-        "programme_code_letter_recipient_studentId_idx": {
-          "name": "programme_code_letter_recipient_studentId_idx",
+        "programme_code_letter_recipient_participantId_idx": {
+          "name": "programme_code_letter_recipient_participantId_idx",
           "columns": [
             {
-              "expression": "studentId",
+              "expression": "participantId",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1962,11 +1962,11 @@
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
-        "programme_code_letter_recipient_studentId_fkey": {
-          "name": "programme_code_letter_recipient_studentId_fkey",
+        "programme_code_letter_recipient_participantId_fkey": {
+          "name": "programme_code_letter_recipient_participantId_fkey",
           "tableFrom": "programme_code_letter_recipient",
-          "tableTo": "student",
-          "columnsFrom": ["studentId"],
+          "tableTo": "participant",
+          "columnsFrom": ["participantId"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
@@ -2245,8 +2245,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "recipientStudentId": {
-          "name": "recipientStudentId",
+        "recipientParticipantId": {
+          "name": "recipientParticipantId",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -2312,11 +2312,11 @@
           "method": "btree",
           "with": {}
         },
-        "programme_notification_recipientStudentId_isRead_idx": {
-          "name": "programme_notification_recipientStudentId_isRead_idx",
+        "programme_notification_recipientParticipantId_isRead_idx": {
+          "name": "programme_notification_recipientParticipantId_isRead_idx",
           "columns": [
             {
-              "expression": "recipientStudentId",
+              "expression": "recipientParticipantId",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2374,11 +2374,11 @@
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
-        "programme_notification_recipientStudentId_fkey": {
-          "name": "programme_notification_recipientStudentId_fkey",
+        "programme_notification_recipientParticipantId_fkey": {
+          "name": "programme_notification_recipientParticipantId_fkey",
           "tableFrom": "programme_notification",
-          "tableTo": "student",
-          "columnsFrom": ["recipientStudentId"],
+          "tableTo": "participant",
+          "columnsFrom": ["recipientParticipantId"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
@@ -2412,8 +2412,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "studentId": {
-          "name": "studentId",
+        "participantId": {
+          "name": "participantId",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -2481,11 +2481,11 @@
           "method": "btree",
           "with": {}
         },
-        "programme_reported_participant_studentId_idx": {
-          "name": "programme_reported_participant_studentId_idx",
+        "programme_reported_participant_participantId_idx": {
+          "name": "programme_reported_participant_participantId_idx",
           "columns": [
             {
-              "expression": "studentId",
+              "expression": "participantId",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2516,11 +2516,11 @@
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
-        "programme_reported_participant_studentId_fkey": {
-          "name": "programme_reported_participant_studentId_fkey",
+        "programme_reported_participant_participantId_fkey": {
+          "name": "programme_reported_participant_participantId_fkey",
           "tableFrom": "programme_reported_participant",
-          "tableTo": "student",
-          "columnsFrom": ["studentId"],
+          "tableTo": "participant",
+          "columnsFrom": ["participantId"],
           "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "cascade"
@@ -3459,8 +3459,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.student": {
-      "name": "student",
+    "public.participant": {
+      "name": "participant",
       "schema": "",
       "columns": {
         "id": {
@@ -3559,8 +3559,8 @@
         }
       },
       "indexes": {
-        "student_festivalId_chestNumber_key": {
-          "name": "student_festivalId_chestNumber_key",
+        "participant_festivalId_chestNumber_key": {
+          "name": "participant_festivalId_chestNumber_key",
           "columns": [
             {
               "expression": "festivalId",
@@ -3580,8 +3580,8 @@
           "method": "btree",
           "with": {}
         },
-        "student_festivalId_createdAt_idx": {
-          "name": "student_festivalId_createdAt_idx",
+        "participant_festivalId_createdAt_idx": {
+          "name": "participant_festivalId_createdAt_idx",
           "columns": [
             {
               "expression": "festivalId",
@@ -3601,8 +3601,8 @@
           "method": "btree",
           "with": {}
         },
-        "student_festivalId_idx": {
-          "name": "student_festivalId_idx",
+        "participant_festivalId_idx": {
+          "name": "participant_festivalId_idx",
           "columns": [
             {
               "expression": "festivalId",
@@ -3616,8 +3616,8 @@
           "method": "btree",
           "with": {}
         },
-        "student_festivalId_profileSlug_key": {
-          "name": "student_festivalId_profileSlug_key",
+        "participant_festivalId_profileSlug_key": {
+          "name": "participant_festivalId_profileSlug_key",
           "columns": [
             {
               "expression": "festivalId",
@@ -3637,8 +3637,8 @@
           "method": "btree",
           "with": {}
         },
-        "student_groupId_idx": {
-          "name": "student_groupId_idx",
+        "participant_groupId_idx": {
+          "name": "participant_groupId_idx",
           "columns": [
             {
               "expression": "groupId",
@@ -3654,27 +3654,27 @@
         }
       },
       "foreignKeys": {
-        "student_festivalId_fkey": {
-          "name": "student_festivalId_fkey",
-          "tableFrom": "student",
+        "participant_festivalId_fkey": {
+          "name": "participant_festivalId_fkey",
+          "tableFrom": "participant",
           "tableTo": "festival",
           "columnsFrom": ["festivalId"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
-        "student_groupId_fkey": {
-          "name": "student_groupId_fkey",
-          "tableFrom": "student",
+        "participant_groupId_fkey": {
+          "name": "participant_groupId_fkey",
+          "tableFrom": "participant",
           "tableTo": "group",
           "columnsFrom": ["groupId"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
-        "student_categoryId_fkey": {
-          "name": "student_categoryId_fkey",
-          "tableFrom": "student",
+        "participant_categoryId_fkey": {
+          "name": "participant_categoryId_fkey",
+          "tableFrom": "participant",
           "tableTo": "category",
           "columnsFrom": ["categoryId"],
           "columnsTo": ["id"],
@@ -3751,8 +3751,8 @@
           "primaryKey": true,
           "notNull": true
         },
-        "studentId": {
-          "name": "studentId",
+        "participantId": {
+          "name": "participantId",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -3812,11 +3812,11 @@
           "method": "btree",
           "with": {}
         },
-        "team_leader_otp_studentId_expiresAt_idx": {
-          "name": "team_leader_otp_studentId_expiresAt_idx",
+        "team_leader_otp_participantId_expiresAt_idx": {
+          "name": "team_leader_otp_participantId_expiresAt_idx",
           "columns": [
             {
-              "expression": "studentId",
+              "expression": "participantId",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -3835,11 +3835,11 @@
         }
       },
       "foreignKeys": {
-        "team_leader_otp_studentId_fkey": {
-          "name": "team_leader_otp_studentId_fkey",
+        "team_leader_otp_participantId_fkey": {
+          "name": "team_leader_otp_participantId_fkey",
           "tableFrom": "team_leader_otp",
-          "tableTo": "student",
-          "columnsFrom": ["studentId"],
+          "tableTo": "participant",
+          "columnsFrom": ["participantId"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
@@ -3861,8 +3861,8 @@
           "primaryKey": true,
           "notNull": true
         },
-        "studentId": {
-          "name": "studentId",
+        "participantId": {
+          "name": "participantId",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -3954,11 +3954,11 @@
           "method": "btree",
           "with": {}
         },
-        "team_leader_session_studentId_expiresAt_idx": {
-          "name": "team_leader_session_studentId_expiresAt_idx",
+        "team_leader_session_participantId_expiresAt_idx": {
+          "name": "team_leader_session_participantId_expiresAt_idx",
           "columns": [
             {
-              "expression": "studentId",
+              "expression": "participantId",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -3992,11 +3992,11 @@
         }
       },
       "foreignKeys": {
-        "team_leader_session_studentId_fkey": {
-          "name": "team_leader_session_studentId_fkey",
+        "team_leader_session_participantId_fkey": {
+          "name": "team_leader_session_participantId_fkey",
           "tableFrom": "team_leader_session",
-          "tableTo": "student",
-          "columnsFrom": ["studentId"],
+          "tableTo": "participant",
+          "columnsFrom": ["participantId"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"

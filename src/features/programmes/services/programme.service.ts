@@ -38,7 +38,7 @@ export const ProgrammeService = {
       stageType: "STAGE" | "NON_STAGE";
       maxParticipantsPerGroup?: number;
       maxTeamsPerGroup?: number;
-      maxStudentsPerTeam?: number;
+      maxParticipantsPerTeam?: number;
       maxPoints?: number;
     },
     actor?: { createdByEmail?: string; createdByName?: string },
@@ -71,7 +71,7 @@ export const ProgrammeService = {
         stageType: data.stageType,
         maxParticipantsPerGroup: data.maxParticipantsPerGroup || 1,
         maxTeamsPerGroup: data.maxTeamsPerGroup || 1,
-        maxStudentsPerTeam: data.maxStudentsPerTeam || 1,
+        maxParticipantsPerTeam: data.maxParticipantsPerTeam || 1,
         ...(actor?.createdByEmail
           ? { createdByEmail: actor.createdByEmail }
           : {}),
@@ -96,7 +96,7 @@ export const ProgrammeService = {
       stageType: "STAGE" | "NON_STAGE";
       maxParticipantsPerGroup?: number;
       maxTeamsPerGroup?: number;
-      maxStudentsPerTeam?: number;
+      maxParticipantsPerTeam?: number;
     }[],
   ) {
     const festival = await findFestivalById(festivalId);
@@ -121,7 +121,7 @@ export const ProgrammeService = {
         stageType: p.stageType,
         maxParticipantsPerGroup: p.maxParticipantsPerGroup || 1,
         maxTeamsPerGroup: p.maxTeamsPerGroup || 1,
-        maxStudentsPerTeam: p.maxStudentsPerTeam || 1,
+        maxParticipantsPerTeam: p.maxParticipantsPerTeam || 1,
       }));
 
       return await db.insert(programmes).values(data).returning();
@@ -145,7 +145,7 @@ export const ProgrammeService = {
       stageType?: "STAGE" | "NON_STAGE";
       maxParticipantsPerGroup?: number;
       maxTeamsPerGroup?: number;
-      maxStudentsPerTeam?: number;
+      maxParticipantsPerTeam?: number;
       maxPoints?: number;
     },
   ) {
@@ -183,7 +183,7 @@ export const ProgrammeService = {
       stageType: data.stageType,
       maxParticipantsPerGroup: data.maxParticipantsPerGroup,
       maxTeamsPerGroup: data.maxTeamsPerGroup,
-      maxStudentsPerTeam: data.maxStudentsPerTeam,
+      maxParticipantsPerTeam: data.maxParticipantsPerTeam,
     });
   },
 

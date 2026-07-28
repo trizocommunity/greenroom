@@ -30,7 +30,7 @@ const STAGE_MANAGER_FAQ_IDS = [
   "schedule-view",
   "sessions-view",
   "news",
-  "gallery",
+  "media",
 ];
 
 const allFaqs = [
@@ -65,10 +65,10 @@ const allFaqs = [
       "Go to 'Content' -> 'News'. Create posts with title, content, and optional image. Posts appear on your festival's public news page. You can publish or save as draft and edit or delete anytime.",
   },
   {
-    id: "gallery",
-    question: "How do I manage the Gallery?",
+    id: "media",
+    question: "How do I manage the Media?",
     answer:
-      "Go to 'Content' -> 'Gallery'. Upload photos to show on your festival's public gallery. You can reorder images, remove single or multiple photos, and preview the gallery.",
+      "Go to 'Content' -> 'Media'. Upload photos to show on your festival's public media. You can reorder images, remove single or multiple photos, and preview the media.",
   },
   {
     id: "programme-create",
@@ -77,10 +77,10 @@ const allFaqs = [
       "Navigate to 'Pre Event Works' -> 'Programmes' and click on the 'Add Programme' button. Fill in the required details such as name, category, and type.",
   },
   {
-    id: "assign-students",
-    question: "How do I assign students to a programme?",
+    id: "assign-participants",
+    question: "How do I assign participants to a programme?",
     answer:
-      "Go to 'Pre Event Works' -> 'Assignment'. You can either assign students individually or use the bulk assignment feature.",
+      "Go to 'Pre Event Works' -> 'Assignment'. You can either assign participants individually or use the bulk assignment feature.",
   },
   {
     id: "announcer-workflow",
@@ -111,26 +111,26 @@ const allFaqs = [
     question:
       "Why don't my programmes appear in Event Works (Scoring, Leaderboard)?",
     answer:
-      "Programmes have a status that reflects Pre Event Works and the live event. On Standard and Pro, status moves Ready → Assigned → Scheduled from assignments and the schedule; during the event it can become Reporting, Started, or Ended after stage reporting. On Basic, save your scoring policy first, assign students, then open Scoring—programmes appear from Assigned onward. Publish each programme when every participant or team has a saved score. Leaderboard uses published award points from the scoring policy.",
+      "Programmes have a status that reflects Pre Event Works and the live event. On Standard and Pro, status moves Ready → Assigned → Scheduled from assignments and the schedule; during the event it can become Reporting, Started, or Ended after stage reporting. On Basic, save your scoring policy first, assign participants, then open Scoring—programmes appear from Assigned onward. Publish each programme when every participant or team has a saved score. Leaderboard uses published award points from the scoring policy.",
   },
   {
     id: "chest-numbers",
     question: "How do I manage chest numbers?",
     answer:
-      "You can generate and manage chest numbers in the 'Pre Event Works' -> 'Chest Numbers' section. Ensure students are assigned to groups first.",
+      "You can generate and manage chest numbers in the 'Pre Event Works' -> 'Chest Numbers' section. Ensure participants are assigned to groups first.",
   },
   {
     id: "plan-diff",
     question:
       "What are the differences between Basic, Standard, and Pro plans?",
     answer:
-      "Basic is for small festivals (250 students, 1 member). Standard unlocks bulk uploads, stage management, scheduling, and public landing pages (500 students, 3 members). Pro is for large events with advanced analytics, RBAC, API access, and white-labeling (2000 students, 10 members).",
+      "Basic is for small festivals (250 participants, 1 member). Standard unlocks bulk uploads, stage management, scheduling, and public landing pages (500 participants, 3 members). Pro is for large events with advanced analytics, RBAC, API access, and white-labeling (2000 participants, 10 members).",
   },
   {
     id: "plan-limits",
     question: "What happens if I reach my plan limits?",
     answer:
-      "You can view your current usage under 'Usage & Limits' in the right sidebar. If you reach a limit (e.g. students or stages), you'll need to upgrade to a higher tier to add more records.",
+      "You can view your current usage under 'Usage & Limits' in the right sidebar. If you reach a limit (e.g. participants or stages), you'll need to upgrade to a higher tier to add more records.",
   },
   {
     id: "basic-settings",

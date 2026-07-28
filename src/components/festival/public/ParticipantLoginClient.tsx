@@ -25,7 +25,7 @@ export function ParticipantLoginClient({
   const [chestNumber, setChestNumber] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState<Date | undefined>(undefined);
   const [otpStage, setOtpStage] = useState<{
-    studentSlug: string;
+    participantSlug: string;
     devOtp: string | null;
   } | null>(null);
   const [otp, setOtp] = useState("");
@@ -36,7 +36,7 @@ export function ParticipantLoginClient({
   useEffect(() => {
     const meta = readParticipantSessionMeta(festivalSlug);
     if (!meta) return;
-    router.replace(`/${festivalSlug}/${meta.studentSlug}`);
+    router.replace(`/${festivalSlug}/${meta.participantSlug}`);
   }, [festivalSlug, router]);
 
   const submitIdentification = () => {
@@ -60,17 +60,17 @@ export function ParticipantLoginClient({
             toast.success("Signed in successfully");
             writeParticipantSessionMeta({
               festivalSlug,
-              studentSlug: data.studentSlug,
+              participantSlug: data.participantSlug,
               isTeamLeader: false,
               expiresAt: data.expiresAt,
             });
-            router.push(`/${festivalSlug}/${data.studentSlug}`);
+            router.push(`/${festivalSlug}/${data.participantSlug}`);
             router.refresh();
             return;
           }
           // OTP stage (Team Leader)
           setOtpStage({
-            studentSlug: data.studentSlug,
+            participantSlug: data.participantSlug,
             devOtp: data.debugOtp ?? null,
           });
           toast.success(
@@ -86,7 +86,7 @@ export function ParticipantLoginClient({
   const submitOtp = () => {
     if (!otpStage || otp.length !== 6) return;
     verifyOtpMutation.mutate(
-      { festivalSlug, studentSlug: otpStage.studentSlug, otp },
+      { festivalSlug, participantSlug: otpStage.participantSlug, otp },
       {
         onSuccess: (data) => {
           toast.success("Login successful");
@@ -94,11 +94,11 @@ export function ParticipantLoginClient({
           // The profile page decides whether to surface leader tools.
           writeParticipantSessionMeta({
             festivalSlug,
-            studentSlug: data.studentSlug,
+            participantSlug: data.participantSlug,
             isTeamLeader: data.isTeamLeader,
             expiresAt: data.expiresAt,
           });
-          router.push(`/${festivalSlug}/${data.studentSlug}`);
+          router.push(`/${festivalSlug}/${data.participantSlug}`);
           router.refresh();
         },
       },

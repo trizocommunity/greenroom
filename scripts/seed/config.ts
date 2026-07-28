@@ -150,7 +150,7 @@ export const ISLAMIC_FEMALE_NAMES = [
   "Tehmina Gul",
 ];
 
-export const STUDENTS_PER_CATEGORY_PER_GROUP = 8;
+export const PARTICIPANTS_PER_CATEGORY_PER_GROUP = 8;
 export const TEAM_LEADERS_PER_GROUP = 2;
 
 export const JUDGES = [
@@ -224,7 +224,7 @@ export type ProgrammeTemplate = {
   stageType: "STAGE" | "NON_STAGE";
   maxParticipantsPerGroup: number;
   maxTeamsPerGroup: number;
-  maxStudentsPerTeam: number;
+  maxParticipantsPerTeam: number;
   durationMins: number;
 };
 
@@ -235,7 +235,7 @@ export const PROGRAMME_TEMPLATES: ProgrammeTemplate[] = [
     stageType: "STAGE",
     maxParticipantsPerGroup: 3,
     maxTeamsPerGroup: 1,
-    maxStudentsPerTeam: 1,
+    maxParticipantsPerTeam: 1,
     durationMins: 60,
   },
   {
@@ -244,7 +244,7 @@ export const PROGRAMME_TEMPLATES: ProgrammeTemplate[] = [
     stageType: "STAGE",
     maxParticipantsPerGroup: 3,
     maxTeamsPerGroup: 1,
-    maxStudentsPerTeam: 1,
+    maxParticipantsPerTeam: 1,
     durationMins: 45,
   },
   {
@@ -253,7 +253,7 @@ export const PROGRAMME_TEMPLATES: ProgrammeTemplate[] = [
     stageType: "STAGE",
     maxParticipantsPerGroup: 2,
     maxTeamsPerGroup: 1,
-    maxStudentsPerTeam: 1,
+    maxParticipantsPerTeam: 1,
     durationMins: 50,
   },
   {
@@ -262,7 +262,7 @@ export const PROGRAMME_TEMPLATES: ProgrammeTemplate[] = [
     stageType: "NON_STAGE",
     maxParticipantsPerGroup: 3,
     maxTeamsPerGroup: 1,
-    maxStudentsPerTeam: 1,
+    maxParticipantsPerTeam: 1,
     durationMins: 60,
   },
   {
@@ -271,7 +271,7 @@ export const PROGRAMME_TEMPLATES: ProgrammeTemplate[] = [
     stageType: "STAGE",
     maxParticipantsPerGroup: 10,
     maxTeamsPerGroup: 2,
-    maxStudentsPerTeam: 4,
+    maxParticipantsPerTeam: 4,
     durationMins: 75,
   },
   {
@@ -280,7 +280,7 @@ export const PROGRAMME_TEMPLATES: ProgrammeTemplate[] = [
     stageType: "STAGE",
     maxParticipantsPerGroup: 6,
     maxTeamsPerGroup: 2,
-    maxStudentsPerTeam: 3,
+    maxParticipantsPerTeam: 3,
     durationMins: 60,
   },
 ];
@@ -384,7 +384,7 @@ export const PROGRAMME_SCHEDULE: Record<
 /**
  * Pre-computed deterministic dates of birth for the FIRST team leader of each
  * group, so QA can test the "Date of Birth" identifier without looking it up.
- * Order matches the leader-creation order in `students.ts`.
+ * Order matches the leader-creation order in `participants.ts`.
  */
 export const TEAM_LEADER_DOB_BY_GROUP: Record<string, string> = {
   "Al-Qurtuba Cordoba": "2007-03-14T00:00:00.000Z",

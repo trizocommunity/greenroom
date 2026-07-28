@@ -158,7 +158,7 @@ export async function updateFestivalSettingsAction(
   festivalId: string,
   data: {
     programmeAssignmentDeadline?: string | null;
-    studentCreationDeadline?: string | null;
+    participantCreationDeadline?: string | null;
     teamLeaderLimit?: number;
     announcerResultsPerStandings?: number;
     startDate?: string | null;
@@ -204,7 +204,7 @@ export async function updateFestivalSettingsAction(
       data.startDate !== undefined || data.endDate !== undefined;
     const hasNonDateField =
       data.programmeAssignmentDeadline !== undefined ||
-      data.studentCreationDeadline !== undefined ||
+      data.participantCreationDeadline !== undefined ||
       data.teamLeaderLimit !== undefined ||
       data.announcerResultsPerStandings !== undefined;
     const isDateOnlyUpdate = hasDateField && !hasNonDateField;
@@ -245,9 +245,9 @@ export async function updateFestivalSettingsAction(
             ? new Date(data.programmeAssignmentDeadline).toISOString()
             : null,
         }),
-        ...(data.studentCreationDeadline !== undefined && {
-          studentCreationDeadline: data.studentCreationDeadline
-            ? new Date(data.studentCreationDeadline).toISOString()
+        ...(data.participantCreationDeadline !== undefined && {
+          participantCreationDeadline: data.participantCreationDeadline
+            ? new Date(data.participantCreationDeadline).toISOString()
             : null,
         }),
         ...(data.teamLeaderLimit !== undefined && {
@@ -320,7 +320,7 @@ export async function setPublicSiteEnabledAction(
         festivalNews: {
           columns: { title: true, content: true, imageUrl: true },
         },
-        festivalGalleryImages: {
+        festivalMediaImages: {
           columns: { id: true },
         },
       },

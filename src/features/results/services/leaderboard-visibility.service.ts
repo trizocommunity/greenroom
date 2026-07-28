@@ -51,7 +51,7 @@ export function filterResultsForLeaderboard<T extends LeaderboardResultLike>(
   return results.filter((r) => isResultVisibleForLeaderboard(r, tier, view));
 }
 
-export function getStudentLeaderboardView(
+export function getParticipantLeaderboardView(
   tier: Tier | string | null | undefined,
 ): LeaderboardResultView {
   return isBasicTier(tier) ? "standings" : "onAir";

@@ -1,7 +1,7 @@
 import type { ProgrammeStatus } from "@/core/types/app-enums";
 
 /**
- * Priority order for showing programme "live status" in student UI.
+ * Priority order for showing programme "live status" in participant UI.
  * Lower rank = shown as more "current".
  */
 export const PROGRAMME_STATUS_PRIORITY_RANK: Partial<

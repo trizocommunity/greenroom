@@ -5,11 +5,11 @@ import {
   category as categories,
   festival as festivals,
   group as groups,
+  participant as participants,
   programmeAssignment,
   programme as programmes,
   result as results,
   stage as stages,
-  student as students,
 } from "@/core/database/schema";
 
 export async function findAllFestivals(
@@ -97,7 +97,7 @@ const festivalOwnerUserColumns = {
   },
 } as const;
 
-async function attachProgrammeAndStudentCounts<T extends { id: string }>(
+async function attachProgrammeAndParticipantCounts<T extends { id: string }>(
   row: T,
 ) {
   const [progRow, studRow] = await Promise.all([
@@ -107,15 +107,15 @@ async function attachProgrammeAndStudentCounts<T extends { id: string }>(
       .where(eq(programmes.festivalId, row.id)),
     db
       .select({ n: count() })
-      .from(students)
-      .where(eq(students.festivalId, row.id)),
+      .from(participants)
+      .where(eq(participants.festivalId, row.id)),
   ]);
 
   return {
     ...row,
     _count: {
       programmes: Number(progRow[0]?.n ?? 0),
-      students: Number(studRow[0]?.n ?? 0),
+      participants: Number(studRow[0]?.n ?? 0),
     },
   };
 }
@@ -128,7 +128,7 @@ export async function findFestivalBySlugOrId(slugOrId: string) {
     });
 
     if (bySlug) {
-      return attachProgrammeAndStudentCounts(bySlug);
+      return attachProgrammeAndParticipantCounts(bySlug);
     }
 
     const byId = await db.query.festival.findFirst({
@@ -137,7 +137,7 @@ export async function findFestivalBySlugOrId(slugOrId: string) {
     });
 
     if (byId) {
-      return attachProgrammeAndStudentCounts(byId);
+      return attachProgrammeAndParticipantCounts(byId);
     }
     return null;
   });
@@ -215,7 +215,7 @@ function buildResultRowsForProgramme(
       const result = assignment.result;
       const teamId = getTeamIdentifier(assignment);
       if (!teamMap.has(teamId)) {
-        const displayName = `${assignment.student?.name || "Unknown"} and team`;
+        const displayName = `${assignment.participant?.name || "Unknown"} and team`;
         const groupName = assignment.group?.name || "";
         teamMap.set(teamId, {
           assignmentId: assignment.id,
@@ -246,10 +246,10 @@ function buildResultRowsForProgramme(
   const rows = withResult.map((assignment) => {
     const result = assignment.result;
     return {
-      displayName: assignment.student?.name || "Unknown",
+      displayName: assignment.participant?.name || "Unknown",
       subText: "",
-      chestNumber: assignment.student?.chestNumber
-        ? `#${assignment.student.chestNumber}`
+      chestNumber: assignment.participant?.chestNumber
+        ? `#${assignment.participant.chestNumber}`
         : "",
       grade: result.grade,
       points: result.points,
@@ -269,7 +269,7 @@ export async function getDashboardOverviewData(festivalId: string) {
     ts,
     tg,
     recentProgrammes,
-    recentStudents,
+    recentParticipants,
     programmesWithPublishedResults,
   ] = await Promise.all([
     db
@@ -278,8 +278,8 @@ export async function getDashboardOverviewData(festivalId: string) {
       .where(eq(programmes.festivalId, festivalId)),
     db
       .select({ c: count() })
-      .from(students)
-      .where(eq(students.festivalId, festivalId)),
+      .from(participants)
+      .where(eq(participants.festivalId, festivalId)),
     db
       .select({ c: count() })
       .from(groups)
@@ -290,9 +290,9 @@ export async function getDashboardOverviewData(festivalId: string) {
       limit: 4,
       with: { category: true },
     }),
-    db.query.student.findMany({
-      where: eq(students.festivalId, festivalId),
-      orderBy: [desc(students.createdAt)],
+    db.query.participant.findMany({
+      where: eq(participants.festivalId, festivalId),
+      orderBy: [desc(participants.createdAt)],
       limit: 6,
       with: { group: true },
     }),
@@ -316,7 +316,7 @@ export async function getDashboardOverviewData(festivalId: string) {
         category: true,
         assignments: {
           with: {
-            student: true,
+            participant: true,
             group: true,
             result: true,
           },
@@ -352,10 +352,10 @@ export async function getDashboardOverviewData(festivalId: string) {
 
   return {
     totalProgrammes: tp[0].c,
-    totalStudents: ts[0].c,
+    totalParticipants: ts[0].c,
     totalGroups: tg[0].c,
     recentProgrammes,
-    recentStudents,
+    recentParticipants,
     recentResultsByProgramme,
   };
 }
@@ -364,8 +364,8 @@ export async function getFestivalAnalyticsData(festivalId: string) {
   const [sc, pc, gc, stc, rc, prc, cc, fest] = await Promise.all([
     db
       .select({ c: count() })
-      .from(students)
-      .where(eq(students.festivalId, festivalId)),
+      .from(participants)
+      .where(eq(participants.festivalId, festivalId)),
     db
       .select({ c: count() })
       .from(programmes)
@@ -404,7 +404,7 @@ export async function getFestivalAnalyticsData(festivalId: string) {
   ]);
 
   return {
-    studentsCount: sc[0].c,
+    participantsCount: sc[0].c,
     programmesCount: pc[0].c,
     groupsCount: gc[0].c,
     stagesCount: stc[0].c,

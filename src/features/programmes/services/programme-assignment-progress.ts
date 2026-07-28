@@ -5,14 +5,14 @@ export function getExpectedAssignmentsTotal(params: {
   groupCount: number;
   maxParticipantsPerGroup?: number | null;
   maxTeamsPerGroup?: number | null;
-  maxStudentsPerTeam?: number | null;
+  maxParticipantsPerTeam?: number | null;
 }): number {
   const {
     programmeType,
     groupCount,
     maxParticipantsPerGroup,
     maxTeamsPerGroup,
-    maxStudentsPerTeam,
+    maxParticipantsPerTeam,
   } = params;
 
   if (groupCount <= 0) return 0;
@@ -21,7 +21,7 @@ export function getExpectedAssignmentsTotal(params: {
     return groupCount * (maxParticipantsPerGroup ?? 1);
   }
 
-  return groupCount * (maxTeamsPerGroup ?? 1) * (maxStudentsPerTeam ?? 1);
+  return groupCount * (maxTeamsPerGroup ?? 1) * (maxParticipantsPerTeam ?? 1);
 }
 
 export function getAssignmentProgressLabel(params: {

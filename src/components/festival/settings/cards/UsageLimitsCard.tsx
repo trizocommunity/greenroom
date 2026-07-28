@@ -10,7 +10,7 @@ interface UsageLimitsCardProps {
   festival: {
     tier: Tier | null;
     tierLabel?: string | null;
-    studentsCount?: number | null;
+    participantsCount?: number | null;
     programmesCount?: number | null;
     stagesCount?: number | null;
     storageUsedMb?: number | null;
@@ -23,14 +23,14 @@ export function UsageLimitsCard({ festival }: UsageLimitsCardProps) {
   const tierLabel = festival.tierLabel ?? tierConfig.label;
 
   const usage = {
-    students: festival.studentsCount ?? 0,
+    participants: festival.participantsCount ?? 0,
     programmes: festival.programmesCount ?? 0,
     stages: festival.stagesCount ?? 0,
     storage: festival.storageUsedMb ?? 0,
   };
 
   const limits = {
-    students: tierConfig.limits.students,
+    participants: tierConfig.limits.participants,
     programmes: tierConfig.limits.programmes,
     stages: tierConfig.limits.stages,
     storageMB: tierConfig.limits.storageMB,
@@ -38,10 +38,10 @@ export function UsageLimitsCard({ festival }: UsageLimitsCardProps) {
 
   const items = [
     {
-      label: "Students",
+      label: "Participants",
       icon: Users,
-      used: usage.students,
-      limit: limits.students,
+      used: usage.participants,
+      limit: limits.participants,
       color: "text-blue-500",
     },
     {

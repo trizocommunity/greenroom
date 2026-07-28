@@ -1,4 +1,4 @@
--- Compatibility-safe schema hardening for production reads/writes.
+﻿-- Compatibility-safe schema hardening for production reads/writes.
 -- Focus: stronger integrity + targeted indexing without breaking API contracts.
 
 -- Unique names within a festival scope
@@ -21,8 +21,8 @@ CREATE INDEX IF NOT EXISTS "result_programmeId_position_idx"
 CREATE INDEX IF NOT EXISTS "programme_notification_recipientUserId_createdAt_idx"
   ON "programme_notification" USING btree ("recipientUserId", "createdAt" DESC);
 
-CREATE INDEX IF NOT EXISTS "programme_notification_recipientStudentId_createdAt_idx"
-  ON "programme_notification" USING btree ("recipientStudentId", "createdAt" DESC);
+CREATE INDEX IF NOT EXISTS "programme_notification_recipientParticipantId_createdAt_idx"
+  ON "programme_notification" USING btree ("recipientParticipantId", "createdAt" DESC);
 
 -- Integrity checks for polymorphic recipient/assignee rows
 ALTER TABLE "programme_notification"
@@ -31,7 +31,7 @@ ALTER TABLE "programme_notification"
   ADD CONSTRAINT "programme_notification_exactly_one_recipient_chk"
   CHECK (
     (CASE WHEN "recipientUserId" IS NULL THEN 0 ELSE 1 END) +
-    (CASE WHEN "recipientStudentId" IS NULL THEN 0 ELSE 1 END) = 1
+    (CASE WHEN "recipientParticipantId" IS NULL THEN 0 ELSE 1 END) = 1
   );
 
 ALTER TABLE "programme_assignment"
@@ -39,7 +39,7 @@ ALTER TABLE "programme_assignment"
 ALTER TABLE "programme_assignment"
   ADD CONSTRAINT "programme_assignment_target_present_chk"
   CHECK (
-    (CASE WHEN "studentId" IS NULL THEN 0 ELSE 1 END) +
+    (CASE WHEN "participantId" IS NULL THEN 0 ELSE 1 END) +
     (CASE WHEN "groupId" IS NULL THEN 0 ELSE 1 END) >= 1
   );
 

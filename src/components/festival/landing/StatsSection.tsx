@@ -10,7 +10,7 @@ interface StatsSectionProps {
 export function StatsSection({ accentColor }: StatsSectionProps) {
   const stats = [
     { label: "Programs", value: "45+", icon: Trophy },
-    { label: "Students", value: "1,200", icon: Users },
+    { label: "Participants", value: "1,200", icon: Users },
     { label: "Days", value: "3", icon: Calendar },
     { label: "Venues", value: "8", icon: MapPin },
   ];

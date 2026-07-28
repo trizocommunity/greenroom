@@ -14,13 +14,9 @@ export const DELETE = async (
   const { id: assignmentId } = await params;
   const url = new URL(req.url);
   const festivalId = url.searchParams.get("festivalId");
-  if (!festivalId)
-    return badRequest("MISSING_PARAM", "festivalId is required");
+  if (!festivalId) return badRequest("MISSING_PARAM", "festivalId is required");
 
-  await StageAssignmentService.assertCanManageAssignments(
-    festivalId,
-    session,
-  );
+  await StageAssignmentService.assertCanManageAssignments(festivalId, session);
   await StageAssignmentService.unassign(festivalId, assignmentId);
 
   return ok({ success: true });

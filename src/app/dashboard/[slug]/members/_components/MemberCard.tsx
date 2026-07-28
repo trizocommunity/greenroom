@@ -68,8 +68,12 @@ export function MemberCard({
         .filter((a) => a.memberId === member.id)
         .map((a) => a.stageId);
 
-      const toAssign = newStageIds.filter(id => !currentAssignedIds.includes(id));
-      const toUnassign = currentAssignedIds.filter(id => !newStageIds.includes(id));
+      const toAssign = newStageIds.filter(
+        (id) => !currentAssignedIds.includes(id),
+      );
+      const toUnassign = currentAssignedIds.filter(
+        (id) => !newStageIds.includes(id),
+      );
 
       for (const stageId of toAssign) {
         await assignManager.mutateAsync({
@@ -77,7 +81,7 @@ export function MemberCard({
           data: { stageId, memberId: member.id },
         });
       }
-      
+
       for (const stageId of toUnassign) {
         const existing = stageAssignments.find(
           (a) => a.stageId === stageId && a.memberId === member.id,
@@ -89,7 +93,7 @@ export function MemberCard({
           });
         }
       }
-      
+
       toast.success("Stage assignments updated");
       setShowDetails(false);
     } catch (error: any) {
@@ -133,7 +137,9 @@ export function MemberCard({
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <div className="relative shrink-0">
               <Avatar className="h-11 w-11 ring-2 ring-border/60">
-                {avatarUrl ? <AvatarImage src={avatarUrl} alt={fullName} /> : null}
+                {avatarUrl ? (
+                  <AvatarImage src={avatarUrl} alt={fullName} />
+                ) : null}
                 <AvatarFallback className="bg-gradient-to-br from-primary/25 to-primary/10 text-sm font-semibold text-primary">
                   {initials}
                 </AvatarFallback>
@@ -241,8 +247,8 @@ export function MemberCard({
         {isStageManager ? (
           <div className="mt-3 flex flex-wrap items-center gap-1">
             <Radio className="h-3 w-3 text-primary/70 shrink-0" />
-            {stageAssignments.filter((a) => a.memberId === member.id)
-              .length === 0 ? (
+            {stageAssignments.filter((a) => a.memberId === member.id).length ===
+            0 ? (
               <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                 Unassigned
               </span>

@@ -164,8 +164,8 @@ export const getFestivalDashboardSidebarConfig = (
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {
-          title: "Students",
-          href: `${basePath}/pre-event-works/students`,
+          title: "Participants",
+          href: `${basePath}/pre-event-works/participants`,
           icon: UsersRound,
           allowedRoles: ["ADMIN", "OWNER"],
         },
@@ -201,8 +201,8 @@ export const getFestivalDashboardSidebarConfig = (
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
         },
         {
-          title: "Gallery",
-          href: `${basePath}/content/gallery`,
+          title: "Media",
+          href: `${basePath}/content/media`,
           icon: Image,
           allowedRoles: ["ADMIN", "OWNER"],
         },

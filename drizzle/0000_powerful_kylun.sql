@@ -1,4 +1,4 @@
-CREATE TYPE "public"."CategoryType" AS ENUM('SINGLE', 'GENERAL');--> statement-breakpoint
+﻿CREATE TYPE "public"."CategoryType" AS ENUM('SINGLE', 'GENERAL');--> statement-breakpoint
 CREATE TYPE "public"."FestivalLifecycleEventType" AS ENUM('CREATED', 'ACTIVATED', 'EXPIRED');--> statement-breakpoint
 CREATE TYPE "public"."FestivalRole" AS ENUM('ADMIN', 'ANNOUNCER', 'STAGE_MANAGER');--> statement-breakpoint
 CREATE TYPE "public"."FestivalStatus" AS ENUM('READY', 'ONGOING', 'PAST', 'EXPIRED');--> statement-breakpoint
@@ -82,8 +82,8 @@ CREATE TABLE "festival" (
 	"storageUsedMb" integer DEFAULT 0 NOT NULL,
 	"tier" "Tier" DEFAULT 'STANDARD' NOT NULL,
 	"tierLabel" text DEFAULT 'Standard' NOT NULL,
-	"studentCreationDeadline" timestamp(3),
-	"studentsCount" integer DEFAULT 0 NOT NULL,
+	"participantCreationDeadline" timestamp(3),
+	"participantsCount" integer DEFAULT 0 NOT NULL,
 	"publicSiteEnabled" boolean DEFAULT false NOT NULL,
 	"stagesCount" integer DEFAULT 0 NOT NULL,
 	"startDate" timestamp(3),
@@ -105,7 +105,7 @@ CREATE TABLE "festival_category_preference" (
 	"updatedAt" timestamp(3) NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "festival_gallery_image" (
+CREATE TABLE "festival_media_image" (
 	"id" text PRIMARY KEY NOT NULL,
 	"festivalId" text NOT NULL,
 	"url" text NOT NULL,
@@ -205,7 +205,7 @@ CREATE TABLE "programme" (
 	"festivalId" text NOT NULL,
 	"maxParticipantsPerGroup" integer DEFAULT 1 NOT NULL,
 	"maxTeamsPerGroup" integer DEFAULT 1 NOT NULL,
-	"maxStudentsPerTeam" integer DEFAULT 1 NOT NULL,
+	"maxParticipantsPerTeam" integer DEFAULT 1 NOT NULL,
 	"status" "ProgrammeStatus" DEFAULT 'READY' NOT NULL,
 	"publishedAt" timestamp(3)
 );
@@ -217,7 +217,7 @@ CREATE TABLE "programme_assignment" (
 	"assignedAt" timestamp(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	"festivalId" text NOT NULL,
 	"categoryId" text,
-	"studentId" text,
+	"participantId" text,
 	"teamNumber" integer DEFAULT 1 NOT NULL,
 	"createdAt" timestamp(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	"updatedAt" timestamp(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -238,7 +238,7 @@ CREATE TABLE "programme_code_letter" (
 CREATE TABLE "programme_code_letter_recipient" (
 	"id" text PRIMARY KEY NOT NULL,
 	"codeLetterId" text NOT NULL,
-	"studentId" text NOT NULL,
+	"participantId" text NOT NULL,
 	"createdAt" timestamp(3) DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 --> statement-breakpoint
@@ -268,7 +268,7 @@ CREATE TABLE "programme_notification" (
 	"festivalId" text NOT NULL,
 	"eventType" "ProgrammeNotificationEventType" NOT NULL,
 	"recipientUserId" text,
-	"recipientStudentId" text,
+	"recipientParticipantId" text,
 	"title" text NOT NULL,
 	"body" text NOT NULL,
 	"payload" jsonb,
@@ -281,7 +281,7 @@ CREATE TABLE "programme_reported_participant" (
 	"id" text PRIMARY KEY NOT NULL,
 	"reportingSessionId" text NOT NULL,
 	"assignmentId" text NOT NULL,
-	"studentId" text,
+	"participantId" text,
 	"groupId" text,
 	"teamNumber" integer,
 	"reportedAt" timestamp(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -373,7 +373,7 @@ CREATE TABLE "stage" (
 	"updatedAt" timestamp(3) NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "student" (
+CREATE TABLE "participant" (
 	"id" text PRIMARY KEY NOT NULL,
 	"festivalId" text NOT NULL,
 	"groupId" text NOT NULL,
@@ -400,7 +400,7 @@ CREATE TABLE "system_config" (
 --> statement-breakpoint
 CREATE TABLE "team_leader_otp" (
 	"id" text PRIMARY KEY NOT NULL,
-	"studentId" text NOT NULL,
+	"participantId" text NOT NULL,
 	"codeHash" text NOT NULL,
 	"expiresAt" timestamp(3) NOT NULL,
 	"attempts" integer DEFAULT 0 NOT NULL,
@@ -411,7 +411,7 @@ CREATE TABLE "team_leader_otp" (
 --> statement-breakpoint
 CREATE TABLE "team_leader_session" (
 	"id" text PRIMARY KEY NOT NULL,
-	"studentId" text NOT NULL,
+	"participantId" text NOT NULL,
 	"festivalId" text NOT NULL,
 	"tokenHash" text NOT NULL,
 	"expiresAt" timestamp(3) NOT NULL,
@@ -457,7 +457,7 @@ ALTER TABLE "category" ADD CONSTRAINT "category_festivalId_fkey" FOREIGN KEY ("f
 ALTER TABLE "expired_festival_result" ADD CONSTRAINT "expired_festival_result_festivalId_fkey" FOREIGN KEY ("festivalId") REFERENCES "public"."festival"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "festival" ADD CONSTRAINT "festival_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "public"."user"("id") ON DELETE restrict ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "festival_category_preference" ADD CONSTRAINT "festival_category_preference_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
-ALTER TABLE "festival_gallery_image" ADD CONSTRAINT "festival_gallery_image_festivalId_fkey" FOREIGN KEY ("festivalId") REFERENCES "public"."festival"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "festival_media_image" ADD CONSTRAINT "festival_media_image_festivalId_fkey" FOREIGN KEY ("festivalId") REFERENCES "public"."festival"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "festival_lifecycle_event" ADD CONSTRAINT "festival_lifecycle_event_festivalId_fkey" FOREIGN KEY ("festivalId") REFERENCES "public"."festival"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "festival_member" ADD CONSTRAINT "festival_member_festivalId_fkey" FOREIGN KEY ("festivalId") REFERENCES "public"."festival"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "festival_member" ADD CONSTRAINT "festival_member_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
@@ -471,22 +471,22 @@ ALTER TABLE "programme" ADD CONSTRAINT "programme_categoryId_fkey" FOREIGN KEY (
 ALTER TABLE "programme_assignment" ADD CONSTRAINT "programme_assignment_programmeId_fkey" FOREIGN KEY ("programmeId") REFERENCES "public"."programme"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "programme_assignment" ADD CONSTRAINT "programme_assignment_festivalId_fkey" FOREIGN KEY ("festivalId") REFERENCES "public"."festival"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "programme_assignment" ADD CONSTRAINT "programme_assignment_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "public"."group"("id") ON DELETE set null ON UPDATE cascade;--> statement-breakpoint
-ALTER TABLE "programme_assignment" ADD CONSTRAINT "programme_assignment_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "public"."student"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "programme_assignment" ADD CONSTRAINT "programme_assignment_participantId_fkey" FOREIGN KEY ("participantId") REFERENCES "public"."participant"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "programme_assignment" ADD CONSTRAINT "programme_assignment_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "public"."category"("id") ON DELETE set null ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "programme_code_letter" ADD CONSTRAINT "programme_code_letter_festivalId_fkey" FOREIGN KEY ("festivalId") REFERENCES "public"."festival"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "programme_code_letter" ADD CONSTRAINT "programme_code_letter_reportingSessionId_fkey" FOREIGN KEY ("reportingSessionId") REFERENCES "public"."programme_reporting_session"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "programme_code_letter" ADD CONSTRAINT "programme_code_letter_programmeId_fkey" FOREIGN KEY ("programmeId") REFERENCES "public"."programme"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "programme_code_letter_recipient" ADD CONSTRAINT "programme_code_letter_recipient_codeLetterId_fkey" FOREIGN KEY ("codeLetterId") REFERENCES "public"."programme_code_letter"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
-ALTER TABLE "programme_code_letter_recipient" ADD CONSTRAINT "programme_code_letter_recipient_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "public"."student"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "programme_code_letter_recipient" ADD CONSTRAINT "programme_code_letter_recipient_participantId_fkey" FOREIGN KEY ("participantId") REFERENCES "public"."participant"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "programme_judge_session" ADD CONSTRAINT "programme_judge_session_festival_id_fkey" FOREIGN KEY ("festival_id") REFERENCES "public"."festival"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "programme_judge_session" ADD CONSTRAINT "programme_judge_session_programme_id_fkey" FOREIGN KEY ("programme_id") REFERENCES "public"."programme"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "programme_judge_session" ADD CONSTRAINT "programme_judge_session_reporting_session_id_fkey" FOREIGN KEY ("reporting_session_id") REFERENCES "public"."programme_reporting_session"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "programme_notification" ADD CONSTRAINT "programme_notification_festivalId_fkey" FOREIGN KEY ("festivalId") REFERENCES "public"."festival"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "programme_notification" ADD CONSTRAINT "programme_notification_recipientUserId_fkey" FOREIGN KEY ("recipientUserId") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
-ALTER TABLE "programme_notification" ADD CONSTRAINT "programme_notification_recipientStudentId_fkey" FOREIGN KEY ("recipientStudentId") REFERENCES "public"."student"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "programme_notification" ADD CONSTRAINT "programme_notification_recipientParticipantId_fkey" FOREIGN KEY ("recipientParticipantId") REFERENCES "public"."participant"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "programme_reported_participant" ADD CONSTRAINT "programme_reported_participant_reportingSessionId_fkey" FOREIGN KEY ("reportingSessionId") REFERENCES "public"."programme_reporting_session"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "programme_reported_participant" ADD CONSTRAINT "programme_reported_participant_assignmentId_fkey" FOREIGN KEY ("assignmentId") REFERENCES "public"."programme_assignment"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
-ALTER TABLE "programme_reported_participant" ADD CONSTRAINT "programme_reported_participant_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "public"."student"("id") ON DELETE set null ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "programme_reported_participant" ADD CONSTRAINT "programme_reported_participant_participantId_fkey" FOREIGN KEY ("participantId") REFERENCES "public"."participant"("id") ON DELETE set null ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "programme_reported_participant" ADD CONSTRAINT "programme_reported_participant_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "public"."group"("id") ON DELETE set null ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "programme_reporting_session" ADD CONSTRAINT "programme_reporting_session_festivalId_fkey" FOREIGN KEY ("festivalId") REFERENCES "public"."festival"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "programme_reporting_session" ADD CONSTRAINT "programme_reporting_session_scheduleEntryId_fkey" FOREIGN KEY ("scheduleEntryId") REFERENCES "public"."schedule_entry"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
@@ -501,11 +501,11 @@ ALTER TABLE "schedule_entry" ADD CONSTRAINT "schedule_entry_festivalId_fkey" FOR
 ALTER TABLE "schedule_entry" ADD CONSTRAINT "schedule_entry_programmeId_fkey" FOREIGN KEY ("programmeId") REFERENCES "public"."programme"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "schedule_entry" ADD CONSTRAINT "schedule_entry_stageId_fkey" FOREIGN KEY ("stageId") REFERENCES "public"."stage"("id") ON DELETE set null ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "stage" ADD CONSTRAINT "stage_festivalId_fkey" FOREIGN KEY ("festivalId") REFERENCES "public"."festival"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
-ALTER TABLE "student" ADD CONSTRAINT "student_festivalId_fkey" FOREIGN KEY ("festivalId") REFERENCES "public"."festival"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
-ALTER TABLE "student" ADD CONSTRAINT "student_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "public"."group"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
-ALTER TABLE "student" ADD CONSTRAINT "student_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "public"."category"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
-ALTER TABLE "team_leader_otp" ADD CONSTRAINT "team_leader_otp_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "public"."student"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
-ALTER TABLE "team_leader_session" ADD CONSTRAINT "team_leader_session_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "public"."student"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "participant" ADD CONSTRAINT "participant_festivalId_fkey" FOREIGN KEY ("festivalId") REFERENCES "public"."festival"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "participant" ADD CONSTRAINT "participant_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "public"."group"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "participant" ADD CONSTRAINT "participant_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "public"."category"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "team_leader_otp" ADD CONSTRAINT "team_leader_otp_participantId_fkey" FOREIGN KEY ("participantId") REFERENCES "public"."participant"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "team_leader_session" ADD CONSTRAINT "team_leader_session_participantId_fkey" FOREIGN KEY ("participantId") REFERENCES "public"."participant"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "team_leader_session" ADD CONSTRAINT "team_leader_session_festivalId_fkey" FOREIGN KEY ("festivalId") REFERENCES "public"."festival"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "user_login_event" ADD CONSTRAINT "user_login_event_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "user_purchase_summary" ADD CONSTRAINT "user_purchase_summary_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
@@ -525,23 +525,23 @@ CREATE INDEX "payment_userId_createdAt_idx" ON "payment" USING btree ("userId","
 CREATE INDEX "payment_userId_purpose_status_idx" ON "payment" USING btree ("userId","purpose","status");--> statement-breakpoint
 CREATE INDEX "programme_festivalId_createdAt_idx" ON "programme" USING btree ("festivalId","createdAt" DESC NULLS FIRST);--> statement-breakpoint
 CREATE INDEX "programme_festivalId_status_idx" ON "programme" USING btree ("festivalId","status");--> statement-breakpoint
-CREATE UNIQUE INDEX "programme_assignment_programmeId_studentId_key" ON "programme_assignment" USING btree ("programmeId","studentId");--> statement-breakpoint
+CREATE UNIQUE INDEX "programme_assignment_programmeId_participantId_key" ON "programme_assignment" USING btree ("programmeId","participantId");--> statement-breakpoint
 CREATE INDEX "programme_code_letter_festivalId_issuedAt_idx" ON "programme_code_letter" USING btree ("festivalId","issuedAt");--> statement-breakpoint
 CREATE INDEX "programme_code_letter_programmeId_idx" ON "programme_code_letter" USING btree ("programmeId");--> statement-breakpoint
 CREATE UNIQUE INDEX "programme_code_letter_reportingSessionId_code_key" ON "programme_code_letter" USING btree ("reportingSessionId","code");--> statement-breakpoint
-CREATE UNIQUE INDEX "programme_code_letter_recipient_codeLetterId_studentId_key" ON "programme_code_letter_recipient" USING btree ("codeLetterId","studentId");--> statement-breakpoint
-CREATE INDEX "programme_code_letter_recipient_studentId_idx" ON "programme_code_letter_recipient" USING btree ("studentId");--> statement-breakpoint
+CREATE UNIQUE INDEX "programme_code_letter_recipient_codeLetterId_participantId_key" ON "programme_code_letter_recipient" USING btree ("codeLetterId","participantId");--> statement-breakpoint
+CREATE INDEX "programme_code_letter_recipient_participantId_idx" ON "programme_code_letter_recipient" USING btree ("participantId");--> statement-breakpoint
 CREATE INDEX "programme_judge_session_open_expires_at_idx" ON "programme_judge_session" USING btree ("open_expires_at");--> statement-breakpoint
 CREATE INDEX "programme_judge_session_programme_id_used_at_idx" ON "programme_judge_session" USING btree ("programme_id","used_at");--> statement-breakpoint
 CREATE INDEX "programme_judge_session_reporting_session_id_idx" ON "programme_judge_session" USING btree ("reporting_session_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "programme_judge_session_token_hash_key" ON "programme_judge_session" USING btree ("token_hash");--> statement-breakpoint
 CREATE INDEX "programme_judge_session_token_hash_used_at_idx" ON "programme_judge_session" USING btree ("token_hash","used_at");--> statement-breakpoint
 CREATE INDEX "programme_notification_festivalId_createdAt_idx" ON "programme_notification" USING btree ("festivalId","createdAt");--> statement-breakpoint
-CREATE INDEX "programme_notification_recipientStudentId_isRead_idx" ON "programme_notification" USING btree ("recipientStudentId","isRead");--> statement-breakpoint
+CREATE INDEX "programme_notification_recipientParticipantId_isRead_idx" ON "programme_notification" USING btree ("recipientParticipantId","isRead");--> statement-breakpoint
 CREATE INDEX "programme_notification_recipientUserId_isRead_idx" ON "programme_notification" USING btree ("recipientUserId","isRead");--> statement-breakpoint
 CREATE INDEX "programme_reported_participant_groupId_idx" ON "programme_reported_participant" USING btree ("groupId");--> statement-breakpoint
 CREATE UNIQUE INDEX "programme_reported_participant_reportingSessionId_assignmentId_" ON "programme_reported_participant" USING btree ("reportingSessionId","assignmentId");--> statement-breakpoint
-CREATE INDEX "programme_reported_participant_studentId_idx" ON "programme_reported_participant" USING btree ("studentId");--> statement-breakpoint
+CREATE INDEX "programme_reported_participant_participantId_idx" ON "programme_reported_participant" USING btree ("participantId");--> statement-breakpoint
 CREATE INDEX "programme_reporting_session_festivalId_status_idx" ON "programme_reporting_session" USING btree ("festivalId","status");--> statement-breakpoint
 CREATE INDEX "programme_reporting_session_programmeId_idx" ON "programme_reporting_session" USING btree ("programmeId");--> statement-breakpoint
 CREATE UNIQUE INDEX "programme_reporting_session_scheduleEntryId_key" ON "programme_reporting_session" USING btree ("scheduleEntryId");--> statement-breakpoint
@@ -557,17 +557,17 @@ CREATE INDEX "schedule_entry_festivalId_idx" ON "schedule_entry" USING btree ("f
 CREATE INDEX "schedule_entry_festivalId_startTime_idx" ON "schedule_entry" USING btree ("festivalId","startTime");--> statement-breakpoint
 CREATE INDEX "schedule_entry_festivalId_type_idx" ON "schedule_entry" USING btree ("festivalId","type");--> statement-breakpoint
 CREATE INDEX "stage_festivalId_idx" ON "stage" USING btree ("festivalId");--> statement-breakpoint
-CREATE UNIQUE INDEX "student_festivalId_chestNumber_key" ON "student" USING btree ("festivalId","chestNumber");--> statement-breakpoint
-CREATE INDEX "student_festivalId_createdAt_idx" ON "student" USING btree ("festivalId","createdAt" DESC NULLS FIRST);--> statement-breakpoint
-CREATE INDEX "student_festivalId_idx" ON "student" USING btree ("festivalId");--> statement-breakpoint
-CREATE UNIQUE INDEX "student_festivalId_profileSlug_key" ON "student" USING btree ("festivalId","profileSlug");--> statement-breakpoint
-CREATE INDEX "student_groupId_idx" ON "student" USING btree ("groupId");--> statement-breakpoint
+CREATE UNIQUE INDEX "participant_festivalId_chestNumber_key" ON "participant" USING btree ("festivalId","chestNumber");--> statement-breakpoint
+CREATE INDEX "participant_festivalId_createdAt_idx" ON "participant" USING btree ("festivalId","createdAt" DESC NULLS FIRST);--> statement-breakpoint
+CREATE INDEX "participant_festivalId_idx" ON "participant" USING btree ("festivalId");--> statement-breakpoint
+CREATE UNIQUE INDEX "participant_festivalId_profileSlug_key" ON "participant" USING btree ("festivalId","profileSlug");--> statement-breakpoint
+CREATE INDEX "participant_groupId_idx" ON "participant" USING btree ("groupId");--> statement-breakpoint
 CREATE UNIQUE INDEX "system_config_key_key" ON "system_config" USING btree ("key");--> statement-breakpoint
 CREATE INDEX "team_leader_otp_expiresAt_idx" ON "team_leader_otp" USING btree ("expiresAt");--> statement-breakpoint
-CREATE INDEX "team_leader_otp_studentId_expiresAt_idx" ON "team_leader_otp" USING btree ("studentId","expiresAt");--> statement-breakpoint
+CREATE INDEX "team_leader_otp_participantId_expiresAt_idx" ON "team_leader_otp" USING btree ("participantId","expiresAt");--> statement-breakpoint
 CREATE INDEX "team_leader_session_expiresAt_idx" ON "team_leader_session" USING btree ("expiresAt");--> statement-breakpoint
 CREATE INDEX "team_leader_session_festivalId_expiresAt_idx" ON "team_leader_session" USING btree ("festivalId","expiresAt");--> statement-breakpoint
-CREATE INDEX "team_leader_session_studentId_expiresAt_idx" ON "team_leader_session" USING btree ("studentId","expiresAt");--> statement-breakpoint
+CREATE INDEX "team_leader_session_participantId_expiresAt_idx" ON "team_leader_session" USING btree ("participantId","expiresAt");--> statement-breakpoint
 CREATE UNIQUE INDEX "team_leader_session_tokenHash_key" ON "team_leader_session" USING btree ("tokenHash");--> statement-breakpoint
 CREATE UNIQUE INDEX "user_email_key" ON "user" USING btree ("email");--> statement-breakpoint
 CREATE INDEX "user_login_event_userId_loggedAt_idx" ON "user_login_event" USING btree ("userId","loggedAt");

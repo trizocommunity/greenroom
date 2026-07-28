@@ -104,7 +104,7 @@ export default async function LeaderboardPage({
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
             {isBasicTier(tier)
-              ? "Internal team and student standings from published results."
+              ? "Internal team and participant standings from published results."
               : "Desk preview (published) and on-air standings (published and announced)."}
           </p>
         </div>

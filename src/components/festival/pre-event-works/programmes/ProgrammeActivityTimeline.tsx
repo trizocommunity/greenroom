@@ -56,8 +56,8 @@ const ACTION_PRESENTATION: Record<string, ActionPresentation> = {
     icon: Trash2,
     tone: "red",
   },
-  ASSIGN_STUDENTS: {
-    label: "Students assigned",
+  ASSIGN_PARTICIPANTS: {
+    label: "Participants assigned",
     icon: UserPlus,
     tone: "blue",
   },

@@ -307,7 +307,7 @@ export async function updateProgrammeStatus(
       ? groupCountResult[0].c * (programme.maxParticipantsPerGroup ?? 1)
       : groupCountResult[0].c *
         (programme.maxTeamsPerGroup ?? 1) *
-        (programme.maxStudentsPerTeam ?? 1);
+        (programme.maxParticipantsPerTeam ?? 1);
 
   const isFullyAssignedAcrossAllGroups =
     expectedAssignmentsTotal > 0 &&

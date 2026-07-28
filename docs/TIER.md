@@ -1,4 +1,4 @@
-# Payment Tiers
+﻿# Payment Tiers
 
 **Purpose:** Unified overview of all Greenroom payment tiers for festival management.
 
@@ -16,9 +16,9 @@
 
 | | BASIC | STANDARD | PRO |
 |---|---|---|---|
-| **Price** | ₹1,500 | ₹3,000 | ₹6,000 |
+| **Price** | â‚¹1,500 | â‚¹3,000 | â‚¹6,000 |
 | **Duration** | 30 days | 30 days | 30 days |
-| **Students** | 250 | 500 | 2,000 |
+| **Participants** | 250 | 500 | 2,000 |
 | **Programmes** | 100 | 250 | 1,000 |
 | **Events** | 10 | 25 | 100 |
 | **Stages** | 10 | 20 | 50 |
@@ -43,103 +43,103 @@
 
 | Feature | BASIC | STANDARD | PRO |
 |---------|:-----:|:--------:|:---:|
-| Categories | ✅ | ✅ | ✅ |
-| Groups | ✅ | ✅ | ✅ |
-| Students | ✅ | ✅ | ✅ |
-| Student Profile (dashboard) | ❌ | ✅ | ✅ |
-| Public Student Profile | ❌ | ✅ | ✅ |
-| Programmes | ✅ | ✅ | ✅ |
-| Assignments | ✅ | ✅ | ✅ |
+| Categories | âœ… | âœ… | âœ… |
+| Groups | âœ… | âœ… | âœ… |
+| Participants | âœ… | âœ… | âœ… |
+| Participant Profile (dashboard) | âŒ | âœ… | âœ… |
+| Public Participant Profile | âŒ | âœ… | âœ… |
+| Programmes | âœ… | âœ… | âœ… |
+| Assignments | âœ… | âœ… | âœ… |
 
 ### Event-Works
 
 | Feature | BASIC | STANDARD | PRO |
 |---------|:-----:|:--------:|:---:|
-| Chest Numbers | ✅ | ✅ | ✅ |
-| Results | ✅ | ✅ | ✅ |
-| Stage Management | ❌ | ✅ | ✅ |
-| Schedule | ❌ | ✅ | ✅ |
+| Chest Numbers | âœ… | âœ… | âœ… |
+| Results | âœ… | âœ… | âœ… |
+| Stage Management | âŒ | âœ… | âœ… |
+| Schedule | âŒ | âœ… | âœ… |
 
 ### Team & Collaboration
 
 | Feature | BASIC | STANDARD | PRO |
 |---------|:-----:|:--------:|:---:|
-| Members | ❌ | ✅ (max 3) | ✅ (unlimited) |
-| Role-Based Access Control | ❌ | ❌ | ✅ |
+| Members | âŒ | âœ… (max 3) | âœ… (unlimited) |
+| Role-Based Access Control | âŒ | âŒ | âœ… |
 
 ### Import/Export
 
 | Feature | BASIC | STANDARD | PRO |
 |---------|:-----:|:--------:|:---:|
-| Student Import | ✅ | ✅ | ✅ |
-| Student Bulk Upload | ❌ | ✅ | ✅ |
-| Programme Bulk Upload | ❌ | ✅ | ✅ |
-| PDF Export | ✅ | ✅ | ✅ |
-| Excel Export | ❌ | ✅ | ✅ |
+| Participant Import | âœ… | âœ… | âœ… |
+| Participant Bulk Upload | âŒ | âœ… | âœ… |
+| Programme Bulk Upload | âŒ | âœ… | âœ… |
+| PDF Export | âœ… | âœ… | âœ… |
+| Excel Export | âŒ | âœ… | âœ… |
 
 ### Communication
 
 | Feature | BASIC | STANDARD | PRO |
 |---------|:-----:|:--------:|:---:|
-| Email Notifications | ❌ | ✅ | ✅ |
-| WhatsApp Support | ✅ | ✅ | ✅ |
-| SMS Notifications | ❌ | ❌ | ✅ |
-| Bulk Notifications | ❌ | ❌ | ✅ |
+| Email Notifications | âŒ | âœ… | âœ… |
+| WhatsApp Support | âœ… | âœ… | âœ… |
+| SMS Notifications | âŒ | âŒ | âœ… |
+| Bulk Notifications | âŒ | âŒ | âœ… |
 
 ### Reporting & Analytics
 
 | Feature | BASIC | STANDARD | PRO |
 |---------|:-----:|:--------:|:---:|
-| Advanced Analytics | ❌ | ❌ | ✅ |
-| Custom Reports | ❌ | ❌ | ✅ |
+| Advanced Analytics | âŒ | âŒ | âœ… |
+| Custom Reports | âŒ | âŒ | âœ… |
 
 ### Design & Certificates
 
 | Feature | BASIC | STANDARD | PRO |
 |---------|:-----:|:--------:|:---:|
-| Templates | ✅ | ✅ | ✅ |
-| QR Codes | ❌ | ✅ | ✅ |
-| Auto Certificates | ❌ | ✅ | ✅ |
-| Custom Certificate Templates | ❌ | ❌ | ✅ |
-| Bulk Certificate Generation | ❌ | ❌ | ✅ |
+| Templates | âœ… | âœ… | âœ… |
+| QR Codes | âŒ | âœ… | âœ… |
+| Auto Certificates | âŒ | âœ… | âœ… |
+| Custom Certificate Templates | âŒ | âŒ | âœ… |
+| Bulk Certificate Generation | âŒ | âŒ | âœ… |
 
 ### Landing Page & Content
 
 | Feature | BASIC | STANDARD | PRO |
 |---------|:-----:|:--------:|:---:|
-| Public Landing Page | ✅ | ✅ | ✅ |
-| Full Landing Page | ❌ | ✅ | ✅ |
-| Landing Page Builder | ❌ | ❌ | ✅ |
-| Gallery | ❌ | ✅ | ✅ |
-| News | ❌ | ✅ | ✅ |
+| Public Landing Page | âœ… | âœ… | âœ… |
+| Full Landing Page | âŒ | âœ… | âœ… |
+| Landing Page Builder | âŒ | âŒ | âœ… |
+| Media | âŒ | âœ… | âœ… |
+| News | âŒ | âœ… | âœ… |
 
 ### Branding
 
 | Feature | BASIC | STANDARD | PRO |
 |---------|:-----:|:--------:|:---:|
-| Custom URL | ❌ | ✅ | ✅ |
-| Custom Domain | ❌ | ❌ | ✅ |
-| Logo Upload | ✅ | ✅ | ✅ |
-| Custom Colors | ❌ | ✅ | ✅ |
-| White-Label | ❌ | ❌ | ✅ |
+| Custom URL | âŒ | âœ… | âœ… |
+| Custom Domain | âŒ | âŒ | âœ… |
+| Logo Upload | âœ… | âœ… | âœ… |
+| Custom Colors | âŒ | âœ… | âœ… |
+| White-Label | âŒ | âŒ | âœ… |
 
 ### Advanced Features
 
 | Feature | BASIC | STANDARD | PRO |
 |---------|:-----:|:--------:|:---:|
-| API Access | ❌ | ❌ | ✅ |
-| Webhooks | ❌ | ❌ | ✅ |
-| Live Scoreboard | ✅ | ✅ | ✅ |
-| Live Results | ✅ | ❌ | ✅ |
-| Multi-Festival Management | ❌ | ❌ | ✅ |
+| API Access | âŒ | âŒ | âœ… |
+| Webhooks | âŒ | âŒ | âœ… |
+| Live Scoreboard | âœ… | âœ… | âœ… |
+| Live Results | âœ… | âŒ | âœ… |
+| Multi-Festival Management | âŒ | âŒ | âœ… |
 
 ### Settings
 
 | Feature | BASIC | STANDARD | PRO |
 |---------|:-----:|:--------:|:---:|
-| Festival Settings | ✅ | ✅ | ✅ |
-| Advanced Settings | ❌ | ✅ | ✅ |
-| Programme Assignment Deadline | ❌ | ✅ | ✅ |
+| Festival Settings | âœ… | âœ… | âœ… |
+| Advanced Settings | âŒ | âœ… | âœ… |
+| Programme Assignment Deadline | âŒ | âœ… | âœ… |
 
 ---
 

@@ -34,7 +34,7 @@ import {
   resetChestNumbers,
   saveChestNumberSettings,
   updateAllChestNumbers,
-} from "@/features/students/actions/chest-number.actions";
+} from "@/features/participants/actions/chest-number.actions";
 
 type CategoryItem = { id: string; name: string };
 
@@ -62,9 +62,9 @@ export function ChestNumberSetup({
   const { isReadOnly } = useFestivalReadOnly();
   const queryClient = useQueryClient();
 
-  const invalidateStudentsAndNotify = () => {
+  const invalidateParticipantsAndNotify = () => {
     queryClient.invalidateQueries({
-      queryKey: ["students", festivalId],
+      queryKey: ["participants", festivalId],
     });
     onGenerated();
   };
@@ -210,7 +210,7 @@ export function ChestNumberSetup({
       const result = await generateChestNumbers(festivalId);
 
       toast.success(result.message);
-      invalidateStudentsAndNotify();
+      invalidateParticipantsAndNotify();
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "Failed to process");
     } finally {
@@ -283,7 +283,7 @@ export function ChestNumberSetup({
       setCategoryCodes(codesToSave);
       setCategoryStarts(editCategoryStarts);
 
-      invalidateStudentsAndNotify();
+      invalidateParticipantsAndNotify();
     } catch (error: unknown) {
       toast.error(
         error instanceof Error
@@ -314,7 +314,7 @@ export function ChestNumberSetup({
       setCategoryStarts(defaultStarts);
       setCategoryCodes(defaultCodes);
 
-      invalidateStudentsAndNotify();
+      invalidateParticipantsAndNotify();
     } catch (error: unknown) {
       toast.error(
         error instanceof Error
@@ -383,8 +383,8 @@ export function ChestNumberSetup({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Reset all chest numbers?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will remove chest numbers from ALL students and reset
-                    the generation logic. This action cannot be undone.
+                    This will remove chest numbers from ALL participants and
+                    reset the generation logic. This action cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

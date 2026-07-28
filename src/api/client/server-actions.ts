@@ -9,11 +9,14 @@ import {
   updateFestivalSettingsAction,
 } from "@/features/festivals/actions/festival-crud.actions";
 import {
+  getStagePortalDataAction,
   previewJudgeSubmissionSummaryAction,
+  restartJudgmentAction,
+  startJudgmentAction,
   submitGroupJudgeScoresAction,
   submitJudgeScoresAction,
-  verifyJudgmentLinkPinAction,
 } from "@/features/judgment/actions/judgment.actions";
+import { exportParticipantsQrPdfAction } from "@/features/participants/actions/qr.actions";
 import {
   clearAllPosterTemplatesAction,
   deletePosterTemplateDraftAction,
@@ -26,7 +29,6 @@ import {
   unpublishPosterTemplateAction,
 } from "@/features/posters/actions/poster-template.actions";
 import { bulkCreateProgrammesAction } from "@/features/programmes/actions/programme.actions";
-import { createProgrammeJudgeLinkAction } from "@/features/programmes/actions/programme-judging.actions";
 import {
   assignCodeLettersWithSpinAction,
   closeProgrammeReportingAction,
@@ -37,7 +39,7 @@ import {
   reopenProgrammeReportingByProgrammeAction,
   resetProgrammeReportingAction,
   resetSpinCodeLettersAction,
-  scanAndReportStudentAction,
+  scanAndReportParticipantAction,
   startProgrammeReportingAction,
 } from "@/features/programmes/actions/programme-reporting.actions";
 import { saveBasicProgrammeScoresAction } from "@/features/results/actions/results.actions";
@@ -48,17 +50,24 @@ import {
   reorderScheduleEntries,
   updateScheduleEntry,
 } from "@/features/schedule/actions/schedule.actions";
-import { exportStudentsQrPdfAction } from "@/features/students/actions/qr.actions";
+import {
+  getStagePortalLoginAction,
+  logoutStagePortalAction,
+} from "@/features/stage-portal/actions/stage-portal.actions";
+import {
+  getStagePortalCredentialAction,
+  resetStagePortalCredentialAction,
+} from "@/features/stage-portal/actions/stage-portal-credential.actions";
 import { queryKeys } from "./_query-keys";
 
-export function useVerifyJudgmentLinkPin() {
+export function useStagePortalLogin() {
   return useMutation({
     mutationFn: async (input: {
-      token: string;
+      festivalSlug: string;
+      accessCode: string;
       pin: string;
-      deviceId?: string | null;
     }) => {
-      return verifyJudgmentLinkPinAction(input);
+      return getStagePortalLoginAction(input);
     },
     onError: (error) => {
       toast.error(error.message);
@@ -70,14 +79,14 @@ export function useSubmitJudgeScores() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: {
-      token: string;
+      configId: string;
       judgeId: string;
       scoresByCodeLetterId: Record<string, number>;
       options?: { deactivateLink?: boolean };
     }) => {
       return submitJudgeScoresAction(
         {
-          token: input.token,
+          configId: input.configId,
           judgeId: input.judgeId,
           scoresByCodeLetterId: input.scoresByCodeLetterId,
         },
@@ -97,11 +106,11 @@ export function useSubmitGroupJudgeScores() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: {
-      token: string;
+      configId: string;
       scoresByJudgeId: Record<string, Record<string, number>>;
     }) => {
       return submitGroupJudgeScoresAction({
-        token: input.token,
+        configId: input.configId,
         scoresByJudgeId: input.scoresByJudgeId,
       });
     },
@@ -117,13 +126,99 @@ export function useSubmitGroupJudgeScores() {
 export function usePreviewJudgeSubmission() {
   return useMutation({
     mutationFn: async (input: {
-      token: string;
+      configId: string;
       scoresByJudgeId: Record<string, Record<string, number>>;
     }) => {
       return previewJudgeSubmissionSummaryAction(input);
     },
     onError: (error) => {
       toast.error(error.message);
+    },
+  });
+}
+
+export function useStartJudgment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      festivalId: string;
+      programmeId: string;
+      judgeIds: string[];
+      scoreLimit: number;
+      judgingMode?: "SINGLE" | "GROUP";
+    }) => {
+      return startJudgmentAction(input);
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+    onSuccess: (_data, input) => {
+      qc.invalidateQueries({
+        queryKey: queryKeys.judgment.dashboard(input.festivalId),
+      });
+    },
+  });
+}
+
+export function useRestartJudgment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      festivalId: string;
+      programmeId: string;
+      judgeIds?: string[];
+    }) => {
+      return restartJudgmentAction(input);
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+    onSuccess: (_data, input) => {
+      qc.invalidateQueries({
+        queryKey: queryKeys.judgment.dashboard(input.festivalId),
+      });
+    },
+  });
+}
+
+export function useStagePortalData() {
+  return useQuery({
+    queryKey: ["stage-portal", "data"],
+    queryFn: async () => getStagePortalDataAction(),
+    refetchInterval: 5000,
+  });
+}
+
+export function useLogoutStagePortal() {
+  return useMutation({
+    mutationFn: async () => logoutStagePortalAction(),
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
+export function useStagePortalCredential(festivalId: string, stageId: string) {
+  return useQuery({
+    queryKey: ["stage-portal-credential", festivalId, stageId],
+    queryFn: async () => getStagePortalCredentialAction(festivalId, stageId),
+    enabled: !!festivalId && !!stageId,
+  });
+}
+
+export function useResetStagePortalCredential() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { festivalId: string; stageId: string }) => {
+      return resetStagePortalCredentialAction(input.festivalId, input.stageId);
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+    onSuccess: (_data, input) => {
+      qc.invalidateQueries({
+        queryKey: ["stage-portal-credential", input.festivalId, input.stageId],
+      });
     },
   });
 }
@@ -144,26 +239,6 @@ export function useSaveBasicProgrammeScores() {
     onSuccess: (_data, input) => {
       qc.invalidateQueries({
         queryKey: queryKeys.results.all(input.festivalId, input.programmeId),
-      });
-    },
-  });
-}
-
-export function useCreateProgrammeJudgeLink() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: { festivalId: string; programmeId: string }) => {
-      return createProgrammeJudgeLinkAction(
-        input.festivalId,
-        input.programmeId,
-      );
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-    onSuccess: (_data, input) => {
-      qc.invalidateQueries({
-        queryKey: queryKeys.judges.all(input.festivalId),
       });
     },
   });
@@ -198,7 +273,7 @@ export function useAssignCodeLettersWithSpin() {
       codeAssignments: Array<{
         teamNumber: number | null;
         groupId?: string | null;
-        studentId?: string | null;
+        participantId?: string | null;
         code: string;
       }>;
     }) => {
@@ -416,7 +491,7 @@ export function useMarkProgrammeAssignmentsBulk() {
   });
 }
 
-export function useScanAndReportStudent() {
+export function useScanAndReportParticipant() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: {
@@ -424,7 +499,7 @@ export function useScanAndReportStudent() {
       reportingSessionId: string;
       chestNumber: string;
     }) => {
-      return scanAndReportStudentAction(
+      return scanAndReportParticipantAction(
         input.festivalId,
         input.reportingSessionId,
         input.chestNumber,
@@ -567,7 +642,7 @@ export function useUpdateFestivalSettings() {
       festivalId: string;
       data: {
         programmeAssignmentDeadline?: string | null;
-        studentCreationDeadline?: string | null;
+        participantCreationDeadline?: string | null;
         teamLeaderLimit?: number;
         announcerResultsPerStandings?: number;
         startDate?: string | null;
@@ -769,7 +844,7 @@ export function useBulkCreateProgrammes() {
         stageType: string;
         maxParticipantsPerGroup?: number;
         maxTeamsPerGroup?: number;
-        maxStudentsPerTeam?: number;
+        maxParticipantsPerTeam?: number;
       }>;
     }) => {
       return bulkCreateProgrammesAction(input.festivalId, input.programmes);
@@ -785,10 +860,10 @@ export function useBulkCreateProgrammes() {
   });
 }
 
-export function useExportStudentsQrPdf() {
+export function useExportParticipantsQrPdf() {
   return useMutation({
     mutationFn: async (festivalId: string) => {
-      return exportStudentsQrPdfAction(festivalId);
+      return exportParticipantsQrPdfAction(festivalId);
     },
     onError: (error) => {
       toast.error(error.message);

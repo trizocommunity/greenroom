@@ -7,10 +7,13 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 interface QrViewButtonProps {
   qrContent: string;
-  studentName?: string;
+  participantName?: string;
 }
 
-export function QrViewButton({ qrContent, studentName }: QrViewButtonProps) {
+export function QrViewButton({
+  qrContent,
+  participantName,
+}: QrViewButtonProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -21,9 +24,9 @@ export function QrViewButton({ qrContent, studentName }: QrViewButtonProps) {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogTitle className="sr-only">
-            {studentName
-              ? `${studentName}'s Chest Number QR`
-              : "Student QR Code"}
+            {participantName
+              ? `${participantName}'s Chest Number QR`
+              : "Participant QR Code"}
           </DialogTitle>
           <div className="rounded-lg border bg-white p-4 mx-auto">
             <QrCodeDisplay url={qrContent} size={200} />

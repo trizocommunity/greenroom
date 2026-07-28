@@ -68,7 +68,9 @@ export default async function SettingsPage({
 
   // Fetch Data for Tabs
   const [policy, categories, programmes, listRes] = await Promise.all([
-    canManageScoring ? getScoringPolicyAction(festival.id) : Promise.resolve(null),
+    canManageScoring
+      ? getScoringPolicyAction(festival.id)
+      : Promise.resolve(null),
     canManageScoring
       ? db.query.category.findMany({
           where: eq(categoryTable.festivalId, festival.id),
@@ -83,7 +85,9 @@ export default async function SettingsPage({
           orderBy: [asc(programmeTable.name)],
         })
       : Promise.resolve([]),
-    canManageTemplates ? listPosterTemplatesAction(festival.id) : Promise.resolve({ success: false, data: [] }),
+    canManageTemplates
+      ? listPosterTemplatesAction(festival.id)
+      : Promise.resolve({ success: false, data: [] }),
   ]);
 
   const templates = listRes?.success ? listRes.data : [];
@@ -92,7 +96,9 @@ export default async function SettingsPage({
   const headersList = await headers();
   const host = headersList.get("host") || "";
   const protocol = headersList.get("x-forwarded-proto") || "http";
-  const baseUrl = host ? `${protocol}://${host}` : process.env.NEXT_PUBLIC_APP_URL || "";
+  const baseUrl = host
+    ? `${protocol}://${host}`
+    : process.env.NEXT_PUBLIC_APP_URL || "";
   const publicUrl = baseUrl ? `${baseUrl}/${festival.slug}` : "";
 
   return (

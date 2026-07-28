@@ -46,7 +46,7 @@ export async function getPublicFestivalResults(
       },
       programmeAssignment: {
         with: {
-          student: true,
+          participant: true,
           group: true,
         },
       },
@@ -129,7 +129,7 @@ export async function getPublicFestivalResults(
           programName: programme.name,
           programmeType: "INDIVIDUAL",
           category: programme.category.name,
-          winner: result.programmeAssignment.student?.name || "Unknown",
+          winner: result.programmeAssignment.participant?.name || "Unknown",
           team: result.programmeAssignment.group?.name || "N/A",
           position: result.position || 999,
           points: getResultPoints(result),

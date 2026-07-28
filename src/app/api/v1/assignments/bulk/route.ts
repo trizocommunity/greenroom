@@ -19,10 +19,10 @@ const handler = createHandler({
     if (!parsed.success)
       return badRequest("INVALID_INPUT", parsed.error.message);
 
-    if (parsed.data.assignments.some((a) => !a.studentId)) {
+    if (parsed.data.assignments.some((a) => !a.participantId)) {
       return badRequest(
         "INVALID_INPUT",
-        "Each bulk assignment requires a studentId.",
+        "Each bulk assignment requires a participantId.",
       );
     }
 
@@ -30,7 +30,7 @@ const handler = createHandler({
       festivalId,
       parsed.data.assignments as {
         programmeId: string;
-        studentId: string;
+        participantId: string;
         teamNumber?: number;
       }[],
       parsed.data.teamLeadsByTeam,

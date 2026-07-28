@@ -59,7 +59,7 @@ export async function getParticipantSessionFromCookie() {
         gt(s.expiresAt, new Date().toISOString()),
       ),
     with: {
-      student: {
+      participant: {
         columns: {
           id: true,
           festivalId: true,

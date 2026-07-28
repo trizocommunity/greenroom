@@ -2,7 +2,7 @@ import { generateId } from "../../src/core/database/ids";
 import * as schema from "../../src/core/database/schema";
 import { PROGRAMME_SCHEDULE, PROGRAMME_TEMPLATES } from "./config";
 import type { DB } from "./db";
-import type { CreatedStudent } from "./students";
+import type { CreatedParticipant } from "./participants";
 import type { CreatedCategory, CreatedGroup, CreatedStage } from "./taxonomies";
 
 export async function createSessions(
@@ -50,7 +50,7 @@ export async function createProgrammesAndAssignments(
   categories: CreatedCategory[],
   stages: CreatedStage[],
   groups: CreatedGroup[],
-  students: CreatedStudent[],
+  participants: CreatedParticipant[],
 ): Promise<ProgrammeResult> {
   console.log("🏆 Creating Programmes...");
 
@@ -68,7 +68,7 @@ export async function createProgrammesAndAssignments(
         stageType: tmpl.stageType,
         maxParticipantsPerGroup: tmpl.maxParticipantsPerGroup,
         maxTeamsPerGroup: tmpl.maxTeamsPerGroup,
-        maxStudentsPerTeam: tmpl.maxStudentsPerTeam,
+        maxParticipantsPerTeam: tmpl.maxParticipantsPerTeam,
         status: "READY",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

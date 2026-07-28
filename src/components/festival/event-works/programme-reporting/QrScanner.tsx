@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/core/utils/cn";
-import { scanAndReportStudentAction } from "@/features/programmes/actions/programme-reporting.actions";
+import { scanAndReportParticipantAction } from "@/features/programmes/actions/programme-reporting.actions";
 import { QuickAddScanForm } from "./QuickAddScanForm";
 
 interface QrScannerProps {
@@ -37,7 +37,7 @@ interface ScanResult {
   message?: string;
   error?: string;
   reason?: string;
-  student?: {
+  participant?: {
     id: string;
     name: string;
     chestNumber: string | null;
@@ -351,7 +351,7 @@ export function QrScanner({
     setStatus("processing");
 
     try {
-      const result = await scanAndReportStudentAction(
+      const result = await scanAndReportParticipantAction(
         festivalId,
         reportingSessionId,
         chestNumber,
@@ -361,7 +361,7 @@ export function QrScanner({
 
       if (result.success) {
         setStatus("success");
-        toast.success(result.message || "Student reported successfully!");
+        toast.success(result.message || "Participant reported successfully!");
         onScanSuccess?.(result);
 
         setTimeout(() => {
@@ -371,7 +371,7 @@ export function QrScanner({
         }, 3000);
       } else {
         setStatus("error");
-        toast.error(result.error || "Failed to report student");
+        toast.error(result.error || "Failed to report participant");
         onScanError?.(result);
       }
     } catch (error) {
@@ -694,7 +694,7 @@ export function QrScanner({
         </p>
       )}
 
-      {status === "success" && lastResult?.student && (
+      {status === "success" && lastResult?.participant && (
         <div
           className={cn(
             "space-y-2 rounded-md border border-green-500/30 bg-green-500/10",
@@ -724,17 +724,17 @@ export function QrScanner({
                 )}
               >
                 <p className="text-muted-foreground">
-                  <span className="font-medium">Student:</span>{" "}
-                  {lastResult.student.name}
+                  <span className="font-medium">Participant:</span>{" "}
+                  {lastResult.participant.name}
                 </p>
                 <p className="text-muted-foreground">
                   <span className="font-medium">Chest #:</span>{" "}
-                  {lastResult.student.chestNumber}
+                  {lastResult.participant.chestNumber}
                 </p>
-                {lastResult.student.groupName && (
+                {lastResult.participant.groupName && (
                   <p className="text-muted-foreground">
                     <span className="font-medium">Group:</span>{" "}
-                    {lastResult.student.groupName}
+                    {lastResult.participant.groupName}
                   </p>
                 )}
               </div>
@@ -768,7 +768,7 @@ export function QrScanner({
               </p>
 
               {lastResult.reason === "NOT_ASSIGNED_TO_PROGRAMME" &&
-                lastResult.student && (
+                lastResult.participant && (
                   <div
                     className={cn(
                       "space-y-1 text-muted-foreground",
@@ -776,17 +776,17 @@ export function QrScanner({
                     )}
                   >
                     <p>
-                      <span className="font-medium">Student:</span>{" "}
-                      {lastResult.student.name}
+                      <span className="font-medium">Participant:</span>{" "}
+                      {lastResult.participant.name}
                     </p>
                     <p>
                       <span className="font-medium">Chest #:</span>{" "}
-                      {lastResult.student.chestNumber}
+                      {lastResult.participant.chestNumber}
                     </p>
-                    {lastResult.student.groupName && (
+                    {lastResult.participant.groupName && (
                       <p>
                         <span className="font-medium">Group:</span>{" "}
-                        {lastResult.student.groupName}
+                        {lastResult.participant.groupName}
                       </p>
                     )}
                     <p className="mt-2 font-medium text-red-600 dark:text-red-400">
@@ -795,7 +795,7 @@ export function QrScanner({
                   </div>
                 )}
 
-              {lastResult.reason === "STUDENT_NOT_FOUND" && (
+              {lastResult.reason === "PARTICIPANT_NOT_FOUND" && (
                 <p
                   className={cn(
                     "mt-2 text-muted-foreground",
@@ -813,7 +813,7 @@ export function QrScanner({
                     embedded ? "text-xs" : "text-sm",
                   )}
                 >
-                  This student is already marked present.
+                  This participant is already marked present.
                 </p>
               )}
             </div>

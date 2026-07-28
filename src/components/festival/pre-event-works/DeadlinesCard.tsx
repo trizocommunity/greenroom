@@ -18,7 +18,9 @@ export function DeadlinesCard({
   const festival = useFestival();
 
   const deadline =
-    deadlineProp !== undefined ? deadlineProp : festival.programmeAssignmentDeadline;
+    deadlineProp !== undefined
+      ? deadlineProp
+      : festival.programmeAssignmentDeadline;
 
   if (!deadline) return null;
 

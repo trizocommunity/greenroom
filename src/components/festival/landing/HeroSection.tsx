@@ -82,12 +82,13 @@ export function HeroSection({ festival, basicMode = false }: HeroSectionProps) {
                   {festival.location}
                 </span>
               )}
-              {festival.studentsCount != null && festival.studentsCount > 0 && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5">
-                  <Users className="h-3.5 w-3.5" />
-                  {festival.studentsCount.toLocaleString()} students
-                </span>
-              )}
+              {festival.participantsCount != null &&
+                festival.participantsCount > 0 && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5">
+                    <Users className="h-3.5 w-3.5" />
+                    {festival.participantsCount.toLocaleString()} participants
+                  </span>
+                )}
             </div>
 
             {/* CTAs */}

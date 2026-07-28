@@ -1,4 +1,4 @@
--- Pre-hardening data cleanup for 0004_schema_hardening.sql
+﻿-- Pre-hardening data cleanup for 0004_schema_hardening.sql
 -- Goal: make existing data compatible with new unique/check constraints.
 -- Safe-by-default approach:
 -- 1) Snapshot invalid rows to backup tables
@@ -73,14 +73,14 @@ WHERE s."id" = ranked."id"
 --    New rule: exactly one recipient must be set.
 --
 -- Fix strategy:
---    - both set: keep recipientUserId, null recipientStudentId
+--    - both set: keep recipientUserId, null recipientParticipantId
 --    - both null: backup + delete (cannot infer recipient safely)
 -- -----------------------------------------------------------------------------
 
 UPDATE "programme_notification"
-SET "recipientStudentId" = NULL
+SET "recipientParticipantId" = NULL
 WHERE "recipientUserId" IS NOT NULL
-  AND "recipientStudentId" IS NOT NULL;
+  AND "recipientParticipantId" IS NOT NULL;
 
 INSERT INTO "_backup_invalid_programme_notification"
 SELECT pn.*
@@ -88,26 +88,26 @@ FROM "programme_notification" pn
 LEFT JOIN "_backup_invalid_programme_notification" b
   ON b."id" = pn."id"
 WHERE pn."recipientUserId" IS NULL
-  AND pn."recipientStudentId" IS NULL
+  AND pn."recipientParticipantId" IS NULL
   AND b."id" IS NULL;
 
 DELETE FROM "programme_notification"
 WHERE "recipientUserId" IS NULL
-  AND "recipientStudentId" IS NULL;
+  AND "recipientParticipantId" IS NULL;
 
 -- -----------------------------------------------------------------------------
 -- 3) programme_assignment target integrity:
---    New rule: at least one of (studentId, groupId) must be present.
+--    New rule: at least one of (participantId, groupId) must be present.
 --
 -- Fix strategy:
---    - If studentId exists and groupId null, backfill groupId from student.groupId
+--    - If participantId exists and groupId null, backfill groupId from participant.groupId
 --    - If both still null, backup + delete (unrecoverable without business context)
 -- -----------------------------------------------------------------------------
 
 UPDATE "programme_assignment" pa
 SET "groupId" = s."groupId"
-FROM "student" s
-WHERE pa."studentId" = s."id"
+FROM "participant" s
+WHERE pa."participantId" = s."id"
   AND pa."groupId" IS NULL;
 
 INSERT INTO "_backup_invalid_programme_assignment"
@@ -115,12 +115,12 @@ SELECT pa.*
 FROM "programme_assignment" pa
 LEFT JOIN "_backup_invalid_programme_assignment" b
   ON b."id" = pa."id"
-WHERE pa."studentId" IS NULL
+WHERE pa."participantId" IS NULL
   AND pa."groupId" IS NULL
   AND b."id" IS NULL;
 
 DELETE FROM "programme_assignment"
-WHERE "studentId" IS NULL
+WHERE "participantId" IS NULL
   AND "groupId" IS NULL;
 
 COMMIT;
@@ -131,7 +131,7 @@ COMMIT;
 -- SELECT "festivalId", "name", COUNT(*) FROM "category" GROUP BY 1,2 HAVING COUNT(*) > 1;
 -- SELECT "festivalId", "name", COUNT(*) FROM "group" GROUP BY 1,2 HAVING COUNT(*) > 1;
 -- SELECT "festivalId", "name", COUNT(*) FROM "stage" GROUP BY 1,2 HAVING COUNT(*) > 1;
--- SELECT COUNT(*) FROM "programme_notification" WHERE "recipientUserId" IS NULL AND "recipientStudentId" IS NULL;
--- SELECT COUNT(*) FROM "programme_notification" WHERE "recipientUserId" IS NOT NULL AND "recipientStudentId" IS NOT NULL;
--- SELECT COUNT(*) FROM "programme_assignment" WHERE "studentId" IS NULL AND "groupId" IS NULL;
+-- SELECT COUNT(*) FROM "programme_notification" WHERE "recipientUserId" IS NULL AND "recipientParticipantId" IS NULL;
+-- SELECT COUNT(*) FROM "programme_notification" WHERE "recipientUserId" IS NOT NULL AND "recipientParticipantId" IS NOT NULL;
+-- SELECT COUNT(*) FROM "programme_assignment" WHERE "participantId" IS NULL AND "groupId" IS NULL;
 

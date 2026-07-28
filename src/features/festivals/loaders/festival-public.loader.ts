@@ -19,7 +19,7 @@ export type PublicFestivalData = {
     branding: any;
     status: "READY" | "ONGOING" | "PAST" | "EXPIRED";
     tier: "BASIC" | "STANDARD" | "PRO" | null;
-    studentCreationDeadline: string | null;
+    participantCreationDeadline: string | null;
     programmeAssignmentDeadline: string | null;
     scoringSystem: "POSITION_BASED" | "SCORE_BASED";
     teamStandings: any;
@@ -59,7 +59,7 @@ export async function getPublicFestivalData(
       createdAt: true,
       expiresAt: true,
       location: true,
-      studentCreationDeadline: true,
+      participantCreationDeadline: true,
       programmeAssignmentDeadline: true,
       scoringSystem: true,
       teamStandings: true,

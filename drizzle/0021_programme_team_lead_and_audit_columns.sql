@@ -1,5 +1,5 @@
--- Migration: Programme team lead + audit columns on programme/result
--- Adds a first-class "programme team lead" concept — distinct from student.isTeamLeader.
+﻿-- Migration: Programme team lead + audit columns on programme/result
+-- Adds a first-class "programme team lead" concept â€” distinct from participant.isTeamLeader.
 -- Adds who/when audit columns to programme and result so the drawer can render an
 -- audit trail without an audit_log join for the headline summary line.
 
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS "programme_team_lead" (
   "programmeId" text NOT NULL,
   "groupId" text NOT NULL,
   "teamNumber" integer DEFAULT 1 NOT NULL,
-  "studentId" text NOT NULL,
+  "participantId" text NOT NULL,
   "appointedBy" text NOT NULL,
   "appointedByRole" "public"."ProgrammeTeamLeadAppointedByRole" DEFAULT 'ADMIN' NOT NULL,
   "appointedByName" text,
@@ -32,10 +32,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS "programme_team_lead_team_key"
 
 CREATE INDEX IF NOT EXISTS "programme_team_lead_programmeId_idx"
   ON "programme_team_lead" ("programmeId");
-CREATE INDEX IF NOT EXISTS "programme_team_lead_studentId_idx"
-  ON "programme_team_lead" ("studentId");
+CREATE INDEX IF NOT EXISTS "programme_team_lead_participantId_idx"
+  ON "programme_team_lead" ("participantId");
 
--- Foreign keys with cascade so removal of programme/group/student cleans up
+-- Foreign keys with cascade so removal of programme/group/participant cleans up
 DO $$ BEGIN
   ALTER TABLE "programme_team_lead"
     ADD CONSTRAINT "programme_team_lead_programmeId_fkey"
@@ -56,8 +56,8 @@ END $$;
 
 DO $$ BEGIN
   ALTER TABLE "programme_team_lead"
-    ADD CONSTRAINT "programme_team_lead_studentId_fkey"
-    FOREIGN KEY ("studentId") REFERENCES "student"("id")
+    ADD CONSTRAINT "programme_team_lead_participantId_fkey"
+    FOREIGN KEY ("participantId") REFERENCES "participant"("id")
     ON UPDATE CASCADE ON DELETE CASCADE;
 EXCEPTION
   WHEN duplicate_object THEN null;

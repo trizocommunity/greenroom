@@ -2,10 +2,10 @@ import { randomUUID } from "crypto";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
-  festival as festivalTable,
-  festivalMember as festivalMemberTable,
-  stage as stageTable,
   stageManagerAssignment as assignmentTable,
+  festivalMember as festivalMemberTable,
+  festival as festivalTable,
+  stage as stageTable,
 } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 

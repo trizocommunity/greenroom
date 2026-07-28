@@ -2,7 +2,7 @@
 
 export type ParticipantSessionMeta = {
   festivalSlug: string;
-  studentSlug: string;
+  participantSlug: string;
   isTeamLeader: boolean;
   expiresAt: string;
 };
@@ -23,7 +23,7 @@ export function readParticipantSessionMeta(
     const parsed = JSON.parse(raw) as Partial<ParticipantSessionMeta>;
     if (
       typeof parsed.festivalSlug !== "string" ||
-      typeof parsed.studentSlug !== "string" ||
+      typeof parsed.participantSlug !== "string" ||
       typeof parsed.isTeamLeader !== "boolean" ||
       typeof parsed.expiresAt !== "string"
     ) {
@@ -36,7 +36,7 @@ export function readParticipantSessionMeta(
     }
     return {
       festivalSlug,
-      studentSlug: parsed.studentSlug,
+      participantSlug: parsed.participantSlug,
       isTeamLeader: parsed.isTeamLeader,
       expiresAt: parsed.expiresAt,
     };
@@ -45,10 +45,15 @@ export function readParticipantSessionMeta(
   }
 }
 
-export function writeParticipantSessionMeta(meta: ParticipantSessionMeta): void {
+export function writeParticipantSessionMeta(
+  meta: ParticipantSessionMeta,
+): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(keyFor(meta.festivalSlug), JSON.stringify(meta));
+    window.localStorage.setItem(
+      keyFor(meta.festivalSlug),
+      JSON.stringify(meta),
+    );
   } catch {
     // localStorage may be unavailable (private mode, quota) — silently ignore.
     // The httpOnly cookie remains the source of truth server-side.

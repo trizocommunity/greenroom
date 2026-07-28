@@ -4,7 +4,7 @@ import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
   programmeNotification as notificationTable,
-  student as studentTable,
+  participant as participantTable,
 } from "@/core/database/schema";
 
 type DeliveryChannel = "IN_APP" | "EMAIL";
@@ -16,7 +16,7 @@ type NotificationActor = {
 
 type NotificationTargetsInput = {
   programmeId?: string;
-  studentIds?: string[];
+  participantIds?: string[];
   includeTeamLeadersForProgramme?: boolean;
 };
 
@@ -40,8 +40,8 @@ type NotificationInput = {
 };
 
 type ResolvedRecipients = {
-  studentRecipients: Array<{
-    studentId: string;
+  participantRecipients: Array<{
+    participantId: string;
     email: string | null;
     isTeamLeader: boolean;
   }>;
@@ -51,7 +51,7 @@ async function resolveRecipients(
   festivalId: string,
   targets: NotificationTargetsInput,
 ): Promise<ResolvedRecipients> {
-  const studentIds = new Set<string>(targets.studentIds ?? []);
+  const participantIds = new Set<string>(targets.participantIds ?? []);
 
   if (targets.programmeId) {
     const assignments = await db.query.programmeAssignment.findMany({
@@ -60,42 +60,42 @@ async function resolveRecipients(
         eq(assignmentTable.programmeId, targets.programmeId),
       ),
       with: {
-        student: { columns: { groupId: true } },
+        participant: { columns: { groupId: true } },
       },
     });
 
     const groupIds = new Set<string>();
     for (const row of assignments) {
-      if (row.studentId) studentIds.add(row.studentId);
-      if (row.student?.groupId) groupIds.add(row.student.groupId);
+      if (row.participantId) participantIds.add(row.participantId);
+      if (row.participant?.groupId) groupIds.add(row.participant.groupId);
     }
 
     if (targets.includeTeamLeadersForProgramme && groupIds.size > 0) {
-      const leaders = await db.query.student.findMany({
+      const leaders = await db.query.participant.findMany({
         where: and(
-          eq(studentTable.festivalId, festivalId),
-          inArray(studentTable.groupId, Array.from(groupIds)),
-          eq(studentTable.isTeamLeader, true),
+          eq(participantTable.festivalId, festivalId),
+          inArray(participantTable.groupId, Array.from(groupIds)),
+          eq(participantTable.isTeamLeader, true),
         ),
         columns: { id: true },
       });
-      for (const leader of leaders) studentIds.add(leader.id);
+      for (const leader of leaders) participantIds.add(leader.id);
     }
   }
 
-  if (studentIds.size === 0) return { studentRecipients: [] };
+  if (participantIds.size === 0) return { participantRecipients: [] };
 
-  const students = await db.query.student.findMany({
+  const participants = await db.query.participant.findMany({
     where: and(
-      inArray(studentTable.id, Array.from(studentIds)),
-      eq(studentTable.festivalId, festivalId),
+      inArray(participantTable.id, Array.from(participantIds)),
+      eq(participantTable.festivalId, festivalId),
     ),
     columns: { id: true, email: true, isTeamLeader: true },
   });
 
   return {
-    studentRecipients: students.map((s) => ({
-      studentId: s.id,
+    participantRecipients: participants.map((s) => ({
+      participantId: s.id,
       email: s.email ?? null,
       isTeamLeader: s.isTeamLeader,
     })),
@@ -105,27 +105,29 @@ async function resolveRecipients(
 export const NotificationService = {
   async dispatch(input: NotificationInput): Promise<{ created: number }> {
     const recipients = await resolveRecipients(input.festivalId, input.targets);
-    if (!recipients.studentRecipients.length) return { created: 0 };
+    if (!recipients.participantRecipients.length) return { created: 0 };
 
     const now = new Date().toISOString();
-    const notificationRows = recipients.studentRecipients.map((recipient) => ({
-      id: randomUUID(),
-      festivalId: input.festivalId,
-      eventType: input.eventType,
-      recipientStudentId: recipient.studentId,
-      title: input.context.title,
-      body: input.context.body,
-      payload: input.context.payload ?? {},
-      channels: input.channels,
-      isRead: false,
-      updatedAt: now,
-    }));
+    const notificationRows = recipients.participantRecipients.map(
+      (recipient) => ({
+        id: randomUUID(),
+        festivalId: input.festivalId,
+        eventType: input.eventType,
+        recipientParticipantId: recipient.participantId,
+        title: input.context.title,
+        body: input.context.body,
+        payload: input.context.payload ?? {},
+        channels: input.channels,
+        isRead: false,
+        updatedAt: now,
+      }),
+    );
 
     if (input.channels.includes("IN_APP")) {
       // Chunking if necessary, but for small batches it's fine
       await db.insert(notificationTable).values(notificationRows as any);
     }
 
-    return { created: recipients.studentRecipients.length };
+    return { created: recipients.participantRecipients.length };
   },
 };

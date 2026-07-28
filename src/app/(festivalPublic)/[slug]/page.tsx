@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FeaturedPrograms } from "@/components/festival/landing/FeaturedPrograms";
-import { GalleryPreview } from "@/components/festival/landing/GalleryPreview";
 import { HeroSection } from "@/components/festival/landing/HeroSection";
+import { MediaPreview } from "@/components/festival/landing/MediaPreview";
 import { ResultsList } from "@/components/festival/landing/ResultsList";
 import { ResultsTeaser } from "@/components/festival/landing/ResultsTeaser";
 import { StatsSection } from "@/components/festival/landing/StatsSection";
 import { getPublicFestivalData } from "@/features/festivals/loaders/festival-public.loader";
 import { getPublicFestivalResults } from "@/features/festivals/loaders/festival-results.loader";
-import { getPublicGalleryData } from "@/features/gallery/loaders/gallery-public.loader";
+import { getPublicMediaData } from "@/features/media/loaders/media-public.loader";
 import {
   FeatureService,
   getTierForFeatureCheck,
@@ -71,17 +71,15 @@ export default async function FestivalPage({
     );
   }
 
-  // Fetch published results, programmes, and gallery for display
-  const [publishedResults, programmes, galleryData] = await Promise.all([
+  // Fetch published results, programmes, and media for display
+  const [publishedResults, programmes, mediaData] = await Promise.all([
     getPublicFestivalResults(festival.id, {
       publicDisplayMode: festival.publicDisplayMode ?? "programme_results",
     }),
     fullLandingPage
       ? findProgrammesByFestival(festival.id)
       : Promise.resolve([]),
-    fullLandingPage
-      ? getPublicGalleryData(festival.slug)
-      : Promise.resolve(null),
+    fullLandingPage ? getPublicMediaData(festival.slug) : Promise.resolve(null),
   ]);
 
   // MERGE DATA FOR COMPONENTS
@@ -114,7 +112,7 @@ export default async function FestivalPage({
     orgWebsite: festival.orgWebsite || "",
     orgLocation: festival.orgLocation || "",
     establishedYear: festival.establishedYear || null,
-    studentCreationDeadline: festival.studentCreationDeadline,
+    participantCreationDeadline: festival.participantCreationDeadline,
     programmeAssignmentDeadline: festival.programmeAssignmentDeadline,
   };
   return (
@@ -166,8 +164,8 @@ export default async function FestivalPage({
         )}
       </section>
 
-      {fullLandingPage && galleryData && galleryData.images.length > 0 && (
-        <GalleryPreview slug={displayData.slug} images={galleryData.images} />
+      {fullLandingPage && mediaData && mediaData.images.length > 0 && (
+        <MediaPreview slug={displayData.slug} images={mediaData.images} />
       )}
     </div>
   );

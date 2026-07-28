@@ -18,7 +18,7 @@ export async function getFestivalLeaderboardDataBySlug(slug: string) {
         with: {
           programmeAssignment: {
             with: {
-              student: { with: { category: true } },
+              participant: { with: { category: true } },
               group: true,
             },
           },

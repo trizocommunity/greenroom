@@ -12,7 +12,7 @@ export const programmeMinimalSchema = z.object({
   category: categoryMinimalSchema.nullable(),
 });
 
-export const studentMinimalSchema = z.object({
+export const participantMinimalSchema = z.object({
   id: z.string(),
   name: z.string().nullable(),
   chestNumber: z.string().nullable(),
@@ -31,7 +31,7 @@ export const assignmentSchema = z.object({
   id: z.string(),
   festivalId: z.string(),
   programmeId: z.string(),
-  studentId: z.string().nullable(),
+  participantId: z.string().nullable(),
   groupId: z.string().nullable(),
   teamNumber: z.number().int().positive().nullable(),
   createdByEmail: z.string().nullable(),
@@ -40,27 +40,27 @@ export const assignmentSchema = z.object({
   updatedAt: z.string(),
   assignedAt: z.string().nullable(),
   programme: programmeMinimalSchema.optional(),
-  student: studentMinimalSchema.optional(),
+  participant: participantMinimalSchema.optional(),
   group: groupMinimalSchema.optional(),
   category: z.object({ id: z.string(), name: z.string() }).optional(),
 });
 
 export const createAssignmentInput = z.object({
   programmeId: z.string(),
-  studentId: z.string().optional(),
+  participantId: z.string().optional(),
   groupId: z.string().optional(),
   teamNumber: z.number().int().positive().optional(),
 });
 
 export const bulkCreateAssignmentInput = z.object({
   assignments: z.array(createAssignmentInput).min(1).max(1000),
-  /** GROUP programmes only, keyed by `${programmeId}:${groupId}:${teamNumber}` -> lead studentId. */
+  /** GROUP programmes only, keyed by `${programmeId}:${groupId}:${teamNumber}` -> lead participantId. */
   teamLeadsByTeam: z.record(z.string(), z.string()).optional(),
 });
 
 export const updateAssignmentInput = z.object({
   programmeId: z.string().optional(),
-  studentId: z.string().optional(),
+  participantId: z.string().optional(),
   groupId: z.string().optional(),
 });
 

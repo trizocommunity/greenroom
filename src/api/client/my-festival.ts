@@ -24,9 +24,8 @@ export function useJoinedFestivals() {
   return useQuery<JoinedFestival[]>({
     queryKey: queryKeys.myFestival.joined,
     queryFn: async () => {
-      const response = await apiClient.get<ApiResponse<JoinedFestival[]>>(
-        "/joined-festivals",
-      );
+      const response =
+        await apiClient.get<ApiResponse<JoinedFestival[]>>("/joined-festivals");
       return handleApiResponse(response.data);
     },
     staleTime: STALE_TIME.standard,

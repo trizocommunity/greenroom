@@ -446,9 +446,9 @@ export function ScoringPolicyClient({
       parsed.maxParticipants &&
       parsed.maxParticipants !== parsed.minParticipants
     ) {
-      return `${parsed.minParticipants}-${parsed.maxParticipants} students`;
+      return `${parsed.minParticipants}-${parsed.maxParticipants} participants`;
     }
-    return `${parsed.minParticipants} student(s)`;
+    return `${parsed.minParticipants} participant(s)`;
   };
 
   const getProgrammesByCategory = (categoryId: string | null) => {
@@ -712,434 +712,439 @@ export function ScoringPolicyClient({
     <div className="space-y-8">
       <div>
         <h2 className="text-xl font-semibold mb-1">Scoring Policy</h2>
-        <p className="text-sm text-muted-foreground">Configure the grading system, cut-offs, and points matrix.</p>
+        <p className="text-sm text-muted-foreground">
+          Configure the grading system, cut-offs, and points matrix.
+        </p>
       </div>
 
       <div className="space-y-4 sm:space-y-6">
-      <ScoringPolicySection
-        policyVersion={policy.policyVersion}
-        normalizeTo={policy.normalizeTo}
-        isPersisted={policy.isPersisted}
-        noGradeBelow={noGradeBelow}
-        setNoGradeBelow={setNoGradeBelow}
-      />
+        <ScoringPolicySection
+          policyVersion={policy.policyVersion}
+          normalizeTo={policy.normalizeTo}
+          isPersisted={policy.isPersisted}
+          noGradeBelow={noGradeBelow}
+          setNoGradeBelow={setNoGradeBelow}
+        />
 
-      <GradeRulesSection
-        gradeRules={gradeRules}
-        onAddGrade={() => setAddGradeOpen(true)}
-        onUpdateGradeRule={updateGradeRule}
-        onRemoveGradeRule={(idx) =>
-          setGradeRules((prev) =>
-            prev.filter((_, currentIdx) => currentIdx !== idx),
-          )
-        }
-      />
+        <GradeRulesSection
+          gradeRules={gradeRules}
+          onAddGrade={() => setAddGradeOpen(true)}
+          onUpdateGradeRule={updateGradeRule}
+          onRemoveGradeRule={(idx) =>
+            setGradeRules((prev) =>
+              prev.filter((_, currentIdx) => currentIdx !== idx),
+            )
+          }
+        />
 
-      <Card>
-        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle>Award Points Matrix</CardTitle>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-            <Button
-              variant="outline"
-              onClick={() => setAddParticipantOpen(true)}
-              className="w-full sm:w-auto"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Participant Row
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setAddProgrammeOpen(true)}
-              className="w-full sm:w-auto"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Programme Row
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-xs text-muted-foreground">
-            Start with row label and grade points. Expand a row only when you
-            need advanced filters.
-          </p>
-
-          {availableGrades.length === 0 && (
-            <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-              Add at least one grade rule before entering matrix points.
-            </div>
-          )}
-
-          <div className="space-y-2">
-            {ensurePointsShape(matrixRows, availableGrades).map((row, idx) => (
-              <div
-                key={`matrix-row-${idx}`}
-                className={
-                  row.criteriaType === "PROGRAMME_SET"
-                    ? "rounded-md border border-purple/60 bg-purple/5 p-2 ring-1 ring-purple/20"
-                    : "rounded-md border p-2"
-                }
+        <Card>
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle>Award Points Matrix</CardTitle>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <Button
+                variant="outline"
+                onClick={() => setAddParticipantOpen(true)}
+                className="w-full sm:w-auto"
               >
-                <div className="mb-1 flex items-center gap-2">
-                  <Badge
-                    variant={
+                <Plus className="mr-2 h-4 w-4" />
+                Add Participant Row
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setAddProgrammeOpen(true)}
+                className="w-full sm:w-auto"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Programme Row
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Start with row label and grade points. Expand a row only when you
+              need advanced filters.
+            </p>
+
+            {availableGrades.length === 0 && (
+              <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                Add at least one grade rule before entering matrix points.
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {ensurePointsShape(matrixRows, availableGrades).map(
+                (row, idx) => (
+                  <div
+                    key={`matrix-row-${idx}`}
+                    className={
                       row.criteriaType === "PROGRAMME_SET"
-                        ? "default"
-                        : "secondary"
+                        ? "rounded-md border border-purple/60 bg-purple/5 p-2 ring-1 ring-purple/20"
+                        : "rounded-md border p-2"
                     }
-                    className="h-5 px-2 text-[10px]"
                   >
-                    {row.criteriaType === "PROGRAMME_SET"
-                      ? "Programme Row"
-                      : "Participant Row"}
-                  </Badge>
-                  {row.criteriaType === "PROGRAMME_SET" && (
-                    <span className="text-[11px] text-purple/90">
-                      Applies to selected programmes only
-                    </span>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-[1.4fr_1fr_3fr_auto] md:items-center">
-                  {row.criteriaType === "PROGRAMME_SET" ? (
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <Badge
-                          variant="outline"
-                          className="h-5 px-2 text-[10px] uppercase"
-                        >
-                          {categories.find((c) => c.id === row.categoryId)
-                            ?.name ?? "No category"}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {row.programmeIds.length} selected
+                    <div className="mb-1 flex items-center gap-2">
+                      <Badge
+                        variant={
+                          row.criteriaType === "PROGRAMME_SET"
+                            ? "default"
+                            : "secondary"
+                        }
+                        className="h-5 px-2 text-[10px]"
+                      >
+                        {row.criteriaType === "PROGRAMME_SET"
+                          ? "Programme Row"
+                          : "Participant Row"}
+                      </Badge>
+                      {row.criteriaType === "PROGRAMME_SET" && (
+                        <span className="text-[11px] text-purple/90">
+                          Applies to selected programmes only
                         </span>
-                      </div>
-                      {row.programmeIds.length > 0 ? (
-                        <div className="mt-1 flex flex-wrap gap-1.5">
-                          {row.programmeIds.map((id) => (
-                            <Badge
-                              key={id}
-                              variant="secondary"
-                              className="h-5 max-w-full truncate px-2 text-[10px]"
-                              title={programmeNameById.get(id) ?? id}
-                            >
-                              {programmeNameById.get(id) ?? "Unknown programme"}
-                            </Badge>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="mt-1 text-[11px] text-muted-foreground">
-                          No programmes selected.
-                        </p>
                       )}
                     </div>
-                  ) : (
-                    <Input
-                      value={row.rowLabel}
-                      onChange={(e) =>
-                        updateMatrixRow(idx, { rowLabel: e.target.value })
-                      }
-                      placeholder="Row label"
-                      className="h-9"
-                    />
-                  )}
-                  <div className="text-xs text-muted-foreground">
-                    {rowCriteriaSummary(row)}
-                  </div>
-                  <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-                    {availableGrades.map((grade) => (
-                      <div
-                        key={`grade-point-${idx}-${grade}`}
-                        className="space-y-1"
-                      >
-                        <Label className="text-[11px]">{grade}</Label>
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-[1.4fr_1fr_3fr_auto] md:items-center">
+                      {row.criteriaType === "PROGRAMME_SET" ? (
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Badge
+                              variant="outline"
+                              className="h-5 px-2 text-[10px] uppercase"
+                            >
+                              {categories.find((c) => c.id === row.categoryId)
+                                ?.name ?? "No category"}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {row.programmeIds.length} selected
+                            </span>
+                          </div>
+                          {row.programmeIds.length > 0 ? (
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                              {row.programmeIds.map((id) => (
+                                <Badge
+                                  key={id}
+                                  variant="secondary"
+                                  className="h-5 max-w-full truncate px-2 text-[10px]"
+                                  title={programmeNameById.get(id) ?? id}
+                                >
+                                  {programmeNameById.get(id) ??
+                                    "Unknown programme"}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              No programmes selected.
+                            </p>
+                          )}
+                        </div>
+                      ) : (
                         <Input
-                          type="number"
-                          value={row.pointsByGrade[grade] ?? 0}
+                          value={row.rowLabel}
                           onChange={(e) =>
-                            updateMatrixGradePoint(
-                              idx,
-                              grade,
-                              Number(e.target.value),
-                            )
+                            updateMatrixRow(idx, { rowLabel: e.target.value })
                           }
-                          className="h-8"
+                          placeholder="Row label"
+                          className="h-9"
                         />
+                      )}
+                      <div className="text-xs text-muted-foreground">
+                        {rowCriteriaSummary(row)}
                       </div>
-                    ))}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 justify-start px-2 text-xs md:justify-center"
-                    onClick={() =>
-                      setMatrixRows((prev) =>
-                        prev.filter((_, rowIndex) => rowIndex !== idx),
-                      )
-                    }
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Remove
-                  </Button>
-                </div>
-
-                {row.criteriaType === "PROGRAMME_SET" ? (
-                  <details className="mt-2 rounded-md border border-purple/30 bg-purple/10 p-2">
-                    <summary className="cursor-pointer text-xs font-medium">
-                      Advanced options
-                    </summary>
-                    <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-4">
-                      <div className="space-y-1 md:col-span-4">
-                        <Label>Programmes</Label>
-                        {!row.categoryId ? (
-                          <div className="rounded-md border border-dashed p-2 text-[11px] text-muted-foreground">
-                            Select category first to choose programmes.
+                      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                        {availableGrades.map((grade) => (
+                          <div
+                            key={`grade-point-${idx}-${grade}`}
+                            className="space-y-1"
+                          >
+                            <Label className="text-[11px]">{grade}</Label>
+                            <Input
+                              type="number"
+                              value={row.pointsByGrade[grade] ?? 0}
+                              onChange={(e) =>
+                                updateMatrixGradePoint(
+                                  idx,
+                                  grade,
+                                  Number(e.target.value),
+                                )
+                              }
+                              className="h-8"
+                            />
                           </div>
-                        ) : (
-                          <div className="max-h-28 space-y-1 overflow-auto rounded-md border bg-background p-2">
-                            {getProgrammesByCategory(row.categoryId).map(
-                              (programme) => {
-                                const checked = row.programmeIds.includes(
-                                  programme.id,
-                                );
-                                return (
-                                  <label
-                                    key={programme.id}
-                                    className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-muted/50"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={checked}
-                                      onChange={() =>
-                                        updateMatrixRow(idx, {
-                                          programmeIds: toggleInList(
-                                            row.programmeIds,
-                                            programme.id,
-                                          ),
-                                        })
-                                      }
-                                    />
-                                    <span className="text-xs">
-                                      {programme.name}
-                                    </span>
-                                  </label>
-                                );
-                              },
-                            )}
-                          </div>
-                        )}
-                        <p className="text-[11px] text-muted-foreground">
-                          Selected: {row.programmeIds.length}
-                        </p>
+                        ))}
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 justify-start px-2 text-xs md:justify-center"
+                        onClick={() =>
+                          setMatrixRows((prev) =>
+                            prev.filter((_, rowIndex) => rowIndex !== idx),
+                          )
+                        }
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Remove
+                      </Button>
                     </div>
-                  </details>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
-      <div className="flex justify-end">
-        <Button
-          onClick={onSave}
-          disabled={isPending || !hasChanges || hasMissingGradePoint}
-          className="w-full sm:w-auto"
-        >
-          <Save className="mr-2 h-4 w-4" />
-          {isPending
-            ? "Saving..."
-            : hasChanges
-              ? "Save Scoring Policy"
-              : "No Changes"}
-        </Button>
-      </div>
-
-      <Dialog open={addGradeOpen} onOpenChange={setAddGradeOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Add Grade</DialogTitle>
-            <p className="text-sm text-muted-foreground">
-              Add a new grade band. Matrix columns update automatically.
-            </p>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <Label>Grade Label</Label>
-              <Input
-                value={newGrade.grade}
-                onChange={(e) =>
-                  setNewGrade((prev) => ({ ...prev, grade: e.target.value }))
-                }
-                placeholder="A+"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label>Min</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={newGrade.min}
-                  onChange={(e) =>
-                    setNewGrade((prev) => ({
-                      ...prev,
-                      min: Number(e.target.value),
-                    }))
-                  }
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Max</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={newGrade.max}
-                  onChange={(e) =>
-                    setNewGrade((prev) => ({
-                      ...prev,
-                      max: Number(e.target.value),
-                    }))
-                  }
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddGradeOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={addGradeFromDialog}>Add Grade</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={addParticipantOpen} onOpenChange={setAddParticipantOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Add Participant Row</DialogTitle>
-            <p className="text-sm text-muted-foreground">
-              Fast default: set only Min Participants. Max can stay same.
-            </p>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <Label>Row Label (optional)</Label>
-              <Input
-                value={newParticipantRow.rowLabel}
-                onChange={(e) =>
-                  setNewParticipantRow((prev) => ({
-                    ...prev,
-                    rowLabel: e.target.value,
-                  }))
-                }
-                placeholder="e.g. 1, 2, 4-5"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setAddParticipantOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button onClick={addParticipantRowFromDialog}>
-              Add Participant Row
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={addProgrammeOpen} onOpenChange={setAddProgrammeOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Add Programme Row</DialogTitle>
-            <p className="text-sm text-muted-foreground">
-              One row can apply to multiple programmes.
-            </p>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <Label>Category</Label>
-              <select
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                value={newProgrammeRow.categoryId ?? ""}
-                onChange={(e) =>
-                  setNewProgrammeRow((prev) => ({
-                    ...prev,
-                    categoryId: e.target.value ? e.target.value : null,
-                    programmeIds: [],
-                  }))
-                }
-              >
-                <option value="">Select category</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <Label>Select Programmes</Label>
-              {!newProgrammeRow.categoryId ? (
-                <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                  Select category first.
-                </div>
-              ) : (
-                <div className="max-h-36 space-y-1 overflow-auto rounded-md border bg-background p-2">
-                  {getProgrammesByCategory(newProgrammeRow.categoryId).map(
-                    (programme) => {
-                      const checked = newProgrammeRow.programmeIds.includes(
-                        programme.id,
-                      );
-                      return (
-                        <label
-                          key={programme.id}
-                          className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-muted/50"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() =>
-                              setNewProgrammeRow((prev) => ({
-                                ...prev,
-                                programmeIds: toggleInList(
-                                  prev.programmeIds,
-                                  programme.id,
-                                ),
-                              }))
-                            }
-                          />
-                          <span className="text-sm">{programme.name}</span>
-                        </label>
-                      );
-                    },
-                  )}
-                </div>
+                    {row.criteriaType === "PROGRAMME_SET" ? (
+                      <details className="mt-2 rounded-md border border-purple/30 bg-purple/10 p-2">
+                        <summary className="cursor-pointer text-xs font-medium">
+                          Advanced options
+                        </summary>
+                        <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-4">
+                          <div className="space-y-1 md:col-span-4">
+                            <Label>Programmes</Label>
+                            {!row.categoryId ? (
+                              <div className="rounded-md border border-dashed p-2 text-[11px] text-muted-foreground">
+                                Select category first to choose programmes.
+                              </div>
+                            ) : (
+                              <div className="max-h-28 space-y-1 overflow-auto rounded-md border bg-background p-2">
+                                {getProgrammesByCategory(row.categoryId).map(
+                                  (programme) => {
+                                    const checked = row.programmeIds.includes(
+                                      programme.id,
+                                    );
+                                    return (
+                                      <label
+                                        key={programme.id}
+                                        className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-muted/50"
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={checked}
+                                          onChange={() =>
+                                            updateMatrixRow(idx, {
+                                              programmeIds: toggleInList(
+                                                row.programmeIds,
+                                                programme.id,
+                                              ),
+                                            })
+                                          }
+                                        />
+                                        <span className="text-xs">
+                                          {programme.name}
+                                        </span>
+                                      </label>
+                                    );
+                                  },
+                                )}
+                              </div>
+                            )}
+                            <p className="text-[11px] text-muted-foreground">
+                              Selected: {row.programmeIds.length}
+                            </p>
+                          </div>
+                        </div>
+                      </details>
+                    ) : null}
+                  </div>
+                ),
               )}
-              <p className="text-xs text-muted-foreground">
-                Selected programmes: {newProgrammeRow.programmeIds.length}
-              </p>
             </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setAddProgrammeOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button onClick={addProgrammeRowFromDialog}>
-              Add Programme Row
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-end">
+          <Button
+            onClick={onSave}
+            disabled={isPending || !hasChanges || hasMissingGradePoint}
+            className="w-full sm:w-auto"
+          >
+            <Save className="mr-2 h-4 w-4" />
+            {isPending
+              ? "Saving..."
+              : hasChanges
+                ? "Save Scoring Policy"
+                : "No Changes"}
+          </Button>
+        </div>
+
+        <Dialog open={addGradeOpen} onOpenChange={setAddGradeOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Add Grade</DialogTitle>
+              <p className="text-sm text-muted-foreground">
+                Add a new grade band. Matrix columns update automatically.
+              </p>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label>Grade Label</Label>
+                <Input
+                  value={newGrade.grade}
+                  onChange={(e) =>
+                    setNewGrade((prev) => ({ ...prev, grade: e.target.value }))
+                  }
+                  placeholder="A+"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label>Min</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={newGrade.min}
+                    onChange={(e) =>
+                      setNewGrade((prev) => ({
+                        ...prev,
+                        min: Number(e.target.value),
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Max</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={newGrade.max}
+                    onChange={(e) =>
+                      setNewGrade((prev) => ({
+                        ...prev,
+                        max: Number(e.target.value),
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAddGradeOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={addGradeFromDialog}>Add Grade</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={addParticipantOpen} onOpenChange={setAddParticipantOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Add Participant Row</DialogTitle>
+              <p className="text-sm text-muted-foreground">
+                Fast default: set only Min Participants. Max can stay same.
+              </p>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label>Row Label (optional)</Label>
+                <Input
+                  value={newParticipantRow.rowLabel}
+                  onChange={(e) =>
+                    setNewParticipantRow((prev) => ({
+                      ...prev,
+                      rowLabel: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g. 1, 2, 4-5"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setAddParticipantOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={addParticipantRowFromDialog}>
+                Add Participant Row
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={addProgrammeOpen} onOpenChange={setAddProgrammeOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Add Programme Row</DialogTitle>
+              <p className="text-sm text-muted-foreground">
+                One row can apply to multiple programmes.
+              </p>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label>Category</Label>
+                <select
+                  className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                  value={newProgrammeRow.categoryId ?? ""}
+                  onChange={(e) =>
+                    setNewProgrammeRow((prev) => ({
+                      ...prev,
+                      categoryId: e.target.value ? e.target.value : null,
+                      programmeIds: [],
+                    }))
+                  }
+                >
+                  <option value="">Select category</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label>Select Programmes</Label>
+                {!newProgrammeRow.categoryId ? (
+                  <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                    Select category first.
+                  </div>
+                ) : (
+                  <div className="max-h-36 space-y-1 overflow-auto rounded-md border bg-background p-2">
+                    {getProgrammesByCategory(newProgrammeRow.categoryId).map(
+                      (programme) => {
+                        const checked = newProgrammeRow.programmeIds.includes(
+                          programme.id,
+                        );
+                        return (
+                          <label
+                            key={programme.id}
+                            className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-muted/50"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() =>
+                                setNewProgrammeRow((prev) => ({
+                                  ...prev,
+                                  programmeIds: toggleInList(
+                                    prev.programmeIds,
+                                    programme.id,
+                                  ),
+                                }))
+                              }
+                            />
+                            <span className="text-sm">{programme.name}</span>
+                          </label>
+                        );
+                      },
+                    )}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Selected programmes: {newProgrammeRow.programmeIds.length}
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setAddProgrammeOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={addProgrammeRowFromDialog}>
+                Add Programme Row
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }

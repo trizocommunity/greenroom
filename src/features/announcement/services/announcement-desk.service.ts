@@ -32,7 +32,7 @@ export type AnnouncementDeskProgramme = {
     winnerName: string;
     groupName: string | null;
     teamNumber?: number | null;
-    studentNames?: string[];
+    participantNames?: string[];
     code: string | null;
   }[];
   codeLetters: {
@@ -59,7 +59,7 @@ export async function getAnnouncementDeskQueue(festivalId: string) {
         programme: { columns: { id: true, type: true } },
         programmeAssignment: {
           with: {
-            student: { columns: { name: true } },
+            participant: { columns: { name: true } },
             group: { columns: { id: true, name: true } },
           },
         },
@@ -71,7 +71,7 @@ export async function getAnnouncementDeskQueue(festivalId: string) {
       with: {
         programmeCodeLetterRecipients: {
           with: {
-            student: {
+            participant: {
               columns: { name: true, chestNumber: true, groupId: true },
               with: {
                 group: { columns: { name: true } },
@@ -119,11 +119,11 @@ export async function getAnnouncementDeskQueue(festivalId: string) {
     if (publishedSlotCount === 0) continue;
 
     const progCodeLetters = codeLettersByProgramme.get(p.id) ?? [];
-    const studentToCodeMap = new Map<string, string>();
+    const participantToCodeMap = new Map<string, string>();
     for (const cl of progCodeLetters) {
       for (const recipient of cl.programmeCodeLetterRecipients ?? []) {
-        if (recipient.studentId) {
-          studentToCodeMap.set(recipient.studentId, cl.code);
+        if (recipient.participantId) {
+          participantToCodeMap.set(recipient.participantId, cl.code);
         }
       }
     }
@@ -145,15 +145,15 @@ export async function getAnnouncementDeskQueue(festivalId: string) {
         if (!first) continue;
         const groupName = first.programmeAssignment?.group?.name || "—";
         const teamNumber = first.programmeAssignment?.teamNumber ?? 1;
-        const studentNames = list
-          .map((r) => r.programmeAssignment?.student?.name)
+        const participantNames = list
+          .map((r) => r.programmeAssignment?.participant?.name)
           .filter((name): name is string => name != null);
 
         let code: string | null = null;
         for (const r of list) {
-          const studentId = r.programmeAssignment?.studentId;
-          if (studentId) {
-            const foundCode = studentToCodeMap.get(studentId);
+          const participantId = r.programmeAssignment?.participantId;
+          if (participantId) {
+            const foundCode = participantToCodeMap.get(participantId);
             if (foundCode) {
               code = foundCode;
               break;
@@ -161,7 +161,7 @@ export async function getAnnouncementDeskQueue(festivalId: string) {
           }
         }
 
-        const firstMember = studentNames[0] || "Unknown";
+        const firstMember = participantNames[0] || "Unknown";
         resultsMapped.push({
           id: first.id,
           position: first.position,
@@ -172,7 +172,7 @@ export async function getAnnouncementDeskQueue(festivalId: string) {
           winnerName: `${firstMember} & team`,
           groupName,
           teamNumber,
-          studentNames,
+          participantNames,
           code,
         });
       }
@@ -180,10 +180,10 @@ export async function getAnnouncementDeskQueue(festivalId: string) {
     } else {
       resultsMapped = progResults.map((r) => {
         const assignment = r.programmeAssignment;
-        const student = assignment?.student;
-        const winnerName = student?.name || assignment?.group?.name || "—";
-        const code = assignment?.studentId
-          ? (studentToCodeMap.get(assignment.studentId) ?? null)
+        const participant = assignment?.participant;
+        const winnerName = participant?.name || assignment?.group?.name || "—";
+        const code = assignment?.participantId
+          ? (participantToCodeMap.get(assignment.participantId) ?? null)
           : null;
         return {
           id: r.id,
@@ -195,7 +195,7 @@ export async function getAnnouncementDeskQueue(festivalId: string) {
           winnerName,
           groupName: assignment?.group?.name ?? null,
           teamNumber: assignment?.teamNumber ?? null,
-          studentNames: student?.name ? [student.name] : [],
+          participantNames: participant?.name ? [participant.name] : [],
           code,
         };
       });
@@ -203,11 +203,11 @@ export async function getAnnouncementDeskQueue(festivalId: string) {
 
     const codeLettersMapped = progCodeLetters.map((cl) => {
       const participants = (cl.programmeCodeLetterRecipients ?? []).map((r) => {
-        const student = r.student;
+        const participant = r.participant;
         return {
-          name: student?.name ?? "—",
-          chestNumber: student?.chestNumber ?? null,
-          groupName: student?.group?.name ?? null,
+          name: participant?.name ?? "—",
+          chestNumber: participant?.chestNumber ?? null,
+          groupName: participant?.group?.name ?? null,
         };
       });
       return {

@@ -81,7 +81,9 @@ export function FestivalLiveClient({
     <div className="space-y-8 max-w-8xl mx-auto">
       <div>
         <h2 className="text-xl font-semibold mb-1">Festival Live</h2>
-        <p className="text-sm text-muted-foreground">Manage your public-facing festival website.</p>
+        <p className="text-sm text-muted-foreground">
+          Manage your public-facing festival website.
+        </p>
       </div>
 
       <div className="grid gap-6">

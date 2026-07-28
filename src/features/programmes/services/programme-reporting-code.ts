@@ -1,36 +1,38 @@
-/** Resolve a student's code from a session's code letters (multi-letter + legacy single-letter). */
+/** Resolve a participant's code from a session's code letters (multi-letter + legacy single-letter). */
 
 export type CodeLetterWithRecipients = {
   code: string;
-  programmeCodeLetterRecipients?: Array<{ studentId: string }>;
+  programmeCodeLetterRecipients?: Array<{ participantId: string }>;
   /** @deprecated Use programmeCodeLetterRecipients — kept for older call sites */
-  recipients?: Array<{ studentId: string }>;
+  recipients?: Array<{ participantId: string }>;
 };
 
 function letterRecipients(
   letter: CodeLetterWithRecipients,
-): Array<{ studentId: string }> {
+): Array<{ participantId: string }> {
   return letter.programmeCodeLetterRecipients ?? letter.recipients ?? [];
 }
 
-export function getCodeForStudentFromLetters(
+export function getCodeForParticipantFromLetters(
   letters: CodeLetterWithRecipients[] | undefined | null,
-  studentId: string | null | undefined,
+  participantId: string | null | undefined,
 ): string | null {
-  if (!letters?.length || !studentId) return null;
+  if (!letters?.length || !participantId) return null;
   for (const letter of letters) {
-    if (letterRecipients(letter).some((r) => r.studentId === studentId)) {
+    if (
+      letterRecipients(letter).some((r) => r.participantId === participantId)
+    ) {
       return letter.code;
     }
   }
   return null;
 }
 
-/** Map session code letters for {@link getCodeForStudentFromLetters}. */
+/** Map session code letters for {@link getCodeForParticipantFromLetters}. */
 export function mapSessionCodeLettersForLookup(
   letters: Array<{
     code: string;
-    programmeCodeLetterRecipients: Array<{ studentId: string }>;
+    programmeCodeLetterRecipients: Array<{ participantId: string }>;
   }>,
 ): CodeLetterWithRecipients[] {
   return letters.map((cl) => ({

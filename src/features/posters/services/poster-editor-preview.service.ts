@@ -4,11 +4,11 @@ import {
   category as categoryTable,
   festival as festivalTable,
   group as groupTable,
+  participant as participantTable,
   programmeAssignment,
   programmeCodeLetter,
   programme as programmeTable,
   result as resultTable,
-  student as studentTable,
 } from "@/core/database/schema";
 import {
   buildCandidateCardBindings,
@@ -90,7 +90,7 @@ export function formatFestDateRange(
 }
 
 async function categoryNameFromFirstProgramme(
-  studentId: string,
+  participantId: string,
 ): Promise<string | null> {
   const row = await db
     .select({ name: categoryTable.name })
@@ -100,7 +100,7 @@ async function categoryNameFromFirstProgramme(
       eq(programmeAssignment.programmeId, programmeTable.id),
     )
     .innerJoin(categoryTable, eq(programmeTable.categoryId, categoryTable.id))
-    .where(eq(programmeAssignment.studentId, studentId))
+    .where(eq(programmeAssignment.participantId, participantId))
     .orderBy(asc(programmeTable.name))
     .limit(1);
 
@@ -209,7 +209,7 @@ async function loadResultPreview(
       position: resultTable.position,
       grade: resultTable.grade,
       points: resultTable.points,
-      studentName: studentTable.name,
+      participantName: participantTable.name,
       groupName: groupTable.name,
       programmeType: programmeTable.type,
     })
@@ -222,7 +222,10 @@ async function loadResultPreview(
       programmeTable,
       eq(programmeAssignment.programmeId, programmeTable.id),
     )
-    .leftJoin(studentTable, eq(programmeAssignment.studentId, studentTable.id))
+    .leftJoin(
+      participantTable,
+      eq(programmeAssignment.participantId, participantTable.id),
+    )
     .leftJoin(groupTable, eq(programmeAssignment.groupId, groupTable.id))
     .where(
       and(
@@ -239,7 +242,7 @@ async function loadResultPreview(
     name:
       programmeType === "GROUP"
         ? (r.groupName ?? "Team")
-        : (r.studentName ?? r.groupName ?? "—"),
+        : (r.participantName ?? r.groupName ?? "—"),
     team: r.groupName ?? "—",
     grade: r.grade,
     points: r.points ?? 0,
@@ -266,17 +269,17 @@ async function loadCandidatePreview(
   festDate: string,
   festLocation: string,
 ): Promise<EditorPreviewBindingsPayload> {
-  const student = await db.query.student.findFirst({
+  const participant = await db.query.participant.findFirst({
     where: and(
-      eq(studentTable.festivalId, festivalId),
-      isNotNull(studentTable.chestNumber),
+      eq(participantTable.festivalId, festivalId),
+      isNotNull(participantTable.chestNumber),
     ),
     columns: { id: true, name: true, chestNumber: true },
     with: { group: { columns: { name: true } } },
-    orderBy: [asc(studentTable.chestNumber)],
+    orderBy: [asc(participantTable.chestNumber)],
   });
 
-  if (!student?.chestNumber) {
+  if (!participant?.chestNumber) {
     return buildCandidatePlaceholderBindings(
       festivalName,
       festDate,
@@ -284,14 +287,14 @@ async function loadCandidatePreview(
     );
   }
 
-  const categoryName = await categoryNameFromFirstProgramme(student.id);
+  const categoryName = await categoryNameFromFirstProgramme(participant.id);
 
   const bindings = buildCandidateCardBindings({
     festivalName,
-    studentName: student.name,
-    chestNumber: student.chestNumber,
-    teamName: student.group?.name ?? "—",
-    qrPayload: student.chestNumber,
+    participantName: participant.name,
+    chestNumber: participant.chestNumber,
+    teamName: participant.group?.name ?? "—",
+    qrPayload: participant.chestNumber,
     categoryName: categoryName ?? "—",
   });
 

@@ -53,14 +53,14 @@ export default async function ProgrammeReportingPage({
     db.query.programmeAssignment.findMany({
       where: eq(assignmentTable.festivalId, festival.id),
       with: {
-        student: { columns: { name: true, chestNumber: true } },
+        participant: { columns: { name: true, chestNumber: true } },
         group: { columns: { name: true, id: true } },
       },
       columns: {
         id: true,
         programmeId: true,
         teamNumber: true,
-        studentId: true,
+        participantId: true,
         groupId: true,
       },
     }),
@@ -114,9 +114,9 @@ export default async function ProgrammeReportingPage({
   const assignments = assignmentRows.map((row) => ({
     id: row.id,
     programmeId: row.programmeId,
-    studentId: row.studentId ?? null,
-    studentName: (row as any).student?.name ?? null,
-    chestNumber: (row as any).student?.chestNumber ?? null,
+    participantId: row.participantId ?? null,
+    participantName: (row as any).participant?.name ?? null,
+    chestNumber: (row as any).participant?.chestNumber ?? null,
     groupId: row.groupId ?? (row as any).group?.id ?? null,
     groupName: (row as any).group?.name ?? null,
     teamNumber: row.teamNumber ?? null,
@@ -146,8 +146,8 @@ export default async function ProgrammeReportingPage({
             </li>
             <li>
               <strong>Submit &amp; notify</strong> finalizes reporting, issues
-              codes (one per team for GROUP, one per student for INDIVIDUAL),
-              and notifies students and team leaders.
+              codes (one per team for GROUP, one per participant for
+              INDIVIDUAL), and notifies participants and team leaders.
             </li>
           </ul>
         </HowItWorksButton>

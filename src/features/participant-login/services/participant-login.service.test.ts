@@ -4,7 +4,7 @@ import { AppError } from "@/core/errors/errors";
 
 const mockFindFestivalBySlug = vi.fn();
 const mockFindGroupsByFestival = vi.fn();
-const mockStudentFindFirst = vi.fn();
+const mockParticipantFindFirst = vi.fn();
 const mockOtpFindMany = vi.fn();
 const mockOtpFindFirst = vi.fn();
 const mockInsert = vi.fn();
@@ -22,8 +22,8 @@ vi.mock("@/features/groups/repositories/group.repository", () => ({
 vi.mock("@/core/database/client", () => ({
   db: {
     query: {
-      student: {
-        findFirst: (...args: unknown[]) => mockStudentFindFirst(...args),
+      participant: {
+        findFirst: (...args: unknown[]) => mockParticipantFindFirst(...args),
       },
       participantOtp: {
         findFirst: (...args: unknown[]) => mockOtpFindFirst(...args),
@@ -47,7 +47,7 @@ import { ParticipantLoginService } from "./participant-login.service";
 const festival = { id: "fest-1", name: "Demo Fest", slug: "demo-fest" };
 const group = { id: "group-1", name: "Al-Qurtuba" };
 
-function makeStudent(overrides: Record<string, unknown> = {}) {
+function makeParticipant(overrides: Record<string, unknown> = {}) {
   return {
     id: "stud-1",
     festivalId: festival.id,
@@ -67,7 +67,7 @@ function makeStudent(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   mockFindFestivalBySlug.mockReset();
   mockFindGroupsByFestival.mockReset();
-  mockStudentFindFirst.mockReset();
+  mockParticipantFindFirst.mockReset();
   mockOtpFindMany.mockReset();
   mockOtpFindFirst.mockReset();
   mockInsert.mockReset();
@@ -97,8 +97,8 @@ describe("ParticipantLoginService.requestAccess", () => {
     ).rejects.toMatchObject({ message: expect.stringMatching(/festival/i) });
   });
 
-  it("throws STUDENT_NOT_FOUND when chest number does not match", async () => {
-    mockStudentFindFirst.mockResolvedValueOnce(null);
+  it("throws PARTICIPANT_NOT_FOUND when chest number does not match", async () => {
+    mockParticipantFindFirst.mockResolvedValueOnce(null);
     await expect(
       ParticipantLoginService.requestAccess({
         festivalSlug: festival.slug,
@@ -107,13 +107,13 @@ describe("ParticipantLoginService.requestAccess", () => {
         identifierValue: group.id,
       }),
     ).rejects.toMatchObject({
-      message: expect.stringMatching(/student/i),
+      message: expect.stringMatching(/participant/i),
     });
   });
 
-  it("returns AUTHENTICATED + session row when student matches by group", async () => {
-    const student = makeStudent({ isTeamLeader: false });
-    mockStudentFindFirst.mockResolvedValueOnce(student);
+  it("returns AUTHENTICATED + session row when participant matches by group", async () => {
+    const participant = makeParticipant({ isTeamLeader: false });
+    mockParticipantFindFirst.mockResolvedValueOnce(participant);
 
     const result = await ParticipantLoginService.requestAccess({
       festivalSlug: festival.slug,
@@ -124,16 +124,16 @@ describe("ParticipantLoginService.requestAccess", () => {
 
     expect(result.status).toBe("AUTHENTICATED");
     if (result.status === "AUTHENTICATED") {
-      expect(result.studentSlug).toBe(student.profileSlug);
+      expect(result.participantSlug).toBe(participant.profileSlug);
       expect(result.rawToken).toBe("mock-raw-token");
       expect(result.festivalName).toBe(festival.name);
     }
     expect(mockInsert).toHaveBeenCalled();
   });
 
-  it("returns AUTHENTICATED when student matches by date of birth", async () => {
-    const student = makeStudent({ isTeamLeader: false });
-    mockStudentFindFirst.mockResolvedValueOnce(student);
+  it("returns AUTHENTICATED when participant matches by date of birth", async () => {
+    const participant = makeParticipant({ isTeamLeader: false });
+    mockParticipantFindFirst.mockResolvedValueOnce(participant);
 
     const result = await ParticipantLoginService.requestAccess({
       festivalSlug: festival.slug,
@@ -145,9 +145,9 @@ describe("ParticipantLoginService.requestAccess", () => {
     expect(result.status).toBe("AUTHENTICATED");
   });
 
-  it("throws STUDENT_NOT_FOUND when date of birth mismatches", async () => {
-    const student = makeStudent({ isTeamLeader: false });
-    mockStudentFindFirst.mockResolvedValueOnce(student);
+  it("throws PARTICIPANT_NOT_FOUND when date of birth mismatches", async () => {
+    const participant = makeParticipant({ isTeamLeader: false });
+    mockParticipantFindFirst.mockResolvedValueOnce(participant);
 
     await expect(
       ParticipantLoginService.requestAccess({
@@ -157,13 +157,13 @@ describe("ParticipantLoginService.requestAccess", () => {
         identifierValue: "1999-01-01T00:00:00.000Z",
       }),
     ).rejects.toMatchObject({
-      message: expect.stringMatching(/student/i),
+      message: expect.stringMatching(/participant/i),
     });
   });
 
-  it("throws STUDENT_NOT_FOUND when group does not match", async () => {
-    const student = makeStudent({ isTeamLeader: false });
-    mockStudentFindFirst.mockResolvedValueOnce(student);
+  it("throws PARTICIPANT_NOT_FOUND when group does not match", async () => {
+    const participant = makeParticipant({ isTeamLeader: false });
+    mockParticipantFindFirst.mockResolvedValueOnce(participant);
 
     await expect(
       ParticipantLoginService.requestAccess({
@@ -173,13 +173,16 @@ describe("ParticipantLoginService.requestAccess", () => {
         identifierValue: "other-group-id",
       }),
     ).rejects.toMatchObject({
-      message: expect.stringMatching(/student/i),
+      message: expect.stringMatching(/participant/i),
     });
   });
 
   it("throws when group id is not part of festival groups", async () => {
-    const student = makeStudent({ isTeamLeader: false, groupId: "fake" });
-    mockStudentFindFirst.mockResolvedValueOnce(student);
+    const participant = makeParticipant({
+      isTeamLeader: false,
+      groupId: "fake",
+    });
+    mockParticipantFindFirst.mockResolvedValueOnce(participant);
 
     await expect(
       ParticipantLoginService.requestAccess({
@@ -189,16 +192,16 @@ describe("ParticipantLoginService.requestAccess", () => {
         identifierValue: "fake",
       }),
     ).rejects.toMatchObject({
-      message: expect.stringMatching(/student/i),
+      message: expect.stringMatching(/participant/i),
     });
   });
 
   it("returns OTP_REQUIRED for team leader and stores an OTP hash", async () => {
-    const student = makeStudent({
+    const participant = makeParticipant({
       isTeamLeader: true,
       email: "leader@example.com",
     });
-    mockStudentFindFirst.mockResolvedValueOnce(student);
+    mockParticipantFindFirst.mockResolvedValueOnce(participant);
     mockOtpFindMany.mockResolvedValueOnce([]);
 
     const result = await ParticipantLoginService.requestAccess({
@@ -212,14 +215,14 @@ describe("ParticipantLoginService.requestAccess", () => {
     if (result.status === "OTP_REQUIRED") {
       expect(typeof result.debugOtp).toBe("string");
       expect(result.debugOtp).toMatch(/^\d{6}$/);
-      expect(result.studentSlug).toBe(student.profileSlug);
+      expect(result.participantSlug).toBe(participant.profileSlug);
     }
     expect(mockInsert).toHaveBeenCalled();
   });
 
   it("rejects team leader without email", async () => {
-    const student = makeStudent({ isTeamLeader: true, email: null });
-    mockStudentFindFirst.mockResolvedValueOnce(student);
+    const participant = makeParticipant({ isTeamLeader: true, email: null });
+    mockParticipantFindFirst.mockResolvedValueOnce(participant);
 
     await expect(
       ParticipantLoginService.requestAccess({
@@ -232,8 +235,11 @@ describe("ParticipantLoginService.requestAccess", () => {
   });
 
   it("rate-limits more than 5 OTP requests per 10 minutes", async () => {
-    const student = makeStudent({ isTeamLeader: true, email: "l@e.com" });
-    mockStudentFindFirst.mockResolvedValueOnce(student);
+    const participant = makeParticipant({
+      isTeamLeader: true,
+      email: "l@e.com",
+    });
+    mockParticipantFindFirst.mockResolvedValueOnce(participant);
     mockOtpFindMany.mockResolvedValueOnce(new Array(5).fill({ id: "x" }));
 
     await expect(
@@ -255,11 +261,11 @@ describe("ParticipantLoginService.requestAccess", () => {
       enumerable: true,
     });
     try {
-      const student = makeStudent({
+      const participant = makeParticipant({
         isTeamLeader: true,
         email: "leader@example.com",
       });
-      mockStudentFindFirst.mockResolvedValueOnce(student);
+      mockParticipantFindFirst.mockResolvedValueOnce(participant);
       mockOtpFindMany.mockResolvedValueOnce([]);
 
       const result = await ParticipantLoginService.requestAccess({
@@ -284,36 +290,36 @@ describe("ParticipantLoginService.requestAccess", () => {
 });
 
 describe("ParticipantLoginService.verifyOtp", () => {
-  it("throws when student is not a team leader", async () => {
-    const student = makeStudent({ isTeamLeader: false });
-    mockStudentFindFirst.mockResolvedValueOnce(student);
+  it("throws when participant is not a team leader", async () => {
+    const participant = makeParticipant({ isTeamLeader: false });
+    mockParticipantFindFirst.mockResolvedValueOnce(participant);
 
     await expect(
       ParticipantLoginService.verifyOtp({
         festivalSlug: festival.slug,
-        studentSlug: student.profileSlug,
+        participantSlug: participant.profileSlug,
         otp: "123456",
       }),
     ).rejects.toBeInstanceOf(AppError);
   });
 
   it("rejects unknown / expired OTP", async () => {
-    const student = makeStudent({ isTeamLeader: true });
-    mockStudentFindFirst.mockResolvedValueOnce(student);
+    const participant = makeParticipant({ isTeamLeader: true });
+    mockParticipantFindFirst.mockResolvedValueOnce(participant);
     mockOtpFindFirst.mockResolvedValueOnce(null);
 
     await expect(
       ParticipantLoginService.verifyOtp({
         festivalSlug: festival.slug,
-        studentSlug: student.profileSlug,
+        participantSlug: participant.profileSlug,
         otp: "123456",
       }),
     ).rejects.toMatchObject({ message: expect.stringMatching(/invalid/i) });
   });
 
   it("increments attempts and rejects on wrong code", async () => {
-    const student = makeStudent({ isTeamLeader: true });
-    mockStudentFindFirst.mockResolvedValueOnce(student);
+    const participant = makeParticipant({ isTeamLeader: true });
+    mockParticipantFindFirst.mockResolvedValueOnce(participant);
     mockOtpFindFirst.mockResolvedValueOnce({
       id: "otp-1",
       codeHash: crypto.createHash("sha256").update("000000").digest("hex"),
@@ -325,7 +331,7 @@ describe("ParticipantLoginService.verifyOtp", () => {
     await expect(
       ParticipantLoginService.verifyOtp({
         festivalSlug: festival.slug,
-        studentSlug: student.profileSlug,
+        participantSlug: participant.profileSlug,
         otp: "123456",
       }),
     ).rejects.toBeInstanceOf(AppError);
@@ -333,8 +339,8 @@ describe("ParticipantLoginService.verifyOtp", () => {
   });
 
   it("mints session on correct OTP", async () => {
-    const student = makeStudent({ isTeamLeader: true });
-    mockStudentFindFirst.mockResolvedValueOnce(student);
+    const participant = makeParticipant({ isTeamLeader: true });
+    mockParticipantFindFirst.mockResolvedValueOnce(participant);
     mockOtpFindFirst.mockResolvedValueOnce({
       id: "otp-1",
       codeHash: crypto.createHash("sha256").update("123456").digest("hex"),
@@ -345,7 +351,7 @@ describe("ParticipantLoginService.verifyOtp", () => {
 
     const result = await ParticipantLoginService.verifyOtp({
       festivalSlug: festival.slug,
-      studentSlug: student.profileSlug,
+      participantSlug: participant.profileSlug,
       otp: "123456",
     });
 
@@ -354,8 +360,8 @@ describe("ParticipantLoginService.verifyOtp", () => {
   });
 
   it("locks out after OTP_MAX_ATTEMPTS", async () => {
-    const student = makeStudent({ isTeamLeader: true });
-    mockStudentFindFirst.mockResolvedValueOnce(student);
+    const participant = makeParticipant({ isTeamLeader: true });
+    mockParticipantFindFirst.mockResolvedValueOnce(participant);
     mockOtpFindFirst.mockResolvedValueOnce({
       id: "otp-1",
       codeHash: "anything",
@@ -367,7 +373,7 @@ describe("ParticipantLoginService.verifyOtp", () => {
     await expect(
       ParticipantLoginService.verifyOtp({
         festivalSlug: festival.slug,
-        studentSlug: student.profileSlug,
+        participantSlug: participant.profileSlug,
         otp: "123456",
       }),
     ).rejects.toBeInstanceOf(AppError);

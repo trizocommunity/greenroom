@@ -25,11 +25,6 @@ export {
   useUpdateFestival,
 } from "./festivals";
 export {
-  useCreateGalleryItem,
-  useDeleteGalleryItem,
-  useGallery,
-} from "./gallery";
-export {
   useCreateGroup,
   useDeleteGroup,
   useGroups,
@@ -41,6 +36,11 @@ export {
   useJudges,
   useUpdateJudge,
 } from "./judges";
+export {
+  useCreateMediaItem,
+  useDeleteMediaItem,
+  useMedia,
+} from "./media";
 export { useAddMember, useMembers, useRemoveMember } from "./members";
 export { useJoinedFestivals, useMyFestivals } from "./my-festival";
 export {
@@ -59,6 +59,16 @@ export {
   useRequestAccess,
   useVerifyOtp as useVerifyParticipantOtp,
 } from "./participant-login";
+export {
+  useBulkCreateParticipants,
+  useCreateParticipant,
+  useDeleteParticipant,
+  useExportExcelParticipants,
+  useParticipant,
+  useParticipants,
+  useUpdateParticipant,
+  useValidateParticipants,
+} from "./participants";
 export {
   useFestivalPayment,
   useInitiatePayment,
@@ -91,14 +101,14 @@ export {
   useBulkCreateProgrammes,
   useClearAllPosterTemplates,
   useCloseProgrammeReporting,
-  useCreateProgrammeJudgeLink,
   useCreateScheduleEntry,
   useDeletePosterTemplateDraft,
   useDeleteScheduleEntry,
   useDeleteTeamAssignment,
   useEditorPreviewBindings,
-  useExportStudentsQrPdf,
+  useExportParticipantsQrPdf,
   useListPosterTemplates,
+  useLogoutStagePortal,
   useMarkProgrammeAssignmentsBulk,
   useMarkProgrammeParticipant,
   usePosterTemplate,
@@ -111,9 +121,15 @@ export {
   useReportingStats,
   useResetProgrammeReporting,
   useResetSpinCodeLetters,
+  useResetStagePortalCredential,
+  useRestartJudgment,
   useSaveBasicProgrammeScores,
   useSavePosterTemplateDraft,
-  useScanAndReportStudent,
+  useScanAndReportParticipant,
+  useStagePortalCredential,
+  useStagePortalData,
+  useStagePortalLogin,
+  useStartJudgment,
   useStartProgrammeReporting,
   useSubmitGroupJudgeScores,
   useSubmitJudgeScores,
@@ -121,7 +137,6 @@ export {
   useUpdateFestivalBranding,
   useUpdateFestivalSettings,
   useUpdateScheduleEntry,
-  useVerifyJudgmentLinkPin,
 } from "./server-actions";
 export {
   useAssignStageManager,
@@ -135,18 +150,8 @@ export {
   useUpdateStage,
 } from "./stages";
 export {
-  useBulkCreateStudents,
-  useCreateStudent,
-  useDeleteStudent,
-  useExportExcelStudents,
-  useStudent,
-  useStudents,
-  useUpdateStudent,
-  useValidateStudents,
-} from "./students";
-export {
   useTeamLeaderDashboard as useTeamLeaderDashboardData,
   useTeamLeaderFestivals as useTeamLeaderFestivalsDashboard,
-  useTeamLeaderStudents as useTeamLeaderStudentsData,
+  useTeamLeaderParticipants as useTeamLeaderParticipantsData,
 } from "./team-leader-dashboard";
 export { useCloudinaryUpload, useDeleteFile, useUploadFile } from "./upload";

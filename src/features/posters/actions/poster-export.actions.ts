@@ -8,11 +8,11 @@ import {
   category as categoryTable,
   festival as festivalTable,
   group as groupTable,
+  participant as participantTable,
   programmeAssignment,
   programmeCodeLetter,
   programme as programmeTable,
   result as resultTable,
-  student as studentTable,
 } from "@/core/database/schema";
 import {
   AppError,
@@ -80,7 +80,7 @@ export async function getResultPosterExportPayloadAction(
         position: resultTable.position,
         grade: resultTable.grade,
         points: resultTable.points,
-        studentName: studentTable.name,
+        participantName: participantTable.name,
         groupName: groupTable.name,
         programmeType: programmeTable.type,
       })
@@ -94,8 +94,8 @@ export async function getResultPosterExportPayloadAction(
         eq(programmeAssignment.programmeId, programmeTable.id),
       )
       .leftJoin(
-        studentTable,
-        eq(programmeAssignment.studentId, studentTable.id),
+        participantTable,
+        eq(programmeAssignment.participantId, participantTable.id),
       )
       .leftJoin(groupTable, eq(programmeAssignment.groupId, groupTable.id))
       .where(
@@ -117,7 +117,7 @@ export async function getResultPosterExportPayloadAction(
       name:
         programmeType === "GROUP"
           ? (r.groupName ?? "Team")
-          : (r.studentName ?? r.groupName ?? "—"),
+          : (r.participantName ?? r.groupName ?? "—"),
       team: r.groupName ?? "—",
       grade: r.grade,
       points: r.points ?? 0,

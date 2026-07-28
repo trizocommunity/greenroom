@@ -41,13 +41,13 @@ interface DashboardRightSidebarProps {
   daysRemaining?: number | null;
   userRole?: FestivalRole | string;
   usage?: {
-    studentsCount: number;
+    participantsCount: number;
     programmesCount: number;
     stagesCount?: number;
     storageUsedMB: number;
   };
   limits?: {
-    maxStudents: number;
+    maxParticipants: number;
     maxProgrammes: number;
     maxStages?: number;
     maxStorageMB: number;
@@ -177,13 +177,13 @@ export function DashboardRightSidebar({
                 <LimitationCard
                   tierLabel={tierLabel || "Standard"}
                   limits={{
-                    maxStudents: limits.maxStudents,
+                    maxParticipants: limits.maxParticipants,
                     maxProgrammes: limits.maxProgrammes,
                     maxStages: limits.maxStages,
                     maxStorageMB: limits.maxStorageMB,
                   }}
                   usage={{
-                    studentsCount: usage.studentsCount,
+                    participantsCount: usage.participantsCount,
                     programmesCount: usage.programmesCount,
                     stagesCount: usage.stagesCount,
                     storageUsedMB: usage.storageUsedMB,

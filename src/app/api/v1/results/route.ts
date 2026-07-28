@@ -25,7 +25,7 @@ const handler = createProtectedHandler({
           with: {
             programmeAssignment: {
               with: {
-                student: true,
+                participant: true,
                 group: true,
               },
             },

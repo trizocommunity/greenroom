@@ -2,11 +2,11 @@ import { and, desc, eq, gte, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
+  participant as participantTable,
   programme as programmeTable,
-  student as studentTable,
 } from "@/core/database/schema";
 
-export type StudentSummaryForStudentPage = {
+export type ParticipantSummaryForParticipantPage = {
   id: string;
   name: string;
   profileSlug: string | null;
@@ -23,14 +23,14 @@ type DerivedTeamContextKey = {
   teamNumber: number;
 };
 
-export async function getTeamLeaderMyStudents(
+export async function getTeamLeaderMyParticipants(
   festivalId: string,
-  leaderStudentId: string,
+  leaderParticipantId: string,
 ) {
-  const leader = await db.query.student.findFirst({
+  const leader = await db.query.participant.findFirst({
     where: and(
-      eq(studentTable.id, leaderStudentId),
-      eq(studentTable.festivalId, festivalId),
+      eq(participantTable.id, leaderParticipantId),
+      eq(participantTable.festivalId, festivalId),
     ),
     with: {
       group: { columns: { id: true, name: true, color: true } },
@@ -44,7 +44,7 @@ export async function getTeamLeaderMyStudents(
 
   if (!leader?.groupId) {
     return {
-      myStudents: [] as StudentSummaryForStudentPage[],
+      myParticipants: [] as ParticipantSummaryForParticipantPage[],
       derivedTeamContexts: [] as DerivedTeamContextKey[],
     };
   }
@@ -52,7 +52,7 @@ export async function getTeamLeaderMyStudents(
   const derivedContextsRows = await db.query.programmeAssignment.findMany({
     where: and(
       eq(assignmentTable.festivalId, festivalId),
-      eq(assignmentTable.studentId, leaderStudentId),
+      eq(assignmentTable.participantId, leaderParticipantId),
       gte(assignmentTable.teamNumber, 1),
       isNotNull(assignmentTable.groupId),
     ),
@@ -79,7 +79,10 @@ export async function getTeamLeaderMyStudents(
   }
   const derivedTeamContexts = Array.from(contextsMap.values());
 
-  const myStudentsMap = new Map<string, StudentSummaryForStudentPage>();
+  const myParticipantsMap = new Map<
+    string,
+    ParticipantSummaryForParticipantPage
+  >();
 
   if (derivedTeamContexts.length > 0) {
     for (const ctx of derivedTeamContexts) {
@@ -89,10 +92,10 @@ export async function getTeamLeaderMyStudents(
           eq(assignmentTable.programmeId, ctx.programmeId),
           eq(assignmentTable.groupId, ctx.groupId),
           eq(assignmentTable.teamNumber, ctx.teamNumber),
-          isNotNull(assignmentTable.studentId),
+          isNotNull(assignmentTable.participantId),
         ),
         with: {
-          student: {
+          participant: {
             with: {
               group: { columns: { id: true, name: true, color: true } },
               category: { columns: { id: true, name: true, type: true } },
@@ -102,61 +105,61 @@ export async function getTeamLeaderMyStudents(
       });
 
       for (const p of participants) {
-        if (!p.student) continue;
-        myStudentsMap.set(p.student.id, p.student as any);
+        if (!p.participant) continue;
+        myParticipantsMap.set(p.participant.id, p.participant as any);
       }
     }
   }
 
-  if (myStudentsMap.size === 0) {
-    const groupStudents = await db.query.student.findMany({
+  if (myParticipantsMap.size === 0) {
+    const groupParticipants = await db.query.participant.findMany({
       where: and(
-        eq(studentTable.festivalId, festivalId),
-        eq(studentTable.groupId, leader.groupId),
+        eq(participantTable.festivalId, festivalId),
+        eq(participantTable.groupId, leader.groupId),
       ),
       with: {
         group: { columns: { id: true, name: true, color: true } },
         category: { columns: { id: true, name: true, type: true } },
       },
-      orderBy: [desc(studentTable.createdAt)],
+      orderBy: [desc(participantTable.createdAt)],
     });
 
-    for (const s of groupStudents) myStudentsMap.set(s.id, s as any);
+    for (const s of groupParticipants) myParticipantsMap.set(s.id, s as any);
   }
 
   return {
-    myStudents: Array.from(myStudentsMap.values()),
+    myParticipants: Array.from(myParticipantsMap.values()),
     derivedTeamContexts,
   };
 }
 
-export async function getTeamLeaderGroupStudentsForSelection(
+export async function getTeamLeaderGroupParticipantsForSelection(
   festivalId: string,
-  leaderStudentId: string,
+  leaderParticipantId: string,
 ) {
-  const leader = await db.query.student.findFirst({
+  const leader = await db.query.participant.findFirst({
     where: and(
-      eq(studentTable.id, leaderStudentId),
-      eq(studentTable.festivalId, festivalId),
+      eq(participantTable.id, leaderParticipantId),
+      eq(participantTable.festivalId, festivalId),
     ),
     columns: { groupId: true },
   });
 
   if (!leader?.groupId) {
-    return { groupStudents: [] as StudentSummaryForStudentPage[] };
+    return { groupParticipants: [] as ParticipantSummaryForParticipantPage[] };
   }
 
-  const groupStudents = await db.query.student.findMany({
+  const groupParticipants = await db.query.participant.findMany({
     where: and(
-      eq(studentTable.festivalId, festivalId),
-      eq(studentTable.groupId, leader.groupId),
+      eq(participantTable.festivalId, festivalId),
+      eq(participantTable.groupId, leader.groupId),
     ),
     with: {
       group: { columns: { id: true, name: true, color: true } },
       category: { columns: { id: true, name: true, type: true } },
     },
-    orderBy: [desc(studentTable.createdAt)],
+    orderBy: [desc(participantTable.createdAt)],
   });
 
-  return { groupStudents: groupStudents as any[] };
+  return { groupParticipants: groupParticipants as any[] };
 }

@@ -36,7 +36,7 @@ export function ReportingRosterTable({
         <div className="grid grid-cols-12 border-b bg-muted/40 px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
           <div className="col-span-1 flex justify-center">Present</div>
           <div className="col-span-6">
-            {programmeType === "GROUP" ? "Team" : "Student"}
+            {programmeType === "GROUP" ? "Team" : "Participant"}
           </div>
           <div className="col-span-2">Group</div>
           <div className="col-span-3 text-right">Code (spin)</div>

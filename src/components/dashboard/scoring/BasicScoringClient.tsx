@@ -38,7 +38,7 @@ import { getGradeBadgeColor } from "@/features/results/services/results-calculat
 type Assignment = {
   id: string;
   teamNumber: number;
-  student?: { name: string; chestNumber?: string | null } | null;
+  participant?: { name: string; chestNumber?: string | null } | null;
   group?: { id: string; name: string } | null;
   result?: {
     points?: number | null;
@@ -73,7 +73,7 @@ function getTeamLabel(assignment: Assignment) {
     const tn = assignment.teamNumber || 1;
     return `${assignment.group.name}${tn > 1 ? ` (Team ${tn})` : ""}`;
   }
-  return assignment.student?.name ?? "Unknown";
+  return assignment.participant?.name ?? "Unknown";
 }
 
 function getProgrammeScoringProgress(prog: Programme) {
@@ -145,8 +145,8 @@ export function BasicScoringClient({
     if (selected.type === "INDIVIDUAL") {
       return selected.assignments.map((a) => ({
         key: a.id,
-        label: a.student?.name ?? "Unknown",
-        sub: a.student?.chestNumber ? `#${a.student.chestNumber}` : "",
+        label: a.participant?.name ?? "Unknown",
+        sub: a.participant?.chestNumber ? `#${a.participant.chestNumber}` : "",
         members: null as string | null,
         assignment: a,
       }));
@@ -158,7 +158,7 @@ export function BasicScoringClient({
     for (const a of selected.assignments) {
       const key = getTeamIdentifier(a);
       const existing = byTeam.get(key);
-      const name = a.student?.name ?? "Member";
+      const name = a.participant?.name ?? "Member";
       if (existing) {
         existing.members.push(name);
       } else {

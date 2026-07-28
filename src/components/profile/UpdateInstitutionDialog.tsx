@@ -214,7 +214,7 @@ export function UpdateInstitutionDialog({
                     <SelectContent>
                       {SIZE_RANGES.map((size) => (
                         <SelectItem key={size.value} value={size.value}>
-                          {size.label} students
+                          {size.label} participants
                         </SelectItem>
                       ))}
                     </SelectContent>

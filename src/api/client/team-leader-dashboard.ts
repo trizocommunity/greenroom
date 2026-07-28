@@ -32,12 +32,12 @@ export function useTeamLeaderDashboard() {
   });
 }
 
-export function useTeamLeaderStudents() {
+export function useTeamLeaderParticipants() {
   return useQuery<unknown>({
-    queryKey: queryKeys.teamLeader.students,
+    queryKey: queryKeys.teamLeader.participants,
     queryFn: async () => {
       const response = await apiClient.get<ApiResponse<unknown>>(
-        "/team-leader/students",
+        "/team-leader/participants",
       );
       return handleApiResponse(response.data);
     },

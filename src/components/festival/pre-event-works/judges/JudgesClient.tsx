@@ -9,8 +9,8 @@ import {
   MoreVertical,
   Pencil,
   Plus,
-  Trash2,
   Search,
+  Trash2,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -21,6 +21,7 @@ import {
   useUpdateJudge,
 } from "@/api/client";
 import { useStages } from "@/api/client/stages";
+import { StagePickerCards } from "@/components/festival/stage-assignment/StagePickerCards";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
@@ -43,7 +44,6 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ERROR_MESSAGES } from "@/core/errors/errors";
-import { StagePickerCards } from "@/components/festival/stage-assignment/StagePickerCards";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 
 type JudgeRow = {
@@ -255,7 +255,11 @@ export function JudgesClient({
               </Button>
             )}
           </div>
-          <Button onClick={openCreate} disabled={isReadOnly} className="shrink-0 h-9">
+          <Button
+            onClick={openCreate}
+            disabled={isReadOnly}
+            className="shrink-0 h-9"
+          >
             <Plus className="h-4 w-4 mr-2" />
             Add Judge
           </Button>

@@ -125,7 +125,7 @@ export function ProgrammesClient({
       groupCount,
       maxParticipantsPerGroup: programme.maxParticipantsPerGroup,
       maxTeamsPerGroup: programme.maxTeamsPerGroup,
-      maxStudentsPerTeam: programme.maxStudentsPerTeam,
+      maxParticipantsPerTeam: programme.maxParticipantsPerTeam,
     });
     return {
       label: getAssignmentProgressLabel({ assignedCount, expectedCount }),
@@ -143,7 +143,7 @@ export function ProgrammesClient({
               Programmes
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
-              Create programmes (events) and assign students or teams.
+              Create programmes (events) and assign participants or teams.
             </p>
           </div>
         )}
@@ -153,14 +153,14 @@ export function ProgrammesClient({
             description="Programmes are the events or competitions in your festival."
           >
             <p className="text-sm text-muted-foreground">
-              <strong>Type:</strong> Individual = one student per entry; Team =
-              one team per entry (multiple members).{" "}
+              <strong>Type:</strong> Individual = one participant per entry;
+              Team = one team per entry (multiple members).{" "}
               <strong>Stage type:</strong> Stage or Off-Stage is for
               organisation only.
             </p>
             <p className="text-sm text-muted-foreground">
               Create categories first, then add programmes. After that, assign
-              students or teams from the Assignments page.
+              participants or teams from the Assignments page.
             </p>
           </HowItWorksButton>
           {categories.length === 0 ? (
@@ -403,7 +403,7 @@ export function ProgrammesClient({
                           </span>{" "}
                           teams per group,{" "}
                           <span className="font-medium text-foreground">
-                            {programme.maxStudentsPerTeam}
+                            {programme.maxParticipantsPerTeam}
                           </span>{" "}
                           members per team
                         </span>
@@ -489,7 +489,7 @@ export function ProgrammesClient({
                         <div className="flex flex-col">
                           <span>Max Teams: {programme.maxTeamsPerGroup}</span>
                           <span className="text-muted-foreground">
-                            Size: {programme.maxStudentsPerTeam}
+                            Size: {programme.maxParticipantsPerTeam}
                           </span>
                         </div>
                       )}

@@ -8,8 +8,8 @@ import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
-  judge as judgeTable,
   judgeStageAssignment,
+  judge as judgeTable,
   stage as stageTable,
 } from "@/core/database/schema";
 

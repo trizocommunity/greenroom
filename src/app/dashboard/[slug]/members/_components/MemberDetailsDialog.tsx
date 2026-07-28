@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { CheckCircle2, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import { StagePickerCards } from "@/components/festival/stage-assignment/StagePickerCards";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,8 +15,8 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { parseStoredInstant } from "@/core/utils/date-time";
 import { cn } from "@/core/utils/cn";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import type { Member } from "./types";
 
 interface MemberDetailsDialogProps {
@@ -54,7 +54,8 @@ export function MemberDetailsDialog({
       .join("")
       .toUpperCase() || "U";
 
-  const [selectedStages, setSelectedStages] = useState<string[]>(assignedStageIds);
+  const [selectedStages, setSelectedStages] =
+    useState<string[]>(assignedStageIds);
 
   useEffect(() => {
     if (open) {
@@ -64,11 +65,12 @@ export function MemberDetailsDialog({
 
   const toggleStage = (id: string) => {
     setSelectedStages((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id],
     );
   };
 
-  const isAllAssigned = stages.length > 0 && selectedStages.length === stages.length;
+  const isAllAssigned =
+    stages.length > 0 && selectedStages.length === stages.length;
 
   const toggleAllStages = () => {
     if (isAllAssigned) {
@@ -124,7 +126,8 @@ export function MemberDetailsDialog({
           {member.role === "STAGE_MANAGER" && stages && (
             <div className="space-y-2 mt-2">
               <div className="font-semibold text-sm">
-                Stages {canAssignStages && <span className="text-destructive">*</span>}
+                Stages{" "}
+                {canAssignStages && <span className="text-destructive">*</span>}
               </div>
               {stages.length === 0 ? (
                 <div className="text-sm text-muted-foreground italic">

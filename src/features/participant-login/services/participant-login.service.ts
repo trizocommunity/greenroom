@@ -32,14 +32,14 @@ export const ParticipantLoginService = {
   }): Promise<
     | {
         status: "AUTHENTICATED";
-        studentSlug: string;
+        participantSlug: string;
         festivalName: string;
         expiresAt: Date;
         rawToken: string;
       }
     | {
         status: "OTP_REQUIRED";
-        studentSlug: string;
+        participantSlug: string;
         festivalName: string;
         debugOtp?: string;
       }
@@ -49,7 +49,7 @@ export const ParticipantLoginService = {
       throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
     }
 
-    const studentData = await db.query.student.findFirst({
+    const participantData = await db.query.participant.findFirst({
       where: (s: any, { eq, and }: any) =>
         and(
           eq(s.festivalId, festival.id),
@@ -60,45 +60,45 @@ export const ParticipantLoginService = {
       },
     });
 
-    if (!studentData) {
-      throw new AppError(ERROR_MESSAGES.STUDENT_NOT_FOUND);
+    if (!participantData) {
+      throw new AppError(ERROR_MESSAGES.PARTICIPANT_NOT_FOUND);
     }
 
-    if (!studentData.profileSlug) {
-      throw new AppError("Student has no profile slug assigned.");
+    if (!participantData.profileSlug) {
+      throw new AppError("Participant has no profile slug assigned.");
     }
 
     if (input.identifierKind === "DOB") {
-      if (!studentData.dateOfBirth) {
-        throw new AppError(ERROR_MESSAGES.STUDENT_NOT_FOUND);
+      if (!participantData.dateOfBirth) {
+        throw new AppError(ERROR_MESSAGES.PARTICIPANT_NOT_FOUND);
       }
-      const studentDob = new Date(studentData.dateOfBirth)
+      const participantDob = new Date(participantData.dateOfBirth)
         .toISOString()
         .split("T")[0];
       const inputDob = new Date(input.identifierValue)
         .toISOString()
         .split("T")[0];
-      if (studentDob !== inputDob) {
-        throw new AppError(ERROR_MESSAGES.STUDENT_NOT_FOUND);
+      if (participantDob !== inputDob) {
+        throw new AppError(ERROR_MESSAGES.PARTICIPANT_NOT_FOUND);
       }
     } else if (input.identifierKind === "GROUP") {
-      if (studentData.groupId !== input.identifierValue) {
-        throw new AppError(ERROR_MESSAGES.STUDENT_NOT_FOUND);
+      if (participantData.groupId !== input.identifierValue) {
+        throw new AppError(ERROR_MESSAGES.PARTICIPANT_NOT_FOUND);
       }
       const festivalGroups = await findGroupsByFestival(festival.id);
       if (!festivalGroups.some((g) => g.id === input.identifierValue)) {
-        throw new AppError(ERROR_MESSAGES.STUDENT_NOT_FOUND);
+        throw new AppError(ERROR_MESSAGES.PARTICIPANT_NOT_FOUND);
       }
     }
 
-    if (!studentData.isTeamLeader) {
+    if (!participantData.isTeamLeader) {
       const rawToken = createRawSessionToken();
       const expiresAt = getSessionExpiryDate();
       const tokenHash = getTokenHash(rawToken);
 
       await db.insert(participantSession).values({
         id: crypto.randomUUID(),
-        studentId: studentData.id,
+        participantId: participantData.id,
         festivalId: festival.id,
         tokenHash,
         expiresAt: expiresAt.toISOString(),
@@ -106,7 +106,7 @@ export const ParticipantLoginService = {
 
       return {
         status: "AUTHENTICATED",
-        studentSlug: studentData.profileSlug,
+        participantSlug: participantData.profileSlug,
         festivalName: festival.name,
         expiresAt,
         rawToken,
@@ -114,7 +114,7 @@ export const ParticipantLoginService = {
     }
 
     // Team Leader
-    if (!studentData.email) {
+    if (!participantData.email) {
       throw new AppError(
         "Team leader must have a valid email address to receive OTP.",
       );
@@ -123,7 +123,10 @@ export const ParticipantLoginService = {
     const tenMinsAgo = new Date(Date.now() - OTP_TTL_MS).toISOString();
     const recentRequests = await db.query.participantOtp.findMany({
       where: (otp: any, { eq, and, gt }: any) =>
-        and(eq(otp.studentId, studentData.id), gt(otp.createdAt, tenMinsAgo)),
+        and(
+          eq(otp.participantId, participantData.id),
+          gt(otp.createdAt, tenMinsAgo),
+        ),
     });
 
     if (recentRequests.length >= OTP_MAX_REQUESTS_PER_10_MIN) {
@@ -137,7 +140,7 @@ export const ParticipantLoginService = {
 
     await db.insert(participantOtp).values({
       id: crypto.randomUUID(),
-      studentId: studentData.id,
+      participantId: participantData.id,
       codeHash,
       expiresAt: expiresAt.toISOString(),
       updatedAt: now,
@@ -148,7 +151,7 @@ export const ParticipantLoginService = {
 
     return {
       status: "OTP_REQUIRED",
-      studentSlug: studentData.profileSlug,
+      participantSlug: participantData.profileSlug,
       festivalName: festival.name,
       debugOtp,
     };
@@ -156,14 +159,14 @@ export const ParticipantLoginService = {
 
   async verifyOtp(input: {
     festivalSlug: string;
-    studentSlug: string;
+    participantSlug: string;
     otp: string;
     ipAddress?: string | null;
     userAgent?: string | null;
   }): Promise<{
     rawToken: string;
     expiresAt: Date;
-    studentSlug: string;
+    participantSlug: string;
     isTeamLeader: boolean;
   }> {
     const festival = await findFestivalBySlug(input.festivalSlug);
@@ -174,23 +177,23 @@ export const ParticipantLoginService = {
       );
     }
 
-    const studentData = await db.query.student.findFirst({
+    const participantData = await db.query.participant.findFirst({
       where: (s: any, { eq, and }: any) =>
         and(
           eq(s.festivalId, festival.id),
-          eq(s.profileSlug, input.studentSlug),
+          eq(s.profileSlug, input.participantSlug),
         ),
     });
 
-    if (!studentData) {
-      throw new AppError(ERROR_MESSAGES.STUDENT_NOT_FOUND);
+    if (!participantData) {
+      throw new AppError(ERROR_MESSAGES.PARTICIPANT_NOT_FOUND);
     }
 
-    if (!studentData.profileSlug) {
-      throw new AppError("Student has no profile slug assigned.");
+    if (!participantData.profileSlug) {
+      throw new AppError("Participant has no profile slug assigned.");
     }
 
-    if (!studentData.isTeamLeader) {
+    if (!participantData.isTeamLeader) {
       throw new AppError("Not a team leader.");
     }
 
@@ -198,7 +201,7 @@ export const ParticipantLoginService = {
     const latestOtp = await db.query.participantOtp.findFirst({
       where: (otp: any, { eq, and, isNull, gt }: any) =>
         and(
-          eq(otp.studentId, studentData.id),
+          eq(otp.participantId, participantData.id),
           isNull(otp.consumedAt),
           gt(otp.expiresAt, now),
         ),
@@ -237,7 +240,7 @@ export const ParticipantLoginService = {
 
     await db.insert(participantSession).values({
       id: crypto.randomUUID(),
-      studentId: studentData.id,
+      participantId: participantData.id,
       festivalId: festival.id,
       tokenHash,
       expiresAt: expiresAt.toISOString(),
@@ -245,7 +248,12 @@ export const ParticipantLoginService = {
       userAgent: input.userAgent,
     });
 
-    return { rawToken, expiresAt, studentSlug: input.studentSlug, isTeamLeader: Boolean(studentData.isTeamLeader) };
+    return {
+      rawToken,
+      expiresAt,
+      participantSlug: input.participantSlug,
+      isTeamLeader: Boolean(participantData.isTeamLeader),
+    };
   },
 
   async revokeSessionByRawToken(rawToken: string): Promise<void> {

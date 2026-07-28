@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useCategories, useDeleteCategory } from "@/api/client/categories";
-import { useStudents } from "@/api/client/students";
+import { useParticipants } from "@/api/client/participants";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
@@ -40,16 +40,16 @@ export function CategoriesClient({
   const { data: categories = [], isLoading: isCategoriesLoading } =
     useCategories(festivalId);
   const deleteCategory = useDeleteCategory();
-  const { data: students = [], isLoading: isStudentsLoading } =
-    useStudents(festivalId);
+  const { data: participants = [], isLoading: isParticipantsLoading } =
+    useParticipants(festivalId);
   const { isReadOnly } = useFestivalReadOnly();
   const [actionCategory, setActionCategory] = useState<{
     category: any;
     action: "view" | "edit" | "delete";
   } | null>(null);
 
-  const isLoading = isCategoriesLoading || isStudentsLoading;
-  const totalStudents = students.length;
+  const isLoading = isCategoriesLoading || isParticipantsLoading;
+  const totalParticipants = participants.length;
 
   if (isLoading) {
     return (
@@ -79,8 +79,8 @@ export function CategoriesClient({
         {categories.map((category: any) => {
           const isGeneral = category.type === "GENERAL";
           const count = isGeneral
-            ? totalStudents
-            : (category._count?.students ?? 0);
+            ? totalParticipants
+            : (category._count?.participants ?? 0);
           const programmeCount = category._count?.programmes ?? 0;
 
           return (
@@ -161,7 +161,7 @@ export function CategoriesClient({
                       </span>
                       <span className="text-muted-foreground">
                         {" "}
-                        student{count !== 1 ? "s" : ""}
+                        participant{count !== 1 ? "s" : ""}
                       </span>
                     </span>
                   </div>
