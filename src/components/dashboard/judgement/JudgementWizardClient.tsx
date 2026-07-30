@@ -559,11 +559,11 @@ export function JudgementWizardClient({
               return (
                 <Card
                   key={p.id}
-                  className="flex flex-col overflow-hidden rounded-lg bg-background/40 transition-colors hover:bg-muted/20"
+                  className="flex flex-col overflow-hidden rounded-xl bg-background/40 transition-colors hover:bg-muted/20"
                 >
-                  <CardHeader className="space-y-1 p-2 pb-1.5 sm:p-3 sm:pb-1.5">
+                  <CardHeader className="space-y-1.5 p-3 pb-2 sm:p-4 sm:pb-2">
                     <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="text-[13px] font-semibold leading-snug line-clamp-2 sm:text-sm">
+                      <CardTitle className="text-sm font-semibold leading-snug line-clamp-2 sm:text-base">
                         {p.name}
                       </CardTitle>
                       <Badge
@@ -573,13 +573,12 @@ export function JudgementWizardClient({
                         {p.status}
                       </Badge>
                     </div>
-                    {p.programmeCategory ? (
-                      <p className="text-[11px] text-muted-foreground">
-                        Category: {p.programmeCategory}
-                      </p>
-                    ) : null}
+                    <p className="text-[11px] text-muted-foreground">
+                      {p.programmeType === "GROUP" ? "Group" : "Individual"}
+                      {p.programmeCategory ? ` · ${p.programmeCategory}` : ""}
+                    </p>
                   </CardHeader>
-                  <CardContent className="flex flex-1 flex-col gap-1.5 p-2 pt-0 sm:gap-2 sm:p-3 sm:pt-0">
+                  <CardContent className="flex flex-1 flex-col gap-2 p-3 pt-0 sm:gap-2.5 sm:p-4 sm:pt-0">
                     {p.reportingDetails ? (
                       <ProgrammeProgressFunnel
                         assigned={p.reportingDetails.assignedCount}
