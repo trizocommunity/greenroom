@@ -399,7 +399,10 @@ export default async function OverviewWidgets({
       </TooltipProvider>
 
       {/* Live links */}
-      <LiveLinksCard slug={slug} />
+      <LiveLinksCard
+        slug={slug}
+        publicSiteEnabled={festival.publicSiteEnabled ?? false}
+      />
 
       {/* Bottom section: Quick Actions */}
       <Card>

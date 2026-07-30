@@ -76,6 +76,7 @@ import {
   localWallClockToDate,
   parseStoredScheduleInstant,
 } from "@/features/schedule/utils/schedule-datetime";
+import { Badge } from "@/components/ui/badge";
 
 const SESSION_TYPE_LABELS: Record<string, string> = {
   GENERAL: "General",
@@ -349,9 +350,9 @@ export function ScheduleClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h2 className="text-2xl font-bold tracking-tight">Schedule</h2>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto shrink-0">
+        <div className="flex items-center gap-2 shrink-0 overflow-x-auto pb-1 md:pb-0">
           <HowItWorksButton
             title="How the Schedule works"
             description="Build your festival programme by day, time, and stage."
@@ -424,7 +425,8 @@ export function ScheduleClient({
             disabled={!canAdd}
           >
             <Plus className="h-4 w-4" />
-            Add to schedule
+            <span className="hidden md:inline">Add to schedule</span>
+            <span className="md:hidden">Add</span>
           </Button>
         </div>
       </div>
@@ -514,7 +516,7 @@ export function ScheduleClient({
         <div className="space-y-4">
           {/* Day tabs */}
           <div
-            className="flex flex-wrap gap-2 border-b border-border pb-3"
+            className="flex overflow-x-auto gap-2 border-b border-border pb-3"
             role="tablist"
           >
             {sortedDays.map((dayKey, index) => {
@@ -528,7 +530,7 @@ export function ScheduleClient({
                   aria-selected={isActive}
                   onClick={() => setActiveDayKey(dayKey)}
                   className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                    "px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0",
                     isActive
                       ? "bg-primary text-primary-foreground shadow-sm"
                       : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -543,10 +545,12 @@ export function ScheduleClient({
 
           {/* Active day content */}
           {effectiveActiveDay && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex text-lg gap-2 items-center justify-between">
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <h3 className="text-lg font-semibold tracking-tight">
                   {format(parseISO(effectiveActiveDay), "EEEE, MMM d, yyyy")}
+                </h3>
+                <div className="flex items-center gap-4 flex-wrap">
                   {hasStages && !hideStageFilter && (
                     <Select
                       value={activeStageId === "" ? "__all__" : activeStageId}
@@ -569,20 +573,23 @@ export function ScheduleClient({
                       </SelectContent>
                     </Select>
                   )}
-                </CardTitle>
-                <CardDescription className="mt-0!">
-                  {finalFilteredEntries.length} item
-                  {finalFilteredEntries.length !== 1 ? "s" : ""}
-                  {(activeStageId !== "" || searchQuery.trim() !== "") &&
-                    dayEntries.length !== finalFilteredEntries.length && (
-                      <span className="text-muted-foreground">
-                        {" "}
-                        matching filters
-                      </span>
-                    )}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
+                  <Badge
+                    variant="outline"
+                    className="text-sm text-muted-foreground"
+                  >
+                    {finalFilteredEntries.length} item
+                    {finalFilteredEntries.length !== 1 ? "s" : ""}
+                    {(activeStageId !== "" || searchQuery.trim() !== "") &&
+                      dayEntries.length !== finalFilteredEntries.length && (
+                        <span className="text-muted-foreground">
+                          {" "}
+                          matching filters
+                        </span>
+                      )}
+                  </Badge>
+                </div>
+              </div>
+              <div className="pt-0">
                 <motion.ul
                   className="space-y-2"
                   layout
@@ -739,8 +746,8 @@ export function ScheduleClient({
                     </motion.li>
                   ))}
                 </motion.ul>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -1374,6 +1381,7 @@ function EditEntryDialog({
     startTimeStr,
     endTimeStr,
     stageId,
+    entry.type,
   ]);
 
   const handleSubmit = async (e: React.FormEvent) => {

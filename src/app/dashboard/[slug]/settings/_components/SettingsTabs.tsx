@@ -88,10 +88,10 @@ export function SettingsTabs({
   }
 
   return (
-    <div className="flex flex-col md:flex-row lg:gap-8 items-start w-full">
-      <aside className="w-full md:w-64 shrink-0 md:order-last md:sticky md:top-[88px] md:h-[calc(100vh-120px)] overflow-y-auto hide-scrollbar mb-6 md:mb-0">
+    <div className="flex flex-col lg:flex-row lg:gap-8 items-start w-full">
+      <aside className="w-full lg:w-64 shrink-0 lg:order-last lg:sticky lg:top-[88px] lg:h-[calc(100vh-120px)] overflow-y-auto hide-scrollbar mb-6 lg:mb-0">
         {/* Mobile Dropdown */}
-        <div className="md:hidden">
+        <div className="lg:hidden">
           <Select value={currentTab} onValueChange={handleTabChange}>
             <SelectTrigger className="w-full bg-card h-12">
               <SelectValue placeholder="Select section" />
@@ -113,7 +113,7 @@ export function SettingsTabs({
         </div>
 
         {/* Desktop Nav */}
-        <nav className="hidden md:flex flex-col gap-1">
+        <nav className="hidden lg:flex flex-col gap-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentTab === item.value;

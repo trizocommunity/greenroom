@@ -57,7 +57,7 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
 
   if (activeTab === "general") {
     return (
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div>
           <h2 className="text-xl font-semibold mb-1">General</h2>
           <p className="text-sm text-muted-foreground">
@@ -105,7 +105,7 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
               but since they are external components we might just leave them in a grid below. */}
         </div>
 
-        <div className="grid gap-6">
+        <div className="grid gap-4">
           <FestivalStatusCard
             key={`status-${refreshKey}`}
             festival={festival}
@@ -118,7 +118,7 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold mb-1">Configuration</h2>
         <p className="text-sm text-muted-foreground">

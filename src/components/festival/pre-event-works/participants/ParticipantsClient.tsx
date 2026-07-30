@@ -92,7 +92,6 @@ interface ParticipantsClientProps {
 
 export function ParticipantsClient({
   festivalId,
-  festivalSlug,
   teamLeaderLimit,
   initialChestSettings,
   onChestRevalidate,
@@ -278,11 +277,11 @@ export function ParticipantsClient({
       />
 
       {teamLeaders.length > 0 && (
-        <div className="grid grid-cols-1 overflow-hidden md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="flex overflow-x-auto hide-scrollbar snap-x snap-mandatory gap-4 pb-4 px-1">
           {teamLeaders.map((tl) => (
             <Card
               key={tl.id}
-              className="min-w-[260px] md:min-w-[280px] shrink-0 group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-amber-500/30"
+              className="w-[260px] md:w-[280px] lg:w-[calc(25%-0.75rem)] snap-center shrink-0 group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-amber-500/30"
             >
               <div className="absolute top-2 right-2 p-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 <DropdownMenu>
@@ -507,134 +506,137 @@ export function ParticipantsClient({
             </span>
           </div>
         </CardHeader>
-        <CardContent className="p-0">
-          {/* Mobile: beautiful participant cards */}
-          <div className="block lg:hidden p-3 sm:p-4 space-y-3">
-            {filteredParticipants.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-3 py-14 px-6 text-center text-muted-foreground rounded-xl border border-dashed bg-muted/10">
-                <User className="h-10 w-10 text-muted-foreground/50" />
-                <p className="font-medium">No participants found</p>
-                <p className="text-sm">
-                  Try changing filters or search, or add a participant.
-                </p>
+      </Card>
+
+      {/* Mobile: beautiful participant cards */}
+      <div className="block lg:hidden space-y-3 pt-2">
+        {filteredParticipants.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-14 px-6 text-center text-muted-foreground rounded-xl border border-dashed bg-muted/10">
+            <User className="h-10 w-10 text-muted-foreground/50" />
+            <p className="font-medium">No participants found</p>
+            <p className="text-sm">
+              Try changing filters or search, or add a participant.
+            </p>
+          </div>
+        ) : (
+          sortedParticipants.map((participant: any, index: number) => (
+            <div
+              key={participant.id}
+              className={`rounded-xl border border-border/80 bg-card p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/20 active:scale-[0.99] relative`}
+            >
+              <div className="absolute top-2 left-2 flex items-center justify-center size-5 rounded-full bg-muted/60 text-[10px] font-mono font-bold text-muted-foreground border">
+                {index + 1}
               </div>
-            ) : (
-              sortedParticipants.map((participant: any, index: number) => (
-                <div
-                  key={participant.id}
-                  className={`rounded-xl border border-border/80 bg-card p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/20 active:scale-[0.99] relative`}
-                >
-                  <div className="absolute top-2 left-2 flex items-center justify-center size-5 rounded-full bg-muted/60 text-[10px] font-mono font-bold text-muted-foreground border">
-                    {index + 1}
+              <div className="flex items-start justify-between gap-3 pl-6">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start md:items-center flex-col md:flex-row md:gap-2">
+                    <h3 className="font-semibold text-[15px] leading-snug text-foreground line-clamp-1">
+                      {participant.name}
+                    </h3>
                   </div>
-                  <div className="flex items-start justify-between gap-3 pl-6">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start md:items-center flex-col md:flex-row md:gap-2">
-                        <h3 className="font-semibold text-[15px] leading-snug text-foreground line-clamp-1">
-                          {participant.name}
-                        </h3>
-                      </div>
-                      <div className="mt-2.5 rounded-lg bg-muted/40 px-3 py-2">
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                          {participant.chestNumber ? (
-                            <span className="font-mono font-medium text-primary">
-                              {participant.chestNumber}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground/80">—</span>
-                          )}
-                          <span>{participant.group?.name || "—"}</span>
-                          <span>{participant.category?.name || "—"}</span>
-                          <span className="text-muted-foreground/80">
-                            {format(
-                              parseStoredInstant(participant.createdAt),
-                              "MMM d",
-                            )}
-                          </span>
-                        </div>
-                      </div>
+                  <div className="mt-2.5 rounded-lg bg-muted/40 px-3 py-2">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      {participant.chestNumber ? (
+                        <span className="font-mono font-medium text-primary">
+                          {participant.chestNumber}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground/80">—</span>
+                      )}
+                      <span>{participant.group?.name || "—"}</span>
+                      <span>{participant.category?.name || "—"}</span>
+                      <span className="text-muted-foreground/80">
+                        {format(
+                          parseStoredInstant(participant.createdAt),
+                          "MMM d",
+                        )}
+                      </span>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                          <span className="sr-only">Actions</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-44">
+                  </div>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                      <span className="sr-only">Actions</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuItem
+                      onSelect={() =>
+                        setActionParticipant({
+                          participant,
+                          action: "view",
+                        })
+                      }
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      View Details
+                    </DropdownMenuItem>
+                    {/* View QR */}
+                    {canUseQR && (
+                      <DropdownMenuItem
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          // Use chest number for QR code
+                          const qrContent = getQrCodeContent(participant);
+                          setActionParticipant({
+                            participant: {
+                              ...participant,
+                              _profileUrl: qrContent,
+                            },
+                            action: "qr",
+                          });
+                        }}
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        View QR
+                      </DropdownMenuItem>
+                    )}
+
+                    {!isReadOnly && (
+                      <>
                         <DropdownMenuItem
                           onSelect={() =>
                             setActionParticipant({
                               participant,
-                              action: "view",
+                              action: "edit",
                             })
                           }
                         >
-                          <Eye className="h-4 w-4 mr-2" />
-                          View Details
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit
                         </DropdownMenuItem>
-                        {/* View QR */}
-                        {canUseQR && (
-                          <DropdownMenuItem
-                            onSelect={(e) => {
-                              e.preventDefault();
-                              // Use chest number for QR code
-                              const qrContent = getQrCodeContent(participant);
-                              setActionParticipant({
-                                participant: {
-                                  ...participant,
-                                  _profileUrl: qrContent,
-                                },
-                                action: "qr",
-                              });
-                            }}
-                          >
-                            <FileText className="h-4 w-4 mr-2" />
-                            View QR
-                          </DropdownMenuItem>
-                        )}
-
-                        {!isReadOnly && (
-                          <>
-                            <DropdownMenuItem
-                              onSelect={() =>
-                                setActionParticipant({
-                                  participant,
-                                  action: "edit",
-                                })
-                              }
-                            >
-                              <Pencil className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onSelect={() =>
-                                setActionParticipant({
-                                  participant,
-                                  action: "delete",
-                                })
-                              }
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-          {/* Desktop: table */}
-          <div className="hidden lg:block overflow-x-auto">
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onSelect={() =>
+                            setActionParticipant({
+                              participant,
+                              action: "delete",
+                            })
+                          }
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+      {/* Desktop: table */}
+      <Card className="hidden lg:block overflow-hidden mt-4">
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>

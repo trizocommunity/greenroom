@@ -48,9 +48,9 @@ export async function createProgrammesAndAssignments(
   db: DB,
   festivalId: string,
   categories: CreatedCategory[],
-  stages: CreatedStage[],
-  groups: CreatedGroup[],
-  participants: CreatedParticipant[],
+  _stages: CreatedStage[],
+  _groups: CreatedGroup[],
+  _participants: CreatedParticipant[],
 ): Promise<ProgrammeResult> {
   console.log("🏆 Creating Programmes...");
 

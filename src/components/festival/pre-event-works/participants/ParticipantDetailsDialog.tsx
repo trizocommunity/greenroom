@@ -272,11 +272,24 @@ export function ParticipantDetailsDialog({
                       const isGroup = assignment.programme?.type === "GROUP";
                       const isLoadingTeam = loadingTeamFor === assignment.id;
                       return (
+                        // biome-ignore lint/a11y/noStaticElementInteractions: conditional role based on isGroup
                         <div
                           key={assignment.id}
+                          role={isGroup ? "button" : undefined}
+                          tabIndex={isGroup ? 0 : undefined}
                           onClick={
                             isGroup
                               ? () => openTeamModal(assignment)
+                              : undefined
+                          }
+                          onKeyDown={
+                            isGroup
+                              ? (e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    openTeamModal(assignment);
+                                  }
+                                }
                               : undefined
                           }
                           className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl border bg-card transition-colors ${

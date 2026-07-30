@@ -74,16 +74,11 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
               key={group.id}
               className="group/card relative flex flex-col overflow-hidden rounded-xl border border-border/80 bg-card text-card-foreground shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/20"
             >
-              {/* Color accent bar */}
-              <div
-                className="absolute left-0 top-0 h-full w-1.5 shrink-0 transition-all duration-200 group-hover/card:w-2"
-                style={{ backgroundColor: groupColor }}
-              />
-
-              <div className="flex flex-1 flex-col p-4 sm:p-5 pl-5 sm:pl-6">
+              <div className="flex flex-1 flex-col p-4 sm:p-5">
                 {/* Top: name + actions */}
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: groupColor }} />
                     <h3
                       className="font-semibold text-base leading-tight text-foreground line-clamp-2"
                       title={group.name}

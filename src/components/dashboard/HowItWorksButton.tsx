@@ -57,7 +57,9 @@ export function HowItWorksButton({
               </DrawerDescription>
             )}
           </DrawerHeader>
-          <div className="space-y-4 px-4 pb-8 pt-4 text-left overflow-y-auto max-h-[60vh]">{children}</div>
+          <div className="space-y-4 pb-8 pt-4 text-left overflow-y-auto max-h-[60vh]">
+            {children}
+          </div>
         </DrawerContent>
       </Drawer>
     </TooltipProvider>
