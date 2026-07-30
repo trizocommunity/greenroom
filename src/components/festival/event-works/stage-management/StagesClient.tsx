@@ -166,11 +166,11 @@ export function StagesClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-row items-center justify-between gap-2 sm:gap-4">
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <h2 className="text-lg sm:text-2xl font-bold tracking-tight whitespace-nowrap">
-            Stage Management
-          </h2>
+      <div className="flex flex-col gap-3 sm:gap-4 mb-4">
+        <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
+          Stage Management
+        </h2>
+        <div className="flex flex-row items-center gap-2 w-full">
           <HowItWorksButton
             title="How Stage Management works"
             description="Stages are venues or slots where programmes and sessions run."
@@ -186,9 +186,7 @@ export function StagesClient({
               one stage before adding entries to the schedule.
             </p>
           </HowItWorksButton>
-        </div>
-        <div className="flex flex-row items-center gap-2 shrink min-w-0 justify-end flex-1 sm:flex-none">
-          <div className="relative flex-1 sm:w-64 min-w-0">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
             <Input
               placeholder="Search stages..."
