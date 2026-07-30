@@ -553,7 +553,7 @@ export function JudgementWizardClient({
             No programmes are ready to judge right now.
           </div>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {judgeProgrammes.map((p) => {
               const active = activeByProgrammeId.get(p.id);
               return (
@@ -561,24 +561,24 @@ export function JudgementWizardClient({
                   key={p.id}
                   className="flex flex-col overflow-hidden rounded-xl bg-background/40 transition-colors hover:bg-muted/20"
                 >
-                  <CardHeader className="space-y-1.5 p-3 pb-2 sm:p-4 sm:pb-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="text-sm font-semibold leading-snug line-clamp-2 sm:text-base">
+                  <CardHeader className="space-y-2 p-4 pb-2.5 sm:p-5 sm:pb-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <CardTitle className="text-base font-semibold leading-snug line-clamp-2 sm:text-lg">
                         {p.name}
                       </CardTitle>
                       <Badge
                         variant="secondary"
-                        className="shrink-0 text-[10px]"
+                        className="shrink-0 text-[11px]"
                       >
                         {p.status}
                       </Badge>
                     </div>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {p.programmeType === "GROUP" ? "Group" : "Individual"}
                       {p.programmeCategory ? ` · ${p.programmeCategory}` : ""}
                     </p>
                   </CardHeader>
-                  <CardContent className="flex flex-1 flex-col gap-2 p-3 pt-0 sm:gap-2.5 sm:p-4 sm:pt-0">
+                  <CardContent className="flex flex-1 flex-col gap-2.5 p-4 pt-0 sm:gap-3 sm:p-5 sm:pt-0">
                     {p.reportingDetails ? (
                       <ProgrammeProgressFunnel
                         assigned={p.reportingDetails.assignedCount}
