@@ -1,8 +1,17 @@
 "use client";
 
-import { CheckCircle2, Circle, UserRound, Users2 } from "lucide-react";
+import {
+  CheckCircle2,
+  Circle,
+  MessageSquare,
+  MessageSquarePlus,
+  UserRound,
+  UserX,
+  Users2,
+} from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { useMarkCodeLetterAbsence } from "@/api/client/server-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,9 +21,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/core/utils/cn";
 import {
   previewJudgeSubmissionSummaryAction,
@@ -22,33 +39,50 @@ import {
   submitJudgeScoresAction,
 } from "@/features/judgment/actions/judgment.actions";
 
+function AbsentToggle({
+  isAbsent,
+  disabled,
+  onToggle,
+}: {
+  isAbsent: boolean;
+  disabled?: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <Button
+      variant="outline"
+      type="button"
+      onClick={onToggle}
+      disabled={disabled}
+      className={cn(
+        "mt-1 h-auto gap-1.5 px-2 py-1 text-[11px] [&_svg]:size-3.5",
+        isAbsent
+          ? "border-amber-500/50 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
+          : "border-border/70 text-muted-foreground hover:bg-muted/40 hover:text-foreground",
+      )}
+    >
+      <UserX aria-hidden />
+      {isAbsent ? "Absent — tap to restore" : "Mark absent"}
+    </Button>
+  );
+}
+
 export type StagePortalLivePayload = {
   configId: string;
   scoreLimit: number;
   judgingMode: "SINGLE" | "GROUP";
   programme: { id: string; name: string; type: "INDIVIDUAL" | "GROUP" };
   judges: Array<{ id: string; name: string }>;
-  codeLetters: Array<{ id: string; code: string }>;
+  codeLetters: Array<{ id: string; code: string; isAbsent: boolean }>;
   existingScores: Array<{
     judgeId: string;
     codeLetterId: string;
     score: number;
+    remark?: string | null;
   }>;
+  /** Per-judge completion (all active codes scored) — drives "You've submitted". */
+  judgeCompletion?: Record<string, boolean>;
 };
-
-type SubmissionSummary =
-  | {
-      kind: "SINGLE";
-      judgeName: string;
-      rows: Array<{ code: string; score: number }>;
-    }
-  | {
-      kind: "GROUP";
-      rows: Array<{
-        code: string;
-        byJudge: Array<{ name: string; score: number }>;
-      }>;
-    };
 
 type SubmissionPhase = "idle" | "review" | "summary";
 type PolicyResultRow = {
@@ -171,8 +205,7 @@ function SubmissionSummaryView({
         <p className="mt-2 text-sm text-muted-foreground">
           {isPartial ? (
             <>
-              Thanks! Your scores are saved. Other judges still need to
-              submit.
+              Thanks! Your scores are saved. Other judges still need to submit.
             </>
           ) : (
             <>Thank you! This programme's judgment has been submitted.</>
@@ -208,187 +241,219 @@ function SubmissionSummaryView({
 function SubmissionReviewView({
   stageName,
   programmeName,
-  summary,
-  scoreLimit,
+  judgingMode,
+  judges,
+  codeLetters,
+  scoresByKey,
+  remarksByKey,
+  onRemarkChange,
+  policyRows,
   isPending,
   submitError,
-  policyRows,
   onEdit,
   onConfirm,
 }: {
   stageName: string;
   programmeName: string;
-  summary: SubmissionSummary;
-  scoreLimit: number;
+  judgingMode: "SINGLE" | "GROUP";
+  judges: Array<{ id: string; name: string }>;
+  codeLetters: Array<{ id: string; code: string }>;
+  scoresByKey: Record<string, string>;
+  remarksByKey: Record<string, string>;
+  onRemarkChange: (judgeId: string, codeLetterId: string, v: string) => void;
+  policyRows: PolicyResultRow[];
   isPending: boolean;
   submitError: string | null;
-  policyRows: PolicyResultRow[];
   onEdit: () => void;
   onConfirm: () => void;
 }) {
+  const [remarkCodeId, setRemarkCodeId] = useState<string | null>(null);
+  const policyByCode = new Map(policyRows.map((r) => [r.codeLetterId, r]));
+  const drawerCode = codeLetters.find((c) => c.id === remarkCodeId) ?? null;
+
+  const remarkCount = (codeLetterId: string) =>
+    judges.filter((j) => (remarksByKey[`${j.id}:${codeLetterId}`] ?? "").trim())
+      .length;
+
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 py-4 sm:gap-6">
-      <div className="text-center">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 pb-28">
+      <div className="pt-2 text-center">
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           {stageName}
         </p>
         <h1 className="mt-1 text-xl font-bold tracking-tight sm:text-2xl">
           Review before submit
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Confirm your scores below (max {scoreLimit} pts per score), or go
-          back to edit before final submission.
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          {programmeName}
+          {" · "}
+          {judgingMode === "GROUP"
+            ? "Full panel — all judges and code letters"
+            : `Judge: ${judges[0]?.name ?? ""}`}
         </p>
       </div>
 
-      <Card className="border-border/70 shadow-sm">
-        <CardHeader className="space-y-1 pb-2 sm:pb-3">
-          <CardTitle className="text-base">{programmeName}</CardTitle>
-          <CardDescription>
-            {summary.kind === "SINGLE" ? (
-              <>Judge: {summary.judgeName}</>
-            ) : (
-              <>Full panel — all judges and code letters</>
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3 sm:space-y-4">
-          {summary.kind === "SINGLE" ? (
-            <ul className="divide-y rounded-md border">
-              {summary.rows.map((r) => (
-                <li
-                  key={r.code}
-                  className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm"
-                >
-                  <span className="font-mono font-semibold">{r.code}</span>
-                  <span className="tabular-nums font-medium">{r.score}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <>
-              <div className="space-y-2 sm:hidden">
-                {summary.rows.map((row) => (
-                  <div
-                    key={row.code}
-                    className="rounded-md border bg-background px-3 py-2.5"
-                  >
-                    <div className="mb-2 flex items-center justify-between">
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                        Code
+      {/* Per-code result cards: scores, exact result, remarks */}
+      <div className="space-y-2.5">
+        {codeLetters.map((c) => {
+          const policy = policyByCode.get(c.id);
+          const rCount = remarkCount(c.id);
+          return (
+            <Card key={c.id} className="border-border/70 shadow-sm">
+              <CardContent className="space-y-3 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="inline-flex items-center gap-2">
+                    <span className="rounded-md border bg-muted/40 px-2.5 py-1 font-mono text-base font-bold">
+                      {c.code}
+                    </span>
+                    {policy?.grade ? (
+                      <Badge className="rounded-md bg-emerald-500/15 font-semibold text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-400">
+                        {policy.grade}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="rounded-md font-normal">
+                        No grade
+                      </Badge>
+                    )}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1 text-center">
+                      <p className="text-[9px] font-medium uppercase tracking-wide text-primary/90">
+                        Normalized
                       </p>
-                      <p className="font-mono text-base font-semibold">
-                        {row.code}
+                      <p className="tabular-nums text-sm font-bold text-primary">
+                        {policy?.points ?? "—"}
                       </p>
                     </div>
-                    <div className="space-y-1.5">
-                      {row.byJudge.map((cell) => (
-                        <div
-                          key={cell.name}
-                          className="flex items-center justify-between gap-3 text-sm"
-                        >
-                          <span className="truncate text-muted-foreground">
-                            {cell.name}
-                          </span>
-                          <span className="tabular-nums font-medium">
-                            {cell.score}
-                          </span>
-                        </div>
-                      ))}
+                    <div className="rounded-md border bg-muted/30 px-2.5 py-1 text-center">
+                      <p className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Points
+                      </p>
+                      <p className="tabular-nums text-sm font-bold">
+                        {policy?.awardPoints ?? "—"}
+                      </p>
                     </div>
-                  </div>
-                ))}
-              </div>
-              <div className="hidden overflow-x-auto rounded-md border sm:block">
-                <table className="w-full min-w-[420px] text-left text-sm">
-                  <thead className="border-b bg-muted/40">
-                    <tr>
-                      <th className="px-3 py-2 font-medium">Code</th>
-                      {summary.rows[0]?.byJudge.map((j) => (
-                        <th
-                          key={j.name}
-                          className="whitespace-nowrap px-3 py-2 font-medium"
-                        >
-                          {j.name}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {summary.rows.map((row) => (
-                      <tr key={row.code} className="border-t">
-                        <td className="px-3 py-2 font-mono font-semibold">
-                          {row.code}
-                        </td>
-                        {row.byJudge.map((cell) => (
-                          <td key={cell.name} className="px-3 py-2 tabular-nums">
-                            {cell.score}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-          <div className="space-y-2 rounded-md border bg-muted/20 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Estimated result summary
-            </p>
-            <div className="space-y-1.5 rounded-md border bg-background p-2">
-              {policyRows.map((row) => (
-                <div
-                  key={row.codeLetterId}
-                  className="flex items-center justify-between gap-3 rounded-md border bg-background px-3 py-2"
-                >
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="rounded border bg-muted/30 px-2 py-0.5 font-mono text-xs font-semibold">
-                      {row.code}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      Grade:{" "}
-                      <span className="font-medium text-foreground">
-                        {row.grade ?? "No grade"}
-                      </span>
-                    </span>
-                  </div>
-                  <div className="shrink-0 rounded-md border border-primary/40 bg-primary/10 px-3 py-1 text-right">
-                    <p className="text-[10px] font-medium uppercase tracking-wide text-primary/90">
-                      Normalized
-                    </p>
-                    <p className="tabular-nums text-sm font-semibold text-primary">
-                      {row.points}
-                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-          {submitError ? (
-            <p className="text-xs font-medium text-destructive">
-              {submitError}
-            </p>
-          ) : null}
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+
+                {/* Judge scores */}
+                <div className="flex flex-wrap gap-1.5">
+                  {judges.map((j) => (
+                    <span
+                      key={j.id}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/20 px-2.5 py-1 text-xs"
+                    >
+                      {judges.length > 1 ? (
+                        <span className="text-muted-foreground">{j.name}</span>
+                      ) : null}
+                      <span className="tabular-nums font-semibold">
+                        {scoresByKey[`${j.id}:${c.id}`] ?? "—"}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setRemarkCodeId(c.id)}
+                  className="flex w-full items-center gap-2 rounded-md border border-dashed border-border/70 px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-muted/30"
+                >
+                  {rCount > 0 ? (
+                    <MessageSquare className="h-3.5 w-3.5 text-primary" />
+                  ) : (
+                    <MessageSquarePlus className="h-3.5 w-3.5" />
+                  )}
+                  <span className="flex-1">
+                    {rCount > 0
+                      ? `${rCount} remark${rCount === 1 ? "" : "s"} added`
+                      : "Add remarks (optional)"}
+                  </span>
+                  <span className="text-primary">Edit</span>
+                </button>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {submitError ? (
+        <p className="text-center text-xs font-medium text-destructive">
+          {submitError}
+        </p>
+      ) : null}
+
+      {/* Sticky confirm footer */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 px-3 py-2 backdrop-blur-md"
+        style={{ paddingBottom: "max(0.65rem, env(safe-area-inset-bottom,0px))" }}
+      >
+        <div className="mx-auto flex max-w-3xl gap-2">
+          <Button
+            variant="outline"
+            className="h-11 flex-1"
+            onClick={onEdit}
+            disabled={isPending}
+          >
+            Edit scores
+          </Button>
+          <Button
+            className="h-11 flex-[2]"
+            onClick={onConfirm}
+            disabled={isPending}
+          >
+            {isPending ? "Submitting..." : "Confirm and submit"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Remark drawer (per judge, per code) */}
+      <Drawer
+        open={Boolean(drawerCode)}
+        onOpenChange={(o) => !o && setRemarkCodeId(null)}
+      >
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>
+              Remarks · Code{" "}
+              <span className="font-mono">{drawerCode?.code}</span>
+            </DrawerTitle>
+            <DrawerDescription>
+              Optional. Add a note for this code letter{" "}
+              {judges.length > 1 ? "per judge" : ""}.
+            </DrawerDescription>
+          </DrawerHeader>
+          <div className="max-h-[60vh] space-y-4 overflow-y-auto px-4 pb-6">
+            {drawerCode
+              ? judges.map((j) => {
+                  const key = `${j.id}:${drawerCode.id}`;
+                  return (
+                    <div key={j.id} className="space-y-1.5">
+                      {judges.length > 1 ? (
+                        <p className="text-xs font-medium text-muted-foreground">
+                          {j.name}
+                        </p>
+                      ) : null}
+                      <Textarea
+                        rows={3}
+                        placeholder="Remark (optional)…"
+                        value={remarksByKey[key] ?? ""}
+                        onChange={(e) =>
+                          onRemarkChange(j.id, drawerCode.id, e.target.value)
+                        }
+                      />
+                    </div>
+                  );
+                })
+              : null}
             <Button
-              variant="outline"
-              className="h-11 w-full sm:w-auto"
-              onClick={onEdit}
-              disabled={isPending}
+              className="w-full"
+              onClick={() => setRemarkCodeId(null)}
             >
-              Edit scores
-            </Button>
-            <Button
-              className="h-11 w-full sm:w-auto"
-              onClick={onConfirm}
-              disabled={isPending}
-            >
-              {isPending ? "Submitting..." : "Confirm and submit"}
+              Done
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
@@ -409,9 +474,6 @@ export function StagePortalScoringClient({
     "complete",
   );
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [reviewSummary, setReviewSummary] = useState<SubmissionSummary | null>(
-    null,
-  );
   const [reviewPolicyRows, setReviewPolicyRows] = useState<PolicyResultRow[]>(
     [],
   );
@@ -420,18 +482,68 @@ export function StagePortalScoringClient({
       ? payload.judges[0]!.id
       : "",
   );
-  const [scoresByKey, setScoresByKey] = useState<Record<string, string>>(
+  const [scoresByKey, setScoresByKey] = useState<Record<string, string>>(() => {
+    const out: Record<string, string> = {};
+    for (const row of payload.existingScores) {
+      out[`${row.judgeId}:${row.codeLetterId}`] = String(row.score);
+    }
+    return out;
+  });
+  const [remarksByKey, setRemarksByKey] = useState<Record<string, string>>(
     () => {
       const out: Record<string, string> = {};
       for (const row of payload.existingScores) {
-        out[`${row.judgeId}:${row.codeLetterId}`] = String(row.score);
+        if (row.remark) out[`${row.judgeId}:${row.codeLetterId}`] = row.remark;
       }
       return out;
     },
   );
+  const markAbsence = useMarkCodeLetterAbsence();
+  const [absentIds, setAbsentIds] = useState<Set<string>>(
+    () =>
+      new Set(payload.codeLetters.filter((c) => c.isAbsent).map((c) => c.id)),
+  );
+
+  // Absent code letters (reported but did not perform) are excluded from every
+  // "all filled" / completion / progress check; they still render so a judge
+  // can toggle them back.
+  const activeCodeLetters = useMemo(
+    () => payload.codeLetters.filter((c) => !absentIds.has(c.id)),
+    [payload.codeLetters, absentIds],
+  );
+
+  const onToggleAbsent = (codeLetterId: string, nextAbsent: boolean) => {
+    setAbsentIds((prev) => {
+      const next = new Set(prev);
+      if (nextAbsent) next.add(codeLetterId);
+      else next.delete(codeLetterId);
+      return next;
+    });
+    if (nextAbsent) {
+      setScoresByKey((prev) => {
+        const next = { ...prev };
+        for (const j of payload.judges) delete next[`${j.id}:${codeLetterId}`];
+        return next;
+      });
+    }
+    markAbsence.mutate(
+      { configId: payload.configId, codeLetterId, isAbsent: nextAbsent },
+      {
+        onError: () => {
+          // revert on failure
+          setAbsentIds((prev) => {
+            const next = new Set(prev);
+            if (nextAbsent) next.delete(codeLetterId);
+            else next.add(codeLetterId);
+            return next;
+          });
+        },
+      },
+    );
+  };
 
   const everyCellValidGroup = useMemo(() => {
-    return payload.codeLetters.every((c) =>
+    return activeCodeLetters.every((c) =>
       payload.judges.every((j) => {
         const raw = scoresByKey[`${j.id}:${c.id}`];
         if (!isFieldFilled(raw)) return false;
@@ -439,11 +551,11 @@ export function StagePortalScoringClient({
         return Number.isFinite(v) && v >= 0 && v <= payload.scoreLimit;
       }),
     );
-  }, [payload.judges, payload.codeLetters, payload.scoreLimit, scoresByKey]);
+  }, [payload.judges, activeCodeLetters, payload.scoreLimit, scoresByKey]);
 
   const selectedJudgeRowComplete = useMemo(() => {
     if (payload.judgingMode !== "SINGLE" || !selectedJudgeId) return false;
-    return payload.codeLetters.every((c) => {
+    return activeCodeLetters.every((c) => {
       const raw = scoresByKey[`${selectedJudgeId}:${c.id}`];
       if (!isFieldFilled(raw)) return false;
       const v = Number(raw);
@@ -452,34 +564,43 @@ export function StagePortalScoringClient({
   }, [
     payload.judgingMode,
     selectedJudgeId,
-    payload.codeLetters,
+    activeCodeLetters,
     payload.scoreLimit,
     scoresByKey,
   ]);
 
+  // SINGLE mode: a judge who already submitted (round still open for others)
+  // sees a read-only "You've submitted" state instead of editable fields.
+  const selectedJudgeAlreadySubmitted =
+    payload.judgingMode === "SINGLE" &&
+    Boolean(selectedJudgeId) &&
+    Boolean(payload.judgeCompletion?.[selectedJudgeId]);
+
   const canSubmit = useMemo(() => {
     if (payload.judgingMode === "SINGLE") {
       if (!selectedJudgeId) return false;
-      if (payload.codeLetters.length === 0) return false;
+      if (selectedJudgeAlreadySubmitted) return false;
+      if (activeCodeLetters.length === 0) return false;
       return selectedJudgeRowComplete;
     }
-    if (payload.codeLetters.length === 0 || payload.judges.length === 0)
+    if (activeCodeLetters.length === 0 || payload.judges.length === 0)
       return false;
     return everyCellValidGroup;
   }, [
     payload.judgingMode,
     selectedJudgeId,
+    selectedJudgeAlreadySubmitted,
     selectedJudgeRowComplete,
     everyCellValidGroup,
-    payload.codeLetters.length,
+    activeCodeLetters.length,
     payload.judges.length,
   ]);
 
   const submitValidationMessage = useMemo(() => {
     if (payload.judgingMode === "SINGLE") {
       if (!selectedJudgeId) return "Select your judge name to continue.";
-      const total = payload.codeLetters.length;
-      const filled = payload.codeLetters.filter((c) =>
+      const total = activeCodeLetters.length;
+      const filled = activeCodeLetters.filter((c) =>
         isFieldFilled(scoresByKey[`${selectedJudgeId}:${c.id}`]),
       ).length;
       if (filled < total) {
@@ -489,7 +610,7 @@ export function StagePortalScoringClient({
     }
     let total = 0;
     let filled = 0;
-    for (const c of payload.codeLetters) {
+    for (const c of activeCodeLetters) {
       for (const j of payload.judges) {
         total += 1;
         if (isFieldFilled(scoresByKey[`${j.id}:${c.id}`])) filled += 1;
@@ -501,7 +622,7 @@ export function StagePortalScoringClient({
     return null;
   }, [
     payload.judgingMode,
-    payload.codeLetters,
+    activeCodeLetters,
     payload.judges,
     selectedJudgeId,
     scoresByKey,
@@ -519,14 +640,14 @@ export function StagePortalScoringClient({
       return null;
     let n = 0;
     for (const j of payload.judges) {
-      if (judgeHasAllCodes(j.id, payload.codeLetters, payload.existingScores))
+      if (judgeHasAllCodes(j.id, activeCodeLetters, payload.existingScores))
         n += 1;
     }
     return n;
   }, [
     payload.judgingMode,
     payload.judges,
-    payload.codeLetters,
+    activeCodeLetters,
     payload.existingScores,
   ]);
 
@@ -538,16 +659,16 @@ export function StagePortalScoringClient({
       if (!jid) {
         return {
           pct: 0,
-          sub: `0 / ${payload.codeLetters.length} codes — pick your name`,
+          sub: `0 / ${activeCodeLetters.length} codes — pick your name`,
         };
       }
-      const valid = payload.codeLetters.filter((c) => {
+      const valid = activeCodeLetters.filter((c) => {
         const raw = scoresByKey[`${jid}:${c.id}`];
         if (!isFieldFilled(raw)) return false;
         const v = Number(raw);
         return Number.isFinite(v) && v >= 0 && v <= limit;
       }).length;
-      const total = payload.codeLetters.length;
+      const total = activeCodeLetters.length;
       return {
         pct: total ? Math.round((valid / total) * 100) : 0,
         sub: `${valid} / ${total} fields valid`,
@@ -555,7 +676,7 @@ export function StagePortalScoringClient({
     }
     let valid = 0;
     let total = 0;
-    for (const c of payload.codeLetters) {
+    for (const c of activeCodeLetters) {
       for (const j of payload.judges) {
         total += 1;
         const raw = scoresByKey[`${j.id}:${c.id}`];
@@ -571,7 +692,7 @@ export function StagePortalScoringClient({
   }, [
     payload.judgingMode,
     payload.judges,
-    payload.codeLetters,
+    activeCodeLetters,
     payload.scoreLimit,
     selectedJudgeId,
     scoresByKey,
@@ -591,26 +712,22 @@ export function StagePortalScoringClient({
     setScoresByKey((prev) => ({ ...prev, [key]: raw }));
   };
 
-  const buildReviewSummary = (): SubmissionSummary | null => {
+  // Judges represented in this submission: SINGLE → just the selected judge;
+  // GROUP → all judges. Used by the review matrix + remark drawer.
+  const reviewJudges = useMemo(() => {
     if (payload.judgingMode === "SINGLE") {
-      const judgeName =
-        payload.judges.find((j) => j.id === selectedJudgeId)?.name ?? "Judge";
-      const rows = payload.codeLetters.map((c) => ({
-        code: c.code,
-        score: Number(scoresByKey[`${selectedJudgeId}:${c.id}`]),
-      }));
-      return { kind: "SINGLE", judgeName, rows };
+      const j = payload.judges.find((x) => x.id === selectedJudgeId);
+      return j ? [j] : [];
     }
-    return {
-      kind: "GROUP",
-      rows: payload.codeLetters.map((c) => ({
-        code: c.code,
-        byJudge: payload.judges.map((j) => ({
-          name: j.name,
-          score: Number(scoresByKey[`${j.id}:${c.id}`]),
-        })),
-      })),
-    };
+    return payload.judges;
+  }, [payload.judgingMode, payload.judges, selectedJudgeId]);
+
+  const onRemarkChange = (
+    judgeId: string,
+    codeLetterId: string,
+    v: string,
+  ) => {
+    setRemarksByKey((prev) => ({ ...prev, [`${judgeId}:${codeLetterId}`]: v }));
   };
 
   const humanizeSubmitError = (message: string) => {
@@ -633,17 +750,12 @@ export function StagePortalScoringClient({
       );
       return;
     }
-    const summary = buildReviewSummary();
-    if (!summary) {
-      setSubmitError("Unable to build review summary. Please try again.");
-      return;
-    }
     startTransition(async () => {
       try {
         const scoresByJudgeId: Record<string, Record<string, number>> = {};
         if (payload.judgingMode === "SINGLE") {
           scoresByJudgeId[selectedJudgeId] = {};
-          for (const c of payload.codeLetters) {
+          for (const c of activeCodeLetters) {
             scoresByJudgeId[selectedJudgeId]![c.id] = Number(
               scoresByKey[`${selectedJudgeId}:${c.id}`],
             );
@@ -651,7 +763,7 @@ export function StagePortalScoringClient({
         } else {
           for (const j of payload.judges) {
             scoresByJudgeId[j.id] = {};
-            for (const c of payload.codeLetters) {
+            for (const c of activeCodeLetters) {
               scoresByJudgeId[j.id]![c.id] = Number(
                 scoresByKey[`${j.id}:${c.id}`],
               );
@@ -663,7 +775,6 @@ export function StagePortalScoringClient({
           scoresByJudgeId,
         });
         setReviewPolicyRows(preview.rows);
-        setReviewSummary(summary);
         setSubmissionPhase("review");
       } catch (error: any) {
         setSubmitError(
@@ -681,30 +792,39 @@ export function StagePortalScoringClient({
       try {
         if (payload.judgingMode === "SINGLE") {
           const scoresByCodeLetterId: Record<string, number> = {};
-          for (const c of payload.codeLetters) {
+          const remarksByCodeLetterId: Record<string, string> = {};
+          for (const c of activeCodeLetters) {
             scoresByCodeLetterId[c.id] = Number(
               scoresByKey[`${selectedJudgeId}:${c.id}`],
             );
+            const rm = (remarksByKey[`${selectedJudgeId}:${c.id}`] ?? "").trim();
+            if (rm) remarksByCodeLetterId[c.id] = rm;
           }
           const res = await submitJudgeScoresAction({
             configId: payload.configId,
             judgeId: selectedJudgeId,
             scoresByCodeLetterId,
+            remarksByCodeLetterId,
           });
           setSummaryVariant(res.judgmentComplete ? "complete" : "partial");
         } else {
           const scoresByJudgeId: Record<string, Record<string, number>> = {};
+          const remarksByJudgeId: Record<string, Record<string, string>> = {};
           for (const j of payload.judges) {
             scoresByJudgeId[j.id] = {};
-            for (const c of payload.codeLetters) {
+            remarksByJudgeId[j.id] = {};
+            for (const c of activeCodeLetters) {
               scoresByJudgeId[j.id]![c.id] = Number(
                 scoresByKey[`${j.id}:${c.id}`],
               );
+              const rm = (remarksByKey[`${j.id}:${c.id}`] ?? "").trim();
+              if (rm) remarksByJudgeId[j.id]![c.id] = rm;
             }
           }
           await submitGroupJudgeScoresAction({
             configId: payload.configId,
             scoresByJudgeId,
+            remarksByJudgeId,
           });
           setSummaryVariant("complete");
         }
@@ -719,20 +839,23 @@ export function StagePortalScoringClient({
     });
   };
 
-  if (submissionPhase === "review" && reviewSummary) {
+  if (submissionPhase === "review") {
     return (
       <SubmissionReviewView
         stageName={stageName}
         programmeName={payload.programme.name}
-        summary={reviewSummary}
-        scoreLimit={payload.scoreLimit}
+        judgingMode={payload.judgingMode}
+        judges={reviewJudges}
+        codeLetters={activeCodeLetters}
+        scoresByKey={scoresByKey}
+        remarksByKey={remarksByKey}
+        onRemarkChange={onRemarkChange}
+        policyRows={reviewPolicyRows}
         isPending={isPending}
         submitError={submitError}
-        policyRows={reviewPolicyRows}
         onEdit={() => {
           setSubmissionPhase("idle");
           setSubmitError(null);
-          setReviewSummary(null);
           setReviewPolicyRows([]);
         }}
         onConfirm={onConfirmSubmit}
@@ -792,9 +915,7 @@ export function StagePortalScoringClient({
         <CardContent className="space-y-2 p-4">
           <div className="flex items-center justify-between gap-2 text-xs font-medium">
             <span className="text-muted-foreground">Progress</span>
-            <span className="tabular-nums text-foreground">
-              {progress.sub}
-            </span>
+            <span className="tabular-nums text-foreground">{progress.sub}</span>
           </div>
           <Progress value={progressPct} className="h-2.5" />
         </CardContent>
@@ -821,7 +942,7 @@ export function StagePortalScoringClient({
             {payload.judges.map((j) => {
               const done = judgeHasAllCodes(
                 j.id,
-                payload.codeLetters,
+                activeCodeLetters,
                 payload.existingScores,
               );
               const active = selectedJudgeId === j.id;
@@ -863,6 +984,19 @@ export function StagePortalScoringClient({
         </section>
       ) : null}
 
+      {payload.judgingMode === "SINGLE" && selectedJudgeAlreadySubmitted ? (
+        <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4">
+          <p className="flex items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+            <CheckCircle2 className="h-4 w-4" aria-hidden />
+            You've already submitted
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Your scores are locked. The programme stays live until the other
+            judges finish. Your entries are shown below, read-only.
+          </p>
+        </div>
+      ) : null}
+
       {payload.judgingMode === "SINGLE" ? (
         <section className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -873,6 +1007,7 @@ export function StagePortalScoringClient({
           </div>
           <div className="space-y-3">
             {payload.codeLetters.map((c) => {
+              const isAbsent = absentIds.has(c.id);
               const effectiveJudgeId =
                 payload.judges.length === 1
                   ? payload.judges[0]!.id
@@ -881,7 +1016,7 @@ export function StagePortalScoringClient({
                 ? `${effectiveJudgeId}:${c.id}`
                 : "";
               const others =
-                effectiveJudgeId && payload.judges.length > 1
+                !isAbsent && effectiveJudgeId && payload.judges.length > 1
                   ? otherJudgesScoresSummary(
                       c.id,
                       effectiveJudgeId,
@@ -890,7 +1025,7 @@ export function StagePortalScoringClient({
                     )
                   : null;
               const cellErr =
-                singleShowSelectedCellHints && effectiveJudgeId
+                !isAbsent && singleShowSelectedCellHints && effectiveJudgeId
                   ? scoreCellErrorLabel(
                       scoresByKey[`${effectiveJudgeId}:${c.id}`],
                       payload.scoreLimit,
@@ -902,6 +1037,7 @@ export function StagePortalScoringClient({
                   className={cn(
                     "border-border/70 transition-shadow",
                     cellErr && "ring-1 ring-destructive/25",
+                    isAbsent && "bg-muted/30 opacity-70",
                   )}
                 >
                   <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
@@ -909,7 +1045,12 @@ export function StagePortalScoringClient({
                       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                         Code letter
                       </p>
-                      <p className="font-mono text-lg font-semibold tracking-tight sm:text-xl">
+                      <p
+                        className={cn(
+                          "font-mono text-lg font-semibold tracking-tight sm:text-xl",
+                          isAbsent && "line-through text-muted-foreground",
+                        )}
+                      >
                         {c.code}
                       </p>
                       {others ? (
@@ -920,28 +1061,43 @@ export function StagePortalScoringClient({
                           {others}
                         </p>
                       ) : null}
-                    </div>
-                    <div className="flex w-full flex-col items-stretch gap-1 sm:w-auto sm:items-end">
-                      <ScoreField
-                        value={fieldKey ? (scoresByKey[fieldKey] ?? "") : ""}
-                        onChange={(v) => {
-                          if (!effectiveJudgeId) return;
-                          onScoreFieldChange(
-                            `${effectiveJudgeId}:${c.id}`,
-                            v,
-                            payload.scoreLimit,
-                          );
-                        }}
-                        disabled={isPending || !effectiveJudgeId}
-                        max={payload.scoreLimit}
-                        invalid={Boolean(cellErr)}
+                      <AbsentToggle
+                        isAbsent={isAbsent}
+                        disabled={markAbsence.isPending}
+                        onToggle={() => onToggleAbsent(c.id, !isAbsent)}
                       />
-                      {cellErr ? (
-                        <p className="text-[11px] font-medium text-destructive sm:text-right">
-                          {cellErr}
-                        </p>
-                      ) : null}
                     </div>
+                    {isAbsent ? (
+                      <span className="text-xs font-medium text-muted-foreground sm:text-right">
+                        Excluded from scoring
+                      </span>
+                    ) : (
+                      <div className="flex w-full flex-col items-stretch gap-1 sm:w-auto sm:items-end">
+                        <ScoreField
+                          value={fieldKey ? (scoresByKey[fieldKey] ?? "") : ""}
+                          onChange={(v) => {
+                            if (!effectiveJudgeId) return;
+                            onScoreFieldChange(
+                              `${effectiveJudgeId}:${c.id}`,
+                              v,
+                              payload.scoreLimit,
+                            );
+                          }}
+                          disabled={
+                            isPending ||
+                            !effectiveJudgeId ||
+                            selectedJudgeAlreadySubmitted
+                          }
+                          max={payload.scoreLimit}
+                          invalid={Boolean(cellErr)}
+                        />
+                        {cellErr ? (
+                          <p className="text-[11px] font-medium text-destructive sm:text-right">
+                            {cellErr}
+                          </p>
+                        ) : null}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );
@@ -959,59 +1115,88 @@ export function StagePortalScoringClient({
             </span>
           </div>
           <div className="space-y-4">
-            {payload.codeLetters.map((c) => (
-              <Card key={c.id} className="border-border/70">
-                <CardHeader className="space-y-1 pb-2 pt-4 sm:pt-5">
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Code letter
-                  </p>
-                  <CardTitle className="font-mono text-lg font-semibold sm:text-xl">
-                    {c.code}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pb-4 pt-0 sm:pb-5">
-                  <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 md:grid-cols-3">
-                    {payload.judges.map((j) => {
-                      const key = `${j.id}:${c.id}`;
-                      const err = groupShowCellHints
-                        ? scoreCellErrorLabel(
-                            scoresByKey[key],
-                            payload.scoreLimit,
-                          )
-                        : null;
-                      return (
-                        <div
-                          key={j.id}
+            {payload.codeLetters.map((c) => {
+              const isAbsent = absentIds.has(c.id);
+              return (
+                <Card
+                  key={c.id}
+                  className={cn(
+                    "border-border/70",
+                    isAbsent && "bg-muted/30 opacity-70",
+                  )}
+                >
+                  <CardHeader className="space-y-1 pb-2 pt-4 sm:pt-5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                          Code letter
+                        </p>
+                        <CardTitle
                           className={cn(
-                            "flex min-w-0 flex-col gap-1.5 rounded-lg border border-border/60 bg-muted/20 p-3",
-                            err && "ring-1 ring-destructive/30",
+                            "font-mono text-lg font-semibold sm:text-xl",
+                            isAbsent && "line-through text-muted-foreground",
                           )}
                         >
-                          <span className="truncate text-xs font-medium text-muted-foreground">
-                            {j.name}
-                          </span>
-                          <ScoreField
-                            compact
-                            value={scoresByKey[key] ?? ""}
-                            onChange={(v) =>
-                              onScoreFieldChange(key, v, payload.scoreLimit)
-                            }
-                            disabled={isPending}
-                            max={payload.scoreLimit}
-                            invalid={Boolean(err)}
-                          />
-                          {err ? (
-                            <p className="text-[11px] font-medium text-destructive">
-                              {err}
-                            </p>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                          {c.code}
+                        </CardTitle>
+                      </div>
+                      <AbsentToggle
+                        isAbsent={isAbsent}
+                        disabled={markAbsence.isPending}
+                        onToggle={() => onToggleAbsent(c.id, !isAbsent)}
+                      />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pb-4 pt-0 sm:pb-5">
+                    {isAbsent ? (
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Excluded from scoring — reported but did not perform.
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 md:grid-cols-3">
+                        {payload.judges.map((j) => {
+                          const key = `${j.id}:${c.id}`;
+                          const err = groupShowCellHints
+                            ? scoreCellErrorLabel(
+                                scoresByKey[key],
+                                payload.scoreLimit,
+                              )
+                            : null;
+                          return (
+                            <div
+                              key={j.id}
+                              className={cn(
+                                "flex min-w-0 flex-col gap-1.5 rounded-lg border border-border/60 bg-muted/20 p-3",
+                                err && "ring-1 ring-destructive/30",
+                              )}
+                            >
+                              <span className="truncate text-xs font-medium text-muted-foreground">
+                                {j.name}
+                              </span>
+                              <ScoreField
+                                compact
+                                value={scoresByKey[key] ?? ""}
+                                onChange={(v) =>
+                                  onScoreFieldChange(key, v, payload.scoreLimit)
+                                }
+                                disabled={isPending}
+                                max={payload.scoreLimit}
+                                invalid={Boolean(err)}
+                              />
+                              {err ? (
+                                <p className="text-[11px] font-medium text-destructive">
+                                  {err}
+                                </p>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </section>
       )}

@@ -1,5 +1,8 @@
 "use client";
 
+import { Laptop, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 import { useProfile } from "@/api/client/profile";
 import {
   Card,
@@ -8,6 +11,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UpdateInstitutionDialog } from "../UpdateInstitutionDialog";
 import { UpdateProfileDialog } from "../UpdateProfileDialog";
@@ -16,8 +27,27 @@ interface SettingsTabProps {
   userId: string;
 }
 
+type ThemeMode = "light" | "dark" | "system";
+
+const THEME_OPTIONS: { value: ThemeMode; label: string; icon: typeof Sun }[] =
+  [
+    { value: "light", label: "Light", icon: Sun },
+    { value: "dark", label: "Dark", icon: Moon },
+    { value: "system", label: "System", icon: Laptop },
+  ];
+
 export function SettingsTab({ userId: _userId }: SettingsTabProps) {
   const { data: userData, isLoading } = useProfile();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const currentTheme: ThemeMode | undefined = THEME_OPTIONS.find(
+    (o) => o.value === theme,
+  )?.value;
 
   if (isLoading) {
     return (
@@ -88,6 +118,44 @@ export function SettingsTab({ userId: _userId }: SettingsTabProps) {
           </div>
           <div className="pt-4 border-t border-border">
             <UpdateProfileDialog user={user} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Preferences Card */}
+      <Card className="border border-border rounded-2xl bg-card shadow-premium">
+        <CardHeader>
+          <CardTitle className="font-semibold tracking-tight text-heading">
+            Preferences
+          </CardTitle>
+          <CardDescription>Choose how Greenroom looks for you.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="theme-select">Appearance</Label>
+            <Select
+              value={mounted ? (currentTheme ?? "system") : undefined}
+              onValueChange={(value) => setTheme(value as ThemeMode)}
+              disabled={!mounted}
+            >
+              <SelectTrigger
+                id="theme-select"
+                className="w-full sm:w-72"
+                aria-label="Appearance"
+              >
+                <SelectValue placeholder="Loading…" />
+              </SelectTrigger>
+              <SelectContent>
+                {THEME_OPTIONS.map(({ value, label }) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              System follows your device&apos;s appearance.
+            </p>
           </div>
         </CardContent>
       </Card>

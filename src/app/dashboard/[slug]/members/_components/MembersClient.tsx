@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, UserPlus, Users } from "lucide-react";
+import { Loader2, Mail, Users } from "lucide-react";
 import type React from "react";
 import { useMembers } from "@/api/client/members";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
@@ -141,36 +141,77 @@ export function MembersClient({
             Invite staff members to help manage schedules, stages, categories,
             and festival operations.
           </p>
+          <AddMemberDialog
+            festivalId={festivalId}
+            disabled={isReadOnly}
+            existingEmails={[]}
+          />
         </div>
       ) : (
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {[...members, ...invitations]
-            .sort(
-              (a, b) =>
-                new Date(b.createdAt).getTime() -
-                new Date(a.createdAt).getTime(),
-            )
-            .map((item) =>
-              "isActive" in item ? (
-                <MemberCard
-                  key={item.id}
-                  member={item}
-                  festivalId={festivalId}
-                  isOwner={isOwner}
-                  isReadOnly={isReadOnly}
-                  canManageStageAssignments={canManageStageAssignments}
-                />
-              ) : (
-                <PendingInvitationCard
-                  key={item.id}
-                  invitation={item as PendingInvitation}
-                  isOwner={isOwner}
-                  festivalId={festivalId}
-                />
-              ),
+        <div className="space-y-8">
+          {invitations.length > 0 && (
+            <section className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-blue-500" />
+                <h2 className="text-sm font-semibold tracking-tight text-foreground">
+                  Pending invitations
+                </h2>
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-500/10 px-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
+                  {invitations.length}
+                </span>
+              </div>
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {sortByCreatedDesc(invitations).map((invitation) => (
+                  <PendingInvitationCard
+                    key={invitation.id}
+                    invitation={invitation}
+                    isOwner={isOwner}
+                    festivalId={festivalId}
+                    isReadOnly={isReadOnly}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-semibold tracking-tight text-foreground">
+                Team members
+              </h2>
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/10 px-1.5 text-xs font-semibold text-primary">
+                {members.length}
+              </span>
+            </div>
+            {members.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-border/70 bg-card/40 px-4 py-6 text-center text-sm text-muted-foreground">
+                No one has joined yet. Members appear here once they accept
+                their invitation.
+              </p>
+            ) : (
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {sortByCreatedDesc(members).map((member) => (
+                  <MemberCard
+                    key={member.id}
+                    member={member}
+                    festivalId={festivalId}
+                    isOwner={isOwner}
+                    isReadOnly={isReadOnly}
+                    canManageStageAssignments={canManageStageAssignments}
+                  />
+                ))}
+              </div>
             )}
+          </section>
         </div>
       )}
     </div>
+  );
+}
+
+function sortByCreatedDesc<T extends { createdAt: string }>(items: T[]): T[] {
+  return [...items].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 }

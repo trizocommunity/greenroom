@@ -204,17 +204,17 @@ export function ProgrammeActivityTimeline({
             <div className="sticky top-0 z-10 -mx-1 bg-background/95 px-1 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground backdrop-blur-sm">
               {group.heading}
             </div>
-            <ol className="relative space-y-4 border-l border-border/60 pl-4 sm:space-y-5">
+            <ol className="relative ml-3 space-y-4 border-l border-border/60 sm:space-y-5">
               {group.items.map((entry, idx) => {
                 const { label, icon: Icon, tone } = presentAction(entry.action);
                 return (
                   <li
                     key={`${entry.targetId}-${entry.at}-${idx}`}
-                    className="relative"
+                    className="relative pl-6 sm:pl-8"
                   >
                     <span
                       className={cn(
-                        "absolute -left-[21px] flex h-6 w-6 items-center justify-center rounded-full ring-4 ring-background sm:h-7 sm:w-7",
+                        "absolute -left-3 flex h-6 w-6 items-center justify-center rounded-full ring-4 ring-background sm:-left-3.5 sm:h-7 sm:w-7",
                         TONE_CLASSES[tone],
                       )}
                     >

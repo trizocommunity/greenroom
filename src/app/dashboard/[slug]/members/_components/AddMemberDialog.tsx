@@ -1,7 +1,15 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, UserPlus } from "lucide-react";
+import {
+  Camera,
+  Check,
+  Loader2,
+  Megaphone,
+  Radio,
+  ShieldCheck,
+  UserPlus,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -26,13 +34,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { cn } from "@/core/utils/cn";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { useCreateInvitation } from "@/features/invitation/hooks/use-invitations";
 import { type InviteMemberFormValues, InviteMemberSchema } from "./types";
@@ -42,6 +44,47 @@ interface AddMemberDialogProps {
   disabled: boolean;
   existingEmails: string[];
 }
+
+type RoleValue = "ADMIN" | "STAGE_MANAGER" | "ANNOUNCER" | "MEDIA";
+
+const ROLE_OPTIONS: {
+  value: RoleValue;
+  label: string;
+  description: string;
+  icon: typeof ShieldCheck;
+  accent: string;
+}[] = [
+  {
+    value: "ADMIN",
+    label: "Admin",
+    description:
+      "Full control — manage members, stages, schedules and every festival setting.",
+    icon: ShieldCheck,
+    accent: "text-primary bg-primary/10",
+  },
+  {
+    value: "STAGE_MANAGER",
+    label: "Stage Manager",
+    description:
+      "Runs their assigned stages — reporting, scoring and programme flow.",
+    icon: Radio,
+    accent: "text-info bg-info/10",
+  },
+  {
+    value: "ANNOUNCER",
+    label: "Announcer",
+    description: "Calls programmes and reads out results from the stage desk.",
+    icon: Megaphone,
+    accent: "text-pink bg-pink/10",
+  },
+  {
+    value: "MEDIA",
+    label: "Media",
+    description: "Uploads and manages the festival's photos and galleries.",
+    icon: Camera,
+    accent: "text-purple bg-purple/10",
+  },
+];
 
 export function AddMemberDialog({
   festivalId,
@@ -127,117 +170,169 @@ export function AddMemberDialog({
           Add Member
         </Button>
       </DrawerTrigger>
-      <DrawerContent>
-        <DrawerHeader className="border-b border-border/60 pb-4">
+      <DrawerContent className=" flex flex-col">
+        <DrawerHeader className="border-b border-border/60 pb-4 shrink-0 px-4 sm:px-6">
           <DrawerTitle className="text-xl font-bold tracking-tight">
             Invite New Member
           </DrawerTitle>
           <DrawerDescription className="text-sm text-muted-foreground mt-1">
-            Enter the member&apos;s email and select their role. An invitation
-            email will be sent automatically.
+            We&apos;ll email them a secure link to join. It stays valid for 48
+            hours.
           </DrawerDescription>
         </DrawerHeader>
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(handleSubmit)}
-            className="space-y-5 pt-2"
-          >
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="font-semibold">
-                    Email <span className="text-destructive">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="member@example.com"
-                      type="email"
-                      className="rounded-xl"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="font-semibold">
-                    Role <span className="text-destructive">*</span>
-                  </FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="rounded-xl">
-                        <SelectValue placeholder="Select a role" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="rounded-xl">
-                      <SelectItem value="ADMIN">Admin</SelectItem>
-                      <SelectItem value="ANNOUNCER">Announcer</SelectItem>
-                      <SelectItem value="STAGE_MANAGER">
-                        Stage Manager
-                      </SelectItem>
-                      <SelectItem value="MEDIA">Media</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {role === "STAGE_MANAGER" && (
+
+        <div className="overflow-y-auto px-4 sm:px-6 flex-1 py-4">
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(handleSubmit)}
+              className="space-y-6"
+            >
               <FormField
                 control={form.control}
-                name="stageIds"
-                render={() => (
+                name="email"
+                render={({ field }) => (
                   <FormItem>
                     <FormLabel className="font-semibold">
-                      Stages <span className="text-destructive">*</span>
+                      Email address <span className="text-destructive">*</span>
                     </FormLabel>
-                    <StagePickerCards
-                      stages={stages}
-                      selectedIds={stageIds}
-                      onChange={(next) =>
-                        form.setValue("stageIds", next, {
-                          shouldValidate: true,
-                        })
-                      }
-                    />
+                    <FormControl>
+                      <Input
+                        placeholder="member@example.com"
+                        type="email"
+                        autoFocus
+                        className="rounded-xl"
+                        {...field}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            )}
-            <div className="flex justify-end gap-2 pt-3 border-t border-border/40">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-                disabled={createInvitation.isPending}
-                className="rounded-xl font-medium"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={!form.formState.isValid || createInvitation.isPending}
-                className="rounded-xl font-medium"
-              >
-                {createInvitation.isPending && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="font-semibold">
+                      Role <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <p className="text-xs text-muted-foreground -mt-1 mb-2">
+                      Choose what this person will be able to do.
+                    </p>
+                    <FormControl>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {ROLE_OPTIONS.map((option) => {
+                          const Icon = option.icon;
+                          const selected = field.value === option.value;
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              aria-pressed={selected}
+                              onClick={() => field.onChange(option.value)}
+                              className={cn(
+                                "flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-all",
+                                selected
+                                  ? "border-primary bg-primary/5 ring-1 ring-primary/30 shadow-sm"
+                                  : "border-border/70 hover:border-primary/40 hover:bg-muted/40",
+                              )}
+                            >
+                              <div className="flex w-full items-start justify-between gap-2">
+                                <span
+                                  className={cn(
+                                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                                    option.accent,
+                                  )}
+                                >
+                                  <Icon className="h-4 w-4" />
+                                </span>
+                                <span
+                                  className={cn(
+                                    "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors",
+                                    selected
+                                      ? "border-primary bg-primary text-primary-foreground"
+                                      : "border-border",
+                                  )}
+                                >
+                                  {selected && <Check className="h-3 w-3" />}
+                                </span>
+                              </div>
+                              <div className="min-w-0 flex-1 mt-1">
+                                <span className="text-sm font-semibold text-foreground">
+                                  {option.label}
+                                </span>
+                                <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+                                  {option.description}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-                Send Invitation
-              </Button>
-            </div>
-          </form>
-        </Form>
+              />
+
+              {role === "STAGE_MANAGER" && (
+                <FormField
+                  control={form.control}
+                  name="stageIds"
+                  render={() => (
+                    <FormItem className="rounded-xl border border-border/60 bg-muted/30 p-4">
+                      <FormLabel className="font-semibold">
+                        Which stages?{" "}
+                        <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <p className="text-xs text-muted-foreground -mt-1 mb-2">
+                        This stage manager will only see and manage the stages
+                        you pick.
+                      </p>
+                      <StagePickerCards
+                        stages={stages}
+                        selectedIds={stageIds}
+                        onChange={(next) =>
+                          form.setValue("stageIds", next, {
+                            shouldValidate: true,
+                          })
+                        }
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-border/40 pb-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setOpen(false)}
+                  disabled={createInvitation.isPending}
+                  className="rounded-xl font-medium"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={
+                    !form.formState.isValid || createInvitation.isPending
+                  }
+                  className="rounded-xl font-medium"
+                >
+                  {createInvitation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <UserPlus className="mr-2 h-4 w-4" />
+                  )}
+                  Send Invitation
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </div>
       </DrawerContent>
     </Drawer>
   );

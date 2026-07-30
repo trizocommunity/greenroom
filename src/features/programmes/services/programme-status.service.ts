@@ -3,6 +3,8 @@ import { db } from "@/core/database/client";
 import {
   group as groupTable,
   programmeAssignment,
+  programmeCodeLetterRecipient as codeLetterRecipientTable,
+  programmeCodeLetter as codeLetterTable,
   programmeReportedParticipant,
   programme as programmeTable,
   programmeReportingSession as reportingSessionTable,
@@ -177,13 +179,40 @@ export async function updateProgrammeStatus(
           programmeReportedParticipant.reportingSessionId,
           latestClosedReportingSession.id,
         ),
-        columns: { assignmentId: true },
+        columns: { assignmentId: true, participantId: true },
       });
 
-    const reportedAssignmentIds = programmeReportedParticipants.map(
-      (r) => r.assignmentId,
+    // Participants marked "absent" (their code letter isAbsent) are never
+    // scored and never get a result row — they must be excluded from the
+    // "expected results" total, otherwise the programme can never reach
+    // ENDED/PUBLISHED/ANNOUNCED once anyone is marked absent.
+    const absentRecipients = await db
+      .select({ participantId: codeLetterRecipientTable.participantId })
+      .from(codeLetterRecipientTable)
+      .innerJoin(
+        codeLetterTable,
+        eq(codeLetterRecipientTable.codeLetterId, codeLetterTable.id),
+      )
+      .where(
+        and(
+          eq(
+            codeLetterTable.reportingSessionId,
+            latestClosedReportingSession.id,
+          ),
+          eq(codeLetterTable.isAbsent, true),
+        ),
+      );
+    const absentParticipantIds = new Set(
+      absentRecipients.map((r) => r.participantId),
     );
-    const reportedTotal = reportedAssignmentIds.length;
+
+    const expectedAssignmentIds = programmeReportedParticipants
+      .filter(
+        (r) =>
+          !(r.participantId && absentParticipantIds.has(r.participantId)),
+      )
+      .map((r) => r.assignmentId);
+    const reportedTotal = expectedAssignmentIds.length;
 
     let reportedScored = 0;
     let reportedPublished = 0;
@@ -196,7 +225,7 @@ export async function updateProgrammeStatus(
         .where(
           and(
             eq(resultTable.programmeId, programmeId),
-            inArray(resultTable.assignmentId, reportedAssignmentIds),
+            inArray(resultTable.assignmentId, expectedAssignmentIds),
           ),
         );
       reportedScored = scoredCount[0].c;
@@ -207,7 +236,7 @@ export async function updateProgrammeStatus(
         .where(
           and(
             eq(resultTable.programmeId, programmeId),
-            inArray(resultTable.assignmentId, reportedAssignmentIds),
+            inArray(resultTable.assignmentId, expectedAssignmentIds),
             eq(resultTable.isPublished, true),
           ),
         );
@@ -219,7 +248,7 @@ export async function updateProgrammeStatus(
         .where(
           and(
             eq(resultTable.programmeId, programmeId),
-            inArray(resultTable.assignmentId, reportedAssignmentIds),
+            inArray(resultTable.assignmentId, expectedAssignmentIds),
             eq(resultTable.isAnnounced, true),
           ),
         );

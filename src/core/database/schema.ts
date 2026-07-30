@@ -1240,6 +1240,9 @@ export const programmeCodeLetter = pgTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     issuedBy: text(),
+    isAbsent: boolean("is_absent").default(false).notNull(),
+    absentBy: text("absent_by"),
+    absentAt: timestamp("absent_at", { precision: 3, mode: "string" }),
   },
   (table) => [
     index("programme_code_letter_festivalId_issuedAt_idx").using(
@@ -1446,6 +1449,7 @@ export const judgmentScore = pgTable(
     judgeId: text("judge_id").notNull(),
     codeLetterId: text("code_letter_id").notNull(),
     score: doublePrecision().notNull(),
+    remark: text(),
     submittedAt: timestamp("submitted_at", { precision: 3, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),

@@ -9,7 +9,8 @@ import {
   updateFestivalSettingsAction,
 } from "@/features/festivals/actions/festival-crud.actions";
 import {
-  getStagePortalDataAction,
+  getStagePortalBoardAction,
+  markCodeLetterAbsenceAction,
   previewJudgeSubmissionSummaryAction,
   restartJudgmentAction,
   startJudgmentAction,
@@ -68,6 +69,21 @@ export function useStagePortalLogin() {
       pin: string;
     }) => {
       return getStagePortalLoginAction(input);
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
+export function useMarkCodeLetterAbsence() {
+  return useMutation({
+    mutationFn: async (input: {
+      configId: string;
+      codeLetterId: string;
+      isAbsent: boolean;
+    }) => {
+      return markCodeLetterAbsenceAction(input);
     },
     onError: (error) => {
       toast.error(error.message);
@@ -181,10 +197,10 @@ export function useRestartJudgment() {
   });
 }
 
-export function useStagePortalData() {
+export function useStagePortalBoard(day?: string) {
   return useQuery({
-    queryKey: ["stage-portal", "data"],
-    queryFn: async () => getStagePortalDataAction(),
+    queryKey: ["stage-portal", "board", day ?? "today"],
+    queryFn: async () => getStagePortalBoardAction(day),
     refetchInterval: 5000,
   });
 }

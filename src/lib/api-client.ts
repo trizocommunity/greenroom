@@ -182,6 +182,13 @@ export const api = {
       );
       return handleRes(res);
     },
+    resend: async (data: { invitationId: string }) => {
+      const res = await fetch(
+        `${noBaseURL}/api/v1/invitations/${data.invitationId}/resend`,
+        { method: "POST", credentials: "include" },
+      );
+      return handleRes(res);
+    },
     details: async (token: string) => {
       const res = await fetch(`${noBaseURL}/api/v1/invitations/${token}`, {
         credentials: "include",

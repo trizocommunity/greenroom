@@ -1,7 +1,6 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2, CheckCircle2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { cn } from "@/core/utils/cn";
 
 export interface StageAssignmentOption {
   id: string;
@@ -42,7 +41,7 @@ export function StageAssignmentToggleDialog({
 }: StageAssignmentToggleDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -51,42 +50,45 @@ export function StageAssignmentToggleDialog({
         {options.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4">{emptyMessage}</p>
         ) : (
-          <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto p-1">
             {options.map((option) => {
               const isAssigned = assignedIds.includes(option.id);
               const isPending = pendingId === option.id;
               return (
-                <div
+                <button
                   key={option.id}
-                  className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => onToggle(option.id, !isAssigned)}
+                  className={cn(
+                    "relative flex flex-col items-start p-4 rounded-xl border text-left transition-all hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    isAssigned
+                      ? "border-primary bg-primary/5 ring-1 ring-primary"
+                      : "border-border bg-card",
+                    isPending && "opacity-70 cursor-not-allowed",
+                  )}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Checkbox
-                      id={`stage-assignment-${option.id}`}
-                      checked={isAssigned}
-                      disabled={isPending}
-                      onCheckedChange={(checked) =>
-                        onToggle(option.id, checked === true)
-                      }
-                    />
-                    <Label
-                      htmlFor={`stage-assignment-${option.id}`}
-                      className="flex flex-col min-w-0 cursor-pointer"
-                    >
-                      <span className="font-medium truncate">
+                  <div className="flex items-start justify-between w-full gap-2">
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="font-semibold truncate">
                         {option.label}
                       </span>
                       {option.sublabel ? (
-                        <span className="text-xs text-muted-foreground truncate">
+                        <span className="text-sm text-muted-foreground truncate mt-0.5">
                           {option.sublabel}
                         </span>
                       ) : null}
-                    </Label>
+                    </div>
+                    {isAssigned && !isPending && (
+                      <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                    )}
                   </div>
                   {isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
+                    <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-background/50 backdrop-blur-[1px]">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    </div>
                   ) : null}
-                </div>
+                </button>
               );
             })}
           </div>

@@ -131,9 +131,9 @@ export default async function ProgrammeReportingPage({
         <HowItWorksButton title="How programme reporting works">
           <ul className="space-y-2 pl-5 text-muted-foreground leading-relaxed [&>li]:list-disc">
             <li>
-              Under <strong>Up next</strong>, pick a slot that is not started or
-              already live. Use <strong>Full list</strong> to include finished
-              sessions and filter by status.
+              Search or <strong>Filter</strong> the queue to find a slot, then
+              pick it to open its reporting drawer. Ended sessions are hidden
+              until you enable <strong>Show ended</strong> in the filter.
             </li>
             <li>
               <strong>Start reporting</strong> opens check-in. Mark who is

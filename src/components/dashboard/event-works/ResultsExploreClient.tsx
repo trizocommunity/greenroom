@@ -253,6 +253,7 @@ export function ResultsExploreClient({
             subText: groupName,
             chestNumber: "",
             codeLetter: assignment.result?.codeLetter?.code ?? "-",
+            isAbsent: assignment.result?.codeLetter?.isAbsent ?? false,
             grade: assignment.result.grade,
             points: getResultPoints(assignment.result),
             position: assignment.result.position || 0,
@@ -278,6 +279,7 @@ export function ResultsExploreClient({
             ? `#${assignment.participant.chestNumber}`
             : "",
           codeLetter: result.codeLetter?.code ?? "-",
+          isAbsent: result.codeLetter?.isAbsent ?? false,
           grade: result.grade,
           points: getResultPoints(result),
           position: result.position || 0,
@@ -524,15 +526,21 @@ export function ResultsExploreClient({
                             #{row.position}
                           </span>
                         )}
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "font-mono font-semibold",
-                            getGradeBadgeColor(row.grade),
-                          )}
-                        >
-                          {row.grade}
-                        </Badge>
+                        {row.isAbsent ? (
+                          <Badge variant="destructive" className="font-mono font-semibold">
+                            Absent
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "font-mono font-semibold",
+                              getGradeBadgeColor(row.grade),
+                            )}
+                          >
+                            {row.grade}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -605,15 +613,21 @@ export function ResultsExploreClient({
                           </Badge>
                         </TableCell>
                         <TableCell className="text-center">
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "font-mono font-semibold",
-                              getGradeBadgeColor(row.grade),
-                            )}
-                          >
-                            {row.grade}
-                          </Badge>
+                          {row.isAbsent ? (
+                            <Badge variant="destructive" className="font-mono font-semibold">
+                              Absent
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "font-mono font-semibold",
+                                getGradeBadgeColor(row.grade),
+                              )}
+                            >
+                              {row.grade}
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="text-center">
                           <Badge

@@ -7,10 +7,14 @@ export function ReportingQuickAddSection({
   open,
   onOpenChange,
   children,
+  title = "Quick add to roster",
+  subtitle = "Chest # · QR photo · camera",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   children: React.ReactNode;
+  title?: string;
+  subtitle?: string;
 }) {
   return (
     <div className="overflow-hidden rounded-xl border border-border/70 bg-card/60 text-sm shadow-sm">
@@ -26,11 +30,9 @@ export function ReportingQuickAddSection({
           <ScanLine className="h-3.5 w-3.5" aria-hidden />
         </span>
         <span className="min-w-0 flex-1 leading-tight">
-          <span className="font-semibold text-foreground">
-            Quick add to roster
-          </span>
+          <span className="font-semibold text-foreground">{title}</span>
           <span className="text-muted-foreground ml-1 text-[11px] font-normal sm:ml-1.5">
-            Chest # · QR photo · camera
+            {subtitle}
           </span>
         </span>
         {open ? (

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { eq } from "drizzle-orm";
 import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 
@@ -75,14 +76,35 @@ export async function getSession(): Promise<SessionPayload | null> {
   const cookieStore = await cookies();
   const session = cookieStore.get("session")?.value;
   if (!session) return null;
+
+  let payload: SessionPayload;
   try {
-    return await decrypt(session);
+    payload = await decrypt(session);
   } catch {
     return null;
   }
+
+  const userExists = await userExistsById(payload.userId);
+  if (!userExists) {
+    cookieStore.delete("session");
+    return null;
+  }
+
+  return payload;
 }
 
 export async function deleteSession() {
   const cookieStore = await cookies();
   cookieStore.delete("session");
+}
+
+async function userExistsById(userId: string): Promise<boolean> {
+  const { db } = await import("@/core/database/client");
+  const { user } = await import("@/core/database/schema");
+  const row = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(eq(user.id, userId))
+    .limit(1);
+  return row.length > 0;
 }

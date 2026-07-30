@@ -148,41 +148,66 @@ export function ReportingRosterTable({
                 row.isReported && "bg-emerald-500/[0.05]",
               )}
             >
-              <div className="shrink-0">
-                {isInProgress ? (
-                  isMarking ? (
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  ) : (
-                    <Checkbox
-                      checked={row.isReported}
-                      onCheckedChange={(checked) => onMark(row, !!checked)}
-                      className="h-5 w-5 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
-                    />
-                  )
-                ) : (
-                  <div
-                    className={cn(
-                      "h-2.5 w-2.5 rounded-full",
-                      row.isReported ? "bg-green-500" : "bg-muted",
-                    )}
-                  />
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p
-                  className={cn(
-                    "text-sm font-medium truncate",
-                    row.isReported
-                      ? "text-foreground"
-                      : "text-muted-foreground",
-                  )}
+              {isInProgress ? (
+                <button
+                  type="button"
+                  onClick={() => !isMarking && onMark(row, !row.isReported)}
+                  disabled={isMarking}
+                  className="-my-3 flex min-w-0 flex-1 items-center gap-4 py-3 text-left"
                 >
-                  {title}
-                </p>
-                <p className="text-[11px] text-muted-foreground truncate mt-0.5 uppercase tracking-wide">
-                  {subtitle}
-                </p>
-              </div>
+                  <span className="shrink-0">
+                    {isMarking ? (
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    ) : (
+                      <Checkbox
+                        checked={row.isReported}
+                        className="pointer-events-none h-6 w-6 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
+                      />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className={cn(
+                        "block truncate text-sm font-medium",
+                        row.isReported
+                          ? "text-foreground"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {title}
+                    </span>
+                    <span className="mt-0.5 block truncate text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {subtitle}
+                    </span>
+                  </span>
+                </button>
+              ) : (
+                <div className="flex min-w-0 flex-1 items-center gap-4">
+                  <div className="shrink-0">
+                    <div
+                      className={cn(
+                        "h-2.5 w-2.5 rounded-full",
+                        row.isReported ? "bg-green-500" : "bg-muted",
+                      )}
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={cn(
+                        "text-sm font-medium truncate",
+                        row.isReported
+                          ? "text-foreground"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {title}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground truncate mt-0.5 uppercase tracking-wide">
+                      {subtitle}
+                    </p>
+                  </div>
+                </div>
+              )}
               <div className="shrink-0 font-mono text-xs">
                 {showCode ? (
                   <span className="inline-flex items-center rounded-md border border-purple/30 bg-purple/10 px-2 py-1 text-purple font-bold">

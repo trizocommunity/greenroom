@@ -6,7 +6,6 @@ import {
   Megaphone,
   MoreVertical,
   Plus,
-  RefreshCcw,
   Search,
   Trash2,
   Users,
@@ -30,12 +29,9 @@ import {
   useUnassignStageManager,
 } from "@/api/client/stage-assignments";
 import { useDeleteStage } from "@/api/client/stages";
-import {
-  useResetStagePortalCredential,
-  useStagePortalCredential,
-} from "@/api/client/server-actions";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { StageAssignmentToggleDialog } from "@/components/festival/stage-assignment/StageAssignmentToggleDialog";
+import { StagePortalCredentialDialog } from "@/components/festival/stage-assignment/StagePortalCredentialDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,13 +44,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -101,15 +90,6 @@ export function StagesClient({
   const [portalAccessStageId, setPortalAccessStageId] = useState<
     string | null
   >(null);
-  const [revealedCredential, setRevealedCredential] = useState<{
-    accessCode: string;
-    pin: string;
-  } | null>(null);
-  const stagePortalCredential = useStagePortalCredential(
-    festivalId,
-    portalAccessStageId ?? "",
-  );
-  const resetStagePortalCredential = useResetStagePortalCredential();
   const [pendingMemberId, setPendingMemberId] = useState<string | null>(null);
   const { data: members = [] } = useMembers(festivalId);
   const { data: stageAssignments = [] } = useStageAssignments(festivalId);
@@ -312,10 +292,7 @@ export function StagesClient({
                             Manage managers
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onSelect={() => {
-                              setRevealedCredential(null);
-                              setPortalAccessStageId(stage.id);
-                            }}
+                            onSelect={() => setPortalAccessStageId(stage.id)}
                           >
                             <KeyRound className="h-4 w-4 mr-2" />
                             Portal access
@@ -437,79 +414,18 @@ export function StagesClient({
         />
       )}
 
-      <Dialog
+      <StagePortalCredentialDialog
+        festivalId={festivalId}
+        stageId={portalAccessStageId}
+        stageName={
+          stages.find((s) => s.id === portalAccessStageId)?.name ?? "stage"
+        }
         open={!!portalAccessStageId}
         onOpenChange={(open) => {
-          if (!open) {
-            setPortalAccessStageId(null);
-            setRevealedCredential(null);
-          }
+          if (!open) setPortalAccessStageId(null);
         }}
-      >
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>
-              Portal access for{" "}
-              {stages.find((s) => s.id === portalAccessStageId)?.name ??
-                "stage"}
-            </DialogTitle>
-            <DialogDescription>
-              Judges use this access code and PIN to log into the stage's
-              judge portal.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="rounded-md border bg-muted/20 px-3 py-2.5">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                Access code
-              </p>
-              <p className="mt-1 font-mono text-lg font-bold tracking-widest">
-                {revealedCredential?.accessCode ??
-                  stagePortalCredential.data?.accessCode ??
-                  "—"}
-              </p>
-            </div>
-            {revealedCredential ? (
-              <div className="rounded-md border border-primary/40 bg-primary/10 px-3 py-2.5">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                  New PIN (shown once — copy it now)
-                </p>
-                <p className="mt-1 font-mono text-lg font-bold tracking-widest text-primary">
-                  {revealedCredential.pin}
-                </p>
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                The PIN is only shown right after it's created or reset.
-              </p>
-            )}
-            {!isReadOnly && (
-              <Button
-                variant="outline"
-                className="w-full"
-                disabled={resetStagePortalCredential.isPending}
-                onClick={() => {
-                  if (!portalAccessStageId) return;
-                  resetStagePortalCredential.mutate(
-                    { festivalId, stageId: portalAccessStageId },
-                    {
-                      onSuccess: (data) => {
-                        setRevealedCredential(data);
-                        toast.success("Portal credentials reset.");
-                      },
-                    },
-                  );
-                }}
-              >
-                <RefreshCcw className="mr-2 h-4 w-4" />
-                {resetStagePortalCredential.isPending
-                  ? "Resetting…"
-                  : "Reset credentials"}
-              </Button>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+        isReadOnly={isReadOnly}
+      />
     </div>
   );
 }

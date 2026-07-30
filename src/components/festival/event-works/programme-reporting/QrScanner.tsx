@@ -28,6 +28,17 @@ interface QrScannerProps {
   onScanError?: (error: unknown) => void;
   /** Tighter layout, no footer help — use inside reporting panel */
   variant?: "default" | "embedded";
+  /**
+   * Which controls this instance renders:
+   * - "full": manual chest#, photo upload, and camera (default embedded).
+   * - "camera": only the square camera surface (the live-check-in hero).
+   * - "manual": only chest# and photo upload (fallback in the manual section).
+   */
+  mode?: "full" | "camera" | "manual";
+  /** Camera mode only — try to open the camera as soon as it mounts. */
+  autoStart?: boolean;
+  /** Hide the internal success/error result cards (parent shows its own). */
+  hideResults?: boolean;
 }
 
 type ScanStatus = "idle" | "scanning" | "processing" | "success" | "error";
@@ -121,6 +132,9 @@ export function QrScanner({
   onScanSuccess,
   onScanError,
   variant = "default",
+  mode = "full",
+  autoStart = false,
+  hideResults = false,
 }: QrScannerProps) {
   const [status, setStatus] = useState<ScanStatus>("idle");
   const [lastResult, setLastResult] = useState<ScanResult | null>(null);
@@ -474,6 +488,17 @@ export function QrScanner({
     };
   }, [stopCamera]);
 
+  // Camera-hero: open the camera automatically on mount. Guarded so it fires
+  // once; if the browser blocks it (no prior grant / lost gesture) the idle
+  // square still offers a tap-to-open button.
+  const autoStartedRef = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: one-shot mount trigger; startCamera is intentionally excluded.
+  useEffect(() => {
+    if (!autoStart || mode !== "camera" || autoStartedRef.current) return;
+    autoStartedRef.current = true;
+    void startCamera();
+  }, [autoStart, mode]);
+
   const embedded = variant === "embedded";
   const sectionGap = embedded ? "gap-3" : "gap-5";
   const labelClass =
@@ -490,7 +515,7 @@ export function QrScanner({
     <div className={cn(embedded ? "space-y-2" : "space-y-5")}>
       <canvas ref={canvasRef} className="hidden" aria-hidden />
 
-      {embedded ? (
+      {embedded && mode !== "camera" ? (
         <QuickAddScanForm
           manualInput={manualInput}
           onManualInputChange={setManualInput}
@@ -501,8 +526,9 @@ export function QrScanner({
           onOpenCameraFallback={() => void startCamera("any")}
           showCameraFallback={simpleCameraHint}
           fieldStatus={fieldStatus}
+          hideCamera={mode === "manual"}
         />
-      ) : (
+      ) : !embedded ? (
         <div className={cn("grid", sectionGap)}>
           <div className="space-y-2">
             <p className={labelClass}>Chest number</p>
@@ -596,7 +622,18 @@ export function QrScanner({
             )}
           </div>
         </div>
-      )}
+      ) : null}
+
+      {mode === "camera" && status !== "scanning" && status !== "processing" ? (
+        <button
+          type="button"
+          onClick={() => void startCamera()}
+          className="mx-auto flex aspect-square w-full max-w-[300px] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-muted/30 text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
+        >
+          <Camera className="h-10 w-10" aria-hidden />
+          <span className="text-sm font-semibold">Open camera</span>
+        </button>
+      ) : null}
 
       {cameraGate ? (
         <output
@@ -618,12 +655,19 @@ export function QrScanner({
         </output>
       ) : null}
 
-      {status === "scanning" && (
+      {status === "scanning" && mode !== "manual" && (
         <div
           ref={scannerSurfaceRef}
           className={cn(
-            "relative aspect-video rounded-lg bg-black",
-            embedded ? "max-h-[min(32vh,220px)]" : "max-h-[min(50vh,360px)]",
+            "relative rounded-lg bg-black",
+            mode === "camera"
+              ? "mx-auto aspect-square w-full max-w-[320px]"
+              : cn(
+                  "aspect-video",
+                  embedded
+                    ? "max-h-[min(32vh,220px)]"
+                    : "max-h-[min(50vh,360px)]",
+                ),
             "[&:fullscreen]:aspect-auto [&:fullscreen]:h-full [&:fullscreen]:max-h-none [&:fullscreen]:min-h-[100dvh] [&:fullscreen]:w-full",
           )}
         >
@@ -694,7 +738,7 @@ export function QrScanner({
         </p>
       )}
 
-      {status === "success" && lastResult?.participant && (
+      {!hideResults && status === "success" && lastResult?.participant && (
         <div
           className={cn(
             "space-y-2 rounded-md border border-green-500/30 bg-green-500/10",
@@ -743,7 +787,7 @@ export function QrScanner({
         </div>
       )}
 
-      {status === "error" && lastResult && (
+      {!hideResults && status === "error" && lastResult && (
         <div
           className={cn(
             "space-y-2 rounded-md border border-red-500/30 bg-red-500/10",

@@ -3,13 +3,13 @@
 import { HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import {
   Tooltip,
   TooltipContent,
@@ -30,10 +30,10 @@ export function HowItWorksButton({
 }: HowItWorksButtonProps) {
   return (
     <TooltipProvider>
-      <Dialog>
+      <Drawer>
         <Tooltip>
           <TooltipTrigger asChild>
-            <DialogTrigger asChild>
+            <DrawerTrigger asChild>
               <Button
                 variant="outline"
                 size="sm"
@@ -42,24 +42,24 @@ export function HowItWorksButton({
               >
                 <HelpCircle className="h-4 w-4" />
               </Button>
-            </DialogTrigger>
+            </DrawerTrigger>
           </TooltipTrigger>
           <TooltipContent>
             <p>How it Works</p>
           </TooltipContent>
         </Tooltip>
-        <DialogContent className="max-w-xl text-left">
-          <DialogHeader className="text-left">
-            <DialogTitle>{title}</DialogTitle>
+        <DrawerContent className="text-left">
+          <DrawerHeader className="text-left">
+            <DrawerTitle>{title}</DrawerTitle>
             {description && (
-              <DialogDescription className="text-left">
+              <DrawerDescription className="text-left">
                 {description}
-              </DialogDescription>
+              </DrawerDescription>
             )}
-          </DialogHeader>
-          <div className="space-y-4 text-left">{children}</div>
-        </DialogContent>
-      </Dialog>
+          </DrawerHeader>
+          <div className="space-y-4 px-4 pb-8 pt-4 text-left overflow-y-auto max-h-[60vh]">{children}</div>
+        </DrawerContent>
+      </Drawer>
     </TooltipProvider>
   );
 }

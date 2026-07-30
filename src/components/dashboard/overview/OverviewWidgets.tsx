@@ -20,6 +20,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
+import { LiveLinksCard } from "@/components/dashboard/overview/LiveLinksCard";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import {
   Card,
@@ -396,6 +397,9 @@ export default async function OverviewWidgets({
           </Card>
         </div>
       </TooltipProvider>
+
+      {/* Live links */}
+      <LiveLinksCard slug={slug} />
 
       {/* Bottom section: Quick Actions */}
       <Card>

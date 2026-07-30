@@ -14,7 +14,7 @@ export async function enrichProgrammesAssignmentsResultCodeLetters<
     id: string;
     assignments: Array<{
       participant?: { id: string } | null;
-      result?: { codeLetter?: { code: string } | null } | null;
+      result?: { codeLetter?: { code: string; isAbsent?: boolean } | null } | null;
     }>;
   },
 >(programmes: T[]): Promise<T[]> {
@@ -52,13 +52,14 @@ export async function enrichProgrammesAssignmentsResultCodeLetters<
       programmeId: true,
       reportingSessionId: true,
       code: true,
+      isAbsent: true,
     },
     with: {
       programmeCodeLetterRecipients: { columns: { participantId: true } },
     },
   });
 
-  const participantCodeByProgramme = new Map<string, Map<string, string>>();
+  const participantCodeByProgramme = new Map<string, Map<string, { code: string; isAbsent: boolean }>>();
   for (const progId of programmeIds) {
     participantCodeByProgramme.set(progId, new Map());
   }
@@ -68,7 +69,7 @@ export async function enrichProgrammesAssignmentsResultCodeLetters<
     if (latestForProg !== cl.reportingSessionId) continue;
     const map = participantCodeByProgramme.get(cl.programmeId)!;
     for (const r of cl.programmeCodeLetterRecipients) {
-      map.set(r.participantId, cl.code);
+      map.set(r.participantId, { code: cl.code, isAbsent: cl.isAbsent });
     }
   }
 
@@ -78,9 +79,9 @@ export async function enrichProgrammesAssignmentsResultCodeLetters<
     for (const a of p.assignments) {
       const sid = a.participant?.id;
       if (!sid || !a.result) continue;
-      const code = map.get(sid);
-      if (code) {
-        a.result.codeLetter = { code };
+      const data = map.get(sid);
+      if (data) {
+        a.result.codeLetter = { code: data.code, isAbsent: data.isAbsent };
       }
     }
   }

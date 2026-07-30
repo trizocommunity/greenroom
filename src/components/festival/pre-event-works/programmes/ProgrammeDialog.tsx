@@ -251,8 +251,8 @@ export function ProgrammeDialog({
     const assignments = details.assignments || [];
 
     const detailsBody = (
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm">
+      <div className="flex flex-col flex-1 min-h-0 space-y-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm shrink-0">
           <div className="space-y-1">
             <span className="text-muted-foreground">Category</span>
             <div className="font-medium">{details.category?.name}</div>
@@ -290,12 +290,12 @@ export function ProgrammeDialog({
         </div>
 
         <div className="space-y-2 flex flex-col flex-1 min-h-0">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between shrink-0">
             <h4 className="text-sm font-semibold">
               Assigned Participants ({assignments.length})
             </h4>
           </div>
-          <div className="rounded-md border flex-1 min-h-[200px] max-h-[350px] overflow-hidden flex flex-col">
+          <div className="rounded-md border flex-1 min-h-0 overflow-hidden flex flex-col">
             <ScrollArea className="flex-1">
               <Table>
                 <TableHeader className="bg-muted/50 sticky top-0 z-10">
@@ -358,25 +358,27 @@ export function ProgrammeDialog({
 
     return (
       <div className="flex flex-col flex-1 min-h-0 space-y-4 py-1">
-        <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="flex-1 flex flex-col min-h-0">
           {canUseAuditDrawer ? (
-            <Tabs defaultValue="details" className="flex flex-col">
-              <TabsList className="w-full sm:w-fit">
-                <TabsTrigger value="details" className="flex-1 sm:flex-none">
+            <Tabs defaultValue="details" className="flex flex-col flex-1 min-h-0">
+              <TabsList className="w-full">
+                <TabsTrigger value="details" className="flex-1">
                   Details
                 </TabsTrigger>
-                <TabsTrigger value="activity" className="flex-1 sm:flex-none">
+                <TabsTrigger value="activity" className="flex-1">
                   Activity
                 </TabsTrigger>
               </TabsList>
-              <TabsContent value="details">{detailsBody}</TabsContent>
-              <TabsContent value="activity">
-                <div className="rounded-lg border overflow-hidden">
+              <TabsContent value="details" className="flex-1 min-h-0 flex flex-col data-[state=inactive]:hidden mt-3">
+                {detailsBody}
+              </TabsContent>
+              <TabsContent value="activity" className="flex-1 min-h-0 flex flex-col data-[state=inactive]:hidden mt-3">
+                <div className="rounded-lg border overflow-hidden flex-1 flex flex-col">
                   <ProgrammeActivityTimeline
                     entries={activityDetail?.auditTimeline ?? []}
                     isLoading={isLoadingActivity}
-                    className="p-3"
-                    scrollClassName="max-h-72 sm:max-h-[28rem]"
+                    className="p-3 flex-1"
+                    scrollClassName="flex-1"
                   />
                 </div>
               </TabsContent>
