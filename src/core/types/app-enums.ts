@@ -111,15 +111,15 @@ export const ProgrammeReportingStatus = {
 export type ProgrammeReportingStatus =
   (typeof ProgrammeReportingStatus)[keyof typeof ProgrammeReportingStatus];
 
-export const ProgrammeJudgmentStatus = {
+export const ProgrammeJudgementStatus = {
   NOT_STARTED: "NOT_STARTED",
   LIVE: "LIVE",
   SCORING_IN_PROGRESS: "SCORING_IN_PROGRESS",
   AWAITING_JUDGES: "AWAITING_JUDGES",
   COMPLETED: "COMPLETED",
 } as const;
-export type ProgrammeJudgmentStatus =
-  (typeof ProgrammeJudgmentStatus)[keyof typeof ProgrammeJudgmentStatus];
+export type ProgrammeJudgementStatus =
+  (typeof ProgrammeJudgementStatus)[keyof typeof ProgrammeJudgementStatus];
 
 export const ScoringSystem = {
   POSITION_BASED: "POSITION_BASED",

@@ -1,4 +1,4 @@
-﻿{
+{
   "id": "8458f431-361a-47d9-bf69-f0f38f7959f6",
   "prevId": "0ada0782-1fbd-4886-a99f-164c8dcf779a",
   "version": "7",
@@ -1959,8 +1959,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.judgment_config": {
-      "name": "judgment_config",
+    "public.judgement_config": {
+      "name": "judgement_config",
       "schema": "",
       "columns": {
         "id": {
@@ -2029,8 +2029,8 @@
         }
       },
       "indexes": {
-        "judgment_config_festivalId_idx": {
-          "name": "judgment_config_festivalId_idx",
+        "judgement_config_festivalId_idx": {
+          "name": "judgement_config_festivalId_idx",
           "columns": [
             {
               "expression": "festival_id",
@@ -2044,8 +2044,8 @@
           "method": "btree",
           "with": {}
         },
-        "judgment_config_programmeId_idx": {
-          "name": "judgment_config_programmeId_idx",
+        "judgement_config_programmeId_idx": {
+          "name": "judgement_config_programmeId_idx",
           "columns": [
             {
               "expression": "programme_id",
@@ -2061,27 +2061,27 @@
         }
       },
       "foreignKeys": {
-        "judgment_config_festivalId_fkey": {
-          "name": "judgment_config_festivalId_fkey",
-          "tableFrom": "judgment_config",
+        "judgement_config_festivalId_fkey": {
+          "name": "judgement_config_festivalId_fkey",
+          "tableFrom": "judgement_config",
           "tableTo": "festival",
           "columnsFrom": ["festival_id"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
-        "judgment_config_programmeId_fkey": {
-          "name": "judgment_config_programmeId_fkey",
-          "tableFrom": "judgment_config",
+        "judgement_config_programmeId_fkey": {
+          "name": "judgement_config_programmeId_fkey",
+          "tableFrom": "judgement_config",
           "tableTo": "programme",
           "columnsFrom": ["programme_id"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
-        "judgment_config_reportingSessionId_fkey": {
-          "name": "judgment_config_reportingSessionId_fkey",
-          "tableFrom": "judgment_config",
+        "judgement_config_reportingSessionId_fkey": {
+          "name": "judgement_config_reportingSessionId_fkey",
+          "tableFrom": "judgement_config",
           "tableTo": "programme_reporting_session",
           "columnsFrom": ["reporting_session_id"],
           "columnsTo": ["id"],
@@ -2095,8 +2095,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.judgment_config_judge": {
-      "name": "judgment_config_judge",
+    "public.judgement_config_judge": {
+      "name": "judgement_config_judge",
       "schema": "",
       "columns": {
         "id": {
@@ -2126,8 +2126,8 @@
         }
       },
       "indexes": {
-        "judgment_config_judge_configId_judgeId_key": {
-          "name": "judgment_config_judge_configId_judgeId_key",
+        "judgement_config_judge_configId_judgeId_key": {
+          "name": "judgement_config_judge_configId_judgeId_key",
           "columns": [
             {
               "expression": "config_id",
@@ -2149,18 +2149,18 @@
         }
       },
       "foreignKeys": {
-        "judgment_config_judge_configId_fkey": {
-          "name": "judgment_config_judge_configId_fkey",
-          "tableFrom": "judgment_config_judge",
-          "tableTo": "judgment_config",
+        "judgement_config_judge_configId_fkey": {
+          "name": "judgement_config_judge_configId_fkey",
+          "tableFrom": "judgement_config_judge",
+          "tableTo": "judgement_config",
           "columnsFrom": ["config_id"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
-        "judgment_config_judge_judgeId_fkey": {
-          "name": "judgment_config_judge_judgeId_fkey",
-          "tableFrom": "judgment_config_judge",
+        "judgement_config_judge_judgeId_fkey": {
+          "name": "judgement_config_judge_judgeId_fkey",
+          "tableFrom": "judgement_config_judge",
           "tableTo": "judge",
           "columnsFrom": ["judge_id"],
           "columnsTo": ["id"],
@@ -2174,8 +2174,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.judgment_link": {
-      "name": "judgment_link",
+    "public.judgement_link": {
+      "name": "judgement_link",
       "schema": "",
       "columns": {
         "id": {
@@ -2256,8 +2256,8 @@
         }
       },
       "indexes": {
-        "judgment_link_tokenHash_key": {
-          "name": "judgment_link_tokenHash_key",
+        "judgement_link_tokenHash_key": {
+          "name": "judgement_link_tokenHash_key",
           "columns": [
             {
               "expression": "token_hash",
@@ -2271,8 +2271,8 @@
           "method": "btree",
           "with": {}
         },
-        "judgment_link_configId_isActive_idx": {
-          "name": "judgment_link_configId_isActive_idx",
+        "judgement_link_configId_isActive_idx": {
+          "name": "judgement_link_configId_isActive_idx",
           "columns": [
             {
               "expression": "config_id",
@@ -2292,8 +2292,8 @@
           "method": "btree",
           "with": {}
         },
-        "judgment_link_expiresAt_idx": {
-          "name": "judgment_link_expiresAt_idx",
+        "judgement_link_expiresAt_idx": {
+          "name": "judgement_link_expiresAt_idx",
           "columns": [
             {
               "expression": "expires_at",
@@ -2309,10 +2309,10 @@
         }
       },
       "foreignKeys": {
-        "judgment_link_configId_fkey": {
-          "name": "judgment_link_configId_fkey",
-          "tableFrom": "judgment_link",
-          "tableTo": "judgment_config",
+        "judgement_link_configId_fkey": {
+          "name": "judgement_link_configId_fkey",
+          "tableFrom": "judgement_link",
+          "tableTo": "judgement_config",
           "columnsFrom": ["config_id"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
@@ -2325,8 +2325,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.judgment_score": {
-      "name": "judgment_score",
+    "public.judgement_score": {
+      "name": "judgement_score",
       "schema": "",
       "columns": {
         "id": {
@@ -2381,8 +2381,8 @@
         }
       },
       "indexes": {
-        "judgment_score_configId_judgeId_codeLetterId_key": {
-          "name": "judgment_score_configId_judgeId_codeLetterId_key",
+        "judgement_score_configId_judgeId_codeLetterId_key": {
+          "name": "judgement_score_configId_judgeId_codeLetterId_key",
           "columns": [
             {
               "expression": "config_id",
@@ -2410,36 +2410,36 @@
         }
       },
       "foreignKeys": {
-        "judgment_score_configId_fkey": {
-          "name": "judgment_score_configId_fkey",
-          "tableFrom": "judgment_score",
-          "tableTo": "judgment_config",
+        "judgement_score_configId_fkey": {
+          "name": "judgement_score_configId_fkey",
+          "tableFrom": "judgement_score",
+          "tableTo": "judgement_config",
           "columnsFrom": ["config_id"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
-        "judgment_score_linkId_fkey": {
-          "name": "judgment_score_linkId_fkey",
-          "tableFrom": "judgment_score",
-          "tableTo": "judgment_link",
+        "judgement_score_linkId_fkey": {
+          "name": "judgement_score_linkId_fkey",
+          "tableFrom": "judgement_score",
+          "tableTo": "judgement_link",
           "columnsFrom": ["link_id"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
-        "judgment_score_judgeId_fkey": {
-          "name": "judgment_score_judgeId_fkey",
-          "tableFrom": "judgment_score",
+        "judgement_score_judgeId_fkey": {
+          "name": "judgement_score_judgeId_fkey",
+          "tableFrom": "judgement_score",
           "tableTo": "judge",
           "columnsFrom": ["judge_id"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
-        "judgment_score_codeLetterId_fkey": {
-          "name": "judgment_score_codeLetterId_fkey",
-          "tableFrom": "judgment_score",
+        "judgement_score_codeLetterId_fkey": {
+          "name": "judgement_score_codeLetterId_fkey",
+          "tableFrom": "judgement_score",
           "tableTo": "programme_code_letter",
           "columnsFrom": ["code_letter_id"],
           "columnsTo": ["id"],

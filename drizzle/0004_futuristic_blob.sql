@@ -1,4 +1,4 @@
-﻿CREATE TYPE "public"."PosterTemplateStatus" AS ENUM('DRAFT', 'PUBLISHED');--> statement-breakpoint
+CREATE TYPE "public"."PosterTemplateStatus" AS ENUM('DRAFT', 'PUBLISHED');--> statement-breakpoint
 CREATE TYPE "public"."PosterTemplateType" AS ENUM('RESULT', 'TEAM_POINTS', 'CANDIDATE_CARD');--> statement-breakpoint
 CREATE TYPE "public"."PublicDisplayMode" AS ENUM('programme_results', 'team_standings');--> statement-breakpoint
 ALTER TYPE "public"."FestivalRole" ADD VALUE 'MEDIA';--> statement-breakpoint
@@ -58,7 +58,7 @@ CREATE TABLE "judge" (
 	"updated_at" timestamp(3) DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "judgment_config" (
+CREATE TABLE "judgement_config" (
 	"id" text PRIMARY KEY NOT NULL,
 	"festival_id" text NOT NULL,
 	"programme_id" text NOT NULL,
@@ -71,14 +71,14 @@ CREATE TABLE "judgment_config" (
 	"updated_at" timestamp(3) DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "judgment_config_judge" (
+CREATE TABLE "judgement_config_judge" (
 	"id" text PRIMARY KEY NOT NULL,
 	"config_id" text NOT NULL,
 	"judge_id" text NOT NULL,
 	"created_at" timestamp(3) DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "judgment_link" (
+CREATE TABLE "judgement_link" (
 	"id" text PRIMARY KEY NOT NULL,
 	"config_id" text NOT NULL,
 	"token_hash" text NOT NULL,
@@ -93,7 +93,7 @@ CREATE TABLE "judgment_link" (
 	"regenerated_at" timestamp(3)
 );
 --> statement-breakpoint
-CREATE TABLE "judgment_score" (
+CREATE TABLE "judgement_score" (
 	"id" text PRIMARY KEY NOT NULL,
 	"config_id" text NOT NULL,
 	"link_id" text NOT NULL,
@@ -126,16 +126,16 @@ ALTER TABLE "festival_scoring_award_rule" ADD CONSTRAINT "festival_scoring_award
 ALTER TABLE "festival_scoring_award_rule" ADD CONSTRAINT "festival_scoring_award_rule_categoryId_fkey" FOREIGN KEY ("category_id") REFERENCES "public"."category"("id") ON DELETE set null ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "festival_scoring_policy" ADD CONSTRAINT "festival_scoring_policy_festivalId_fkey" FOREIGN KEY ("festival_id") REFERENCES "public"."festival"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "judge" ADD CONSTRAINT "judge_festivalId_fkey" FOREIGN KEY ("festival_id") REFERENCES "public"."festival"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
-ALTER TABLE "judgment_config" ADD CONSTRAINT "judgment_config_festivalId_fkey" FOREIGN KEY ("festival_id") REFERENCES "public"."festival"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
-ALTER TABLE "judgment_config" ADD CONSTRAINT "judgment_config_programmeId_fkey" FOREIGN KEY ("programme_id") REFERENCES "public"."programme"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
-ALTER TABLE "judgment_config" ADD CONSTRAINT "judgment_config_reportingSessionId_fkey" FOREIGN KEY ("reporting_session_id") REFERENCES "public"."programme_reporting_session"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
-ALTER TABLE "judgment_config_judge" ADD CONSTRAINT "judgment_config_judge_configId_fkey" FOREIGN KEY ("config_id") REFERENCES "public"."judgment_config"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
-ALTER TABLE "judgment_config_judge" ADD CONSTRAINT "judgment_config_judge_judgeId_fkey" FOREIGN KEY ("judge_id") REFERENCES "public"."judge"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
-ALTER TABLE "judgment_link" ADD CONSTRAINT "judgment_link_configId_fkey" FOREIGN KEY ("config_id") REFERENCES "public"."judgment_config"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
-ALTER TABLE "judgment_score" ADD CONSTRAINT "judgment_score_configId_fkey" FOREIGN KEY ("config_id") REFERENCES "public"."judgment_config"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
-ALTER TABLE "judgment_score" ADD CONSTRAINT "judgment_score_linkId_fkey" FOREIGN KEY ("link_id") REFERENCES "public"."judgment_link"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
-ALTER TABLE "judgment_score" ADD CONSTRAINT "judgment_score_judgeId_fkey" FOREIGN KEY ("judge_id") REFERENCES "public"."judge"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
-ALTER TABLE "judgment_score" ADD CONSTRAINT "judgment_score_codeLetterId_fkey" FOREIGN KEY ("code_letter_id") REFERENCES "public"."programme_code_letter"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "judgement_config" ADD CONSTRAINT "judgement_config_festivalId_fkey" FOREIGN KEY ("festival_id") REFERENCES "public"."festival"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "judgement_config" ADD CONSTRAINT "judgement_config_programmeId_fkey" FOREIGN KEY ("programme_id") REFERENCES "public"."programme"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "judgement_config" ADD CONSTRAINT "judgement_config_reportingSessionId_fkey" FOREIGN KEY ("reporting_session_id") REFERENCES "public"."programme_reporting_session"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "judgement_config_judge" ADD CONSTRAINT "judgement_config_judge_configId_fkey" FOREIGN KEY ("config_id") REFERENCES "public"."judgement_config"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "judgement_config_judge" ADD CONSTRAINT "judgement_config_judge_judgeId_fkey" FOREIGN KEY ("judge_id") REFERENCES "public"."judge"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "judgement_link" ADD CONSTRAINT "judgement_link_configId_fkey" FOREIGN KEY ("config_id") REFERENCES "public"."judgement_config"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "judgement_score" ADD CONSTRAINT "judgement_score_configId_fkey" FOREIGN KEY ("config_id") REFERENCES "public"."judgement_config"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "judgement_score" ADD CONSTRAINT "judgement_score_linkId_fkey" FOREIGN KEY ("link_id") REFERENCES "public"."judgement_link"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "judgement_score" ADD CONSTRAINT "judgement_score_judgeId_fkey" FOREIGN KEY ("judge_id") REFERENCES "public"."judge"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "judgement_score" ADD CONSTRAINT "judgement_score_codeLetterId_fkey" FOREIGN KEY ("code_letter_id") REFERENCES "public"."programme_code_letter"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 CREATE UNIQUE INDEX "festival_poster_template_festivalId_code_key" ON "festival_poster_template" USING btree ("festival_id","code");--> statement-breakpoint
 CREATE INDEX "festival_poster_template_festivalId_status_idx" ON "festival_poster_template" USING btree ("festival_id","status");--> statement-breakpoint
 CREATE INDEX "festival_scoring_award_rule_festivalId_idx" ON "festival_scoring_award_rule" USING btree ("festival_id");--> statement-breakpoint
@@ -143,13 +143,13 @@ CREATE INDEX "festival_scoring_award_rule_scoringPolicyId_idx" ON "festival_scor
 CREATE INDEX "festival_scoring_award_rule_categoryId_idx" ON "festival_scoring_award_rule" USING btree ("category_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "festival_scoring_policy_festivalId_key" ON "festival_scoring_policy" USING btree ("festival_id");--> statement-breakpoint
 CREATE INDEX "judge_festivalId_idx" ON "judge" USING btree ("festival_id");--> statement-breakpoint
-CREATE INDEX "judgment_config_festivalId_idx" ON "judgment_config" USING btree ("festival_id");--> statement-breakpoint
-CREATE INDEX "judgment_config_programmeId_idx" ON "judgment_config" USING btree ("programme_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "judgment_config_judge_configId_judgeId_key" ON "judgment_config_judge" USING btree ("config_id","judge_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "judgment_link_tokenHash_key" ON "judgment_link" USING btree ("token_hash");--> statement-breakpoint
-CREATE INDEX "judgment_link_configId_isActive_idx" ON "judgment_link" USING btree ("config_id","is_active");--> statement-breakpoint
-CREATE INDEX "judgment_link_expiresAt_idx" ON "judgment_link" USING btree ("expires_at");--> statement-breakpoint
-CREATE UNIQUE INDEX "judgment_score_configId_judgeId_codeLetterId_key" ON "judgment_score" USING btree ("config_id","judge_id","code_letter_id");--> statement-breakpoint
+CREATE INDEX "judgement_config_festivalId_idx" ON "judgement_config" USING btree ("festival_id");--> statement-breakpoint
+CREATE INDEX "judgement_config_programmeId_idx" ON "judgement_config" USING btree ("programme_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "judgement_config_judge_configId_judgeId_key" ON "judgement_config_judge" USING btree ("config_id","judge_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "judgement_link_tokenHash_key" ON "judgement_link" USING btree ("token_hash");--> statement-breakpoint
+CREATE INDEX "judgement_link_configId_isActive_idx" ON "judgement_link" USING btree ("config_id","is_active");--> statement-breakpoint
+CREATE INDEX "judgement_link_expiresAt_idx" ON "judgement_link" USING btree ("expires_at");--> statement-breakpoint
+CREATE UNIQUE INDEX "judgement_score_configId_judgeId_codeLetterId_key" ON "judgement_score" USING btree ("config_id","judge_id","code_letter_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "category_festivalId_name_key" ON "category" USING btree ("festivalId","name");--> statement-breakpoint
 CREATE UNIQUE INDEX "group_festivalId_name_key" ON "group" USING btree ("festivalId","name");--> statement-breakpoint
 CREATE UNIQUE INDEX "payment_userId_purpose_pending_unique_idx" ON "payment" USING btree ("userId","purpose") WHERE "payment"."status" = 'PENDING' AND "payment"."used" = false;--> statement-breakpoint

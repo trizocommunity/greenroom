@@ -2,7 +2,7 @@ import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   judge as judgeTable,
-  judgmentScore as judgmentScoreTable,
+  judgementScore as judgementScoreTable,
   stage as stageTable,
 } from "@/core/database/schema";
 
@@ -20,7 +20,7 @@ export type FestivalJudgeWithAssignments = {
     averagePoints: number | null;
   }>;
   programmes: Array<{ id: string; name: string }>;
-  /** Stages this judge has actually judged at (derived from judgment history). */
+  /** Stages this judge has actually judged at (derived from judgement history). */
   stages: Array<{ id: string; name: string }>;
   /** Stages this judge is explicitly assigned to (judge_stage_assignment). */
   assignedStages: Array<{ id: string; name: string }>;
@@ -33,9 +33,9 @@ export async function listFestivalJudgesWithAssignments(
     where: eq(judgeTable.festivalId, festivalId),
     orderBy: [asc(judgeTable.name)],
     with: {
-      judgmentConfigJudges: {
+      judgementConfigJudges: {
         with: {
-          judgmentConfig: {
+          judgementConfig: {
             columns: { id: true, judgingMode: true, status: true },
             with: {
               programme: { columns: { id: true, name: true } },
@@ -57,8 +57,8 @@ export async function listFestivalJudgesWithAssignments(
   const stageIds = Array.from(
     new Set(
       judges.flatMap((judge) =>
-        judge.judgmentConfigJudges
-          .map((row) => row.judgmentConfig.programmeReportingSession?.stageId)
+        judge.judgementConfigJudges
+          .map((row) => row.judgementConfig.programmeReportingSession?.stageId)
           .filter((id): id is string => Boolean(id)),
       ),
     ),
@@ -76,15 +76,15 @@ export async function listFestivalJudgesWithAssignments(
   const configIds = Array.from(
     new Set(
       judges.flatMap((judge) =>
-        judge.judgmentConfigJudges.map((row) => row.judgmentConfig.id),
+        judge.judgementConfigJudges.map((row) => row.judgementConfig.id),
       ),
     ),
   );
   const configIdSet = new Set(configIds);
-  const judgmentScores =
+  const judgementScores =
     judgeIds.length > 0 && configIds.length > 0
-      ? await db.query.judgmentScore.findMany({
-          where: inArray(judgmentScoreTable.judgeId, judgeIds),
+      ? await db.query.judgementScore.findMany({
+          where: inArray(judgementScoreTable.judgeId, judgeIds),
           columns: {
             judgeId: true,
             configId: true,
@@ -96,7 +96,7 @@ export async function listFestivalJudgesWithAssignments(
     string,
     { totalPoints: number; count: number }
   >();
-  for (const row of judgmentScores) {
+  for (const row of judgementScores) {
     if (!configIdSet.has(row.configId)) continue;
     const key = `${row.judgeId}:${row.configId}`;
     const prev = scoreStatsByJudgeConfig.get(key) ?? {
@@ -112,8 +112,8 @@ export async function listFestivalJudgesWithAssignments(
     const programmeMap = new Map<string, { id: string; name: string }>();
     const stageMap = new Map<string, { id: string; name: string }>();
 
-    const activities = judge.judgmentConfigJudges.map((row) => {
-      const config = row.judgmentConfig;
+    const activities = judge.judgementConfigJudges.map((row) => {
+      const config = row.judgementConfig;
       const programme = config.programme
         ? {
             id: config.programme.id,

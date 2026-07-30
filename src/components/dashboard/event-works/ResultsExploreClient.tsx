@@ -408,7 +408,7 @@ export function ResultsExploreClient({
                 </div>
                 <div className="shrink-0 flex items-center gap-1.5">
                   {prog.id === initialProgrammeId ? (
-                    <Badge className="text-[10px]">From Judgment</Badge>
+                    <Badge className="text-[10px]">From Judgement</Badge>
                   ) : null}
                   <Badge variant="outline" className="text-[10px]">
                     {prog.type === "GROUP" ? "Group" : "Individual"}

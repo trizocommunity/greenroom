@@ -3,7 +3,7 @@ import { cn } from "@/core/utils/cn";
 /**
  * Compact funnel showing where a programme stands:
  * Assigned → Reported → Absent → Scored → Pending.
- * `scored` is optional (the reporting screen doesn't know judgment progress).
+ * `scored` is optional (the reporting screen doesn't know judgement progress).
  */
 export function ProgrammeProgressFunnel({
   assigned,

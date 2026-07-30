@@ -236,7 +236,7 @@ export function StagePortalHomeClient() {
           <CardContent className="py-10 text-center">
             <p className="text-sm text-muted-foreground">
               No live programme right now. It appears here the moment your stage
-              manager starts judgment.
+              manager starts judgement.
             </p>
           </CardContent>
         </Card>

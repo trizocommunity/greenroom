@@ -1,4 +1,4 @@
-﻿# Greenroom â€” Product Requirements Document
+# Greenroom â€” Product Requirements Document
 
 > **Status:** Complete
 > **Version:** 1.0
@@ -67,7 +67,7 @@ user
         â”‚     â””â”€â”€ schedule_entry (1:many)
         â”œâ”€â”€ stage (1:many)
         â”œâ”€â”€ judge (1:many)
-        â”œâ”€â”€ judgment_config (1:many)
+        â”œâ”€â”€ judgement_config (1:many)
         â”œâ”€â”€ result (1:many)
         â”œâ”€â”€ festival_media_image (1:many)
         â”œâ”€â”€ festival_news (1:many)
@@ -382,15 +382,15 @@ Each festival has one active `festival_scoring_policy`. It defines: `normalizeTo
 
 Award rules (`festival_scoring_award_rule`) define points per grade (A, B, C, etc.) based on participant range or category.
 
-- Service: `src/features/judgment/services/scoring-policy.service.ts`
-- Actions: `src/features/judgment/actions/judgment.actions.ts`
+- Service: `src/features/judgement/services/scoring-policy.service.ts`
+- Actions: `src/features/judgement/actions/judgement.actions.ts`
 
 #### Marks Entry
 
 Judges enter scores via `/judge/[token]` (PIN-protected). Score entry creates/updates `Result` rows linked to `ProgrammeAssignment`.
 
 - Judge portal: `src/app/judge/[token]/page.tsx`
-- Service: `src/features/judgment/services/judgment.service.ts`
+- Service: `src/features/judgement/services/scoring-policy.service.ts`
 
 #### Results
 
@@ -703,7 +703,7 @@ User registration creates an account immediately. Email verification (sending a 
 | Assignments | `src/features/assignments/services/assignment.service.ts` |
 | Stages | `src/features/stages/services/stage.service.ts` |
 | Schedule | `src/features/schedule/actions/schedule.actions.ts` |
-| Scoring policy | `src/features/judgment/services/scoring-policy.service.ts` |
+| Scoring policy | `src/features/judgement/services/scoring-policy.service.ts` |
 | Results | `src/features/results/services/results.service.ts` |
 | Results calculator | `src/features/results/services/results-calculator.ts` |
 | Leaderboard | `src/features/results/services/leaderboard.service.ts` |

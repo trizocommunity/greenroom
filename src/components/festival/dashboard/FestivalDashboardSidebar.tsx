@@ -111,13 +111,13 @@ export function FestivalDashboardSidebar({
         // the stage-management capability.
         if (item.title === "Reporting" && !canUseReporting) return false;
 
-        // "Judgment/Scoring" is business-capability routed:
+        // "Judgement/Scoring" is business-capability routed:
         // - BASIC: Scoring UI (/event-works/marks)
-        // - STANDARD/PRO: Judgment UI (external judging)
+        // - STANDARD/PRO: Judgement UI (external judging)
         // If Super Admin disables the underlying capability(s), hide the link to
         // avoid unreachable redirects.
         if (
-          (item.href.endsWith("/event-works/judgment") ||
+          (item.href.endsWith("/event-works/judgement") ||
             item.href.endsWith("/event-works/marks")) &&
           !canUseExternalJudging &&
           !canUseMarksUI

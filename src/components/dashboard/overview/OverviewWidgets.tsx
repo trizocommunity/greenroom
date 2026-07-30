@@ -133,15 +133,15 @@ export default async function OverviewWidgets({
     },
     {
       label: canUseExternalJudging
-        ? "Judgment"
+        ? "Judgement"
         : canUseMarksUI
           ? tier === "BASIC"
             ? "Scoring"
             : "Marks"
-          : "Judgment",
+          : "Judgement",
       icon: Gavel,
       href: canUseExternalJudging
-        ? `/dashboard/${slug}/event-works/judgment`
+        ? `/dashboard/${slug}/event-works/judgement`
         : `/dashboard/${slug}/event-works/marks`,
       condition:
         (canUseExternalJudging || canUseMarksUI) &&

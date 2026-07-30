@@ -56,19 +56,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import type { ProgrammeJudgmentStatus } from "@/core/types/app-enums";
+import type { ProgrammeJudgementStatus } from "@/core/types/app-enums";
 import {
   formatStoredDateTime,
   parseStoredInstant,
 } from "@/core/utils/date-time";
-import { ProgrammeProgressFunnel } from "@/components/dashboard/judgment/ProgrammeProgressFunnel";
+import { ProgrammeProgressFunnel } from "@/components/dashboard/judgement/ProgrammeProgressFunnel";
 import { StagePortalCredentialDialog } from "@/components/festival/stage-assignment/StagePortalCredentialDialog";
 import { createJudgeAction } from "@/features/judges/actions/judge.actions";
 import {
-  getJudgmentDashboardDataAction,
-  restartJudgmentAction,
-  startJudgmentAction,
-} from "@/features/judgment/actions/judgment.actions";
+  getJudgementDashboardDataAction,
+  restartJudgementAction,
+  startJudgementAction,
+} from "@/features/judgement/actions/judgement.actions";
 
 type Judge = { id: string; name: string; description?: string | null };
 type Programme = {
@@ -104,7 +104,7 @@ type ActiveConfig = {
   judges: Array<{ id: string; name: string }>;
   startedAt: string | null;
   startedBy: string | null;
-  judgmentStatus: ProgrammeJudgmentStatus;
+  judgementStatus: ProgrammeJudgementStatus;
 };
 type JudgedProgrammeCard = {
   configId: string;
@@ -116,9 +116,9 @@ type JudgedProgrammeCard = {
   scoreLimit: number;
   judgingMode: "SINGLE" | "GROUP";
   requiredCodeLetters: number;
-  totalJudgments: number;
-  isJudgmentComplete: boolean;
-  judgmentStatus: ProgrammeJudgmentStatus;
+  totalJudgements: number;
+  isJudgementComplete: boolean;
+  judgementStatus: ProgrammeJudgementStatus;
   completionSummary: string;
   judgeProgress: Array<{
     judgeId: string;
@@ -146,7 +146,7 @@ type JudgedProgrammeCard = {
 };
 
 /** Snapshot shape for React Query; server actions infer narrower DB enums that clash with `initialData`. */
-type JudgmentDashboardQueryData = {
+type JudgementDashboardQueryData = {
   judgeProgrammes: Programme[];
   rejudgeProgrammes: Programme[];
   judges: Judge[];
@@ -162,12 +162,12 @@ function resetWizardForm() {
   };
 }
 
-export function JudgmentWizardClient({
+export function JudgementWizardClient({
   festivalId,
   initialDashboardData,
 }: {
   festivalId: string;
-  initialDashboardData: JudgmentDashboardQueryData;
+  initialDashboardData: JudgementDashboardQueryData;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -184,7 +184,7 @@ export function JudgmentWizardClient({
     return parseStoredInstant(value).getTime();
   }, []);
 
-  const judgmentStatusLabel = (status: ProgrammeJudgmentStatus) => {
+  const judgementStatusLabel = (status: ProgrammeJudgementStatus) => {
     switch (status) {
       case "COMPLETED":
         return "Completed";
@@ -199,7 +199,7 @@ export function JudgmentWizardClient({
     }
   };
 
-  const dirtySourceId = `judgment-wizard:${festivalId}`;
+  const dirtySourceId = `judgement-wizard:${festivalId}`;
   const { registerDirtySource, unregisterDirtySource, setDirty } =
     useUnsavedChanges();
   const POLICY_SCORE_LIMIT = 100;
@@ -232,12 +232,12 @@ export function JudgmentWizardClient({
   const [judgingMode, setJudgingMode] = useState<"SINGLE" | "GROUP">("GROUP");
   const [newJudgeName, setNewJudgeName] = useState("");
   const [isAddingJudge, startAddJudgeTransition] = useTransition();
-  const dashboardQuery = useQuery<JudgmentDashboardQueryData>({
-    queryKey: queryKeys.judgment.dashboard(festivalId),
+  const dashboardQuery = useQuery<JudgementDashboardQueryData>({
+    queryKey: queryKeys.judgement.dashboard(festivalId),
     queryFn: () =>
-      getJudgmentDashboardDataAction(
+      getJudgementDashboardDataAction(
         festivalId,
-      ) as Promise<JudgmentDashboardQueryData>,
+      ) as Promise<JudgementDashboardQueryData>,
     initialData: initialDashboardData,
     enabled: Boolean(festivalId),
     staleTime: 0,
@@ -287,9 +287,9 @@ export function JudgmentWizardClient({
       }),
     );
   }, [combinedDrawerDetail]);
-  const completedJudgments = useMemo(() => {
+  const completedJudgements = useMemo(() => {
     return judgedProgrammes
-      .filter((item) => item.isJudgmentComplete)
+      .filter((item) => item.isJudgementComplete)
       .sort((a, b) => {
         const aPublished = (a.programmeStatus ?? "")
           .toUpperCase()
@@ -298,7 +298,7 @@ export function JudgmentWizardClient({
           .toUpperCase()
           .includes("PUBLISHED");
         if (aPublished !== bPublished) return aPublished ? 1 : -1;
-        return b.totalJudgments - a.totalJudgments;
+        return b.totalJudgements - a.totalJudgements;
       });
   }, [judgedProgrammes]);
 
@@ -308,7 +308,7 @@ export function JudgmentWizardClient({
     const allProgrammes = [
       ...judgeProgrammes.map((p) => ({ ...p, _kind: "READY" })),
       ...rejudgeProgrammes.map((p) => ({ ...p, _kind: "REJUDGE" })),
-      ...completedJudgments.map((p) => ({
+      ...completedJudgements.map((p) => ({
         id: p.programmeId,
         name: p.programmeName,
         status: p.programmeStatus,
@@ -330,7 +330,7 @@ export function JudgmentWizardClient({
         p.name.toLowerCase().includes(query) ||
         (p.programmeCategory?.toLowerCase().includes(query)),
     );
-  }, [searchQuery, judgeProgrammes, rejudgeProgrammes, completedJudgments]);
+  }, [searchQuery, judgeProgrammes, rejudgeProgrammes, completedJudgements]);
 
   const completedDetailTimeline = useMemo(() => {
     if (!combinedDrawerDetail) return [];
@@ -372,7 +372,7 @@ export function JudgmentWizardClient({
 
     events.push({
       at: toEpoch(combinedDrawerDetail.createdAt) + 1,
-      title: "Judgment completion",
+      title: "Judgement completion",
       detail: combinedDrawerDetail.completionSummary,
     });
 
@@ -437,7 +437,7 @@ export function JudgmentWizardClient({
         }
         setNewJudgeName("");
         await queryClient.invalidateQueries({
-          queryKey: queryKeys.judgment.dashboard(festivalId),
+          queryKey: queryKeys.judgement.dashboard(festivalId),
         });
         toast.success("Judge added.");
       } catch (error: any) {
@@ -446,18 +446,18 @@ export function JudgmentWizardClient({
     });
   };
 
-  const onStartJudgment = () => {
+  const onStartJudgement = () => {
     if (!wizardProgramme) return;
     startTransition(async () => {
       try {
         if (wizardKind === "rejudge") {
-          await restartJudgmentAction({
+          await restartJudgementAction({
             festivalId,
             programmeId: wizardProgramme.id,
             judgeIds: selectedJudgeIds,
           });
         } else {
-          await startJudgmentAction({
+          await startJudgementAction({
             festivalId,
             programmeId: wizardProgramme.id,
             scoreLimit: POLICY_SCORE_LIMIT,
@@ -466,12 +466,12 @@ export function JudgmentWizardClient({
           });
         }
         await queryClient.invalidateQueries({
-          queryKey: queryKeys.judgment.dashboard(festivalId),
+          queryKey: queryKeys.judgement.dashboard(festivalId),
         });
-        toast.success("Judgment started — live on the stage portal now.");
+        toast.success("Judgement started — live on the stage portal now.");
         closeDialog();
       } catch (error: any) {
-        toast.error(error?.message ?? "Failed to start judgment.");
+        toast.error(error?.message ?? "Failed to start judgement.");
       }
     });
   };
@@ -485,8 +485,8 @@ export function JudgmentWizardClient({
     setDirty(dirtySourceId, hasUnsavedWizardInputs);
   }, [dirtySourceId, hasUnsavedWizardInputs, setDirty]);
 
-  // Auto-open the Start Judgment dialog when arriving from the reporting
-  // screen's "Submit & start judgment" handoff (?start=<programmeId>).
+  // Auto-open the Start Judgement dialog when arriving from the reporting
+  // screen's "Submit & start judgement" handoff (?start=<programmeId>).
   const startParam = searchParams.get("start");
   const handledStartRef = useRef<string | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: one-shot handoff; only re-run when the param or programme list changes.
@@ -503,7 +503,7 @@ export function JudgmentWizardClient({
     <div className="space-y-6 sm:space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-lg font-bold tracking-tight sm:text-2xl">
-          Judgment Panal
+          Judgement Panel
         </h1>
         <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-64">
@@ -521,10 +521,10 @@ export function JudgmentWizardClient({
               }}
             />
           </div>
-          <HowItWorksButton title="How judgment works">
+          <HowItWorksButton title="How judgement works">
             <div className="space-y-4 text-sm">
               <div>
-                <h4 className="font-semibold">Starting Judgment</h4>
+                <h4 className="font-semibold">Starting Judgement</h4>
                 <p className="text-muted-foreground">
                   Select a programme from the list. You can choose to judge in
                   'Single' or 'Group' mode, and assign judges.
@@ -543,7 +543,7 @@ export function JudgmentWizardClient({
               <div>
                 <h4 className="font-semibold">Rejudge</h4>
                 <p className="text-muted-foreground">
-                  If a judgment is completed but needs adjustments, you can
+                  If a judgement is completed but needs adjustments, you can
                   restart it before it is published.
                 </p>
               </div>
@@ -661,7 +661,7 @@ export function JudgmentWizardClient({
                             }
                           >
                             <Play className="mr-1.5 h-3.5 w-3.5" />
-                            Start Judgment
+                            Start Judgement
                           </Button>
                         </div>
                       </div>
@@ -679,18 +679,18 @@ export function JudgmentWizardClient({
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <section className="space-y-3">
           <h2 className="text-base font-semibold tracking-tight sm:text-lg flex items-center justify-between">
-            Completed judgments
+            Completed judgements
             <Badge variant="outline" className="text-[10px]">
-              {completedJudgments.length}
+              {completedJudgements.length}
             </Badge>
           </h2>
-          {completedJudgments.length === 0 ? (
+          {completedJudgements.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">
-              No completed judgments yet.
+              No completed judgements yet.
             </div>
           ) : (
             <div className="space-y-2">
-              {completedJudgments.map((item) => (
+              {completedJudgements.map((item) => (
                 <div
                   key={item.configId}
                   className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors bg-card"
@@ -713,13 +713,13 @@ export function JudgmentWizardClient({
                     </div>
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                       <Badge variant="default" className="text-[10px]">
-                        {judgmentStatusLabel(item.judgmentStatus)}
+                        {judgementStatusLabel(item.judgementStatus)}
                       </Badge>
                       <Badge variant="secondary" className="text-[10px]">
                         {item.judgingMode}
                       </Badge>
                       <span className="text-xs text-muted-foreground">
-                        {item.totalJudgments} entries
+                        {item.totalJudgements} entries
                       </span>
                       {item.programmeCategory && (
                         <span className="text-xs text-muted-foreground hidden sm:inline-block">
@@ -906,7 +906,7 @@ export function JudgmentWizardClient({
         <DialogContent className="max-h-[min(90dvh,720px)] w-[calc(100%-1rem)] max-w-lg overflow-y-auto p-4 sm:w-[calc(100%-1.5rem)] sm:p-6">
           <DialogHeader>
             <DialogTitle>
-              {wizardKind === "rejudge" ? "Rejudge" : "Start Judgment"}
+              {wizardKind === "rejudge" ? "Rejudge" : "Start Judgement"}
             </DialogTitle>
             <DialogDescription>
               {wizardProgramme ? (
@@ -1012,15 +1012,15 @@ export function JudgmentWizardClient({
             <Button
               className="h-9 w-full text-xs sm:text-sm"
               type="button"
-              onClick={onStartJudgment}
+              onClick={onStartJudgement}
               disabled={!canGenerate || isPending}
             >
               <Play className="mr-1.5 h-3.5 w-3.5" />
               {isPending
                 ? "Starting…"
                 : wizardKind === "rejudge"
-                  ? "Restart judgment"
-                  : "Start judgment"}
+                  ? "Restart judgement"
+                  : "Start judgement"}
             </Button>
           </div>
         </DialogContent>
@@ -1082,7 +1082,7 @@ export function JudgmentWizardClient({
                           openWizardForProgramme(item.id, "create");
                         }}
                       >
-                        Start judgment
+                        Start judgement
                       </Button>
                     )}
                     {item._kind === "REJUDGE" && (
@@ -1094,7 +1094,7 @@ export function JudgmentWizardClient({
                           openWizardForProgramme(item.id, "rejudge");
                         }}
                       >
-                        Restart judgment
+                        Restart judgement
                       </Button>
                     )}
                     {item._kind === "COMPLETED" && (
@@ -1143,7 +1143,7 @@ export function JudgmentWizardClient({
             <DrawerDescription>
               Status {combinedDrawerDetail?.programmeStatus} · Mode{" "}
               {combinedDrawerDetail?.judgingMode} ·{" "}
-              {combinedDrawerDetail?.totalJudgments} score entries
+              {combinedDrawerDetail?.totalJudgements} score entries
             </DrawerDescription>
           </DrawerHeader>
           <div className="flex-1 overflow-y-auto pb-6 min-h-0 space-y-6">
@@ -1262,8 +1262,8 @@ export function JudgmentWizardClient({
                         Status
                       </p>
                       <p className="text-xs font-semibold">
-                        {judgmentStatusLabel(
-                          combinedDrawerDetail.judgmentStatus,
+                        {judgementStatusLabel(
+                          combinedDrawerDetail.judgementStatus,
                         )}
                       </p>
                     </div>
@@ -1280,7 +1280,7 @@ export function JudgmentWizardClient({
                         Entries
                       </p>
                       <p className="text-xs font-semibold">
-                        {combinedDrawerDetail.totalJudgments}
+                        {combinedDrawerDetail.totalJudgements}
                       </p>
                     </div>
                     <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
@@ -1308,7 +1308,7 @@ export function JudgmentWizardClient({
                       className="mt-2 rounded-md border border-border/70 bg-background/70 px-2.5"
                     >
                       <AccordionItem
-                        value="judgment-timeline"
+                        value="judgement-timeline"
                         className="border-b-0"
                       >
                         <AccordionTrigger className="py-2 hover:no-underline">

@@ -1059,12 +1059,12 @@ export function ProgrammeReportingClient({
               : "Reporting ended — code letters issued to reported participants.",
           );
           // Fast hand-off: if the programme is on a stage, jump straight to the
-          // Judgment screen with the Start Judgment dialog pre-opened.
+          // Judgement screen with the Start Judgement dialog pre-opened.
           const programmeId = selected?.programme?.id;
           const onStage = Boolean(selected?.stage?.id);
           if (programmeId && onStage && pathname?.endsWith("/reporting")) {
             router.push(
-              `${pathname.replace(/\/reporting$/, "/judgment")}?start=${programmeId}`,
+              `${pathname.replace(/\/reporting$/, "/judgement")}?start=${programmeId}`,
             );
           } else {
             router.refresh();

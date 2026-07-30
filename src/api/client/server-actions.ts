@@ -12,11 +12,11 @@ import {
   getStagePortalBoardAction,
   markCodeLetterAbsenceAction,
   previewJudgeSubmissionSummaryAction,
-  restartJudgmentAction,
-  startJudgmentAction,
+  restartJudgementAction,
+  startJudgementAction,
   submitGroupJudgeScoresAction,
   submitJudgeScoresAction,
-} from "@/features/judgment/actions/judgment.actions";
+} from "@/features/judgement/actions/judgement.actions";
 import { exportParticipantsQrPdfAction } from "@/features/participants/actions/qr.actions";
 import {
   clearAllPosterTemplatesAction,
@@ -153,7 +153,7 @@ export function usePreviewJudgeSubmission() {
   });
 }
 
-export function useStartJudgment() {
+export function useStartJudgement() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: {
@@ -163,20 +163,20 @@ export function useStartJudgment() {
       scoreLimit: number;
       judgingMode?: "SINGLE" | "GROUP";
     }) => {
-      return startJudgmentAction(input);
+      return startJudgementAction(input);
     },
     onError: (error) => {
       toast.error(error.message);
     },
     onSuccess: (_data, input) => {
       qc.invalidateQueries({
-        queryKey: queryKeys.judgment.dashboard(input.festivalId),
+        queryKey: queryKeys.judgement.dashboard(input.festivalId),
       });
     },
   });
 }
 
-export function useRestartJudgment() {
+export function useRestartJudgement() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: {
@@ -184,14 +184,14 @@ export function useRestartJudgment() {
       programmeId: string;
       judgeIds?: string[];
     }) => {
-      return restartJudgmentAction(input);
+      return restartJudgementAction(input);
     },
     onError: (error) => {
       toast.error(error.message);
     },
     onSuccess: (_data, input) => {
       qc.invalidateQueries({
-        queryKey: queryKeys.judgment.dashboard(input.festivalId),
+        queryKey: queryKeys.judgement.dashboard(input.festivalId),
       });
     },
   });

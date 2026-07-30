@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTopLoader } from "nextjs-toploader";
-import { ScoringPolicyClient } from "@/components/dashboard/judgment/ScoringPolicyClient";
+import { ScoringPolicyClient } from "@/components/dashboard/judgement/ScoringPolicyClient";
 import { TemplatesClient } from "@/components/festival/posters/TemplatesClient";
 import { cn } from "@/core/utils/cn";
 import { FestivalLiveClient } from "./FestivalLiveClient";

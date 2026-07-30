@@ -6,8 +6,8 @@ import {
   programmeAssignment as assignmentTable,
   auditLog,
   judge as judgeTable,
-  judgmentConfig as judgmentConfigTable,
-  judgmentScore as judgmentScoreTable,
+  judgementConfig as judgementConfigTable,
+  judgementScore as judgementScoreTable,
   participant as participantTable,
   programme as programmeTable,
   programmeTeamLead as programmeTeamLeadTable,
@@ -139,21 +139,21 @@ export async function getProgrammeDetailForDrawer(
       )
       .where(eq(assignmentTable.programmeId, programmeId)),
     db
-      .select({ c: countDistinct(judgmentScoreTable.codeLetterId) })
-      .from(judgmentScoreTable)
+      .select({ c: countDistinct(judgementScoreTable.codeLetterId) })
+      .from(judgementScoreTable)
       .innerJoin(
-        judgmentConfigTable,
-        eq(judgmentScoreTable.configId, judgmentConfigTable.id),
+        judgementConfigTable,
+        eq(judgementScoreTable.configId, judgementConfigTable.id),
       )
-      .where(eq(judgmentConfigTable.programmeId, programmeId)),
+      .where(eq(judgementConfigTable.programmeId, programmeId)),
     db
-      .select({ c: countDistinct(judgmentScoreTable.judgeId) })
-      .from(judgmentScoreTable)
+      .select({ c: countDistinct(judgementScoreTable.judgeId) })
+      .from(judgementScoreTable)
       .innerJoin(
-        judgmentConfigTable,
-        eq(judgmentScoreTable.configId, judgmentConfigTable.id),
+        judgementConfigTable,
+        eq(judgementScoreTable.configId, judgementConfigTable.id),
       )
-      .where(eq(judgmentConfigTable.programmeId, programmeId)),
+      .where(eq(judgementConfigTable.programmeId, programmeId)),
     db
       .select({ c: count() })
       .from(resultTable)
@@ -182,9 +182,9 @@ export async function getProgrammeDetailForDrawer(
         endedBy: true,
       },
     }),
-    db.query.judgmentConfig.findFirst({
-      where: eq(judgmentConfigTable.programmeId, programmeId),
-      orderBy: [desc(judgmentConfigTable.createdAt)],
+    db.query.judgementConfig.findFirst({
+      where: eq(judgementConfigTable.programmeId, programmeId),
+      orderBy: [desc(judgementConfigTable.createdAt)],
       columns: { id: true },
       with: { judges: { columns: { id: true } } },
     }),

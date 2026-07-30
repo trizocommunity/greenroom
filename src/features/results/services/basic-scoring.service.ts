@@ -6,7 +6,7 @@ import {
   result as resultTable,
 } from "@/core/database/schema";
 import { AppError } from "@/core/errors/errors";
-import { resolveScoringPolicy } from "@/features/judgment/services/scoring-policy.service";
+import { resolveScoringPolicy } from "@/features/judgement/services/scoring-policy.service";
 import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
 import { ResultModel } from "@/features/results/repositories/result.repository";
 import { calculatePosition } from "@/features/results/services/results-calculator";

@@ -1,4 +1,4 @@
-﻿# Adopt Neon Postgres: Provider Decision, Tenancy Model, and Provisioning Plan
+# Adopt Neon Postgres: Provider Decision, Tenancy Model, and Provisioning Plan
 
 ## Status
 - **Created**: 2026-07-27
@@ -58,7 +58,7 @@ The app is already multi-tenant using the standard SaaS pattern: one shared data
 
 ### 3. Driver: no change â€” keep `drizzle-orm/node-postgres` + `pg.Pool`
 
-Neon's `neon-http` driver doesn't support interactive transactions in production, and this app depends on `db.transaction()` in: `festival-expiration.service.ts`, `festival-crud.actions.ts`, `group.service.ts`, `programme-reporting.service.ts`, `assignment.service.ts`, `judgment.actions.ts`, `code-letter-generator.service.ts`, `scoring-policy.service.ts`, `media.actions.ts`, `admin.actions.ts`, `schedule.actions.ts`, `chest-number.actions.ts`. Neon is standard wire-compatible Postgres, so the existing `pg.Pool`-based client works against it unchanged â€” this is a connection-string swap, not a driver rewrite.
+Neon's `neon-http` driver doesn't support interactive transactions in production, and this app depends on `db.transaction()` in: `festival-expiration.service.ts`, `festival-crud.actions.ts`, `group.service.ts`, `programme-reporting.service.ts`, `assignment.service.ts`, `judgement.actions.ts`, `code-letter-generator.service.ts`, `scoring-policy.service.ts`, `media.actions.ts`, `admin.actions.ts`, `schedule.actions.ts`, `chest-number.actions.ts`. Neon is standard wire-compatible Postgres, so the existing `pg.Pool`-based client works against it unchanged â€” this is a connection-string swap, not a driver rewrite.
 
 ### 4. Provisioning: Neon CLI (`neonctl`), not the dashboard
 
@@ -112,7 +112,7 @@ Neon's `neon-http` driver doesn't support interactive transactions in production
 ## Testing Strategy
 
 1. **Connection smoke test** â€” confirm the app connects and runs a simple query against the new Neon branch (pooled and unpooled) before wiring CI/prod.
-2. **Transactional flow smoke test** â€” exercise each of the 12 `db.transaction(...)` call sites (scoring policy, assignments, festival CRUD, group service, programme reporting, judgment actions, code-letter generation, media, admin, schedule, chest-number) against the new branch.
+2. **Transactional flow smoke test** â€” exercise each of the 12 `db.transaction(...)` call sites (scoring policy, assignments, festival CRUD, group service, programme reporting, judgement actions, code-letter generation, media, admin, schedule, chest-number) against the new branch.
 3. **Concurrency check** â€” confirm the reduced pool size + Neon's pooler doesn't exhaust connections under concurrent Vercel function invocations.
 4. **SSL check** â€” confirm `isLocalConnection`/SSL branch in `client.ts` correctly negotiates TLS against the non-local Neon host.
 5. **Preview branch check** â€” open a test PR after Phase 4 and confirm a preview branch is created and `DATABASE_URL` is injected correctly.

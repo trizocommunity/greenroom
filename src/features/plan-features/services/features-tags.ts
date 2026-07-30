@@ -22,7 +22,7 @@ export type FeatureToggleKey = (typeof PLAN_FEATURE_TOGGLE_KEYS)[number];
 export type CuratedFeatureTag =
   | "eventWorks.reporting"
   | "eventWorks.externalJudging"
-  | "eventWorks.judgmentUI"
+  | "eventWorks.judgementUI"
   | "eventWorks.marksUI"
   | "programme.teamLead"
   | "programme.auditDrawer";
@@ -32,7 +32,7 @@ export type FeatureTag = FeatureToggleKey | CuratedFeatureTag;
 const CURATED_FEATURE_TAGS: CuratedFeatureTag[] = [
   "eventWorks.reporting",
   "eventWorks.externalJudging",
-  "eventWorks.judgmentUI",
+  "eventWorks.judgementUI",
   "eventWorks.marksUI",
   "programme.teamLead",
   "programme.auditDrawer",
@@ -68,7 +68,7 @@ const CURATED_TAG_REQUIREMENTS: Record<CuratedFeatureTag, TagRequirement> = {
     requires: ["schedule"],
     hardBlockBasics: true,
   },
-  "eventWorks.judgmentUI": {
+  "eventWorks.judgementUI": {
     requires: ["schedule"],
     hardBlockBasics: true,
   },
@@ -99,7 +99,7 @@ export function getFeatureTagRequirements(tag: FeatureTag): TagRequirement {
 const CURATED_FEATURE_TAG_LABELS: Record<CuratedFeatureTag, string> = {
   "eventWorks.reporting": "Reporting",
   "eventWorks.externalJudging": "External Judges",
-  "eventWorks.judgmentUI": "Judgment UI",
+  "eventWorks.judgementUI": "Judgement UI",
   "eventWorks.marksUI": "Marks UI",
   "programme.teamLead": "Programme Team Lead",
   "programme.auditDrawer": "Programme Audit Trail",

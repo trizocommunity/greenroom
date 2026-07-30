@@ -9,7 +9,7 @@ import {
   programme as programmeTable,
 } from "@/core/database/schema";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
-import { getScoringPolicyAction } from "@/features/judgment/actions/judgment.actions";
+import { getScoringPolicyAction } from "@/features/judgement/actions/judgement.actions";
 import {
   FeatureService,
   getTierForFeatureCheck,

@@ -18,7 +18,7 @@ import {
 
 /**
  * Shows a stage's judge-portal access code and a one-time PIN after reset.
- * Shared by the Stages management screen and the Judgment dashboard.
+ * Shared by the Stages management screen and the Judgement dashboard.
  */
 export function StagePortalCredentialDialog({
   festivalId,

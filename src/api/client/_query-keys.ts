@@ -50,9 +50,9 @@ export const queryKeys = {
     all: (festivalId: string, programmeId?: string) =>
       ["results", festivalId, programmeId] as const,
   },
-  judgment: {
+  judgement: {
     dashboard: (festivalId: string) =>
-      ["judgment", "dashboard", festivalId] as const,
+      ["judgement", "dashboard", festivalId] as const,
   },
   notifications: {
     all: (participantId: string) => ["notifications", participantId] as const,

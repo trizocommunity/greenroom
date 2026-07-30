@@ -622,7 +622,7 @@ export function JudgesClient({
       {deleting ? (
         <DeleteDialog
           title="Delete Judge"
-          description="This judge will be removed from future judgment configurations."
+          description="This judge will be removed from future judgement configurations."
           open={true}
           onOpenChange={(open) => !open && setDeleting(null)}
           onDelete={async () => {

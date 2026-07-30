@@ -1,19 +1,19 @@
 import { eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { JudgmentWizardClient } from "@/components/dashboard/judgment/JudgmentWizardClient";
+import { JudgementWizardClient } from "@/components/dashboard/judgement/JudgementWizardClient";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { festival as festivalTable } from "@/core/database/schema";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
-import { getJudgmentDashboardDataAction } from "@/features/judgment/actions/judgment.actions";
+import { getJudgementDashboardDataAction } from "@/features/judgement/actions/judgement.actions";
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
 
 export const metadata: Metadata = {
-  title: "Judgment",
+  title: "Judgement",
 };
 
-export default async function JudgmentPage({
+export default async function JudgementPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
@@ -33,7 +33,7 @@ export default async function JudgmentPage({
 
   const canUseJudging = await getEffectiveFeatureTagEnabled(
     tier,
-    "eventWorks.judgmentUI",
+    "eventWorks.judgementUI",
   );
   if (!canUseJudging) {
     return notFound();
@@ -51,12 +51,12 @@ export default async function JudgmentPage({
   )
     return notFound();
 
-  const initialDashboardData = await getJudgmentDashboardDataAction(
+  const initialDashboardData = await getJudgementDashboardDataAction(
     festival.id,
   );
 
   return (
-    <JudgmentWizardClient
+    <JudgementWizardClient
       festivalId={festival.id}
       initialDashboardData={initialDashboardData as any}
     />

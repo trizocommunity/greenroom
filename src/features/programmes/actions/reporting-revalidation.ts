@@ -14,7 +14,7 @@ const scopeToPaths: Record<RevalidationScope, (slug: string) => string[]> = {
   "reporting-reopen": (slug) => [
     `/dashboard/${slug}/event-works/reporting`,
     `/dashboard/${slug}/event-works/results`,
-    `/dashboard/${slug}/event-works/judgment`,
+    `/dashboard/${slug}/event-works/judgement`,
     `/dashboard/${slug}/event-works/leaderboard`,
     `/${slug}/results`,
     `/${slug}`,

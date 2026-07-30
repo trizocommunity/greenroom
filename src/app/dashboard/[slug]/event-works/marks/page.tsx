@@ -9,7 +9,7 @@ import {
   festival as festivalTable,
   programme as programmeTable,
 } from "@/core/database/schema";
-import { getScoringPolicyAction } from "@/features/judgment/actions/judgment.actions";
+import { getScoringPolicyAction } from "@/features/judgement/actions/judgement.actions";
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
 import {
   getResolvedTier,
@@ -61,7 +61,7 @@ export default async function MarksRedirectPage({
   const tier = getResolvedTier(festival.tier) as Tier;
 
   if (!isBasicTier(tier)) {
-    redirect(`/dashboard/${slug}/event-works/judgment`);
+    redirect(`/dashboard/${slug}/event-works/judgement`);
   }
 
   const canUseMarks = await getEffectiveFeatureTagEnabled(

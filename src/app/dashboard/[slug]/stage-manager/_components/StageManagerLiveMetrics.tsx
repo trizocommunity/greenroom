@@ -3,16 +3,16 @@ import Link from "next/link";
 
 interface StageManagerLiveMetricsProps {
   reportingHref: string;
-  judgmentHref: string;
+  judgementHref: string;
   reportingStartedCount: number;
-  judgmentStartedCount: number;
+  judgementStartedCount: number;
 }
 
 export function StageManagerLiveMetrics({
   reportingHref,
-  judgmentHref,
+  judgementHref,
   reportingStartedCount,
-  judgmentStartedCount,
+  judgementStartedCount,
 }: StageManagerLiveMetricsProps) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -35,7 +35,7 @@ export function StageManagerLiveMetrics({
       </Link>
 
       <Link
-        href={judgmentHref}
+        href={judgementHref}
         className="group flex items-center gap-4 rounded-2xl border border-border/80 bg-card px-4 py-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
       >
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -43,11 +43,11 @@ export function StageManagerLiveMetrics({
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-2xl font-bold leading-none tracking-tight text-foreground">
-            {judgmentStartedCount}
+            {judgementStartedCount}
           </p>
           <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_6px_rgba(99,102,241,0.5)] animate-pulse" />
-            Judgment in progress
+            Judgement in progress
           </p>
         </div>
       </Link>

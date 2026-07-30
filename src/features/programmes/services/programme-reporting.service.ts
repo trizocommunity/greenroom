@@ -844,7 +844,7 @@ export const ProgrammeReportingService = {
       },
       context: {
         title: "Programme status updated",
-        body: "Programme is ready for judgment (Started).",
+        body: "Programme is ready for judgement (Started).",
         payload: {
           reportingSessionId,
           programmeId: session.programmeId,

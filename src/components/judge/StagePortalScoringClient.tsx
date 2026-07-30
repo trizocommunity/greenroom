@@ -37,7 +37,7 @@ import {
   previewJudgeSubmissionSummaryAction,
   submitGroupJudgeScoresAction,
   submitJudgeScoresAction,
-} from "@/features/judgment/actions/judgment.actions";
+} from "@/features/judgement/actions/judgement.actions";
 
 function AbsentToggle({
   isAbsent,
@@ -208,7 +208,7 @@ function SubmissionSummaryView({
               Thanks! Your scores are saved. Other judges still need to submit.
             </>
           ) : (
-            <>Thank you! This programme's judgment has been submitted.</>
+            <>Thank you! This programme's judgement has been submitted.</>
           )}
         </p>
       </div>
@@ -806,7 +806,7 @@ export function StagePortalScoringClient({
             scoresByCodeLetterId,
             remarksByCodeLetterId,
           });
-          setSummaryVariant(res.judgmentComplete ? "complete" : "partial");
+          setSummaryVariant(res.judgementComplete ? "complete" : "partial");
         } else {
           const scoresByJudgeId: Record<string, Record<string, number>> = {};
           const remarksByJudgeId: Record<string, Record<string, string>> = {};

@@ -12,7 +12,7 @@ import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
   festival as festivalTable,
-  judgmentConfig as judgmentConfigTable,
+  judgementConfig as judgementConfigTable,
   programmeReportingSession as prsTable,
   stage as stageTable,
 } from "@/core/database/schema";
@@ -63,7 +63,7 @@ export default async function StageManagerOverviewPage({
 
   const basePath = `/dashboard/${slug}`;
 
-  const [reportingStartedCount, judgmentStartedCount] = assignedStageIds.length
+  const [reportingStartedCount, judgementStartedCount] = assignedStageIds.length
     ? await Promise.all([
         db
           .select({ value: count() })
@@ -78,15 +78,15 @@ export default async function StageManagerOverviewPage({
           .then((rows) => rows[0]?.value ?? 0),
         db
           .select({ value: count() })
-          .from(judgmentConfigTable)
+          .from(judgementConfigTable)
           .innerJoin(
             prsTable,
-            eq(judgmentConfigTable.reportingSessionId, prsTable.id),
+            eq(judgementConfigTable.reportingSessionId, prsTable.id),
           )
           .where(
             and(
-              eq(judgmentConfigTable.festivalId, festival.id),
-              eq(judgmentConfigTable.status, "ACTIVE"),
+              eq(judgementConfigTable.festivalId, festival.id),
+              eq(judgementConfigTable.status, "ACTIVE"),
               inArray(prsTable.stageId, assignedStageIds),
             ),
           )
@@ -133,9 +133,9 @@ export default async function StageManagerOverviewPage({
       {canSchedule ? (
         <StageManagerLiveMetrics
           reportingHref={`${basePath}/event-works/reporting`}
-          judgmentHref={`${basePath}/event-works/judgment`}
+          judgementHref={`${basePath}/event-works/judgement`}
           reportingStartedCount={reportingStartedCount}
-          judgmentStartedCount={judgmentStartedCount}
+          judgementStartedCount={judgementStartedCount}
         />
       ) : null}
 
@@ -195,7 +195,7 @@ export default async function StageManagerOverviewPage({
         ) : null}
 
         {canSchedule ? (
-          <Link href={`${basePath}/event-works/judgment`}>
+          <Link href={`${basePath}/event-works/judgement`}>
             <Card className="h-full transition-colors hover:bg-muted/50">
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -203,7 +203,7 @@ export default async function StageManagerOverviewPage({
                     <Gavel className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <CardTitle>Judgment</CardTitle>
+                    <CardTitle>Judgement</CardTitle>
                     <CardDescription>
                       Manage scores, judge evaluations, and final results.
                     </CardDescription>

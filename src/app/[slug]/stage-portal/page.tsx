@@ -27,7 +27,7 @@ export default async function StagePortalPage({
 
   const canUseJudging = await getEffectiveFeatureTagEnabled(
     (festival.tier ?? "STANDARD") as any,
-    "eventWorks.judgmentUI",
+    "eventWorks.judgementUI",
   );
   if (!canUseJudging) return notFound();
 

@@ -103,13 +103,13 @@ export const getFestivalDashboardSidebarConfig = (
   const useExternalJudging = plan.useExternalJudging ?? false;
   // Dedicated /event-works/results is excluded for BASIC; available when external judging is enabled.
   const canUseResultsPage = useExternalJudging;
-  const judgmentTitle = useExternalJudging
-    ? "Judgment"
+  const judgementTitle = useExternalJudging
+    ? "Judgement"
     : plan.isBasic
       ? "Scoring"
       : "Marks";
-  const judgmentHref = useExternalJudging
-    ? `${basePath}/event-works/judgment`
+  const judgementHref = useExternalJudging
+    ? `${basePath}/event-works/judgement`
     : `${basePath}/event-works/marks`;
 
   const hasAccess = (allowedRoles?: FestivalRole[]) => {
@@ -225,8 +225,8 @@ export const getFestivalDashboardSidebarConfig = (
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"] as FestivalRole[],
         },
         {
-          title: judgmentTitle,
-          href: judgmentHref,
+          title: judgementTitle,
+          href: judgementHref,
           icon: Gavel,
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"] as FestivalRole[],
         },

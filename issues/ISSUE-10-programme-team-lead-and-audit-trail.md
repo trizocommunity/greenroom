@@ -1,4 +1,4 @@
-﻿# Programme Team Lead + Full Programme Audit Trail (PRO Tier)
+# Programme Team Lead + Full Programme Audit Trail (PRO Tier)
 
 ## Status
 - **Created**: 2026-07-27
@@ -134,7 +134,7 @@ Extend `src/features/auth/services/audit-log.service.ts`:
 
 // New TargetType values
 "PROGRAMME" | "PROGRAMME_ASSIGNMENT" | "PROGRAMME_TEAM_LEAD"
-| "REPORTING_SESSION" | "JUDGMENT_SCORE" | "RESULT"
+| "REPORTING_SESSION" | "JUDGEMENT_SCORE" | "RESULT"
 ```
 
 Wiring locations (each calls `createAuditLog(...)` once per event):
@@ -146,7 +146,7 @@ Wiring locations (each calls `createAuditLog(...)` once per event):
 | `src/features/programme-team-leads/services/programme-team-lead.service.ts` (new) | APPOINT/REPLACE/REMOVE_TEAM_LEAD |
 | `src/features/programmes/services/programme-reporting.service.ts` | OPEN/CLOSE_REPORTING, MARK_REPORTED |
 | `src/features/programmes/services/code-letter-generator.service.ts` | ISSUE_CODE_LETTER |
-| `src/features/judgment/actions/judgment.actions.ts` | SUBMIT_JUDGE_SCORES |
+| `src/features/judgement/actions/judgement.actions.ts` | SUBMIT_JUDGE_SCORES |
 | `src/features/results/actions/results.actions.ts` | SAVE_RESULT |
 | `src/features/results/actions/publish-result.actions.ts` (or wherever bulk publish lives) | PUBLISH_RESULTS |
 | `src/features/announcement/actions/announcement.actions.ts` | ANNOUNCE_RESULTS |

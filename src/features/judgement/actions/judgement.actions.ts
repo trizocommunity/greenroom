@@ -22,9 +22,9 @@ import {
   programmeAssignment as assignmentTable,
   programmeCodeLetter as codeLetterTable,
   festival as festivalTable,
-  judgmentConfigJudge as judgmentConfigJudgeTable,
-  judgmentConfig as judgmentConfigTable,
-  judgmentScore as judgmentScoreTable,
+  judgementConfigJudge as judgementConfigJudgeTable,
+  judgementConfig as judgementConfigTable,
+  judgementScore as judgementScoreTable,
   programme as programmeTable,
   programmeReportedParticipant as reportedParticipantTable,
   programmeReportingSession as reportingSessionTable,
@@ -32,7 +32,7 @@ import {
   scheduleEntry as scheduleEntryTable,
 } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
-import type { ProgrammeJudgmentStatus } from "@/core/types/app-enums";
+import type { ProgrammeJudgementStatus } from "@/core/types/app-enums";
 import { parseStoredInstant } from "@/core/utils/date-time";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { getFestivalDateKeySet } from "@/features/schedule/utils/festival-schedule-days";
@@ -41,7 +41,7 @@ import {
   getScoringPolicyWithRules,
   resolveScoringPolicy,
   upsertScoringPolicyActionData,
-} from "@/features/judgment/services/scoring-policy.service";
+} from "@/features/judgement/services/scoring-policy.service";
 import { getStageIdForReportingSession } from "@/features/programmes/actions/programme-reporting.actions";
 import { assertStageManagerAccessForStage } from "@/features/programmes/actions/reporting-access";
 import { JudgeStageAssignmentService } from "@/features/stages/services/judge-stage-assignment.service";
@@ -53,14 +53,14 @@ async function allAssignedJudgesHaveCompleteScores(
   codeLetterIds: string[],
 ): Promise<boolean> {
   if (codeLetterIds.length === 0) return true;
-  const assigned = await db.query.judgmentConfigJudge.findMany({
-    where: eq(judgmentConfigJudgeTable.configId, configId),
+  const assigned = await db.query.judgementConfigJudge.findMany({
+    where: eq(judgementConfigJudgeTable.configId, configId),
     columns: { judgeId: true },
   });
   if (assigned.length === 0) return true;
   const letterSet = new Set(codeLetterIds);
-  const rows = await db.query.judgmentScore.findMany({
-    where: eq(judgmentScoreTable.configId, configId),
+  const rows = await db.query.judgementScore.findMany({
+    where: eq(judgementScoreTable.configId, configId),
     columns: { judgeId: true, codeLetterId: true },
   });
   for (const { judgeId } of assigned) {
@@ -74,7 +74,7 @@ async function allAssignedJudgesHaveCompleteScores(
   return true;
 }
 
-export async function getJudgmentWizardDataAction(festivalId: string) {
+export async function getJudgementWizardDataAction(festivalId: string) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
 
@@ -373,16 +373,16 @@ export async function getJudgmentWizardDataAction(festivalId: string) {
   };
 }
 
-export async function getActiveJudgmentConfigsAction(festivalId: string) {
+export async function getActiveJudgementConfigsAction(festivalId: string) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
 
-  const configs = await db.query.judgmentConfig.findMany({
+  const configs = await db.query.judgementConfig.findMany({
     where: and(
-      eq(judgmentConfigTable.festivalId, festivalId),
-      eq(judgmentConfigTable.status, "LIVE"),
+      eq(judgementConfigTable.festivalId, festivalId),
+      eq(judgementConfigTable.status, "LIVE"),
     ),
-    orderBy: [desc(judgmentConfigTable.createdAt)],
+    orderBy: [desc(judgementConfigTable.createdAt)],
     with: {
       programme: {
         columns: { id: true, name: true, status: true },
@@ -408,9 +408,9 @@ export async function getActiveJudgmentConfigsAction(festivalId: string) {
     judges: c.judges.map((j) => ({ id: j.judge.id, name: j.judge.name })),
     startedAt: c.startedAt,
     startedBy: c.startedBy,
-    judgmentStatus: (c.scores.length > 0
+    judgementStatus: (c.scores.length > 0
       ? "SCORING_IN_PROGRESS"
-      : "LIVE") as ProgrammeJudgmentStatus,
+      : "LIVE") as ProgrammeJudgementStatus,
   }));
 }
 
@@ -418,9 +418,9 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
 
-  const configs = await db.query.judgmentConfig.findMany({
-    where: eq(judgmentConfigTable.festivalId, festivalId),
-    orderBy: [desc(judgmentConfigTable.createdAt)],
+  const configs = await db.query.judgementConfig.findMany({
+    where: eq(judgementConfigTable.festivalId, festivalId),
+    orderBy: [desc(judgementConfigTable.createdAt)],
     with: {
       programme: {
         columns: { id: true, name: true, status: true },
@@ -592,12 +592,12 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
         (j) => j.isComplete,
       ).length;
       const isSingle = (config.judgingMode as "SINGLE" | "GROUP") === "SINGLE";
-      const isJudgmentComplete = isSingle
+      const isJudgementComplete = isSingle
         ? requiredCodeLetters > 0 &&
           assignedJudgeCount > 0 &&
           judgesWithCompleteSet === assignedJudgeCount
         : config.scores.length > 0;
-      const judgmentStatus: ProgrammeJudgmentStatus = isJudgmentComplete
+      const judgementStatus: ProgrammeJudgementStatus = isJudgementComplete
         ? "COMPLETED"
         : isSingle
           ? judgesWithCompleteSet > 0
@@ -628,9 +628,9 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
         })),
         codeLetterRows,
         requiredCodeLetters,
-        totalJudgments: config.scores.length,
-        isJudgmentComplete,
-        judgmentStatus,
+        totalJudgements: config.scores.length,
+        isJudgementComplete,
+        judgementStatus,
         completionSummary,
         judgeProgress,
         pendingJudgeNames,
@@ -641,16 +641,16 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
   return judgedCards;
 }
 
-export async function getJudgmentDashboardDataAction(festivalId: string) {
+export async function getJudgementDashboardDataAction(festivalId: string) {
   const [wizardData, activeConfigs, judgedProgrammes, stageAssignments] =
     await Promise.all([
-      getJudgmentWizardDataAction(festivalId),
-      getActiveJudgmentConfigsAction(festivalId),
+      getJudgementWizardDataAction(festivalId),
+      getActiveJudgementConfigsAction(festivalId),
       getJudgedProgrammeCardsAction(festivalId),
       JudgeStageAssignmentService.listForFestival(festivalId),
     ]);
 
-  // Default judge panel per stage — pre-fills the Start Judgment dialog.
+  // Default judge panel per stage — pre-fills the Start Judgement dialog.
   const judgesByStageId: Record<string, string[]> = {};
   for (const a of stageAssignments) {
     const list = judgesByStageId[a.stageId] ?? [];
@@ -671,10 +671,10 @@ export async function getJudgmentDashboardDataAction(festivalId: string) {
 /**
  * Archives any LIVE config on the given stage (across all its programmes)
  * and inserts a fresh LIVE config + judge assignments. Shared by
- * startJudgmentAction and restartJudgmentAction so only one programme is
+ * startJudgementAction and restartJudgementAction so only one programme is
  * ever "live" per stage at a time, matching the single-live-card portal UI.
  */
-async function insertLiveJudgmentConfig(input: {
+async function insertLiveJudgementConfig(input: {
   festivalId: string;
   programmeId: string;
   reportingSessionId: string;
@@ -688,33 +688,33 @@ async function insertLiveJudgmentConfig(input: {
   const configId = randomUUID();
 
   const liveConfigsOnStage = await db
-    .select({ id: judgmentConfigTable.id })
-    .from(judgmentConfigTable)
+    .select({ id: judgementConfigTable.id })
+    .from(judgementConfigTable)
     .innerJoin(
       reportingSessionTable,
-      eq(judgmentConfigTable.reportingSessionId, reportingSessionTable.id),
+      eq(judgementConfigTable.reportingSessionId, reportingSessionTable.id),
     )
     .where(
       and(
         eq(reportingSessionTable.stageId, input.stageId),
-        eq(judgmentConfigTable.status, "LIVE"),
+        eq(judgementConfigTable.status, "LIVE"),
       ),
     );
 
   await db.transaction(async (tx) => {
     if (liveConfigsOnStage.length > 0) {
       await tx
-        .update(judgmentConfigTable)
+        .update(judgementConfigTable)
         .set({ status: "ARCHIVED", updatedAt: now } as any)
         .where(
           inArray(
-            judgmentConfigTable.id,
+            judgementConfigTable.id,
             liveConfigsOnStage.map((c) => c.id),
           ),
         );
     }
 
-    await tx.insert(judgmentConfigTable).values({
+    await tx.insert(judgementConfigTable).values({
       id: configId,
       festivalId: input.festivalId,
       programmeId: input.programmeId,
@@ -729,7 +729,7 @@ async function insertLiveJudgmentConfig(input: {
     } as any);
 
     for (const judgeId of input.judgeIds) {
-      await tx.insert(judgmentConfigJudgeTable).values({
+      await tx.insert(judgementConfigJudgeTable).values({
         id: randomUUID(),
         configId,
         judgeId,
@@ -740,7 +740,7 @@ async function insertLiveJudgmentConfig(input: {
   return configId;
 }
 
-export async function startJudgmentAction(input: {
+export async function startJudgementAction(input: {
   festivalId: string;
   programmeId: string;
   judgeIds: string[];
@@ -777,7 +777,7 @@ export async function startJudgmentAction(input: {
     latestClosedReportingSession.stageId,
   );
 
-  const configId = await insertLiveJudgmentConfig({
+  const configId = await insertLiveJudgementConfig({
     festivalId: input.festivalId,
     programmeId: input.programmeId,
     reportingSessionId: latestClosedReportingSession.id,
@@ -789,24 +789,24 @@ export async function startJudgmentAction(input: {
   });
 
   await createAuditLog({
-    action: "START_JUDGMENT",
+    action: "START_JUDGEMENT",
     targetType: "PROGRAMME",
     targetId: input.programmeId,
     metadata: { configId, judgeIds: input.judgeIds },
-  }).catch((err) => console.error("[AuditLog] START_JUDGMENT failed", err));
+  }).catch((err) => console.error("[AuditLog] START_JUDGEMENT failed", err));
 
   const festival = await db.query.festival.findFirst({
     where: eq(festivalTable.id, input.festivalId),
     columns: { slug: true },
   });
   if (festival) {
-    revalidatePath(`/dashboard/${festival.slug}/event-works/judgment`);
+    revalidatePath(`/dashboard/${festival.slug}/event-works/judgement`);
   }
 
   return { configId };
 }
 
-export async function restartJudgmentAction(input: {
+export async function restartJudgementAction(input: {
   festivalId: string;
   programmeId: string;
   judgeIds?: string[];
@@ -817,15 +817,15 @@ export async function restartJudgmentAction(input: {
   });
   if (!programmeRow) throw new AppError(ERROR_MESSAGES.PROGRAMME_NOT_FOUND);
   if (["PUBLISHED", "ANNOUNCED"].includes(programmeRow.status)) {
-    throw new AppError("Cannot restart judgment after results are published.");
+    throw new AppError("Cannot restart judgement after results are published.");
   }
 
-  const priorConfig = await db.query.judgmentConfig.findFirst({
+  const priorConfig = await db.query.judgementConfig.findFirst({
     where: and(
-      eq(judgmentConfigTable.festivalId, input.festivalId),
-      eq(judgmentConfigTable.programmeId, input.programmeId),
+      eq(judgementConfigTable.festivalId, input.festivalId),
+      eq(judgementConfigTable.programmeId, input.programmeId),
     ),
-    orderBy: [desc(judgmentConfigTable.createdAt)],
+    orderBy: [desc(judgementConfigTable.createdAt)],
     columns: {
       id: true,
       reportingSessionId: true,
@@ -835,7 +835,7 @@ export async function restartJudgmentAction(input: {
     with: { judges: { columns: { judgeId: true } } },
   });
   if (!priorConfig) {
-    throw new AppError("No previous judgment round found for this programme.");
+    throw new AppError("No previous judgement round found for this programme.");
   }
 
   const judgeIds = input.judgeIds?.length
@@ -859,7 +859,7 @@ export async function restartJudgmentAction(input: {
     stageId,
   );
 
-  const configId = await insertLiveJudgmentConfig({
+  const configId = await insertLiveJudgementConfig({
     festivalId: input.festivalId,
     programmeId: input.programmeId,
     reportingSessionId: priorConfig.reportingSessionId,
@@ -871,18 +871,18 @@ export async function restartJudgmentAction(input: {
   });
 
   await createAuditLog({
-    action: "START_JUDGMENT",
+    action: "START_JUDGEMENT",
     targetType: "PROGRAMME",
     targetId: input.programmeId,
     metadata: { configId, judgeIds, restarted: true },
-  }).catch((err) => console.error("[AuditLog] START_JUDGMENT failed", err));
+  }).catch((err) => console.error("[AuditLog] START_JUDGEMENT failed", err));
 
   const festival = await db.query.festival.findFirst({
     where: eq(festivalTable.id, input.festivalId),
     columns: { slug: true },
   });
   if (festival) {
-    revalidatePath(`/dashboard/${festival.slug}/event-works/judgment`);
+    revalidatePath(`/dashboard/${festival.slug}/event-works/judgement`);
   }
 
   return { configId };
@@ -898,8 +898,8 @@ async function assertStagePortalAccessForConfig(configId: string) {
   const stagePortalSession = await getStagePortalSessionFromCookie();
   if (!stagePortalSession) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
 
-  const config = await db.query.judgmentConfig.findFirst({
-    where: eq(judgmentConfigTable.id, configId),
+  const config = await db.query.judgementConfig.findFirst({
+    where: eq(judgementConfigTable.id, configId),
     columns: {
       id: true,
       programmeId: true,
@@ -909,9 +909,9 @@ async function assertStagePortalAccessForConfig(configId: string) {
       status: true,
     },
   });
-  if (!config) throw new AppError("Judgment round not found.");
+  if (!config) throw new AppError("Judgement round not found.");
   if (config.status !== "LIVE") {
-    throw new AppError("This judgment round is no longer live.");
+    throw new AppError("This judgement round is no longer live.");
   }
 
   const stageId = await getStageIdForReportingSession(
@@ -960,18 +960,18 @@ export async function getStagePortalBoardAction(day?: string) {
   // The stage's LIVE config (if any) — the single actionable programme.
   const liveConfigRow = await db
     .select({
-      id: judgmentConfigTable.id,
-      programmeId: judgmentConfigTable.programmeId,
+      id: judgementConfigTable.id,
+      programmeId: judgementConfigTable.programmeId,
     })
-    .from(judgmentConfigTable)
+    .from(judgementConfigTable)
     .innerJoin(
       reportingSessionTable,
-      eq(judgmentConfigTable.reportingSessionId, reportingSessionTable.id),
+      eq(judgementConfigTable.reportingSessionId, reportingSessionTable.id),
     )
     .where(
       and(
         eq(reportingSessionTable.stageId, stageId),
-        eq(judgmentConfigTable.status, "LIVE"),
+        eq(judgementConfigTable.status, "LIVE"),
       ),
     )
     .limit(1);
@@ -1033,8 +1033,8 @@ export async function getStagePortalBoardAction(day?: string) {
   } | null = null;
 
   if (liveConfigRow.length > 0) {
-    const config = await db.query.judgmentConfig.findFirst({
-      where: eq(judgmentConfigTable.id, liveConfigRow[0]!.id),
+    const config = await db.query.judgementConfig.findFirst({
+      where: eq(judgementConfigTable.id, liveConfigRow[0]!.id),
       with: {
         programme: { columns: { id: true, name: true, type: true } },
         judges: { with: { judge: { columns: { id: true, name: true } } } },
@@ -1048,8 +1048,8 @@ export async function getStagePortalBoardAction(day?: string) {
         ),
         orderBy: [asc(codeLetterTable.issuedAt)],
       });
-      const existingScores = await db.query.judgmentScore.findMany({
-        where: eq(judgmentScoreTable.configId, config.id),
+      const existingScores = await db.query.judgementScore.findMany({
+        where: eq(judgementScoreTable.configId, config.id),
         columns: {
           judgeId: true,
           codeLetterId: true,
@@ -1097,7 +1097,7 @@ export async function getStagePortalBoardAction(day?: string) {
 
 /**
  * Recomputes result rows (points/grade/position) for a config from the
- * current judgment scores, ignoring absent code letters, and prunes result
+ * current judgement scores, ignoring absent code letters, and prunes result
  * rows for assignments that are no longer judged (e.g. now-absent). Shared by
  * score submission and the mark-absent action.
  */
@@ -1114,8 +1114,8 @@ async function recomputeConfigResults(
   });
   const activeCodeLetters = codeLetters.filter((c) => !c.isAbsent);
 
-  const allScores = await db.query.judgmentScore.findMany({
-    where: eq(judgmentScoreTable.configId, config.id),
+  const allScores = await db.query.judgementScore.findMany({
+    where: eq(judgementScoreTable.configId, config.id),
     columns: { codeLetterId: true, score: true },
   });
   const scoreByCodeLetter = new Map<string, number[]>();
@@ -1255,7 +1255,7 @@ async function recomputeConfigResults(
     columns: { slug: true },
   });
   if (festival) {
-    revalidatePath(`/dashboard/${festival.slug}/event-works/judgment`);
+    revalidatePath(`/dashboard/${festival.slug}/event-works/judgement`);
     revalidatePath(`/dashboard/${festival.slug}/event-works/results`);
     revalidatePath(`/dashboard/${festival.slug}/event-works/leaderboard`);
     revalidatePath(`/${festival.slug}/results`);
@@ -1295,11 +1295,11 @@ export async function markCodeLetterAbsenceAction(input: {
     // stale score can't linger or count.
     if (input.isAbsent) {
       await tx
-        .delete(judgmentScoreTable)
+        .delete(judgementScoreTable)
         .where(
           and(
-            eq(judgmentScoreTable.configId, config.id),
-            eq(judgmentScoreTable.codeLetterId, input.codeLetterId),
+            eq(judgementScoreTable.configId, config.id),
+            eq(judgementScoreTable.codeLetterId, input.codeLetterId),
           ),
         );
     }
@@ -1307,7 +1307,7 @@ export async function markCodeLetterAbsenceAction(input: {
 
   await createAuditLog({
     action: "MARK_ABSENT",
-    targetType: "JUDGMENT_SCORE",
+    targetType: "JUDGEMENT_SCORE",
     targetId: config.id,
     metadata: {
       programmeId: config.programmeId,
@@ -1340,10 +1340,10 @@ export async function submitJudgeScoresAction(
 ) {
   const config = await assertStagePortalAccessForConfig(input.configId);
 
-  const judgeMembership = await db.query.judgmentConfigJudge.findFirst({
+  const judgeMembership = await db.query.judgementConfigJudge.findFirst({
     where: and(
-      eq(judgmentConfigJudgeTable.configId, config.id),
-      eq(judgmentConfigJudgeTable.judgeId, input.judgeId),
+      eq(judgementConfigJudgeTable.configId, config.id),
+      eq(judgementConfigJudgeTable.judgeId, input.judgeId),
     ),
     columns: { id: true },
   });
@@ -1380,7 +1380,7 @@ export async function submitJudgeScoresAction(
     )) {
       const remark = input.remarksByCodeLetterId?.[codeLetterId]?.trim() || null;
       await tx
-        .insert(judgmentScoreTable)
+        .insert(judgementScoreTable)
         .values({
           id: randomUUID(),
           configId: config.id,
@@ -1393,9 +1393,9 @@ export async function submitJudgeScoresAction(
         } as any)
         .onConflictDoUpdate({
           target: [
-            judgmentScoreTable.configId,
-            judgmentScoreTable.judgeId,
-            judgmentScoreTable.codeLetterId,
+            judgementScoreTable.configId,
+            judgementScoreTable.judgeId,
+            judgementScoreTable.codeLetterId,
           ],
           set: { score, remark, updatedAt: now, submittedAt: now },
         });
@@ -1405,7 +1405,7 @@ export async function submitJudgeScoresAction(
   // No admin session here — judge auth is the stage-portal cookie + judgeId.
   await createAuditLog({
     action: "SUBMIT_JUDGE_SCORES",
-    targetType: "JUDGMENT_SCORE",
+    targetType: "JUDGEMENT_SCORE",
     targetId: config.id,
     metadata: {
       programmeId: config.programmeId,
@@ -1443,17 +1443,17 @@ export async function submitJudgeScoresAction(
 
   if (shouldComplete) {
     await db
-      .update(judgmentConfigTable)
+      .update(judgementConfigTable)
       .set({
         status: "SUBMITTED",
         endedAt: now,
         endedBy: input.judgeId,
         updatedAt: now,
       } as any)
-      .where(eq(judgmentConfigTable.id, config.id));
+      .where(eq(judgementConfigTable.id, config.id));
   }
 
-  return { success: true as const, judgmentComplete: shouldComplete };
+  return { success: true as const, judgementComplete: shouldComplete };
 }
 
 export async function previewJudgeSubmissionSummaryAction(input: {
@@ -1462,13 +1462,13 @@ export async function previewJudgeSubmissionSummaryAction(input: {
 }) {
   const config = await assertStagePortalAccessForConfig(input.configId);
 
-  const assignedJudges = await db.query.judgmentConfigJudge.findMany({
-    where: eq(judgmentConfigJudgeTable.configId, config.id),
+  const assignedJudges = await db.query.judgementConfigJudge.findMany({
+    where: eq(judgementConfigJudgeTable.configId, config.id),
     columns: { judgeId: true },
   });
   const assignedJudgeIds = new Set(assignedJudges.map((row) => row.judgeId));
   if (assignedJudgeIds.size === 0) {
-    throw new AppError("No judges are assigned for this judgment round.");
+    throw new AppError("No judges are assigned for this judgement round.");
   }
 
   const codeLetters = await db.query.programmeCodeLetter.findMany({
@@ -1498,8 +1498,8 @@ export async function previewJudgeSubmissionSummaryAction(input: {
     }
   }
 
-  const allScores = await db.query.judgmentScore.findMany({
-    where: eq(judgmentScoreTable.configId, config.id),
+  const allScores = await db.query.judgementScore.findMany({
+    where: eq(judgementScoreTable.configId, config.id),
     columns: { judgeId: true, codeLetterId: true, score: true },
   });
   const mergedScores = new Map<string, number>();
@@ -1601,9 +1601,9 @@ export async function submitGroupJudgeScoresAction(input: {
   if (judgeEntries.length === 0)
     throw new AppError("No judge scores provided.");
 
-  let last: { success: true; judgmentComplete: boolean } = {
+  let last: { success: true; judgementComplete: boolean } = {
     success: true,
-    judgmentComplete: true,
+    judgementComplete: true,
   };
   for (let i = 0; i < judgeEntries.length; i++) {
     const [judgeId, scoresByCodeLetterId] = judgeEntries[i]!;

@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { saveScoringPolicyAction } from "@/features/judgment/actions/judgment.actions";
+import { saveScoringPolicyAction } from "@/features/judgement/actions/judgement.actions";
 
 type GradeRule = { grade: string; min: number; max: number };
 type AwardRule = {

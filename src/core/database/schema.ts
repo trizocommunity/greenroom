@@ -1353,8 +1353,8 @@ export const judge = pgTable(
   ],
 );
 
-export const judgmentConfig = pgTable(
-  "judgment_config",
+export const judgementConfig = pgTable(
+  "judgement_config",
   {
     id: text().primaryKey().notNull(),
     festivalId: text("festival_id").notNull(),
@@ -1376,40 +1376,40 @@ export const judgmentConfig = pgTable(
       .notNull(),
   },
   (table) => [
-    index("judgment_config_festivalId_idx").using(
+    index("judgement_config_festivalId_idx").using(
       "btree",
       table.festivalId.asc().nullsLast(),
     ),
-    index("judgment_config_programmeId_idx").using(
+    index("judgement_config_programmeId_idx").using(
       "btree",
       table.programmeId.asc().nullsLast(),
     ),
     foreignKey({
       columns: [table.festivalId],
       foreignColumns: [festival.id],
-      name: "judgment_config_festivalId_fkey",
+      name: "judgement_config_festivalId_fkey",
     })
       .onUpdate("cascade")
       .onDelete("cascade"),
     foreignKey({
       columns: [table.programmeId],
       foreignColumns: [programme.id],
-      name: "judgment_config_programmeId_fkey",
+      name: "judgement_config_programmeId_fkey",
     })
       .onUpdate("cascade")
       .onDelete("cascade"),
     foreignKey({
       columns: [table.reportingSessionId],
       foreignColumns: [programmeReportingSession.id],
-      name: "judgment_config_reportingSessionId_fkey",
+      name: "judgement_config_reportingSessionId_fkey",
     })
       .onUpdate("cascade")
       .onDelete("cascade"),
   ],
 );
 
-export const judgmentConfigJudge = pgTable(
-  "judgment_config_judge",
+export const judgementConfigJudge = pgTable(
+  "judgement_config_judge",
   {
     id: text().primaryKey().notNull(),
     configId: text("config_id").notNull(),
@@ -1419,30 +1419,30 @@ export const judgmentConfigJudge = pgTable(
       .notNull(),
   },
   (table) => [
-    uniqueIndex("judgment_config_judge_configId_judgeId_key").using(
+    uniqueIndex("judgement_config_judge_configId_judgeId_key").using(
       "btree",
       table.configId.asc().nullsLast(),
       table.judgeId.asc().nullsLast(),
     ),
     foreignKey({
       columns: [table.configId],
-      foreignColumns: [judgmentConfig.id],
-      name: "judgment_config_judge_configId_fkey",
+      foreignColumns: [judgementConfig.id],
+      name: "judgement_config_judge_configId_fkey",
     })
       .onUpdate("cascade")
       .onDelete("cascade"),
     foreignKey({
       columns: [table.judgeId],
       foreignColumns: [judge.id],
-      name: "judgment_config_judge_judgeId_fkey",
+      name: "judgement_config_judge_judgeId_fkey",
     })
       .onUpdate("cascade")
       .onDelete("cascade"),
   ],
 );
 
-export const judgmentScore = pgTable(
-  "judgment_score",
+export const judgementScore = pgTable(
+  "judgement_score",
   {
     id: text().primaryKey().notNull(),
     configId: text("config_id").notNull(),
@@ -1458,7 +1458,7 @@ export const judgmentScore = pgTable(
       .notNull(),
   },
   (table) => [
-    uniqueIndex("judgment_score_configId_judgeId_codeLetterId_key").using(
+    uniqueIndex("judgement_score_configId_judgeId_codeLetterId_key").using(
       "btree",
       table.configId.asc().nullsLast(),
       table.judgeId.asc().nullsLast(),
@@ -1466,22 +1466,22 @@ export const judgmentScore = pgTable(
     ),
     foreignKey({
       columns: [table.configId],
-      foreignColumns: [judgmentConfig.id],
-      name: "judgment_score_configId_fkey",
+      foreignColumns: [judgementConfig.id],
+      name: "judgement_score_configId_fkey",
     })
       .onUpdate("cascade")
       .onDelete("cascade"),
     foreignKey({
       columns: [table.judgeId],
       foreignColumns: [judge.id],
-      name: "judgment_score_judgeId_fkey",
+      name: "judgement_score_judgeId_fkey",
     })
       .onUpdate("cascade")
       .onDelete("cascade"),
     foreignKey({
       columns: [table.codeLetterId],
       foreignColumns: [programmeCodeLetter.id],
-      name: "judgment_score_codeLetterId_fkey",
+      name: "judgement_score_codeLetterId_fkey",
     })
       .onUpdate("cascade")
       .onDelete("cascade"),
