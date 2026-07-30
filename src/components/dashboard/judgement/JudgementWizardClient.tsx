@@ -32,17 +32,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+
 import {
   Drawer,
   DrawerContent,
   DrawerDescription,
+  DrawerFooter,
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
@@ -328,7 +323,7 @@ export function JudgementWizardClient({
     return Array.from(unique.values()).filter(
       (p) =>
         p.name.toLowerCase().includes(query) ||
-        (p.programmeCategory?.toLowerCase().includes(query)),
+        p.programmeCategory?.toLowerCase().includes(query),
     );
   }, [searchQuery, judgeProgrammes, rejudgeProgrammes, completedJudgements]);
 
@@ -812,90 +807,92 @@ export function JudgementWizardClient({
         onOpenChange={(open) => !open && setCredentialView(null)}
       />
 
-      <Dialog
+      <Drawer
         open={Boolean(reportedParticipantsView)}
         onOpenChange={(open) => !open && setReportedParticipantsView(null)}
       >
-        <DialogContent className="max-h-[min(90dvh,720px)] w-[calc(100%-1rem)] max-w-lg overflow-y-auto p-4 sm:w-[calc(100%-1.5rem)] sm:p-6">
+        <DrawerContent className="flex flex-col">
           {reportedParticipantsView ? (
             <>
-              <DialogHeader>
-                <DialogTitle>
+              <DrawerHeader className="pb-2">
+                <DrawerTitle>
                   {reportedParticipantsView.programmeName}
-                </DialogTitle>
-                <DialogDescription>
+                </DrawerTitle>
+                <DrawerDescription>
                   Stage {reportedParticipantsView.details.stageName ?? "—"} ·{" "}
                   {reportedParticipantsView.details.scheduleStart
                     ? formatCardDateTime(
                         reportedParticipantsView.details.scheduleStart,
                       )
                     : "No schedule time"}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-3 pt-2">
-                <p className="text-sm text-muted-foreground">
-                  {reportedParticipantsView.programmeType === "GROUP"
-                    ? `Reported teams (${reportedParticipantsView.details.reportedCount})`
-                    : `Reported participants (${reportedParticipantsView.details.reportedCount})`}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Category: {reportedParticipantsView.programmeCategory ?? "—"}
-                </p>
-                {reportedParticipantsView.details.reportedEntries.length ===
-                0 ? (
-                  <Card>
-                    <CardContent className="p-4 text-sm text-muted-foreground">
-                      No reported participant details available.
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="max-h-[min(56vh,26rem)] space-y-1 overflow-y-auto rounded-lg border bg-card p-1.5">
-                    {reportedParticipantsView.details.reportedEntries.map(
-                      (entry) => (
-                        <div
-                          key={`${entry.label}-${entry.codeLetter ?? "na"}`}
-                          className="rounded-md border bg-background/70 px-2 py-1.5"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="min-w-0 truncate text-xs font-medium text-foreground">
-                              {entry.label}
-                            </p>
-                            <span className="shrink-0 rounded border bg-muted px-2 py-0.5 font-mono text-xs font-semibold text-foreground">
-                              {reportedParticipantsView.programmeType ===
-                              "GROUP"
-                                ? `Team ${entry.codeLetter ?? "—"}`
-                                : (entry.codeLetter ?? "—")}
-                            </span>
+                </DrawerDescription>
+              </DrawerHeader>
+              <div className="flex-1 overflow-y-auto pb-6">
+                <div className="space-y-3 pt-2">
+                  <p className="text-sm text-muted-foreground">
+                    {reportedParticipantsView.programmeType === "GROUP"
+                      ? `Reported teams (${reportedParticipantsView.details.reportedCount})`
+                      : `Reported participants (${reportedParticipantsView.details.reportedCount})`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Category: {reportedParticipantsView.programmeCategory ?? "—"}
+                  </p>
+                  {reportedParticipantsView.details.reportedEntries.length ===
+                  0 ? (
+                    <Card>
+                      <CardContent className="p-4 text-sm text-muted-foreground">
+                        No reported participant details available.
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="space-y-1 rounded-lg border bg-card p-1.5">
+                      {reportedParticipantsView.details.reportedEntries.map(
+                        (entry) => (
+                          <div
+                            key={`${entry.label}-${entry.codeLetter ?? "na"}`}
+                            className="rounded-md border bg-background/70 px-2 py-1.5"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="min-w-0 truncate text-xs font-medium text-foreground">
+                                {entry.label}
+                              </p>
+                              <span className="shrink-0 rounded border bg-muted px-2 py-0.5 font-mono text-xs font-semibold text-foreground">
+                                {reportedParticipantsView.programmeType ===
+                                "GROUP"
+                                  ? `Team ${entry.codeLetter ?? "—"}`
+                                  : (entry.codeLetter ?? "—")}
+                              </span>
+                            </div>
+                            {reportedParticipantsView.programmeType ===
+                            "GROUP" ? (
+                              <div className="mt-1 text-[10px] leading-tight text-muted-foreground">
+                                <p className="truncate">
+                                  Group ·{" "}
+                                  {reportedParticipantsView.programmeCategory ??
+                                    "—"}
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="mt-1 text-[10px] leading-tight text-muted-foreground">
+                                <p className="truncate">
+                                  Individual · {entry.groupName ?? "—"} ·{" "}
+                                  {entry.categoryName ??
+                                    reportedParticipantsView.programmeCategory ??
+                                    "—"}
+                                </p>
+                              </div>
+                            )}
                           </div>
-                          {reportedParticipantsView.programmeType ===
-                          "GROUP" ? (
-                            <div className="mt-1 text-[10px] leading-tight text-muted-foreground">
-                              <p className="truncate">
-                                Group ·{" "}
-                                {reportedParticipantsView.programmeCategory ??
-                                  "—"}
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="mt-1 text-[10px] leading-tight text-muted-foreground">
-                              <p className="truncate">
-                                Individual · {entry.groupName ?? "—"} ·{" "}
-                                {entry.categoryName ??
-                                  reportedParticipantsView.programmeCategory ??
-                                  "—"}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      ),
-                    )}
-                  </div>
-                )}
+                        ),
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           ) : null}
-        </DialogContent>
-      </Dialog>
+        </DrawerContent>
+      </Drawer>
 
       <Drawer
         open={dialogOpen}
@@ -903,7 +900,7 @@ export function JudgementWizardClient({
           if (!open) closeDialog();
         }}
       >
-        <DrawerContent className="flex flex-col max-h-[85dvh]">
+        <DrawerContent className="flex flex-col">
           <DrawerHeader className="pb-2">
             <DrawerTitle>
               {wizardKind === "rejudge" ? "Rejudge" : "Start Judgement"}
@@ -925,7 +922,7 @@ export function JudgementWizardClient({
             </DrawerDescription>
           </DrawerHeader>
 
-          <div className="flex-1 overflow-y-auto px-4 pb-6">
+          <div className="flex-1 overflow-y-auto pb-6">
             <div className="space-y-3 pt-1 sm:space-y-4 sm:pt-2">
               <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -1009,22 +1006,23 @@ export function JudgementWizardClient({
                   </button>
                 </div>
               </div>
-
-              <Button
-                className="h-9 w-full text-xs sm:text-sm"
-                type="button"
-                onClick={onStartJudgement}
-                disabled={!canGenerate || isPending}
-              >
-                <Play className="mr-1.5 h-3.5 w-3.5" />
-                {isPending
-                  ? "Starting…"
-                  : wizardKind === "rejudge"
-                    ? "Restart judgement"
-                    : "Start judgement"}
-              </Button>
             </div>
           </div>
+          <DrawerFooter>
+            <Button
+              className="h-9 w-full text-xs sm:text-sm"
+              type="button"
+              onClick={onStartJudgement}
+              disabled={!canGenerate || isPending}
+            >
+              <Play className="mr-1.5 h-3.5 w-3.5" />
+              {isPending
+                ? "Starting…"
+                : wizardKind === "rejudge"
+                  ? "Restart judgement"
+                  : "Start judgement"}
+            </Button>
+          </DrawerFooter>
         </DrawerContent>
       </Drawer>
 
