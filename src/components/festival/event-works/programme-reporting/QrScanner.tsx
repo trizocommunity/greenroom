@@ -9,6 +9,9 @@ import {
   Maximize2,
   Upload,
   X,
+  Zap,
+  ZapOff,
+  SwitchCamera,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -119,9 +122,11 @@ function isPermissionDenied(e: unknown): boolean {
  * Single getUserMedia call: a second call after await often loses user activation
  * and Chrome may reject with NotAllowedError even when the user would allow.
  */
-async function getVideoStream(): Promise<MediaStream> {
+async function getVideoStreamWithMode(
+  mode: "environment" | "user",
+): Promise<MediaStream> {
   return navigator.mediaDevices.getUserMedia({
-    video: { facingMode: { ideal: "environment" } },
+    video: { facingMode: { ideal: mode } },
   });
 }
 
@@ -150,6 +155,11 @@ export function QrScanner({
   const [cameraGate, setCameraGate] = useState<CameraGateReason | null>(null);
   const [fullscreenAvailable, setFullscreenAvailable] = useState(false);
   const [simpleCameraHint, setSimpleCameraHint] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [facingMode, setFacingMode] = useState<"environment" | "user">(
+    "environment",
+  );
 
   useEffect(() => {
     let perm: PermissionStatus | undefined;
@@ -176,7 +186,10 @@ export function QrScanner({
     };
   }, []);
 
-  const startCamera = async (constraints: "default" | "any" = "default") => {
+  const startCamera = async (
+    constraints: "default" | "any" = "default",
+    mode: "environment" | "user" = facingMode,
+  ) => {
     setCameraGate(null);
     setSimpleCameraHint(false);
 
@@ -209,7 +222,20 @@ export function QrScanner({
       const stream =
         constraints === "any"
           ? await navigator.mediaDevices.getUserMedia({ video: true })
-          : await getVideoStream();
+          : await getVideoStreamWithMode(mode);
+
+      const track = stream.getVideoTracks()[0];
+      if (track && "getCapabilities" in track) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const capabilities = (track as any).getCapabilities();
+          setTorchSupported(!!capabilities?.torch);
+        } catch {
+          setTorchSupported(false);
+        }
+      } else {
+        setTorchSupported(false);
+      }
 
       if (session !== cameraSessionRef.current) {
         stream.getTracks().forEach((t) => {
@@ -279,6 +305,30 @@ export function QrScanner({
     }
   };
 
+  const toggleTorch = useCallback(() => {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (track) {
+      const nextTorch = !torchOn;
+      track
+        .applyConstraints({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          advanced: [{ torch: nextTorch } as any],
+        })
+        .then(() => {
+          setTorchOn(nextTorch);
+        })
+        .catch((err) => {
+          console.error("Failed to toggle torch", err);
+        });
+    }
+  }, [torchOn]);
+
+  const toggleCamera = useCallback(() => {
+    const nextMode = facingMode === "environment" ? "user" : "environment";
+    setFacingMode(nextMode);
+    void startCamera("default", nextMode);
+  }, [facingMode]);
+
   const enterScannerFullscreen = useCallback(() => {
     const surface = scannerSurfaceRef.current;
     if (!surface || !document.fullscreenEnabled || document.fullscreenElement) {
@@ -317,7 +367,6 @@ export function QrScanner({
 
       if (chestNumber) {
         scanningRef.current = false;
-        stopCamera();
         void processChestNumber(chestNumber);
         return;
       }
@@ -379,20 +428,48 @@ export function QrScanner({
         onScanSuccess?.(result);
 
         setTimeout(() => {
-          setStatus("idle");
-          setLastResult(null);
-          setManualInput("");
+          if (streamRef.current) {
+            setStatus("scanning");
+            setLastResult(null);
+            setManualInput("");
+            scanningRef.current = true;
+            scanVideoFrame();
+          } else {
+            setStatus("idle");
+            setLastResult(null);
+            setManualInput("");
+          }
         }, 3000);
       } else {
         setStatus("error");
         toast.error(result.error || "Failed to report participant");
         onScanError?.(result);
+
+        setTimeout(() => {
+          if (streamRef.current) {
+            setStatus("scanning");
+            setLastResult(null);
+            setManualInput("");
+            scanningRef.current = true;
+            scanVideoFrame();
+          }
+        }, 3000);
       }
     } catch (error) {
       console.error("Scan processing failed:", error);
       setStatus("error");
       toast.error("Processing failed. Please try again.");
       onScanError?.({ error: "Processing failed" });
+
+      setTimeout(() => {
+        if (streamRef.current) {
+          setStatus("scanning");
+          setLastResult(null);
+          setManualInput("");
+          scanningRef.current = true;
+          scanVideoFrame();
+        }
+      }, 3000);
     }
   };
 
@@ -655,88 +732,123 @@ export function QrScanner({
         </output>
       ) : null}
 
-      {status === "scanning" && mode !== "manual" && (
-        <div
-          ref={scannerSurfaceRef}
-          className={cn(
-            "relative rounded-lg bg-black",
-            mode === "camera"
-              ? "mx-auto aspect-square w-full max-w-[320px]"
-              : cn(
-                  "aspect-video",
-                  embedded
-                    ? "max-h-[min(32vh,220px)]"
-                    : "max-h-[min(50vh,360px)]",
-                ),
-            "[&:fullscreen]:aspect-auto [&:fullscreen]:h-full [&:fullscreen]:max-h-none [&:fullscreen]:min-h-[100dvh] [&:fullscreen]:w-full",
-          )}
-        >
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            controls={false}
-            className="h-full w-full object-cover"
-          />
+      {["scanning", "processing", "success", "error"].includes(status) &&
+        !!streamRef.current &&
+        mode !== "manual" && (
+          <div
+            ref={scannerSurfaceRef}
+            className="fixed inset-0 z-[100] flex flex-col bg-black h-[100dvh] w-screen"
+          >
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              controls={false}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
 
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div
-              className={cn(
-                "rounded-lg border-2 border-white/50",
-                embedded
-                  ? "h-36 w-36 sm:h-44 sm:w-44"
-                  : "h-48 w-48 sm:h-64 sm:w-64",
+            <div className="absolute top-16 left-4 right-4 z-10 flex flex-col items-center">
+              {status === "success" && lastResult && (
+                <div className="w-full max-w-sm rounded-xl border border-green-500/30 bg-green-500/90 backdrop-blur-md p-4 text-white shadow-xl animate-in slide-in-from-top-4">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="mt-0.5 shrink-0 h-5 w-5" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium">{lastResult.message}</p>
+                      {lastResult.participant && (
+                        <div className="mt-2 space-y-1 text-sm text-green-50">
+                          <p>
+                            <span className="font-medium text-white">
+                              Participant:
+                            </span>{" "}
+                            {lastResult.participant.name}
+                          </p>
+                          <p>
+                            <span className="font-medium text-white">
+                              Chest #:
+                            </span>{" "}
+                            {lastResult.participant.chestNumber}
+                          </p>
+                          {lastResult.participant.groupName && (
+                            <p>
+                              <span className="font-medium text-white">
+                                Group:
+                              </span>{" "}
+                              {lastResult.participant.groupName}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )}
-            >
-              <div className="h-full w-full animate-pulse rounded-lg border-2 border-primary" />
+              {status === "error" && lastResult && (
+                <div className="w-full max-w-sm rounded-xl border border-red-500/30 bg-red-500/90 backdrop-blur-md p-4 text-white shadow-xl animate-in slide-in-from-top-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="mt-0.5 shrink-0 h-5 w-5" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium">
+                        {lastResult.error || "Failed to process scan"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {status === "processing" && (
+                <div className="rounded-full bg-black/70 backdrop-blur-md px-4 py-2 text-white flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm font-medium">Processing...</span>
+                </div>
+              )}
             </div>
-          </div>
 
-          <div className="pointer-events-none absolute bottom-3 left-0 right-0 text-center">
-            <Badge variant="secondary" className="bg-black/70 text-white">
-              Point at QR code
-            </Badge>
-          </div>
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <div className="relative w-64 h-64 sm:w-80 sm:h-80">
+                <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-white/80 rounded-tl-3xl" />
+                <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-white/80 rounded-tr-3xl" />
+                <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-white/80 rounded-bl-3xl" />
+                <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-white/80 rounded-br-3xl" />
+              </div>
+            </div>
 
-          <div className="absolute right-2 top-2 flex gap-1">
-            {fullscreenAvailable ? (
+            <div className="absolute bottom-10 left-0 right-0 flex items-center justify-center gap-6 z-20">
+              {torchSupported && (
+                <button
+                  type="button"
+                  onClick={toggleTorch}
+                  className="p-4 rounded-full bg-black/50 text-white backdrop-blur-md border border-white/10 hover:bg-black/70 transition-colors"
+                >
+                  {torchOn ? (
+                    <Zap className="h-6 w-6 text-yellow-400" />
+                  ) : (
+                    <ZapOff className="h-6 w-6" />
+                  )}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={toggleCamera}
+                className="p-4 rounded-full bg-black/50 text-white backdrop-blur-md border border-white/10 hover:bg-black/70 transition-colors"
+              >
+                <SwitchCamera className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="absolute right-4 top-4 z-20 flex gap-2">
               <Button
                 type="button"
-                size="sm"
+                size="icon"
                 variant="secondary"
-                className="bg-black/70 text-white hover:bg-black/85"
-                onClick={enterScannerFullscreen}
+                className="rounded-full bg-black/50 text-white hover:bg-black/70 border-0"
+                onClick={stopCamera}
               >
-                <Maximize2 className="h-4 w-4" />
-                <span className="sr-only">Full screen</span>
+                <X className="h-5 w-5" />
+                <span className="sr-only">Close camera</span>
               </Button>
-            ) : null}
-            <Button
-              type="button"
-              size="sm"
-              variant="destructive"
-              onClick={stopCamera}
-            >
-              <X className="h-4 w-4" />
-              <span className="sr-only">Close camera</span>
-            </Button>
+            </div>
           </div>
-        </div>
-      )}
-
-      {status === "scanning" && (
-        <p
-          className={cn(
-            "text-center text-muted-foreground",
-            embedded ? "text-[11px] leading-tight" : "text-xs",
-          )}
-        >
-          {embedded
-            ? "Hold QR steady — or close and use Photo / #."
-            : "Scanning… hold the QR steady, or close the camera and use upload / manual entry."}
-        </p>
-      )}
+        )}
 
       {!hideResults && status === "success" && lastResult?.participant && (
         <div

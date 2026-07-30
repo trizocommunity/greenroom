@@ -38,10 +38,11 @@ export function StagePortalLoginClient({
   return (
     <AuthLayout
       title="Stage Judge Portal"
-      description="Enter the stage's access code and PIN from your stage manager."
+      description="Sign in to STAGE PORTAL"
       variant="centered"
+      showLogo={false}
     >
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="space-y-2">
           <Label htmlFor="accessCode">Access code</Label>
           <Input
@@ -50,7 +51,7 @@ export function StagePortalLoginClient({
             onChange={(e) => setAccessCode(e.target.value)}
             placeholder="e.g. AB12CD"
             autoCapitalize="characters"
-            className="h-11 text-center font-mono text-lg tracking-widest"
+            className="h-9 text-center font-mono text-lg tracking-widest"
           />
         </div>
         <div className="space-y-2">
@@ -58,15 +59,17 @@ export function StagePortalLoginClient({
           <Input
             id="pin"
             value={pin}
-            onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            onChange={(e) =>
+              setPin(e.target.value.replace(/\D/g, "").slice(0, 6))
+            }
             placeholder="••••"
             inputMode="numeric"
             autoComplete="one-time-code"
-            className="h-11 text-center font-mono text-xl tracking-[0.35em]"
+            className="h-9 text-center font-mono text-xl tracking-[0.35em]"
           />
         </div>
         <Button
-          className="h-11 w-full text-base"
+          className="h-9 w-full mt-3"
           onClick={submit}
           disabled={login.isPending}
         >
