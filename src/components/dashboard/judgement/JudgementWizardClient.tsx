@@ -897,18 +897,18 @@ export function JudgementWizardClient({
         </DialogContent>
       </Dialog>
 
-      <Dialog
+      <Drawer
         open={dialogOpen}
         onOpenChange={(open) => {
           if (!open) closeDialog();
         }}
       >
-        <DialogContent className="max-h-[min(90dvh,720px)] w-[calc(100%-1rem)] max-w-lg overflow-y-auto p-4 sm:w-[calc(100%-1.5rem)] sm:p-6">
-          <DialogHeader>
-            <DialogTitle>
+        <DrawerContent className="flex flex-col max-h-[85dvh]">
+          <DrawerHeader className="pb-2">
+            <DrawerTitle>
               {wizardKind === "rejudge" ? "Rejudge" : "Start Judgement"}
-            </DialogTitle>
-            <DialogDescription>
+            </DrawerTitle>
+            <DrawerDescription>
               {wizardProgramme ? (
                 <>
                   <span className="font-medium text-foreground">
@@ -922,109 +922,111 @@ export function JudgementWizardClient({
               ) : (
                 "Select judges, then start."
               )}
-            </DialogDescription>
-          </DialogHeader>
+            </DrawerDescription>
+          </DrawerHeader>
 
-          <div className="space-y-3 pt-1 sm:space-y-4 sm:pt-2">
-            <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                Judges ({selectedJudgeIds.length} selected)
-              </Label>
-              <div className="grid max-h-[170px] gap-1.5 overflow-y-auto rounded-md border p-1.5 sm:max-h-[210px]">
-                {judges.map((j) => (
-                  <label
-                    key={j.id}
-                    className={`flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs transition-colors sm:text-sm ${
-                      selectedJudgeIds.includes(j.id)
-                        ? "border-purple/60 bg-purple/10"
-                        : "bg-background"
-                    }`}
+          <div className="flex-1 overflow-y-auto px-4 pb-6">
+            <div className="space-y-3 pt-1 sm:space-y-4 sm:pt-2">
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Judges ({selectedJudgeIds.length} selected)
+                </Label>
+                <div className="grid max-h-[170px] gap-1.5 overflow-y-auto rounded-md border p-1.5 sm:max-h-[210px]">
+                  {judges.map((j) => (
+                    <label
+                      key={j.id}
+                      className={`flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs transition-colors sm:text-sm ${
+                        selectedJudgeIds.includes(j.id)
+                          ? "border-purple/60 bg-purple/10"
+                          : "bg-background"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedJudgeIds.includes(j.id)}
+                        onChange={() => toggleJudge(j.id)}
+                      />
+                      <span className="font-medium">{j.name}</span>
+                    </label>
+                  ))}
+                  {judges.length === 0 ? (
+                    <p className="px-1 py-1 text-xs text-muted-foreground">
+                      No judges yet — add one below.
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex gap-1.5">
+                  <Input
+                    value={newJudgeName}
+                    onChange={(e) => setNewJudgeName(e.target.value)}
+                    placeholder="New judge name"
+                    className="h-8 text-xs sm:h-9 sm:text-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        onAddJudge();
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 shrink-0 text-xs sm:h-9"
+                    onClick={onAddJudge}
+                    disabled={isAddingJudge || !newJudgeName.trim()}
                   >
-                    <input
-                      type="checkbox"
-                      checked={selectedJudgeIds.includes(j.id)}
-                      onChange={() => toggleJudge(j.id)}
-                    />
-                    <span className="font-medium">{j.name}</span>
-                  </label>
-                ))}
-                {judges.length === 0 ? (
-                  <p className="px-1 py-1 text-xs text-muted-foreground">
-                    No judges yet — add one below.
-                  </p>
-                ) : null}
+                    <Plus className="mr-1 h-3.5 w-3.5" />
+                    Add
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-1.5">
-                <Input
-                  value={newJudgeName}
-                  onChange={(e) => setNewJudgeName(e.target.value)}
-                  placeholder="New judge name"
-                  className="h-8 text-xs sm:h-9 sm:text-sm"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      onAddJudge();
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 shrink-0 text-xs sm:h-9"
-                  onClick={onAddJudge}
-                  disabled={isAddingJudge || !newJudgeName.trim()}
-                >
-                  <Plus className="mr-1 h-3.5 w-3.5" />
-                  Add
-                </Button>
-              </div>
-            </div>
 
-            <div className="space-y-2 rounded-lg border border-border/70 bg-muted/10 p-2.5">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                Judging mode
-              </Label>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${judgingMode === "SINGLE" ? "border-purple/60 bg-purple/10" : "bg-background hover:bg-muted/40"}`}
-                  onClick={() => setJudgingMode("SINGLE")}
-                >
-                  <p className="font-medium">Single</p>
-                  <p className="text-xs text-muted-foreground">
-                    Each judge scores independently.
-                  </p>
-                </button>
-                <button
-                  type="button"
-                  className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${judgingMode === "GROUP" ? "border-purple/60 bg-purple/10" : "bg-background hover:bg-muted/40"}`}
-                  onClick={() => setJudgingMode("GROUP")}
-                >
-                  <p className="font-medium">Group</p>
-                  <p className="text-xs text-muted-foreground">
-                    Shared screen, all judges at once.
-                  </p>
-                </button>
+              <div className="space-y-2 rounded-lg border border-border/70 bg-muted/10 p-2.5">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Judging mode
+                </Label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${judgingMode === "SINGLE" ? "border-purple/60 bg-purple/10" : "bg-background hover:bg-muted/40"}`}
+                    onClick={() => setJudgingMode("SINGLE")}
+                  >
+                    <p className="font-medium">Single</p>
+                    <p className="text-xs text-muted-foreground">
+                      Each judge scores independently.
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${judgingMode === "GROUP" ? "border-purple/60 bg-purple/10" : "bg-background hover:bg-muted/40"}`}
+                    onClick={() => setJudgingMode("GROUP")}
+                  >
+                    <p className="font-medium">Group</p>
+                    <p className="text-xs text-muted-foreground">
+                      Shared screen, all judges at once.
+                    </p>
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <Button
-              className="h-9 w-full text-xs sm:text-sm"
-              type="button"
-              onClick={onStartJudgement}
-              disabled={!canGenerate || isPending}
-            >
-              <Play className="mr-1.5 h-3.5 w-3.5" />
-              {isPending
-                ? "Starting…"
-                : wizardKind === "rejudge"
-                  ? "Restart judgement"
-                  : "Start judgement"}
-            </Button>
+              <Button
+                className="h-9 w-full text-xs sm:text-sm"
+                type="button"
+                onClick={onStartJudgement}
+                disabled={!canGenerate || isPending}
+              >
+                <Play className="mr-1.5 h-3.5 w-3.5" />
+                {isPending
+                  ? "Starting…"
+                  : wizardKind === "rejudge"
+                    ? "Restart judgement"
+                    : "Start judgement"}
+              </Button>
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </DrawerContent>
+      </Drawer>
 
       <Drawer
         open={searchDrawerOpen}
