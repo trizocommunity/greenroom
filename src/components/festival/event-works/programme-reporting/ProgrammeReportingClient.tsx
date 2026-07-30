@@ -1210,7 +1210,7 @@ export function ProgrammeReportingClient({
       {/* Section 1 — the queue. Full-width, search + a single filter drawer.
           Picking a programme opens the workspace drawer (Section 2). */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 pb-5">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input

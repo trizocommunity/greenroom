@@ -149,11 +149,20 @@ export function ReportingRosterTable({
               )}
             >
               {isInProgress ? (
-                <button
-                  type="button"
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => !isMarking && onMark(row, !row.isReported)}
-                  disabled={isMarking}
-                  className="-my-3 flex min-w-0 flex-1 items-center gap-4 py-3 text-left"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      if (!isMarking) onMark(row, !row.isReported);
+                    }
+                  }}
+                  className={cn(
+                    "-my-3 flex min-w-0 flex-1 items-center gap-4 py-3 text-left cursor-pointer",
+                    isMarking && "opacity-50 cursor-not-allowed pointer-events-none"
+                  )}
                 >
                   <span className="shrink-0">
                     {isMarking ? (
@@ -180,7 +189,7 @@ export function ReportingRosterTable({
                       {subtitle}
                     </span>
                   </span>
-                </button>
+                </div>
               ) : (
                 <div className="flex min-w-0 flex-1 items-center gap-4">
                   <div className="shrink-0">

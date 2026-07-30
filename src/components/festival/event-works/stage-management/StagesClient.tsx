@@ -87,9 +87,9 @@ export function StagesClient({
   });
 
   const [managingStageId, setManagingStageId] = useState<string | null>(null);
-  const [portalAccessStageId, setPortalAccessStageId] = useState<
-    string | null
-  >(null);
+  const [portalAccessStageId, setPortalAccessStageId] = useState<string | null>(
+    null,
+  );
   const [pendingMemberId, setPendingMemberId] = useState<string | null>(null);
   const { data: members = [] } = useMembers(festivalId);
   const { data: stageAssignments = [] } = useStageAssignments(festivalId);
@@ -165,12 +165,12 @@ export function StagesClient({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:gap-4 mb-4">
+    <div className="">
+      <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between sm:gap-4 py-8">
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
           Stage Management
         </h2>
-        <div className="flex flex-row items-center gap-2 w-full">
+        <div className="flex flex-row items-center gap-2 w-full md:w-auto">
           <HowItWorksButton
             title="How Stage Management works"
             description="Stages are venues or slots where programmes and sessions run."
