@@ -166,9 +166,9 @@ export function StagesClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <h2 className="text-2xl font-bold tracking-tight">
+      <div className="flex flex-row items-center justify-between gap-2 sm:gap-4">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <h2 className="text-lg sm:text-2xl font-bold tracking-tight whitespace-nowrap">
             Stage Management
           </h2>
           <HowItWorksButton
@@ -187,14 +187,14 @@ export function StagesClient({
             </p>
           </HowItWorksButton>
         </div>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
-          <div className="relative w-full sm:w-64">
+        <div className="flex flex-row items-center gap-2 shrink min-w-0 justify-end flex-1 sm:flex-none">
+          <div className="relative flex-1 sm:w-64 min-w-0">
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
             <Input
               placeholder="Search stages..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-9"
+              className="pl-9 h-9 w-full min-w-0"
             />
             {searchQuery && (
               <Button
@@ -210,11 +210,11 @@ export function StagesClient({
           <Button
             onClick={handleCreate}
             size="sm"
-            className="gap-2 shrink-0 h-9"
+            className="gap-2 shrink-0 h-9 px-2 sm:px-3"
             disabled={isReadOnly}
           >
             <Plus className="h-4 w-4" />
-            Create Stage
+            <span className="hidden sm:inline">Create Stage</span>
           </Button>
         </div>
       </div>

@@ -848,7 +848,7 @@ export function QrScanner({
               </Button>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
 
       {!hideResults && status === "success" && lastResult?.participant && (

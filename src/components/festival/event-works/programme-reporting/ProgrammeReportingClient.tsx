@@ -1346,7 +1346,7 @@ export function ProgrammeReportingClient({
             ) : (
               <>
                 <div className="space-y-3">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                  <div className="flex  gap-2 flex-row sm:flex-wrap sm:items-center justify-between">
                     <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
                       <Badge
                         variant={
@@ -1381,6 +1381,7 @@ export function ProgrammeReportingClient({
                       {isInProgress ? (
                         <>
                           <Button
+                            size="sm"
                             className="rounded-lg font-semibold"
                             onClick={onClose}
                             title={
@@ -1414,7 +1415,7 @@ export function ProgrammeReportingClient({
                             <DropdownMenuTrigger asChild>
                               <Button
                                 variant="outline"
-                                size="icon"
+                                size="sm"
                                 className="shrink-0"
                                 aria-label="More reporting actions"
                               >
@@ -1923,103 +1924,99 @@ export function ProgrammeReportingClient({
                       </span>
                     </div>
                     <div className="space-y-6">
-                            <div>
-                              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                Reporting timeline
-                              </p>
-                              <div className="grid gap-1.5 sm:grid-cols-2">
-                                {historyDetail.timeline.map((step, index) => (
-                                  <div
-                                    key={`${step.title}-${index}`}
-                                    className="rounded-md border border-border/70 bg-linear-to-br from-background via-background to-muted/30 px-2.5 py-2"
-                                  >
-                                    <div className="flex items-start gap-2">
-                                      <span className="inline-flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full border border-purple/40 bg-purple/10 text-[9px] font-semibold text-purple">
-                                        {index + 1}
-                                      </span>
-                                      <div className="min-w-0">
-                                        <p className="truncate text-[11px] font-semibold sm:text-[12px]">
-                                          {step.title}
-                                        </p>
-                                        <p className="mt-0.5 text-[10px] text-muted-foreground">
-                                          {step.at}
-                                        </p>
-                                        {step.note ? (
-                                          <p className="text-[10px] text-muted-foreground/90">
-                                            {step.note}
-                                          </p>
-                                        ) : null}
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
+                      <div>
+                        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Reporting timeline
+                        </p>
+                        <div className="grid gap-1.5 sm:grid-cols-2">
+                          {historyDetail.timeline.map((step, index) => (
+                            <div
+                              key={`${step.title}-${index}`}
+                              className="rounded-md border border-border/70 bg-linear-to-br from-background via-background to-muted/30 px-2.5 py-2"
+                            >
+                              <div className="flex items-start gap-2">
+                                <span className="inline-flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full border border-purple/40 bg-purple/10 text-[9px] font-semibold text-purple">
+                                  {index + 1}
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="truncate text-[11px] font-semibold sm:text-[12px]">
+                                    {step.title}
+                                  </p>
+                                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                                    {step.at}
+                                  </p>
+                                  {step.note ? (
+                                    <p className="text-[10px] text-muted-foreground/90">
+                                      {step.note}
+                                    </p>
+                                  ) : null}
+                                </div>
                               </div>
                             </div>
+                          ))}
+                        </div>
+                      </div>
 
-                            <div>
-                              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                {historyDetail.type === "GROUP"
-                                  ? "Team reported timeline"
-                                  : "Participant reported timeline"}
-                              </p>
-                              {historyDetail.participantTimeline.length ? (
-                                <div className="grid gap-1.5 sm:grid-cols-2">
-                                  {historyDetail.participantTimeline.map(
-                                    (entry, index) => (
-                                      <div
-                                        key={entry.key}
-                                        className="rounded-md border border-border/70 bg-background/70 px-2.5 py-2"
-                                      >
-                                        <div className="flex items-start justify-between gap-2">
-                                          <div className="min-w-0">
-                                            <p className="truncate text-[11px] font-semibold sm:text-[12px]">
-                                              {index + 1}. {entry.label}
-                                            </p>
-                                            <p className="text-[10px] text-muted-foreground">
-                                              {entry.chestOrTeam} •{" "}
-                                              {entry.group}
-                                            </p>
-                                          </div>
-                                          <span className="rounded border bg-purple/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-purple">
-                                            {entry.code}
-                                          </span>
-                                        </div>
-                                        <div className="mt-1 grid gap-1 text-[10px] text-muted-foreground">
-                                          <p>
-                                            Reported:{" "}
-                                            {entry.reportedAt
-                                              ? formatStoredDateTime(
-                                                  entry.reportedAt,
-                                                  {
-                                                    dateStyle: "medium",
-                                                    timeStyle: "short",
-                                                  },
-                                                )
-                                              : "—"}
-                                          </p>
-                                          <p>
-                                            Spun/Issued:{" "}
-                                            {entry.spunAt
-                                              ? formatStoredDateTime(
-                                                  entry.spunAt,
-                                                  {
-                                                    dateStyle: "medium",
-                                                    timeStyle: "short",
-                                                  },
-                                                )
-                                              : "Pending"}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    ),
-                                  )}
+                      <div>
+                        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          {historyDetail.type === "GROUP"
+                            ? "Team reported timeline"
+                            : "Participant reported timeline"}
+                        </p>
+                        {historyDetail.participantTimeline.length ? (
+                          <div className="grid gap-1.5 sm:grid-cols-2">
+                            {historyDetail.participantTimeline.map(
+                              (entry, index) => (
+                                <div
+                                  key={entry.key}
+                                  className="rounded-md border border-border/70 bg-background/70 px-2.5 py-2"
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0">
+                                      <p className="truncate text-[11px] font-semibold sm:text-[12px]">
+                                        {index + 1}. {entry.label}
+                                      </p>
+                                      <p className="text-[10px] text-muted-foreground">
+                                        {entry.chestOrTeam} • {entry.group}
+                                      </p>
+                                    </div>
+                                    <span className="rounded border bg-purple/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-purple">
+                                      {entry.code}
+                                    </span>
+                                  </div>
+                                  <div className="mt-1 grid gap-1 text-[10px] text-muted-foreground">
+                                    <p>
+                                      Reported:{" "}
+                                      {entry.reportedAt
+                                        ? formatStoredDateTime(
+                                            entry.reportedAt,
+                                            {
+                                              dateStyle: "medium",
+                                              timeStyle: "short",
+                                            },
+                                          )
+                                        : "—"}
+                                    </p>
+                                    <p>
+                                      Spun/Issued:{" "}
+                                      {entry.spunAt
+                                        ? formatStoredDateTime(entry.spunAt, {
+                                            dateStyle: "medium",
+                                            timeStyle: "short",
+                                          })
+                                        : "Pending"}
+                                    </p>
+                                  </div>
                                 </div>
-                              ) : (
-                                <p className="text-[11px] text-muted-foreground">
-                                  No reported entries captured for this session.
-                                </p>
-                              )}
-                            </div>
+                              ),
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-muted-foreground">
+                            No reported entries captured for this session.
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
