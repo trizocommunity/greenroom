@@ -207,16 +207,8 @@ export function QrScanner({
 
     // Commit the <video> mount synchronously so videoRef is set after await
     // getUserMedia() (fast grant paths used to leave ref null).
-    try {
-      flushSync(() => {
-        setLastResult(null);
-        setStatus("scanning");
-      });
-    } catch {
-      /* flushSync can throw if nested in another update; fall back */
-      setLastResult(null);
-      setStatus("scanning");
-    }
+    setLastResult(null);
+    setStatus("scanning");
 
     try {
       const stream =
@@ -733,7 +725,6 @@ export function QrScanner({
       ) : null}
 
       {["scanning", "processing", "success", "error"].includes(status) &&
-        !!streamRef.current &&
         mode !== "manual" && (
           <div
             ref={scannerSurfaceRef}
