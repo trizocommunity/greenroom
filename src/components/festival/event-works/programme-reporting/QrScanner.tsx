@@ -13,7 +13,7 @@ import {
   SwitchCamera,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { flushSync } from "react-dom";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -723,7 +723,9 @@ export function QrScanner({
       ) : null}
 
       {["scanning", "processing", "success", "error"].includes(status) &&
-        mode !== "manual" && (
+        mode !== "manual" &&
+        typeof document !== "undefined" &&
+        createPortal(
           <div
             ref={scannerSurfaceRef}
             className="fixed inset-0 z-[100] flex flex-col bg-black h-[100dvh] w-screen"
@@ -836,7 +838,8 @@ export function QrScanner({
                 <span className="sr-only">Close camera</span>
               </Button>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
       {!hideResults && status === "success" && lastResult?.participant && (
