@@ -6,7 +6,6 @@ import {
   Camera,
   CheckCircle,
   Loader2,
-  Maximize2,
   Upload,
   X,
   Zap,
@@ -16,7 +15,6 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/core/utils/cn";
