@@ -1,10 +1,10 @@
 /**
- * Festival expiration: snapshot results, delete non-retained data, set EXPIRED.
- * All plans use fixed 30-day duration; no read-only after expiry.
+ * Festival expiration: snapshot all data for Manual Book, delete live data, set EXPIRED.
+ * Festival duration is 90 days from creation. After 90 days + 7 grace = data deleted.
  *
  * Lifecycle:
  *   READY/ONGOING/PAST → pre-archival (7 days before expiresAt)
- *   pre-archival → EXPIRED → deleted (via cron at/after expiresAt)
+ *   pre-archival → EXPIRED → data deleted, Manual Book available for download
  */
 
 import { eq, lt, ne } from "drizzle-orm";
@@ -12,19 +12,20 @@ import { jsPDF } from "jspdf";
 import { db } from "@/core/database/client";
 import {
   category as categories,
+  expiredFestivalManualBook,
   expiredFestivalResult,
-  festivalGalleryImage,
   festivalLifecycleEvent,
+  festivalMediaImage,
   festivalMember,
   festivalNews,
   festival as festivals,
   group as groups,
+  participant as participants,
   programmeAssignment,
   programme as programmes,
   result as results,
   scheduleEntry,
   stage as stages,
-  student as students,
 } from "@/core/database/schema";
 import { getPublicFestivalResults } from "@/features/festivals/loaders/festival-results.loader";
 
@@ -40,9 +41,7 @@ export const FestivalExpirationService = {
     { id: string; name: string; slug: string; expiresAt: string | null }[]
   > {
     const now = new Date();
-    const windowEnd = new Date(
-      now.getTime() + PRE_ARCHIVAL_DAYS * MS_PER_DAY,
-    );
+    const windowEnd = new Date(now.getTime() + PRE_ARCHIVAL_DAYS * MS_PER_DAY);
     const list = await db
       .select({
         id: festivals.id,
@@ -122,7 +121,7 @@ export const FestivalExpirationService = {
   },
 
   /**
-   * Run expiration for one festival: snapshot results, delete non-retained data, set EXPIRED.
+   * Run expiration for one festival: snapshot all data to Manual Book, delete live data, set EXPIRED.
    */
   async expireFestival(festivalId: string): Promise<void> {
     const { randomUUID } = await import("crypto");
@@ -131,10 +130,54 @@ export const FestivalExpirationService = {
     });
     if (!festival || festival.status === "EXPIRED") return;
 
+    const [
+      participantsData,
+      programmesData,
+      categoriesData,
+      groupsData,
+      stagesData,
+      scheduleData,
+      resultsData,
+    ] = await Promise.all([
+      db.query.participant.findMany({
+        where: eq(participants.festivalId, festivalId),
+      }),
+      db.query.programme.findMany({
+        where: eq(programmes.festivalId, festivalId),
+      }),
+      db.query.category.findMany({
+        where: eq(categories.festivalId, festivalId),
+      }),
+      db.query.group.findMany({ where: eq(groups.festivalId, festivalId) }),
+      db.query.stage.findMany({ where: eq(stages.festivalId, festivalId) }),
+      db.query.scheduleEntry.findMany({
+        where: eq(scheduleEntry.festivalId, festivalId),
+      }),
+      db.query.result.findMany({ where: eq(results.festivalId, festivalId) }),
+    ]);
+
     const publishedResults = await getPublicFestivalResults(festivalId);
 
+    const manualBookData = {
+      festival,
+      participants: participantsData,
+      programmes: programmesData,
+      categories: categoriesData,
+      groups: groupsData,
+      stages: stagesData,
+      schedule: scheduleData,
+      results: resultsData,
+    };
+
     await db.transaction(async (tx) => {
-      // 1. Snapshot to ExpiredFestivalResult
+      // 1. Store Manual Book data
+      await tx.insert(expiredFestivalManualBook).values({
+        id: randomUUID(),
+        festivalId,
+        data: manualBookData as any,
+      });
+
+      // 2. Snapshot to ExpiredFestivalResult (for backward compatibility)
       for (const r of publishedResults) {
         await tx.insert(expiredFestivalResult).values({
           id: randomUUID(),
@@ -149,7 +192,7 @@ export const FestivalExpirationService = {
         } as any);
       }
 
-      // 2. Delete in order (respect FKs)
+      // 3. Delete in order (respect FKs)
       await tx.delete(results).where(eq(results.festivalId, festivalId));
       await tx
         .delete(programmeAssignment)
@@ -157,13 +200,15 @@ export const FestivalExpirationService = {
       await tx
         .delete(scheduleEntry)
         .where(eq(scheduleEntry.festivalId, festivalId));
-      await tx.delete(students).where(eq(students.festivalId, festivalId));
+      await tx
+        .delete(participants)
+        .where(eq(participants.festivalId, festivalId));
       await tx.delete(programmes).where(eq(programmes.festivalId, festivalId));
       await tx.delete(categories).where(eq(categories.festivalId, festivalId));
       await tx.delete(groups).where(eq(groups.festivalId, festivalId));
       await tx
-        .delete(festivalGalleryImage)
-        .where(eq(festivalGalleryImage.festivalId, festivalId));
+        .delete(festivalMediaImage)
+        .where(eq(festivalMediaImage.festivalId, festivalId));
       await tx
         .delete(festivalNews)
         .where(eq(festivalNews.festivalId, festivalId));
@@ -172,15 +217,18 @@ export const FestivalExpirationService = {
         .delete(festivalMember)
         .where(eq(festivalMember.festivalId, festivalId));
 
-      // 3. Lifecycle event
+      // 4. Lifecycle event
       await tx.insert(festivalLifecycleEvent).values({
         id: randomUUID(),
         festivalId,
         event: "EXPIRED",
-        metadata: { snapshotCount: publishedResults.length },
+        metadata: {
+          snapshotCount: publishedResults.length,
+          manualBookArchived: true,
+        },
       } as any);
 
-      // 4. Update festival — resultPdfUrl intentionally left null so
+      // 5. Update festival — resultPdfUrl intentionally left null so
       // on-demand PDF generation is used (avoids stale stored PDFs)
       const now = new Date();
       await tx
@@ -188,7 +236,7 @@ export const FestivalExpirationService = {
         .set({
           status: "EXPIRED",
           expiredAt: now.toISOString(),
-          studentsCount: 0,
+          participantsCount: 0,
           programmesCount: 0,
           stagesCount: 0,
           storageUsedMb: 0,

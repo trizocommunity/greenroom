@@ -1,52 +1,60 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { queryKeys } from "@/core/http/query-keys";
-import { userApi } from "@/features/auth/api/user.api";
 
-export type User = {
+const API_BASE = "/api/v1";
+
+async function handleResponse<T>(res: Response): Promise<T> {
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error.message);
+  return json.data;
+}
+
+export interface User {
   id: string;
   email: string;
   fullName: string | null;
-  globalRole: "USER" | "SUPER_ADMIN";
+  globalRole: string;
   isActive: boolean;
-  createdAt: string;
-};
+}
 
-export const useUsers = () => {
-  return useQuery({
-    queryKey: queryKeys.users.all(),
-    queryFn: userApi.getAll,
-    staleTime: 1000 * 60 * 2, // 2 minutes
+export function useUsers() {
+  return useQuery<User[]>({
+    queryKey: ["users"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/users`);
+      return handleResponse<User[]>(res);
+    },
+    staleTime: 30 * 1000,
   });
-};
+}
 
-export const useUpdateUser = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<User> }) =>
-      userApi.update(id, data),
+export function useUpdateUser() {
+  const qc = useQueryClient();
+  return useMutation<User, Error, { id: string; fullName?: string }>({
+    mutationFn: async ({ id, fullName }) => {
+      const res = await fetch(`${API_BASE}/users/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: { fullName } }),
+      });
+      return handleResponse<User>(res);
+    },
     onSuccess: () => {
-      toast.success("User updated successfully");
-      queryClient.invalidateQueries({ queryKey: queryKeys.users.all() });
-    },
-    onError: (error) => {
-      toast.error(error.message);
+      qc.invalidateQueries({ queryKey: ["users"] });
     },
   });
-};
+}
 
-export const useDeleteUser = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: userApi.delete,
+export function useDeleteUser() {
+  const qc = useQueryClient();
+  return useMutation<void, Error, { id: string }>({
+    mutationFn: async ({ id }) => {
+      const res = await fetch(`${API_BASE}/users/${id}`, {
+        method: "DELETE",
+      });
+      return handleResponse<void>(res);
+    },
     onSuccess: () => {
-      toast.success("User deleted successfully");
-      queryClient.invalidateQueries({ queryKey: queryKeys.users.all() });
-    },
-    onError: (error) => {
-      toast.error(error.message);
+      qc.invalidateQueries({ queryKey: ["users"] });
     },
   });
-};
+}

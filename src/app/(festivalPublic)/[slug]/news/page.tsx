@@ -39,13 +39,14 @@ export default async function NewsPage({ params }: Props) {
   if (!data) return notFound();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
-      <section className="container py-12 sm:py-16 px-4">
-        <div className="text-center mb-10">
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-            News & Updates
+    <div className="min-h-screen bg-background">
+      <section className="max-w-7xl mx-auto px-4 md:px-6 py-16 md:py-20">
+        <div className="text-center mb-12">
+          <p className="text-eyebrow justify-center mb-3">Updates</p>
+          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-heading">
+            News &amp; updates
           </h1>
-          <p className="text-muted-foreground mt-2 max-w-xl mx-auto">
+          <p className="mt-3 max-w-xl mx-auto text-muted-foreground leading-relaxed">
             Latest announcements and stories from {data.festival.name}.
           </p>
         </div>

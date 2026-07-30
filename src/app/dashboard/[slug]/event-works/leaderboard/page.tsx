@@ -2,12 +2,16 @@ import { Calendar, Trophy } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
 import { LeaderboardClient } from "@/components/dashboard/leaderboard/LeaderboardClient";
+import { getSession } from "@/core/auth/session";
 import type { Tier } from "@/core/types/app-enums";
+import { getAnnouncerBlockProgress } from "@/features/announcement/services/announcer-result-count.service";
+import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 import {
-  filterProgrammesForEventWorks,
-  isProgrammeInEventWorks,
-} from "@/features/programmes/services/programme-status.service";
+  getResolvedTier,
+  isBasicTier,
+} from "@/features/plan-features/services/tier";
+import { filterProgrammesForEventWorks } from "@/features/programmes/services/programme-status.service";
 import { getFestivalLeaderboardDataBySlug } from "@/features/results/services/leaderboard.service";
 
 export default async function LeaderboardPage({
@@ -16,6 +20,12 @@ export default async function LeaderboardPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const session = await getSession();
+  const context = await getFestivalContext({
+    slugOrId: slug,
+    userId: session?.userId ?? null,
+    globalRole: session?.role ?? null,
+  });
 
   const { festival, assignmentCount } =
     await getFestivalLeaderboardDataBySlug(slug);
@@ -24,7 +34,7 @@ export default async function LeaderboardPage({
     return notFound();
   }
 
-  const tier = (festival.tier ?? "STANDARD") as Tier;
+  const tier = getResolvedTier(festival.tier) as Tier;
   const canViewLeaderboard = await getEffectiveFeatureEnabled(
     tier,
     "liveScoreboard",
@@ -38,15 +48,12 @@ export default async function LeaderboardPage({
     festival.programmes,
     tier,
   );
-  const resultsInEventWorks = festival.results.filter((r) => {
-    if (!r.programme) return false;
-    // BASIC can have valid judged/published marks before programme status
-    // transitions are fully aligned with Event Works gating.
-    if (tier === "BASIC") return true;
-    return isProgrammeInEventWorks(r.programme.status, tier);
-  });
+  const eventWorksProgrammeIds = new Set(eventWorksProgrammes.map((p) => p.id));
+  const resultsInEventWorks = festival.results.filter(
+    (r) => r.programme && eventWorksProgrammeIds.has(r.programme.id),
+  );
 
-  if (tier !== "BASIC" && eventWorksProgrammes.length === 0) {
+  if (!isBasicTier(tier) && eventWorksProgrammes.length === 0) {
     return (
       <EmptyState
         title="No programmes in Event Works yet"
@@ -70,18 +77,37 @@ export default async function LeaderboardPage({
     );
   }
 
+  const block = !isBasicTier(tier)
+    ? await getAnnouncerBlockProgress(festival.id)
+    : null;
+
   return (
     <div className="pt-4 sm:pt-6">
       <LeaderboardClient
         festival={festival}
+        tier={tier}
         results={resultsInEventWorks}
         publishedStandings={festival.teamStandings as any[]}
         categories={festival.categories}
         groups={festival.groups}
+        publicDisplayMode={
+          (festival.publicDisplayMode as
+            | "programme_results"
+            | "team_standings") ?? "programme_results"
+        }
+        festivalRole={context?.role}
+        block={block}
       >
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-          Leaderboard
-        </h1>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            Leaderboard
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
+            {isBasicTier(tier)
+              ? "Internal team and participant standings from published results."
+              : "Desk preview (published) and on-air standings (published and announced)."}
+          </p>
+        </div>
       </LeaderboardClient>
     </div>
   );

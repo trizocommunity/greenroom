@@ -9,7 +9,7 @@ import { festival as festivals } from "@/core/database/schema";
 export const FestivalLifecycleService = {
   /**
    * Deletes festivals that have passed their 40-day lifetime.
-   * This is a hard delete of the festival and all its data (students, programme as programmes, etc.)
+   * This is a hard delete of the festival and all its data (participants, programme as programmes, etc.)
    * except Payments (which are preserved but unlinked via SetNull).
    *
    * @returns Number of festivals deleted
@@ -19,7 +19,7 @@ export const FestivalLifecycleService = {
 
     try {
       // Hard delete festivals expiring before NOW.
-      // Relies on database CASCADE for internal data (Students, Programmes)
+      // Relies on database CASCADE for internal data (Participants, Programmes)
       const result = await db
         .delete(festivals)
         .where(

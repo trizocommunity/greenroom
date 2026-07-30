@@ -2,24 +2,51 @@
 
 import { and, count, eq, inArray } from "drizzle-orm";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
+import { getParticipantSessionFromCookie } from "@/core/auth/participant-session";
 import { getSession } from "@/core/auth/session";
-import { getTeamLeaderSessionFromCookie } from "@/core/auth/team-leader-session";
 import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
   category as categoryTable,
   group as groupTable,
+  participant as participantTable,
   programme as programmeTable,
-  student as studentTable,
   user as userTable,
 } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { parseStoredInstant } from "@/core/utils/date-time";
 import { AssignmentService } from "@/features/assignments/services/assignment.service";
+import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { assertFestivalMutationAllowed } from "@/features/festivals/services/festival-lifecycle-policy.service";
 
-async function getActorForCreatedBy(userId: string) {
+function auditActorForContext(actorContext: AssignmentActorContext) {
+  return actorContext.type === "user"
+    ? undefined
+    : { actorId: actorContext.participantId, actorRole: "TEAM_LEADER" };
+}
+
+export async function resolveAppointerContext(
+  actorContext: AssignmentActorContext,
+) {
+  if (actorContext.type === "user") {
+    const actor = await getActorForCreatedBy(actorContext.userId);
+    return {
+      appointedBy: actorContext.userId,
+      appointedByRole: "ADMIN" as const,
+      appointedByName: actor.createdByName,
+      appointedByEmail: actor.createdByEmail,
+    };
+  }
+  return {
+    appointedBy: actorContext.participantId,
+    appointedByRole: "TEAM_LEADER" as const,
+    appointedByName: "Team Leader",
+    appointedByEmail: undefined,
+  };
+}
+
+export async function getActorForCreatedBy(userId: string) {
   const user = await db.query.user.findFirst({
     where: eq(userTable.id, userId),
     columns: { email: true, fullName: true, displayName: true },
@@ -44,11 +71,11 @@ function assertAssignmentWindowOpen(
   }
 }
 
-type AssignmentActorContext =
+export type AssignmentActorContext =
   | { type: "user"; userId: string }
-  | { type: "teamLeader"; studentId: string; groupId: string };
+  | { type: "teamLeader"; participantId: string; groupId: string };
 
-async function resolveAssignmentActorContext(
+export async function resolveAssignmentActorContext(
   festivalId: string,
   options?: { requireWritable?: boolean },
 ): Promise<AssignmentActorContext> {
@@ -60,22 +87,22 @@ async function resolveAssignmentActorContext(
     return { type: "user", userId: session.userId };
   }
 
-  const tlSession = await getTeamLeaderSessionFromCookie();
+  const tlSession = await getParticipantSessionFromCookie();
   if (
     !tlSession ||
     tlSession.revokedAt ||
     parseStoredInstant(tlSession.expiresAt) <= new Date() ||
-    !tlSession.student?.isTeamLeader ||
+    !tlSession.participant?.isTeamLeader ||
     tlSession.festivalId !== festivalId ||
-    !tlSession.student.groupId
+    !tlSession.participant.groupId
   ) {
     throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
   }
 
   return {
     type: "teamLeader",
-    studentId: tlSession.studentId,
-    groupId: tlSession.student.groupId,
+    participantId: tlSession.participantId,
+    groupId: tlSession.participant.groupId,
   };
 }
 
@@ -87,8 +114,8 @@ export async function getAssignmentsAction(festivalId: string) {
     const groupId =
       a?.groupId ??
       a?.group?.id ??
-      a?.student?.groupId ??
-      a?.student?.group?.id;
+      a?.participant?.groupId ??
+      a?.participant?.group?.id;
     return groupId === actor.groupId;
   });
 }
@@ -97,7 +124,7 @@ export async function createAssignmentAction(
   festivalId: string,
   data: {
     programmeId: string;
-    studentId?: string;
+    participantId?: string;
     groupId?: string;
     teamNumber?: number;
   },
@@ -120,7 +147,7 @@ export async function createAssignmentAction(
   assertAssignmentWindowOpen(festival);
 
   // Validate Dependencies
-  const [categoryCount, groupCount, programmeCount, studentCount] =
+  const [categoryCount, groupCount, programmeCount, participantCount] =
     await Promise.all([
       db
         .select({ c: count() })
@@ -136,43 +163,57 @@ export async function createAssignmentAction(
         .where(eq(programmeTable.festivalId, festivalId)),
       db
         .select({ c: count() })
-        .from(studentTable)
-        .where(eq(studentTable.festivalId, festivalId)),
+        .from(participantTable)
+        .where(eq(participantTable.festivalId, festivalId)),
     ]);
 
   if (
     categoryCount[0].c === 0 ||
     groupCount[0].c === 0 ||
     programmeCount[0].c === 0 ||
-    studentCount[0].c === 0
+    participantCount[0].c === 0
   ) {
     throw new AppError(ERROR_MESSAGES.ASSIGNMENT_DEPENDENCIES_MISSING);
   }
 
-  if (actorContext.type === "teamLeader" && data.studentId) {
-    const student = await db.query.student.findFirst({
-      where: eq(studentTable.id, data.studentId),
+  if (actorContext.type === "teamLeader" && data.participantId) {
+    const participant = await db.query.participant.findFirst({
+      where: eq(participantTable.id, data.participantId),
       columns: { id: true, festivalId: true, groupId: true },
     });
     if (
-      !student ||
-      student.festivalId !== festivalId ||
-      student.groupId !== actorContext.groupId
+      !participant ||
+      participant.festivalId !== festivalId ||
+      participant.groupId !== actorContext.groupId
     ) {
       throw new AppError(ERROR_MESSAGES.FORBIDDEN);
     }
   }
 
-  return AssignmentService.create(festivalId, data, actor);
+  const created = await AssignmentService.create(festivalId, data, actor);
+  await createAuditLog({
+    action: "ASSIGN_PARTICIPANTS",
+    targetType: "PROGRAMME_ASSIGNMENT",
+    targetId: created.id,
+    metadata: {
+      programmeId: data.programmeId,
+      participantId: data.participantId,
+    },
+    actor: auditActorForContext(actorContext),
+  }).catch((err) =>
+    console.error("[AuditLog] ASSIGN_PARTICIPANTS failed", err),
+  );
+  return created;
 }
 
 export async function bulkCreateAssignmentAction(
   festivalId: string,
   assignments: {
     programmeId: string;
-    studentId: string;
+    participantId: string;
     teamNumber?: number;
   }[],
+  teamLeadsByTeam?: Record<string, string>,
 ) {
   const actorContext = await resolveAssignmentActorContext(festivalId, {
     requireWritable: true,
@@ -194,17 +235,19 @@ export async function bulkCreateAssignmentAction(
   if (assignments.length === 0) return [];
 
   if (actorContext.type === "teamLeader") {
-    const studentIds = Array.from(new Set(assignments.map((a) => a.studentId)));
-    const students = await db.query.student.findMany({
+    const participantIds = Array.from(
+      new Set(assignments.map((a) => a.participantId)),
+    );
+    const participants = await db.query.participant.findMany({
       where: and(
-        eq(studentTable.festivalId, festivalId),
-        inArray(studentTable.id, studentIds),
+        eq(participantTable.festivalId, festivalId),
+        inArray(participantTable.id, participantIds),
       ),
       columns: { id: true, festivalId: true, groupId: true },
     });
     if (
-      students.length !== studentIds.length ||
-      students.some(
+      participants.length !== participantIds.length ||
+      participants.some(
         (s) =>
           s.festivalId !== festivalId || s.groupId !== actorContext.groupId,
       )
@@ -213,10 +256,42 @@ export async function bulkCreateAssignmentAction(
     }
   }
 
-  return AssignmentService.bulkCreate(festivalId, assignments, actor);
+  const appointer = await resolveAppointerContext(actorContext);
+
+  const created = await AssignmentService.bulkCreate(
+    festivalId,
+    assignments,
+    actor,
+    { teamLeadsByTeam, appointer },
+  );
+  const countByProgramme = new Map<string, number>();
+  for (const row of created) {
+    countByProgramme.set(
+      row.programmeId,
+      (countByProgramme.get(row.programmeId) ?? 0) + 1,
+    );
+  }
+  await Promise.all(
+    Array.from(countByProgramme.entries()).map(([programmeId, count]) =>
+      createAuditLog({
+        action: "ASSIGN_PARTICIPANTS",
+        targetType: "PROGRAMME_ASSIGNMENT",
+        targetId: programmeId,
+        metadata: { programmeId, count },
+        actor: auditActorForContext(actorContext),
+      }).catch((err) =>
+        console.error("[AuditLog] ASSIGN_PARTICIPANTS failed", err),
+      ),
+    ),
+  );
+  return created;
 }
 
-export async function deleteAssignmentAction(festivalId: string, id: string) {
+export async function deleteAssignmentAction(
+  festivalId: string,
+  id: string,
+  replacementLeadParticipantId?: string,
+) {
   const actorContext = await resolveAssignmentActorContext(festivalId, {
     requireWritable: true,
   });
@@ -230,11 +305,11 @@ export async function deleteAssignmentAction(festivalId: string, id: string) {
   if (actorContext.type === "teamLeader") {
     const assignment = await db.query.programmeAssignment.findFirst({
       where: eq(assignmentTable.id, id),
-      with: { student: true, group: true },
+      with: { participant: true, group: true },
     });
     const assignmentGroupId =
       assignment?.groupId ??
-      assignment?.student?.groupId ??
+      assignment?.participant?.groupId ??
       assignment?.group?.id;
     if (
       !assignment ||
@@ -245,7 +320,23 @@ export async function deleteAssignmentAction(festivalId: string, id: string) {
     }
   }
 
-  return AssignmentService.delete(id, festivalId);
+  const appointer = await resolveAppointerContext(actorContext);
+
+  const deleted = await AssignmentService.delete(id, festivalId, {
+    replacementLeadParticipantId,
+    appointer,
+  });
+  await createAuditLog({
+    action: "REMOVE_ASSIGNMENT",
+    targetType: "PROGRAMME_ASSIGNMENT",
+    targetId: id,
+    metadata: {
+      programmeId: deleted?.programmeId,
+      participantId: deleted?.participantId,
+    },
+    actor: auditActorForContext(actorContext),
+  }).catch((err) => console.error("[AuditLog] REMOVE_ASSIGNMENT failed", err));
+  return deleted;
 }
 
 export async function deleteTeamAssignmentAction(
@@ -267,12 +358,20 @@ export async function deleteTeamAssignmentAction(
     throw new AppError(ERROR_MESSAGES.FORBIDDEN);
   }
 
-  return AssignmentService.deleteByTeam(
+  const result = await AssignmentService.deleteByTeam(
     festivalId,
     programmeId,
     groupId,
     teamNumber,
   );
+  await createAuditLog({
+    action: "REMOVE_ASSIGNMENT",
+    targetType: "PROGRAMME_ASSIGNMENT",
+    targetId: `${programmeId}:${groupId}:${teamNumber}`,
+    metadata: { programmeId, groupId, teamNumber, count: result.count },
+    actor: auditActorForContext(actorContext),
+  }).catch((err) => console.error("[AuditLog] REMOVE_ASSIGNMENT failed", err));
+  return result;
 }
 
 export async function updateAssignmentAction(
@@ -280,7 +379,7 @@ export async function updateAssignmentAction(
   id: string,
   data: {
     programmeId?: string;
-    studentId?: string;
+    participantId?: string;
     groupId?: string;
   },
 ) {
@@ -297,10 +396,12 @@ export async function updateAssignmentAction(
   if (actorContext.type === "teamLeader") {
     const existing = await db.query.programmeAssignment.findFirst({
       where: eq(assignmentTable.id, id),
-      with: { student: true, group: true },
+      with: { participant: true, group: true },
     });
     const existingGroupId =
-      existing?.groupId ?? existing?.student?.groupId ?? existing?.group?.id;
+      existing?.groupId ??
+      existing?.participant?.groupId ??
+      existing?.group?.id;
     if (
       !existing ||
       existing.festivalId !== festivalId ||
@@ -309,15 +410,15 @@ export async function updateAssignmentAction(
       throw new AppError(ERROR_MESSAGES.FORBIDDEN);
     }
 
-    if (data.studentId) {
-      const student = await db.query.student.findFirst({
-        where: eq(studentTable.id, data.studentId),
+    if (data.participantId) {
+      const participant = await db.query.participant.findFirst({
+        where: eq(participantTable.id, data.participantId),
         columns: { festivalId: true, groupId: true },
       });
       if (
-        !student ||
-        student.festivalId !== festivalId ||
-        student.groupId !== actorContext.groupId
+        !participant ||
+        participant.festivalId !== festivalId ||
+        participant.groupId !== actorContext.groupId
       ) {
         throw new AppError(ERROR_MESSAGES.FORBIDDEN);
       }
@@ -351,14 +452,14 @@ export async function getProgrammeTeamMembersAction(
     );
   }
 
-  const tlSession = await getTeamLeaderSessionFromCookie();
+  const tlSession = await getParticipantSessionFromCookie();
   if (
     !tlSession ||
     tlSession.revokedAt ||
     parseStoredInstant(tlSession.expiresAt) <= new Date() ||
-    !tlSession.student?.isTeamLeader ||
+    !tlSession.participant?.isTeamLeader ||
     tlSession.festivalId !== festivalId ||
-    tlSession.student.groupId !== groupId
+    tlSession.participant.groupId !== groupId
   ) {
     throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
   }

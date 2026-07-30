@@ -44,7 +44,7 @@ export async function findAssignmentsByProgramme(programmeId: string) {
   return db.query.programmeAssignment.findMany({
     where: eq(programmeAssignment.programmeId, programmeId),
     with: {
-      student: {
+      participant: {
         with: {
           group: true,
         },
@@ -55,9 +55,9 @@ export async function findAssignmentsByProgramme(programmeId: string) {
   });
 }
 
-export async function findAssignmentsByStudent(studentId: string) {
+export async function findAssignmentsByParticipant(participantId: string) {
   return db.query.programmeAssignment.findMany({
-    where: eq(programmeAssignment.studentId, studentId),
+    where: eq(programmeAssignment.participantId, participantId),
     with: { programme: true },
     orderBy: [desc(programmeAssignment.createdAt)],
   });
@@ -65,12 +65,12 @@ export async function findAssignmentsByStudent(studentId: string) {
 
 export async function checkAssignmentExists(
   programmeId: string,
-  studentId: string,
+  participantId: string,
 ) {
   const assignment = await db.query.programmeAssignment.findFirst({
     where: and(
       eq(programmeAssignment.programmeId, programmeId),
-      eq(programmeAssignment.studentId, studentId),
+      eq(programmeAssignment.participantId, participantId),
     ),
   });
   return !!assignment;

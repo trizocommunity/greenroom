@@ -1,8 +1,8 @@
 "use client";
 
+import { TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { TriangleAlert } from "lucide-react";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,7 +51,8 @@ export function UnsavedChangesGuard() {
       if (!isDirty) return;
       if (event.defaultPrevented) return;
       if (event.button !== 0) return;
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+        return;
 
       const target = event.target as Element | null;
       const anchor = target?.closest("a[href]") as HTMLAnchorElement | null;
@@ -134,7 +135,11 @@ export function UnsavedChangesGuard() {
         </div>
 
         <div className="grid grid-cols-1 gap-2 border-t bg-muted/10 p-3 sm:flex sm:flex-row sm:items-center sm:justify-end sm:gap-2 sm:p-4">
-          <Button variant="outline" onClick={stayOnPage} className="sm:min-w-24">
+          <Button
+            variant="outline"
+            onClick={stayOnPage}
+            className="sm:min-w-24"
+          >
             Stay
           </Button>
           <Button

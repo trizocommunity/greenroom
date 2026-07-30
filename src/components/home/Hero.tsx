@@ -7,73 +7,88 @@ import { Button } from "@/components/ui/button";
 
 export default function Hero() {
   const { scrollY } = useScroll();
-  const y = useTransform(scrollY, [0, 500], [0, 160]);
+  const y = useTransform(scrollY, [0, 500], [0, 120]);
 
   return (
-    <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden bg-background">
+    <section className="relative min-h-[88vh] flex items-center justify-center overflow-hidden bg-background">
+      {/* Subtle grid texture */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.4] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,black,transparent)]"
+        style={{
+          backgroundImage:
+            "linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px)",
+          backgroundSize: "64px 64px",
+        }}
+      />
+
       {/* Soft background blobs */}
       <motion.div
         aria-hidden
-        className="pointer-events-none absolute -left-40 top-40 h-80 w-80 rounded-full bg-primary/20 blur-[100px]"
+        className="pointer-events-none absolute -left-40 top-32 h-96 w-96 rounded-full bg-primary/10 blur-[120px]"
         style={{ y }}
       />
       <motion.div
         aria-hidden
-        className="pointer-events-none absolute -right-32 bottom-0 h-96 w-96 rounded-full bg-primary/10 blur-[120px]"
+        className="pointer-events-none absolute -right-32 bottom-0 h-96 w-96 rounded-full bg-secondary/10 blur-[120px]"
         style={{ y }}
       />
 
-      {/* Floating card like the laptop mock */}
-      <div className="container max-w-7xl px-4 md:px-6 relative z-10 flex flex-col items-center text-center">
-        <motion.h1
-          initial={{ opacity: 0, y: 50 }}
+      <div className="container max-w-5xl px-4 md:px-6 relative z-10 flex flex-col items-center text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black uppercase tracking-tighter mb-8 leading-tight text-foreground"
+          transition={{ duration: 0.6 }}
+          className="text-eyebrow mb-6"
         >
-          Paperless festival
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+          Paperless festival operations
+        </motion.div>
+
+        <motion.h1
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold tracking-tight mb-6 leading-[1.08] text-heading"
+        >
+          Run flawless festivals,
           <br />
-          <motion.span
-            initial={{ clipPath: "polygon(0 0, 0 100%, 0 100%, 0 0)" }}
-            animate={{ clipPath: "polygon(0 0, 0 100%, 100% 100%, 100% 0)" }}
-            transition={{ delay: 0.5, duration: 0.8, ease: "circOut" }}
-            className="text-transparent bg-clip-text bg-linear-to-r from-primary via-fuchsia-500 to-orange-400 inline-block"
-          >
-            management
-          </motion.span>
+          <span className="font-display italic font-normal text-primary">
+            without the paperwork.
+          </span>
         </motion.h1>
 
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.8 }}
-          className="text-lg md:text-xl text-muted-foreground font-medium mb-10 max-w-2xl"
+          transition={{ duration: 0.7, delay: 0.3 }}
+          className="text-lg text-muted-foreground mb-10 max-w-xl leading-relaxed"
         >
-          The future of large-scale event coordination is here. Eliminate paper,
-          reduce disputes, and keep every stakeholder in sync in real time.
+          Greenroom coordinates every stage, judge, and result in real time — so
+          large-scale events run on clarity instead of chaos.
         </motion.p>
 
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 1 }}
-          className="flex flex-col sm:flex-row gap-4 items-center"
+          transition={{ duration: 0.6, delay: 0.5 }}
+          className="flex flex-col sm:flex-row gap-3 items-center"
         >
-          <Link href="/register">
+          <Link href="/login">
             <Button
               size="lg"
-              className="h-14 px-10 text-lg font-semibold rounded-full shadow-[0_10px_28px_rgba(124,58,237,0.25)] hover:scale-105 transition-transform"
+              className="h-13 px-8 text-base font-medium rounded-full shadow-primary-glow hover:opacity-90 transition-opacity"
             >
-              Get Started <ArrowRight className="ml-2 h-5 w-5" />
+              Get started <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>
           <Link href="/contact">
             <Button
               variant="outline"
               size="lg"
-              className="h-14 px-10 text-lg font-semibold rounded-full bg-background/50 backdrop-blur-xl border-white/10 hover:bg-white/10 hover:text-foreground hover:scale-105 transition-transform"
+              className="h-13 px-8 text-base font-medium rounded-full border-border hover:bg-muted transition-colors"
             >
-              Demonstration
+              See a demo
             </Button>
           </Link>
         </motion.div>

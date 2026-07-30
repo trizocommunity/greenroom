@@ -1,4 +1,4 @@
----
+﻿---
 name: scaffold-exercises
 description: Create exercise directory structures with sections, problems, solutions, and explainers that pass linting. Use when user wants to scaffold exercises, create exercise stubs, or set up a new course section.
 ---
@@ -18,7 +18,7 @@ Create exercise directory structures that pass `pnpm ai-hero-cli internal lint`,
 
 Each exercise needs at least one of these subfolders:
 
-- `problem/` - student workspace with TODOs
+- `problem/` - participant workspace with TODOs
 - `solution/` - reference implementation
 - `explainer/` - conceptual material, no TODOs
 

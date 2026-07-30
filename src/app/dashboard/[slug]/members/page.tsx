@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
+import { getSession } from "@/core/auth/session";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
-import { findMembersByFestival } from "@/features/members/repositories/member.repository";
+import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import {
   FeatureService,
   getTierForFeatureCheck,
@@ -13,8 +14,20 @@ export default async function MembersPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const session = await getSession();
+  if (!session?.userId) redirect("/login");
+
   const festival = await findFestivalBySlug(slug);
   if (!festival) return notFound();
+
+  const festivalContext = await getFestivalContext({
+    slugOrId: slug,
+    userId: session.userId,
+    globalRole: session.role,
+  });
+
+  if (!festivalContext) return notFound();
+  const { role: userRole } = festivalContext;
 
   // Feature Access Check
   if (
@@ -26,29 +39,23 @@ export default async function MembersPage({
     redirect(`/dashboard/${slug}?error=upgrade_required&feature=members`);
   }
 
-  const maxTeamMembers =
-    FeatureService.getFeatureValue<number>(
-      getTierForFeatureCheck(festival.tier),
-      "maxTeamMembers",
-    ) ?? 1;
-  const members = await findMembersByFestival(festival.id);
-  const totalMemberCount = 1 + members.length; // owner + FestivalMembers
-  const atMemberCap = totalMemberCount >= maxTeamMembers;
+  const canManageStageAssignments = ["OWNER", "ADMIN", "SUPER_ADMIN"].includes(
+    userRole,
+  );
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Members</h1>
-        <p className="text-muted-foreground">
-          View all Admins and Team Leaders associated with this festival.
-        </p>
-      </div>
+    <div className="pt-4 sm:pt-6">
       <MembersClient
         festivalId={festival.id}
-        maxTeamMembers={maxTeamMembers}
-        totalMemberCount={totalMemberCount}
-        atMemberCap={atMemberCap}
-      />
+        userRole={userRole}
+        canManageStageAssignments={canManageStageAssignments}
+      >
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            Members
+          </h1>
+        </div>
+      </MembersClient>
     </div>
   );
 }

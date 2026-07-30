@@ -2,6 +2,7 @@
 
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 import * as React from "react";
+import { useIsMobile } from "@/components/common/use-mobile";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/core/utils/cn";
 
@@ -10,10 +11,11 @@ const AlertDialog = AlertDialogPrimitive.Root;
 const AlertDialogTrigger = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Trigger>
->(({ className, ...props }, ref) => (
+>(({ className, asChild, ...props }, ref) => (
   <AlertDialogPrimitive.Trigger
     ref={ref}
-    className={cn(buttonVariants(), className)}
+    asChild={asChild}
+    className={cn(!asChild && buttonVariants(), className)}
     suppressHydrationWarning
     {...props}
   />
@@ -40,19 +42,26 @@ AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName;
 const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
->(({ className, ...props }, ref) => (
-  <AlertDialogPortal>
-    <AlertDialogOverlay />
-    <AlertDialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-white/10 bg-background p-6 shadow-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-xl",
-        className,
-      )}
-      {...props}
-    />
-  </AlertDialogPortal>
-));
+>(({ className, ...props }, ref) => {
+  const isMobile = useIsMobile();
+
+  const mobileStyles =
+    "fixed bottom-0 inset-x-0 z-50 flex flex-col gap-4 max-h-[85vh] w-full overflow-y-auto p-4 sm:p-6 bg-background border-t border-border/80 shadow-2xl rounded-t-xl rounded-b-none duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom";
+
+  const desktopStyles =
+    "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-lg max-h-[90vh] overflow-y-auto translate-x-[-50%] translate-y-[-50%] gap-4 border border-border/80 bg-background p-4 sm:p-6 shadow-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] rounded-lg sm:rounded-xl";
+
+  return (
+    <AlertDialogPortal>
+      <AlertDialogOverlay />
+      <AlertDialogPrimitive.Content
+        ref={ref}
+        className={cn(isMobile ? mobileStyles : desktopStyles, className)}
+        {...props}
+      />
+    </AlertDialogPortal>
+  );
+});
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName;
 
 const AlertDialogHeader = ({

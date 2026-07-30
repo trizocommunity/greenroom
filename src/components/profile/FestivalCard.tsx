@@ -3,11 +3,11 @@
 import { addDays, differenceInDays, format } from "date-fns";
 import { Clock, LayoutDashboard, Lock, Pencil } from "lucide-react";
 import Link from "next/link";
+import type { Festival } from "@/api/contracts/festivals";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { parseStoredInstant } from "@/core/utils/date-time";
-import type { Festival } from "@/features/festivals/hooks/use-festivals";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 
 interface FestivalCardProps {
@@ -38,9 +38,9 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
   const progress = Math.min(100, Math.round((daysPassed / totalDays) * 100));
 
   return (
-    <Card className="group relative overflow-hidden rounded-3xl border border-white/5 bg-[#020617] shadow-[0_24px_80px_rgba(15,23,42,0.9)] transition-all duration-500 hover:shadow-[0_32px_96px_rgba(15,23,42,1)] hover:-translate-y-0.5">
+    <Card className="group relative overflow-hidden rounded-3xl border border-border bg-card shadow-premium transition-shadow duration-500 hover:shadow-premium-lg">
       {/* Subtle backdrop gradient */}
-      <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-primary/10 via-transparent to-orange-500/10 opacity-70 group-hover:opacity-90" />
+      <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-secondary/5 opacity-70 group-hover:opacity-90" />
 
       <CardContent className="relative p-5 sm:p-6 space-y-4">
         {/* Header Section */}
@@ -52,11 +52,9 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
                   isExpired ? "destructive" : isActive ? "default" : "secondary"
                 }
                 className={
-                  isExpired
-                    ? "bg-red-500/90 text-white"
-                    : isActive
-                      ? "bg-emerald-500 text-emerald-50 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30"
-                      : "bg-slate-700/80 text-slate-100"
+                  isActive
+                    ? "bg-success text-white hover:bg-success/90"
+                    : undefined
                 }
               >
                 {status === "EXPIRED"
@@ -70,19 +68,19 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
               {isLocked && (
                 <Badge
                   variant="outline"
-                  className="border-red-400/60 text-red-300 bg-red-500/10 flex items-center gap-1"
+                  className="border-destructive/40 text-destructive bg-destructive/10 flex items-center gap-1"
                 >
                   <Lock className="w-3 h-3" /> Locked
                 </Badge>
               )}
-              <Badge className="bg-white/5 text-xs font-medium border-white/10">
+              <Badge className="bg-muted text-muted-foreground text-xs font-medium border-border">
                 Plan: {festival.tierLabel || festival.tier || "Standard"}
               </Badge>
             </div>
-            <h3 className="font-black text-2xl md:text-3xl tracking-tight text-white drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)] truncate">
+            <h3 className="font-semibold text-2xl md:text-3xl tracking-tight text-heading truncate">
               {festival.name}
             </h3>
-            <p className="text-xs sm:text-sm font-medium text-slate-400 flex items-center gap-2">
+            <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-primary/60" />
               Created {format(createdAt, "PPP")}
             </p>
@@ -92,7 +90,7 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full bg-white/5 hover:bg-primary hover:text-primary-foreground shadow-md shadow-black/40 transition-all duration-300 shrink-0"
+              className="rounded-full bg-muted hover:bg-primary hover:text-primary-foreground transition-colors duration-300 shrink-0"
               title="Edit Details"
               onClick={() => onEdit(festival)}
             >
@@ -103,17 +101,15 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
 
         {/* Lifecycle Progress Section */}
         {!isExpired && !isPast && (
-          <div className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3.5 space-y-3">
+          <div className="rounded-2xl border border-border bg-muted/50 px-4 py-3.5 space-y-3">
             <div className="flex items-center justify-between text-xs sm:text-sm">
-              <div className="flex items-center gap-2 text-slate-200/80">
-                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/5 border border-white/10">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-muted border border-border">
                   <Clock className="w-3.5 h-3.5" />
                 </span>
                 <div className="flex flex-col">
-                  <span className="font-semibold tracking-wide">
-                    Lifecycle Progress
-                  </span>
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
+                  <span className="font-semibold">Lifecycle progress</span>
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                     Day {Math.min(daysPassed + 1, totalDays)} of {totalDays}
                   </span>
                 </div>
@@ -121,7 +117,7 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
               <span
                 className={`text-xs sm:text-sm font-semibold tabular-nums ${
                   daysRemaining <= 5
-                    ? "text-amber-300 animate-pulse"
+                    ? "text-warning animate-pulse"
                     : "text-primary"
                 }`}
               >
@@ -130,15 +126,15 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
             </div>
 
             <div className="relative mt-1.5">
-              <div className="h-2 rounded-full bg-slate-900/80 overflow-hidden">
+              <div className="h-2 rounded-full bg-muted overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-linear-to-r from-primary via-fuchsia-500 to-orange-400 shadow-[0_0_18px_rgba(168,85,247,0.65)] transition-all duration-500"
+                  className="h-full rounded-full bg-linear-to-r from-primary to-secondary transition-all duration-500"
                   style={{ width: `${progress}%` }}
                 />
               </div>
             </div>
 
-            <div className="flex justify-between text-[10px] uppercase tracking-[0.25em] text-slate-500">
+            <div className="flex justify-between text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
               <span>Day 1</span>
               <span>Day {totalDays}</span>
             </div>
@@ -146,11 +142,11 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
         )}
 
         {isPast && (
-          <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3.5">
-            <p className="text-sm font-semibold text-amber-200">
+          <div className="rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3.5">
+            <p className="text-sm font-semibold text-warning">
               Event is past. Festival is in read-only mode.
             </p>
-            <p className="text-xs text-amber-100/80 mt-1">
+            <p className="text-xs text-warning/80 mt-1">
               Expires in {daysRemaining} day{daysRemaining === 1 ? "" : "s"}.
             </p>
           </div>
@@ -170,28 +166,28 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
             <Button
               asChild
               variant="outline"
-              className="w-full justify-center rounded-2xl h-11 text-sm font-semibold border-primary/40 text-primary hover:bg-primary/10"
+              className="w-full justify-center rounded-full h-11 text-sm font-medium border-border hover:bg-muted"
             >
               <Link href={`/profile/festivals/${festival.slug}/expired`}>
-                View Details
+                View details
               </Link>
             </Button>
           ) : isActive || isPast ? (
             <Button
               asChild
-              className="w-full justify-center rounded-2xl h-11 text-sm font-semibold tracking-wide bg-linear-to-r from-primary via-fuchsia-500 to-orange-400 text-white shadow-[0_18px_45px_rgba(0,0,0,0.6)] hover:shadow-[0_24px_60px_rgba(0,0,0,0.9)] hover:-translate-y-0.5 transition-all"
+              className="w-full justify-center rounded-full h-11 text-sm font-medium bg-linear-to-r from-primary to-secondary text-white shadow-primary-glow hover:opacity-90 transition-opacity"
             >
               <Link href={`/dashboard/${festival.slug}`}>
                 <LayoutDashboard className="mr-2 h-4 w-4" />
-                {isPast ? "Open Dashboard (Read-only)" : "Open Dashboard"}
+                {isPast ? "Open dashboard (read-only)" : "Open dashboard"}
               </Link>
             </Button>
           ) : (
             <Button
               disabled
-              className="w-full rounded-2xl h-11 text-sm italic opacity-70 bg-slate-700/70 text-slate-300 border border-slate-500/40"
+              className="w-full rounded-full h-11 text-sm opacity-70 bg-muted text-muted-foreground border border-border"
             >
-              {isLocked ? "Activation required" : "Past (Read-only)"}
+              {isLocked ? "Activation required" : "Past (read-only)"}
             </Button>
           )}
         </div>

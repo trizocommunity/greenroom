@@ -33,7 +33,7 @@ interface AdminFestivalCardProps {
     status: string;
     createdAt: string | Date;
     user: { email: string };
-    studentsCount?: number;
+    participantsCount?: number;
     programmesCount?: number;
     stagesCount?: number;
   };
@@ -58,9 +58,9 @@ export function AdminFestivalCard({ festival }: AdminFestivalCardProps) {
               }
               className={
                 festival.status === "EXPIRED"
-                  ? "bg-red-500/90 text-white px-2 h-5 text-[10px] font-black uppercase tracking-wider"
+                  ? "bg-destructive text-destructive-foreground px-2 h-5 text-[10px] font-black uppercase tracking-wider"
                   : festival.status === "ONGOING"
-                    ? "bg-green-500 hover:bg-green-600 shadow-lg shadow-green-500/20 px-2 h-5 text-[10px] font-black uppercase tracking-wider"
+                    ? "bg-success hover:bg-success/90 text-white shadow-lg shadow-success/20 px-2 h-5 text-[10px] font-black uppercase tracking-wider"
                     : "px-2 h-5 text-[10px] font-black uppercase tracking-wider"
               }
             >
@@ -135,10 +135,10 @@ export function AdminFestivalCard({ festival }: AdminFestivalCardProps) {
           <div className="p-3 rounded-xl bg-muted/30 border border-border/50 text-center space-y-1">
             <Users className="w-4 h-4 mx-auto text-primary/60" />
             <div className="text-lg font-black leading-none">
-              {festival.studentsCount || 0}
+              {festival.participantsCount || 0}
             </div>
             <div className="text-[9px] uppercase tracking-tighter font-bold text-muted-foreground/60">
-              Students
+              Participants
             </div>
           </div>
           <div className="p-3 rounded-xl bg-muted/30 border border-border/50 text-center space-y-1">

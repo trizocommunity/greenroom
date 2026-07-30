@@ -6,7 +6,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/core/utils/cn";
+import { useCurrentUser } from "@/features/auth/hooks/use-current-user";
 
 const navItems = [
   { name: "Home", href: "/" },
@@ -22,6 +24,7 @@ interface NavbarProps {
 }
 
 export default function Navbar({ user: initialUser }: NavbarProps) {
+  const { data: currentUser, isLoading, isError } = useCurrentUser();
   const [user, setUser] = React.useState<{ id: string } | null | undefined>(
     initialUser ?? undefined,
   );
@@ -32,11 +35,10 @@ export default function Navbar({ user: initialUser }: NavbarProps) {
       setUser(initialUser);
       return;
     }
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setUser(data?.id ? data : null))
-      .catch(() => setUser(null));
-  }, [initialUser]);
+    if (currentUser) {
+      setUser({ id: currentUser.id });
+    }
+  }, [initialUser, currentUser]);
   const pathname = usePathname();
   const isHome = pathname === "/";
   const [scrolled, setScrolled] = React.useState(false);
@@ -60,55 +62,59 @@ export default function Navbar({ user: initialUser }: NavbarProps) {
   return (
     <header
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-colors duration-300 bg-transparent",
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-transparent",
         scrolled
-          ? "bg-background/80 backdrop-blur-2xl border-b border-white/10"
-          : "bg-transparent border-transparent",
+          ? "bg-background/80 backdrop-blur-xl border-b border-border shadow-premium"
+          : "bg-transparent border-b border-transparent",
       )}
     >
-      <div className="mx-auto max-w-7xl px-4 md:px-6 h-20 flex items-center justify-between">
+      <div className="mx-auto max-w-7xl px-4 md:px-6 h-18 flex items-center justify-between">
         {/* Logo */}
         <Link
           href="/"
-          className="text-2xl font-black uppercase tracking-tighter text-foreground"
+          className="flex items-center gap-2 font-black text-2xl tracking-tighter uppercase bg-gradient-to-r from-primary via-secondary to-primary/80 bg-clip-text text-transparent hover:opacity-90 transition-opacity"
         >
           Greenroom
         </Link>
 
         {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden md:flex items-center gap-1">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
-              <Link key={item.href} href={item.href} className="relative py-2">
-                <span
-                  className={cn(
-                    "text-sm font-bold uppercase tracking-widest transition-colors hover:text-primary",
-                    isActive ? "text-primary" : "text-muted-foreground",
-                  )}
-                >
-                  {item.name}
-                </span>
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "relative px-3.5 py-2 text-sm font-medium rounded-full transition-colors",
+                  isActive
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
                 {isActive && (
-                  <motion.div
+                  <motion.span
                     layoutId="navbar-indicator"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    className="absolute inset-0 rounded-full bg-primary/8"
+                    transition={{ type: "spring", stiffness: 350, damping: 32 }}
                   />
                 )}
+                <span className="relative">{item.name}</span>
               </Link>
             );
           })}
         </nav>
 
         {/* CTA */}
-        <div className="hidden md:flex items-center gap-4">
-          {user ? (
+        <div className="hidden md:flex items-center gap-3">
+          {isLoading ? (
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-9 w-20 rounded-full" />
+              <Skeleton className="h-9 w-24 rounded-full" />
+            </div>
+          ) : isError ? null : user ? (
             <Link href="/profile">
-              <Button
-                size="sm"
-                className="uppercase font-bold tracking-wide gap-2 rounded-full"
-              >
+              <Button size="sm" className="gap-2 rounded-full font-medium">
                 <User size={16} />
                 Profile
               </Button>
@@ -119,17 +125,17 @@ export default function Navbar({ user: initialUser }: NavbarProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
+                  className="font-medium text-muted-foreground hover:text-foreground"
                 >
-                  Log In
+                  Log in
                 </Button>
               </Link>
               <Link href="/contact">
                 <Button
                   size="sm"
-                  className="px-6 rounded-full font-bold uppercase tracking-widest shadow-lg shadow-primary/25"
+                  className="px-5 rounded-full font-medium shadow-primary-glow"
                 >
-                  Get Demo
+                  Request a demo
                 </Button>
               </Link>
             </>
@@ -142,7 +148,7 @@ export default function Navbar({ user: initialUser }: NavbarProps) {
           className="md:hidden p-2 text-foreground"
           onClick={() => setIsOpen(!isOpen)}
         >
-          {isOpen ? <X size={24} /> : <Menu size={24} />}
+          {isOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
       </div>
 
@@ -153,28 +159,33 @@ export default function Navbar({ user: initialUser }: NavbarProps) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-background/95 backdrop-blur-2xl border-b border-white/10 overflow-hidden"
+            className="md:hidden bg-background/95 backdrop-blur-xl border-b border-border overflow-hidden"
           >
-            <div className="p-6 flex flex-col gap-4">
+            <div className="p-6 flex flex-col gap-1">
               {navItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={() => setIsOpen(false)}
                   className={cn(
-                    "text-base font-bold uppercase tracking-widest py-4 border-b border-white/5 last:border-0",
+                    "text-base font-medium py-3 border-b border-border last:border-0",
                     pathname === item.href
-                      ? "text-primary pl-2 border-l-4 border-primary"
+                      ? "text-primary"
                       : "text-muted-foreground",
                   )}
                 >
                   {item.name}
                 </Link>
               ))}
-              <div className="flex flex-col gap-3 mt-4">
-                {user ? (
+              <div className="flex flex-col gap-3 mt-5">
+                {isLoading ? (
+                  <>
+                    <Skeleton className="h-10 w-full rounded-full" />
+                    <Skeleton className="h-10 w-full rounded-full" />
+                  </>
+                ) : isError ? null : user ? (
                   <Link href="/profile" onClick={() => setIsOpen(false)}>
-                    <Button className="w-full justify-center gap-2 rounded-full font-bold uppercase">
+                    <Button className="w-full justify-center gap-2 rounded-full font-medium">
                       <User size={16} />
                       Profile
                     </Button>
@@ -184,14 +195,14 @@ export default function Navbar({ user: initialUser }: NavbarProps) {
                     <Link href="/login" onClick={() => setIsOpen(false)}>
                       <Button
                         variant="outline"
-                        className="w-full justify-center rounded-full font-bold uppercase border-white/10 hover:bg-white/10"
+                        className="w-full justify-center rounded-full font-medium border-border hover:bg-muted"
                       >
-                        Log In
+                        Log in
                       </Button>
                     </Link>
                     <Link href="/contact" onClick={() => setIsOpen(false)}>
-                      <Button className="w-full justify-center rounded-full font-bold uppercase shadow-lg shadow-primary/25">
-                        Request Demo
+                      <Button className="w-full justify-center rounded-full font-medium shadow-primary-glow">
+                        Request a demo
                       </Button>
                     </Link>
                   </>

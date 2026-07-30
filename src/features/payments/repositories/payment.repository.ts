@@ -1,5 +1,4 @@
-import { and, desc, eq, gt } from "drizzle-orm";
-import { TIER_CONFIG } from "@/config/pricing";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { payment } from "@/core/database/schema";
 
@@ -11,7 +10,6 @@ export type CreatePaymentInput = {
   userId: string;
   amount: number;
   currency?: string;
-  validityDays?: number;
   razorpayOrderId?: string;
   tier?: Tier;
 };
@@ -19,19 +17,7 @@ export type CreatePaymentInput = {
 export async function createPayment(
   input: CreatePaymentInput,
 ): Promise<Payment> {
-  const {
-    userId,
-    amount,
-    currency = "INR",
-    validityDays,
-    razorpayOrderId,
-    tier,
-  } = input;
-
-  const days =
-    validityDays ?? (tier ? (TIER_CONFIG[tier]?.durationDays ?? 30) : 30);
-  const validUntilDate = new Date();
-  validUntilDate.setDate(validUntilDate.getDate() + days);
+  const { userId, amount, currency = "INR", razorpayOrderId, tier } = input;
 
   const { randomUUID } = await import("crypto");
 
@@ -44,7 +30,6 @@ export async function createPayment(
       amount,
       currency,
       status: "PENDING",
-      validUntil: validUntilDate.toISOString(),
       providerId: razorpayOrderId ?? "",
     })
     .returning();
@@ -70,13 +55,11 @@ export async function getPaymentById(id: string): Promise<Payment | null> {
 export async function getActivePaymentForUser(
   userId: string,
 ): Promise<Payment | null> {
-  const now = new Date();
-
   const result = await db.query.payment.findFirst({
     where: and(
       eq(payment.userId, userId),
       eq(payment.status, "PAID"),
-      gt(payment.validUntil, new Date().toISOString()),
+      eq(payment.used, false),
     ),
     orderBy: [desc(payment.createdAt)],
   });

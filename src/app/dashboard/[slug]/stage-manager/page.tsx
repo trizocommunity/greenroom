@@ -1,5 +1,5 @@
-import { eq } from "drizzle-orm";
-import { Calendar, CheckCircle2, Megaphone, Mic2 } from "lucide-react";
+import { and, count, eq, inArray } from "drizzle-orm";
+import { Calendar, CheckCircle2, Gavel, Radio } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -10,10 +10,17 @@ import {
 } from "@/components/ui/card";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
-import { festival as festivalTable } from "@/core/database/schema";
+import {
+  festival as festivalTable,
+  judgementConfig as judgementConfigTable,
+  programmeReportingSession as prsTable,
+  stage as stageTable,
+} from "@/core/database/schema";
 import type { Tier } from "@/core/types/app-enums";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
+import { StageManagerLiveMetrics } from "./_components/StageManagerLiveMetrics";
 
 export default async function StageManagerOverviewPage({
   params,
@@ -32,63 +39,119 @@ export default async function StageManagerOverviewPage({
 
   const festival = await db.query.festival.findFirst({
     where: eq(festivalTable.slug, slug),
-    columns: { tier: true },
+    columns: { id: true, tier: true },
   });
+  if (!festival) notFound();
 
-  const canStages = festival
-    ? await getEffectiveFeatureEnabled(festival.tier as Tier, "stageManagement")
-    : false;
-  const canSchedule = festival
-    ? await getEffectiveFeatureEnabled(festival.tier as Tier, "schedule")
-    : false;
+  const assignedStageIds = session?.userId
+    ? await StageAssignmentService.getAssignedStageIds(
+        festival.id,
+        session.userId,
+      )
+    : [];
+  const assignedStages = assignedStageIds.length
+    ? await db.query.stage.findMany({
+        where: inArray(stageTable.id, assignedStageIds),
+        columns: { id: true, name: true },
+      })
+    : [];
+
+  const canSchedule = await getEffectiveFeatureEnabled(
+    festival.tier as Tier,
+    "schedule",
+  );
 
   const basePath = `/dashboard/${slug}`;
 
+  const [reportingStartedCount, judgementStartedCount] = assignedStageIds.length
+    ? await Promise.all([
+        db
+          .select({ value: count() })
+          .from(prsTable)
+          .where(
+            and(
+              eq(prsTable.festivalId, festival.id),
+              inArray(prsTable.stageId, assignedStageIds),
+              eq(prsTable.status, "IN_PROGRESS"),
+            ),
+          )
+          .then((rows) => rows[0]?.value ?? 0),
+        db
+          .select({ value: count() })
+          .from(judgementConfigTable)
+          .innerJoin(
+            prsTable,
+            eq(judgementConfigTable.reportingSessionId, prsTable.id),
+          )
+          .where(
+            and(
+              eq(judgementConfigTable.festivalId, festival.id),
+              eq(judgementConfigTable.status, "ACTIVE"),
+              inArray(prsTable.stageId, assignedStageIds),
+            ),
+          )
+          .then((rows) => rows[0]?.value ?? 0),
+      ])
+    : [0, 0];
+
+  if (assignedStages.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            Stage Manager Overview
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            View the schedule, sessions, and programme reporting for your
+            assigned stages.
+          </p>
+        </div>
+        <Card className="border-dashed">
+          <CardHeader className="items-center text-center py-10">
+            <div className="p-3 rounded-full bg-muted mb-2">
+              <Radio className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <CardTitle className="text-base">
+              You haven&apos;t been assigned to a stage yet
+            </CardTitle>
+            <CardDescription className="max-w-sm">
+              A festival admin needs to assign you to a stage before you can
+              manage its schedule, sessions, or programme reporting.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-          Stage Manager Overview
-        </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Manage stages and view the schedule for your festival (Standard plan
-          and above).
-        </p>
-      </div>
+      <h1 className="text-xl sm:text-2xl font-bold tracking-tight mb-4">
+        Stage Manager Overview
+      </h1>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {!canStages && !canSchedule ? (
-          <Card className="md:col-span-2 lg:col-span-4 border-muted">
+      {canSchedule ? (
+        <StageManagerLiveMetrics
+          reportingHref={`${basePath}/event-works/reporting`}
+          judgementHref={`${basePath}/event-works/judgement`}
+          reportingStartedCount={reportingStartedCount}
+          judgementStartedCount={judgementStartedCount}
+        />
+      ) : null}
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {!canSchedule ? (
+          <Card className="md:col-span-2 lg:col-span-3 border-muted">
             <CardHeader>
               <CardTitle className="text-base">
                 Standard plan required
               </CardTitle>
               <CardDescription>
-                Stage management, schedule, sessions, and programme reporting
-                are included on Standard and Pro. Upgrade this festival to
-                access these tools.
+                Schedule, sessions, and programme reporting are included on
+                Standard and Pro. Upgrade this festival to access these tools.
               </CardDescription>
             </CardHeader>
           </Card>
-        ) : null}
-        {canStages ? (
-          <Link href={`${basePath}/pre-event-works/stage-management`}>
-            <Card className="h-full transition-colors hover:bg-muted/50">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Megaphone className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle>Stage Management</CardTitle>
-                    <CardDescription>
-                      Manage stages and programme flow for the event.
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-            </Card>
-          </Link>
         ) : null}
 
         {canSchedule ? (
@@ -112,26 +175,6 @@ export default async function StageManagerOverviewPage({
         ) : null}
 
         {canSchedule ? (
-          <Link href={`${basePath}/pre-event-works/sessions`}>
-            <Card className="h-full transition-colors hover:bg-muted/50">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Mic2 className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle>Sessions</CardTitle>
-                    <CardDescription>
-                      Create and manage talks, ceremonies, and sessions.
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-            </Card>
-          </Link>
-        ) : null}
-
-        {canSchedule ? (
           <Link href={`${basePath}/event-works/reporting`}>
             <Card className="h-full transition-colors hover:bg-muted/50">
               <CardHeader>
@@ -143,6 +186,26 @@ export default async function StageManagerOverviewPage({
                     <CardTitle>Programme Reporting</CardTitle>
                     <CardDescription>
                       Start reporting, mark participants, and close sessions.
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+          </Link>
+        ) : null}
+
+        {canSchedule ? (
+          <Link href={`${basePath}/event-works/judgement`}>
+            <Card className="h-full transition-colors hover:bg-muted/50">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Gavel className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle>Judgement</CardTitle>
+                    <CardDescription>
+                      Manage scores, judge evaluations, and final results.
                     </CardDescription>
                   </div>
                 </div>

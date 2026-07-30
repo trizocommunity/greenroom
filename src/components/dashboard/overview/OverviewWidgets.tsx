@@ -20,6 +20,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
+import { LiveLinksCard } from "@/components/dashboard/overview/LiveLinksCard";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import {
   Card,
@@ -95,10 +96,10 @@ export default async function OverviewWidgets({
       condition: planFeature(features, "groups"),
     },
     {
-      label: "Students",
+      label: "Participants",
       icon: UserPlus,
-      href: `/dashboard/${slug}/pre-event-works/students`,
-      condition: planFeature(features, "students"),
+      href: `/dashboard/${slug}/pre-event-works/participants`,
+      condition: planFeature(features, "participants"),
     },
     {
       label: "Categories",
@@ -119,12 +120,6 @@ export default async function OverviewWidgets({
       condition: planFeature(features, "assignments"),
     },
     {
-      label: "QR Codes",
-      icon: QrCode,
-      href: `/dashboard/${slug}/pre-event-works/qr-codes`,
-      condition: planFeature(features, "qrCodes"),
-    },
-    {
       label: "Schedule",
       icon: Calendar,
       href: `/dashboard/${slug}/pre-event-works/schedule`,
@@ -138,13 +133,15 @@ export default async function OverviewWidgets({
     },
     {
       label: canUseExternalJudging
-        ? "Judgment"
+        ? "Judgement"
         : canUseMarksUI
-          ? "Marks"
-          : "Judgment",
+          ? tier === "BASIC"
+            ? "Scoring"
+            : "Marks"
+          : "Judgement",
       icon: Gavel,
       href: canUseExternalJudging
-        ? `/dashboard/${slug}/event-works/judgment`
+        ? `/dashboard/${slug}/event-works/judgement`
         : `/dashboard/${slug}/event-works/marks`,
       condition:
         (canUseExternalJudging || canUseMarksUI) &&
@@ -154,8 +151,7 @@ export default async function OverviewWidgets({
       label: "Results",
       icon: BarChart2,
       href: `/dashboard/${slug}/event-works/results`,
-      condition:
-        canUseExternalJudging && planFeature(features, "results"),
+      condition: canUseExternalJudging && planFeature(features, "results"),
     },
     {
       label: "Leaderboard",
@@ -198,13 +194,13 @@ export default async function OverviewWidgets({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Total Students
+              Total Participants
             </CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {fmt(overviewData.totalStudents)}
+              {fmt(overviewData.totalParticipants)}
             </div>
           </CardContent>
         </Card>
@@ -223,7 +219,7 @@ export default async function OverviewWidgets({
       </div>
 
       <TooltipProvider>
-        {/* Middle section: Recent Programmes, Recent Students, Recent Results */}
+        {/* Middle section: Recent Programmes, Recent Participants, Recent Results */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Card className="flex flex-col">
             <CardHeader>
@@ -256,7 +252,10 @@ export default async function OverviewWidgets({
                         />
                       )}
                       <p className="text-[12px] text-muted-foreground shrink-0">
-                        {format(parseStoredInstant(prog.createdAt), "dd/MM/yyyy")}
+                        {format(
+                          parseStoredInstant(prog.createdAt),
+                          "dd/MM/yyyy",
+                        )}
                       </p>
                     </div>
                   </div>
@@ -280,50 +279,50 @@ export default async function OverviewWidgets({
 
           <Card className="flex flex-col">
             <CardHeader>
-              <CardTitle>Recent Students</CardTitle>
-              <CardDescription>Latest added students</CardDescription>
+              <CardTitle>Recent Participants</CardTitle>
+              <CardDescription>Latest added participants</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col flex-1">
               <div className="space-y-4 pr-2">
-                {overviewData.recentStudents.map((student) => (
+                {overviewData.recentParticipants.map((participant) => (
                   <div
-                    key={student.id}
+                    key={participant.id}
                     className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0 gap-4"
                   >
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <p className="text-sm font-medium leading-none uppercase truncate flex-1">
-                          {student.name}
+                          {participant.name}
                         </p>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>{student.name}</p>
+                        <p>{participant.name}</p>
                       </TooltipContent>
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <p className="text-xs text-muted-foreground shrink-0 truncate max-w-[120px]">
-                          {student.group?.name || "No Group"}
+                          {participant.group?.name || "No Group"}
                         </p>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>{student.group?.name || "No Group"}</p>
+                        <p>{participant.group?.name || "No Group"}</p>
                       </TooltipContent>
                     </Tooltip>
                   </div>
                 ))}
-                {overviewData.recentStudents.length === 0 && (
+                {overviewData.recentParticipants.length === 0 && (
                   <p className="text-sm text-muted-foreground">
-                    No students found.
+                    No participants found.
                   </p>
                 )}
               </div>
               <div className="pt-4 border-t mt-auto">
                 <Link
-                  href={`/dashboard/${slug}/pre-event-works/students`}
+                  href={`/dashboard/${slug}/pre-event-works/participants`}
                   className="w-full flex items-center justify-center py-2 text-sm border rounded-md hover:bg-muted/50 transition-colors"
                 >
-                  View All Students <ArrowRight className="ml-2 h-4 w-4" />
+                  View All Participants <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </div>
             </CardContent>
@@ -389,7 +388,8 @@ export default async function OverviewWidgets({
                     href={`/dashboard/${slug}/event-works/marks`}
                     className="w-full flex items-center justify-center py-2 text-sm border rounded-md hover:bg-muted/50 transition-colors"
                   >
-                    View Marks <ArrowRight className="ml-2 h-4 w-4" />
+                    View {tier === "BASIC" ? "Scoring" : "Marks"}{" "}
+                    <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 ) : null}
               </div>
@@ -397,6 +397,12 @@ export default async function OverviewWidgets({
           </Card>
         </div>
       </TooltipProvider>
+
+      {/* Live links */}
+      <LiveLinksCard
+        slug={slug}
+        publicSiteEnabled={festival.publicSiteEnabled ?? false}
+      />
 
       {/* Bottom section: Quick Actions */}
       <Card>

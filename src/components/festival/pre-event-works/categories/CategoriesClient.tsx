@@ -12,6 +12,8 @@ import {
   Users,
 } from "lucide-react";
 import { useState } from "react";
+import { useCategories, useDeleteCategory } from "@/api/client/categories";
+import { useParticipants } from "@/api/client/participants";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
@@ -22,9 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useCategories } from "@/features/categories/hooks/use-categories";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import { useStudents } from "@/features/students/hooks/use-students";
 import { CategoryDetailsDialog } from "./CategoryDetailsDialog";
 import { CategoryDialog } from "./CategoryDialog";
 
@@ -37,21 +37,19 @@ export function CategoriesClient({
   festivalId,
   children,
 }: CategoriesClientProps) {
-  const {
-    categories,
-    isLoading: isCategoriesLoading,
-    deleteCategory,
-    isDeleting,
-  } = useCategories(festivalId);
-  const { students, isLoading: isStudentsLoading } = useStudents(festivalId);
+  const { data: categories = [], isLoading: isCategoriesLoading } =
+    useCategories(festivalId);
+  const deleteCategory = useDeleteCategory();
+  const { data: participants = [], isLoading: isParticipantsLoading } =
+    useParticipants(festivalId);
   const { isReadOnly } = useFestivalReadOnly();
   const [actionCategory, setActionCategory] = useState<{
     category: any;
     action: "view" | "edit" | "delete";
   } | null>(null);
 
-  const isLoading = isCategoriesLoading || isStudentsLoading;
-  const totalStudents = students.length;
+  const isLoading = isCategoriesLoading || isParticipantsLoading;
+  const totalParticipants = participants.length;
 
   if (isLoading) {
     return (
@@ -81,8 +79,8 @@ export function CategoriesClient({
         {categories.map((category: any) => {
           const isGeneral = category.type === "GENERAL";
           const count = isGeneral
-            ? totalStudents
-            : (category._count?.students ?? 0);
+            ? totalParticipants
+            : (category._count?.participants ?? 0);
           const programmeCount = category._count?.programmes ?? 0;
 
           return (
@@ -101,7 +99,7 @@ export function CategoriesClient({
                       {category.description || "No description"}
                     </p>
                     <Badge
-                      variant={isGeneral ? "default" : "secondary"}
+                      variant={isGeneral ? "default" : "outline"}
                       className="mt-2.5 text-xs font-medium"
                     >
                       {category.type === "GENERAL" ? "General" : "Single"}
@@ -163,7 +161,7 @@ export function CategoriesClient({
                       </span>
                       <span className="text-muted-foreground">
                         {" "}
-                        student{count !== 1 ? "s" : ""}
+                        participant{count !== 1 ? "s" : ""}
                       </span>
                     </span>
                   </div>
@@ -235,10 +233,13 @@ export function CategoriesClient({
             title="Delete Category"
             description="Are you sure you want to delete this category? This will fail if there are programmes in this category."
             onDelete={async () => {
-              await deleteCategory(actionCategory.category.id);
+              await deleteCategory.mutateAsync({
+                festivalId,
+                categoryId: actionCategory.category.id,
+              });
               setActionCategory(null);
             }}
-            isDeleting={isDeleting}
+            isDeleting={deleteCategory.isPending}
             open={true}
             onOpenChange={(open) => !open && setActionCategory(null)}
           />

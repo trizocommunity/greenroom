@@ -19,10 +19,12 @@ export type PublicFestivalData = {
     branding: any;
     status: "READY" | "ONGOING" | "PAST" | "EXPIRED";
     tier: "BASIC" | "STANDARD" | "PRO" | null;
-    studentCreationDeadline: string | null;
+    participantCreationDeadline: string | null;
     programmeAssignmentDeadline: string | null;
     scoringSystem: "POSITION_BASED" | "SCORE_BASED";
     teamStandings: any;
+    publicDisplayMode: "programme_results" | "team_standings";
+    announcerResultsPerStandings: number;
   };
   event: {
     startDate: string;
@@ -57,10 +59,12 @@ export async function getPublicFestivalData(
       createdAt: true,
       expiresAt: true,
       location: true,
-      studentCreationDeadline: true,
+      participantCreationDeadline: true,
       programmeAssignmentDeadline: true,
       scoringSystem: true,
       teamStandings: true,
+      publicDisplayMode: true,
+      announcerResultsPerStandings: true,
     },
   });
 

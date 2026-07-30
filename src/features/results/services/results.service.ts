@@ -2,9 +2,9 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   category,
+  programmeCodeLetter as codeLetterTable,
   festival as festivals,
   programme as programmeTable,
-  programmeCodeLetter as codeLetterTable,
   programmeReportingSession as reportingSessionTable,
 } from "@/core/database/schema";
 
@@ -13,8 +13,8 @@ export async function enrichProgrammesAssignmentsResultCodeLetters<
   T extends {
     id: string;
     assignments: Array<{
-      student?: { id: string } | null;
-      result?: { codeLetter?: { code: string } | null } | null;
+      participant?: { id: string } | null;
+      result?: { codeLetter?: { code: string; isAbsent?: boolean } | null } | null;
     }>;
   },
 >(programmes: T[]): Promise<T[]> {
@@ -52,35 +52,36 @@ export async function enrichProgrammesAssignmentsResultCodeLetters<
       programmeId: true,
       reportingSessionId: true,
       code: true,
+      isAbsent: true,
     },
     with: {
-      programmeCodeLetterRecipients: { columns: { studentId: true } },
+      programmeCodeLetterRecipients: { columns: { participantId: true } },
     },
   });
 
-  const studentCodeByProgramme = new Map<string, Map<string, string>>();
+  const participantCodeByProgramme = new Map<string, Map<string, { code: string; isAbsent: boolean }>>();
   for (const progId of programmeIds) {
-    studentCodeByProgramme.set(progId, new Map());
+    participantCodeByProgramme.set(progId, new Map());
   }
 
   for (const cl of letters) {
     const latestForProg = latestSessionIdByProgramme.get(cl.programmeId);
     if (latestForProg !== cl.reportingSessionId) continue;
-    const map = studentCodeByProgramme.get(cl.programmeId)!;
+    const map = participantCodeByProgramme.get(cl.programmeId)!;
     for (const r of cl.programmeCodeLetterRecipients) {
-      map.set(r.studentId, cl.code);
+      map.set(r.participantId, { code: cl.code, isAbsent: cl.isAbsent });
     }
   }
 
   for (const p of programmes) {
-    const map = studentCodeByProgramme.get(p.id);
+    const map = participantCodeByProgramme.get(p.id);
     if (!map) continue;
     for (const a of p.assignments) {
-      const sid = a.student?.id;
+      const sid = a.participant?.id;
       if (!sid || !a.result) continue;
-      const code = map.get(sid);
-      if (code) {
-        a.result.codeLetter = { code };
+      const data = map.get(sid);
+      if (data) {
+        a.result.codeLetter = { code: data.code, isAbsent: data.isAbsent };
       }
     }
   }
@@ -98,7 +99,7 @@ export async function getFestivalResultsDataBySlug(slug: string) {
           category: true,
           assignments: {
             with: {
-              student: true,
+              participant: true,
               group: true,
               result: true,
             },
@@ -113,7 +114,9 @@ export async function getFestivalResultsDataBySlug(slug: string) {
     return { festival: null };
   }
 
-  await enrichProgrammesAssignmentsResultCodeLetters(festival.programmes as any);
+  await enrichProgrammesAssignmentsResultCodeLetters(
+    festival.programmes as any,
+  );
 
   return { festival };
 }

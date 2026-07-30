@@ -14,6 +14,13 @@ import {
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useCloudinaryUpload } from "@/api/client";
+import {
+  useCreateNews,
+  useDeleteNews,
+  useNews,
+  useUpdateNews,
+} from "@/api/client/news";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { Button } from "@/components/ui/button";
@@ -36,19 +43,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  isCloudinaryConfigured,
-  uploadImageToCloudinary,
-} from "@/core/integrations/cloudinary";
 import { cn } from "@/core/utils/cn";
 import { parseStoredInstant } from "@/core/utils/date-time";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import {
-  createNewsPostAction,
-  deleteNewsPostAction,
-  updateNewsPostAction,
-} from "@/features/news/actions/news.actions";
 
 type NewsPost = {
   id: string;
@@ -56,9 +55,9 @@ type NewsPost = {
   excerpt: string | null;
   content: string;
   imageUrl: string | null;
-  publishedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 interface NewsClientProps {
@@ -85,12 +84,22 @@ export function NewsClient({
     useUnsavedChanges();
   const { isReadOnly } = useFestivalReadOnly();
   const [posts, setPosts] = useState<NewsPost[]>(initialPosts);
+  const {
+    data: newsData,
+    isLoading,
+    isError,
+    error,
+    refetch: refetchNews,
+  } = useNews(festivalId);
+  const createNews = useCreateNews();
+  const updateNews = useUpdateNews();
+  const deleteNews = useDeleteNews();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
   const [viewDetailsPost, setViewDetailsPost] = useState<NewsPost | null>(null);
+  const uploadMutation = useCloudinaryUpload();
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [initialFormSnapshot, setInitialFormSnapshot] = useState(
     JSON.stringify(emptyForm),
@@ -138,33 +147,36 @@ export function NewsClient({
     setSaving(true);
     try {
       if (editingId) {
-        const res = await updateNewsPostAction(festivalId, editingId, {
-          title: form.title.trim(),
-          excerpt: form.excerpt.trim() || null,
-          content: form.content.trim(),
-          imageUrl: form.imageUrl.trim() || null,
-          publishedAt: form.published ? new Date() : null,
+        await updateNews.mutateAsync({
+          festivalId,
+          postId: editingId,
+          data: {
+            title: form.title.trim(),
+            excerpt: form.excerpt.trim() || null,
+            content: form.content.trim(),
+            imageUrl: form.imageUrl.trim() || null,
+            publishedAt: form.published ? new Date().toISOString() : null,
+          },
         });
-        if (res.success) {
-          toast.success("News updated.");
-          setDirty(dirtySourceId, false);
-          setDialogOpen(false);
-          window.location.reload();
-        } else toast.error(res.error ?? "Failed to update.");
+        toast.success("News updated.");
+        setDirty(dirtySourceId, false);
+        setDialogOpen(false);
+        refetchNews();
       } else {
-        const res = await createNewsPostAction(festivalId, {
-          title: form.title.trim(),
-          excerpt: form.excerpt.trim() || null,
-          content: form.content.trim(),
-          imageUrl: form.imageUrl.trim() || null,
-          publishedAt: form.published ? new Date() : null,
+        await createNews.mutateAsync({
+          festivalId,
+          data: {
+            title: form.title.trim(),
+            excerpt: form.excerpt.trim() || null,
+            content: form.content.trim(),
+            imageUrl: form.imageUrl.trim() || null,
+            publishedAt: form.published ? new Date().toISOString() : null,
+          },
         });
-        if (res.success) {
-          toast.success("News post created.");
-          setDirty(dirtySourceId, false);
-          setDialogOpen(false);
-          window.location.reload();
-        } else toast.error(res.error ?? "Failed to create.");
+        toast.success("News post created.");
+        setDirty(dirtySourceId, false);
+        setDialogOpen(false);
+        refetchNews();
       }
     } catch {
       toast.error("Something went wrong.");
@@ -188,13 +200,15 @@ export function NewsClient({
 
   const handleDelete = async (id: string) => {
     if (isReadOnly) return;
-    const res = await deleteNewsPostAction(festivalId, id);
-    if (res.success) {
+    try {
+      await deleteNews.mutateAsync({ festivalId, postId: id });
       setDeleteConfirmId(null);
       setPosts((p) => p.filter((x) => x.id !== id));
       toast.success("News post deleted.");
-      window.location.reload();
-    } else toast.error(res.error ?? "Failed to delete.");
+      refetchNews();
+    } catch {
+      toast.error("Failed to delete.");
+    }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -202,19 +216,72 @@ export function NewsClient({
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !file.type.startsWith("image/")) return;
-    if (!isCloudinaryConfigured()) {
+    if (
+      !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
+      process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME === "demo"
+    ) {
       toast.error("Cloudinary is not configured.");
       return;
     }
-    setUploadingImage(true);
     try {
-      const url = await uploadImageToCloudinary(file, "news");
-      if (url) setForm((f) => ({ ...f, imageUrl: url }));
-      else toast.error("Upload failed.");
-    } finally {
-      setUploadingImage(false);
+      const result = await uploadMutation.mutateAsync({ file, folder: "news" });
+      if (result?.url) setForm((f) => ({ ...f, imageUrl: result.url }));
+    } catch {
+      // Error toast is handled by the hook
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+              News
+            </h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Posts appear on your public news page.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-1/2 mt-2" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-4 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+              News
+            </h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Posts appear on your public news page.
+            </p>
+          </div>
+        </div>
+        <div className="text-center py-8 text-destructive">
+          Error: {error.message}
+        </div>
+      </div>
+    );
+  }
+
+  const displayPosts = newsData ?? posts;
 
   return (
     <div className="space-y-6">
@@ -249,7 +316,7 @@ export function NewsClient({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {posts.map((post) => (
+        {displayPosts.map((post) => (
           <Card
             key={post.id}
             className={cn(
@@ -482,11 +549,16 @@ export function NewsClient({
                   variant="outline"
                   size="icon"
                   disabled={
-                    isReadOnly || uploadingImage || !isCloudinaryConfigured()
+                    isReadOnly ||
+                    uploadMutation.isPending ||
+                    !(
+                      process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME &&
+                      process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME !== "demo"
+                    )
                   }
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  {uploadingImage ? (
+                  {uploadMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <ImagePlus className="h-4 w-4" />
@@ -533,7 +605,9 @@ export function NewsClient({
             <Button
               size="sm"
               onClick={handleSave}
-              disabled={saving || isReadOnly || !hasUnsavedForm || !form.title.trim()}
+              disabled={
+                saving || isReadOnly || !hasUnsavedForm || !form.title.trim()
+              }
             >
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {editingId ? "Update" : "Create"}

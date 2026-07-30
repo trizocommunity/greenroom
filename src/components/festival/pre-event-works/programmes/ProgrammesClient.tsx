@@ -15,6 +15,8 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
+import { useCategories } from "@/api/client/categories";
+import { useDeleteProgramme, useProgrammes } from "@/api/client/programmes";
 import { FeatureGate } from "@/components/common/FeatureGate";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
@@ -52,9 +54,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { ProgrammeStatus } from "@/core/types/app-enums";
-import { useCategories } from "@/features/categories/hooks/use-categories";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import { useProgrammes } from "@/features/programmes/hooks/use-programmes";
 import {
   getAssignmentProgressLabel,
   getExpectedAssignmentsTotal,
@@ -75,10 +75,10 @@ export function ProgrammesClient({
   groupCount,
   children,
 }: ProgrammesClientProps) {
-  const { programmes, isLoading, deleteProgramme, isDeleting } =
-    useProgrammes(festivalId);
+  const { data: programmes = [], isLoading } = useProgrammes(festivalId);
   const { isReadOnly } = useFestivalReadOnly();
-  const { categories } = useCategories(festivalId);
+  const { data: categories = [] } = useCategories(festivalId);
+  const deleteProgramme = useDeleteProgramme();
 
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
   const [stageTypeFilter, setStageTypeFilter] = useState<string>("ALL");
@@ -125,7 +125,7 @@ export function ProgrammesClient({
       groupCount,
       maxParticipantsPerGroup: programme.maxParticipantsPerGroup,
       maxTeamsPerGroup: programme.maxTeamsPerGroup,
-      maxStudentsPerTeam: programme.maxStudentsPerTeam,
+      maxParticipantsPerTeam: programme.maxParticipantsPerTeam,
     });
     return {
       label: getAssignmentProgressLabel({ assignedCount, expectedCount }),
@@ -134,7 +134,7 @@ export function ProgrammesClient({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Header row: title (children) + Create — icon only on mobile */}
       <div className="flex flex-row items-center justify-between gap-4">
         {children ?? (
@@ -143,7 +143,7 @@ export function ProgrammesClient({
               Programmes
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
-              Create programmes (events) and assign students or teams.
+              Create programmes (events) and assign participants or teams.
             </p>
           </div>
         )}
@@ -153,14 +153,14 @@ export function ProgrammesClient({
             description="Programmes are the events or competitions in your festival."
           >
             <p className="text-sm text-muted-foreground">
-              <strong>Type:</strong> Individual = one student per entry; Team =
-              one team per entry (multiple members).{" "}
+              <strong>Type:</strong> Individual = one participant per entry;
+              Team = one team per entry (multiple members).{" "}
               <strong>Stage type:</strong> Stage or Off-Stage is for
               organisation only.
             </p>
             <p className="text-sm text-muted-foreground">
               Create categories first, then add programmes. After that, assign
-              students or teams from the Assignments page.
+              participants or teams from the Assignments page.
             </p>
           </HowItWorksButton>
           {categories.length === 0 ? (
@@ -403,7 +403,7 @@ export function ProgrammesClient({
                           </span>{" "}
                           teams per group,{" "}
                           <span className="font-medium text-foreground">
-                            {programme.maxStudentsPerTeam}
+                            {programme.maxParticipantsPerTeam}
                           </span>{" "}
                           members per team
                         </span>
@@ -489,7 +489,7 @@ export function ProgrammesClient({
                         <div className="flex flex-col">
                           <span>Max Teams: {programme.maxTeamsPerGroup}</span>
                           <span className="text-muted-foreground">
-                            Size: {programme.maxStudentsPerTeam}
+                            Size: {programme.maxParticipantsPerTeam}
                           </span>
                         </div>
                       )}
@@ -594,10 +594,13 @@ export function ProgrammesClient({
             title="Delete Programme"
             description="Are you sure? This will delete all assignments associated with this programme."
             onDelete={async () => {
-              await deleteProgramme(actionProgramme.programme.id);
+              await deleteProgramme.mutateAsync({
+                festivalId,
+                programmeId: actionProgramme.programme.id,
+              });
               setActionProgramme(null);
             }}
-            isDeleting={isDeleting}
+            isDeleting={deleteProgramme.isPending}
             open={true}
             onOpenChange={(open) => !open && setActionProgramme(null)}
           />

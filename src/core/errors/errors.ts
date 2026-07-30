@@ -10,11 +10,9 @@ export const ERROR_MESSAGES = {
   VALIDATION: "Please check your input and try again.",
 
   // ─── Auth ──────────────────────────────────────────────────────────────────
-  INVALID_CREDENTIALS: "Invalid email or password. Please try again.",
   ACCOUNT_INACTIVE:
     "Your account has been deactivated. Please contact support.",
   EMAIL_ALREADY_REGISTERED: "This email address is already registered.",
-  INVALID_RESET_TOKEN: "This password reset link is invalid or has expired.",
   EMAIL_SEND_FAILED: "Failed to send the email. Please try again later.",
 
   // ─── Festival ─────────────────────────────────────────────────────────────
@@ -34,25 +32,26 @@ export const ERROR_MESSAGES = {
   PAYMENT_SIGNATURE_INVALID: "Payment verification failed. Invalid signature.",
   TIER_NOT_FOUND: "The selected plan is invalid or currently unavailable.",
 
-  // ─── Students ─────────────────────────────────────────────────────────────
-  STUDENT_NOT_FOUND: "Student not found.",
-  STUDENT_LIMIT_REACHED:
-    "Student limit reached for your plan. Please upgrade to add more.",
-  STUDENT_INVALID_GROUP: "The selected group does not belong to this festival.",
-  STUDENT_INVALID_CATEGORY:
+  // ─── Participants ─────────────────────────────────────────────────────────────
+  PARTICIPANT_NOT_FOUND: "Participant not found.",
+  PARTICIPANT_LIMIT_REACHED:
+    "Participant limit reached for your plan. Please upgrade to add more.",
+  PARTICIPANT_INVALID_GROUP:
+    "The selected group does not belong to this festival.",
+  PARTICIPANT_INVALID_CATEGORY:
     "The selected category does not belong to this festival.",
-  STUDENT_EMAIL_DUPLICATE:
-    "A student with this email is already registered for this festival.",
-  STUDENT_NAME_DUPLICATE:
-    "A student with this name already exists in this festival.",
-  STUDENT_GROUP_MISSING:
-    "Please select or create a group before adding students.",
-  STUDENT_CATEGORY_MISSING:
-    "Please select or create a category before adding students.",
+  PARTICIPANT_EMAIL_DUPLICATE:
+    "A participant with this email is already registered for this festival.",
+  PARTICIPANT_NAME_DUPLICATE:
+    "A participant with this name already exists in this festival.",
+  PARTICIPANT_GROUP_MISSING:
+    "Please select or create a group before adding participants.",
+  PARTICIPANT_CATEGORY_MISSING:
+    "Please select or create a category before adding participants.",
 
   // ─── Groups ───────────────────────────────────────────────────────────────
   GROUP_NOT_FOUND: "Group not found.",
-  GROUP_HAS_STUDENTS: "Cannot delete a group that still has students.",
+  GROUP_HAS_PARTICIPANTS: "Cannot delete a group that still has participants.",
 
   // ─── Categories ───────────────────────────────────────────────────────────
   CATEGORY_NOT_FOUND: "Category not found in this festival.",
@@ -78,18 +77,20 @@ export const ERROR_MESSAGES = {
     "This assignment does not belong to the specified festival.",
   ASSIGNMENT_INVALID_PROGRAMME:
     "The selected programme does not belong to this festival.",
-  ASSIGNMENT_INVALID_STUDENT:
-    "The selected student does not belong to this festival.",
+  ASSIGNMENT_INVALID_PARTICIPANT:
+    "The selected participant does not belong to this festival.",
   ASSIGNMENT_REQUIRES_PARTICIPANT:
-    "Either a student or a group must be specified.",
+    "Either a participant or a group must be specified.",
   ASSIGNMENT_CATEGORY_MISMATCH:
-    "The student's category does not match the programme's category.",
+    "The participant's category does not match the programme's category.",
   ASSIGNMENT_ALREADY_EXISTS:
-    "This student is already assigned to this programme.",
+    "This participant is already assigned to this programme.",
   ASSIGNMENT_DEADLINE_PASSED: "Deadline passed. Assignments are closed.",
   ASSIGNMENT_DEPENDENCIES_MISSING:
-    "Please create categories, groups, programmes, and students before making assignments.",
+    "Please create categories, groups, programmes, and participants before making assignments.",
   ASSIGNMENT_DEADLINE_PASSED_ADMIN: "Deadline passed. Assignments are closed.",
+  PARTICIPANT_CREATION_DEADLINE_PASSED:
+    "Deadline passed. Adding new participants is closed.",
 
   // ─── Usage / Limits ───────────────────────────────────────────────────────
   USAGE_LIMIT_EXCEEDED:

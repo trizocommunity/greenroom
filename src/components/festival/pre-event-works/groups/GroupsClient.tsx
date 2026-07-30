@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { useState } from "react";
+import { useDeleteGroup, useGroups } from "@/api/client/groups";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
@@ -22,7 +23,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import { useGroups } from "@/features/groups/hooks/use-groups";
 import { GroupDetailsDialog } from "./GroupDetailsDialog";
 import { GroupDialog } from "./GroupDialog";
 
@@ -32,7 +32,8 @@ interface GroupsClientProps {
 }
 
 export function GroupsClient({ festivalId, children }: GroupsClientProps) {
-  const { groups, isLoading, deleteGroup, isDeleting } = useGroups(festivalId);
+  const { data: groups = [], isLoading } = useGroups(festivalId);
+  const deleteGroup = useDeleteGroup();
   const { isReadOnly } = useFestivalReadOnly();
   const [actionGroup, setActionGroup] = useState<{
     group: any;
@@ -67,37 +68,23 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
         {groups.map((group: any) => {
           const groupColor = group.color || "#2563eb";
           const teamLeaders =
-            group.students?.filter((p: any) => p.isTeamLeader) ?? [];
+            group.participants?.filter((p: any) => p.isTeamLeader) ?? [];
           return (
             <div
               key={group.id}
               className="group/card relative flex flex-col overflow-hidden rounded-xl border border-border/80 bg-card text-card-foreground shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/20"
             >
-              {/* Color accent bar */}
-              <div
-                className="absolute left-0 top-0 h-full w-1.5 shrink-0 transition-all duration-200 group-hover/card:w-2"
-                style={{ backgroundColor: groupColor }}
-              />
-
-              <div className="flex flex-1 flex-col pl-5 pr-4 sm:pl-6 sm:pr-5">
-                {/* Top: name + student count + actions */}
-                <div className="flex items-start justify-between gap-3 pt-5 pb-3 sm:pt-6">
-                  <div className="min-w-0 flex-1">
+              <div className="flex flex-1 flex-col p-4 sm:p-5">
+                {/* Top: name + actions */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1 flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: groupColor }} />
                     <h3
                       className="font-semibold text-base leading-tight text-foreground line-clamp-2"
                       title={group.name}
                     >
                       {group.name}
                     </h3>
-                    <div className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
-                      <Users className="h-3.5 w-3.5 shrink-0" />
-                      <span>
-                        <span className="font-medium text-foreground">
-                          {group._count?.students ?? 0}
-                        </span>{" "}
-                        student{(group._count?.students ?? 0) !== 1 ? "s" : ""}
-                      </span>
-                    </div>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -145,9 +132,12 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
                   </DropdownMenu>
                 </div>
 
+                {/* Spacer so footer stays at bottom */}
+                <div className="flex-1 min-h-2" />
+
                 {/* Team leaders */}
                 {teamLeaders.length > 0 && (
-                  <div className="rounded-lg bg-muted/40 px-3 py-2.5">
+                  <div className="mt-4 rounded-lg bg-muted/20 px-3 py-2.5 border border-border/50">
                     <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                       <Crown className="h-3 w-3 shrink-0 text-amber-500" />
                       Team Leaders
@@ -166,8 +156,22 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
                   </div>
                 )}
 
-                {/* Spacer so footer stays at bottom */}
-                <div className="flex-1 min-h-2" />
+                {/* Stats strip */}
+                <div className="mt-4 flex items-center gap-4 rounded-lg bg-muted/40 px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="text-sm">
+                      <span className="font-semibold text-foreground">
+                        {group._count?.participants ?? 0}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {" "}
+                        participant
+                        {(group._count?.participants ?? 0) !== 1 ? "s" : ""}
+                      </span>
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           );
@@ -179,7 +183,8 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
             </div>
             <h3 className="mt-4 text-lg font-semibold">No groups yet</h3>
             <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-              Create a group to start adding students (e.g. school or college).
+              Create a group to start adding participants (e.g. school or
+              college).
             </p>
             <div className="mt-6">
               <GroupDialog
@@ -216,12 +221,15 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
       {!isReadOnly && actionGroup?.action === "delete" && actionGroup.group && (
         <DeleteDialog
           title="Delete Group"
-          description="Are you sure you want to delete this group? This will also delete all students in this group."
+          description="Are you sure you want to delete this group? This will also delete all participants in this group."
           onDelete={async () => {
-            await deleteGroup(actionGroup.group.id);
+            await deleteGroup.mutateAsync({
+              festivalId,
+              groupId: actionGroup.group.id,
+            });
             setActionGroup(null);
           }}
-          isDeleting={isDeleting}
+          isDeleting={deleteGroup.isPending}
           open={true}
           onOpenChange={(open) => !open && setActionGroup(null)}
         />

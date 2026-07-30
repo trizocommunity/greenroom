@@ -1,22 +1,21 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
   category as categoryTable,
-  programmeCodeLetter as codeLetterTable,
   programmeCodeLetterRecipient as codeLetterRecipientTable,
-  programmeJudgeSession as judgeSessionTable,
+  programmeCodeLetter as codeLetterTable,
+  participant as participantTable,
   programme as programmeTable,
   programmeReportingSession as prsTable,
   programmeReportedParticipant as reportedParticipantTable,
   result as resultTable,
   scheduleEntry as scheduleEntryTable,
-  student as studentTable,
 } from "@/core/database/schema";
-import { CodeLetterGeneratorService } from "./code-letter-generator.service";
 import { NotificationService } from "@/features/notifications/services/notification.service";
 import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
+import { CodeLetterGeneratorService } from "./code-letter-generator.service";
 
 async function getOrCreateSessionByScheduleEntry(scheduleEntryId: string) {
   const existing = await db.query.programmeReportingSession.findFirst({
@@ -67,9 +66,20 @@ async function getAssignedRecipientsForSession(reportingSessionId: string) {
 
 async function assertAssignmentCategoryCompatibility(input: {
   programmeId: string;
-  studentId: string | null;
+  participantId: string | null;
 }) {
-  if (!input.studentId) return;
+  if (!input.participantId) return;
+
+  // Assignment is validated at create time; allow reporting even if the
+  // participant's category was changed later.
+  const existingAssignment = await db.query.programmeAssignment.findFirst({
+    where: and(
+      eq(assignmentTable.programmeId, input.programmeId),
+      eq(assignmentTable.participantId, input.participantId),
+    ),
+    columns: { id: true },
+  });
+  if (existingAssignment) return;
 
   const programme = await db.query.programme.findFirst({
     where: eq(programmeTable.id, input.programmeId),
@@ -81,15 +91,15 @@ async function assertAssignmentCategoryCompatibility(input: {
   if (!programme) throw new Error("Programme not found");
   if (programme.category?.type === "GENERAL") return;
 
-  const student = await db.query.student.findFirst({
-    where: eq(studentTable.id, input.studentId),
+  const participant = await db.query.participant.findFirst({
+    where: eq(participantTable.id, input.participantId),
     columns: { categoryId: true },
   });
-  if (!student) throw new Error("Student not found");
+  if (!participant) throw new Error("Participant not found");
 
-  if (student.categoryId !== programme.categoryId) {
+  if (participant.categoryId !== programme.categoryId) {
     throw new Error(
-      "Student category does not match programme category for reporting.",
+      "Participant category does not match programme category for reporting.",
     );
   }
 }
@@ -99,14 +109,15 @@ export const ProgrammeReportingService = {
     programmeId: string,
     actorName: string,
   ) {
-    const latestClosedSession = await db.query.programmeReportingSession.findFirst({
-      where: and(
-        eq(prsTable.programmeId, programmeId),
-        eq(prsTable.status, "CLOSED"),
-      ),
-      orderBy: [desc(prsTable.endedAt)],
-      columns: { id: true },
-    });
+    const latestClosedSession =
+      await db.query.programmeReportingSession.findFirst({
+        where: and(
+          eq(prsTable.programmeId, programmeId),
+          eq(prsTable.status, "CLOSED"),
+        ),
+        orderBy: [desc(prsTable.endedAt)],
+        columns: { id: true },
+      });
     if (!latestClosedSession) {
       throw new Error("No closed reporting session found for this programme.");
     }
@@ -142,20 +153,6 @@ export const ProgrammeReportingService = {
       await tx
         .delete(resultTable)
         .where(eq(resultTable.programmeId, session.programmeId));
-
-      await tx
-        .update(judgeSessionTable)
-        .set({
-          usedAt: nowStr,
-          endedAt: nowStr,
-          updatedAt: nowStr,
-        })
-        .where(
-          and(
-            eq(judgeSessionTable.programmeId, session.programmeId),
-            isNull(judgeSessionTable.usedAt),
-          ),
-        );
 
       await tx
         .update(prsTable)
@@ -214,7 +211,10 @@ export const ProgrammeReportingService = {
       context: {
         title: "Reporting reopened",
         body: "Previous reporting codes are no longer valid. Reporting will restart with new attendance and code letters.",
-        payload: { reportingSessionId: session.id, programmeId: session.programmeId },
+        payload: {
+          reportingSessionId: session.id,
+          programmeId: session.programmeId,
+        },
       },
       channels: ["IN_APP", "EMAIL"],
     });
@@ -246,7 +246,9 @@ export const ProgrammeReportingService = {
             programmeCodeLetters: {
               orderBy: [asc(codeLetterTable.issuedAt)],
               with: {
-                programmeCodeLetterRecipients: { columns: { studentId: true } },
+                programmeCodeLetterRecipients: {
+                  columns: { participantId: true },
+                },
               },
             },
           },
@@ -353,7 +355,9 @@ export const ProgrammeReportingService = {
     const now = new Date().toISOString();
 
     await db.transaction(async (tx) => {
-      await CodeLetterGeneratorService.clearSessionCodeLetters(reportingSessionId);
+      await CodeLetterGeneratorService.clearSessionCodeLetters(
+        reportingSessionId,
+      );
 
       await tx
         .delete(reportedParticipantTable)
@@ -415,7 +419,7 @@ export const ProgrammeReportingService = {
 
     return {
       success: true,
-      message: `Reporting reset successfully. All ${session.programme.type === "GROUP" ? "team" : "student"} data cleared.`,
+      message: `Reporting reset successfully. All ${session.programme.type === "GROUP" ? "team" : "participant"} data cleared.`,
     };
   },
 
@@ -442,7 +446,7 @@ export const ProgrammeReportingService = {
       columns: {
         id: true,
         programmeId: true,
-        studentId: true,
+        participantId: true,
         groupId: true,
         teamNumber: true,
       },
@@ -455,7 +459,7 @@ export const ProgrammeReportingService = {
     }
     await assertAssignmentCategoryCompatibility({
       programmeId: session.programmeId,
-      studentId: assignment.studentId,
+      participantId: assignment.participantId,
     });
 
     const now = new Date().toISOString();
@@ -490,12 +494,12 @@ export const ProgrammeReportingService = {
             eq(assignmentTable.groupId, assignment.groupId),
             eq(assignmentTable.teamNumber, assignment.teamNumber),
           ),
-          columns: { id: true, studentId: true },
+          columns: { id: true, participantId: true },
         });
         for (const ta of teamAssignments) {
           await assertAssignmentCategoryCompatibility({
             programmeId: session.programmeId,
-            studentId: ta.studentId,
+            participantId: ta.participantId,
           });
         }
 
@@ -507,7 +511,7 @@ export const ProgrammeReportingService = {
                 id: randomUUID(),
                 reportingSessionId,
                 assignmentId: ta.id,
-                studentId: ta.studentId,
+                participantId: ta.participantId,
                 groupId: assignment.groupId,
                 teamNumber: assignment.teamNumber,
                 reportedBy: actorName,
@@ -526,15 +530,15 @@ export const ProgrammeReportingService = {
           }
         });
 
-        const teamStudentIds = teamAssignments
-          .map((a) => a.studentId)
+        const teamParticipantIds = teamAssignments
+          .map((a) => a.participantId)
           .filter((id): id is string => id !== null);
 
-        if (teamStudentIds.length > 0) {
+        if (teamParticipantIds.length > 0) {
           await NotificationService.dispatch({
             eventType: "REPORTING_PARTICIPANT_MARKED",
             festivalId: session.festivalId,
-            targets: { studentIds: teamStudentIds },
+            targets: { participantIds: teamParticipantIds },
             context: {
               title: "Team reporting confirmed",
               body: `Your team (Team ${assignment.teamNumber}) has been marked as reported.`,
@@ -554,7 +558,7 @@ export const ProgrammeReportingService = {
             id: randomUUID(),
             reportingSessionId,
             assignmentId,
-            studentId: assignment.studentId,
+            participantId: assignment.participantId,
             groupId: assignment.groupId,
             teamNumber: assignment.teamNumber,
             reportedBy: actorName,
@@ -571,11 +575,11 @@ export const ProgrammeReportingService = {
             },
           });
 
-        if (assignment.studentId) {
+        if (assignment.participantId) {
           await NotificationService.dispatch({
             eventType: "REPORTING_PARTICIPANT_MARKED",
             festivalId: session.festivalId,
-            targets: { studentIds: [assignment.studentId] },
+            targets: { participantIds: [assignment.participantId] },
             context: {
               title: "Reporting attendance updated",
               body: "You have been marked as reported by stage manager.",
@@ -595,11 +599,11 @@ export const ProgrammeReportingService = {
           ),
         );
 
-      if (assignment.studentId) {
+      if (assignment.participantId) {
         await NotificationService.dispatch({
           eventType: "REPORTING_PARTICIPANT_MARKED",
           festivalId: session.festivalId,
-          targets: { studentIds: [assignment.studentId] },
+          targets: { participantIds: [assignment.participantId] },
           context: {
             title: "Reporting attendance updated",
             body: "Your reporting mark was removed by stage manager.",
@@ -636,7 +640,7 @@ export const ProgrammeReportingService = {
       columns: {
         id: true,
         programmeId: true,
-        studentId: true,
+        participantId: true,
         groupId: true,
         teamNumber: true,
       },
@@ -647,7 +651,7 @@ export const ProgrammeReportingService = {
     for (const assignment of assignments) {
       await assertAssignmentCategoryCompatibility({
         programmeId: session.programmeId,
-        studentId: assignment.studentId,
+        participantId: assignment.participantId,
       });
     }
 
@@ -662,7 +666,7 @@ export const ProgrammeReportingService = {
               id: randomUUID(),
               reportingSessionId,
               assignmentId: assignment.id,
-              studentId: assignment.studentId,
+              participantId: assignment.participantId,
               groupId: assignment.groupId,
               teamNumber: assignment.teamNumber,
               reportedBy: actorName,
@@ -694,15 +698,15 @@ export const ProgrammeReportingService = {
       }
     });
 
-    const studentIds = assignments
-      .map((a) => a.studentId)
+    const participantIds = assignments
+      .map((a) => a.participantId)
       .filter((id): id is string => id !== null);
 
-    if (studentIds.length > 0) {
+    if (participantIds.length > 0) {
       await NotificationService.dispatch({
         eventType: "REPORTING_PARTICIPANT_MARKED",
         festivalId: session.festivalId,
-        targets: { studentIds },
+        targets: { participantIds },
         context: {
           title: "Reporting attendance updated",
           body: isReported
@@ -733,22 +737,24 @@ export const ProgrammeReportingService = {
       throw new Error("Only in-progress reporting can be submitted");
     }
 
-    const reportedWithStudent = session.programmeReportedParticipants.filter(
-      (p): p is (typeof p & { studentId: string }) => Boolean(p.studentId),
-    );
-    if (reportedWithStudent.length > 0) {
+    const reportedWithParticipant =
+      session.programmeReportedParticipants.filter(
+        (p): p is typeof p & { participantId: string } =>
+          Boolean(p.participantId),
+      );
+    if (reportedWithParticipant.length > 0) {
       const letters = await db.query.programmeCodeLetter.findMany({
         where: eq(codeLetterTable.reportingSessionId, reportingSessionId),
         with: { programmeCodeLetterRecipients: true },
       });
-      const studentIdsWithCode = new Set<string>();
+      const participantIdsWithCode = new Set<string>();
       for (const letter of letters) {
         for (const r of letter.programmeCodeLetterRecipients) {
-          studentIdsWithCode.add(r.studentId);
+          participantIdsWithCode.add(r.participantId);
         }
       }
-      for (const p of reportedWithStudent) {
-        if (!studentIdsWithCode.has(p.studentId)) {
+      for (const p of reportedWithParticipant) {
+        if (!participantIdsWithCode.has(p.participantId)) {
           throw new Error(
             "Assign a code letter to every reported participant (spin for each present row) before submitting.",
           );
@@ -775,7 +781,7 @@ export const ProgrammeReportingService = {
 
       const isGroupProgramme = session.programme.type === "GROUP";
 
-      const studentCodes = isGroupProgramme
+      const participantCodes = isGroupProgramme
         ? await CodeLetterGeneratorService.generateForGroupSession(
             {
               id: session.id,
@@ -805,7 +811,7 @@ export const ProgrammeReportingService = {
         })
         .where(eq(programmeTable.id, session.programmeId));
 
-      return { studentCodes };
+      return { participantCodes };
     });
 
     await NotificationService.dispatch({
@@ -820,7 +826,7 @@ export const ProgrammeReportingService = {
         body:
           session.programme.type === "GROUP"
             ? "Reporting has ended. Each reported team shares one team code (A, B, C…)."
-            : "Reporting has ended. Reported students received individual code letters.",
+            : "Reporting has ended. Reported participants received individual code letters.",
         payload: {
           reportingSessionId,
           programmeId: session.programmeId,
@@ -838,7 +844,7 @@ export const ProgrammeReportingService = {
       },
       context: {
         title: "Programme status updated",
-        body: "Programme is ready for judgment (Started).",
+        body: "Programme is ready for judgement (Started).",
         payload: {
           reportingSessionId,
           programmeId: session.programmeId,
@@ -849,11 +855,21 @@ export const ProgrammeReportingService = {
     });
 
     const isGroup = session.programme.type === "GROUP";
-    for (const { studentId, code } of closed.studentCodes) {
+    const issuedLetters = await db.query.programmeCodeLetter.findMany({
+      where: eq(codeLetterTable.reportingSessionId, reportingSessionId),
+      with: { programmeCodeLetterRecipients: true },
+    });
+    const notifyByParticipant = new Map<string, string>();
+    for (const letter of issuedLetters) {
+      for (const r of letter.programmeCodeLetterRecipients) {
+        notifyByParticipant.set(r.participantId, letter.code);
+      }
+    }
+    for (const [participantId, code] of notifyByParticipant) {
       await NotificationService.dispatch({
         eventType: "CODE_LETTER_ISSUED",
         festivalId: session.festivalId,
-        targets: { studentIds: [studentId] },
+        targets: { participantIds: [participantId] },
         context: {
           title: isGroup ? "Team code issued" : "Code letter issued",
           body: isGroup
@@ -865,7 +881,7 @@ export const ProgrammeReportingService = {
             codeLetter: code,
           },
         },
-        channels: ["IN_APP"],
+        channels: ["IN_APP", "EMAIL"],
       });
     }
 
@@ -930,7 +946,9 @@ export const ProgrammeReportingService = {
     const totalUnits =
       session.programme.type === "GROUP"
         ? new Set(
-            assignments.map((row) => `${row.groupId ?? "no-group"}::${row.teamNumber ?? 0}`),
+            assignments.map(
+              (row) => `${row.groupId ?? "no-group"}::${row.teamNumber ?? 0}`,
+            ),
           ).size
         : assignments.length;
 
@@ -977,7 +995,7 @@ export const ProgrammeReportingService = {
     codeAssignments: Array<{
       teamNumber: number | null;
       groupId?: string | null;
-      studentId?: string | null;
+      participantId?: string | null;
       code: string;
     }>,
     actorName: string,
@@ -998,24 +1016,25 @@ export const ProgrammeReportingService = {
 
     // Restriction removed to allow INDIVIDUAL programmes to use spin wheel
 
-    const studentCodes = await CodeLetterGeneratorService.generateFromSpinWheel(
-      {
-        id: session.id,
-        festivalId: session.festivalId,
-        programmeId: session.programmeId,
-      },
-      codeAssignments,
-      session.programmeReportedParticipants,
-      actorName,
-    );
+    const participantCodes =
+      await CodeLetterGeneratorService.generateFromSpinWheel(
+        {
+          id: session.id,
+          festivalId: session.festivalId,
+          programmeId: session.programmeId,
+        },
+        codeAssignments,
+        session.programmeReportedParticipants,
+        actorName,
+      );
     // Session remains IN_PROGRESS to allow more participants to report and spin
     // Session status and programme status will be updated via a separate close action
 
-    for (const { studentId, code } of studentCodes) {
+    for (const { participantId, code } of participantCodes) {
       await NotificationService.dispatch({
         eventType: "CODE_LETTER_ISSUED",
         festivalId: session.festivalId,
-        targets: { studentIds: [studentId] },
+        targets: { participantIds: [participantId] },
         context: {
           title: "Code letter issued",
           body: `Your programme reporting code letter is ${code}.`,
@@ -1032,7 +1051,7 @@ export const ProgrammeReportingService = {
     return {
       success: true,
       codesAssigned: codeAssignments.length,
-      studentsNotified: studentCodes.length,
+      participantsNotified: participantCodes.length,
     };
   },
 
@@ -1050,13 +1069,19 @@ export const ProgrammeReportingService = {
 
     if (!session) throw new Error("Reporting session not found");
     if (session.isLocked) {
-      throw new Error("Cannot reset code letters for a closed reporting session");
+      throw new Error(
+        "Cannot reset code letters for a closed reporting session",
+      );
     }
     if (session.status !== "IN_PROGRESS") {
-      throw new Error("Code letters can only be reset while reporting is in progress");
+      throw new Error(
+        "Code letters can only be reset while reporting is in progress",
+      );
     }
 
-    await CodeLetterGeneratorService.clearSessionCodeLetters(reportingSessionId);
+    await CodeLetterGeneratorService.clearSessionCodeLetters(
+      reportingSessionId,
+    );
 
     await NotificationService.dispatch({
       eventType: "REPORTING_RESET",

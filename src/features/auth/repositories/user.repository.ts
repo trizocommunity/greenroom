@@ -1,5 +1,6 @@
 import { count, desc, eq, type SQL, sql } from "drizzle-orm";
 import { db } from "@/core/database/client";
+import { generateId } from "@/core/database/ids";
 import { user as users } from "@/core/database/schema";
 
 export async function findUserById(id: string) {
@@ -36,11 +37,10 @@ export async function createUser(
     updatedAt?: string;
   },
 ) {
-  const { randomUUID } = await import("crypto");
   const result = await db
     .insert(users)
     .values({
-      id: data.id ?? randomUUID(),
+      id: data.id ?? generateId(),
       updatedAt: data.updatedAt ?? new Date().toISOString(),
       ...data,
     })

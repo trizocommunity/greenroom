@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { ProgrammeReportingClient } from "@/components/festival/event-works/programme-reporting/ProgrammeReportingClient";
@@ -8,14 +8,15 @@ import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
   festival as festivalTable,
-  programmeReportedParticipant as reportedParticipantTable,
   stage as stageTable,
 } from "@/core/database/schema";
-import { parseStoredInstant } from "@/core/utils/date-time";
 import type { Tier } from "@/core/types/app-enums";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
 import { getProgrammeReportingBoardAction } from "@/features/programmes/actions/programme-reporting.actions";
+import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
+import { getStageFilterCookie } from "@/features/stages/stage-filter-cookie.server";
 
 export default async function ProgrammeReportingPage({
   params,
@@ -52,14 +53,14 @@ export default async function ProgrammeReportingPage({
     db.query.programmeAssignment.findMany({
       where: eq(assignmentTable.festivalId, festival.id),
       with: {
-        student: { columns: { name: true, chestNumber: true } },
+        participant: { columns: { name: true, chestNumber: true } },
         group: { columns: { name: true, id: true } },
       },
       columns: {
         id: true,
         programmeId: true,
         teamNumber: true,
-        studentId: true,
+        participantId: true,
         groupId: true,
       },
     }),
@@ -70,25 +71,52 @@ export default async function ProgrammeReportingPage({
     }),
   ]);
 
-  const normalizedBoard = (board as any[]).map((item: any) => ({
-    ...item,
-    startTime: item.startTime ? parseStoredInstant(item.startTime) : new Date(),
-    reportingSession: item.reportingSession
-      ? {
-          ...item.reportingSession,
-          windowEndsAt: item.reportingSession.windowEndsAt
-            ? parseStoredInstant(item.reportingSession.windowEndsAt)
-            : null,
-        }
-      : null,
-  })) as ReportingBoardItem[];
+  const accessibleStageIds = await StageAssignmentService.getAccessibleStageIds(
+    festival.id,
+    session,
+  );
+
+  const scopedStages =
+    accessibleStageIds === "all"
+      ? festivalStages
+      : festivalStages.filter((s) => accessibleStageIds.includes(s.id));
+
+  const isStageManager = context.role === "STAGE_MANAGER";
+  const initialStageId = isStageManager
+    ? await getStageFilterCookie(
+        festival.id,
+        scopedStages.map((s) => s.id),
+      )
+    : null;
+
+  const normalizedBoard = (board as any[])
+    .filter(
+      (item: any) =>
+        accessibleStageIds === "all" ||
+        !item.stage ||
+        accessibleStageIds.includes(item.stage.id),
+    )
+    .map((item: any) => ({
+      ...item,
+      startTime: item.startTime
+        ? parseStoredInstant(item.startTime)
+        : new Date(),
+      reportingSession: item.reportingSession
+        ? {
+            ...item.reportingSession,
+            windowEndsAt: item.reportingSession.windowEndsAt
+              ? parseStoredInstant(item.reportingSession.windowEndsAt)
+              : null,
+          }
+        : null,
+    })) as ReportingBoardItem[];
 
   const assignments = assignmentRows.map((row) => ({
     id: row.id,
     programmeId: row.programmeId,
-    studentId: row.studentId ?? null,
-    studentName: (row as any).student?.name ?? null,
-    chestNumber: (row as any).student?.chestNumber ?? null,
+    participantId: row.participantId ?? null,
+    participantName: (row as any).participant?.name ?? null,
+    chestNumber: (row as any).participant?.chestNumber ?? null,
     groupId: row.groupId ?? (row as any).group?.id ?? null,
     groupName: (row as any).group?.name ?? null,
     teamNumber: row.teamNumber ?? null,
@@ -103,23 +131,23 @@ export default async function ProgrammeReportingPage({
         <HowItWorksButton title="How programme reporting works">
           <ul className="space-y-2 pl-5 text-muted-foreground leading-relaxed [&>li]:list-disc">
             <li>
-              Under <strong>Up next</strong>, pick a slot that is not started or
-              already live. Use <strong>Full list</strong> to include finished
-              sessions and filter by status.
+              Search or <strong>Filter</strong> the queue to find a slot, then
+              pick it to open its reporting drawer. Ended sessions are hidden
+              until you enable <strong>Show ended</strong> in the filter.
             </li>
             <li>
-              <strong>Start reporting</strong> opens check-in. Mark who is present
-              via QR or the roster. For each present row, use <strong>Spin</strong>{" "}
-              to draw a code letter.
+              <strong>Start reporting</strong> opens check-in. Mark who is
+              present via QR or the roster. For each present row, use{" "}
+              <strong>Spin</strong> to draw a code letter.
             </li>
             <li>
-              <strong>Stop without codes</strong> ends the session without issuing
-              letters (programme returns to a schedulable state).
+              <strong>Stop without codes</strong> ends the session without
+              issuing letters (programme returns to a schedulable state).
             </li>
             <li>
               <strong>Submit &amp; notify</strong> finalizes reporting, issues
-              codes (one per team for GROUP, one per student for INDIVIDUAL), and
-              notifies students and team leaders.
+              codes (one per team for GROUP, one per participant for
+              INDIVIDUAL), and notifies participants and team leaders.
             </li>
           </ul>
         </HowItWorksButton>
@@ -129,7 +157,9 @@ export default async function ProgrammeReportingPage({
         festivalId={festival.id}
         board={normalizedBoard as ReportingBoardItem[]}
         assignments={assignments}
-        festivalStages={festivalStages}
+        festivalStages={scopedStages}
+        initialStageId={initialStageId}
+        hideStageFilter={isStageManager}
       />
     </div>
   );

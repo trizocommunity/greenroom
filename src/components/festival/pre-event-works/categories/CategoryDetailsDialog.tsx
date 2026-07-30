@@ -2,16 +2,17 @@
 
 import { Eye, Loader2, Users } from "lucide-react";
 import { useState } from "react";
+import { useParticipants } from "@/api/client/participants";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import {
   Table,
   TableBody,
@@ -20,7 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useStudents } from "@/features/students/hooks/use-students";
 
 interface CategoryDetailsDialogProps {
   festivalId: string;
@@ -42,12 +42,12 @@ export function CategoryDetailsDialog({
   open: controlledOpen,
   onOpenChange: setControlledOpen,
 }: CategoryDetailsDialogProps) {
-  const { students, isLoading } = useStudents(festivalId);
+  const { data: participants = [], isLoading } = useParticipants(festivalId);
 
-  const filteredStudents =
+  const filteredParticipants =
     category.type === "GENERAL"
-      ? students
-      : students.filter((p: any) => p.categoryId === category.id);
+      ? participants
+      : participants.filter((p: any) => p.categoryId === category.id);
 
   const isControlled = controlledOpen !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
@@ -56,42 +56,42 @@ export function CategoryDetailsDialog({
     isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Drawer open={open} onOpenChange={setOpen}>
       {!isControlled && (
-        <DialogTrigger asChild>
+        <DrawerTrigger asChild>
           {trigger ?? (
             <Button variant="ghost" size="icon" className="h-8 w-8">
               <Eye className="h-4 w-4" />
             </Button>
           )}
-        </DialogTrigger>
+        </DrawerTrigger>
       )}
-      <DialogContent className="w-[calc(100%-2rem)] max-w-3xl max-h-[85vh] flex flex-col overflow-hidden p-4 sm:p-6">
-        <DialogHeader className="pr-8 sm:pr-0 text-left shrink-0">
+      <DrawerContent>
+        <DrawerHeader className="pr-8 sm:pr-0 text-left shrink-0">
           <div className="flex flex-wrap items-center gap-2">
-            <DialogTitle className="text-lg sm:text-xl text-left">
+            <DrawerTitle className="text-lg sm:text-xl text-left">
               {category.name}
-            </DialogTitle>
+            </DrawerTitle>
             <Badge
               variant={category.type === "GENERAL" ? "default" : "outline"}
             >
               {category.type}
             </Badge>
           </div>
-          <DialogDescription className="text-left">
+          <DrawerDescription className="text-left">
             {category.description || "No description provided."}
-          </DialogDescription>
-        </DialogHeader>
+          </DrawerDescription>
+        </DrawerHeader>
 
         <div className="flex-1 flex flex-col gap-4 mt-4 min-h-0 overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-left shrink-0">
             <h4 className="text-sm font-semibold flex items-center gap-2">
               <Users className="h-4 w-4 shrink-0" />
-              Students ({filteredStudents.length})
+              Participants ({filteredParticipants.length})
             </h4>
             {category.type === "GENERAL" && (
               <span className="text-xs text-muted-foreground text-left">
-                Showing all festival students (General Category)
+                Showing all festival participants (General Category)
               </span>
             )}
           </div>
@@ -105,12 +105,12 @@ export function CategoryDetailsDialog({
               <>
                 {/* Mobile: list of cards */}
                 <div className="block md:hidden divide-y text-left">
-                  {filteredStudents.length === 0 ? (
+                  {filteredParticipants.length === 0 ? (
                     <div className="py-8 text-muted-foreground text-sm text-left">
-                      No students found.
+                      No participants found.
                     </div>
                   ) : (
-                    filteredStudents.map((p: any) => (
+                    filteredParticipants.map((p: any) => (
                       <div key={p.id} className="p-3 text-left">
                         <p className="font-medium truncate">{p.name}</p>
                         <p className="text-xs text-muted-foreground mt-0.5 text-left">
@@ -136,7 +136,7 @@ export function CategoryDetailsDialog({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredStudents.map((p: any) => (
+                      {filteredParticipants.map((p: any) => (
                         <TableRow key={p.id}>
                           <TableCell className="font-medium text-left">
                             {p.name}
@@ -153,13 +153,13 @@ export function CategoryDetailsDialog({
                           )}
                         </TableRow>
                       ))}
-                      {filteredStudents.length === 0 && (
+                      {filteredParticipants.length === 0 && (
                         <TableRow>
                           <TableCell
                             colSpan={category.type === "GENERAL" ? 4 : 3}
                             className="h-24 text-muted-foreground text-left"
                           >
-                            No students found.
+                            No participants found.
                           </TableCell>
                         </TableRow>
                       )}
@@ -170,7 +170,7 @@ export function CategoryDetailsDialog({
             )}
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }

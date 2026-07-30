@@ -1,17 +1,18 @@
 import { and, eq } from "drizzle-orm";
+import { getParticipantSessionFromCookie } from "@/core/auth/participant-session";
 import { getSession } from "@/core/auth/session";
-import { getTeamLeaderSessionFromCookie } from "@/core/auth/team-leader-session";
 import { db } from "@/core/database/client";
 import {
   festivalMember as festivalMemberTable,
   festival as festivalTable,
-  student as studentTable,
+  participant as participantTable,
   user as userTable,
 } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
-import { parseStoredInstant } from "@/core/utils/date-time";
 import type { Tier } from "@/core/types/app-enums";
+import { parseStoredInstant } from "@/core/utils/date-time";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 
 async function getFestivalWithReportingAccess(festivalId: string) {
   const festival = await db.query.festival.findFirst({
@@ -41,42 +42,44 @@ async function getUserDisplayName(userId: string, fallback: string) {
   return user?.displayName || user?.fullName || user?.email || fallback;
 }
 
-export async function assertStudentNotificationAccess(studentId: string) {
-  const student = await db.query.student.findFirst({
-    where: eq(studentTable.id, studentId),
+export async function assertParticipantNotificationAccess(
+  participantId: string,
+) {
+  const participant = await db.query.participant.findFirst({
+    where: eq(participantTable.id, participantId),
     columns: { id: true, festivalId: true, groupId: true },
   });
-  if (!student) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
+  if (!participant) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
 
   const session = await getSession();
   if (session?.userId) {
-    if (session.role === "SUPER_ADMIN") return student;
+    if (session.role === "SUPER_ADMIN") return participant;
 
     const festival = await db.query.festival.findFirst({
-      where: eq(festivalTable.id, student.festivalId),
+      where: eq(festivalTable.id, participant.festivalId),
       columns: { ownerId: true },
     });
-    if (festival?.ownerId === session.userId) return student;
+    if (festival?.ownerId === session.userId) return participant;
 
     const membership = await db.query.festivalMember.findFirst({
       where: and(
-        eq(festivalMemberTable.festivalId, student.festivalId),
+        eq(festivalMemberTable.festivalId, participant.festivalId),
         eq(festivalMemberTable.userId, session.userId),
       ),
       columns: { isActive: true },
     });
-    if (membership?.isActive) return student;
+    if (membership?.isActive) return participant;
   }
 
-  const tlSession = await getTeamLeaderSessionFromCookie();
+  const tlSession = await getParticipantSessionFromCookie();
   if (
     tlSession &&
     parseStoredInstant(tlSession.expiresAt) > new Date() &&
     !tlSession.revokedAt &&
-    tlSession.festivalId === student.festivalId &&
-    tlSession.studentId === studentId
+    tlSession.festivalId === participant.festivalId &&
+    tlSession.participantId === participantId
   ) {
-    return student;
+    return participant;
   }
 
   throw new AppError(ERROR_MESSAGES.FORBIDDEN);
@@ -116,6 +119,29 @@ export async function assertStageManagerAccess(
     member.user.email ||
     "Stage Manager"
   );
+}
+
+/**
+ * Same as assertStageManagerAccess, plus: a STAGE_MANAGER (not owner/admin/super_admin)
+ * must be assigned to `stageId` specifically. Pass a null/undefined stageId for
+ * festival-wide entries (e.g. non-stage schedule entries) that any manager may act on.
+ */
+export async function assertStageManagerAccessForStage(
+  festivalId: string,
+  stageId: string | null | undefined,
+): Promise<string> {
+  const actorName = await assertStageManagerAccess(festivalId);
+  if (!stageId) return actorName;
+
+  const session = await getSession();
+  const accessibleStageIds = await StageAssignmentService.getAccessibleStageIds(
+    festivalId,
+    session,
+  );
+  if (accessibleStageIds !== "all" && !accessibleStageIds.includes(stageId)) {
+    throw new AppError("You are not assigned to this stage.");
+  }
+  return actorName;
 }
 
 export async function assertReportingReopenAccess(

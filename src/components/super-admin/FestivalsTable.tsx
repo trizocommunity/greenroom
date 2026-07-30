@@ -6,6 +6,11 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
+  type Festival,
+  useDeleteFestival,
+  useFestivals,
+} from "@/api/client/festivals";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -25,15 +30,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  type Festival,
-  useDeleteFestival,
-  useFestivals,
-} from "@/features/festivals/hooks/use-festivals";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 
 export function FestivalsTable() {
-  const { data: festivals = [], isLoading } = useFestivals();
+  const { data: festivals = [], isLoading, isError, error } = useFestivals();
   const deleteMutation = useDeleteFestival();
   const [festivalToDelete, setFestivalToDelete] = useState<Festival | null>(
     null,
@@ -48,12 +48,15 @@ export function FestivalsTable() {
 
   const handleDelete = () => {
     if (!festivalToDelete) return;
-    deleteMutation.mutate(festivalToDelete.id, {
-      onSuccess: () => {
-        setFestivalToDelete(null);
-        toast.success("Festival terminated successfully");
+    deleteMutation.mutate(
+      { id: festivalToDelete.id },
+      {
+        onSuccess: () => {
+          setFestivalToDelete(null);
+          toast.success("Festival terminated successfully");
+        },
       },
-    });
+    );
   };
 
   if (isLoading) {
@@ -70,6 +73,14 @@ export function FestivalsTable() {
             </CardContent>
           </Card>
         ))}
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="text-center py-8 text-destructive">
+        Error: {error.message}
       </div>
     );
   }

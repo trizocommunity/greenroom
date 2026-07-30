@@ -22,16 +22,20 @@ export type FeatureToggleKey = (typeof PLAN_FEATURE_TOGGLE_KEYS)[number];
 export type CuratedFeatureTag =
   | "eventWorks.reporting"
   | "eventWorks.externalJudging"
-  | "eventWorks.judgmentUI"
-  | "eventWorks.marksUI";
+  | "eventWorks.judgementUI"
+  | "eventWorks.marksUI"
+  | "programme.teamLead"
+  | "programme.auditDrawer";
 
 export type FeatureTag = FeatureToggleKey | CuratedFeatureTag;
 
 const CURATED_FEATURE_TAGS: CuratedFeatureTag[] = [
   "eventWorks.reporting",
   "eventWorks.externalJudging",
-  "eventWorks.judgmentUI",
+  "eventWorks.judgementUI",
   "eventWorks.marksUI",
+  "programme.teamLead",
+  "programme.auditDrawer",
 ];
 
 export const FEATURE_TAGS: FeatureTag[] = [
@@ -64,7 +68,7 @@ const CURATED_TAG_REQUIREMENTS: Record<CuratedFeatureTag, TagRequirement> = {
     requires: ["schedule"],
     hardBlockBasics: true,
   },
-  "eventWorks.judgmentUI": {
+  "eventWorks.judgementUI": {
     requires: ["schedule"],
     hardBlockBasics: true,
   },
@@ -73,6 +77,12 @@ const CURATED_TAG_REQUIREMENTS: Record<CuratedFeatureTag, TagRequirement> = {
     // Require the same concrete FeaturePaths that the UI/actions rely on.
     allowedTiers: ["BASIC"],
     requires: ["results", "chestNumbers"],
+  },
+  "programme.teamLead": {
+    allowedTiers: ["PRO"],
+  },
+  "programme.auditDrawer": {
+    allowedTiers: ["PRO"],
   },
 };
 
@@ -89,8 +99,10 @@ export function getFeatureTagRequirements(tag: FeatureTag): TagRequirement {
 const CURATED_FEATURE_TAG_LABELS: Record<CuratedFeatureTag, string> = {
   "eventWorks.reporting": "Reporting",
   "eventWorks.externalJudging": "External Judges",
-  "eventWorks.judgmentUI": "Judgment UI",
+  "eventWorks.judgementUI": "Judgement UI",
   "eventWorks.marksUI": "Marks UI",
+  "programme.teamLead": "Programme Team Lead",
+  "programme.auditDrawer": "Programme Audit Trail",
 };
 
 export function getFeatureTagLabel(tag: FeatureTag): string {

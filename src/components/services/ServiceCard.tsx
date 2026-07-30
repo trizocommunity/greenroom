@@ -18,19 +18,19 @@ export default function ServiceCard({
 }: ServiceCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ delay: index * 0.1 }}
-      className="p-10 border border-white/10 hover:bg-white/5 transition-all duration-300 group"
+      transition={{ delay: index * 0.08 }}
+      className="p-8 bg-card group"
     >
-      <div className="w-14 h-14 flex items-center justify-center mb-8 border border-white/10 bg-primary/10 rounded-xl group-hover:scale-110 group-hover:border-primary/50 transition-all duration-300">
-        <Icon size={28} strokeWidth={1.5} className="text-primary" />
+      <div className="w-11 h-11 flex items-center justify-center mb-6 rounded-xl bg-primary/8 group-hover:bg-primary/12 transition-colors">
+        <Icon size={20} strokeWidth={1.5} className="text-primary" />
       </div>
-      <h3 className="text-xl font-bold uppercase tracking-wide mb-4 text-foreground">
+      <h3 className="text-base font-semibold tracking-tight mb-2 text-heading">
         {title}
       </h3>
-      <p className="text-muted-foreground group-hover:text-foreground leading-relaxed font-medium transition-colors">
+      <p className="text-sm text-muted-foreground leading-relaxed">
         {description}
       </p>
     </motion.div>

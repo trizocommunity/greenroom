@@ -65,7 +65,7 @@ export default async function AdminFestivalDetailPage({
           </Link>
         </Button>
         <div className="flex-1">
-          <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+          <h2 className="text-3xl font-semibold tracking-tight flex items-center gap-2">
             {festival.name}
           </h2>
           <div className="text-muted-foreground flex items-center gap-2">
@@ -94,9 +94,9 @@ export default async function AdminFestivalDetailPage({
       <Separator />
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
+        <Card className="rounded-2xl">
           <CardHeader>
-            <CardTitle>Festival Details</CardTitle>
+            <CardTitle>Festival details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="flex justify-between">
@@ -108,7 +108,9 @@ export default async function AdminFestivalDetailPage({
             <div className="flex justify-between">
               <span className="text-muted-foreground">Created At</span>
               <span>
-                {formatStoredDateTime(festival.createdAt, { dateStyle: "medium" })}
+                {formatStoredDateTime(festival.createdAt, {
+                  dateStyle: "medium",
+                })}
               </span>
             </div>
             <div className="flex justify-between">
@@ -119,16 +121,18 @@ export default async function AdminFestivalDetailPage({
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Expired At</span>
                 <span>
-                  {formatStoredDateTime(festival.expiredAt, { dateStyle: "medium" })}
+                  {formatStoredDateTime(festival.expiredAt, {
+                    dateStyle: "medium",
+                  })}
                 </span>
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-2xl">
           <CardHeader>
-            <CardTitle>Quick Stats</CardTitle>
+            <CardTitle>Quick stats</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="flex justify-between">
@@ -141,14 +145,19 @@ export default async function AdminFestivalDetailPage({
             </div>
             {isExpired && hasPdf && (
               <div className="pt-2">
-                <Button variant="outline" size="sm" className="gap-2" asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 rounded-full font-medium"
+                  asChild
+                >
                   <Link
                     href={downloadPdfUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
                     <FileDown className="h-4 w-4" />
-                    Download Result PDF
+                    Download result PDF
                   </Link>
                 </Button>
               </div>
@@ -160,15 +169,15 @@ export default async function AdminFestivalDetailPage({
       {isExpired && expiredResults.length > 0 && (
         <>
           <Separator />
-          <Card>
+          <Card className="rounded-2xl">
             <CardHeader>
-              <CardTitle>Retained Results Snapshot</CardTitle>
+              <CardTitle>Retained results snapshot</CardTitle>
               <p className="text-sm text-muted-foreground">
                 {expiredResults.length} result row(s) retained after expiration.
               </p>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto max-h-64 overflow-y-auto rounded border">
+              <div className="overflow-x-auto max-h-64 overflow-y-auto rounded-xl border border-border">
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50 sticky top-0">
                     <tr>
@@ -200,9 +209,9 @@ export default async function AdminFestivalDetailPage({
       {isExpired && lifecycleEvents.length > 0 && (
         <>
           <Separator />
-          <Card>
+          <Card className="rounded-2xl">
             <CardHeader>
-              <CardTitle>Lifecycle History</CardTitle>
+              <CardTitle>Lifecycle history</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">

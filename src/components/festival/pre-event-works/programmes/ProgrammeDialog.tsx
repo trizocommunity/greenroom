@@ -1,22 +1,30 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2, Plus, User } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
+import { useCategories } from "@/api/client/categories";
+import {
+  useCreateProgramme,
+  useProgramme,
+  useUpdateProgramme,
+} from "@/api/client/programmes";
+import { ProgrammeActivityTimeline } from "@/components/festival/pre-event-works/programmes/ProgrammeActivityTimeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import {
   Form,
   FormControl,
@@ -42,20 +50,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useCategories } from "@/features/categories/hooks/use-categories";
-import {
-  useProgrammeDetails,
-  useProgrammes,
-} from "@/features/programmes/hooks/use-programmes";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useFeatureTag } from "@/features/plan-features/hooks/use-feature";
+import { getProgrammeDetailForDrawerAction } from "@/features/programmes/actions/programme.actions";
 
 const ProgrammeBaseSchema = z.object({
   name: z.string().min(1, "Name is required"),
   categoryId: z.string().min(1, "Category is required"),
   type: z.enum(["INDIVIDUAL", "GROUP"]),
   stageType: z.enum(["STAGE", "NON_STAGE"]),
-  maxParticipantsPerGroup: z.coerce.number().min(0),
-  maxTeamsPerGroup: z.coerce.number().min(0),
-  maxStudentsPerTeam: z.coerce.number().min(0),
+  // Defaults apply when fields are hidden (GROUP vs INDIVIDUAL); missing values become NaN without these.
+  maxParticipantsPerGroup: z.coerce.number().min(0).default(1),
+  maxTeamsPerGroup: z.coerce.number().min(0).default(1),
+  maxParticipantsPerTeam: z.coerce.number().min(0).default(1),
 });
 
 const ProgrammeSchema = ProgrammeBaseSchema.superRefine((data, ctx) => {
@@ -75,11 +82,11 @@ const ProgrammeSchema = ProgrammeBaseSchema.superRefine((data, ctx) => {
         path: ["maxTeamsPerGroup"],
       });
     }
-    if (data.maxStudentsPerTeam < 1) {
+    if (data.maxParticipantsPerTeam < 1) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Must be at least 1",
-        path: ["maxStudentsPerTeam"],
+        path: ["maxParticipantsPerTeam"],
       });
     }
   }
@@ -110,13 +117,16 @@ export function ProgrammeDialog({
   const setOpen =
     isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
 
-  const { createProgramme, isCreating, updateProgramme, isUpdating } =
-    useProgrammes(festivalId);
-  const { categories } = useCategories(festivalId);
+  const createProgramme = useCreateProgramme();
+  const updateProgramme = useUpdateProgramme();
+  const { data: categories = [] } = useCategories(festivalId);
 
   const form = useForm<ProgrammeFormValues>({
     resolver: zodResolver(ProgrammeSchema as any),
     mode: "onChange",
+    // Keep values for fields hidden when type toggles (GROUP vs INDIVIDUAL).
+    // Otherwise Zod fails on unregistered fields and the submit button stays disabled.
+    shouldUnregister: false,
     defaultValues: {
       name: "",
       categoryId: "",
@@ -124,19 +134,28 @@ export function ProgrammeDialog({
       stageType: "STAGE",
       maxParticipantsPerGroup: 1,
       maxTeamsPerGroup: 1,
-      maxStudentsPerTeam: 1,
+      maxParticipantsPerTeam: 1,
     },
   });
 
   const isEditing = !!programme;
-  const isLoadingAction = isCreating || isUpdating;
+  const isLoadingAction =
+    createProgramme.isPending || updateProgramme.isPending;
+  const { isValid } = form.formState;
 
   // Fetch details if viewing (readOnly)
-  const { programme: details, isLoading: isLoadingDetails } =
-    useProgrammeDetails(
-      festivalId,
-      open && readOnly ? programme?.id : undefined,
-    );
+  const { data: details, isLoading: isLoadingDetails } = useProgramme(
+    festivalId,
+    open && readOnly ? programme?.id : undefined,
+  );
+
+  const canUseAuditDrawer = useFeatureTag("programme.auditDrawer");
+  const { data: activityDetail, isLoading: isLoadingActivity } = useQuery({
+    queryKey: ["programme-detail-drawer", festivalId, programme?.id],
+    queryFn: () => getProgrammeDetailForDrawerAction(festivalId, programme!.id),
+    enabled: Boolean(open && readOnly && canUseAuditDrawer && programme?.id),
+    staleTime: 30_000,
+  });
 
   useEffect(() => {
     if (open) {
@@ -148,7 +167,7 @@ export function ProgrammeDialog({
           stageType: programme.stageType || "STAGE",
           maxParticipantsPerGroup: programme.maxParticipantsPerGroup || 1,
           maxTeamsPerGroup: programme.maxTeamsPerGroup || 1,
-          maxStudentsPerTeam: programme.maxStudentsPerTeam || 1,
+          maxParticipantsPerTeam: programme.maxParticipantsPerTeam || 1,
         });
       } else {
         form.reset({
@@ -158,20 +177,53 @@ export function ProgrammeDialog({
           stageType: "STAGE",
           maxParticipantsPerGroup: 1,
           maxTeamsPerGroup: 1,
-          maxStudentsPerTeam: 1,
+          maxParticipantsPerTeam: 1,
         });
       }
       form.trigger();
     }
   }, [open, programme, form]);
 
+  const programmeType = form.watch("type");
+
+  const syncHiddenLimitFields = useCallback(
+    (type: ProgrammeFormValues["type"]) => {
+      if (type === "GROUP") {
+        const current = form.getValues("maxParticipantsPerGroup");
+        if (current === undefined || Number.isNaN(Number(current))) {
+          form.setValue("maxParticipantsPerGroup", 1, { shouldValidate: true });
+        }
+      } else {
+        const teams = form.getValues("maxTeamsPerGroup");
+        const participants = form.getValues("maxParticipantsPerTeam");
+        if (teams === undefined || Number.isNaN(Number(teams))) {
+          form.setValue("maxTeamsPerGroup", 1, { shouldValidate: true });
+        }
+        if (participants === undefined || Number.isNaN(Number(participants))) {
+          form.setValue("maxParticipantsPerTeam", 1, { shouldValidate: true });
+        }
+      }
+    },
+    [form],
+  );
+
+  useEffect(() => {
+    if (!open || readOnly) return;
+    syncHiddenLimitFields(programmeType);
+    void form.trigger();
+  }, [programmeType, open, readOnly, form, syncHiddenLimitFields]);
+
   const onSubmit = async (data: ProgrammeFormValues) => {
     if (readOnly) return;
     try {
       if (isEditing && programme) {
-        await updateProgramme({ id: programme.id, data });
+        await updateProgramme.mutateAsync({
+          festivalId,
+          programmeId: programme.id,
+          data,
+        });
       } else {
-        await createProgramme(data);
+        await createProgramme.mutateAsync({ festivalId, data });
       }
       setOpen(false);
     } catch (error: any) {
@@ -198,9 +250,9 @@ export function ProgrammeDialog({
 
     const assignments = details.assignments || [];
 
-    return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-2 gap-4 text-sm">
+    const detailsBody = (
+      <div className="flex flex-col flex-1 min-h-0 space-y-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm shrink-0">
           <div className="space-y-1">
             <span className="text-muted-foreground">Category</span>
             <div className="font-medium">{details.category?.name}</div>
@@ -228,26 +280,28 @@ export function ProgrammeDialog({
                 <div className="font-medium">{details.maxTeamsPerGroup}</div>
               </div>
               <div className="space-y-1">
-                <span className="text-muted-foreground">Students/Team</span>
-                <div className="font-medium">{details.maxStudentsPerTeam}</div>
+                <span className="text-muted-foreground">Participants/Team</span>
+                <div className="font-medium">
+                  {details.maxParticipantsPerTeam}
+                </div>
               </div>
             </>
           )}
         </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
+        <div className="space-y-2 flex flex-col flex-1 min-h-0">
+          <div className="flex items-center justify-between shrink-0">
             <h4 className="text-sm font-semibold">
-              Assigned Students ({assignments.length})
+              Assigned Participants ({assignments.length})
             </h4>
           </div>
-          <div className="rounded-md border h-[300px] overflow-hidden flex flex-col">
+          <div className="rounded-md border flex-1 min-h-0 overflow-hidden flex flex-col">
             <ScrollArea className="flex-1">
               <Table>
                 <TableHeader className="bg-muted/50 sticky top-0 z-10">
                   <TableRow>
                     <TableHead className="w-[50px]">#</TableHead>
-                    <TableHead>Student</TableHead>
+                    <TableHead>Participant</TableHead>
                     <TableHead>Group</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -258,20 +312,21 @@ export function ProgrammeDialog({
                         {index + 1}
                       </TableCell>
                       <TableCell className="font-medium">
-                        {assignment.student?.name}
+                        {assignment.participant?.name}
                       </TableCell>
                       <TableCell>
-                        {assignment.student?.group ? (
+                        {assignment.participant?.group ? (
                           <div className="flex items-center gap-2">
                             <span
                               className="h-2 w-2 rounded-full"
                               style={{
                                 backgroundColor:
-                                  assignment.student.group.color || "#2563eb",
+                                  assignment.participant.group.color ||
+                                  "#2563eb",
                               }}
                             />
                             <span className="font-medium">
-                              {assignment.student.group.name}
+                              {assignment.participant.group.name}
                             </span>
                           </div>
                         ) : (
@@ -300,177 +355,204 @@ export function ProgrammeDialog({
         </div>
       </div>
     );
+
+    return (
+      <div className="flex flex-col flex-1 min-h-0 space-y-4 py-1">
+        <div className="flex-1 flex flex-col min-h-0">
+          {canUseAuditDrawer ? (
+            <Tabs defaultValue="details" className="flex flex-col flex-1 min-h-0">
+              <TabsList className="w-full">
+                <TabsTrigger value="details" className="flex-1">
+                  Details
+                </TabsTrigger>
+                <TabsTrigger value="activity" className="flex-1">
+                  Activity
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="details" className="flex-1 min-h-0 flex flex-col data-[state=inactive]:hidden mt-3">
+                {detailsBody}
+              </TabsContent>
+              <TabsContent value="activity" className="flex-1 min-h-0 flex flex-col data-[state=inactive]:hidden mt-3">
+                <div className="rounded-lg border overflow-hidden flex-1 flex flex-col">
+                  <ProgrammeActivityTimeline
+                    entries={activityDetail?.auditTimeline ?? []}
+                    isLoading={isLoadingActivity}
+                    className="p-3 flex-1"
+                    scrollClassName="flex-1"
+                  />
+                </div>
+              </TabsContent>
+            </Tabs>
+          ) : (
+            detailsBody
+          )}
+        </div>
+
+        <DrawerFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setOpen(false)}
+          >
+            Close
+          </Button>
+        </DrawerFooter>
+      </div>
+    );
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Drawer open={open} onOpenChange={setOpen}>
       {!isControlled && (
-        <DialogTrigger asChild>
+        <DrawerTrigger asChild>
           {trigger ?? (
             <Button>
               <Plus className="mr-2 h-4 w-4" />
               Create Programme
             </Button>
           )}
-        </DialogTrigger>
+        </DrawerTrigger>
       )}
-      <DialogContent
-        className={
-          readOnly
-            ? "w-[calc(100%-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6"
-            : "w-[calc(100%-2rem)] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6"
-        }
-      >
-        <DialogHeader>
-          <DialogTitle>
+      <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle>
             {readOnly
               ? form.getValues("name")
               : isEditing
                 ? "Edit Programme"
                 : "Create Programme"}
-          </DialogTitle>
-          <DialogDescription>
+          </DrawerTitle>
+          <DrawerDescription>
             {readOnly
               ? "View programme details and assignments."
               : "Configure programme rules."}
-          </DialogDescription>
-        </DialogHeader>
+          </DrawerDescription>
+        </DrawerHeader>
 
         {readOnly ? (
           renderDetails()
         ) : (
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="categoryId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={isLoadingAction}
-                    >
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="flex flex-col flex-1 min-h-0"
+            >
+              <div className="flex-1 overflow-y-auto px-1 min-h-0 space-y-3 sm:space-y-4 py-1 pb-5">
+                <FormField
+                  control={form.control}
+                  name="categoryId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={isLoadingAction}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {categories.map((cat: any) => (
+                            <SelectItem key={cat.id} value={cat.id}>
+                              {cat.name} ({cat.type})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Programme Name</FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
+                        <Input
+                          placeholder="e.g. Recitation"
+                          disabled={isLoadingAction}
+                          {...field}
+                          value={field.value ?? ""}
+                        />
                       </FormControl>
-                      <SelectContent>
-                        {categories.map((cat: any) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name} ({cat.type})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Programme Name</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="e.g. Recitation"
-                        disabled={isLoadingAction}
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="type"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Type</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={isLoadingAction}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="INDIVIDUAL">Individual</SelectItem>
-                          <SelectItem value="GROUP">Group</SelectItem>
-                        </SelectContent>
-                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="stageType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Stage Type</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={isLoadingAction}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="STAGE">Stage</SelectItem>
-                          <SelectItem value="NON_STAGE">Non-Stage</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {form.watch("type") === "INDIVIDUAL" ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <FormField
                     control={form.control}
-                    name="maxParticipantsPerGroup"
+                    name="type"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Max Entries (per Group)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            disabled={isLoadingAction}
-                            {...field}
-                            value={field.value ?? 0}
-                          />
-                        </FormControl>
+                        <FormLabel>Type</FormLabel>
+                        <Select
+                          onValueChange={(
+                            value: ProgrammeFormValues["type"],
+                          ) => {
+                            field.onChange(value);
+                            syncHiddenLimitFields(value);
+                          }}
+                          value={field.value}
+                          disabled={isLoadingAction}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="INDIVIDUAL">
+                              Individual
+                            </SelectItem>
+                            <SelectItem value="GROUP">Group</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                ) : (
-                  <>
+
+                  <FormField
+                    control={form.control}
+                    name="stageType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Stage Type</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          disabled={isLoadingAction}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select stage type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="STAGE">On Stage</SelectItem>
+                            <SelectItem value="OFF_STAGE">Off Stage</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {programmeType === "INDIVIDUAL" ? (
                     <FormField
                       control={form.control}
-                      name="maxTeamsPerGroup"
+                      name="maxParticipantsPerGroup"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Max Teams (per Group)</FormLabel>
+                        <FormItem className="sm:col-span-2">
+                          <FormLabel>Max Participants Per Group</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -483,29 +565,51 @@ export function ProgrammeDialog({
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="maxStudentsPerTeam"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Max Students (per Team)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              disabled={isLoadingAction}
-                              {...field}
-                              value={field.value ?? 0}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </>
-                )}
+                  ) : (
+                    <>
+                      <FormField
+                        control={form.control}
+                        name="maxTeamsPerGroup"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Max Teams Per Group</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                disabled={isLoadingAction}
+                                {...field}
+                                value={field.value ?? 0}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="maxParticipantsPerTeam"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Max Participants Per Team</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                disabled={isLoadingAction}
+                                {...field}
+                                value={field.value ?? 0}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </>
+                  )}
+                </div>
               </div>
 
-              <DialogFooter>
+              <DrawerFooter>
                 <Button
                   type="button"
                   variant="outline"
@@ -514,20 +618,17 @@ export function ProgrammeDialog({
                 >
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={!form.formState.isValid || isLoadingAction}
-                >
+                <Button type="submit" disabled={!isValid || isLoadingAction}>
                   {isLoadingAction && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
                   {isEditing ? "Save Changes" : "Create"}
                 </Button>
-              </DialogFooter>
+              </DrawerFooter>
             </form>
           </Form>
         )}
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }

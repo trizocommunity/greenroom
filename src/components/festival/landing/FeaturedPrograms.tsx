@@ -33,16 +33,17 @@ export function FeaturedPrograms({
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="flex justify-between items-end mb-12">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight mb-2">
-              Featured Programs
+            <p className="text-eyebrow mb-3">Highlights</p>
+            <h2 className="text-3xl font-semibold tracking-tight text-heading mb-2">
+              Featured programs
             </h2>
             <p className="text-muted-foreground">
               Flagship events curated for this festival.
             </p>
           </div>
           <Link href={`/${slug}/sessions`} className="hidden md:block">
-            <Button variant="ghost" className="group">
-              View All Programs{" "}
+            <Button variant="ghost" className="group rounded-full font-medium">
+              View all programs{" "}
               <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Button>
           </Link>
@@ -56,7 +57,7 @@ export function FeaturedPrograms({
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
               viewport={{ once: true }}
-              className="p-6 rounded-3xl border border-white/10 hover:border-primary/50 hover:shadow-[0_10px_30px_rgba(124,58,237,0.1)] transition-all bg-card/40 backdrop-blur-sm group"
+              className="p-6 rounded-2xl border border-border hover:border-primary/30 hover:shadow-premium transition-all bg-card group"
             >
               <div className="flex justify-between items-start mb-4">
                 {programme.category && (
@@ -68,7 +69,7 @@ export function FeaturedPrograms({
                   <Badge
                     className={
                       programme.stageType === "STAGE"
-                        ? "bg-blue-500 hover:bg-blue-600"
+                        ? "bg-info hover:bg-info/90"
                         : "bg-muted"
                     }
                   >
@@ -89,8 +90,11 @@ export function FeaturedPrograms({
 
         <div className="mt-8 md:hidden">
           <Link href={`/${slug}/sessions`}>
-            <Button variant="outline" className="w-full">
-              View All Programs
+            <Button
+              variant="outline"
+              className="w-full rounded-full font-medium border-border"
+            >
+              View all programs
             </Button>
           </Link>
         </div>

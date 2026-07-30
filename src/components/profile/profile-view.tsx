@@ -6,6 +6,7 @@ import { ProfileSidebarContent } from "./ProfileSidebarContent";
 import { BillingTab } from "./tabs/BillingTab";
 import { FestivalsTab } from "./tabs/FestivalsTab";
 import { OverviewTab } from "./tabs/OverviewTab";
+import { SettingsTab } from "./tabs/SettingsTab";
 
 interface UserWithProfile extends UserProfile {
   id: string;
@@ -24,8 +25,8 @@ export function ProfileView({ user }: ProfileViewProps) {
 
   return (
     <div className="flex flex-col md:flex-row gap-6 md:gap-8">
-      {/* Sidebar */}
-      <aside className="w-full md:w-64 shrink-0">
+      {/* Sidebar - hidden on mobile, accessible via top navigation menu sidebar */}
+      <aside className="hidden md:block w-64 shrink-0">
         <ProfileSidebarContent user={user} />
       </aside>
 
@@ -36,6 +37,7 @@ export function ProfileView({ user }: ProfileViewProps) {
         )}
         {activeTab === "billing" && <BillingTab />}
         {activeTab === "festivals" && <FestivalsTab userId={user.id} />}
+        {activeTab === "settings" && <SettingsTab userId={user.id} />}
       </main>
     </div>
   );

@@ -17,6 +17,8 @@ export interface QuickAddScanFormProps {
   onOpenCameraFallback: () => void;
   showCameraFallback: boolean;
   fieldStatus: QuickAddFieldStatus;
+  /** Hide the "Camera" button — used when the camera lives elsewhere (hero). */
+  hideCamera?: boolean;
 }
 
 export function QuickAddScanForm({
@@ -29,6 +31,7 @@ export function QuickAddScanForm({
   onOpenCameraFallback,
   showCameraFallback,
   fieldStatus,
+  hideCamera = false,
 }: QuickAddScanFormProps) {
   const busy = fieldStatus === "processing" || fieldStatus === "scanning";
 
@@ -51,7 +54,7 @@ export function QuickAddScanForm({
           type="submit"
           size="sm"
           disabled={busy || !manualInput.trim()}
-          className="h-8 shrink-0 px-3 bg-violet-600 hover:bg-violet-500"
+          className="h-8 shrink-0 px-3 bg-purple hover:bg-purple/90"
         >
           Add
         </Button>
@@ -77,7 +80,7 @@ export function QuickAddScanForm({
           />
         </label>
 
-        {fieldStatus !== "scanning" ? (
+        {hideCamera ? null : fieldStatus !== "scanning" ? (
           <>
             <Button
               type="button"
@@ -104,7 +107,9 @@ export function QuickAddScanForm({
             ) : null}
           </>
         ) : (
-          <span className="text-[11px] text-muted-foreground">Preview below</span>
+          <span className="text-[11px] text-muted-foreground">
+            Preview below
+          </span>
         )}
       </div>
     </div>

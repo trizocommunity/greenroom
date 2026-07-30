@@ -13,9 +13,7 @@ export const protectedRoutes = ["/profile", "/super-admin"];
 
 export const publicRoutes = [
   "/login",
-  "/register",
-  "/forget-password",
-  "/reset-password",
+  "/invite",
   "/",
   "/about",
   "/features",
@@ -24,17 +22,12 @@ export const publicRoutes = [
   "/pricing",
 ];
 
-export const authRoutes = [
-  "/login",
-  "/register",
-  "/forget-password",
-  "/reset-password",
-];
+export const authRoutes = ["/login"];
 
 export const festivalRoutes = [
   "/about",
   "/news",
-  "/gallery",
+  "/media",
   "/sessions",
   "/results",
 ];

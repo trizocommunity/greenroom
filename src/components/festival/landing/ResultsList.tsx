@@ -2,8 +2,9 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronRight, Crown, Medal, Search, Trophy } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { PublicResultPosterSection } from "@/components/festival/posters/PublicResultPosterSection";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,9 +43,11 @@ export interface TeamStanding {
 interface ResultsListProps {
   festivalId?: string;
   festivalName: string;
+  festivalSlug?: string;
   accentColor: string; // We'll essentially use this as the primary active color
   results: Result[];
   teamStandings?: TeamStanding[];
+  publicDisplayMode?: "programme_results" | "team_standings";
   scoringSystem?: "POSITION_BASED" | "SCORE_BASED";
 }
 
@@ -54,14 +57,31 @@ export function ResultsList({
   accentColor,
   results,
   teamStandings: initialTeamStandings,
+  publicDisplayMode = "programme_results",
+  festivalSlug,
 }: ResultsListProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"program" | "team">("program");
+  const searchParams = useSearchParams();
+  const standingsOnly = publicDisplayMode === "team_standings";
+  const [activeTab, setActiveTab] = useState<"program" | "team">(
+    standingsOnly ? "team" : "program",
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [programTypeFilter, setProgramTypeFilter] = useState<
     "ALL" | "INDIVIDUAL" | "GROUP"
   >("ALL");
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
+  const [selectedTemplateCode, setSelectedTemplateCode] = useState<
+    string | null
+  >(null);
+
+  const openProgramDialog = useCallback(
+    (programmeId: string, templateCode?: string | null) => {
+      setSelectedProgram(programmeId);
+      setSelectedTemplateCode(templateCode ?? null);
+    },
+    [],
+  );
 
   // Polling refresh every 15 seconds for updates
   useEffect(() => {
@@ -71,6 +91,15 @@ export function ResultsList({
     }, 15000);
     return () => window.clearInterval(id);
   }, [festivalId, router]);
+
+  // Honour ?programmeId&template deep links from shared posters
+  useEffect(() => {
+    if (standingsOnly) return;
+    const programmeId = searchParams.get("programmeId");
+    if (!programmeId) return;
+    const template = searchParams.get("template");
+    openProgramDialog(programmeId, template);
+  }, [searchParams, openProgramDialog, standingsOnly]);
 
   // --- Data Processing ---
 
@@ -133,6 +162,10 @@ export function ResultsList({
       }));
     }
 
+    if (standingsOnly) {
+      return [];
+    }
+
     const standings: Record<string, { name: string; points: number }> = {};
 
     results.forEach((r) => {
@@ -149,7 +182,11 @@ export function ResultsList({
     return Object.values(standings)
       .sort((a, b) => b.points - a.points)
       .map((team, index) => ({ ...team, rank: index + 1 }));
-  }, [results, initialTeamStandings]);
+  }, [results, initialTeamStandings, standingsOnly]);
+
+  useEffect(() => {
+    if (standingsOnly) setActiveTab("team");
+  }, [standingsOnly]);
 
   // --- UI Helpers ---
 
@@ -165,21 +202,22 @@ export function ResultsList({
       <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-6 py-8 sm:py-12 lg:py-24">
         {/* Header Section */}
         <div className="space-y-4">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
-            {activeTab === "program" ? `Program Results` : `Team Status`}
+          <p className="text-eyebrow">Live results</p>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight text-heading">
+            {activeTab === "program" ? `Program results` : `Team status`}
           </h1>
-          <p className="text-muted-foreground font-medium">
+          <p className="text-muted-foreground">
             {activeTab === "program" ? (
               <>
                 Published results for{" "}
-                <span className="font-bold text-foreground">
+                <span className="font-medium text-foreground">
                   {festivalName}
                 </span>
               </>
             ) : (
               <>
                 Team points status for{" "}
-                <span className="font-bold text-foreground">
+                <span className="font-medium text-foreground">
                   {festivalName}
                 </span>
               </>
@@ -188,29 +226,31 @@ export function ResultsList({
 
           {/* Tabs - Creating custom segmented control look */}
           <div className="flex gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab("program")}
-              className={cn(
-                "px-6 py-2 rounded-lg font-bold text-sm transition-all duration-200 shadow-sm",
-                activeTab === "program"
-                  ? "text-white shadow-md scale-105"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80",
-              )}
-              style={{
-                backgroundColor:
-                  activeTab === "program" ? accentColor : undefined,
-              }}
-            >
-              Program
-            </button>
+            {!standingsOnly && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("program")}
+                className={cn(
+                  "px-5 py-2 rounded-full font-medium text-sm transition-all duration-200",
+                  activeTab === "program"
+                    ? "text-white shadow-premium"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80",
+                )}
+                style={{
+                  backgroundColor:
+                    activeTab === "program" ? accentColor : undefined,
+                }}
+              >
+                Program
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setActiveTab("team")}
               className={cn(
-                "px-6 py-2 rounded-lg font-bold text-sm transition-all duration-200 shadow-sm",
+                "px-5 py-2 rounded-full font-medium text-sm transition-all duration-200",
                 activeTab === "team"
-                  ? "text-white shadow-md scale-105"
+                  ? "text-white shadow-premium"
                   : "bg-muted text-muted-foreground hover:bg-muted/80",
               )}
               style={{
@@ -236,8 +276,8 @@ export function ResultsList({
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search by program or category.."
-                    className="pl-10 h-11 bg-card shadow-sm border-muted transition-all focus:ring-2"
+                    placeholder="Search by program or category..."
+                    className="pl-10 h-11 rounded-lg bg-card border-border transition-all focus:ring-2"
                     style={{ "--ring": accentColor } as React.CSSProperties}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -245,16 +285,16 @@ export function ResultsList({
                 </div>
 
                 {/* Programme Type Filter */}
-                <div className="flex bg-muted p-1 rounded-lg shrink-0">
+                <div className="flex bg-muted p-1 rounded-full shrink-0">
                   {(["ALL", "INDIVIDUAL", "GROUP"] as const).map((type) => (
                     <button
                       type="button"
                       key={type}
                       onClick={() => setProgramTypeFilter(type)}
                       className={cn(
-                        "px-4 py-2 rounded-md text-xs font-bold transition-all",
+                        "px-4 py-2 rounded-full text-xs font-medium transition-all",
                         programTypeFilter === type
-                          ? "bg-background shadow-sm text-foreground"
+                          ? "bg-background shadow-premium text-foreground"
                           : "text-muted-foreground hover:text-foreground",
                       )}
                     >
@@ -277,45 +317,45 @@ export function ResultsList({
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: idx * 0.05 }}
-                      onClick={() => setSelectedProgram(program.id)}
-                      className="group relative bg-card hover:bg-accent/5 cursor-pointer border rounded-xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-all duration-300 border-l-4"
+                      onClick={() => openProgramDialog(program.id)}
+                      className="group relative bg-card hover:border-primary/30 cursor-pointer border border-border rounded-xl p-4 flex items-center gap-4 shadow-premium hover:shadow-premium-lg transition-all duration-300 border-l-4"
                       style={{
                         borderLeftColor:
                           idx % 2 === 0 ? accentColor : undefined,
                       }} // Optional: alternate border colors or keep distinct
                     >
                       {/* Number Circle */}
-                      <div className="w-10 h-10 rounded-full bg-foreground text-background font-bold text-lg flex items-center justify-center shrink-0 shadow-md group-hover:scale-110 transition-transform">
+                      <div className="w-9 h-9 rounded-full bg-muted text-foreground font-semibold text-sm flex items-center justify-center shrink-0 group-hover:bg-primary/8 group-hover:text-primary transition-colors">
                         {idx + 1}
                       </div>
 
                       {/* Text Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-bold text-base truncate uppercase tracking-tight text-foreground/90 group-hover:text-foreground">
+                          <h3 className="font-semibold text-base truncate tracking-tight text-heading">
                             {program.name}
                           </h3>
                           <Badge
                             variant={
                               program.type === "GROUP" ? "secondary" : "outline"
                             }
-                            className="text-[10px] uppercase"
+                            className="text-[10px] font-normal"
                           >
                             {program.type === "GROUP" ? "Team" : "Individual"}
                           </Badge>
                         </div>
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        <p className="text-xs text-muted-foreground">
                           {program.category}
                         </p>
                       </div>
 
                       {/* Chevron for affordance */}
-                      <ChevronRight className="w-5 h-5 text-muted-foreground/30 group-hover:text-foreground/50 transition-colors" />
+                      <ChevronRight className="w-5 h-5 text-muted-foreground/40 group-hover:text-foreground/60 transition-colors" />
                     </motion.div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-20 text-muted-foreground bg-muted/20 rounded-xl border border-dashed border-muted-foreground/20">
+                <div className="text-center py-20 text-muted-foreground bg-muted/20 rounded-xl border border-dashed border-border">
                   <p>No programs found matching "{searchQuery}"</p>
                 </div>
               )}
@@ -333,66 +373,66 @@ export function ResultsList({
               {teamStandings.length > 0 && (
                 <div className="text-center space-y-8">
                   <div className="flex flex-col items-center justify-center gap-2">
-                    <h2 className="text-2xl font-bold flex items-center gap-2">
+                    <h2 className="text-2xl font-semibold tracking-tight text-heading flex items-center gap-2">
                       <Crown className="w-6 h-6 text-yellow-500 fill-current" />
-                      Final Status
+                      Final status
                     </h2>
                     <p className="text-sm text-muted-foreground">
-                      Live Team Point Status
+                      Live team point status
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto items-end">
                     {/* 2nd Place (Silver) */}
                     {teamStandings[1] && (
-                      <div className="order-2 md:order-1 bg-gradient-to-b from-gray-100 to-gray-200 dark:from-slate-800 dark:to-slate-900 border-t-4 border-gray-400 rounded-2xl p-6 shadow-lg transform hover:-translate-y-2 transition-transform duration-300">
+                      <div className="order-2 md:order-1 bg-card border-t-4 border-border rounded-2xl p-6 shadow-premium transform hover:-translate-y-1 transition-transform duration-300">
                         <div className="flex justify-center mb-4">
-                          <Medal className="w-10 h-10 text-gray-500" />
+                          <Medal className="w-9 h-9 text-gray-400" />
                         </div>
-                        <h3 className="font-bold text-lg mb-2 truncate">
+                        <h3 className="font-semibold text-lg mb-2 truncate text-heading">
                           {teamStandings[1].name}
                         </h3>
-                        <div className="text-4xl font-black text-gray-600 dark:text-gray-300 mb-2">
+                        <div className="text-3xl font-semibold tracking-tight text-foreground mb-2">
                           {teamStandings[1].points}
                         </div>
-                        <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                          #2 Position - First Runners-up
+                        <div className="text-xs text-muted-foreground">
+                          #2 position — first runners-up
                         </div>
                       </div>
                     )}
 
                     {/* 1st Place (Gold) */}
                     {teamStandings[0] && (
-                      <div className="order-1 md:order-2 bg-gradient-to-b from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-900/10 border-t-4 border-yellow-500 rounded-2xl p-8 shadow-xl transform scale-105 hover:-translate-y-2 transition-transform duration-300 z-10">
+                      <div className="order-1 md:order-2 bg-card border-t-4 border-yellow-500 rounded-2xl p-8 shadow-premium-lg transform md:scale-105 hover:-translate-y-1 transition-transform duration-300 z-10">
                         <div className="flex justify-center mb-4">
-                          <Crown className="w-12 h-12 text-yellow-600 fill-yellow-400" />
+                          <Crown className="w-11 h-11 text-yellow-500 fill-yellow-400/60" />
                         </div>
-                        <h3 className="font-bold text-xl mb-2 truncate">
+                        <h3 className="font-semibold text-xl mb-2 truncate text-heading">
                           {teamStandings[0].name}
                         </h3>
-                        <div className="text-5xl font-black text-red-600 dark:text-red-500 mb-2 drop-shadow-sm">
+                        <div className="text-4xl font-semibold tracking-tight text-primary mb-2">
                           {teamStandings[0].points}
                         </div>
-                        <div className="text-sm font-bold text-yellow-700 dark:text-yellow-500 uppercase tracking-wider bg-yellow-200 dark:bg-yellow-900/50 inline-block px-3 py-1 rounded-full">
-                          #1 Position - Champions
+                        <div className="text-xs font-medium text-yellow-700 bg-yellow-100 inline-block px-3 py-1 rounded-full">
+                          #1 position — champions
                         </div>
                       </div>
                     )}
 
                     {/* 3rd Place (Bronze) */}
                     {teamStandings[2] && (
-                      <div className="order-3 md:order-3 bg-gradient-to-b from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-900/10 border-t-4 border-orange-400 rounded-2xl p-6 shadow-lg transform hover:-translate-y-2 transition-transform duration-300">
+                      <div className="order-3 md:order-3 bg-card border-t-4 border-orange-400 rounded-2xl p-6 shadow-premium transform hover:-translate-y-1 transition-transform duration-300">
                         <div className="flex justify-center mb-4">
-                          <Medal className="w-10 h-10 text-orange-600" />
+                          <Medal className="w-9 h-9 text-orange-500" />
                         </div>
-                        <h3 className="font-bold text-lg mb-2 truncate">
+                        <h3 className="font-semibold text-lg mb-2 truncate text-heading">
                           {teamStandings[2].name}
                         </h3>
-                        <div className="text-4xl font-black text-orange-800 dark:text-orange-400 mb-2">
+                        <div className="text-3xl font-semibold tracking-tight text-foreground mb-2">
                           {teamStandings[2].points}
                         </div>
-                        <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                          #3 Position - Second Runners-up
+                        <div className="text-xs text-muted-foreground">
+                          #3 position — second runners-up
                         </div>
                       </div>
                     )}
@@ -403,23 +443,23 @@ export function ResultsList({
               {/* Other Teams */}
               {teamStandings.length > 3 && (
                 <div className="space-y-4">
-                  <h3 className="text-center text-lg font-bold text-muted-foreground">
-                    Other Teams
+                  <h3 className="text-center text-lg font-semibold tracking-tight text-heading">
+                    Other teams
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {teamStandings.slice(3).map((team) => (
                       <div
                         key={team.name}
-                        className="bg-card border rounded-xl p-4 flex flex-col items-center justify-center text-center shadow-sm hover:shadow-md transition-all hover:bg-muted/30"
+                        className="bg-card border border-border rounded-xl p-4 flex flex-col items-center justify-center text-center shadow-premium hover:shadow-premium-lg transition-all"
                       >
-                        <h4 className="font-bold text-sm truncate w-full mb-2">
+                        <h4 className="font-medium text-sm truncate w-full mb-2 text-heading">
                           {team.name}
                         </h4>
-                        <div className="text-3xl font-black text-red-600/80 mb-1">
+                        <div className="text-2xl font-semibold tracking-tight text-primary mb-1">
                           {team.points}
                         </div>
-                        <div className="text-[10px] font-bold text-muted-foreground uppercase">
-                          #{team.rank} Position
+                        <div className="text-[11px] text-muted-foreground">
+                          #{team.rank} position
                         </div>
                       </div>
                     ))}
@@ -438,7 +478,12 @@ export function ResultsList({
         {/* Program Details Modal */}
         <Dialog
           open={!!selectedProgram}
-          onOpenChange={(open) => !open && setSelectedProgram(null)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedProgram(null);
+              setSelectedTemplateCode(null);
+            }
+          }}
         >
           <DialogContent className="max-w-md md:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0">
             {(() => {
@@ -464,7 +509,7 @@ export function ResultsList({
                         {program.type === "GROUP" ? "Team" : "Individual"}
                       </Badge>
                     </div>
-                    <DialogTitle className="text-xl md:text-2xl font-bold uppercase">
+                    <DialogTitle className="text-xl md:text-2xl font-semibold tracking-tight text-heading">
                       {program.name}
                     </DialogTitle>
                     <DialogDescription>
@@ -474,6 +519,15 @@ export function ResultsList({
 
                   <ScrollArea className="flex-1 overflow-y-auto p-6 bg-card">
                     <div className="space-y-3">
+                      {festivalSlug && (
+                        <PublicResultPosterSection
+                          programmeId={program.id}
+                          festivalSlug={festivalSlug}
+                          initialTemplateCode={
+                            selectedTemplateCode ?? undefined
+                          }
+                        />
+                      )}
                       {program.results.map((result, _idx) => {
                         const isTop3 = result.position <= 3;
                         return (

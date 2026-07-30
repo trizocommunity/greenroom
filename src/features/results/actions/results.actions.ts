@@ -6,6 +6,7 @@ import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
+  festivalMember as festivalMemberTable,
   festival as festivalTable,
   programme as programmeTable,
   programmeReportingSession as reportingSessionTable,
@@ -17,11 +18,17 @@ import {
   handleActionError,
 } from "@/core/errors/errors";
 import type { ActionResponse } from "@/core/types/actions";
+import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import {
   setProgrammePublished,
   updateProgrammeStatus,
 } from "@/features/programmes/services/programme-status.service";
 import { ResultModel } from "@/features/results/repositories/result.repository";
+import {
+  assertProgrammeReadyToPublish,
+  type BasicScoreRow,
+  saveBasicProgrammeScores,
+} from "@/features/results/services/basic-scoring.service";
 
 export interface SaveResultInput {
   festivalId: string;
@@ -34,9 +41,34 @@ export interface SaveResultInput {
   isPublished?: boolean;
 }
 
+async function assertCanBulkPublishResults(
+  session: NonNullable<Awaited<ReturnType<typeof getSession>>>,
+  festivalId: string,
+) {
+  if (session.role === "SUPER_ADMIN") return;
+
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.id, festivalId),
+    columns: { ownerId: true },
+  });
+  if (festival?.ownerId === session.userId) return;
+
+  const member = await db.query.festivalMember.findFirst({
+    where: and(
+      eq(festivalMemberTable.festivalId, festivalId),
+      eq(festivalMemberTable.userId, session.userId),
+    ),
+    columns: { role: true, isActive: true },
+  });
+
+  if (!member?.isActive || member.role === "ANNOUNCER") {
+    throw new AppError(ERROR_MESSAGES.FORBIDDEN);
+  }
+}
+
 function revalidateResultsPaths(slug: string) {
   revalidatePath(`/dashboard/${slug}/event-works/marks`);
-  revalidatePath(`/dashboard/${slug}/event-works/judgment`);
+  revalidatePath(`/dashboard/${slug}/event-works/judgement`);
   revalidatePath(`/dashboard/${slug}/event-works/results`);
   revalidatePath(`/dashboard/${slug}/event-works/leaderboard`);
   revalidatePath(`/${slug}/results`);
@@ -80,6 +112,12 @@ export async function saveResult(
     if (festival) {
       revalidateResultsPaths(festival.slug);
     }
+    await createAuditLog({
+      action: "SAVE_RESULT",
+      targetType: "RESULT",
+      targetId: data.assignmentId,
+      metadata: { programmeId: data.programmeId, festivalId: data.festivalId },
+    }).catch((err) => console.error("[AuditLog] SAVE_RESULT failed", err));
     return { success: true, data: result };
   } catch (error) {
     return handleActionError(error);
@@ -117,7 +155,9 @@ export async function deleteResult(
 }
 
 /**
- * Bulk publish/unpublish results for a programme
+ * Bulk publish/unpublish results for a programme.
+ * Result posters are now sourced from the festival's published templates —
+ * no per-programme template selection is required.
  */
 export async function bulkPublishProgrammeResults(
   programmeId: string,
@@ -134,12 +174,29 @@ export async function bulkPublishProgrammeResults(
     await assertFestivalAccess(session, programme.festivalId, {
       requireWritable: true,
     });
+    if (!session) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+    await assertCanBulkPublishResults(session, programme.festivalId);
+
+    if (isPublished) {
+      await assertProgrammeReadyToPublish(programmeId);
+    }
 
     await ResultModel.bulkPublishByProgramme(programmeId, isPublished);
     await setProgrammePublished(programmeId, isPublished);
-    const reportingSessionId = await latestClosedReportingSessionId(programmeId);
+    const reportingSessionId =
+      await latestClosedReportingSessionId(programmeId);
     await updateProgrammeStatus(programmeId, reportingSessionId);
     revalidateResultsPaths(festivalSlug);
+    if (isPublished) {
+      await createAuditLog({
+        action: "PUBLISH_RESULTS",
+        targetType: "RESULT",
+        targetId: programmeId,
+        metadata: { programmeId },
+      }).catch((err) =>
+        console.error("[AuditLog] PUBLISH_RESULTS failed", err),
+      );
+    }
     return { success: true, data: undefined };
   } catch (error) {
     return handleActionError(error);
@@ -149,6 +206,31 @@ export async function bulkPublishProgrammeResults(
 /**
  * Publish the current calculated team standings to the festival record
  */
+export async function saveBasicProgrammeScoresAction(input: {
+  festivalId: string;
+  programmeId: string;
+  rows: BasicScoreRow[];
+}): Promise<ActionResponse<{ savedCount: number }>> {
+  try {
+    const session = await getSession();
+    await assertFestivalAccess(session, input.festivalId, {
+      requireWritable: true,
+    });
+
+    const data = await saveBasicProgrammeScores(input);
+    const festival = await db.query.festival.findFirst({
+      where: eq(festivalTable.id, input.festivalId),
+      columns: { slug: true },
+    });
+    if (festival) {
+      revalidateResultsPaths(festival.slug);
+    }
+    return { success: true, data };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
+
 export async function publishTeamStandings(
   festivalId: string,
   standings: Record<string, unknown>[],
@@ -157,6 +239,8 @@ export async function publishTeamStandings(
   try {
     const session = await getSession();
     await assertFestivalAccess(session, festivalId, { requireWritable: true });
+    if (!session) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+    await assertCanBulkPublishResults(session, festivalId);
 
     const { updateTeamStandings } = await import(
       "@/features/festivals/repositories/festival.repository"
@@ -166,6 +250,12 @@ export async function publishTeamStandings(
 
     revalidatePath(`/${festivalSlug}`);
     revalidatePath(`/${festivalSlug}/results`);
+    await createAuditLog({
+      action: "PUBLISH_RESULTS",
+      targetType: "RESULT",
+      targetId: festivalId,
+      metadata: { festivalId, teamCount: standings.length },
+    }).catch((err) => console.error("[AuditLog] PUBLISH_RESULTS failed", err));
     return { success: true, data: undefined };
   } catch (error) {
     return handleActionError(error);

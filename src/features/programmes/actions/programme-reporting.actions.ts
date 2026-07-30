@@ -6,19 +6,47 @@ import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
   programmeNotification as notificationTable,
-  programme as programmeTable,
+  participant as participantTable,
   programmeReportingSession as prsTable,
   programmeReportedParticipant as reportedParticipantTable,
-  student as studentTable,
+  scheduleEntry as scheduleEntryTable,
 } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import {
+  assertParticipantNotificationAccess,
   assertReportingReopenAccess,
   assertStageManagerAccess,
-  assertStudentNotificationAccess,
+  assertStageManagerAccessForStage,
 } from "@/features/programmes/actions/reporting-access";
 import { revalidateProgrammeReporting } from "@/features/programmes/actions/reporting-revalidation";
 import { ProgrammeReportingService } from "@/features/programmes/services/programme-reporting.service";
+
+async function getProgrammeIdForReportingSession(reportingSessionId: string) {
+  const session = await db.query.programmeReportingSession.findFirst({
+    where: eq(prsTable.id, reportingSessionId),
+    columns: { programmeId: true },
+  });
+  return session?.programmeId;
+}
+
+async function getStageIdForScheduleEntry(scheduleEntryId: string) {
+  const entry = await db.query.scheduleEntry.findFirst({
+    where: eq(scheduleEntryTable.id, scheduleEntryId),
+    columns: { stageId: true },
+  });
+  return entry?.stageId ?? null;
+}
+
+export async function getStageIdForReportingSession(
+  reportingSessionId: string,
+) {
+  const session = await db.query.programmeReportingSession.findFirst({
+    where: eq(prsTable.id, reportingSessionId),
+    columns: { stageId: true },
+  });
+  return session?.stageId ?? null;
+}
 
 export async function getProgrammeReportingBoardAction(festivalId: string) {
   const actor = await getSession();
@@ -34,8 +62,15 @@ export async function startProgrammeReportingAction(
   festivalId: string,
   scheduleEntryId: string,
 ) {
-  const actorName = await assertStageManagerAccess(festivalId);
+  const stageId = await getStageIdForScheduleEntry(scheduleEntryId);
+  const actorName = await assertStageManagerAccessForStage(festivalId, stageId);
   const res = await ProgrammeReportingService.start(scheduleEntryId, actorName);
+  await createAuditLog({
+    action: "OPEN_REPORTING",
+    targetType: "REPORTING_SESSION",
+    targetId: res.id,
+    metadata: { festivalId, scheduleEntryId, programmeId: res.programmeId },
+  }).catch((err) => console.error("[AuditLog] OPEN_REPORTING failed", err));
   await revalidateProgrammeReporting(festivalId, "reporting");
   return { success: true, data: res };
 }
@@ -44,7 +79,8 @@ export async function resetProgrammeReportingAction(
   festivalId: string,
   reportingSessionId: string,
 ) {
-  const actorName = await assertStageManagerAccess(festivalId);
+  const stageId = await getStageIdForReportingSession(reportingSessionId);
+  const actorName = await assertStageManagerAccessForStage(festivalId, stageId);
   const res = await ProgrammeReportingService.reset(
     reportingSessionId,
     actorName,
@@ -59,13 +95,30 @@ export async function markProgrammeParticipantAction(
   assignmentId: string,
   isReported: boolean,
 ) {
-  const actorName = await assertStageManagerAccess(festivalId);
+  const stageId = await getStageIdForReportingSession(reportingSessionId);
+  const actorName = await assertStageManagerAccessForStage(festivalId, stageId);
   await ProgrammeReportingService.markParticipant(
     reportingSessionId,
     assignmentId,
     isReported,
     actorName,
   );
+  if (isReported) {
+    const assignment = await db.query.programmeAssignment.findFirst({
+      where: eq(assignmentTable.id, assignmentId),
+      columns: { programmeId: true },
+    });
+    await createAuditLog({
+      action: "MARK_REPORTED",
+      targetType: "PROGRAMME_ASSIGNMENT",
+      targetId: assignmentId,
+      metadata: {
+        festivalId,
+        reportingSessionId,
+        programmeId: assignment?.programmeId,
+      },
+    }).catch((err) => console.error("[AuditLog] MARK_REPORTED failed", err));
+  }
   await revalidateProgrammeReporting(festivalId, "reporting");
   return { success: true };
 }
@@ -76,13 +129,29 @@ export async function markProgrammeAssignmentsBulkAction(
   assignmentIds: string[],
   isReported: boolean,
 ) {
-  const actorName = await assertStageManagerAccess(festivalId);
+  const stageId = await getStageIdForReportingSession(reportingSessionId);
+  const actorName = await assertStageManagerAccessForStage(festivalId, stageId);
   await ProgrammeReportingService.markParticipantsBulk(
     reportingSessionId,
     assignmentIds,
     isReported,
     actorName,
   );
+  if (isReported) {
+    const programmeId =
+      await getProgrammeIdForReportingSession(reportingSessionId);
+    await createAuditLog({
+      action: "MARK_REPORTED",
+      targetType: "PROGRAMME_ASSIGNMENT",
+      targetId: reportingSessionId,
+      metadata: {
+        festivalId,
+        reportingSessionId,
+        programmeId,
+        count: assignmentIds.length,
+      },
+    }).catch((err) => console.error("[AuditLog] MARK_REPORTED failed", err));
+  }
   await revalidateProgrammeReporting(festivalId, "reporting");
   return { success: true };
 }
@@ -91,11 +160,21 @@ export async function closeProgrammeReportingAction(
   festivalId: string,
   reportingSessionId: string,
 ) {
-  const actorName = await assertStageManagerAccess(festivalId);
+  const stageId = await getStageIdForReportingSession(reportingSessionId);
+  const actorName = await assertStageManagerAccessForStage(festivalId, stageId);
   const res = await ProgrammeReportingService.close(
     reportingSessionId,
     actorName,
   );
+  await createAuditLog({
+    action: "CLOSE_REPORTING",
+    targetType: "REPORTING_SESSION",
+    targetId: reportingSessionId,
+    metadata: {
+      festivalId,
+      programmeId: await getProgrammeIdForReportingSession(reportingSessionId),
+    },
+  }).catch((err) => console.error("[AuditLog] CLOSE_REPORTING failed", err));
   await revalidateProgrammeReporting(festivalId, "reporting-close");
   return { success: true, data: res };
 }
@@ -127,23 +206,23 @@ export async function reopenProgrammeReportingByProgrammeAction(
   return { success: true, data: res };
 }
 
-export async function getStudentProgrammeNotificationsAction(
-  studentId: string,
+export async function getParticipantProgrammeNotificationsAction(
+  participantId: string,
 ) {
-  await assertStudentNotificationAccess(studentId);
+  await assertParticipantNotificationAccess(participantId);
 
   return db.query.programmeNotification.findMany({
-    where: eq(notificationTable.recipientStudentId, studentId),
+    where: eq(notificationTable.recipientParticipantId, participantId),
     orderBy: [desc(notificationTable.createdAt)],
     limit: 50,
   });
 }
 
-export async function markStudentProgrammeNotificationReadAction(
-  studentId: string,
+export async function markParticipantProgrammeNotificationReadAction(
+  participantId: string,
   notificationId: string,
 ) {
-  await assertStudentNotificationAccess(studentId);
+  await assertParticipantNotificationAccess(participantId);
   await db
     .update(notificationTable)
     .set({
@@ -152,16 +231,16 @@ export async function markStudentProgrammeNotificationReadAction(
     .where(
       and(
         eq(notificationTable.id, notificationId),
-        eq(notificationTable.recipientStudentId, studentId),
+        eq(notificationTable.recipientParticipantId, participantId),
       ),
     );
   return { success: true };
 }
 
-export async function markAllStudentProgrammeNotificationsReadAction(
-  studentId: string,
+export async function markAllParticipantProgrammeNotificationsReadAction(
+  participantId: string,
 ) {
-  await assertStudentNotificationAccess(studentId);
+  await assertParticipantNotificationAccess(participantId);
   await db
     .update(notificationTable)
     .set({
@@ -169,17 +248,19 @@ export async function markAllStudentProgrammeNotificationsReadAction(
     })
     .where(
       and(
-        eq(notificationTable.recipientStudentId, studentId),
+        eq(notificationTable.recipientParticipantId, participantId),
         eq(notificationTable.isRead, false),
       ),
     );
   return { success: true };
 }
 
-export async function getStudentOngoingProgrammesAction(studentId: string) {
-  await assertStudentNotificationAccess(studentId);
+export async function getParticipantOngoingProgrammesAction(
+  participantId: string,
+) {
+  await assertParticipantNotificationAccess(participantId);
   const assignments = await db.query.programmeAssignment.findMany({
-    where: eq(assignmentTable.studentId, studentId),
+    where: eq(assignmentTable.participantId, participantId),
     columns: { programmeId: true },
   });
   const programmeIds = Array.from(
@@ -196,12 +277,12 @@ export async function getStudentOngoingProgrammesAction(studentId: string) {
       programme: { columns: { id: true, name: true, status: true } },
       stage: { columns: { id: true, name: true } },
       programmeCodeLetters: {
-        where: sql`EXISTS (SELECT 1 FROM programme_code_letter_recipient WHERE code_letter_id = programme_code_letter.id AND student_id = ${studentId})`,
+        where: sql`EXISTS (SELECT 1 FROM programme_code_letter_recipient WHERE code_letter_id = programme_code_letter.id AND participant_id = ${participantId})`,
         orderBy: [desc(sql`issued_at`)],
         limit: 8,
         with: {
           programmeCodeLetterRecipients: {
-            where: eq(sql`student_id`, studentId),
+            where: eq(sql`participant_id`, participantId),
           },
         },
       },
@@ -212,13 +293,17 @@ export async function getStudentOngoingProgrammesAction(studentId: string) {
   return sessions;
 }
 
-export async function scanAndReportStudentAction(
+export async function scanAndReportParticipantAction(
   festivalId: string,
   reportingSessionId: string,
   chestNumber: string,
 ) {
   try {
-    const actorName = await assertStageManagerAccess(festivalId);
+    const stageId = await getStageIdForReportingSession(reportingSessionId);
+    const actorName = await assertStageManagerAccessForStage(
+      festivalId,
+      stageId,
+    );
     const normalizedChestNumber = chestNumber.trim().toUpperCase();
 
     if (!normalizedChestNumber) {
@@ -229,10 +314,10 @@ export async function scanAndReportStudentAction(
       };
     }
 
-    const student = await db.query.student.findFirst({
+    const participant = await db.query.participant.findFirst({
       where: and(
-        eq(studentTable.festivalId, festivalId),
-        sql`UPPER(${studentTable.chestNumber}) = ${normalizedChestNumber}`,
+        eq(participantTable.festivalId, festivalId),
+        sql`UPPER(${participantTable.chestNumber}) = ${normalizedChestNumber}`,
       ),
       with: {
         group: { columns: { id: true, name: true } },
@@ -240,11 +325,11 @@ export async function scanAndReportStudentAction(
       },
     });
 
-    if (!student) {
+    if (!participant) {
       return {
         success: false,
-        error: `No student found with chest number: ${normalizedChestNumber}`,
-        reason: "STUDENT_NOT_FOUND",
+        error: `No participant found with chest number: ${normalizedChestNumber}`,
+        reason: "PARTICIPANT_NOT_FOUND",
         chestNumber: normalizedChestNumber,
       };
     }
@@ -276,53 +361,21 @@ export async function scanAndReportStudentAction(
     const assignment = await db.query.programmeAssignment.findFirst({
       where: and(
         eq(assignmentTable.programmeId, session.programmeId),
-        eq(assignmentTable.studentId, student.id),
+        eq(assignmentTable.participantId, participant.id),
       ),
     });
 
     if (!assignment) {
       return {
         success: false,
-        error: `${student.name} is not assigned to "${session.programme?.name}"`,
+        error: `${participant.name} is not assigned to "${session.programme?.name}"`,
         reason: "NOT_ASSIGNED_TO_PROGRAMME",
-        student: {
-          id: student.id,
-          name: student.name,
-          chestNumber: student.chestNumber,
-          groupName: student.group?.name,
-          categoryName: student.category?.name,
-        },
-        programme: {
-          id: session.programmeId,
-          name: session.programme?.name,
-        },
-      };
-    }
-
-    const programme = await db.query.programme.findFirst({
-      where: eq(programmeTable.id, session.programmeId),
-      columns: { categoryId: true },
-      with: { category: { columns: { type: true } } },
-    });
-    if (!programme) {
-      return {
-        success: false,
-        error: "Programme not found",
-        reason: "PROGRAMME_NOT_FOUND",
-      };
-    }
-    const isGeneralProgramme = programme.category?.type === "GENERAL";
-    if (!isGeneralProgramme && student.categoryId !== programme.categoryId) {
-      return {
-        success: false,
-        error: `${student.name} category does not match programme category`,
-        reason: "CATEGORY_MISMATCH",
-        student: {
-          id: student.id,
-          name: student.name,
-          chestNumber: student.chestNumber,
-          groupName: student.group?.name,
-          categoryName: student.category?.name,
+        participant: {
+          id: participant.id,
+          name: participant.name,
+          chestNumber: participant.chestNumber,
+          groupName: participant.group?.name,
+          categoryName: participant.category?.name,
         },
         programme: {
           id: session.programmeId,
@@ -342,13 +395,13 @@ export async function scanAndReportStudentAction(
     if (existingReport) {
       return {
         success: false,
-        error: `${student.name} has already been reported`,
+        error: `${participant.name} has already been reported`,
         reason: "ALREADY_REPORTED",
-        student: {
-          id: student.id,
-          name: student.name,
-          chestNumber: student.chestNumber,
-          groupName: student.group?.name,
+        participant: {
+          id: participant.id,
+          name: participant.name,
+          chestNumber: participant.chestNumber,
+          groupName: participant.group?.name,
         },
         programme: {
           id: session.programmeId,
@@ -368,13 +421,13 @@ export async function scanAndReportStudentAction(
 
     return {
       success: true,
-      message: `${student.name} reported successfully`,
-      student: {
-        id: student.id,
-        name: student.name,
-        chestNumber: student.chestNumber,
-        groupName: student.group?.name,
-        categoryName: student.category?.name,
+      message: `${participant.name} reported successfully`,
+      participant: {
+        id: participant.id,
+        name: participant.name,
+        chestNumber: participant.chestNumber,
+        groupName: participant.group?.name,
+        categoryName: participant.category?.name,
       },
       programme: {
         id: session.programmeId,
@@ -400,7 +453,8 @@ export async function getReportingStatsAction(
   festivalId: string,
   reportingSessionId: string,
 ) {
-  await assertStageManagerAccess(festivalId);
+  const stageId = await getStageIdForReportingSession(reportingSessionId);
+  await assertStageManagerAccessForStage(festivalId, stageId);
   const stats =
     await ProgrammeReportingService.getReportingStats(reportingSessionId);
   return { success: true, data: stats };
@@ -412,17 +466,28 @@ export async function assignCodeLettersWithSpinAction(
   codeAssignments: Array<{
     teamNumber: number | null;
     groupId?: string | null;
-    studentId?: string | null;
+    participantId?: string | null;
     code: string;
   }>,
 ) {
-  const actorName = await assertStageManagerAccess(festivalId);
+  const stageId = await getStageIdForReportingSession(reportingSessionId);
+  const actorName = await assertStageManagerAccessForStage(festivalId, stageId);
 
   const result = await ProgrammeReportingService.assignCodesWithSpin(
     reportingSessionId,
     codeAssignments,
     actorName,
   );
+  await createAuditLog({
+    action: "ISSUE_CODE_LETTER",
+    targetType: "REPORTING_SESSION",
+    targetId: reportingSessionId,
+    metadata: {
+      festivalId,
+      count: codeAssignments.length,
+      programmeId: await getProgrammeIdForReportingSession(reportingSessionId),
+    },
+  }).catch((err) => console.error("[AuditLog] ISSUE_CODE_LETTER failed", err));
   await revalidateProgrammeReporting(festivalId, "reporting");
 
   return { success: true, data: result };
@@ -432,7 +497,8 @@ export async function resetSpinCodeLettersAction(
   festivalId: string,
   reportingSessionId: string,
 ) {
-  const actorName = await assertStageManagerAccess(festivalId);
+  const stageId = await getStageIdForReportingSession(reportingSessionId);
+  const actorName = await assertStageManagerAccessForStage(festivalId, stageId);
   const result = await ProgrammeReportingService.resetSpinCodeLetters(
     reportingSessionId,
     actorName,

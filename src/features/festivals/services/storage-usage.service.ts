@@ -25,7 +25,13 @@ async function resolveRemoteBytes(url: string): Promise<number | null> {
     });
     const fromHead = parseContentLength(head.headers.get("content-length"));
     if (fromHead) return fromHead;
-  } catch {}
+  } catch (error) {
+    console.warn(
+      "[StorageUsage] HEAD request failed, falling back",
+      url,
+      error,
+    );
+  }
 
   try {
     const range = await fetch(url, {
@@ -39,7 +45,9 @@ async function resolveRemoteBytes(url: string): Promise<number | null> {
     if (fromRange) return fromRange;
     const fromLength = parseContentLength(range.headers.get("content-length"));
     if (fromLength) return fromLength;
-  } catch {}
+  } catch (error) {
+    console.warn("[StorageUsage] Range request failed", url, error);
+  }
 
   return null;
 }

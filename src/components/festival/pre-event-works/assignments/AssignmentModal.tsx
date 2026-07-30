@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useBulkCreateAssignments } from "@/api/client/assignments";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,25 +32,28 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/core/utils/cn";
-import { useAssignments } from "@/features/assignments/hooks/use-assignments";
-import { useCategories } from "@/features/categories/hooks/use-categories";
-import { useGroups } from "@/features/groups/hooks/use-groups";
-import { useProgrammes } from "@/features/programmes/hooks/use-programmes";
-import { useStudents } from "@/features/students/hooks/use-students";
 
 interface AssignmentModalProps {
   festivalId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   isReadOnly?: boolean;
+  categories: { id: string; name: string; type?: string | null }[];
+  programmes: any[];
+  participants: any[];
+  assignments: any[];
+  /** Omit/empty to skip the Group step and scope everything via fixedGroupId instead. */
+  groups?: { id: string; name: string }[];
+  /** Pre-scopes the dialog to a single group (e.g. a team leader's own group) and hides the Group step. */
+  fixedGroupId?: string;
 }
 
 interface QueueItem {
   id: string; // temp id
   programmeId: string;
   programmeName: string;
-  studentId: string;
-  studentName: string;
+  participantId: string;
+  participantName: string;
   groupId?: string; // For reference
   groupName?: string;
   teamNumber: number;
@@ -64,24 +68,43 @@ export function AssignmentModal({
   open,
   onOpenChange,
   isReadOnly = false,
+  categories,
+  programmes,
+  participants,
+  assignments,
+  groups = [],
+  fixedGroupId,
 }: AssignmentModalProps) {
-  // Data Hooks
-  const { categories } = useCategories(festivalId);
-  const { groups } = useGroups(festivalId);
-  const { programmes } = useProgrammes(festivalId);
-  const { students } = useStudents(festivalId);
-  const { bulkCreateAssignment, assignments } = useAssignments(festivalId);
+  const bulkCreateAssignment = useBulkCreateAssignments();
+
+  // Whether to show the "Group" step at all — admin dialogs pick a group;
+  // team-leader dialogs are pre-scoped to their own group via fixedGroupId.
+  // Wizard order: Category (1) → Group (2) → Programme (3) → Participants (4).
+  // When the dialog is pre-scoped to a single group (fixedGroupId), the Group
+  // step is hidden and the remaining steps renumber down.
+  const hasGroupStep = !fixedGroupId && groups.length > 0;
+  const categoryStepNum = 1;
+  const groupStepNum = hasGroupStep ? 2 : 1;
+  const programmeStepNum = hasGroupStep ? 3 : 2;
+  const participantStepNum = hasGroupStep ? 4 : 3;
 
   // State
   const [view, setView] = useState<ModalView>("SELECTION");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
-  const [selectedGroupId, setSelectedGroupId] = useState<string>("");
-  const [selectedProgrammeId, setSelectedProgrammeId] = useState<string>("");
-  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(
-    new Set(),
+  const [selectedGroupId, setSelectedGroupId] = useState<string>(
+    fixedGroupId ?? "",
   );
+  const [selectedProgrammeId, setSelectedProgrammeId] = useState<string>("");
+  const [selectedParticipantIds, setSelectedParticipantIds] = useState<
+    Set<string>
+  >(new Set());
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const categoriesById = useMemo(
+    () => new Map(categories.map((c) => [c.id, c])),
+    [categories],
+  );
 
   // Derived Selection Objects
   const selectedProgramme = useMemo(
@@ -90,53 +113,53 @@ export function AssignmentModal({
   );
 
   const selectedCategory = useMemo(
-    () => categories.find((c: any) => c.id === selectedCategoryId),
-    [categories, selectedCategoryId],
+    () => categoriesById.get(selectedCategoryId),
+    [categoriesById, selectedCategoryId],
   );
 
+  const selectedCategoryType = selectedCategory?.type ?? null;
+
   const selectedGroup = useMemo(
-    () => groups.find((g: any) => g.id === selectedGroupId),
+    () => groups.find((g) => g.id === selectedGroupId),
     [groups, selectedGroupId],
   );
 
   // Filtered Lists
   const filteredProgrammes = useMemo(() => {
     if (!selectedCategoryId) return [];
+    if (hasGroupStep && !selectedGroupId) return [];
     return programmes.filter((p: any) => p.categoryId === selectedCategoryId);
-  }, [programmes, selectedCategoryId]);
+  }, [programmes, selectedCategoryId, selectedGroupId, hasGroupStep]);
 
-  const filteredStudents = useMemo(() => {
+  const filteredParticipants = useMemo(() => {
     if (!selectedGroupId) return [];
 
-    let eligibleStudents = students.filter(
-      (s: any) => s.groupId === selectedGroupId,
-    );
+    // When fixedGroupId is set, the caller already scoped `participants` to the
+    // right group (team-leader participants have no groupId field at all).
+    let eligibleParticipants = fixedGroupId
+      ? participants
+      : participants.filter((s: any) => s.groupId === selectedGroupId);
 
-    // If programme is selected, we need to sort/filter
-    // Prioritize showing UNASSIGNED students at the top.
-    // If assigned, we mark them differently.
-
-    // We also need to consider category filtering IF the programme is not GENERAL.
-    const isGeneralProgramme = selectedProgramme?.category?.type === "GENERAL";
-
-    // Filter by Category matching if NOT general and strict mode (User said: first Group, then Category - implying filter)
-    if (!isGeneralProgramme && selectedCategoryId) {
-      eligibleStudents = eligibleStudents.filter(
+    // GENERAL-type categories are open to participants from any category;
+    // SINGLE-type categories only accept participants from that exact category.
+    if (selectedCategoryId && selectedCategoryType !== "GENERAL") {
+      eligibleParticipants = eligibleParticipants.filter(
         (s: any) => s.categoryId === selectedCategoryId,
       );
     }
 
     // Now adding status information to sorting
-    return eligibleStudents
+    return eligibleParticipants
       .map((s: any) => {
         // Checking if already assigned to this programme (DB)
         const isAssignedDB = assignments.some(
           (a: any) =>
-            a.programmeId === selectedProgrammeId && a.studentId === s.id,
+            a.programmeId === selectedProgrammeId && a.participantId === s.id,
         );
         // Checking if in Queue
         const isInQueue = queue.some(
-          (q) => q.programmeId === selectedProgrammeId && q.studentId === s.id,
+          (q) =>
+            q.programmeId === selectedProgrammeId && q.participantId === s.id,
         );
 
         return { ...s, isAssigned: isAssignedDB || isInQueue };
@@ -146,13 +169,14 @@ export function AssignmentModal({
         return Number(a.isAssigned) - Number(b.isAssigned);
       });
   }, [
-    students,
+    participants,
     assignments,
     queue,
     selectedGroupId,
     selectedCategoryId,
+    selectedCategoryType,
     selectedProgrammeId,
-    selectedProgramme,
+    fixedGroupId,
   ]);
 
   // Limits Logic
@@ -173,8 +197,8 @@ export function AssignmentModal({
       return {
         type: "GROUP",
         maxTeams: selectedProgramme.maxTeamsPerGroup || 1,
-        maxPerTeam: selectedProgramme.maxStudentsPerTeam || 1,
-        label: `Max Teams: ${selectedProgramme.maxTeamsPerGroup || 1} | Size: ${selectedProgramme.maxStudentsPerTeam || 1}`,
+        maxPerTeam: selectedProgramme.maxParticipantsPerTeam || 1,
+        label: `Max Teams: ${selectedProgramme.maxTeamsPerGroup || 1} | Size: ${selectedProgramme.maxParticipantsPerTeam || 1}`,
       };
     }
   }, [selectedProgramme]);
@@ -193,7 +217,7 @@ export function AssignmentModal({
       (a: any) =>
         a.programmeId === selectedProgrammeId &&
         (a.groupId === selectedGroupId ||
-          a.student?.groupId === selectedGroupId),
+          a.participant?.groupId === selectedGroupId),
     );
 
     const queueAssignments = queue.filter(
@@ -201,7 +225,7 @@ export function AssignmentModal({
         q.programmeId === selectedProgrammeId && q.groupId === selectedGroupId,
     );
 
-    const currentSelectionCount = selectedStudentIds.size;
+    const currentSelectionCount = selectedParticipantIds.size;
     const totalCurrentCount =
       dbAssignments.length + queueAssignments.length + currentSelectionCount;
 
@@ -258,7 +282,7 @@ export function AssignmentModal({
       // Wait, for `canAssign` (rendering the list enabled/disabled), we just check if AT LEAST ONE slot exists
       // AFTER accounting for current selection.
 
-      // Let's conceptually "fill" spots with selected students
+      // Let's conceptually "fill" spots with selected participants
       let pending = currentSelectionCount;
 
       let targetTeamForNext = -1;
@@ -272,7 +296,7 @@ export function AssignmentModal({
         const remaining = Math.max(0, capacity - used);
 
         if (pending > 0) {
-          // Selected students take these spots
+          // Selected participants take these spots
           const take = Math.min(pending, remaining);
           used += take;
           pending -= take;
@@ -290,7 +314,7 @@ export function AssignmentModal({
       }
 
       if (pending > 0) {
-        // We couldn't even fit the SELECTED students
+        // We couldn't even fit the SELECTED participants
         return {
           canAssign: false,
           limitReached: true,
@@ -314,18 +338,26 @@ export function AssignmentModal({
     queue,
     selectedProgrammeId,
     selectedGroupId,
-    selectedStudentIds.size,
+    selectedParticipantIds.size,
     selectedProgramme,
   ]);
 
   // Handler for adding to queue - MUST USE AUTO-ASSIGN
   const handleAddToQueue = () => {
+    addParticipantsToQueue(selectedParticipantIds);
+  };
+
+  // Generic queue impl, used by both the manual "Add to Queue" button and the
+  // "Add all eligible" quick action. Takes an explicit set of participant IDs so
+  // the bulk path can supply it directly without waiting on a batched state
+  // update.
+  const addParticipantsToQueue = (ids: Set<string>) => {
     if (isReadOnly) return;
-    if (!selectedProgramme || selectedStudentIds.size === 0) return;
+    if (!selectedProgramme || ids.size === 0) return;
     if (
       !assignmentState.canAssign &&
       assignmentState.limitReached &&
-      selectedStudentIds.size === 0
+      ids.size === 0
     )
       return;
     // Note: if selection exists but limit reached, we MIGHT be able to commit if valid?
@@ -342,7 +374,7 @@ export function AssignmentModal({
       (a: any) =>
         a.programmeId === selectedProgrammeId &&
         (a.groupId === selectedGroupId ||
-          a.student?.groupId === selectedGroupId),
+          a.participant?.groupId === selectedGroupId),
     );
     const queueAssignments = queue.filter(
       (q) =>
@@ -362,14 +394,15 @@ export function AssignmentModal({
       });
     }
 
-    Array.from(selectedStudentIds).forEach((sId) => {
-      const student = students.find((s: any) => s.id === sId);
-      if (!student) return;
+    Array.from(ids).forEach((sId) => {
+      const participant = participants.find((s: any) => s.id === sId);
+      if (!participant) return;
 
       // Check if already in queue (sanity check)
       if (
         queue.some(
-          (q) => q.programmeId === selectedProgrammeId && q.studentId === sId,
+          (q) =>
+            q.programmeId === selectedProgrammeId && q.participantId === sId,
         )
       )
         return;
@@ -383,7 +416,7 @@ export function AssignmentModal({
           const used = teamUsage.get(i) || 0;
           if (used < (limitInfo.maxPerTeam || 0)) {
             assignedTeam = i;
-            teamUsage.set(i, used + 1); // Increment usage for next student in this batch
+            teamUsage.set(i, used + 1); // Increment usage for next participant in this batch
             found = true;
             break;
           }
@@ -391,7 +424,7 @@ export function AssignmentModal({
         if (!found) {
           // Should not happen if UI disabled correctly, but fail safe
           toast.error(
-            `Could not auto-assign team for ${student.name}. Limits reached.`,
+            `Could not auto-assign team for ${participant.name}. Limits reached.`,
           );
           return;
         }
@@ -401,8 +434,8 @@ export function AssignmentModal({
         id: Math.random().toString(36).substr(2, 9),
         programmeId: selectedProgrammeId,
         programmeName: selectedProgramme.name,
-        studentId: sId,
-        studentName: student.name,
+        participantId: sId,
+        participantName: participant.name ?? "",
         groupId: selectedGroupId,
         groupName: selectedGroup?.name,
         teamNumber: assignedTeam, // Auto-assigned
@@ -411,9 +444,64 @@ export function AssignmentModal({
       });
     });
 
+    if (newItems.length === 0) return;
     setQueue((prev) => [...prev, ...newItems]);
-    setSelectedStudentIds(new Set()); // Clear selection
+    if (ids === selectedParticipantIds) setSelectedParticipantIds(new Set()); // Clear selection only for the manual path
     toast.success(`Added ${newItems.length} to queue`);
+  };
+
+  // "Add all eligible" quick action — selects every eligible (unassigned,
+  // not-yet-queued) participant and queues them in one go, respecting the
+  // programme's per-group capacity. For programmes that are already full the
+  // button is disabled.
+  const eligibleUnassignedCount = useMemo(() => {
+    if (!selectedProgramme) return 0;
+    return filteredParticipants.filter((s: any) => !s.isAssigned).length;
+  }, [filteredParticipants, selectedProgramme]);
+
+  // Total slots the group still has on this programme (across all teams).
+  // Used both to surface "capacity full" and to clamp the "add all" batch.
+  const remainingProgrammeSlots = useMemo(() => {
+    if (!selectedProgramme || !selectedGroupId || !limitInfo) return 0;
+    const dbCount = assignments.filter(
+      (a: any) =>
+        a.programmeId === selectedProgrammeId &&
+        (a.groupId === selectedGroupId ||
+          a.participant?.groupId === selectedGroupId),
+    ).length;
+    const queueCount = queue.filter(
+      (q) =>
+        q.programmeId === selectedProgrammeId && q.groupId === selectedGroupId,
+    ).length;
+    const cap =
+      limitInfo.type === "INDIVIDUAL"
+        ? limitInfo.max
+        : limitInfo.maxTeams * limitInfo.maxPerTeam;
+    return Math.max(0, cap - dbCount - queueCount);
+  }, [
+    assignments,
+    queue,
+    selectedProgrammeId,
+    selectedGroupId,
+    selectedProgramme,
+    limitInfo,
+  ]);
+
+  const handleAddAllEligible = () => {
+    if (isReadOnly || !selectedProgramme) return;
+    if (remainingProgrammeSlots <= 0) {
+      toast.info("Programme capacity is full for this group");
+      return;
+    }
+    const eligibleIds = filteredParticipants
+      .filter((s: any) => !s.isAssigned)
+      .slice(0, remainingProgrammeSlots)
+      .map((s: any) => s.id);
+    if (eligibleIds.length === 0) {
+      toast.info("No eligible (unassigned) participants to add");
+      return;
+    }
+    addParticipantsToQueue(new Set(eligibleIds));
   };
 
   const isLimitReached = assignmentState.limitReached || false;
@@ -427,18 +515,21 @@ export function AssignmentModal({
     if (queue.length === 0) return;
     setIsSubmitting(true);
     try {
-      await bulkCreateAssignment(
-        queue.map((item) => ({
-          programmeId: item.programmeId,
-          studentId: item.studentId,
-          teamNumber: item.teamNumber,
-        })),
-      );
+      await bulkCreateAssignment.mutateAsync({
+        festivalId,
+        data: {
+          assignments: queue.map((item) => ({
+            programmeId: item.programmeId,
+            participantId: item.participantId,
+            teamNumber: item.teamNumber,
+          })),
+        },
+      });
       setQueue([]);
       onOpenChange(false);
       // Reset form
       setSelectedProgrammeId("");
-      setSelectedStudentIds(new Set());
+      setSelectedParticipantIds(new Set());
       setView("SELECTION");
     } catch (error) {
       console.error(error);
@@ -448,11 +539,11 @@ export function AssignmentModal({
     }
   };
 
-  const toggleStudent = (studentId: string) => {
+  const toggleParticipant = (participantId: string) => {
     if (isReadOnly) return;
-    const next = new Set(selectedStudentIds);
-    if (next.has(studentId)) {
-      next.delete(studentId);
+    const next = new Set(selectedParticipantIds);
+    if (next.has(participantId)) {
+      next.delete(participantId);
     } else {
       if (isLimitReached) {
         // Double check: if unchecked, we can always uncheck.
@@ -460,16 +551,9 @@ export function AssignmentModal({
         // But if we are here, and limit reached, we simply don't add.
         return;
       }
-      next.add(studentId);
+      next.add(participantId);
     }
-    setSelectedStudentIds(next);
-  };
-
-  // Reset helpers
-  const resetFilters = () => {
-    setSelectedCategoryId("");
-    setSelectedProgrammeId("");
-    setSelectedStudentIds(new Set());
+    setSelectedParticipantIds(next);
   };
 
   return (
@@ -481,7 +565,7 @@ export function AssignmentModal({
             <DialogTitle className="text-xl">New Assignment</DialogTitle>
             <DialogDescription>
               {view === "SELECTION"
-                ? "Select students and add to queue."
+                ? "Select participants and add to queue."
                 : "Review and confirm assignments."}
             </DialogDescription>
           </div>
@@ -520,44 +604,14 @@ export function AssignmentModal({
         {view === "SELECTION" && (
           <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
             {/* Left Context Pane (Sidebar on Desktop, Top Bar on Mobile) */}
-            <div className="w-full lg:w-[300px] border-b lg:border-b-0 lg:border-r flex flex-col bg-muted/10 shrink-0">
+            <div className="w-full lg:w-[300px] border-b lg:border-b-0 lg:border-r flex flex-col bg-muted/10 shrink-0 overflow-y-auto">
               <div className="p-6 space-y-6">
-                {/* Step 1: Group (First Priority as requested) */}
+                {/* Step: Category (selected first so programme list can be
+                    filtered by category before group is chosen) */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
-                      1
-                    </div>
-                    <span className="text-sm font-semibold">Group</span>
-                  </div>
-                  <Select
-                    value={selectedGroupId}
-                    onValueChange={(val) => {
-                      setSelectedGroupId(val);
-                      resetFilters(); // Reset everything when group changes naturally
-                    }}
-                    disabled={isReadOnly}
-                  >
-                    <SelectTrigger className="w-full bg-background">
-                      <SelectValue placeholder="Select Group" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {groups.map((g: any) => (
-                        <SelectItem key={g.id} value={g.id}>
-                          {g.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Separator />
-
-                {/* Step 2: Category (Rearranged) */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
-                      2
+                      {categoryStepNum}
                     </div>
                     <span className="text-sm font-semibold">Category</span>
                   </div>
@@ -566,22 +620,67 @@ export function AssignmentModal({
                     onValueChange={(val) => {
                       setSelectedCategoryId(val);
                       setSelectedProgrammeId("");
-                      setSelectedStudentIds(new Set());
+                      setSelectedParticipantIds(new Set());
                     }}
-                    disabled={isReadOnly || !selectedGroupId}
+                    disabled={isReadOnly}
                   >
                     <SelectTrigger className="w-full bg-background">
                       <SelectValue placeholder="Select Category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map((c: any) => (
+                      {categories.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {c.name}
+                          {c.type === "GENERAL" ? " (General)" : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {selectedCategoryType === "GENERAL" && (
+                    <p className="text-xs text-muted-foreground">
+                      General — open to participants from any category.
+                    </p>
+                  )}
                 </div>
+
+                {/* Step: Group (only shown when the dialog isn't pre-scoped to one group) */}
+                {hasGroupStep && (
+                  <>
+                    <Separator />
+
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
+                          {groupStepNum}
+                        </div>
+                        <span className="text-sm font-semibold">Group</span>
+                      </div>
+                      <Select
+                        value={selectedGroupId}
+                        onValueChange={(val) => {
+                          setSelectedGroupId(val);
+                          // Group comes after Category now — only reset
+                          // downstream selections, keep the category.
+                          setSelectedProgrammeId("");
+                          setSelectedParticipantIds(new Set());
+                        }}
+                        disabled={isReadOnly || !selectedCategoryId}
+                      >
+                        <SelectTrigger className="w-full bg-background">
+                          <SelectValue placeholder="Select Group" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {groups.map((g) => (
+                            <SelectItem key={g.id} value={g.id}>
+                              {g.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
+
                 <Separator />
 
                 {/* Queue Status Widget */}
@@ -608,20 +707,25 @@ export function AssignmentModal({
             </div>
 
             {/* Right Content Area */}
-            <div className="flex-1 flex flex-col lg:grid lg:grid-cols-2 overflow-hidden bg-background">
+            <div className="flex-1 flex flex-col lg:grid lg:grid-cols-2 overflow-hidden bg-background min-h-0">
               {/* Left Bar: Programmes */}
-              <div className="h-full border-b lg:border-r w-full flex flex-col">
-                <div className="px-6 h-14 border-b bg-muted/5 flex items-center gap-2">
+              <div className="h-full border-b lg:border-r w-full flex flex-col min-h-0">
+                <div className="px-6 h-14 border-b bg-muted/5 flex items-center gap-2 shrink-0">
                   <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
-                    3
+                    {programmeStepNum}
                   </div>
                   <h3 className="text-sm font-semibold">Select Programme</h3>
                 </div>
                 <ScrollArea className="flex-1 p-6">
-                  {!selectedCategoryId ? (
+                  {!selectedCategoryId || (hasGroupStep && !selectedGroupId) ? (
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
                       <Grid2X2 className="h-8 w-8 opacity-20" />
-                      <p>Select a category to view programmes.</p>
+                      <p>
+                        {!selectedCategoryId
+                          ? "Select a category"
+                          : "Select a group"}{" "}
+                        to view programmes.
+                      </p>
                     </div>
                   ) : filteredProgrammes.length === 0 ? (
                     <p className="text-sm text-muted-foreground italic text-center py-10">
@@ -637,7 +741,7 @@ export function AssignmentModal({
                           onClick={() => {
                             if (isReadOnly) return;
                             setSelectedProgrammeId(p.id);
-                            setSelectedStudentIds(new Set());
+                            setSelectedParticipantIds(new Set());
                           }}
                           className={cn(
                             "flex flex-col items-start text-left p-4 rounded-lg border transition-all hover:shadow-md",
@@ -680,7 +784,7 @@ export function AssignmentModal({
                                   Teams: {p.maxTeamsPerGroup}
                                 </span>
                                 <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                                  Size: {p.maxStudentsPerTeam}
+                                  Size: {p.maxParticipantsPerTeam}
                                 </span>
                               </div>
                             )}
@@ -692,18 +796,18 @@ export function AssignmentModal({
                 </ScrollArea>
               </div>
 
-              {/* Right Bar: Students */}
+              {/* Right Bar: Participants */}
               <div className="h-full flex flex-col min-h-0 border-t lg:border-t-0">
-                <div className="px-6 py-3 gap-3 border-l-0 lg:border-l border-b flex bg-muted/5 flex-col xl:flex-row items-start xl:items-center justify-between w-full">
+                <div className="px-6 py-3 gap-3 border-l-0 lg:border-l border-b flex bg-muted/5 flex-col xl:flex-row items-start xl:items-center justify-between w-full shrink-0">
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">
                       <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
-                        4
+                        {participantStepNum}
                       </div>
                       <h3 className="text-sm font-semibold">
                         {selectedProgramme?.type === "GROUP"
                           ? "Select members"
-                          : "Select students"}
+                          : "Select participants"}
                       </h3>
                     </div>
                     {selectedProgramme?.type === "GROUP" &&
@@ -733,18 +837,40 @@ export function AssignmentModal({
                       </div>
                     )}
 
-                    <Button
-                      size="sm"
-                      disabled={
-                        isReadOnly ||
-                        !selectedProgramme ||
-                        selectedStudentIds.size === 0
-                      }
-                      onClick={handleAddToQueue}
-                      className="h-8"
-                    >
-                      <Plus className="h-3 w-3 mr-1" /> Add to Queue
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={
+                          isReadOnly ||
+                          !selectedProgramme ||
+                          eligibleUnassignedCount === 0 ||
+                          remainingProgrammeSlots <= 0
+                        }
+                        onClick={handleAddAllEligible}
+                        className="h-8"
+                        title="Queue every eligible (unassigned, not yet on this programme) participant for the selected programme in one click — capped at the group's remaining capacity."
+                      >
+                        <Plus className="h-3 w-3 mr-1" /> Add all eligible (
+                        {Math.min(
+                          eligibleUnassignedCount,
+                          remainingProgrammeSlots,
+                        )}
+                        )
+                      </Button>
+                      <Button
+                        size="sm"
+                        disabled={
+                          isReadOnly ||
+                          !selectedProgramme ||
+                          selectedParticipantIds.size === 0
+                        }
+                        onClick={handleAddToQueue}
+                        className="h-8"
+                      >
+                        <Plus className="h-3 w-3 mr-1" /> Add to Queue
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
@@ -753,18 +879,19 @@ export function AssignmentModal({
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
                       <Users className="h-8 w-8 opacity-20" />
                       <p>
-                        Select a programme above to start selecting students.
+                        Select a programme above to start selecting
+                        participants.
                       </p>
                     </div>
-                  ) : filteredStudents.length === 0 ? (
+                  ) : filteredParticipants.length === 0 ? (
                     <p className="text-sm text-muted-foreground italic text-center py-10">
-                      No eligible students found in this group.
+                      No eligible participants found in this group.
                     </p>
                   ) : (
                     <div className="flex flex-wrap w-full  gap-3">
-                      {filteredStudents.map((s: any) => {
+                      {filteredParticipants.map((s: any) => {
                         // Determine visual state
-                        const isSelected = selectedStudentIds.has(s.id);
+                        const isSelected = selectedParticipantIds.has(s.id);
                         const isAssigned = s.isAssigned;
                         // Disabled if: (Limit reached AND not selected) OR (Already Assigned)
                         // Disabled if: (Limit reached AND not selected) OR (Already Assigned)
@@ -777,7 +904,9 @@ export function AssignmentModal({
                           <button
                             type="button"
                             key={s.id}
-                            onClick={() => !isDisabled && toggleStudent(s.id)}
+                            onClick={() =>
+                              !isDisabled && toggleParticipant(s.id)
+                            }
                             disabled={isDisabled}
                             className={cn(
                               "relative group p-3 rounded-md border text-sm transition-all cursor-pointer flex items-center justify-between gap-2 overflow-hidden w-full text-left",
@@ -817,7 +946,7 @@ export function AssignmentModal({
         {/* --- VIEW: REVIEW --- */}
         {view === "REVIEW" && (
           <div className="flex-1 flex flex-col bg-muted/5 animate-in slide-in-from-right-10 duration-200 overflow-hidden min-h-0">
-            <div className="flex-1 flex justify-center p-8 overflow-hidden min-h-0">
+            <div className="flex-1 flex justify-center p-4 sm:p-8 overflow-hidden min-h-0">
               <div className="w-full max-w-4xl flex flex-col bg-background rounded-lg border h-full shadow-sm overflow-hidden">
                 <div className="p-4 border-b flex items-center justify-between">
                   <div>
@@ -848,11 +977,17 @@ export function AssignmentModal({
                               {idx + 1}.
                             </span>
                             <div>
-                              <p className="font-medium">{item.studentName}</p>
+                              <p className="font-medium">
+                                {item.participantName}
+                              </p>
                               <div className="flex gap-2 text-xs text-muted-foreground mt-0.5">
                                 <span>{item.programmeName}</span>
-                                <span className="text-gray-300">•</span>
-                                <span>{item.groupName}</span>
+                                {item.groupName && (
+                                  <>
+                                    <span className="text-gray-300">•</span>
+                                    <span>{item.groupName}</span>
+                                  </>
+                                )}
                                 {item.isGroupType && (
                                   <>
                                     <span className="text-gray-300">•</span>

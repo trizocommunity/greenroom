@@ -1,7 +1,7 @@
 "use server";
 
 import { randomUUID } from "crypto";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
@@ -9,6 +9,7 @@ import { db } from "@/core/database/client";
 import { festival as festivalTable, stage, user } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { UsageCounterService } from "@/features/festivals/services/usage-counter.service";
+import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 
 export type StageData = {
   name: string;
@@ -112,8 +113,18 @@ export async function getStages(festivalId: string) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
 
+  const accessibleStageIds = await StageAssignmentService.getAccessibleStageIds(
+    festivalId,
+    session,
+  );
+
   return db.query.stage.findMany({
-    where: eq(stage.festivalId, festivalId),
+    where:
+      accessibleStageIds === "all"
+        ? eq(stage.festivalId, festivalId)
+        : accessibleStageIds.length > 0
+          ? inArray(stage.id, accessibleStageIds)
+          : inArray(stage.id, ["__none__"]),
     orderBy: [desc(stage.createdAt)],
   });
 }

@@ -105,10 +105,10 @@ export function PublicSessionCards({ entries }: { entries: SessionEntry[] }) {
                 setActiveStageId("");
               }}
               className={cn(
-                "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                "px-4 py-2 rounded-full text-sm font-medium transition-colors",
                 activeDayKey === key
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
               )}
             >
               {dayLabels[key]}
@@ -123,7 +123,7 @@ export function PublicSessionCards({ entries }: { entries: SessionEntry[] }) {
       {/* Stage filter + list for selected day */}
       <div className="space-y-4">
         {sortedDayKeys.length > 1 && (
-          <h2 className="text-xl font-semibold text-foreground">
+          <h2 className="text-xl font-semibold tracking-tight text-heading">
             {dayLabels[activeDayKey]}
           </h2>
         )}
@@ -180,12 +180,12 @@ function SessionCard({ entry }: { entry: SessionEntry }) {
   return (
     <article
       className={cn(
-        "flex flex-col overflow-hidden rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm",
-        "transition-all duration-200 hover:shadow-lg hover:border-primary/20",
+        "flex flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground",
+        "transition-all duration-200 hover:border-primary/30 hover:shadow-premium",
       )}
     >
       {/* Accent strip + type badge */}
-      <div className="flex items-center justify-between gap-3 border-b border-border/60 bg-muted/30 px-5 py-3">
+      <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/40 px-5 py-3">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
           <Mic2 className="h-3.5 w-3.5" />
           {typeLabel}
@@ -202,7 +202,7 @@ function SessionCard({ entry }: { entry: SessionEntry }) {
         <div className="mb-3">
           {hasSchedule && start ? (
             <time
-              className="inline-flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-sm font-medium text-foreground tabular-nums"
+              className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-sm font-medium text-foreground tabular-nums"
               dateTime={entry.startTime!}
             >
               <Calendar className="h-4 w-4 text-primary" />
@@ -212,7 +212,7 @@ function SessionCard({ entry }: { entry: SessionEntry }) {
                 : format(start, "h:mm a")}
             </time>
           ) : (
-            <span className="inline-flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-sm font-medium text-muted-foreground">
+            <span className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-sm font-medium text-muted-foreground">
               <Calendar className="h-4 w-4" />
               Date & time TBA
             </span>
@@ -221,19 +221,19 @@ function SessionCard({ entry }: { entry: SessionEntry }) {
 
         {/* Stage chip */}
         {entry.stage?.name && (
-          <span className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/5 px-3 py-1.5 text-sm font-medium text-primary">
+          <span className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-sm font-medium text-primary">
             <MapPin className="h-3.5 w-3.5" />
             {entry.stage.name}
           </span>
         )}
 
         {/* Title */}
-        <h3 className="text-xl font-bold tracking-tight text-foreground line-clamp-2">
+        <h3 className="text-xl font-semibold tracking-tight text-heading line-clamp-2">
           {entry.session.name}
         </h3>
 
         {/* Speakers */}
-        <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+        <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
           <Users className="h-4 w-4 shrink-0 text-muted-foreground/70" />
           <span className="line-clamp-1">
             {entry.session.speakers?.trim() || "—"}
@@ -242,7 +242,7 @@ function SessionCard({ entry }: { entry: SessionEntry }) {
 
         {/* Description (expandable) */}
         {entry.session.description && (
-          <div className="mt-4 flex flex-1 flex-col border-t border-border/60 pt-4">
+          <div className="mt-4 flex flex-1 flex-col border-t border-border pt-4">
             {showMore ? (
               <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
                 {entry.session.description}
@@ -255,7 +255,7 @@ function SessionCard({ entry }: { entry: SessionEntry }) {
             <button
               type="button"
               onClick={() => setShowMore(!showMore)}
-              className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+              className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
             >
               {showMore ? (
                 <>
@@ -271,7 +271,7 @@ function SessionCard({ entry }: { entry: SessionEntry }) {
         )}
 
         {!entry.session.description && (
-          <div className="mt-auto pt-4">
+          <div className="mt-4 pt-4 border-t border-border">
             <span className="text-sm text-muted-foreground">—</span>
           </div>
         )}

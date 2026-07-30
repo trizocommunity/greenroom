@@ -1,14 +1,16 @@
+import { inArray } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 // Removed unused breadcrumb imports
 import { DashboardBreadcrumb } from "@/components/festival/dashboard/DashboardBreadcrumb";
 import { DashboardCelebration } from "@/components/festival/dashboard/DashboardCelebration";
-import { FestivalDashboardClientShell } from "@/components/festival/dashboard/FestivalDashboardClientShell";
 import { DashboardRightSidebar } from "@/components/festival/dashboard/DashboardRightSidebar";
+import { FestivalDashboardClientShell } from "@/components/festival/dashboard/FestivalDashboardClientShell";
 import { FestivalDashboardSidebar } from "@/components/festival/dashboard/FestivalDashboardSidebar";
-import { ReadOnlyExpiredBanner } from "@/components/festival/dashboard/ReadOnlyExpiredBanner";
+import { StageContextSelector } from "@/components/festival/dashboard/StageContextSelector";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { FestivalStatusBadge } from "@/components/festival/FestivalStatusBadge";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import {
   SidebarInset,
   SidebarProvider,
@@ -17,11 +19,15 @@ import {
 import { TIER_CONFIG } from "@/config/pricing";
 import { getCurrentUser } from "@/core/auth/current-user";
 import { getSession } from "@/core/auth/session";
+import { db } from "@/core/database/client";
+import { stage as stageTable } from "@/core/database/schema";
 import { parseStoredInstant } from "@/core/utils/date-time";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 import { getEffectiveTierFeatures } from "@/features/plan-features/services/plan-features.service";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
+import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
+import { getStageFilterCookie } from "@/features/stages/stage-filter-cookie.server";
 
 export default async function FestivalDashboardLayout({
   children,
@@ -76,7 +82,6 @@ export default async function FestivalDashboardLayout({
     tier: festival.tier,
     accentColor: "#000000",
     expiresAt: festival.expiresAt,
-    readOnlyExpired: false,
     description: festival.description || "",
     // Legacy fields or unused
     tagline: "",
@@ -90,21 +95,42 @@ export default async function FestivalDashboardLayout({
     orgLocation: null,
     establishedYear: null,
     // New Stats from Festival
-    studentsCount: festival.studentsCount || 0,
+    participantsCount: festival.participantsCount || 0,
     programmesCount: festival.programmesCount || 0,
     stagesCount: festival.stagesCount || 0,
     limits: {
-      maxStudents: tierLimits.students,
+      maxParticipants: tierLimits.participants,
       maxProgrammes: tierLimits.programmes,
       maxStages: tierLimits.stages,
       maxStorageMB: tierLimits.storageMB,
     },
-    studentCreationDeadline: festival.studentCreationDeadline,
+    participantCreationDeadline: festival.participantCreationDeadline,
     programmeAssignmentDeadline: festival.programmeAssignmentDeadline,
     effectiveFeatures,
   };
 
   const userRole = role;
+
+  // 4c. Stage manager's own stage filter (banner selector) — only relevant
+  // when they're assigned more than one stage.
+  let myStages: Array<{ id: string; name: string }> = [];
+  let currentStageId: string | null = null;
+  if (userRole === "STAGE_MANAGER") {
+    const assignedStageIds = await StageAssignmentService.getAssignedStageIds(
+      festival.id,
+      session.userId,
+    );
+    myStages = assignedStageIds.length
+      ? await db.query.stage.findMany({
+          where: inArray(stageTable.id, assignedStageIds),
+          columns: { id: true, name: true },
+        })
+      : [];
+    currentStageId = await getStageFilterCookie(
+      festival.id,
+      myStages.map((s) => s.id),
+    );
+  }
 
   // 4b. Fetch User Profile
   const currentUser = await getCurrentUser();
@@ -122,7 +148,7 @@ export default async function FestivalDashboardLayout({
           <FestivalDashboardSidebar festival={festivalData} role={userRole} />
 
           <SidebarInset>
-            <header className="sticky top-0 z-10 w-full flex h-14 shrink-0 items-center justify-between border-b bg-background/95 backdrop-blur px-4 md:px-8 shadow-sm">
+            <header className="sticky top-0 z-10 w-full flex h-14 shrink-0 items-center justify-between border-b bg-card/95 backdrop-blur px-2 md:px-8 shadow-sm">
               <div className="flex items-center gap-2">
                 <SidebarTrigger className="h-8 w-8" />
                 <div className="mr-2 h-4 w-px bg-border hidden lg:block" />
@@ -131,6 +157,14 @@ export default async function FestivalDashboardLayout({
 
               {/* Header Actions */}
               <div className="flex items-center gap-2">
+                {userRole === "STAGE_MANAGER" && myStages.length > 1 && (
+                  <StageContextSelector
+                    festivalId={festival.id}
+                    stages={myStages}
+                    currentStageId={currentStageId}
+                  />
+                )}
+                <ThemeToggle />
                 <FestivalStatusBadge
                   status={derivedStatus}
                   createdAt={festival.createdAt}
@@ -163,7 +197,7 @@ export default async function FestivalDashboardLayout({
                   }
                   userRole={userRole}
                   usage={{
-                    studentsCount: festival._count?.students || 0,
+                    participantsCount: festival._count?.participants || 0,
                     programmesCount: festival._count?.programmes || 0,
                     stagesCount: festival.stagesCount || 0,
                     storageUsedMB: festival.storageUsedMb ?? 0,
@@ -175,11 +209,10 @@ export default async function FestivalDashboardLayout({
               </div>
             </header>
 
-            <main className="flex flex-1 flex-col gap-4 md:gap-6 p-4 md:p-8 relative overflow-hidden">
+            <main className="flex flex-1 flex-col gap-4 md:gap-6 p-4 md:p-8 relative">
               <Suspense fallback={null}>
                 <DashboardCelebration />
               </Suspense>
-              <ReadOnlyExpiredBanner />
               {children}
             </main>
           </SidebarInset>

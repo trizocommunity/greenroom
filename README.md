@@ -1,82 +1,76 @@
 # Greenroom - Festival Management
 
+Festival-management SaaS (Next.js 16, React 19, Drizzle ORM, PostgreSQL on Neon).
+
 ## Local Development
+
 ```bash
 npm install
 cp .env.example .env.local
+# fill in DATABASE_URL / DATABASE_URL_UNPOOLED / JWT_SECRET / CRON_SECRET
 npm run dev
 ```
 
+The app expects a real PostgreSQL — provision one of the following:
+
+### Option A — Neon (recommended, matches production)
+```bash
+# install neonctl: https://neon.tech/docs/reference/cli-install
+neonctl projects create --name greenroom-dev
+neonctl connection-string main --pooled
+neonctl connection-string main        # unpooled
+```
+Paste both strings into `.env.local` as `DATABASE_URL` and `DATABASE_URL_UNPOOLED`, then:
+```bash
+npm run db:push       # apply schema to your branch
+npm run db:seed       # optional: seed Super Admin + sample festival
+npm run dev
+```
+
+### Option B — Local Docker Postgres (legacy)
+```bash
+npm run db:setup      # starts container, pushes schema, seeds
+npm run dev
+```
+Local Postgres runs on `localhost:5433`; default `DATABASE_URL` in `.env.example` points there.
+
 ## Environment Variables
 
-Required for the app to run:
-
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `DATABASE_URL` | Yes | Supabase **connection pooler** URL for app runtime and seeding (e.g. `postgres://user:password@aws-1-...pooler.supabase.com:6543/postgres?pgbouncer=true`). |
-| `JWT_SECRET` | Yes | Secret used to sign/verify session cookies (e.g. a long random string) |
+| `DATABASE_URL` | Yes | PostgreSQL connection string (Neon pooled endpoint in prod, or local Docker). |
+| `DATABASE_URL_UNPOOLED` | Prod only | Direct Postgres endpoint for drizzle-kit migrations. |
+| `JWT_SECRET` | Yes | Secret used to sign/verify session cookies (≥ 32 chars). |
+| `NEXT_PUBLIC_APP_URL` | Yes | Public origin used in emails, redirects, magic links. |
+| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | For payments | Razorpay API keys. |
+| `RESEND_API_KEY` / `EMAIL_FROM` | For email | Magic-link + invitation emails. |
+| `CLOUDINARY_*` | For uploads | Cloudinary cloud + presets. |
+| `SENTRY_DSN` | Optional | Frontend / server error reporting. |
+| `CRON_SECRET` | Prod only | Secret sent by Vercel Cron in the `x-cron-secret` header. |
 
-Required for payment (Razorpay):
+## Database scripts (`package.json`)
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `RAZORPAY_KEY_ID` | For payments | Razorpay API key (public) |
-| `RAZORPAY_KEY_SECRET` | For payments | Razorpay API secret |
+- `npm run db:generate` — `drizzle-kit generate` (diff schema → SQL)
+- `npm run db:migrate` / `npm run db:push` — `drizzle-kit push` (apply schema directly)
+- `npm run db:studio` — `drizzle-kit studio`
+- `npm run db:seed` — `tsx scripts/seed.ts` (Super Admin + Ahlussuffa IGS Pro festival)
+- `npm run db:clean` — `tsx scripts/clean.ts` (drop schema; refuses to run against a non-local URL without `--force`)
+- `npm run db:reset` — clean + push + seed
+- `npm run db:setup` — Docker variant: start container + push + seed
 
-Optional (e.g. email, Resend):
+## Cron / scheduled jobs
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `RESEND_API_KEY` | For forgot-password email | Resend API key for sending password reset emails |
+`vercel.json` schedules a daily call to `/api/v1/cron`, which runs the festival expiration + pre-archival cycles. The handler at `src/app/api/v1/cron/route.ts` validates the `x-cron-secret` header against `CRON_SECRET`.
 
-Example `.env.local` (Supabase):
+## Deployment (Vercel)
 
-```text
-DATABASE_URL="postgres://YOUR_USER:YOUR_PASSWORD@aws-1-YOUR_PROJECT_REF.pooler.supabase.com:6543/postgres?pgbouncer=true"
-JWT_SECRET=your-secret-at-least-32-chars
-RAZORPAY_KEY_ID=rzp_...
-RAZORPAY_KEY_SECRET=...
-```
-
-## Database Migrations (SQL-Only)
-
-This project uses **Supabase** for the database. Migrations are done via SQL files:
-
-1. **Generate SQL** from schema changes:
-   ```bash
-   npm run db:generate
-   ```
-
-2. **Apply SQL** manually in Supabase:
-   - Go to [Supabase Dashboard](https://app.supabase.com) → Your Project → SQL Editor
-   - Copy contents from `./drizzle/XXXX_migration_name.sql`
-   - Run the SQL
-
-3. **Seed data** (optional):
-   ```bash
-   npm run db:seed
-   ```
-
-**Note**: No local database or Docker needed. All database operations go directly to Supabase.
-
-## Deployment Options
-
-### Vercel (Recommended)
-1. vercel.com → New Project → GitHub repo
-2. Add `DATABASE_URL`
-3. Deploy ✅
-
-### Railway
-1. railway.app → New Project → GitHub
-2. Add `DATABASE_URL`
-3. Deploy ✅
-
-### Test Locally
-```bash
-npm run build  # ✓ Clean build (○ / static)
-npm start      # ✓ localhost:3000 works
-```
+1. Provision a Neon project + branch.
+2. Set both `DATABASE_URL` and `DATABASE_URL_UNPOOLED` in Vercel environment variables (Production + Preview).
+3. Set `JWT_SECRET`, `CRON_SECRET`, and any third-party keys (`RAZORPAY_*`, `RESEND_API_KEY`, `CLOUDINARY_*`).
+4. Install the Neon–Vercel marketplace integration so each PR preview gets an isolated database branch.
+5. Deploy.
 
 ## Verification
-- **Static Root**: The build output should show `○ /` indicating the root page is static.
-- **Build Safety**: The build process should not spam "Shutting down database..." logs.
+
+- **Build safety**: `npm run build` must complete without DB-related warnings.
+- **Migrations**: prefer `db:migrate` over `db:push` once `drizzle/meta/_journal.json` covers all on-disk SQL files.

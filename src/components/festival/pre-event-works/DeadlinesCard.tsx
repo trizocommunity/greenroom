@@ -7,13 +7,20 @@ import { Badge } from "@/components/ui/badge";
 import { parseStoredInstant } from "@/core/utils/date-time";
 
 export function DeadlinesCard({
+  label = "Assignments",
+  deadline: deadlineProp,
   isLockedOverride,
 }: {
+  label?: string;
+  deadline?: string | Date | null;
   isLockedOverride?: boolean;
 } = {}) {
   const festival = useFestival();
 
-  const deadline = festival.programmeAssignmentDeadline;
+  const deadline =
+    deadlineProp !== undefined
+      ? deadlineProp
+      : festival.programmeAssignmentDeadline;
 
   if (!deadline) return null;
 
@@ -31,7 +38,8 @@ export function DeadlinesCard({
       <div className="flex items-center gap-1.5">
         <CalendarClock className="h-4 w-4" />
         <span className="font-medium text-foreground flex  items-center">
-          Assignments<span className="hidden lg:block">Close</span>:
+          {label}
+          <span className="hidden lg:block">Close</span>:
         </span>
       </div>
 

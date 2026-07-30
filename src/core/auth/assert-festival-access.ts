@@ -8,11 +8,34 @@ import {
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { assertFestivalMutationAllowed } from "@/features/festivals/services/festival-lifecycle-policy.service";
 
-/**
- * Asserts the current user has access to the festival (owner, active member, or SUPER_ADMIN).
- * Call at the start of any server action that takes festivalId.
- * @throws AppError UNAUTHORIZED if no session, NOT_FOUND if festival missing, FORBIDDEN if no access
- */
+type AccessLevel = "owner" | "member" | "super_admin" | "none";
+
+interface CacheEntry {
+  access: AccessLevel;
+  expiresAt: number;
+}
+
+const accessCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 60_000;
+
+function getCacheKey(festivalId: string, userId: string, role: string): string {
+  return `${festivalId}:${userId}:${role}`;
+}
+
+function getFromCache(key: string): AccessLevel | null {
+  const entry = accessCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    accessCache.delete(key);
+    return null;
+  }
+  return entry.access;
+}
+
+function setToCache(key: string, access: AccessLevel): void {
+  accessCache.set(key, { access, expiresAt: Date.now() + CACHE_TTL_MS });
+}
+
 export async function assertFestivalAccess(
   session: SessionPayload | null,
   festivalId: string,
@@ -23,6 +46,20 @@ export async function assertFestivalAccess(
   }
 
   const isSuperAdmin = session.role === "SUPER_ADMIN";
+  const cacheKey = getCacheKey(festivalId, session.userId, session.role);
+
+  const cachedAccess = getFromCache(cacheKey);
+  if (cachedAccess) {
+    if (cachedAccess === "none") {
+      throw new AppError(ERROR_MESSAGES.FORBIDDEN);
+    }
+    if (options?.requireWritable) {
+      await assertFestivalMutationAllowed(festivalId, {
+        allowPast: options.allowPast,
+      });
+    }
+    return;
+  }
 
   const festival = await db.query.festival.findFirst({
     where: eq(festivalTable.id, festivalId),
@@ -45,7 +82,20 @@ export async function assertFestivalAccess(
     isMember = Boolean(member?.isActive);
   }
 
-  if (!isSuperAdmin && !isOwner && !isMember) {
+  let access: AccessLevel;
+  if (isSuperAdmin) {
+    access = "super_admin";
+  } else if (isOwner) {
+    access = "owner";
+  } else if (isMember) {
+    access = "member";
+  } else {
+    access = "none";
+  }
+
+  setToCache(cacheKey, access);
+
+  if (access === "none") {
     throw new AppError(ERROR_MESSAGES.FORBIDDEN);
   }
 

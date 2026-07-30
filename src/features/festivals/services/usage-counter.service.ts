@@ -16,12 +16,12 @@ export const UsageCounterService = {
    * Atomically increments a usage counter if it doesn't exceed the limit.
    *
    * @param festivalId The festival to update
-   * @param resource The resource type ("students" | "programmes" | "stages" | "storage")
+   * @param resource The resource type ("participants" | "programmes" | "stages" | "storage")
    * @param amount Amount to increment (default 1)
    */
   async incrementUsage(
     festivalId: string,
-    resource: "students" | "programmes" | "stages" | "storage",
+    resource: "participants" | "programmes" | "stages" | "storage",
     amount = 1,
   ) {
     // 1. Fetch current usage & limit relative to the resource
@@ -38,13 +38,14 @@ export const UsageCounterService = {
     // 2. Map resource to fields
     let currentUsage = 0;
     let maxLimit = 0;
-    let fieldToUpdate: keyof typeof festivals.$inferInsert = "studentsCount";
+    let fieldToUpdate: keyof typeof festivals.$inferInsert =
+      "participantsCount";
 
     switch (resource) {
-      case "students":
-        currentUsage = festival.studentsCount;
-        maxLimit = limits.students;
-        fieldToUpdate = "studentsCount";
+      case "participants":
+        currentUsage = festival.participantsCount;
+        maxLimit = limits.participants;
+        fieldToUpdate = "participantsCount";
         break;
       case "programmes":
         currentUsage = festival.programmesCount;

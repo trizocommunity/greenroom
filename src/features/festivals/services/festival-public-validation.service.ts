@@ -2,7 +2,7 @@
  * Validation for enabling the public festival website (Festival Live).
  * Plan-based:
  * - All plans: festival name, description, and organization name + description are required.
- * - Non-BASIC only: also requires gallery (min 4 images) and news (min 1 post with title, description, image).
+ * - Non-BASIC only: also requires media (min 4 images) and news (min 1 post with title, description, image).
  */
 
 import type { Tier } from "@/core/types/app-enums";
@@ -16,8 +16,8 @@ export interface ValidationInput {
   orgWebsite: string | null;
   orgLocation: string | null;
   tier: Tier | string | null;
-  /** For non-BASIC: number of gallery images (min 4 required). */
-  galleryImageCount?: number;
+  /** For non-BASIC: number of media images (min 4 required). */
+  mediaImageCount?: number;
   /** For non-BASIC: list of news posts; each must have title, content, image. Min 1 required. */
   newsPosts?: Array<{
     title?: string | null;
@@ -95,10 +95,10 @@ export function validatePublicSiteRequirements(
     };
   }
 
-  // Non-BASIC only: gallery (min 4 images)
-  const galleryCount = input.galleryImageCount ?? 0;
-  if (galleryCount < 4) {
-    errors.push("Gallery must have at least 4 images.");
+  // Non-BASIC only: media (min 4 images)
+  const mediaCount = input.mediaImageCount ?? 0;
+  if (mediaCount < 4) {
+    errors.push("Media must have at least 4 images.");
   }
 
   // Non-BASIC: news (min 1 post, each with title, description, image)

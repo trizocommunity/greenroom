@@ -15,6 +15,7 @@ import {
 import { format } from "date-fns";
 import { AlertCircle, ArrowUpDown, CreditCard, Search } from "lucide-react";
 import { useState } from "react";
+import { type SuperAdminPayment, useSuperAdminPayments } from "@/api/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,13 +27,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  type Payment,
-  useSuperAdminPayments,
-} from "@/features/payments/hooks/use-super-admin-payments";
 import { parseStoredInstant } from "@/core/utils/date-time";
 
-const columns: ColumnDef<Payment>[] = [
+const columns: ColumnDef<SuperAdminPayment>[] = [
   {
     accessorKey: "createdAt",
     header: ({ column }) => {
@@ -133,7 +130,7 @@ export function PaymentsTable() {
   const { data: payments = [], isLoading } = useSuperAdminPayments();
 
   const table = useReactTable({
-    data: payments,
+    data: payments as SuperAdminPayment[],
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),

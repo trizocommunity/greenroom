@@ -11,9 +11,9 @@ import {
   category as categoryTable,
   festival as festivalTable,
   group as groupTable,
+  participant as participantTable,
   payment as paymentTable,
   programme as programmeTable,
-  student as studentTable,
 } from "@/core/database/schema";
 import {
   AppError,
@@ -50,8 +50,8 @@ export async function deleteFestivalAdmin(festivalId: string, reason: string) {
       .delete(assignmentTable)
       .where(eq(assignmentTable.festivalId, festivalId));
     await tx
-      .delete(studentTable)
-      .where(eq(studentTable.festivalId, festivalId));
+      .delete(participantTable)
+      .where(eq(participantTable.festivalId, festivalId));
     await tx
       .delete(programmeTable)
       .where(eq(programmeTable.festivalId, festivalId));

@@ -85,7 +85,9 @@ export async function updateJudgeAction(
       description: input.description?.trim() || null,
       updatedAt: now,
     })
-    .where(and(eq(judgeTable.id, judgeId), eq(judgeTable.festivalId, festivalId)))
+    .where(
+      and(eq(judgeTable.id, judgeId), eq(judgeTable.festivalId, festivalId)),
+    )
     .returning();
   if (!updated) throw new AppError(ERROR_MESSAGES.JUDGE_NOT_FOUND);
   return updated;
@@ -96,7 +98,8 @@ export async function deleteJudgeAction(festivalId: string, judgeId: string) {
   await assertFestivalAccess(session, festivalId, { requireWritable: true });
   await db
     .delete(judgeTable)
-    .where(and(eq(judgeTable.id, judgeId), eq(judgeTable.festivalId, festivalId)));
+    .where(
+      and(eq(judgeTable.id, judgeId), eq(judgeTable.festivalId, festivalId)),
+    );
   return { success: true };
 }
-

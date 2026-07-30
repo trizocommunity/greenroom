@@ -16,27 +16,18 @@ export type CompactHistoryItem = {
 };
 
 export function CompactHistoryList({
-  title,
-  count,
-  emptyText,
+  emptyText = "No history found",
   items,
   className,
   onViewItem,
 }: {
-  title: string;
-  count: number;
-  emptyText: string;
+  emptyText?: string;
   items: CompactHistoryItem[];
   className?: string;
   onViewItem?: (id: string) => void;
 }) {
   return (
     <div className={cn("space-y-2.5", className)}>
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-base font-semibold sm:text-lg">{title}</h2>
-        <Badge variant="secondary">{count}</Badge>
-      </div>
-
       {items.length === 0 ? (
         <div className="text-sm text-muted-foreground">{emptyText}</div>
       ) : (
@@ -44,23 +35,27 @@ export function CompactHistoryList({
           {items.map((item) => (
             <div
               key={item.id}
-              className="flex items-center gap-2 rounded-lg border border-border/70 bg-background/70 px-3 py-2"
+              className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                  <span className="truncate text-sm font-medium">{item.title}</span>
+                  <span className="truncate text-sm font-medium">
+                    {item.title}
+                  </span>
                   {item.badge ? (
                     <span className="shrink-0 rounded border bg-muted/30 px-1.5 py-0.5 text-[10px] text-muted-foreground">
                       {item.badge}
                     </span>
                   ) : null}
                   {item.tinyBadge ? (
-                    <span className="shrink-0 rounded border border-violet-400/60 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300">
+                    <span className="shrink-0 rounded border border-purple/60 px-1.5 py-0.5 text-[10px] font-medium text-purple">
                       {item.tinyBadge}
                     </span>
                   ) : null}
                   <span className="truncate text-[11px] text-muted-foreground">
-                    {[item.metaPrimary, item.metaSecondary].filter(Boolean).join(" • ")}
+                    {[item.metaPrimary, item.metaSecondary]
+                      .filter(Boolean)
+                      .join(" • ")}
                   </span>
                 </div>
                 {item.detailSummary ? (

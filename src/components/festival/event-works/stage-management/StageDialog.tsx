@@ -6,15 +6,19 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
+import { useMembers } from "@/api/client/members";
+import { useAssignStageManager } from "@/api/client/stage-assignments";
+import { useCreateStage, useUpdateStage } from "@/api/client/stages";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import {
   Form,
   FormControl,
@@ -24,11 +28,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  createStage,
-  updateStage,
-} from "@/features/stages/actions/stage.actions";
 
 const StageSchema = z.object({
   name: z.string().min(1, "Stage name is required"),
@@ -52,7 +53,15 @@ export function StageDialog({
   onOpenChange,
   onSuccess,
 }: StageDialogProps) {
-  const [isLoading, setIsLoading] = useState(false);
+  const createStage = useCreateStage();
+  const updateStage = useUpdateStage();
+  const assignManager = useAssignStageManager();
+  const { data: members = [] } = useMembers(festivalId);
+  const stageManagers = members.filter(
+    (m) => m.role === "STAGE_MANAGER" && m.isActive,
+  );
+  const [selectedManagerIds, setSelectedManagerIds] = useState<string[]>([]);
+  const isLoading = createStage.isPending || updateStage.isPending;
 
   const form = useForm({
     resolver: zodResolver(StageSchema),
@@ -75,6 +84,7 @@ export function StageDialog({
           name: "",
           description: "",
         });
+        setSelectedManagerIds([]);
       }
       form.trigger();
     }
@@ -82,12 +92,25 @@ export function StageDialog({
 
   const onSubmit = async (data: StageFormValues) => {
     try {
-      setIsLoading(true);
       if (stageToEdit) {
-        await updateStage(stageToEdit.id, data);
+        await updateStage.mutateAsync({
+          festivalId,
+          stageId: stageToEdit.id,
+          data,
+        });
         toast.success("Stage updated successfully");
       } else {
-        await createStage(festivalId, data);
+        const newStage = await createStage.mutateAsync({ festivalId, data });
+        if (selectedManagerIds.length > 0) {
+          await Promise.all(
+            selectedManagerIds.map((memberId) =>
+              assignManager.mutateAsync({
+                festivalId,
+                data: { stageId: newStage.id, memberId },
+              }),
+            ),
+          );
+        }
         toast.success("Stage created successfully");
       }
       onSuccess();
@@ -99,63 +122,103 @@ export function StageDialog({
       } else {
         toast.error(message);
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle>
             {stageToEdit ? "Edit Stage" : "Create Stage"}
-          </DialogTitle>
-          <DialogDescription>
+          </DrawerTitle>
+          <DrawerDescription>
             {stageToEdit
               ? "Update the details of the stage."
               : "Add a new stage for the festival."}
-          </DialogDescription>
-        </DialogHeader>
+          </DrawerDescription>
+        </DrawerHeader>
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-4 py-2"
+            className="flex flex-col flex-1 min-h-0"
           >
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Stage Name <span className="text-destructive">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g. Main Auditorium" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="flex-1 overflow-y-auto min-h-0 space-y-3 sm:space-y-4 py-1">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Stage Name <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. Main Auditorium" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description (Optional)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="e.g. Located effectively near the entrance..."
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="e.g. Located effectively near the entrance..."
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <DialogFooter>
+              {!stageToEdit && stageManagers.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Assign to Stage Managers (Optional)</Label>
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {stageManagers.map((manager) => {
+                      const checked = selectedManagerIds.includes(manager.id);
+                      return (
+                        <div
+                          key={manager.id}
+                          className="flex items-center gap-2 rounded-md border px-3 py-2"
+                        >
+                          <Checkbox
+                            id={`stage-create-manager-${manager.id}`}
+                            checked={checked}
+                            onCheckedChange={(next) =>
+                              setSelectedManagerIds((prev) =>
+                                next === true
+                                  ? [...prev, manager.id]
+                                  : prev.filter((id) => id !== manager.id),
+                              )
+                            }
+                          />
+                          <Label
+                            htmlFor={`stage-create-manager-${manager.id}`}
+                            className="flex flex-col cursor-pointer min-w-0"
+                          >
+                            <span className="font-medium truncate">
+                              {manager.fullName}
+                            </span>
+                            <span className="text-xs text-muted-foreground truncate">
+                              {manager.email}
+                            </span>
+                          </Label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <DrawerFooter>
               <Button
                 type="button"
                 variant="outline"
@@ -171,10 +234,10 @@ export function StageDialog({
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {stageToEdit ? "Update Stage" : "Create Stage"}
               </Button>
-            </DialogFooter>
+            </DrawerFooter>
           </form>
         </Form>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }

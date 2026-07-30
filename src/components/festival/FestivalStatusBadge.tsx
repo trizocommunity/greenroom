@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { AlertTriangle, Calendar, CheckCircle, Clock } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -38,25 +38,25 @@ const statusConfig: Record<
   READY: {
     icon: Clock,
     variant: "secondary",
-    className:
-      "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100",
+    className: "bg-muted text-muted-foreground border-border hover:bg-muted",
   },
   ONGOING: {
     icon: CheckCircle,
     variant: "default",
     className:
-      "bg-green-100 text-green-700 border-green-200 hover:bg-green-100",
+      "bg-success/10 text-success border-success/20 hover:bg-success/10",
   },
   PAST: {
     icon: Calendar,
     variant: "secondary",
     className:
-      "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100",
+      "bg-warning/10 text-warning border-warning/20 hover:bg-warning/10",
   },
   EXPIRED: {
     icon: AlertTriangle,
     variant: "destructive",
-    className: "bg-red-100 text-red-700 border-red-200 hover:bg-red-100",
+    className:
+      "bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/10",
   },
 };
 
@@ -75,18 +75,21 @@ export function FestivalStatusBadge({
   }, []);
 
   const normalized = status as DerivedFestivalStatus;
-  
+
   // Use a stable value for SSR, only check live time on client
-  const isExpiredByTime = (mounted && expiresAt) ? new Date(expiresAt) < new Date() : false;
-  
+  const isExpiredByTime =
+    mounted && expiresAt ? new Date(expiresAt) < new Date() : false;
+
   const effectiveStatus: DerivedFestivalStatus =
     normalized === "EXPIRED" || isExpiredByTime ? "EXPIRED" : normalized;
-    
-  const countdown = mounted ? getFestivalStatusCountdownText(effectiveStatus, {
-    startDate,
-    endDate,
-    expiresAt,
-  }) : null;
+
+  const countdown = mounted
+    ? getFestivalStatusCountdownText(effectiveStatus, {
+        startDate,
+        endDate,
+        expiresAt,
+      })
+    : null;
 
   const badgeSizeClass = size === "sm" ? "text-xs px-1.5 py-0" : "";
   const iconSizeClass = size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3";
@@ -99,7 +102,7 @@ export function FestivalStatusBadge({
     return (
       <Badge
         variant={config.variant}
-        className={`${badgeSizeClass} ${config.className}`}
+        className={`rounded-full ${badgeSizeClass} ${config.className}`}
       >
         <Icon className={`${iconSizeClass} mr-1`} />
         <span>{label}</span>

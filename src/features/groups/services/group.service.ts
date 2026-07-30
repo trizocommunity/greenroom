@@ -1,6 +1,6 @@
 import { and, count, eq, inArray } from "drizzle-orm";
 import { db } from "@/core/database/client";
-import { student as students } from "@/core/database/schema";
+import { participant as participants } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import {
@@ -71,10 +71,7 @@ export const GroupService = {
     if (data.teamLeaderIds !== undefined) {
       const festival = await findFestivalById(festivalId);
       if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
-      const leaderLimit = Math.max(
-        1,
-        Number((festival as any).teamLeaderLimit ?? 2),
-      );
+      const leaderLimit = Math.max(1, Number(festival.teamLeaderLimit ?? 2));
       if (data.teamLeaderIds.length > leaderLimit) {
         throw new AppError(
           `Team leader limit exceeded. Maximum allowed is ${leaderLimit}.`,
@@ -82,22 +79,22 @@ export const GroupService = {
       }
 
       if (data.teamLeaderIds.length > 0) {
-        const selectedStudents = await db
-          .select({ id: students.id, email: students.email })
-          .from(students)
+        const selectedParticipants = await db
+          .select({ id: participants.id, email: participants.email })
+          .from(participants)
           .where(
             and(
-              inArray(students.id, data.teamLeaderIds),
-              eq(students.groupId, id),
-              eq(students.festivalId, festivalId),
+              inArray(participants.id, data.teamLeaderIds),
+              eq(participants.groupId, id),
+              eq(participants.festivalId, festivalId),
             ),
           );
 
-        if (selectedStudents.length !== data.teamLeaderIds.length) {
-          throw new AppError(ERROR_MESSAGES.STUDENT_INVALID_GROUP);
+        if (selectedParticipants.length !== data.teamLeaderIds.length) {
+          throw new AppError(ERROR_MESSAGES.PARTICIPANT_INVALID_GROUP);
         }
 
-        const invalidEmailLeader = selectedStudents.find(
+        const invalidEmailLeader = selectedParticipants.find(
           (s) => !s.email || !String(s.email).includes("@"),
         );
         if (invalidEmailLeader) {
@@ -109,18 +106,18 @@ export const GroupService = {
 
       await db.transaction(async (tx) => {
         await tx
-          .update(students)
+          .update(participants)
           .set({ isTeamLeader: false })
-          .where(eq(students.groupId, id));
+          .where(eq(participants.groupId, id));
 
         if (data.teamLeaderIds && data.teamLeaderIds.length > 0) {
           await tx
-            .update(students)
+            .update(participants)
             .set({ isTeamLeader: true })
             .where(
               and(
-                inArray(students.id, data.teamLeaderIds),
-                eq(students.groupId, id),
+                inArray(participants.id, data.teamLeaderIds),
+                eq(participants.groupId, id),
               ),
             );
         }
@@ -136,13 +133,13 @@ export const GroupService = {
     if (!exists || exists.festivalId !== festivalId)
       throw new AppError(ERROR_MESSAGES.GROUP_NOT_FOUND);
 
-    const [{ studentCount }] = await db
-      .select({ studentCount: count() })
-      .from(students)
-      .where(eq(students.groupId, id));
+    const [{ participantCount }] = await db
+      .select({ participantCount: count() })
+      .from(participants)
+      .where(eq(participants.groupId, id));
 
-    if (studentCount > 0) {
-      throw new AppError(ERROR_MESSAGES.GROUP_HAS_STUDENTS);
+    if (participantCount > 0) {
+      throw new AppError(ERROR_MESSAGES.GROUP_HAS_PARTICIPANTS);
     }
 
     return deleteGroup(id);

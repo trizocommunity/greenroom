@@ -101,8 +101,7 @@ export function FestivalDashboardSidebar({
           return false;
 
         // Content
-        if (item.title === "Gallery" && !features.canManageGallery)
-          return false;
+        if (item.title === "Media" && !features.canManageMedia) return false;
         if (item.title === "News" && !features.canManageNews) return false;
         if (item.title === "Sessions" && !features.canManageSchedule)
           return false;
@@ -112,13 +111,13 @@ export function FestivalDashboardSidebar({
         // the stage-management capability.
         if (item.title === "Reporting" && !canUseReporting) return false;
 
-        // "Judgment/Marks" is business-capability routed:
-        // - BASIC: Marks UI
-        // - STANDARD/PRO: Judgment UI (external judging)
+        // "Judgement/Scoring" is business-capability routed:
+        // - BASIC: Scoring UI (/event-works/marks)
+        // - STANDARD/PRO: Judgement UI (external judging)
         // If Super Admin disables the underlying capability(s), hide the link to
         // avoid unreachable redirects.
         if (
-          (item.href.endsWith("/event-works/judgment") ||
+          (item.href.endsWith("/event-works/judgement") ||
             item.href.endsWith("/event-works/marks")) &&
           !canUseExternalJudging &&
           !canUseMarksUI
@@ -151,8 +150,11 @@ export function FestivalDashboardSidebar({
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton isActive={true} size="lg" asChild>
-              <Link href={dashboardPath} onClick={(e) => onNavClick(e, dashboardPath)}>
+            <SidebarMenuButton size="lg" asChild>
+              <Link
+                href={dashboardPath}
+                onClick={(e) => onNavClick(e, dashboardPath)}
+              >
                 <div
                   className="flex aspect-square size-9 items-center justify-center rounded-lg text-sidebar-primary-foreground"
                   style={{ backgroundColor: festival.accentColor }}
@@ -190,7 +192,10 @@ export function FestivalDashboardSidebar({
                         isActive={isActive}
                         tooltip={item.title}
                       >
-                        <Link href={item.href} onClick={(e) => onNavClick(e, item.href)}>
+                        <Link
+                          href={item.href}
+                          onClick={(e) => onNavClick(e, item.href)}
+                        >
                           <item.icon />
                           <span>{item.title}</span>
                         </Link>

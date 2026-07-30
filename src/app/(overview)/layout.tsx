@@ -13,7 +13,10 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  // FORCE ONBOARDING: If the user hasn't set their full name, they MUST go through onboarding
+  if (user.globalRole === "SUPER_ADMIN") {
+    redirect("/super-admin");
+  }
+
   if (!user.fullName) {
     redirect("/onboarding");
   }
@@ -21,7 +24,7 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen bg-background">
       <DashboardNavbar user={user} />
-      <div className="pt-20">{children}</div>
+      <div className="pt-18">{children}</div>
     </div>
   );
 }

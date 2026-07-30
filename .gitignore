@@ -51,6 +51,7 @@ next-env.d.ts
 .qoder/
 .windsurf/
 .gemini/
+.opencode/
 
 # local env files
 .env*.local

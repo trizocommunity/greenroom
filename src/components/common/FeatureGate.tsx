@@ -108,9 +108,9 @@ function getFeatureLabel(feature: FeaturePath): string {
     // Pre Event Works
     categories: "Categories",
     groups: "Groups",
-    students: "Students",
-    viewStudentProfile: "Student Profile",
-    publicStudentProfile: "Public Student Profile",
+    participants: "Participants",
+    viewParticipantProfile: "Participant Profile",
+    publicParticipantProfile: "Public Participant Profile",
     programmes: "Programmes",
     assignments: "Assignments",
 
@@ -122,12 +122,11 @@ function getFeatureLabel(feature: FeaturePath): string {
 
     // Team
     members: "Team Members",
-    maxTeamMembers: "Team Member Limit",
     roleBasedAccess: "Role-Based Access",
 
     // Import/Export
-    studentImport: "Student Import",
-    studentBulkUpload: "Bulk Student Upload",
+    participantImport: "Participant Import",
+    participantBulkUpload: "Bulk Participant Upload",
     programmeBulkUpload: "Bulk Programme Upload",
     pdfExport: "PDF Export",
     excelExport: "Excel Export",
@@ -141,6 +140,7 @@ function getFeatureLabel(feature: FeaturePath): string {
     // Analytics
     advancedAnalytics: "Advanced Analytics",
     customReports: "Custom Reports",
+    templates: "Templates",
 
     // Certificates & QR
     qrCodes: "QR Codes",
@@ -152,7 +152,7 @@ function getFeatureLabel(feature: FeaturePath): string {
     publicLandingPage: "Public Landing Page",
     fullLandingPage: "Full Landing Page",
     landingPageBuilder: "Landing Page Builder",
-    gallery: "Gallery",
+    media: "Media",
     news: "News",
 
     // Branding
@@ -173,6 +173,9 @@ function getFeatureLabel(feature: FeaturePath): string {
     festivalSettings: "Festival Settings",
     advancedSettings: "Advanced Settings",
     programmeAssignmentDeadline: "Programme Assignment Deadline",
+    participantCreationDeadline: "Participant Registration Deadline",
+    programmeTeamLead: "Programme Team Lead",
+    programmeAuditDrawer: "Programme Audit Trail",
 
     // Support
     supportLevel: "Support Level",

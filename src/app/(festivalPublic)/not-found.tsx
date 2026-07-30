@@ -1,41 +1,34 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export default function FestivalPublicNotFound() {
+  const pathname = usePathname();
+  // First URL segment is the festival slug. Layout only calls notFound() after
+  // findFestivalBySlug succeeds, so this is always a real (or formerly-real)
+  // festival. If it's missing, fall back to site root for both CTAs.
+  const segments = (pathname ?? "").split("/").filter(Boolean);
+  const festivalSlug = segments[0];
+  const festivalHref = festivalSlug ? `/${festivalSlug}` : "/";
+  const loginHref = festivalSlug ? `/${festivalSlug}/login` : "/login";
+
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-[#020617] px-6 text-white">
+    <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-background px-6 text-foreground">
       {/* Ambient glow */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 overflow-hidden"
       >
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[500px] w-[500px] rounded-full bg-violet-700/20 blur-[120px]" />
-        <div className="absolute bottom-0 right-0 h-[300px] w-[300px] rounded-full bg-purple-900/25 blur-[80px]" />
-        {/* Dot grid */}
-        <svg
-          className="absolute inset-0 h-full w-full opacity-[0.035]"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <defs>
-            <pattern
-              id="dot-grid-festival"
-              x="0"
-              y="0"
-              width="24"
-              height="24"
-              patternUnits="userSpaceOnUse"
-            >
-              <circle cx="1" cy="1" r="1" fill="white" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#dot-grid-festival)" />
-        </svg>
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[500px] w-[500px] rounded-full bg-primary/10 blur-[120px]" />
+        <div className="absolute bottom-0 right-0 h-[300px] w-[300px] rounded-full bg-secondary/10 blur-[100px]" />
       </div>
 
-      <div className="relative z-10 flex flex-col items-center gap-6 text-center">
+      <div className="relative z-10 flex flex-col items-center gap-5 text-center">
         {/* Festival icon */}
-        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-violet-500/20 bg-violet-500/10 backdrop-blur-sm">
+        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-border bg-card shadow-premium">
           <svg
-            className="h-10 w-10 text-violet-400"
+            className="h-10 w-10 text-primary"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -54,15 +47,16 @@ export default function FestivalPublicNotFound() {
           </svg>
         </div>
 
-        <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-violet-400">
-          Festival · 404
+        <span className="text-eyebrow">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+          Festival · Error 404
         </span>
 
         <div className="space-y-2">
-          <h1 className="text-5xl font-bold tracking-tight text-white">
-            Page Not Found
+          <h1 className="text-4xl font-semibold tracking-tight text-heading">
+            Page not found
           </h1>
-          <p className="max-w-md text-[#94a3b8] leading-relaxed">
+          <p className="max-w-md text-muted-foreground leading-relaxed">
             This festival page couldn&apos;t be found. The event may have ended,
             or the link might be incorrect. Please check the URL and try again.
           </p>
@@ -70,16 +64,16 @@ export default function FestivalPublicNotFound() {
 
         <div className="flex flex-col sm:flex-row items-center gap-3 mt-2">
           <Link
-            href="/"
-            className="inline-flex items-center gap-2 justify-center rounded-lg bg-violet-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-600/30 transition-all hover:bg-violet-500"
+            href={festivalHref}
+            className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground shadow-primary-glow transition-opacity hover:opacity-90"
           >
-            Explore Greenroom
+            Go to festival home
           </Link>
           <Link
-            href="/contact"
-            className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/5 px-6 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/10"
+            href={loginHref}
+            className="inline-flex items-center justify-center rounded-full border border-border bg-card px-6 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
           >
-            Contact Support
+            Try login again
           </Link>
         </div>
       </div>

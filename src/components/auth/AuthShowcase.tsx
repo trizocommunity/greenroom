@@ -8,8 +8,8 @@ export function AuthShowcase() {
     <div className="relative w-full h-full flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary/5 via-background to-secondary/5">
       {/* Background gradients - Improved color combination */}
       <div className="absolute w-[600px] h-[600px] bg-primary/15 rounded-full blur-[120px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-      <div className="absolute w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[100px] -top-[5%] -right-[5%]" />
-      <div className="absolute w-[350px] h-[350px] bg-purple-500/10 rounded-full blur-[90px] -bottom-[5%] -left-[5%]" />
+      <div className="absolute w-[400px] h-[400px] bg-info/10 rounded-full blur-[100px] -top-[5%] -right-[5%]" />
+      <div className="absolute w-[350px] h-[350px] bg-purple/10 rounded-full blur-[90px] -bottom-[5%] -left-[5%]" />
 
       {/* Container for all floating elements */}
       <div className="relative w-[700px] h-[700px]">
@@ -71,7 +71,7 @@ export function AuthShowcase() {
         >
           <div className="bg-card/80 backdrop-blur-xl rounded-2xl p-5 shadow-xl border border-border/30 w-64">
             <div className="flex items-center gap-2 mb-4">
-              <span className="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_6px_rgba(168,85,247,0.6)]" />
+              <span className="w-2 h-2 rounded-full bg-purple shadow-[0_0_6px_rgba(139,92,246,0.6)]" />
               <span className="font-semibold text-xs tracking-wide uppercase text-foreground">
                 Stage Status
               </span>

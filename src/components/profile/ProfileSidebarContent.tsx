@@ -1,12 +1,12 @@
 "use client";
 
-import { CreditCard, LayoutDashboard, Tent } from "lucide-react";
+import { CreditCard, LayoutDashboard, Settings, Tent } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import type { UserProfile } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
-import { EditProfileDialog } from "./EditProfileDialog";
 
 interface ProfileSidebarContentProps {
   user: UserProfile;
@@ -60,49 +60,79 @@ export function ProfileSidebarContent({
       value: "festivals",
       icon: Tent,
     },
+    {
+      label: "Settings",
+      value: "settings",
+      icon: Settings,
+    },
   ];
 
   return (
     <div className={cn("flex flex-col h-full", className)}>
-      {/* User Info */}
-      <div className="flex items-center gap-3 mb-4 px-4">
-        <Avatar className="h-10 w-10">
+      {/* User Info & Avatar Header */}
+      <div className="flex flex-col items-start gap-4 mb-8 px-4 md:px-0">
+        <Avatar className="h-16 w-16 border border-border shadow-premium">
           <AvatarImage src="" />
-          <AvatarFallback>{initials}</AvatarFallback>
+          <AvatarFallback className="text-lg font-semibold bg-primary/8 text-primary">
+            {initials}
+          </AvatarFallback>
         </Avatar>
-        <div className="overflow-hidden">
-          <h1 className="text-sm font-medium truncate">{displayName}</h1>
-          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-        </div>
-      </div>
 
-      {/* Edit Profile Button */}
-      <div className="px-4 mb-8">
-        <EditProfileDialog user={user} />
+        {/* Name, Email & Badge */}
+        <div className="space-y-1 w-full">
+          <h1 className="text-base font-semibold tracking-tight text-heading truncate">
+            {displayName}
+          </h1>
+          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+
+          {user.accountType && (
+            <div className="pt-1.5">
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-[11px] font-medium px-2.5 py-0.5",
+                  user.accountType === "INSTITUTIONAL"
+                    ? "bg-primary/8 text-primary border-primary/20"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                {user.accountType}
+              </Badge>
+              {user.accountType === "PERSONAL" && (
+                <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
+                  Upgrade to Institutional for campus features
+                </p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex flex-col md:space-y-1 flex-1">
-        <div className="hidden md:block mb-4 px-4 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+      <nav className="flex flex-col space-y-1 flex-1">
+        <div className="mb-3 px-4 md:px-0 text-xs font-medium text-muted-foreground">
           Account
         </div>
-        <div className="flex overflow-x-auto md:flex-col gap-2 pb-2 md:pb-0 px-4 md:px-0 snap-x scrollbar-none hide-scrollbar">
+        <div className="flex flex-col space-y-0.5 px-2 md:px-0">
           {items.map((item) => (
             <button
               type="button"
               key={item.value}
               onClick={() => navigate(item.value)}
               className={cn(
-                "flex items-center gap-2 md:gap-3 rounded-full md:rounded-md px-4 py-2 text-sm font-medium transition-colors md:w-full text-left whitespace-nowrap snap-start shrink-0",
+                "flex items-center gap-3 rounded-full px-4 py-2.5 text-sm font-medium transition-colors w-full text-left",
                 activeTab === item.value
-                  ? "bg-primary text-primary-foreground md:bg-primary/10 md:text-primary"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground md:bg-transparent",
+                  ? "bg-primary/8 text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
-              <item.icon className="h-4 w-4" />
+              <item.icon className="h-4 w-4 shrink-0" />
               {item.label}
             </button>
           ))}
+        </div>
+        <div className="md:hidden mt-auto pt-6 px-4 border-t border-border">
+          <LogoutButton />
         </div>
       </nav>
     </div>

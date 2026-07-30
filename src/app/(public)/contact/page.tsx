@@ -3,75 +3,54 @@
 import { Mail, MapPin, Phone } from "lucide-react";
 import ContactForm from "@/components/contact/ContactForm";
 
+const channels = [
+  { icon: Mail, label: "Email", value: "support@greenroom.com" },
+  { icon: Phone, label: "Phone", value: "+1 (555) 123-4567" },
+  { icon: MapPin, label: "Office", value: "123 Innovation Dr, CA" },
+];
+
 export default function ContactPage() {
   return (
-    <div className="min-h-screen py-20 bg-background text-foreground relative overflow-hidden">
+    <div className="min-h-screen py-16 md:py-20 bg-background text-foreground relative overflow-hidden">
       {/* Background blobs */}
-      <div className="absolute left-0 top-0 h-96 w-96 bg-primary/10 blur-[120px] -z-10" />
-      <div className="absolute bottom-0 right-1/4 h-80 w-80 bg-fuchsia-500/10 blur-[100px] -z-10" />
+      <div className="absolute left-0 top-0 h-96 w-96 bg-primary/8 blur-[130px] -z-10" />
+      <div className="absolute bottom-0 right-1/4 h-80 w-80 bg-secondary/8 blur-[110px] -z-10" />
 
-      <div className="container max-w-7xl px-4 md:px-6 mx-auto">
-        <div className="grid lg:grid-cols-2 gap-24">
+      <div className="container max-w-6xl px-4 md:px-6 mx-auto">
+        <div className="grid lg:grid-cols-2 gap-16 lg:gap-24">
           {/* Left Column: Info */}
           <div>
-            <h1 className="text-6xl md:text-8xl font-black uppercase tracking-tighter mb-8 text-foreground">
-              Let's{" "}
-              <span className="text-transparent bg-clip-text bg-linear-to-r from-primary via-fuchsia-500 to-orange-400">
-                Talk
+            <p className="text-eyebrow mb-4">Get in touch</p>
+            <h1 className="text-4xl md:text-6xl font-semibold tracking-tight mb-6 text-heading leading-[1.08]">
+              Let&apos;s{" "}
+              <span className="font-display italic font-normal text-primary">
+                talk
               </span>
             </h1>
-            <p className="text-2xl text-muted-foreground mb-16 font-light uppercase tracking-widest border-l-2 border-primary pl-6">
-              Ready to upgrade? <br /> Request a demo.
+            <p className="text-lg text-muted-foreground mb-12 max-w-md leading-relaxed">
+              Ready to upgrade how your festival runs? Request a demo and
+              we&apos;ll walk you through it.
             </p>
 
-            <div className="space-y-12">
-              <div className="flex items-start gap-8 group">
-                <div className="p-4 border border-white/10 bg-white/5 rounded-xl group-hover:bg-primary/20 group-hover:text-primary transition-colors">
-                  <Mail className="w-8 h-8" />
+            <div className="space-y-8">
+              {channels.map((c) => (
+                <div key={c.label} className="flex items-start gap-5">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/8 text-primary">
+                    <c.icon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-heading mb-0.5">
+                      {c.label}
+                    </h3>
+                    <p className="text-muted-foreground">{c.value}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold text-xl uppercase tracking-widest mb-2 text-foreground">
-                    Email
-                  </h3>
-                  <p className="text-muted-foreground font-medium">
-                    support@greenroom.com
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-8 group">
-                <div className="p-4 border border-white/10 bg-white/5 rounded-xl group-hover:bg-primary/20 group-hover:text-primary transition-colors">
-                  <Phone className="w-8 h-8" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-xl uppercase tracking-widest mb-2 text-foreground">
-                    Phone
-                  </h3>
-                  <p className="text-muted-foreground font-medium">
-                    +1 (555) 123-4567
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-8 group">
-                <div className="p-4 border border-white/10 bg-white/5 rounded-xl group-hover:bg-primary/20 group-hover:text-primary transition-colors">
-                  <MapPin className="w-8 h-8" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-xl uppercase tracking-widest mb-2 text-foreground">
-                    Office
-                  </h3>
-                  <p className="text-muted-foreground font-medium">
-                    123 Innovation Dr, CA
-                  </p>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
 
           {/* Right Column: Form */}
-          <div className="bg-card/30 backdrop-blur-xl text-foreground p-8 md:p-12 border border-white/10 shadow-2xl rounded-3xl relative">
-            <div className="absolute inset-0 bg-primary/5 rounded-3xl -z-10" />
+          <div className="bg-card text-foreground p-8 md:p-10 border border-border shadow-premium-lg rounded-2xl">
             <ContactForm />
           </div>
         </div>

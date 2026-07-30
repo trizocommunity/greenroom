@@ -1,0 +1,557 @@
+import { format } from "date-fns";
+import { and, desc, eq, inArray } from "drizzle-orm";
+import {
+  Bell,
+  Crown,
+  Download,
+  LayoutDashboard,
+  ListChecks,
+  MapPin,
+  Trophy,
+  Users,
+} from "lucide-react";
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+import { QrCodeWithActions } from "@/components/common/QrCodeWithActions";
+import { ParticipantLogoutButton } from "@/components/festival/public/ParticipantLogoutButton";
+import { CopyProfileLinkButton } from "@/components/participant/CopyProfileLinkButton";
+import { ParticipantAssignedProgrammeCards } from "@/components/participant/ParticipantAssignedProgrammeCards";
+import { ParticipantQrDialogButton } from "@/components/participant/ParticipantQrDialogButton";
+import { ReportingEndsInCountdown } from "@/components/programme/ReportingEndsInCountdown";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { APP_URL } from "@/config/routes";
+import { getParticipantSessionFromCookie } from "@/core/auth/participant-session";
+import { db } from "@/core/database/client";
+import {
+  participant as participantTable,
+  programmeReportingSession as sessionTable,
+} from "@/core/database/schema";
+import type { ProgrammeStatus } from "@/core/types/app-enums";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { findParticipantByFestivalAndProfileSlug } from "@/features/participants/repositories/participant.repository";
+import {
+  getParticipantProfileUrl,
+  getQrCodeContent,
+} from "@/features/participants/services/participant-profile-url";
+import {
+  FeatureService,
+  getTierForFeatureCheck,
+} from "@/features/plan-features/services/features";
+import { indexReportingSessionsByProgramme } from "@/features/programmes/services/programme-reporting-display";
+import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
+
+const RESERVED_SLUGS = new Set([
+  "results",
+  "media",
+  "news",
+  "programmes",
+  "sessions",
+  "about",
+]);
+
+function isSessionTimedOut(session: any): boolean {
+  return Boolean(
+    session?.status === "IN_PROGRESS" &&
+      session.windowEndsAt &&
+      new Date(session.windowEndsAt).getTime() <= Date.now(),
+  );
+}
+
+export default async function ParticipantMainPage({
+  params,
+}: {
+  params: Promise<{ slug: string; participantSlug: string }>;
+}) {
+  const { slug, participantSlug } = await params;
+  if (RESERVED_SLUGS.has(participantSlug)) notFound();
+
+  const festival = await findFestivalBySlug(slug);
+  if (!festival) notFound();
+
+  const canViewProfile = FeatureService.isFeatureEnabled(
+    getTierForFeatureCheck(festival.tier as any),
+    "publicParticipantProfile",
+  );
+  if (!canViewProfile) notFound();
+
+  const participant = await findParticipantByFestivalAndProfileSlug(
+    festival.id,
+    participantSlug,
+  );
+  if (!participant) notFound();
+
+  const session = await getParticipantSessionFromCookie();
+  const isOwnerSession =
+    !!session &&
+    session.participantId === participant.id &&
+    session.festivalId === festival.id;
+
+  // No session for any reason → send to login. Auth/team-leader checks live
+  // in `requireParticipantAuth` for protected sub-pages, not here.
+  if (!isOwnerSession) {
+    redirect(`/${festival.slug}/login`);
+  }
+
+  const startDate = festival.startDate ?? festival.createdAt;
+  const endDate =
+    festival.endDate ??
+    festival.expiresAt ??
+    new Date(
+      new Date(festival.createdAt).getTime() + 40 * 24 * 60 * 60 * 1000,
+    ).toISOString();
+  const venue = festival.location ?? festival.orgLocation ?? "—";
+
+  const group = participant.group;
+  const category = participant.category;
+
+  const teamLeaders = group
+    ? await db.query.participant.findMany({
+        where: and(
+          eq(participantTable.festivalId, festival.id),
+          eq(participantTable.groupId, group.id),
+          eq(participantTable.isTeamLeader, true),
+        ),
+        columns: { id: true, name: true, profileSlug: true, chestNumber: true },
+      })
+    : [];
+
+  const programmeById = new Map<
+    string,
+    {
+      programmeId: string;
+      name: string;
+      categoryName: string | null;
+      status: ProgrammeStatus;
+      programmeType: string;
+    }
+  >();
+  const assignmentIdByProgrammeId = new Map<string, string>();
+
+  for (const a of participant.assignments ?? []) {
+    const p = a.programme;
+    const pid = a.programmeId ?? p?.id;
+    if (!pid || !p?.status) continue;
+    if (!programmeById.has(pid)) {
+      programmeById.set(pid, {
+        programmeId: pid,
+        name: p.name,
+        categoryName: (p as any).category?.name ?? null,
+        status: p.status as ProgrammeStatus,
+        programmeType: p.type,
+      });
+    }
+    assignmentIdByProgrammeId.set(pid, a.id);
+  }
+
+  const assignedProgrammes = Array.from(programmeById.values()).sort(
+    (a, b) =>
+      getProgrammeStatusPriorityRank(a.status) -
+      getProgrammeStatusPriorityRank(b.status),
+  );
+
+  const assignmentProgrammeIds = assignedProgrammes.map((p) => p.programmeId);
+
+  const reportingSessions =
+    assignmentProgrammeIds.length > 0
+      ? await db.query.programmeReportingSession.findMany({
+          where: inArray(sessionTable.programmeId, assignmentProgrammeIds),
+          with: {
+            programme: { columns: { name: true } },
+            stage: { columns: { name: true } },
+            programmeReportedParticipants: { columns: { assignmentId: true } },
+            programmeCodeLetters: {
+              with: {
+                programmeCodeLetterRecipients: {
+                  columns: { participantId: true },
+                },
+              },
+            },
+          },
+          orderBy: [desc(sessionTable.updatedAt)],
+        })
+      : [];
+
+  const { latestByProgrammeId, latestClosedByProgrammeId } =
+    indexReportingSessionsByProgramme(reportingSessions);
+
+  const ongoingSessions = reportingSessions.filter((s) =>
+    ["IN_PROGRESS", "CLOSED"].includes(s.status),
+  );
+
+  const profileUrl = getParticipantProfileUrl(
+    APP_URL.replace(/\/$/, ""),
+    festival.slug,
+    participant as any,
+  );
+
+  const liveSessions = ongoingSessions.filter(
+    (s) => s.status === "IN_PROGRESS" && !isSessionTimedOut(s),
+  );
+  const topLiveSession = liveSessions[0];
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
+      {liveSessions.length > 1 ? (
+        <div className="w-full rounded-xl border border-emerald-600/30 bg-emerald-500/10 p-3 sm:p-4">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Live reporting
+            </p>
+            <Badge className="bg-emerald-600 text-white">
+              {liveSessions.length} active
+            </Badge>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {liveSessions.slice(0, 4).map((session: any) => (
+              <div
+                key={session.id}
+                className="rounded-md border border-emerald-700/20 bg-background/50 px-2.5 py-2"
+              >
+                <p className="truncate text-sm font-medium">
+                  {session.programme?.name ?? "Programme"}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {session.stage?.name ?? "No stage"}
+                </p>
+                {session.windowEndsAt ? (
+                  <div className="mt-1">
+                    <ReportingEndsInCountdown
+                      endsAt={session.windowEndsAt}
+                      autoRefreshOnExpire
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 text-right">
+            <Link
+              href={`/${slug}/${participantSlug}/assigned-programmes`}
+              className="text-xs font-medium underline underline-offset-4"
+            >
+              View all programmes
+            </Link>
+          </div>
+        </div>
+      ) : liveSessions.length === 1 ? (
+        <div className="w-full rounded-xl border px-4 min-h-20 border-emerald-600/30 bg-emerald-500/10 py-3 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Current programme
+            </p>
+            <p className="text-sm font-medium truncate">
+              {topLiveSession?.programme?.name ?? "Programme"}
+              {topLiveSession?.stage?.name ? (
+                <span className="font-normal text-muted-foreground">
+                  {" "}
+                  · {topLiveSession.stage.name}
+                </span>
+              ) : null}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Live reporting — report to the stage manager.
+            </p>
+            {topLiveSession?.windowEndsAt ? (
+              <div className="mt-2">
+                <ReportingEndsInCountdown
+                  endsAt={topLiveSession.windowEndsAt}
+                  autoRefreshOnExpire
+                />
+              </div>
+            ) : null}
+          </div>
+          <Link
+            href={`/${slug}/${participantSlug}/assigned-programmes`}
+            className="text-sm font-medium underline underline-offset-4"
+          >
+            View all programmes
+          </Link>
+        </div>
+      ) : null}
+
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">
+          {participant.name}
+        </h1>
+        <div className="flex items-center gap-2">
+          <ParticipantQrDialogButton
+            qrContent={getQrCodeContent(participant as any)}
+            participantName={participant.name}
+          />
+          {isOwnerSession ? (
+            <ParticipantLogoutButton festivalSlug={slug} />
+          ) : null}
+        </div>
+      </div>
+
+      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+        <CardHeader className="pb-3 text-center">
+          <CardTitle className="text-lg flex items-center justify-center gap-2">
+            <Download className="h-5 w-5 text-primary" />
+            Your Chest Number QR Code
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            ⭐ Used for programme reporting - scan to mark attendance
+          </p>
+        </CardHeader>
+        <CardContent className="flex justify-center pb-4">
+          <QrCodeWithActions
+            url={participant.chestNumber || participant.name || participant.id}
+            qrContent={getQrCodeContent(participant as any)}
+            size={220}
+            downloadLabel="Download"
+            shareLabel="WhatsApp"
+            fileName={`${participant.name.replace(/\s+/g, "-").toLowerCase()}-chest-${participant.chestNumber || "unknown"}.png`}
+            shareMessage={`My chest number: ${participant.chestNumber || getQrCodeContent(participant as any)} - ${festival.name}`}
+            sizeVariant="lg"
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            Festival
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-muted-foreground">Start</span>
+            <span className="font-medium">
+              {format(new Date(startDate), "PPpp")}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-muted-foreground">End</span>
+            <span className="font-medium">
+              {format(new Date(endDate), "PPpp")}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">Venue:</span>
+            <span className="font-medium">{venue}</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="md:col-span-1">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Participant</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Group</span>
+              <span className="font-medium">{group?.name ?? "—"}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Category</span>
+              <span className="font-medium">{category?.name ?? "—"}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Chest No</span>
+              <span className="font-mono">
+                {participant.chestNumber ?? "—"}
+              </span>
+            </div>
+
+            <div className="pt-3 mt-3 border-t">
+              <p className="text-xs font-medium mb-2">Your Profile Link</p>
+              <div className="flex items-center gap-1">
+                <CopyProfileLinkButton profileUrl={profileUrl} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="md:col-span-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Your Team</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Who’s our Team Leader?
+              </p>
+              {teamLeaders.length > 0 ? (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {teamLeaders.map((tl) => (
+                    <Badge
+                      key={tl.id}
+                      variant={tl.id === participant.id ? "default" : "outline"}
+                      className={
+                        tl.id === participant.id
+                          ? "bg-amber-600 text-white border-transparent"
+                          : "bg-amber-500/10 border-amber-500/30 text-amber-800"
+                      }
+                    >
+                      {tl.name}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No team leaders assigned.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <p className="text-sm text-muted-foreground">Quick actions</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <p className="text-sm text-muted-foreground">
+                  Team leader login is only available for assigned team leaders.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {participant.isTeamLeader ? (
+        <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-transparent">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Crown className="h-5 w-5 text-amber-600" />
+              Team Leader Tools
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              You manage this group. Use these to assign programmes, track your
+              participants and stay on top of live reporting.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <Button asChild className="h-auto py-3 justify-start">
+                <Link
+                  href={`/${slug}/${participantSlug}/dashboard`}
+                  className="flex flex-col items-start gap-0.5 text-left"
+                >
+                  <span className="inline-flex items-center gap-2 font-semibold">
+                    <LayoutDashboard className="h-4 w-4" /> Dashboard
+                  </span>
+                  <span className="text-xs font-normal opacity-80">
+                    Live summary & quick links
+                  </span>
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                className="h-auto py-3 justify-start"
+              >
+                <Link
+                  href={`/${slug}/${participantSlug}/assign-programmes`}
+                  className="flex flex-col items-start gap-0.5 text-left"
+                >
+                  <span className="inline-flex items-center gap-2 font-semibold">
+                    <ListChecks className="h-4 w-4" /> Assign Programmes
+                  </span>
+                  <span className="text-xs font-normal opacity-80">
+                    Pick programmes for your participants
+                  </span>
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                className="h-auto py-3 justify-start"
+              >
+                <Link
+                  href={`/${slug}/${participantSlug}/my-participants`}
+                  className="flex flex-col items-start gap-0.5 text-left"
+                >
+                  <span className="inline-flex items-center gap-2 font-semibold">
+                    <Users className="h-4 w-4" /> My Participants
+                  </span>
+                  <span className="text-xs font-normal opacity-80">
+                    Roster & chest numbers
+                  </span>
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                className="h-auto py-3 justify-start"
+              >
+                <Link
+                  href={`/${slug}/${participantSlug}/all-programmes`}
+                  className="flex flex-col items-start gap-0.5 text-left"
+                >
+                  <span className="inline-flex items-center gap-2 font-semibold">
+                    <ListChecks className="h-4 w-4" /> All Programmes
+                  </span>
+                  <span className="text-xs font-normal opacity-80">
+                    Reporting in progress
+                  </span>
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                className="h-auto py-3 justify-start"
+              >
+                <Link
+                  href={`/${slug}/${participantSlug}/leaderboard`}
+                  className="flex flex-col items-start gap-0.5 text-left"
+                >
+                  <span className="inline-flex items-center gap-2 font-semibold">
+                    <Trophy className="h-4 w-4" /> Leaderboard
+                  </span>
+                  <span className="text-xs font-normal opacity-80">
+                    Group standings
+                  </span>
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                className="h-auto py-3 justify-start"
+              >
+                <Link
+                  href={`/${slug}/${participantSlug}/notifications`}
+                  className="flex flex-col items-start gap-0.5 text-left"
+                >
+                  <span className="inline-flex items-center gap-2 font-semibold">
+                    <Bell className="h-4 w-4" /> Notifications
+                  </span>
+                  <span className="text-xs font-normal opacity-80">
+                    Programme updates
+                  </span>
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {assignedProgrammes.length > 0 ? (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold tracking-tight">
+              Your programmes
+            </h2>
+            <Link
+              href={`/${slug}/${participantSlug}/assigned-programmes`}
+              className="text-sm font-medium underline underline-offset-4"
+            >
+              View all
+            </Link>
+          </div>
+          <ParticipantAssignedProgrammeCards
+            programmes={assignedProgrammes.slice(0, 6)}
+            latestReportingByProgrammeId={latestByProgrammeId}
+            latestClosedReportingByProgrammeId={latestClosedByProgrammeId}
+            assignmentIdByProgrammeId={assignmentIdByProgrammeId}
+            participantId={participant.id}
+            emptyMessage="No assigned programmes yet."
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}

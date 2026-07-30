@@ -10,8 +10,7 @@ export function getFestivalDateKeySet(
   if (!startISO || !endISO) return null;
   const start = startOfDay(new Date(startISO));
   const end = startOfDay(new Date(endISO));
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()))
-    return null;
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
   if (start > end) return null;
   const days = eachDayOfInterval({ start, end });
   return new Set(days.map((d) => format(d, "yyyy-MM-dd")));

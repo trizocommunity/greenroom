@@ -8,14 +8,14 @@ export default function PublicNotFound() {
         aria-hidden
         className="pointer-events-none absolute inset-0 overflow-hidden"
       >
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[500px] rounded-full bg-violet-600/10 blur-[100px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[500px] rounded-full bg-primary/10 blur-[100px]" />
       </div>
 
       <div className="relative z-10 flex flex-col items-center gap-5 text-center">
         {/* Icon */}
-        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm">
+        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-border bg-card backdrop-blur-sm">
           <svg
-            className="h-10 w-10 text-violet-400"
+            className="h-10 w-10 text-primary"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -30,15 +30,13 @@ export default function PublicNotFound() {
         </div>
 
         {/* Label */}
-        <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-violet-400">
-          Error 404
-        </span>
+        <span className="text-eyebrow">Error 404</span>
 
         <div className="space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight text-white">
-            Page Not Found
+          <h1 className="text-4xl font-semibold tracking-tight text-heading">
+            Page not found
           </h1>
-          <p className="max-w-md text-[#94a3b8] leading-relaxed">
+          <p className="max-w-md text-muted-foreground leading-relaxed">
             We looked everywhere, but couldn&apos;t find that page. It may have
             been moved, renamed, or never existed.
           </p>
@@ -47,15 +45,15 @@ export default function PublicNotFound() {
         <div className="flex flex-col sm:flex-row items-center gap-3 mt-2">
           <Link
             href="/"
-            className="inline-flex items-center justify-center rounded-lg bg-violet-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-600/30 transition-all hover:bg-violet-500"
+            className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground shadow-primary-glow transition-opacity hover:opacity-90"
           >
-            Back to Home
+            Back to home
           </Link>
           <Link
             href="/features"
-            className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/5 px-6 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/10"
+            className="inline-flex items-center justify-center rounded-full border border-border bg-card px-6 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
           >
-            Browse Features
+            Browse features
           </Link>
         </div>
       </div>

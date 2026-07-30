@@ -1,3 +1,5 @@
+import "server-only";
+
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as relations from "./relations";
 import * as schema from "./schema";
@@ -5,54 +7,19 @@ import * as schema from "./schema";
 const dbSchema = { ...schema, ...relations };
 
 import { Pool, type PoolConfig } from "pg";
+import { buildPoolConfig, scrubConnectionString } from "./connection";
 
 const globalForDb = globalThis as unknown as {
   pool: Pool | undefined;
   db: ReturnType<typeof drizzle<typeof dbSchema>> | undefined;
 };
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) throw new Error("DATABASE_URL is not defined");
+const rawConnectionString = process.env.DATABASE_URL;
+if (!rawConnectionString) throw new Error("DATABASE_URL is not defined");
 
-// Strip SSL params from URL so pg doesn't override our ssl config (connection-string parser
-// replaces the config ssl object when sslmode/etc. are present, re-enabling cert verification).
-const cleanedConnectionString = connectionString
-  .replace(/([?&])(sslmode|sslcert|sslkey|sslrootcert)=[^&]*/gi, (_m, p) =>
-    p === "?" ? "?" : "",
-  )
-  .replace(/\?&+/, "?")
-  .replace(/\?$/, "");
-
-const effectiveConnectionString = cleanedConnectionString || connectionString;
-
-const isLocalConnection = (() => {
-  try {
-    const url = new URL(effectiveConnectionString);
-    return ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
-  } catch {
-    return /localhost|127\.0\.0\.1|::1/i.test(effectiveConnectionString);
-  }
-})();
-
-const hasExplicitSslDisable = /sslmode=disable/i.test(connectionString);
-const sslConfig: PoolConfig["ssl"] =
-  isLocalConnection || hasExplicitSslDisable
-    ? false
-    : { rejectUnauthorized: false };
-
-const poolConfig: PoolConfig = {
-  connectionString: effectiveConnectionString,
-  max: process.env.NODE_ENV === "production" ? 10 : 5,
-  idleTimeoutMillis: 30000,
-  // Hosted Postgres (Neon, Supabase, etc.) often drops idle TCP; allow longer cold starts.
-  connectionTimeoutMillis: 30000,
-  keepAlive: true,
-  keepAliveInitialDelayMillis: 10000,
-  // Recycle clients before the server terminates them ("Connection terminated unexpectedly").
-  maxLifetimeSeconds: 300,
-  maxUses: 750,
-  ssl: sslConfig,
-};
+const connectionString =
+  scrubConnectionString(rawConnectionString) || rawConnectionString;
+const poolConfig: PoolConfig = buildPoolConfig(rawConnectionString);
 
 if (!globalForDb.pool) {
   globalForDb.pool = new Pool(poolConfig);
@@ -60,8 +27,6 @@ if (!globalForDb.pool) {
 export const pool = globalForDb.pool;
 
 if (process.env.NODE_ENV !== "production") globalForDb.pool = pool;
-
-pool.on("error", (err) => console.error("Database pool error:", err));
 
 if (!globalForDb.db) {
   globalForDb.db = drizzle(pool, { schema: dbSchema });
@@ -83,3 +48,19 @@ if (
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
 }
+
+// Capture pool-level errors. In production, surface to Sentry so we don't
+// silently swallow transient pgBouncer / Postgres disconnects.
+pool.on("error", (err) => {
+  console.error("Database pool error:", err);
+  if (process.env.NODE_ENV === "production") {
+    try {
+      // Lazy require — @sentry/nextjs only resolves in runtime bundles.
+      const { captureException } =
+        require("@sentry/nextjs") as typeof import("@sentry/nextjs");
+      captureException(err, { tags: { area: "pg-pool" } });
+    } catch {
+      // Sentry not initialized; ignore.
+    }
+  }
+});

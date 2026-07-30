@@ -4,6 +4,7 @@ import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useDeleteFestival } from "@/api/client/festivals";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +19,6 @@ import {
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { deleteFestivalAdmin } from "@/features/admin/actions/admin.actions";
 
 interface DeleteFestivalButtonProps {
   festivalId: string;
@@ -32,10 +32,10 @@ export function DeleteFestivalButton({
   asMenuItem,
 }: DeleteFestivalButtonProps) {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [reason, setReason] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const router = useRouter();
+  const deleteFestival = useDeleteFestival();
 
   const Trigger = asMenuItem ? (
     <DropdownMenuItem
@@ -43,7 +43,7 @@ export function DeleteFestivalButton({
         e.preventDefault();
         setOpen(true);
       }}
-      className="text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer"
+      className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
     >
       <Trash2 className="mr-2 h-4 w-4" />
       Delete Festival
@@ -52,7 +52,7 @@ export function DeleteFestivalButton({
     <Button
       variant="ghost"
       size="icon"
-      className="text-red-500 hover:text-red-600 hover:bg-red-50"
+      className="text-destructive hover:text-destructive hover:bg-destructive/10"
     >
       <Trash2 className="h-4 w-4" />
     </Button>
@@ -68,16 +68,16 @@ export function DeleteFestivalButton({
       return;
     }
 
-    setLoading(true);
     try {
-      await deleteFestivalAdmin(festivalId, reason);
+      await deleteFestival.mutateAsync({
+        id: festivalId,
+        reason: reason.trim(),
+      });
       toast.success("Festival deleted successfully");
       setOpen(false);
       router.refresh();
     } catch (error) {
       toast.error("Failed to delete festival");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -86,12 +86,12 @@ export function DeleteFestivalButton({
       <DialogTrigger asChild>{Trigger}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="text-red-600">
+          <DialogTitle className="text-destructive">
             DANGER: Delete Festival
           </DialogTitle>
           <DialogDescription>
             You are about to irreversibly delete <strong>{festivalName}</strong>
-            . This will delete all associated Payments, Students, and data.
+            . This will delete all associated Payments, Participants, and data.
           </DialogDescription>
         </DialogHeader>
 
@@ -133,10 +133,12 @@ export function DeleteFestivalButton({
             variant="destructive"
             onClick={handleDelete}
             disabled={
-              loading || !reason.trim() || confirmation !== festivalName
+              deleteFestival.isPending ||
+              !reason.trim() ||
+              confirmation !== festivalName
             }
           >
-            {loading ? "Deleting..." : "Delete Festival"}
+            {deleteFestival.isPending ? "Deleting..." : "Delete Festival"}
           </Button>
         </DialogFooter>
       </DialogContent>

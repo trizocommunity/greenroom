@@ -2,7 +2,7 @@
 
 import { randomUUID } from "crypto";
 import { format } from "date-fns";
-import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne, or } from "drizzle-orm";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
@@ -21,6 +21,7 @@ import {
   revalidateSchedulePaths,
 } from "@/features/schedule/utils/schedule-orchestration";
 import { validateScheduleTimesForFestival } from "@/features/schedule/utils/schedule-times-validation";
+import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 
 export type ScheduleEntryWithRelations = Awaited<
   ReturnType<typeof getScheduleEntries>
@@ -115,16 +116,31 @@ export async function getScheduleEntries(
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
 
+  const accessibleStageIds = await StageAssignmentService.getAccessibleStageIds(
+    festivalId,
+    session,
+  );
+
   return db.query.scheduleEntry.findMany({
     where: and(
       eq(scheduleEntryTable.festivalId, festivalId),
       typeFilter ? eq(scheduleEntryTable.type, typeFilter) : undefined,
+      accessibleStageIds === "all"
+        ? undefined
+        : or(
+            isNull(scheduleEntryTable.stageId),
+            accessibleStageIds.length > 0
+              ? inArray(scheduleEntryTable.stageId, accessibleStageIds)
+              : undefined,
+          ),
     ),
     with: {
       programme: {
         with: { category: true },
       },
       stage: true,
+      creatorUser: { columns: { fullName: true, displayName: true } },
+      updaterUser: { columns: { fullName: true, displayName: true } },
     },
     orderBy: [asc(scheduleEntryTable.startTime), asc(scheduleEntryTable.order)],
   });
@@ -144,6 +160,8 @@ export async function getScheduleEntriesPublic(
         with: { category: true },
       },
       stage: true,
+      creatorUser: { columns: { fullName: true, displayName: true } },
+      updaterUser: { columns: { fullName: true, displayName: true } },
     },
     orderBy: [asc(scheduleEntryTable.startTime), asc(scheduleEntryTable.order)],
   });

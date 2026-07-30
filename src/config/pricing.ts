@@ -7,9 +7,9 @@ export interface TierFeatures {
   // Pre Event Works Access
   categories: boolean;
   groups: boolean;
-  students: boolean;
-  viewStudentProfile: boolean; // View student profile page (STANDARD+)
-  publicStudentProfile: boolean; // Public URL /{festival}/{studentSlug} (STANDARD+)
+  participants: boolean;
+  viewParticipantProfile: boolean; // View participant profile page (STANDARD+)
+  publicParticipantProfile: boolean; // Public URL /{festival}/{participantSlug} (STANDARD+)
   programmes: boolean;
   assignments: boolean;
 
@@ -20,13 +20,12 @@ export interface TierFeatures {
   schedule: boolean;
 
   // Team & Collaboration
-  maxTeamMembers: number;
   members: boolean;
   roleBasedAccess: boolean;
 
   // Import/Export
-  studentImport: boolean;
-  studentBulkUpload: boolean;
+  participantImport: boolean;
+  participantBulkUpload: boolean;
   programmeBulkUpload: boolean;
   pdfExport: boolean;
   excelExport: boolean;
@@ -41,6 +40,9 @@ export interface TierFeatures {
   advancedAnalytics: boolean;
   customReports: boolean;
 
+  // Templates (poster editor)
+  templates: boolean;
+
   // Certificates & QR
   qrCodes: boolean;
   autoCertificates: boolean;
@@ -51,7 +53,7 @@ export interface TierFeatures {
   publicLandingPage: boolean;
   fullLandingPage: boolean;
   landingPageBuilder: boolean;
-  gallery: boolean;
+  media: boolean;
   news: boolean;
 
   // Branding
@@ -67,23 +69,26 @@ export interface TierFeatures {
   liveScoreboard: boolean;
   liveResults: boolean;
   multiFestivalManagement: boolean;
+  programmeTeamLead: boolean; // Team lead picker on GROUP assignments (PRO)
+  programmeAuditDrawer: boolean; // Audit timeline panel on programme drawer (PRO)
 
   // Settings
   festivalSettings: boolean;
   advancedSettings: boolean;
   programmeAssignmentDeadline: boolean;
+  participantCreationDeadline: boolean;
 
   // Support
   supportLevel: "whatsapp" | "email" | "priority" | "dedicated";
   supportResponseTime: number; // hours
 
-  // Post-Expiry Behavior
-  postExpiryAccess: "delete" | "readonly" | "full";
+  // Post-expiry
+  postExpiryAccess: "readonly" | "delete";
   dataRetentionDays: number;
 }
 
 export interface TierLimits {
-  students: number;
+  participants: number;
   programmes: number;
   events: number;
   stages: number;
@@ -94,18 +99,20 @@ export interface TierLimits {
 export interface TierConfig {
   price: number;
   label: string;
-  durationDays: number;
+  festivalDurationDays: number;
   limits: TierLimits;
   features: TierFeatures;
 }
+
+export const GRACE_PERIOD_DAYS = 7;
 
 export const TIER_CONFIG: Record<Tier, TierConfig> = {
   BASIC: {
     price: 1500,
     label: "Basic",
-    durationDays: 30,
+    festivalDurationDays: 90,
     limits: {
-      students: 250,
+      participants: 250,
       programmes: 100,
       events: 10,
       stages: 10,
@@ -116,9 +123,9 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       // Pre Event Works Access
       categories: true,
       groups: true,
-      students: true,
-      viewStudentProfile: false, // BASIC: no view student profile
-      publicStudentProfile: false, // BASIC: no public student profile page
+      participants: true,
+      viewParticipantProfile: false, // BASIC: no view participant profile
+      publicParticipantProfile: false, // BASIC: no public participant profile page
       programmes: true,
       assignments: true,
 
@@ -129,13 +136,12 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       schedule: false,
 
       // Team & Collaboration
-      maxTeamMembers: 1, // Owner only, no additional members
       members: false,
       roleBasedAccess: false,
 
       // Import/Export
-      studentImport: true,
-      studentBulkUpload: false,
+      participantImport: true,
+      participantBulkUpload: false,
       programmeBulkUpload: false,
       pdfExport: true,
       excelExport: false,
@@ -150,6 +156,8 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       advancedAnalytics: false,
       customReports: false,
 
+      templates: true,
+
       // Certificates & QR
       qrCodes: false,
       autoCertificates: false,
@@ -160,7 +168,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       publicLandingPage: true, // Basic version (title + results)
       fullLandingPage: false,
       landingPageBuilder: false,
-      gallery: false,
+      media: false,
       news: false,
 
       // Branding
@@ -176,17 +184,20 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       liveScoreboard: true,
       liveResults: true,
       multiFestivalManagement: false,
+      programmeTeamLead: false,
+      programmeAuditDrawer: false,
 
       // Settings — BASIC has no settings page (sidebar/route already gate on this)
       festivalSettings: true,
       advancedSettings: false,
       programmeAssignmentDeadline: false,
+      participantCreationDeadline: false,
 
       // Support
       supportLevel: "whatsapp",
       supportResponseTime: 24,
 
-      // Post-Expiry Behavior
+      // Post-expiry
       postExpiryAccess: "delete",
       dataRetentionDays: 0,
     },
@@ -195,9 +206,9 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
   STANDARD: {
     price: 3000,
     label: "Standard",
-    durationDays: 30, // Fixed 30 days for all plans; no read-only after expiry
+    festivalDurationDays: 90,
     limits: {
-      students: 500,
+      participants: 500,
       programmes: 250,
       events: 25,
       stages: 20,
@@ -208,9 +219,9 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       // Pre Event Works Access — all enabled
       categories: true,
       groups: true,
-      students: true,
-      viewStudentProfile: true, // STANDARD: view student profile
-      publicStudentProfile: true, // STANDARD: public student profile at /{slug}/{studentSlug}
+      participants: true,
+      viewParticipantProfile: true, // STANDARD: view participant profile
+      publicParticipantProfile: true, // STANDARD: public participant profile at /{slug}/{participantSlug}
       programmes: true,
       assignments: true,
 
@@ -220,14 +231,13 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       stageManagement: true,
       schedule: true,
 
-      // Team & Collaboration — up to 3 members, simple role management
-      maxTeamMembers: 3,
+      // Team & Collaboration — unlimited members
       members: true,
       roleBasedAccess: false, // granular RBAC still a PRO feature
 
       // Import/Export — bulk upload unlocked
-      studentImport: true,
-      studentBulkUpload: true,
+      participantImport: true,
+      participantBulkUpload: true,
       programmeBulkUpload: true,
       pdfExport: true,
       excelExport: true,
@@ -242,17 +252,19 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       advancedAnalytics: false,
       customReports: false,
 
+      templates: true,
+
       // Certificates & QR — QR and auto-certs unlocked
       qrCodes: true,
       autoCertificates: true,
       customCertificateTemplates: false,
       bulkCertificateGeneration: false,
 
-      // Landing Page & Content — full landing + gallery & news
+      // Landing Page & Content — full landing + media & news
       publicLandingPage: true,
       fullLandingPage: true,
       landingPageBuilder: false,
-      gallery: true,
+      media: true,
       news: true,
 
       // Branding — custom URL and colors
@@ -268,17 +280,20 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       liveScoreboard: true,
       liveResults: false,
       multiFestivalManagement: false,
+      programmeTeamLead: false,
+      programmeAuditDrawer: false,
 
       // Settings
       festivalSettings: true,
       advancedSettings: true,
       programmeAssignmentDeadline: true,
+      participantCreationDeadline: true,
 
       // Support — email support with faster response
       supportLevel: "email",
       supportResponseTime: 12,
 
-      // Post-Expiry Behavior — no read-only; expired = full lock
+      // Post-expiry
       postExpiryAccess: "delete",
       dataRetentionDays: 0,
     },
@@ -287,9 +302,9 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
   PRO: {
     price: 6000,
     label: "Pro",
-    durationDays: 30, // Fixed 30 days for all plans
+    festivalDurationDays: 90,
     limits: {
-      students: 2000,
+      participants: 2000,
       programmes: 1000,
       events: 100,
       stages: 50,
@@ -300,9 +315,9 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       // Pre Event Works Access — all enabled
       categories: true,
       groups: true,
-      students: true,
-      viewStudentProfile: true, // PRO: view student profile
-      publicStudentProfile: true, // PRO: public student profile
+      participants: true,
+      viewParticipantProfile: true, // PRO: view participant profile
+      publicParticipantProfile: true, // PRO: public participant profile
       programmes: true,
       assignments: true,
 
@@ -312,14 +327,13 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       stageManagement: true,
       schedule: true,
 
-      // Team & Collaboration — up to 10 members with full RBAC
-      maxTeamMembers: 10,
+      // Team & Collaboration — unlimited members with full RBAC
       members: true,
       roleBasedAccess: true,
 
       // Import/Export — everything unlocked
-      studentImport: true,
-      studentBulkUpload: true,
+      participantImport: true,
+      participantBulkUpload: true,
       programmeBulkUpload: true,
       pdfExport: true,
       excelExport: true,
@@ -334,17 +348,19 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       advancedAnalytics: true,
       customReports: true,
 
+      templates: true,
+
       // Certificates & QR — fully unlocked with templates + bulk generation
       qrCodes: true,
       autoCertificates: true,
       customCertificateTemplates: true,
       bulkCertificateGeneration: true,
 
-      // Landing Page & Content — builder + gallery & news
+      // Landing Page & Content — builder + media & news
       publicLandingPage: true,
       fullLandingPage: true,
       landingPageBuilder: true,
-      gallery: true,
+      media: true,
       news: true,
 
       // Branding — white-label + custom domain
@@ -360,17 +376,20 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       liveScoreboard: true,
       liveResults: true,
       multiFestivalManagement: true,
+      programmeTeamLead: true,
+      programmeAuditDrawer: true,
 
       // Settings
       festivalSettings: true,
       advancedSettings: true,
       programmeAssignmentDeadline: true,
+      participantCreationDeadline: true,
 
       // Support — priority support with 4h SLA
       supportLevel: "priority",
       supportResponseTime: 4,
 
-      // Post-Expiry Behavior — no read-only; expired = full lock
+      // Post-expiry
       postExpiryAccess: "delete",
       dataRetentionDays: 0,
     },
@@ -394,12 +413,12 @@ export const PRICING_TIERS: PricingTier[] = [
     price: TIER_CONFIG.BASIC.price,
     description: "Perfect for small local festivals and beginners.",
     features: [
-      `${TIER_CONFIG.BASIC.limits.students} Students`,
+      `${TIER_CONFIG.BASIC.limits.participants} Participants`,
       `${TIER_CONFIG.BASIC.limits.programmes} Programmes`,
       `${TIER_CONFIG.BASIC.limits.events} Public Events`,
       `${TIER_CONFIG.BASIC.limits.stages} Stages`,
       "0.5 GB Storage",
-      `${TIER_CONFIG.BASIC.durationDays} Days Active Duration`,
+      `${TIER_CONFIG.BASIC.festivalDurationDays} Days Active Duration`,
       "Data deleted on expiry",
     ],
     isPopular: false,
@@ -410,14 +429,14 @@ export const PRICING_TIERS: PricingTier[] = [
     price: TIER_CONFIG.STANDARD.price,
     description: "The best value for most growing festivals.",
     features: [
-      `${TIER_CONFIG.STANDARD.limits.students} Students`,
+      `${TIER_CONFIG.STANDARD.limits.participants} Participants`,
       `${TIER_CONFIG.STANDARD.limits.programmes} Programmes`,
       `${TIER_CONFIG.STANDARD.limits.events} Public Events`,
       `${TIER_CONFIG.STANDARD.limits.stages} Stages`,
       "2 GB Storage",
-      `${TIER_CONFIG.STANDARD.durationDays} Days Active Duration`,
+      `${TIER_CONFIG.STANDARD.festivalDurationDays} Days Active Duration`,
       "Stage Management & Scheduling",
-      "Bulk Upload (Students & Programmes)",
+      "Bulk Upload (Participants & Programmes)",
       "QR Codes & Auto Certificates",
       "Full Landing Page",
     ],
@@ -429,18 +448,18 @@ export const PRICING_TIERS: PricingTier[] = [
     price: TIER_CONFIG.PRO.price,
     description: "For established festivals needing maximum capacity.",
     features: [
-      `${TIER_CONFIG.PRO.limits.students} Students`,
+      `${TIER_CONFIG.PRO.limits.participants} Participants`,
       "1,000 Programmes",
       `${TIER_CONFIG.PRO.limits.events} Public Events`,
       "50 Stages",
       "10 GB Storage",
-      `${TIER_CONFIG.PRO.durationDays} Days Active Duration`,
+      `${TIER_CONFIG.PRO.festivalDurationDays} Days Active Duration`,
       "Advanced Analytics & Custom Reports",
       "Live Scoreboard & Live Results",
       "Certificate Builder & Bulk Generation",
       "White-label + Custom Domain",
       "API Access & Webhooks",
-      "Up to 10 Team Members with RBAC",
+      "Team Members with RBAC",
     ],
     isPopular: false,
   },

@@ -17,22 +17,71 @@ type AuditAction =
   | "CREATE_MEMBER"
   | "REVOKE_MEMBER"
   | "COMPLETE_ONBOARDING"
-  | "PASSWORD_RESET";
+  | "PASSWORD_RESET"
+  | "CREATE_PROGRAMME"
+  | "UPDATE_PROGRAMME"
+  | "DELETE_PROGRAMME"
+  | "ASSIGN_PARTICIPANTS"
+  | "REMOVE_ASSIGNMENT"
+  | "APPOINT_TEAM_LEAD"
+  | "REPLACE_TEAM_LEAD"
+  | "REMOVE_TEAM_LEAD"
+  | "OPEN_REPORTING"
+  | "CLOSE_REPORTING"
+  | "MARK_REPORTED"
+  | "ISSUE_CODE_LETTER"
+  | "SUBMIT_JUDGE_SCORES"
+  | "START_JUDGEMENT"
+  | "MARK_ABSENT"
+  | "SAVE_RESULT"
+  | "PUBLISH_RESULTS"
+  | "ANNOUNCE_RESULTS";
 
-type TargetType = "FESTIVAL" | "USER" | "PAYMENT";
+type TargetType =
+  | "FESTIVAL"
+  | "USER"
+  | "PAYMENT"
+  | "PROGRAMME"
+  | "PROGRAMME_ASSIGNMENT"
+  | "PROGRAMME_TEAM_LEAD"
+  | "REPORTING_SESSION"
+  | "JUDGEMENT_SCORE"
+  | "RESULT";
+
+/**
+ * Identifies the actor for contexts with no admin session cookie — the
+ * team-leader OTP portal (participant session, no `user` row) and judge
+ * score submission (link-token + judgeId, no session at all). `actorId` is
+ * a free-text column (no FK), so a participant/judge id is valid here.
+ */
+interface ActorOverride {
+  actorId: string;
+  actorRole: string;
+}
 
 interface CreateAuditLogParams {
   action: AuditAction;
   targetType: TargetType;
   targetId: string;
   metadata?: Record<string, unknown>;
+  /** Bypass the getSession() lookup for non-admin-session callers. */
+  actor?: ActorOverride;
 }
 
 export async function createAuditLog(params: CreateAuditLogParams) {
-  const session = await getSession();
+  let actorId: string;
+  let actorRole: string;
 
-  if (!session?.userId) {
-    throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+  if (params.actor) {
+    actorId = params.actor.actorId;
+    actorRole = params.actor.actorRole;
+  } else {
+    const session = await getSession();
+    if (!session?.userId) {
+      throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+    }
+    actorId = session.userId;
+    actorRole = session.role;
   }
 
   const { randomUUID } = await import("crypto");
@@ -40,8 +89,8 @@ export async function createAuditLog(params: CreateAuditLogParams) {
     .insert(auditLog)
     .values({
       id: randomUUID(),
-      actorId: session.userId,
-      actorRole: session.role,
+      actorId,
+      actorRole,
       action: params.action,
       targetType: params.targetType,
       targetId: params.targetId,

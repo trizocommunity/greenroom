@@ -2,21 +2,20 @@
 
 import {
   BarChart3,
-  Clock,
-  ListFilter,
+  History,
   Loader2,
   MoreHorizontal,
-  Sparkles,
+  Search,
+  SlidersHorizontal,
   Users2,
+  X,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import party from "party-js";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { CompactHistoryList } from "@/components/dashboard/event-works/CompactHistoryList";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,18 +26,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -47,18 +37,41 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from "@/components/ui/drawer";
 import { cn } from "@/core/utils/cn";
-import { formatStoredDateTime, parseStoredInstant } from "@/core/utils/date-time";
+import {
+  formatStoredDateTime,
+  parseStoredInstant,
+} from "@/core/utils/date-time";
 import {
   assignCodeLettersWithSpinAction,
   closeProgrammeReportingAction,
-  getReportingStatsAction,
   markProgrammeAssignmentsBulkAction,
   markProgrammeParticipantAction,
   reopenProgrammeReportingAction,
@@ -66,13 +79,13 @@ import {
   resetSpinCodeLettersAction,
   startProgrammeReportingAction,
 } from "@/features/programmes/actions/programme-reporting.actions";
-import { getCodeForStudentFromLetters } from "@/features/programmes/services/programme-reporting-code";
+import { getCodeForParticipantFromLetters } from "@/features/programmes/services/programme-reporting-code";
 import { CodeLetterSpinWheel } from "./CodeLetterSpinWheel";
 import { QrScanner } from "./QrScanner";
-import { ReportingQuickAddSection } from "./ReportingQuickAddSection";
 import { ReportingBoardList } from "./ReportingBoardList";
+import { ReportingQuickAddSection } from "./ReportingQuickAddSection";
 import { ReportingRosterTable } from "./ReportingRosterTable";
-import { ReportingStats } from "./ReportingStats";
+import { type ScanEntry, ScanResponseFooter } from "./ScanResponseFooter";
 import type {
   AssignmentWithReported,
   ProgrammeReportingAssignmentRow,
@@ -144,24 +157,37 @@ export function ProgrammeReportingClient({
   board,
   assignments,
   festivalStages,
+  initialStageId,
+  hideStageFilter,
 }: {
   festivalId: string;
   board: ReportingBoardItem[];
   assignments: ProgrammeReportingAssignmentRow[];
   /** All festival stages (filter dropdown); board alone only lists stages that appear on slots. */
   festivalStages: Array<{ id: string; name: string }>;
+  /** Pre-selects the stage filter (e.g. from the stage manager's banner selector). */
+  initialStageId?: string | null;
+  /** Hides the in-page stage filter — used when the banner selector already covers it. */
+  hideStageFilter?: boolean;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
   const [filterCategoryId, setFilterCategoryId] = useState<string>("ALL");
-  const [filterStageId, setFilterStageId] = useState<string>("ALL");
+  const [filterStageId, setFilterStageId] = useState<string>(
+    initialStageId ?? "ALL",
+  );
   const [filterType, setFilterType] = useState<"ALL" | "INDIVIDUAL" | "GROUP">(
     "ALL",
   );
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
-  /** Up next = actionable sessions only; Full list = include ended + all filters */
-  const [boardListMode, setBoardListMode] = useState<"queue" | "all">("queue");
-  const [scanSectionOpen, setScanSectionOpen] = useState(false);
+  /** Queue hides ended sessions by default; the filter drawer can reveal them. */
+  const [showEnded, setShowEnded] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
+  const [manualRosterOpen, setManualRosterOpen] = useState(false);
+  const [recentScans, setRecentScans] = useState<ScanEntry[]>([]);
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -179,15 +205,6 @@ export function ProgrammeReportingClient({
   const [isReopenConfirmOpen, setIsReopenConfirmOpen] = useState(false);
   const [optimisticReportedBySession, setOptimisticReportedBySession] =
     useState<Record<string, Set<string>>>({});
-  const [reportingStats, setReportingStats] = useState<{
-    total: number;
-    reported: number;
-    remaining: number;
-    percentageComplete: number;
-    elapsedMinutes: number;
-    estimatedRemainingMinutes: number | null;
-    estimatedEnd: Date | null;
-  } | null>(null);
   const [isEntrySwitching, setIsEntrySwitching] = useState(false);
   const [markingIds, setMarkingIds] = useState<Set<string>>(new Set());
   const [activeSpinRow, setActiveSpinRow] = useState<RosterTableRow | null>(
@@ -243,8 +260,7 @@ export function ProgrammeReportingClient({
   }, [board, festivalStages]);
 
   const filteredBoard = useMemo(() => {
-    const effectiveStatusFilter =
-      boardListMode === "queue" ? "ALL" : filterStatus;
+    const query = searchQuery.trim().toLowerCase();
 
     const filtered = board.filter((item) => {
       const status = getUiReportingStatus(
@@ -252,12 +268,13 @@ export function ProgrammeReportingClient({
         item.reportingSession?.windowEndsAt ?? null,
         mounted,
       );
-      if (boardListMode === "queue" && status === "CLOSED") return false;
+      // Queue default: hide ended sessions unless the filter drawer opts in.
+      if (!showEnded && status === "CLOSED") return false;
 
       const matchesStatus =
-        effectiveStatusFilter === "ALL" ||
-        status === effectiveStatusFilter ||
-        (effectiveStatusFilter === "RESET" && status === "TIMED_OUT");
+        filterStatus === "ALL" ||
+        status === filterStatus ||
+        (filterStatus === "RESET" && status === "TIMED_OUT");
       if (!matchesStatus) return false;
       if (
         filterCategoryId !== "ALL" &&
@@ -269,23 +286,21 @@ export function ProgrammeReportingClient({
         return false;
       if (filterType !== "ALL" && item.programme?.type !== filterType)
         return false;
+      if (query) {
+        const haystack = [
+          item.programme?.name,
+          item.programme?.category?.name,
+          item.stage?.name,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(query)) return false;
+      }
       return true;
     });
 
     const statusRank = (s: string): number => {
-      if (boardListMode === "queue") {
-        switch (s) {
-          case "IN_PROGRESS":
-            return 0;
-          case "NOT_STARTED":
-            return 1;
-          case "RESET":
-          case "TIMED_OUT":
-            return 2;
-          default:
-            return 999;
-        }
-      }
       switch (s) {
         case "IN_PROGRESS":
           return 0;
@@ -322,7 +337,8 @@ export function ProgrammeReportingClient({
     });
   }, [
     board,
-    boardListMode,
+    showEnded,
+    searchQuery,
     filterStatus,
     filterCategoryId,
     filterStageId,
@@ -370,18 +386,23 @@ export function ProgrammeReportingClient({
       })
       .filter(({ status }) => ["CLOSED", "RESET", "TIMED_OUT"].includes(status))
       .sort((a, b) => {
-        const rankDelta = historyStatusRank(a.status) - historyStatusRank(b.status);
+        const rankDelta =
+          historyStatusRank(a.status) - historyStatusRank(b.status);
         if (rankDelta !== 0) return rankDelta;
 
-        const timeDelta = getHistoryTimestamp(b.item) - getHistoryTimestamp(a.item);
+        const timeDelta =
+          getHistoryTimestamp(b.item) - getHistoryTimestamp(a.item);
         if (timeDelta !== 0) return timeDelta;
 
-        return (a.item.programme?.name ?? "").localeCompare(b.item.programme?.name ?? "");
+        return (a.item.programme?.name ?? "").localeCompare(
+          b.item.programme?.name ?? "",
+        );
       })
       .map(({ item, status }) => {
         const programmeType = item.programme?.type ?? "INDIVIDUAL";
         const programmeStatus = (item.programme?.status ?? "").toUpperCase();
-        const reportedRows = item.reportingSession?.programmeReportedParticipants ?? [];
+        const reportedRows =
+          item.reportingSession?.programmeReportedParticipants ?? [];
         const codeLetters = item.reportingSession?.programmeCodeLetters ?? [];
 
         const reportedCount =
@@ -393,7 +414,8 @@ export function ProgrammeReportingClient({
               ).size
             : reportedRows.length;
 
-        const reportedLabel = programmeType === "GROUP" ? "teams reported" : "reported";
+        const reportedLabel =
+          programmeType === "GROUP" ? "teams reported" : "reported";
         const codeLabel = programmeType === "GROUP" ? "team codes" : "codes";
         const tinyBadge =
           programmeStatus.includes("COMPLETED") ||
@@ -450,16 +472,18 @@ export function ProgrammeReportingClient({
       const programmeId = item.programme?.id;
       const programmeType = item.programme?.type ?? "—";
       const reportedIds = new Set(
-        item.reportingSession?.programmeReportedParticipants.map((r) => r.assignmentId) ?? [],
+        item.reportingSession?.programmeReportedParticipants.map(
+          (r) => r.assignmentId,
+        ) ?? [],
       );
       const assignedCodes = item.reportingSession?.programmeCodeLetters ?? [];
-      const codeByStudentId = new Map<string, string>();
-      const spunAtByStudentId = new Map<string, string>();
+      const codeByParticipantId = new Map<string, string>();
+      const spunAtByParticipantId = new Map<string, string>();
       for (const c of assignedCodes) {
         for (const recipient of c.programmeCodeLetterRecipients) {
-          codeByStudentId.set(recipient.studentId, c.code);
+          codeByParticipantId.set(recipient.participantId, c.code);
           if (c.issuedAt) {
-            spunAtByStudentId.set(recipient.studentId, c.issuedAt);
+            spunAtByParticipantId.set(recipient.participantId, c.issuedAt);
           }
         }
       }
@@ -471,19 +495,17 @@ export function ProgrammeReportingClient({
       const rows =
         programmeType === "GROUP"
           ? Array.from(
-              programmeAssignments.reduce(
-                (acc, row) => {
-                  const key = `${row.groupId ?? "no-group"}::${row.teamNumber ?? 0}`;
-                  const current = acc.get(key) ?? [];
-                  current.push(row);
-                  acc.set(key, current);
-                  return acc;
-                },
-                new Map<string, ProgrammeReportingAssignmentRow[]>(),
-              ),
+              programmeAssignments.reduce((acc, row) => {
+                const key = `${row.groupId ?? "no-group"}::${row.teamNumber ?? 0}`;
+                const current = acc.get(key) ?? [];
+                current.push(row);
+                acc.set(key, current);
+                return acc;
+              }, new Map<string, ProgrammeReportingAssignmentRow[]>()),
             ).map(([, members]) => {
               const lead = members[0];
-              const firstStudentId = members.find((m) => m.studentId)?.studentId ?? null;
+              const firstParticipantId =
+                members.find((m) => m.participantId)?.participantId ?? null;
               return {
                 label:
                   lead?.teamNumber && lead.teamNumber > 0
@@ -491,44 +513,47 @@ export function ProgrammeReportingClient({
                     : (lead?.groupName ?? "Team"),
                 group: lead?.groupName ?? "—",
                 code:
-                  (firstStudentId ? codeByStudentId.get(firstStudentId) : null) ?? "—",
+                  (firstParticipantId
+                    ? codeByParticipantId.get(firstParticipantId)
+                    : null) ?? "—",
               };
             })
           : programmeAssignments.map((row) => ({
-              label: row.studentName ?? "—",
+              label: row.participantName ?? "—",
               group: row.groupName ?? "—",
-              code: row.studentId ? (codeByStudentId.get(row.studentId) ?? "—") : "—",
+              code: row.participantId
+                ? (codeByParticipantId.get(row.participantId) ?? "—")
+                : "—",
             }));
 
       const reportedByAssignmentId = new Map(
-        (item.reportingSession?.programmeReportedParticipants ?? []).map((r) => [
-          r.assignmentId,
-          r,
-        ]),
+        (item.reportingSession?.programmeReportedParticipants ?? []).map(
+          (r) => [r.assignmentId, r],
+        ),
       );
 
       const participantTimeline =
         programmeType === "GROUP"
           ? Array.from(
-              programmeAssignments.reduce(
-                (acc, row) => {
-                  const key = `${row.groupId ?? "no-group"}::${row.teamNumber ?? 0}`;
-                  const current = acc.get(key) ?? [];
-                  current.push(row);
-                  acc.set(key, current);
-                  return acc;
-                },
-                new Map<string, ProgrammeReportingAssignmentRow[]>(),
-              ),
+              programmeAssignments.reduce((acc, row) => {
+                const key = `${row.groupId ?? "no-group"}::${row.teamNumber ?? 0}`;
+                const current = acc.get(key) ?? [];
+                current.push(row);
+                acc.set(key, current);
+                return acc;
+              }, new Map<string, ProgrammeReportingAssignmentRow[]>()),
             ).map(([teamKey, members]) => {
               const lead = members[0];
               const firstReported = members
                 .map((m) => reportedByAssignmentId.get(m.id))
                 .find(Boolean);
-              const firstStudentId = members.find((m) => m.studentId)?.studentId ?? null;
-              const code = firstStudentId ? (codeByStudentId.get(firstStudentId) ?? "—") : "—";
-              const spunAt = firstStudentId
-                ? (spunAtByStudentId.get(firstStudentId) ?? null)
+              const firstParticipantId =
+                members.find((m) => m.participantId)?.participantId ?? null;
+              const code = firstParticipantId
+                ? (codeByParticipantId.get(firstParticipantId) ?? "—")
+                : "—";
+              const spunAt = firstParticipantId
+                ? (spunAtByParticipantId.get(firstParticipantId) ?? null)
                 : null;
               const teamLabel = lead?.teamNumber
                 ? `Team ${lead.teamNumber}`
@@ -546,14 +571,18 @@ export function ProgrammeReportingClient({
             })
           : programmeAssignments.map((row) => {
               const reported = reportedByAssignmentId.get(row.id);
-              const code = row.studentId ? (codeByStudentId.get(row.studentId) ?? "—") : "—";
-              const spunAt = row.studentId
-                ? (spunAtByStudentId.get(row.studentId) ?? null)
+              const code = row.participantId
+                ? (codeByParticipantId.get(row.participantId) ?? "—")
+                : "—";
+              const spunAt = row.participantId
+                ? (spunAtByParticipantId.get(row.participantId) ?? null)
                 : null;
               return {
                 key: row.id,
-                label: row.studentName ?? "—",
-                chestOrTeam: row.chestNumber ? `Chest ${row.chestNumber}` : "Chest —",
+                label: row.participantName ?? "—",
+                chestOrTeam: row.chestNumber
+                  ? `Chest ${row.chestNumber}`
+                  : "Chest —",
                 group: row.groupName ?? "—",
                 reportedAt: reported?.reportedAt ?? null,
                 spunAt,
@@ -614,7 +643,7 @@ export function ProgrammeReportingClient({
   }, [board, assignments, mounted]);
 
   const historyDetail = historyDetailOpenId
-    ? reportingHistoryDetailsById.get(historyDetailOpenId) ?? null
+    ? (reportingHistoryDetailsById.get(historyDetailOpenId) ?? null)
     : null;
 
   useEffect(() => {
@@ -670,8 +699,8 @@ export function ProgrammeReportingClient({
       if ((a.teamNumber ?? 0) !== (b.teamNumber ?? 0)) {
         return (a.teamNumber ?? 0) - (b.teamNumber ?? 0);
       }
-      return (a.studentName ?? "").localeCompare(
-        b.studentName ?? "",
+      return (a.participantName ?? "").localeCompare(
+        b.participantName ?? "",
         undefined,
         { sensitivity: "base" },
       );
@@ -688,8 +717,8 @@ export function ProgrammeReportingClient({
         key: a.id,
         mode: "individual" as const,
         assignmentId: a.id,
-        studentId: a.studentId,
-        nameColumn: a.studentName ?? "—",
+        participantId: a.participantId,
+        nameColumn: a.participantName ?? "—",
         groupName: a.groupName,
         teamCell: a.teamNumber ?? "—",
         isReported: a.isReported,
@@ -708,8 +737,8 @@ export function ProgrammeReportingClient({
       ([teamKey, members]) => {
         const lead = members[0]!;
         const teamNumber = lead.teamNumber ?? 0;
-        const teamStudentIds = members
-          .map((m) => m.studentId)
+        const teamParticipantIds = members
+          .map((m) => m.participantId)
           .filter((id): id is string => Boolean(id));
         return {
           key: teamKey,
@@ -717,7 +746,7 @@ export function ProgrammeReportingClient({
           assignmentId: lead.id,
           groupId: lead.groupId,
           teamNumber,
-          teamStudentIds,
+          teamParticipantIds,
           nameColumn:
             teamNumber > 0
               ? `${lead.groupName ?? "Group"} · Team ${teamNumber}`
@@ -730,12 +759,18 @@ export function ProgrammeReportingClient({
     );
 
     return teamRows.sort((a, b) => {
-      const ga = (a.groupName ?? "").localeCompare(b.groupName ?? "", undefined, {
-        sensitivity: "base",
-      });
+      const ga = (a.groupName ?? "").localeCompare(
+        b.groupName ?? "",
+        undefined,
+        {
+          sensitivity: "base",
+        },
+      );
       if (ga !== 0) return ga;
-      const aTeam = typeof a.teamCell === "number" ? a.teamCell : Number(a.teamCell) || 0;
-      const bTeam = typeof b.teamCell === "number" ? b.teamCell : Number(b.teamCell) || 0;
+      const aTeam =
+        typeof a.teamCell === "number" ? a.teamCell : Number(a.teamCell) || 0;
+      const bTeam =
+        typeof b.teamCell === "number" ? b.teamCell : Number(b.teamCell) || 0;
       return aTeam - bTeam;
     });
   }, [assignmentsWithReported, selected?.programme]);
@@ -753,12 +788,12 @@ export function ProgrammeReportingClient({
 
     const hasCodeForRow = (row: RosterTableRow) => {
       if (row.mode === "team") {
-        return row.teamStudentIds.some(
-          (sid) => getCodeForStudentFromLetters(letters, sid) != null,
+        return row.teamParticipantIds.some(
+          (sid) => getCodeForParticipantFromLetters(letters, sid) != null,
         );
       }
-      return row.studentId
-        ? getCodeForStudentFromLetters(letters, row.studentId) != null
+      return row.participantId
+        ? getCodeForParticipantFromLetters(letters, row.participantId) != null
         : false;
     };
 
@@ -784,29 +819,6 @@ export function ProgrammeReportingClient({
   const isInProgress = sessionStatus === "IN_PROGRESS";
   const isClosed = sessionStatus === "CLOSED";
 
-  // Fetch reporting stats every 30 seconds when session is in progress
-  useEffect(() => {
-    if (!session?.id || sessionStatus !== "IN_PROGRESS") {
-      setReportingStats(null);
-      return;
-    }
-
-    const fetchStats = async () => {
-      try {
-        const result = await getReportingStatsAction(festivalId, session.id);
-        if (result.success) {
-          setReportingStats(result.data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch reporting stats:", error);
-      }
-    };
-
-    fetchStats();
-    const interval = setInterval(fetchStats, 30000); // Update every 30 seconds
-    return () => clearInterval(interval);
-  }, [session?.id, sessionStatus, festivalId]);
-
   // Collect all already assigned codes to prevent duplicates during spin
   const alreadyAssignedCodes = useMemo(() => {
     if (!session?.programmeCodeLetters) return [];
@@ -822,8 +834,10 @@ export function ProgrammeReportingClient({
         teamNumber:
           activeSpinRow.mode === "team" ? activeSpinRow.teamNumber : null,
         groupId: activeSpinRow.mode === "team" ? activeSpinRow.groupId : null,
-        studentId:
-          activeSpinRow.mode === "individual" ? activeSpinRow.studentId : null,
+        participantId:
+          activeSpinRow.mode === "individual"
+            ? activeSpinRow.participantId
+            : null,
         code,
       };
 
@@ -858,13 +872,15 @@ export function ProgrammeReportingClient({
   function getIssuedCodeForRow(row: RosterTableRow): string | null {
     const letters = session?.programmeCodeLetters ?? [];
     if (row.mode === "team") {
-      for (const sid of row.teamStudentIds) {
-        const code = getCodeForStudentFromLetters(letters, sid);
+      for (const sid of row.teamParticipantIds) {
+        const code = getCodeForParticipantFromLetters(letters, sid);
         if (code) return code;
       }
       return null;
     }
-    return row.studentId ? getCodeForStudentFromLetters(letters, row.studentId) : null;
+    return row.participantId
+      ? getCodeForParticipantFromLetters(letters, row.participantId)
+      : null;
   }
 
   useEffect(() => {
@@ -881,11 +897,15 @@ export function ProgrammeReportingClient({
     const letters = session?.programmeCodeLetters ?? [];
     const hasIssuedCode =
       pendingRow.mode === "team"
-        ? pendingRow.teamStudentIds.some(
-            (studentId) => getCodeForStudentFromLetters(letters, studentId) != null,
+        ? pendingRow.teamParticipantIds.some(
+            (participantId) =>
+              getCodeForParticipantFromLetters(letters, participantId) != null,
           )
-        : pendingRow.studentId != null
-          ? getCodeForStudentFromLetters(letters, pendingRow.studentId) != null
+        : pendingRow.participantId != null
+          ? getCodeForParticipantFromLetters(
+              letters,
+              pendingRow.participantId,
+            ) != null
           : false;
 
     if (hasIssuedCode) {
@@ -934,14 +954,18 @@ export function ProgrammeReportingClient({
           setSpinAssignRequested(false);
           setIsSpinWheelOpen(false);
           setActiveSpinRow(null);
-          toast.success("All code letters cleared. You can re-spin for everyone.");
+          toast.success(
+            "All code letters cleared. You can re-spin for everyone.",
+          );
           router.refresh();
         } else {
           toast.error("Failed to reset code letters");
         }
       } catch (error) {
         toast.error(
-          error instanceof Error ? error.message : "Failed to reset code letters",
+          error instanceof Error
+            ? error.message
+            : "Failed to reset code letters",
         );
       } finally {
         setActiveAction(null);
@@ -953,7 +977,9 @@ export function ProgrammeReportingClient({
     if (!session?.id) return;
 
     const reportedRows = rosterTableRows.filter((row) => row.isReported);
-    const rowsNeedingCode = reportedRows.filter((row) => !getIssuedCodeForRow(row));
+    const rowsNeedingCode = reportedRows.filter(
+      (row) => !getIssuedCodeForRow(row),
+    );
     if (!rowsNeedingCode.length) {
       toast.info("All reported rows already have code letters.");
       return;
@@ -971,7 +997,9 @@ export function ProgrammeReportingClient({
     }
 
     if (availableCodes.length < rowsNeedingCode.length) {
-      toast.error("Not enough unique code letters available for random assignment.");
+      toast.error(
+        "Not enough unique code letters available for random assignment.",
+      );
       return;
     }
 
@@ -979,7 +1007,7 @@ export function ProgrammeReportingClient({
     const assignments = rowsNeedingCode.map((row, index) => ({
       teamNumber: row.mode === "team" ? row.teamNumber : null,
       groupId: row.mode === "team" ? row.groupId : null,
-      studentId: row.mode === "individual" ? row.studentId : null,
+      participantId: row.mode === "individual" ? row.participantId : null,
       code: shuffledCodes[index]!,
     }));
 
@@ -1028,9 +1056,19 @@ export function ProgrammeReportingClient({
           toast.success(
             programmeType === "GROUP"
               ? "Reporting ended — each reported team received one code letter."
-              : "Reporting ended — code letters issued to reported students.",
+              : "Reporting ended — code letters issued to reported participants.",
           );
-          router.refresh();
+          // Fast hand-off: if the programme is on a stage, jump straight to the
+          // Judgement screen with the Start Judgement dialog pre-opened.
+          const programmeId = selected?.programme?.id;
+          const onStage = Boolean(selected?.stage?.id);
+          if (programmeId && onStage && pathname?.endsWith("/reporting")) {
+            router.push(
+              `${pathname.replace(/\/reporting$/, "/judgement")}?start=${programmeId}`,
+            );
+          } else {
+            router.refresh();
+          }
         } else toast.error("Failed to submit reporting");
       } catch (error) {
         toast.error(
@@ -1040,6 +1078,49 @@ export function ProgrammeReportingClient({
         setActiveAction(null);
       }
     });
+  };
+
+  const pushScanEntry = (result: unknown, fallbackOk: boolean) => {
+    const r = (result ?? {}) as {
+      success?: boolean;
+      message?: string;
+      reason?: string;
+      error?: string;
+      participant?: {
+        name?: string;
+        chestNumber?: string | null;
+        groupName?: string | null;
+      };
+    };
+    const ok = r.success ?? fallbackOk;
+    const duplicate =
+      (r.reason ?? "").toLowerCase().includes("already") ||
+      (r.message ?? "").toLowerCase().includes("already");
+    const name = r.participant?.name;
+    const chest = r.participant?.chestNumber;
+    const title = name
+      ? `${name}${chest ? ` (${chest})` : ""}`
+      : ok
+        ? "Marked present"
+        : (r.error ?? r.message ?? "Scan failed");
+    const detail = ok
+      ? duplicate
+        ? "Already reported"
+        : (r.participant?.groupName ?? "Marked present")
+      : (r.message ?? r.reason ?? "Not found in this programme");
+    setRecentScans((prev) =>
+      [
+        {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          ok,
+          duplicate,
+          title,
+          detail,
+          at: Date.now(),
+        },
+        ...prev,
+      ].slice(0, 20),
+    );
   };
 
   const onReopen = () => {
@@ -1112,173 +1193,117 @@ export function ProgrammeReportingClient({
     }
   };
 
+  const activeFilterCount =
+    (filterCategoryId !== "ALL" ? 1 : 0) +
+    (filterStageId !== "ALL" ? 1 : 0) +
+    (filterType !== "ALL" ? 1 : 0) +
+    (filterStatus !== "ALL" ? 1 : 0) +
+    (showEnded ? 1 : 0);
+
+  const closeDetail = () => {
+    setIsEntrySwitching(false);
+    setSelectedEntryId(null);
+  };
+
   return (
     <div className="space-y-4 sm:space-y-5">
-      <Card className="overflow-hidden border-violet-200/40 bg-linear-to-r from-violet-500/10 via-indigo-500/5 to-background">
-        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-          <div className="space-y-1">
-            <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-700 dark:text-violet-300">
-              <Sparkles className="h-3.5 w-3.5" />
-              Programme Reporting
-            </p>
-            <h2 className="text-base font-semibold sm:text-lg">
-              Live check-in, code assignment, and submit
-            </h2>
-            <p className="text-xs text-muted-foreground sm:text-sm">
-              Pick a programme from the queue, mark present participants, assign code letters, then submit.
-            </p>
-          </div>
-          <div className="grid grid-cols-3 gap-2 sm:w-auto">
-            <div className="rounded-lg border bg-background/70 px-2.5 py-2 text-center">
-              <p className="text-[10px] uppercase text-muted-foreground">Queue</p>
-              <p className="text-sm font-semibold">{filteredBoard.length}</p>
-            </div>
-            <div className="rounded-lg border bg-background/70 px-2.5 py-2 text-center">
-              <p className="text-[10px] uppercase text-muted-foreground">On roster</p>
-              <p className="text-sm font-semibold">{rosterTableRows.length}</p>
-            </div>
-            <div className="rounded-lg border bg-background/70 px-2.5 py-2 text-center">
-              <p className="text-[10px] uppercase text-muted-foreground">Present</p>
-              <p className="text-sm font-semibold">{reportedUnitsCount}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
-          <CardHeader className="space-y-3 pb-2">
-            <CardTitle className="text-base inline-flex items-center gap-2">
-              <ListFilter className="h-4 w-4 text-muted-foreground" />
-              Programmes
-            </CardTitle>
-            <div className="flex rounded-lg border bg-muted/40 p-0.5 text-xs font-medium">
-              <button
-                type="button"
-                onClick={() => setBoardListMode("queue")}
-                className={cn(
-                  "flex-1 rounded-md px-2 py-1.5 transition-colors",
-                  boardListMode === "queue"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                Up next
-              </button>
-              <button
-                type="button"
-                onClick={() => setBoardListMode("all")}
-                className={cn(
-                  "flex-1 rounded-md px-2 py-1.5 transition-colors",
-                  boardListMode === "all"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                Full list
-              </button>
-            </div>
-            <p className="text-[11px] text-muted-foreground leading-snug">
-              {boardListMode === "queue"
-                ? "Not started and live sessions only. Pick a slot, then start reporting on the right."
-                : "Includes ended sessions. Use status to find completed reporting."}
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <Select
-                value={filterCategoryId}
-                onValueChange={setFilterCategoryId}
-              >
-                <SelectTrigger className="h-8 text-[10px] uppercase font-bold tracking-tight">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Categories</SelectItem>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={filterStageId} onValueChange={setFilterStageId}>
-                <SelectTrigger className="h-8 text-[10px] uppercase font-bold tracking-tight">
-                  <SelectValue placeholder="Stage" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Stages</SelectItem>
-                  {stages.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={filterType}
-                onValueChange={(val: any) => setFilterType(val)}
-              >
-                <SelectTrigger className="h-8 text-[10px] uppercase font-bold tracking-tight">
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Types</SelectItem>
-                  <SelectItem value="INDIVIDUAL">Individual</SelectItem>
-                  <SelectItem value="GROUP">Group</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {boardListMode === "all" ? (
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="h-8 text-[10px] uppercase font-bold tracking-tight">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">All Status</SelectItem>
-                    <SelectItem value="NOT_STARTED">Not started</SelectItem>
-                    <SelectItem value="IN_PROGRESS">In progress</SelectItem>
-                    <SelectItem value="RESET">Reporting closed</SelectItem>
-                    <SelectItem value="CLOSED">Reporting ended</SelectItem>
-                  </SelectContent>
-                </Select>
-              ) : (
-                <div className="h-8 rounded-md border border-dashed border-transparent" />
-              )}
-            </div>
-
-            <ReportingBoardList
-              items={filteredBoard}
-              selectedId={selectedEntryId}
-              onSelect={(id) => {
-                if (id === selectedEntryId) return;
-                setIsEntrySwitching(true);
-                setSelectedEntryId(id);
-                setTimeout(() => setIsEntrySwitching(false), 300);
-              }}
-              getUiReportingStatus={(status, windowEndsAt) =>
-                getUiReportingStatus(status, windowEndsAt, mounted)
-              }
-              assignmentCountByProgrammeId={assignmentCountByProgrammeId}
+      {/* Section 1 — the queue. Full-width, search + a single filter drawer.
+          Picking a programme opens the workspace drawer (Section 2). */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 pb-5">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search programmes…"
+              className="h-10 pl-9 pr-9"
             />
-            {!filteredBoard.length ? (
-              <p className="text-xs text-muted-foreground">
-                No programmes match filters.
-              </p>
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
             ) : null}
-          </CardContent>
-        </Card>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setIsHistoryDrawerOpen(true)}
+            className="h-10 shrink-0 gap-2"
+          >
+            <History className="h-4 w-4" />
+            <span className="hidden sm:inline">History</span>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setIsFilterOpen(true)}
+            className="h-10 shrink-0 gap-2"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            <span className="hidden sm:inline">Filter</span>
+            {activeFilterCount > 0 ? (
+              <Badge
+                variant="secondary"
+                className="h-5 min-w-5 justify-center px-1 text-[10px]"
+              >
+                {activeFilterCount}
+              </Badge>
+            ) : null}
+          </Button>
+        </div>
 
-        <Card
-          className="lg:col-span-2 relative overflow-hidden border-border/70 shadow-sm"
+        <ReportingBoardList
+          items={filteredBoard}
+          selectedId={selectedEntryId}
+          onSelect={(id) => {
+            if (id === selectedEntryId) return;
+            setIsEntrySwitching(true);
+            setSelectedEntryId(id);
+            setTimeout(() => setIsEntrySwitching(false), 300);
+          }}
+          getUiReportingStatus={(status, windowEndsAt) =>
+            getUiReportingStatus(status, windowEndsAt, mounted)
+          }
+          assignmentCountByProgrammeId={assignmentCountByProgrammeId}
+        />
+        {!filteredBoard.length ? (
+          <div className="flex h-96 items-center justify-center rounded-lg border border-dashed text-center text-sm text-muted-foreground">
+            <p>
+              {searchQuery || activeFilterCount > 0
+                ? "No programmes match your search or filters."
+                : "No programmes to report yet."}
+            </p>
+          </div>
+        ) : null}
+      </div>
+
+      {/* Section 2 — the workspace. Opens as a drawer over the queue: a right
+          half-screen sheet on desktop, a full-width swap on mobile. Closing it
+          clears the selection, so nothing is shown until a programme is picked. */}
+      <Sheet
+        direction="right"
+        open={Boolean(selectedEntryId)}
+        onOpenChange={(open) => {
+          if (!open) closeDetail();
+        }}
+      >
+        <SheetContent
           ref={confettiRef}
+          direction="right"
+          className="w-full gap-0 overflow-hidden p-0 sm:w-1/2 sm:min-w-[560px] sm:max-w-none"
         >
-          <CardHeader className="pb-3 border-b border-border/40">
-            <CardTitle className="text-lg flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span>{selected?.programme?.name || "Select a programme"}</span>
+          <SheetHeader className="shrink-0 space-y-0 border-b border-border/40 px-4 py-3 text-left sm:px-6">
+            <SheetTitle className="flex items-center justify-between gap-2 text-lg">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <span className="truncate">
+                  {selected?.programme?.name || "Programme"}
+                </span>
                 {selected?.programme?.category?.name ? (
                   <Badge variant="outline" className="text-[10px] uppercase">
                     {selected.programme.category.name}
@@ -1290,18 +1315,16 @@ export function ProgrammeReportingClient({
                   </Badge>
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                {selected?.stage?.name && (
-                  <span className="text-xs text-muted-foreground font-normal">
-                    {selected.stage.name}
-                  </span>
-                )}
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent
+              {selected?.stage?.name ? (
+                <span className="shrink-0 text-xs font-normal text-muted-foreground">
+                  {selected.stage.name}
+                </span>
+              ) : null}
+            </SheetTitle>
+          </SheetHeader>
+          <div
             className={cn(
-              "pt-6 space-y-6 transition-opacity duration-300",
+              "flex-1 space-y-6 overflow-y-auto px-4 py-4 transition-opacity duration-300 sm:px-6",
               isEntrySwitching ? "opacity-0" : "opacity-100",
             )}
           >
@@ -1317,17 +1340,13 @@ export function ProgrammeReportingClient({
                   <BarChart3 className="h-6 w-6 text-muted-foreground" />
                 </div>
                 <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                  Choose a programme under{" "}
-                  <strong className="text-foreground">Up next</strong> (or
-                  switch to{" "}
-                  <strong className="text-foreground">Full list</strong>), then
-                  run reporting on the right.
+                  Pick a programme from the queue to run its reporting here.
                 </p>
               </div>
             ) : (
               <>
                 <div className="space-y-3">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                  <div className="flex  gap-2 flex-row sm:flex-wrap sm:items-center justify-between">
                     <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
                       <Badge
                         variant={
@@ -1356,64 +1375,13 @@ export function ProgrammeReportingClient({
                       ) : (
                         <Badge variant="outline">Ready</Badge>
                       )}
-                      {isInProgress ? (
-                        <span className="text-xs text-muted-foreground">
-                          {reportingStats ? (
-                            <>
-                              <span className="font-medium text-foreground tabular-nums">
-                                {reportingStats.reported}/{reportingStats.total}
-                              </span>
-                              <span className="mx-1.5 text-border">·</span>
-                              <span className="tabular-nums">
-                                {Math.round(reportingStats.percentageComplete)}%
-                              </span>
-                              <span className="mx-1.5 text-border">·</span>
-                              <span className="inline-flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {reportingStats.elapsedMinutes}m
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="font-medium text-foreground tabular-nums">
-                                {reportedUnitsCount}/{rosterTableRows.length}
-                              </span>
-                              <span className="ml-1">present</span>
-                            </>
-                          )}
-                        </span>
-                      ) : null}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                      {isPreStart ? (
-                        <Button
-                          onClick={onStart}
-                          disabled={
-                            isPending ||
-                            activeAction != null ||
-                            session?.isLocked ||
-                            assignmentsWithReported.length === 0
-                          }
-                          className="rounded-lg bg-linear-to-r from-violet-600 via-purple-600 to-fuchsia-600 px-6 font-semibold text-white shadow-md shadow-violet-900/20 hover:brightness-110"
-                        >
-                          {activeAction === "start" ? (
-                            <span className="inline-flex items-center gap-2">
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              {isTimedOut || sessionStatus === "RESET"
-                                ? "Restarting…"
-                                : "Starting…"}
-                            </span>
-                          ) : isTimedOut || sessionStatus === "RESET" ? (
-                            "Restart"
-                          ) : (
-                            "Start check-in"
-                          )}
-                        </Button>
-                      ) : null}
                       {isInProgress ? (
                         <>
                           <Button
+                            size="sm"
                             className="rounded-lg font-semibold"
                             onClick={onClose}
                             title={
@@ -1421,7 +1389,7 @@ export function ProgrammeReportingClient({
                                 ? "Mark at least one participant/team as present before submitting."
                                 : !allReportedHaveCodeLetters
                                   ? "Assign a code letter to each present participant (spin per person) before submitting."
-                                : undefined
+                                  : undefined
                             }
                             disabled={
                               isPending ||
@@ -1447,7 +1415,7 @@ export function ProgrammeReportingClient({
                             <DropdownMenuTrigger asChild>
                               <Button
                                 variant="outline"
-                                size="icon"
+                                size="sm"
                                 className="shrink-0"
                                 aria-label="More reporting actions"
                               >
@@ -1555,13 +1523,6 @@ export function ProgrammeReportingClient({
                     </div>
                   </div>
 
-                  {isPreStart ? (
-                    <p className="text-xs text-muted-foreground">
-                      {assignmentsWithReported.length === 0
-                        ? "No assignments yet — add students in Pre Event Works first."
-                        : `${assignmentsWithReported.length} on roster. Start when you’re ready.`}
-                    </p>
-                  ) : null}
                   {isClosed ? (
                     <p className="text-xs text-muted-foreground">
                       {selected.programme?.type === "GROUP"
@@ -1581,65 +1542,271 @@ export function ProgrammeReportingClient({
                   ) : null}
                 </div>
 
-                {isInProgress && reportingStats ? (
-                  <ReportingStats stats={reportingStats} />
-                ) : null}
-
-                {selected.programme ? (
-                  <div className="space-y-2">
-                    <h3 className="inline-flex items-center gap-1.5 text-sm font-semibold tracking-tight">
-                      <Users2 className="h-4 w-4 text-muted-foreground" />
-                      Roster
-                    </h3>
-                    <ReportingRosterTable
-                      rows={rosterTableRows}
-                      isInProgress={isInProgress}
-                      isClosed={isClosed}
-                      onMark={onMarkRow}
-                      onSpin={(row) => {
-                        setSpinPendingAssignmentId(row.assignmentId);
-                        setSpinAssignRequested(false);
-                        setActiveSpinRow(row);
-                        setIsSpinWheelOpen(true);
-                      }}
-                      spinPendingAssignmentId={spinPendingAssignmentId}
-                      markingIds={markingIds}
-                      getIssuedCodeForRow={getIssuedCodeForRow}
-                      programmeType={selected.programme.type}
-                    />
+                {/* Hero — the big centered Start button (setup phase). When
+                    live, the square camera takes this same central spot. */}
+                {isPreStart ? (
+                  <div className="flex flex-col items-center gap-4 py-6">
+                    <button
+                      type="button"
+                      onClick={onStart}
+                      disabled={
+                        isPending ||
+                        activeAction != null ||
+                        session?.isLocked ||
+                        assignmentsWithReported.length === 0
+                      }
+                      className="flex h-40 w-40 items-center justify-center rounded-full bg-linear-to-br from-primary to-secondary text-lg font-bold uppercase tracking-wide text-white shadow-lg shadow-primary/25 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {activeAction === "start" ? (
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                      ) : isTimedOut || sessionStatus === "RESET" ? (
+                        "Restart"
+                      ) : (
+                        "Start"
+                      )}
+                    </button>
+                    {assignmentsWithReported.length === 0 ? (
+                      <p className="max-w-xs text-center text-xs text-muted-foreground">
+                        No assignments yet — add participants in Pre Event Works
+                        first.
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
 
+                {/* Camera-first: while checking in, the scanner is the main
+                    viewboard with a live response footer; manual marking is a
+                    fallback below. */}
                 {isInProgress && selected && session?.id ? (
-                  <ReportingQuickAddSection
-                    open={scanSectionOpen}
-                    onOpenChange={setScanSectionOpen}
-                  >
+                  <div className="space-y-3">
                     <QrScanner
                       variant="embedded"
+                      mode="camera"
+                      autoStart
+                      hideResults
                       festivalId={festivalId}
                       reportingSessionId={session.id}
                       programmeName={selected.programme?.name || "Programme"}
-                      onScanSuccess={() => {
+                      onScanSuccess={(result) => {
+                        pushScanEntry(result, true);
                         router.refresh();
                       }}
-                      onScanError={() => {}}
+                      onScanError={(result) => {
+                        pushScanEntry(result, false);
+                      }}
                     />
-                  </ReportingQuickAddSection>
+                    <ScanResponseFooter entries={recentScans} />
+                  </div>
+                ) : null}
+
+                {selected.programme ? (
+                  isInProgress ? (
+                    <ReportingQuickAddSection
+                      open={manualRosterOpen}
+                      onOpenChange={setManualRosterOpen}
+                      title="Manual check-in"
+                      subtitle="Chest # · photo · roster"
+                    >
+                      <div className="space-y-3">
+                        {session?.id ? (
+                          <QrScanner
+                            variant="embedded"
+                            mode="manual"
+                            hideResults
+                            festivalId={festivalId}
+                            reportingSessionId={session.id}
+                            programmeName={
+                              selected.programme?.name || "Programme"
+                            }
+                            onScanSuccess={(result) => {
+                              pushScanEntry(result, true);
+                              router.refresh();
+                            }}
+                            onScanError={(result) => {
+                              pushScanEntry(result, false);
+                            }}
+                          />
+                        ) : null}
+                        <div className="h-px bg-border/70" aria-hidden />
+                        <ReportingRosterTable
+                          rows={rosterTableRows}
+                          isInProgress={isInProgress}
+                          isClosed={isClosed}
+                          onMark={onMarkRow}
+                          onSpin={(row) => {
+                            setSpinPendingAssignmentId(row.assignmentId);
+                            setSpinAssignRequested(false);
+                            setActiveSpinRow(row);
+                            setIsSpinWheelOpen(true);
+                          }}
+                          spinPendingAssignmentId={spinPendingAssignmentId}
+                          markingIds={markingIds}
+                          getIssuedCodeForRow={getIssuedCodeForRow}
+                          programmeType={selected.programme.type}
+                        />
+                      </div>
+                    </ReportingQuickAddSection>
+                  ) : (
+                    <div className="space-y-2">
+                      <h3 className="inline-flex items-center gap-1.5 text-sm font-semibold tracking-tight">
+                        <Users2 className="h-4 w-4 text-muted-foreground" />
+                        Roster
+                      </h3>
+                      <ReportingRosterTable
+                        rows={rosterTableRows}
+                        isInProgress={isInProgress}
+                        isClosed={isClosed}
+                        onMark={onMarkRow}
+                        onSpin={(row) => {
+                          setSpinPendingAssignmentId(row.assignmentId);
+                          setSpinAssignRequested(false);
+                          setActiveSpinRow(row);
+                          setIsSpinWheelOpen(true);
+                        }}
+                        spinPendingAssignmentId={spinPendingAssignmentId}
+                        markingIds={markingIds}
+                        getIssuedCodeForRow={getIssuedCodeForRow}
+                        programmeType={selected.programme.type}
+                      />
+                    </div>
+                  )
                 ) : null}
               </>
             )}
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
-      <CompactHistoryList
-        title="Reporting history"
-        count={reportingHistoryItems.length}
-        emptyText="Reporting history appears after sessions end or close."
-        items={reportingHistoryItems}
-        onViewItem={setHistoryDetailOpenId}
-      />
+      {/* Reporting history drawer */}
+      <Drawer open={isHistoryDrawerOpen} onOpenChange={setIsHistoryDrawerOpen}>
+        <DrawerContent>
+          <DrawerHeader className="text-left border-b border-border/40 pb-4">
+            <DrawerTitle>Reporting history</DrawerTitle>
+          </DrawerHeader>
+          <div className=" overflow-y-auto">
+            <CompactHistoryList
+              items={reportingHistoryItems}
+              onViewItem={setHistoryDetailOpenId}
+            />
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Filter drawer — every list filter lives here so the queue stays clean. */}
+      <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+        <SheetContent className="gap-4">
+          <SheetHeader className="text-left">
+            <SheetTitle>Filter programmes</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-4 overflow-y-auto">
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">
+                Category
+              </p>
+              <Select
+                value={filterCategoryId}
+                onValueChange={setFilterCategoryId}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All categories</SelectItem>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {!hideStageFilter && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Stage
+                </p>
+                <Select value={filterStageId} onValueChange={setFilterStageId}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="Stage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All stages</SelectItem>
+                    {stages.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Type</p>
+              <Select
+                value={filterType}
+                onValueChange={(val: any) => setFilterType(val)}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All types</SelectItem>
+                  <SelectItem value="INDIVIDUAL">Individual</SelectItem>
+                  <SelectItem value="GROUP">Group</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">
+                Status
+              </p>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All status</SelectItem>
+                  <SelectItem value="NOT_STARTED">Not started</SelectItem>
+                  <SelectItem value="IN_PROGRESS">In progress</SelectItem>
+                  <SelectItem value="RESET">Reporting closed</SelectItem>
+                  <SelectItem value="CLOSED">Reporting ended</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <label className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-3 py-2.5">
+              <span className="text-sm font-medium">Show ended sessions</span>
+              <input
+                type="checkbox"
+                checked={showEnded}
+                onChange={(e) => setShowEnded(e.target.checked)}
+                className="h-4 w-4 accent-primary"
+              />
+            </label>
+          </div>
+          <SheetFooter className="flex-row gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                setFilterCategoryId("ALL");
+                setFilterStageId(initialStageId ?? "ALL");
+                setFilterType("ALL");
+                setFilterStatus("ALL");
+                setShowEnded(false);
+              }}
+            >
+              Reset
+            </Button>
+            <Button className="flex-1" onClick={() => setIsFilterOpen(false)}>
+              Done
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       {/* Code Letter Spin Wheel Modal */}
       <CodeLetterSpinWheel
@@ -1681,165 +1848,183 @@ export function ProgrammeReportingClient({
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog
+      <Drawer
         open={Boolean(historyDetail)}
         onOpenChange={(open) => {
           if (!open) setHistoryDetailOpenId(null);
         }}
       >
-        <DialogContent className="max-h-[min(88dvh,720px)] overflow-y-auto p-3 sm:max-w-2xl sm:p-6">
-          {historyDetail ? (
-            <>
-              <DialogHeader>
-                <DialogTitle>{historyDetail.programmeName}</DialogTitle>
-                <DialogDescription>
-                  {historyDetail.stageName} • {historyDetail.startTimeLabel}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-2.5 sm:space-y-3">
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                  <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
-                    <p className="text-[10px] uppercase text-muted-foreground">Status</p>
-                    <p className="text-xs font-semibold">{historyDetail.statusLabel}</p>
+        <DrawerContent>
+          <div className="overflow-y-auto p-4 sm:p-6">
+            {historyDetail ? (
+              <>
+                <DrawerHeader className="px-0 pt-0">
+                  <DrawerTitle>{historyDetail.programmeName}</DrawerTitle>
+                  <DrawerDescription>
+                    {historyDetail.stageName} • {historyDetail.startTimeLabel}
+                  </DrawerDescription>
+                </DrawerHeader>
+                <div className="space-y-2.5 sm:space-y-3 mt-5">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                    <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
+                      <p className="text-[10px] uppercase text-muted-foreground">
+                        Status
+                      </p>
+                      <p className="text-xs font-semibold">
+                        {historyDetail.statusLabel}
+                      </p>
+                    </div>
+                    <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
+                      <p className="text-[10px] uppercase text-muted-foreground">
+                        Type
+                      </p>
+                      <p className="text-xs font-semibold">
+                        {historyDetail.type}
+                      </p>
+                    </div>
+                    <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
+                      <p className="text-[10px] uppercase text-muted-foreground">
+                        Category
+                      </p>
+                      <p className="text-xs font-semibold">
+                        {historyDetail.categoryName}
+                      </p>
+                    </div>
+                    <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
+                      <p className="text-[10px] uppercase text-muted-foreground">
+                        {historyDetail.type === "GROUP"
+                          ? "Teams reported"
+                          : "Reported"}
+                      </p>
+                      <p className="text-xs font-semibold">
+                        {historyDetail.reportedCount}
+                      </p>
+                    </div>
+                    <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
+                      <p className="text-[10px] uppercase text-muted-foreground">
+                        {historyDetail.type === "GROUP"
+                          ? "Team codes"
+                          : "Codes"}
+                      </p>
+                      <p className="text-xs font-semibold">
+                        {historyDetail.codeCount}
+                      </p>
+                    </div>
                   </div>
-                  <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
-                    <p className="text-[10px] uppercase text-muted-foreground">Type</p>
-                    <p className="text-xs font-semibold">{historyDetail.type}</p>
-                  </div>
-                  <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
-                    <p className="text-[10px] uppercase text-muted-foreground">Category</p>
-                    <p className="text-xs font-semibold">{historyDetail.categoryName}</p>
-                  </div>
-                  <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
-                    <p className="text-[10px] uppercase text-muted-foreground">
-                      {historyDetail.type === "GROUP" ? "Teams reported" : "Reported"}
-                    </p>
-                    <p className="text-xs font-semibold">{historyDetail.reportedCount}</p>
-                  </div>
-                  <div className="rounded-md border bg-muted/20 px-2.5 py-2 text-center">
-                    <p className="text-[10px] uppercase text-muted-foreground">
-                      {historyDetail.type === "GROUP" ? "Team codes" : "Codes"}
-                    </p>
-                    <p className="text-xs font-semibold">{historyDetail.codeCount}</p>
-                  </div>
-                </div>
 
-                <div className="rounded-lg border bg-card/60 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Timeline
-                  </p>
-                  <Accordion type="single" collapsible className="mt-2 rounded-md border border-border/70 bg-background/70 px-2.5">
-                    <AccordionItem value="reporting-timeline" className="border-b-0">
-                      <AccordionTrigger className="py-2 hover:no-underline">
-                        <div className="flex min-w-0 items-center gap-2 text-left">
-                          <span className="truncate text-[11px] font-semibold sm:text-[12px]">
-                            Timeline events
-                          </span>
-                          <span className="truncate text-[10px] text-muted-foreground">
-                            {historyDetail.timeline.length + historyDetail.participantTimeline.length} total
-                          </span>
+                  <div className="pt-2">
+                    <div className="mb-4 flex items-center justify-between border-b pb-2">
+                      <p className="text-sm font-semibold tracking-tight">
+                        Timeline events
+                      </p>
+                      <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                        {historyDetail.timeline.length +
+                          historyDetail.participantTimeline.length}{" "}
+                        total
+                      </span>
+                    </div>
+                    <div className="space-y-6">
+                      <div>
+                        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Reporting timeline
+                        </p>
+                        <div className="grid gap-1.5 sm:grid-cols-2">
+                          {historyDetail.timeline.map((step, index) => (
+                            <div
+                              key={`${step.title}-${index}`}
+                              className="rounded-md border border-border/70 bg-linear-to-br from-background via-background to-muted/30 px-2.5 py-2"
+                            >
+                              <div className="flex items-start gap-2">
+                                <span className="inline-flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full border border-purple/40 bg-purple/10 text-[9px] font-semibold text-purple">
+                                  {index + 1}
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="truncate text-[11px] font-semibold sm:text-[12px]">
+                                    {step.title}
+                                  </p>
+                                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                                    {step.at}
+                                  </p>
+                                  {step.note ? (
+                                    <p className="text-[10px] text-muted-foreground/90">
+                                      {step.note}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="pb-2 pt-0">
-                        <div className="space-y-2">
-                          <div>
-                            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                              Reporting timeline
-                            </p>
-                            <div className="grid gap-1.5 sm:grid-cols-2">
-                              {historyDetail.timeline.map((step, index) => (
+                      </div>
+
+                      <div>
+                        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          {historyDetail.type === "GROUP"
+                            ? "Team reported timeline"
+                            : "Participant reported timeline"}
+                        </p>
+                        {historyDetail.participantTimeline.length ? (
+                          <div className="grid gap-1.5 sm:grid-cols-2">
+                            {historyDetail.participantTimeline.map(
+                              (entry, index) => (
                                 <div
-                                  key={`${step.title}-${index}`}
-                                  className="rounded-md border border-border/70 bg-linear-to-br from-background via-background to-muted/30 px-2.5 py-2"
+                                  key={entry.key}
+                                  className="rounded-md border border-border/70 bg-background/70 px-2.5 py-2"
                                 >
-                                  <div className="flex items-start gap-2">
-                                    <span className="inline-flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full border border-violet-400/40 bg-violet-500/10 text-[9px] font-semibold text-violet-700 dark:text-violet-300">
-                                      {index + 1}
-                                    </span>
+                                  <div className="flex items-start justify-between gap-2">
                                     <div className="min-w-0">
                                       <p className="truncate text-[11px] font-semibold sm:text-[12px]">
-                                        {step.title}
+                                        {index + 1}. {entry.label}
                                       </p>
-                                      <p className="mt-0.5 text-[10px] text-muted-foreground">
-                                        {step.at}
+                                      <p className="text-[10px] text-muted-foreground">
+                                        {entry.chestOrTeam} • {entry.group}
                                       </p>
-                                      {step.note ? (
-                                        <p className="text-[10px] text-muted-foreground/90">
-                                          {step.note}
-                                        </p>
-                                      ) : null}
                                     </div>
+                                    <span className="rounded border bg-purple/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-purple">
+                                      {entry.code}
+                                    </span>
+                                  </div>
+                                  <div className="mt-1 grid gap-1 text-[10px] text-muted-foreground">
+                                    <p>
+                                      Reported:{" "}
+                                      {entry.reportedAt
+                                        ? formatStoredDateTime(
+                                            entry.reportedAt,
+                                            {
+                                              dateStyle: "medium",
+                                              timeStyle: "short",
+                                            },
+                                          )
+                                        : "—"}
+                                    </p>
+                                    <p>
+                                      Spun/Issued:{" "}
+                                      {entry.spunAt
+                                        ? formatStoredDateTime(entry.spunAt, {
+                                            dateStyle: "medium",
+                                            timeStyle: "short",
+                                          })
+                                        : "Pending"}
+                                    </p>
                                   </div>
                                 </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div>
-                            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                              {historyDetail.type === "GROUP"
-                                ? "Team reported timeline"
-                                : "Participant reported timeline"}
-                            </p>
-                            {historyDetail.participantTimeline.length ? (
-                              <div className="grid gap-1.5 sm:grid-cols-2">
-                                {historyDetail.participantTimeline.map((entry, index) => (
-                                  <div
-                                    key={entry.key}
-                                    className="rounded-md border border-border/70 bg-background/70 px-2.5 py-2"
-                                  >
-                                    <div className="flex items-start justify-between gap-2">
-                                      <div className="min-w-0">
-                                        <p className="truncate text-[11px] font-semibold sm:text-[12px]">
-                                          {index + 1}. {entry.label}
-                                        </p>
-                                        <p className="text-[10px] text-muted-foreground">
-                                          {entry.chestOrTeam} • {entry.group}
-                                        </p>
-                                      </div>
-                                      <span className="rounded border bg-violet-500/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-violet-700 dark:text-violet-300">
-                                        {entry.code}
-                                      </span>
-                                    </div>
-                                    <div className="mt-1 grid gap-1 text-[10px] text-muted-foreground">
-                                      <p>
-                                        Reported:{" "}
-                                        {entry.reportedAt
-                                          ? formatStoredDateTime(entry.reportedAt, {
-                                              dateStyle: "medium",
-                                              timeStyle: "short",
-                                            })
-                                          : "—"}
-                                      </p>
-                                      <p>
-                                        Spun/Issued:{" "}
-                                        {entry.spunAt
-                                          ? formatStoredDateTime(entry.spunAt, {
-                                              dateStyle: "medium",
-                                              timeStyle: "short",
-                                            })
-                                          : "Pending"}
-                                      </p>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-[11px] text-muted-foreground">
-                                No reported entries captured for this session.
-                              </p>
+                              ),
                             )}
                           </div>
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
+                        ) : (
+                          <p className="text-[11px] text-muted-foreground">
+                            No reported entries captured for this session.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
+              </>
+            ) : null}
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

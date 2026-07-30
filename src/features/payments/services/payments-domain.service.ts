@@ -1,7 +1,7 @@
-import { randomUUID } from "crypto";
 import { and, eq, gte, ne, sql } from "drizzle-orm";
 import { TIER_CONFIG } from "@/config/pricing";
 import { db } from "@/core/database/client";
+import { generateId } from "@/core/database/ids";
 import { payment, userPurchaseSummary } from "@/core/database/schema";
 import {
   getActivePaymentForUser,
@@ -75,13 +75,13 @@ export async function initiatePaymentDomain(
 
   const now = new Date();
   const validUntil = new Date(
-    now.getTime() + config.durationDays * 24 * 60 * 60 * 1000,
+    now.getTime() + config.festivalDurationDays * 24 * 60 * 60 * 1000,
   );
 
   const newPayment = await db
     .insert(payment)
     .values({
-      id: randomUUID(),
+      id: generateId(),
       amount: config.price,
       currency: "INR",
       status: "PENDING",

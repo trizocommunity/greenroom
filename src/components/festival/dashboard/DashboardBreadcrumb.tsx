@@ -46,7 +46,8 @@ export function DashboardBreadcrumb({
     if (exactMatch) return exactMatch.title;
 
     // Fallback: Sidebar groups or formatted string
-    if (segment === "pre-event-works" || segment === "Pre Event Works") return "Pre Event Works";
+    if (segment === "pre-event-works" || segment === "Pre Event Works")
+      return "Pre Event Works";
     if (segment === "event-works" || segment === "on-event-works")
       return "Event Works";
 

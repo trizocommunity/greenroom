@@ -1,7 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowRight,
@@ -15,10 +16,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import type { z } from "zod";
-
+import { queryKeys } from "@/api/client/_query-keys";
+import { useCreateFestival } from "@/api/client/festivals";
 import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/components/ui/date-picker";
+import { DateRangePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -28,10 +29,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { queryKeys } from "@/core/http/query-keys";
 import { InstitutionType } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
-import { createFestival } from "@/features/festivals/actions/festival-crud.actions";
 import {
   type CreateFestivalInput,
   createFestivalSchema,
@@ -70,20 +69,31 @@ const transition = {
 
 interface FestivalSetupFormProps {
   paymentId: string;
-  planExpiresAt: string;
-  planValidFrom?: string; // When the plan becomes active (payment createdAt)
+  planValidFrom?: string;
+  accountType?: "PERSONAL" | "INSTITUTIONAL";
 }
 
 export function FestivalSetupForm({
   paymentId,
-  planExpiresAt,
   planValidFrom,
+  accountType,
 }: FestivalSetupFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [currentStep, setCurrentStep] = useState<Step>("basics");
   const [direction, setDirection] = useState(1);
+
+  const planExpiryDate = planValidFrom
+    ? (() => {
+        const d = new Date(planValidFrom);
+        d.setDate(d.getDate() + 90);
+        return d;
+      })()
+    : undefined;
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
+  const createFestival = useCreateFestival();
+
+  const showInstitutionStep = accountType !== "INSTITUTIONAL";
 
   const {
     register,
@@ -120,58 +130,6 @@ export function FestivalSetupForm({
     }
   }, [festivalName, setValue, isSlugManuallyEdited]);
 
-  const { mutate } = useMutation({
-    mutationFn: async (data: FormData) => {
-      const slug =
-        data.festivalSlug ||
-        data.festivalName
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-+|-+$/g, "");
-
-      const validData = data as CreateFestivalInput;
-      return await createFestival({
-        ...validData,
-        festivalSlug: slug,
-        paymentId,
-      });
-    },
-    onSuccess: (result) => {
-      if (!result.success) {
-        const errorResult = result as any;
-        if (errorResult.fields) {
-          if (errorResult.fields.slug || errorResult.fields.festivalSlug) {
-            toast.error(
-              "This subdomain is already taken. Please choose another.",
-            );
-          } else {
-            toast.error("Please check the form for errors.");
-          }
-        } else {
-          toast.error(errorResult.error || "Failed to create festival");
-        }
-        goTo("basics"); // Revert if failed
-        return;
-      }
-
-      queryClient.invalidateQueries({ queryKey: queryKeys.festivals.all() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.payments.all() });
-
-      // Artificial delay for loading phase to feel "hard at work"
-      setTimeout(() => {
-        goTo("done");
-        setTimeout(() => {
-          // Use window.location.href for full navigation to ensure query param is preserved
-          window.location.href = `/dashboard/${result.data.slug}?celebrate=1`;
-        }, 2200);
-      }, 1500);
-    },
-    onError: () => {
-      toast.error("An unexpected error occurred. Please try again.");
-      goTo("basics");
-    },
-  });
-
   const stepIndex = STEPS.indexOf(currentStep);
 
   function goTo(step: Step) {
@@ -187,12 +145,57 @@ export function FestivalSetupForm({
     }
 
     if (currentStep === "basics") {
-      goTo("institution");
+      goTo(showInstitutionStep ? "institution" : "dates");
     } else if (currentStep === "institution") {
       goTo("dates");
     } else if (currentStep === "dates") {
       goTo("loading");
-      mutate(getValues());
+      const data = getValues();
+      const slug =
+        data.festivalSlug ||
+        data.festivalName
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+      try {
+        const festival = await createFestival.mutateAsync({
+          name: data.festivalName,
+          slug,
+          location: data.location || undefined,
+          startDate:
+            data.startDate instanceof Date
+              ? data.startDate.toISOString()
+              : data.startDate,
+          endDate:
+            data.endDate instanceof Date
+              ? data.endDate.toISOString()
+              : data.endDate,
+          institutionName: data.institutionName || undefined,
+          institutionType: data.institutionType || undefined,
+        });
+        queryClient.invalidateQueries({ queryKey: queryKeys.festivals.all });
+        queryClient.invalidateQueries({ queryKey: queryKeys.payments.all });
+        setTimeout(() => {
+          goTo("done");
+          setTimeout(() => {
+            window.location.href = `/dashboard/${festival.slug}?celebrate=1`;
+          }, 2200);
+        }, 1500);
+      } catch (error: any) {
+        const message = error?.message || "";
+        if (
+          message.toLowerCase().includes("subdomain") ||
+          message.toLowerCase().includes("slug") ||
+          message.toLowerCase().includes("taken")
+        ) {
+          toast.error(
+            "This subdomain is already taken. Please choose another.",
+          );
+        } else {
+          toast.error(message || "Failed to create festival");
+        }
+        goTo("basics");
+      }
     }
   }
 
@@ -459,11 +462,16 @@ export function FestivalSetupForm({
                   </h2>
                   <p className="text-muted-foreground text-sm">
                     Set the physical location and schedule for the festival.
-                    Your scheduling is available until{" "}
-                    <span className="text-foreground font-medium">
-                      {new Date(planExpiresAt).toLocaleDateString()}
-                    </span>
-                    .
+                    {planExpiryDate && (
+                      <>
+                        {" "}
+                        Your scheduling is available until{" "}
+                        <span className="text-foreground font-medium">
+                          {planExpiryDate.toLocaleDateString()}
+                        </span>
+                        .
+                      </>
+                    )}
                   </p>
                 </div>
 
@@ -500,73 +508,56 @@ export function FestivalSetupForm({
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">
-                          Start Date
-                        </Label>
-                        <DatePicker
-                          date={
-                            watch("startDate") instanceof Date
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">
+                        Festival Dates
+                      </Label>
+                      <DateRangePicker
+                        value={{
+                          from: watch("startDate")
+                            ? watch("startDate") instanceof Date
                               ? (watch("startDate") as Date)
-                              : watch("startDate")
-                                ? new Date(watch("startDate") as any)
-                                : undefined
-                          }
-                          onChange={(date) => {
-                            setValue("startDate", date);
-                            // Auto-cap endDate if it's before new start date
-                            if (date) {
-                              const currentEnd = getValues("endDate");
-                              if (
-                                currentEnd &&
-                                new Date(currentEnd as any) < date
-                              ) {
-                                setValue("endDate", date);
-                              }
-                            }
-                          }}
-                          placeholder="Select date"
-                          from={
-                            planValidFrom ? new Date(planValidFrom) : undefined
-                          }
-                          to={new Date(planExpiresAt)}
-                          showValidityHint
-                        />
-                        {errors.startDate && (
-                          <p className="text-xs text-destructive">
-                            {errors.startDate.message}
-                          </p>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">End Date</Label>
-                        <DatePicker
-                          date={
-                            watch("endDate") instanceof Date
+                              : new Date(watch("startDate") as any)
+                            : undefined,
+                          to: watch("endDate")
+                            ? watch("endDate") instanceof Date
                               ? (watch("endDate") as Date)
-                              : watch("endDate")
-                                ? new Date(watch("endDate") as any)
-                                : undefined
-                          }
-                          onChange={(date) => setValue("endDate", date)}
-                          placeholder="Select date"
-                          from={
-                            watch("startDate")
-                              ? new Date(watch("startDate") as any)
-                              : planValidFrom
-                                ? new Date(planValidFrom)
-                                : undefined
-                          }
-                          to={new Date(planExpiresAt)}
-                          showValidityHint
-                        />
-                        {errors.endDate && (
-                          <p className="text-xs text-destructive">
-                            {errors.endDate.message}
-                          </p>
-                        )}
-                      </div>
+                              : new Date(watch("endDate") as any)
+                            : undefined,
+                        }}
+                        onChange={(range) => {
+                          setValue("startDate", range.from);
+                          setValue("endDate", range.to);
+                        }}
+                        placeholder="Select date range"
+                        from={
+                          planValidFrom ? new Date(planValidFrom) : undefined
+                        }
+                        to={planExpiryDate}
+                        className="h-12 rounded-xl border-border/60 bg-background/60 backdrop-blur-sm"
+                      />
+                      {(planValidFrom || planExpiryDate) && (
+                        <p className="text-xs text-muted-foreground">
+                          {[
+                            planValidFrom &&
+                              `From ${format(new Date(planValidFrom), "MMM d, yyyy")}`,
+                            planExpiryDate &&
+                              `Until ${format(planExpiryDate, "MMM d, yyyy")}`,
+                          ]
+                            .filter(Boolean)
+                            .join(" • ")}
+                        </p>
+                      )}
+                      {errors.startDate && (
+                        <p className="text-xs text-destructive">
+                          {errors.startDate.message}
+                        </p>
+                      )}
+                      {errors.endDate && (
+                        <p className="text-xs text-destructive">
+                          {errors.endDate.message}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -581,7 +572,9 @@ export function FestivalSetupForm({
                     </Button>
                     <Button
                       type="button"
-                      onClick={() => goTo("institution")}
+                      onClick={() =>
+                        goTo(showInstitutionStep ? "institution" : "basics")
+                      }
                       className="text-xs text-muted-foreground hover:text-foreground py-1 mt-2"
                     >
                       ← Back
@@ -670,19 +663,28 @@ export function FestivalSetupForm({
       {/* Step dots (not shown on loading/done screens) */}
       {currentStep !== "done" && currentStep !== "loading" && (
         <div className="relative z-10 flex items-center justify-center gap-2 pb-10">
-          {(["basics", "institution", "dates"] as Step[]).map((step, i) => (
-            <div
-              key={step}
-              className={cn(
-                "rounded-full transition-all duration-300",
-                currentStep === step
-                  ? "w-6 h-1.5 bg-primary"
-                  : stepIndex > i
-                    ? "w-1.5 h-1.5 bg-primary/40"
-                    : "w-1.5 h-1.5 bg-border",
-              )}
-            />
-          ))}
+          {(showInstitutionStep
+            ? (["basics", "institution", "dates"] as Step[])
+            : (["basics", "dates"] as Step[])
+          ).map((step, i) => {
+            const visibleSteps = showInstitutionStep
+              ? (["basics", "institution", "dates"] as Step[])
+              : (["basics", "dates"] as Step[]);
+            const stepIdx = visibleSteps.indexOf(currentStep);
+            return (
+              <div
+                key={step}
+                className={cn(
+                  "rounded-full transition-all duration-300",
+                  currentStep === step
+                    ? "w-6 h-1.5 bg-primary"
+                    : stepIdx > i
+                      ? "w-1.5 h-1.5 bg-primary/40"
+                      : "w-1.5 h-1.5 bg-border",
+                )}
+              />
+            );
+          })}
         </div>
       )}
     </div>

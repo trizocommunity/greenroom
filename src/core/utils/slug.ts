@@ -13,7 +13,7 @@ export function slugify(text: string): string {
 }
 
 /**
- * Generate a unique profile slug for a student in a festival.
+ * Generate a unique profile slug for a participant in a festival.
  * Format: slugify(name)-chestNumber, fallback to slugify(name)-shortId if missing.
  */
 export function generateProfileSlug(

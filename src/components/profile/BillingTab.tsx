@@ -2,7 +2,7 @@
 
 import { format } from "date-fns";
 import { AlertCircle, CheckCircle2, Clock } from "lucide-react";
-
+import { usePaymentStatus } from "@/api/client";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -13,22 +13,27 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { usePaymentHistory } from "@/features/payments/hooks/use-payment-history";
-import { usePaymentStatus } from "@/features/payments/hooks/use-payment-status";
 import { parseStoredInstant } from "@/core/utils/date-time";
 import { Skeleton } from "../ui/skeleton";
 
 export function BillingTab() {
-  const { data: paymentStatus, isLoading: isStatusLoading } =
-    usePaymentStatus();
-  const { data: payments, isLoading: isHistoryLoading } = usePaymentHistory();
+  const { data: paymentData, isLoading, isError, error } = usePaymentStatus();
+  const payments = paymentData?.history ?? [];
 
-  if (isStatusLoading || isHistoryLoading) {
+  if (isLoading) {
     return (
       <div className="w-full flex justify-center p-8">
         <div className="flex justify-center">
           <Skeleton className="h-8 w-8 rounded-full" />
         </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="text-center py-8 text-destructive">
+        Error: {error.message}
       </div>
     );
   }
@@ -45,22 +50,22 @@ export function BillingTab() {
             <div>
               <div className="font-medium">Festival Creation Access</div>
               <div className="text-sm text-muted-foreground mt-1">
-                {paymentStatus?.canCreateFestival
+                {paymentData?.status?.canCreateFestival
                   ? "You have active access to create festivals."
                   : "You need to purchase a pass to create festivals."}
               </div>
             </div>
             <Badge
               variant={
-                paymentStatus?.canCreateFestival ? "default" : "secondary"
+                paymentData?.status?.canCreateFestival ? "default" : "secondary"
               }
               className={
-                paymentStatus?.canCreateFestival
+                paymentData?.status?.canCreateFestival
                   ? "bg-green-500 hover:bg-green-700"
                   : ""
               }
             >
-              {paymentStatus?.canCreateFestival ? "Active" : "Inactive"}
+              {paymentData?.status?.canCreateFestival ? "Active" : "Inactive"}
             </Badge>
           </div>
         </CardContent>
@@ -92,37 +97,37 @@ export function BillingTab() {
                 {payments.map((payment) => {
                   const createdAt = parseStoredInstant(payment.createdAt);
                   return (
-                  <TableRow key={payment.id}>
-                    <TableCell className="whitespace-nowrap">
-                      {format(createdAt, "MMM dd, yyyy")}
-                      <div className="text-xs text-muted-foreground">
-                        {format(createdAt, "hh:mm a")}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      Festival Pass
-                      {payment.festival && (
+                    <TableRow key={payment.id}>
+                      <TableCell className="whitespace-nowrap">
+                        {format(createdAt, "MMM dd, yyyy")}
                         <div className="text-xs text-muted-foreground">
-                          Used for: {payment.festival.name}
+                          {format(createdAt, "hh:mm a")}
                         </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {payment.razorpayOrderId || "-"}
-                    </TableCell>
-                    <TableCell>
-                      {new Intl.NumberFormat("en-IN", {
-                        style: "currency",
-                        currency: payment.currency,
-                      }).format(payment.amount / 100)}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={payment.status} />
-                    </TableCell>
-                    <TableCell className="text-right font-mono text-xs">
-                      {payment.razorpayId || "-"}
-                    </TableCell>
-                  </TableRow>
+                      </TableCell>
+                      <TableCell>
+                        Festival Pass
+                        {payment.festival && (
+                          <div className="text-xs text-muted-foreground">
+                            Used for: {payment.festival.name}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {payment.razorpayOrderId || "-"}
+                      </TableCell>
+                      <TableCell>
+                        {new Intl.NumberFormat("en-IN", {
+                          style: "currency",
+                          currency: payment.currency,
+                        }).format(payment.amount / 100)}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={payment.status} />
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-xs">
+                        {payment.razorpayId || "-"}
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
               </TableBody>

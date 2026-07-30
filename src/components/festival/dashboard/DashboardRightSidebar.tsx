@@ -41,13 +41,13 @@ interface DashboardRightSidebarProps {
   daysRemaining?: number | null;
   userRole?: FestivalRole | string;
   usage?: {
-    studentsCount: number;
+    participantsCount: number;
     programmesCount: number;
     stagesCount?: number;
     storageUsedMB: number;
   };
   limits?: {
-    maxStudents: number;
+    maxParticipants: number;
     maxProgrammes: number;
     maxStages?: number;
     maxStorageMB: number;
@@ -88,10 +88,7 @@ export function DashboardRightSidebar({
       >
         <Menu className="h-5 w-5" />
       </SheetTrigger>
-      <SheetContent
-        side="right"
-        className="w-full sm:w-[350px] p-0 flex flex-col"
-      >
+      <SheetContent className="w-full sm:w-[350px] flex flex-col">
         <SheetHeader className="h-16 flex flex-row items-center border-b px-4 space-y-0">
           <div className="flex items-center gap-3 w-full">
             <Avatar className="h-9 w-9">
@@ -180,13 +177,13 @@ export function DashboardRightSidebar({
                 <LimitationCard
                   tierLabel={tierLabel || "Standard"}
                   limits={{
-                    maxStudents: limits.maxStudents,
+                    maxParticipants: limits.maxParticipants,
                     maxProgrammes: limits.maxProgrammes,
                     maxStages: limits.maxStages,
                     maxStorageMB: limits.maxStorageMB,
                   }}
                   usage={{
-                    studentsCount: usage.studentsCount,
+                    participantsCount: usage.participantsCount,
                     programmesCount: usage.programmesCount,
                     stagesCount: usage.stagesCount,
                     storageUsedMB: usage.storageUsedMB,
@@ -200,12 +197,7 @@ export function DashboardRightSidebar({
         </ScrollArea>
 
         <div className="p-4 border-t mt-auto">
-          <LogoutButton
-            variant="ghost"
-            className="w-full justify-start gap-2 px-2"
-            showText={true}
-            showIcon={true}
-          />
+          <LogoutButton />
         </div>
       </SheetContent>
     </Sheet>

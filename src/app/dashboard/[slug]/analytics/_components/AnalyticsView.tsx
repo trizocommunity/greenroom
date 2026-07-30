@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/card";
 
 export type FestivalAnalyticsData = {
-  studentsCount: number;
+  participantsCount: number;
   programmesCount: number;
   groupsCount: number;
   stagesCount: number;
@@ -52,8 +52,12 @@ export function AnalyticsView({
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{fmt(data.studentsCount)}</div>
-            <p className="text-xs text-muted-foreground">Students registered</p>
+            <div className="text-2xl font-bold">
+              {fmt(data.participantsCount)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Participants registered
+            </p>
           </CardContent>
         </Card>
 

@@ -1,8 +1,8 @@
 export type ProgrammeReportingAssignmentRow = {
   id: string;
   programmeId: string;
-  studentId: string | null;
-  studentName: string | null;
+  participantId: string | null;
+  participantName: string | null;
   chestNumber?: string | null;
   groupId: string | null;
   groupName: string | null;
@@ -30,7 +30,7 @@ export type ReportingBoardItem = {
     isLocked: boolean;
     programmeReportedParticipants: Array<{
       assignmentId: string;
-      studentId: string | null;
+      participantId: string | null;
       groupId: string | null;
       teamNumber: number | null;
       reportedAt: string;
@@ -39,7 +39,7 @@ export type ReportingBoardItem = {
     programmeCodeLetters: Array<{
       code: string;
       issuedAt?: string;
-      programmeCodeLetterRecipients: Array<{ studentId: string }>;
+      programmeCodeLetterRecipients: Array<{ participantId: string }>;
     }>;
   } | null;
 };
@@ -53,7 +53,7 @@ export type RosterTableRow =
       key: string;
       mode: "individual";
       assignmentId: string;
-      studentId: string | null;
+      participantId: string | null;
       nameColumn: string;
       groupName: string | null;
       teamCell: string | number;
@@ -66,7 +66,7 @@ export type RosterTableRow =
       assignmentId: string;
       groupId: string | null;
       teamNumber: number;
-      teamStudentIds: string[];
+      teamParticipantIds: string[];
       nameColumn: string;
       groupName: string | null;
       teamCell: number;

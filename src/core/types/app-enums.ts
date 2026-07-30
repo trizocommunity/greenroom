@@ -14,6 +14,7 @@ export const FestivalRole = {
   ADMIN: "ADMIN",
   ANNOUNCER: "ANNOUNCER",
   STAGE_MANAGER: "STAGE_MANAGER",
+  MEDIA: "MEDIA",
 } as const;
 export type FestivalRole = (typeof FestivalRole)[keyof typeof FestivalRole];
 
@@ -55,6 +56,7 @@ export const InstitutionType = {
   MADRASA: "MADRASA",
   SCHOOL: "SCHOOL",
   OTHER: "OTHER",
+  DARS: "DARS",
 } as const;
 export type InstitutionType =
   (typeof InstitutionType)[keyof typeof InstitutionType];
@@ -87,10 +89,18 @@ export const ProgrammeStatus = {
   ENDED: "ENDED",
   JUDGED: "JUDGED",
   PUBLISHED: "PUBLISHED",
+  ANNOUNCED: "ANNOUNCED",
   RESET: "RESET",
 } as const;
 export type ProgrammeStatus =
   (typeof ProgrammeStatus)[keyof typeof ProgrammeStatus];
+
+export const PublicDisplayMode = {
+  PROGRAMME_RESULTS: "programme_results",
+  TEAM_STANDINGS: "team_standings",
+} as const;
+export type PublicDisplayMode =
+  (typeof PublicDisplayMode)[keyof typeof PublicDisplayMode];
 
 export const ProgrammeReportingStatus = {
   NOT_STARTED: "NOT_STARTED",
@@ -101,15 +111,15 @@ export const ProgrammeReportingStatus = {
 export type ProgrammeReportingStatus =
   (typeof ProgrammeReportingStatus)[keyof typeof ProgrammeReportingStatus];
 
-export const ProgrammeJudgmentStatus = {
+export const ProgrammeJudgementStatus = {
   NOT_STARTED: "NOT_STARTED",
-  LINK_ACTIVE: "LINK_ACTIVE",
+  LIVE: "LIVE",
   SCORING_IN_PROGRESS: "SCORING_IN_PROGRESS",
   AWAITING_JUDGES: "AWAITING_JUDGES",
   COMPLETED: "COMPLETED",
 } as const;
-export type ProgrammeJudgmentStatus =
-  (typeof ProgrammeJudgmentStatus)[keyof typeof ProgrammeJudgmentStatus];
+export type ProgrammeJudgementStatus =
+  (typeof ProgrammeJudgementStatus)[keyof typeof ProgrammeJudgementStatus];
 
 export const ScoringSystem = {
   POSITION_BASED: "POSITION_BASED",
@@ -165,6 +175,6 @@ export type Tier = (typeof Tier)[keyof typeof Tier];
 export interface UserProfile {
   fullName: string | null;
   displayName: string | null;
-  age: number | null;
   email: string;
+  accountType?: "PERSONAL" | "INSTITUTIONAL" | null;
 }

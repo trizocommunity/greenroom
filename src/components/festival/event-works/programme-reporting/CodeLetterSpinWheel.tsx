@@ -1,8 +1,8 @@
 "use client";
 
-import { motion, useAnimation, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion, useAnimation } from "framer-motion";
 import { Check, Loader2, Sparkles } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -94,7 +94,8 @@ export function CodeLetterSpinWheel({
     // Wheel must land with the winning segment center under the top arrow.
     const landingAngle = (360 - winningIndex * segmentAngle) % 360;
     const currentRotationNormalized = ((rotation % 360) + 360) % 360;
-    const deltaToLanding = (landingAngle - currentRotationNormalized + 360) % 360;
+    const deltaToLanding =
+      (landingAngle - currentRotationNormalized + 360) % 360;
     const finalRotation = rotation + targetBase + deltaToLanding;
 
     setRotation(finalRotation);
@@ -147,12 +148,11 @@ export function CodeLetterSpinWheel({
       <DialogContent className="max-w-md w-[min(100%,24rem)] gap-0 border border-border bg-card p-0 overflow-hidden sm:max-w-md">
         <DialogHeader className="px-3 py-2 border-b bg-muted/30">
           <DialogTitle className="text-sm font-semibold text-center text-foreground">
-          {targetName}
+            {targetName}
           </DialogTitle>
         </DialogHeader>
 
         <div className="px-3 py-3 space-y-3">
-
           <div className="relative mx-auto my-5 flex h-52 w-52 items-center justify-center sm:h-56 sm:w-56">
             <div className="absolute inset-0 rounded-full bg-primary/10 blur-xl scale-110" />
 

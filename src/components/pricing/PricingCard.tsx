@@ -29,14 +29,14 @@ export function PricingCard({ tier, index }: PricingCardProps) {
       )}
 
       <div
-        className={`relative flex flex-col h-full bg-card border rounded-xl p-8 shadow-xl transition-all duration-300 hover:shadow-2xl hover:border-primary/30 ${
-          isPopular ? "border-primary/50 shadow-primary/10" : "border-border/50"
+        className={`relative flex flex-col h-full bg-card border rounded-2xl p-8 shadow-premium transition-all duration-300 hover:shadow-premium-lg ${
+          isPopular ? "border-primary/40" : "border-border"
         }`}
       >
         {/* Badge */}
         {isPopular && (
           <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-            <span className="bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-medium inline-flex items-center gap-1.5 shadow-lg">
+            <span className="bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-medium inline-flex items-center gap-1.5 shadow-primary-glow">
               <Sparkles className="h-3.5 w-3.5" />
               Recommended
             </span>
@@ -44,12 +44,12 @@ export function PricingCard({ tier, index }: PricingCardProps) {
         )}
 
         {/* Plan Header */}
-        <div className="text-center pt-2 pb-6 border-b border-border/50">
-          <h3 className="text-xl font-bold text-foreground mb-2">
+        <div className="text-center pt-2 pb-6 border-b border-border">
+          <h3 className="text-xl font-semibold tracking-tight text-heading mb-2">
             {tier.name}
           </h3>
           <div className="flex items-baseline justify-center gap-1">
-            <span className="text-4xl font-black text-foreground">
+            <span className="text-4xl font-semibold tracking-tight text-heading">
               ₹{tier.price}
             </span>
             <span className="text-muted-foreground text-sm font-medium">
@@ -68,28 +68,28 @@ export function PricingCard({ tier, index }: PricingCardProps) {
               <div
                 className={`flex-shrink-0 h-5 w-5 rounded-full flex items-center justify-center mt-0.5 ${
                   isPopular
-                    ? "bg-primary/20 text-primary"
+                    ? "bg-primary/10 text-primary"
                     : "bg-muted text-muted-foreground"
                 }`}
               >
                 <Check className="h-3 w-3" />
               </div>
-              <span className="text-sm text-foreground/90">{feature}</span>
+              <span className="text-sm text-foreground">{feature}</span>
             </li>
           ))}
         </ul>
 
         {/* CTA */}
-        <div className="pt-4 mt-auto border-t border-border/50">
-          <Link href="/register" className="block">
+        <div className="pt-4 mt-auto border-t border-border">
+          <Link href="/login" className="block">
             <Button
               variant={isPopular ? "default" : "outline"}
               size="lg"
-              className={`w-full h-12 font-semibold rounded-lg group ${
-                isPopular ? "shadow-lg shadow-primary/20" : ""
+              className={`w-full h-12 font-medium rounded-full group ${
+                isPopular ? "shadow-primary-glow" : ""
               }`}
             >
-              Get Started
+              Get started
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Button>
           </Link>

@@ -6,7 +6,9 @@ import { UnsavedChangesContext } from "@/components/common/UnsavedChangesProvide
 export function useUnsavedChanges() {
   const context = useContext(UnsavedChangesContext);
   if (!context) {
-    throw new Error("useUnsavedChanges must be used inside UnsavedChangesProvider");
+    throw new Error(
+      "useUnsavedChanges must be used inside UnsavedChangesProvider",
+    );
   }
   return context;
 }

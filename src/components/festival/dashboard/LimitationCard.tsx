@@ -6,13 +6,13 @@ import { cn } from "@/core/utils/cn";
 interface LimitationCardProps {
   tierLabel: string;
   limits: {
-    maxStudents: number;
+    maxParticipants: number;
     maxProgrammes: number;
     maxStages?: number;
     maxStorageMB: number;
   };
   usage?: {
-    studentsCount: number;
+    participantsCount: number;
     programmesCount: number;
     stagesCount?: number;
     storageUsedMB: number;
@@ -25,7 +25,7 @@ export function LimitationCard({
   tierLabel,
   limits,
   usage = {
-    studentsCount: 0,
+    participantsCount: 0,
     programmesCount: 0,
     stagesCount: 0,
     storageUsedMB: 0,
@@ -35,10 +35,10 @@ export function LimitationCard({
 }: LimitationCardProps) {
   const items = [
     {
-      label: "Students",
+      label: "Participants",
       icon: Users,
-      limit: limits.maxStudents,
-      used: usage.studentsCount,
+      limit: limits.maxParticipants,
+      used: usage.participantsCount,
       color: "text-blue-500",
     },
     {
@@ -81,7 +81,7 @@ export function LimitationCard({
       )}
     >
       {!minimal && (
-        <CardHeader className="pb-3 border-b border-white/5 bg-white/5">
+        <CardHeader className="pb-3 border-b border-border bg-muted/50">
           <CardTitle className="text-sm font-medium tracking-wide text-muted-foreground uppercase flex items-center justify-between">
             <span>Festival Limits</span>
             <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-100 border border-zinc-700 font-bold">

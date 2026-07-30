@@ -9,12 +9,12 @@
  * ```tsx
  * function MyComponent() {
  *   const canExport = useFeature('excelExport');
- *   const maxMembers = useFeatureValue<number>('maxTeamMembers');
+ *   const supportLevel = useFeatureValue<string>('supportLevel');
  *
  *   return (
  *     <div>
  *       {canExport && <ExportButton />}
- *       <p>Max members: {maxMembers}</p>
+ *       <p>Support level: {supportLevel}</p>
  *     </div>
  *   );
  * }
@@ -99,8 +99,6 @@ export function useFeatureTag(tag: FeatureTag): boolean {
  * @returns The feature value or null if not found
  *
  * @example
- * ```tsx
- * const maxTeamMembers = useFeatureValue<number>('maxTeamMembers');
  * const supportLevel = useFeatureValue<string>('supportLevel');
  * ```
  */
@@ -132,36 +130,6 @@ export function useSupportLevel(
 }
 
 /**
- * Hook to get the maximum team members for the current festival
- *
- * @returns Number of max team members, -1 for unlimited
- *
- * @example
- * ```tsx
- * const maxMembers = useMaxTeamMembers();
- * const canAddMore = currentCount < maxMembers || maxMembers === -1;
- * ```
- */
-export function useMaxTeamMembers(): number {
-  const festival = useFestival();
-  const tier = getResolvedTier(festival?.tier);
-
-  return FeatureService.getMaxTeamMembers(tier);
-}
-
-/**
- * Hook to check if the current festival allows unlimited team members
- *
- * @returns True if unlimited team members are allowed
- */
-export function useHasUnlimitedTeamMembers(): boolean {
-  const festival = useFestival();
-  const tier = getResolvedTier(festival?.tier);
-
-  return FeatureService.hasUnlimitedTeamMembers(tier);
-}
-
-/**
  * Hook to get all feature information for the current festival
  *
  * @returns Object with commonly used feature checks
@@ -186,8 +154,8 @@ export function useFeatures() {
     canExportExcel: useFeature("excelExport"),
 
     // Import capabilities
-    canImportCsv: useFeature("studentImport"),
-    canBulkUploadStudents: useFeature("studentBulkUpload"),
+    canImportCsv: useFeature("participantImport"),
+    canBulkUploadParticipants: useFeature("participantBulkUpload"),
     canBulkUploadProgrammes: useFeature("programmeBulkUpload"),
 
     // UI Access
@@ -204,13 +172,8 @@ export function useFeatures() {
     hasLiveResults: useFeature("liveResults"),
     canUseAdvancedSettings: useFeature("advancedSettings"),
     canUseCustomColors: useFeature("customColors"),
-    canManageGallery: useFeature("gallery"),
+    canManageMedia: useFeature("media"),
     canManageNews: useFeature("news"),
-
-    // Team
-    maxTeamMembers: useMaxTeamMembers(),
-    hasUnlimitedMembers: useHasUnlimitedTeamMembers(),
-
     // Support
     supportLevel: useFeatureValue<string>("supportLevel"),
     supportResponseTime: useFeatureValue<number>("supportResponseTime"),

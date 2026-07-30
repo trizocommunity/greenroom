@@ -36,7 +36,7 @@ export function ReportingRosterTable({
         <div className="grid grid-cols-12 border-b bg-muted/40 px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
           <div className="col-span-1 flex justify-center">Present</div>
           <div className="col-span-6">
-            {programmeType === "GROUP" ? "Team" : "Student"}
+            {programmeType === "GROUP" ? "Team" : "Participant"}
           </div>
           <div className="col-span-2">Group</div>
           <div className="col-span-3 text-right">Code (spin)</div>
@@ -97,7 +97,7 @@ export function ReportingRosterTable({
                 </div>
                 <div className="col-span-3 text-right font-mono text-xs">
                   {showCode ? (
-                    <span className="inline-flex items-center rounded-md border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-violet-700 dark:text-violet-300 font-bold">
+                    <span className="inline-flex items-center rounded-md border border-purple/30 bg-purple/10 px-2 py-0.5 text-purple font-bold">
                       {issuedCode}
                     </span>
                   ) : row.isReported && isInProgress ? (
@@ -106,7 +106,7 @@ export function ReportingRosterTable({
                       onClick={() => onSpin(row)}
                       disabled={isSpinPending}
                       aria-busy={isSpinPending}
-                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-violet-600 hover:bg-violet-500 disabled:pointer-events-none disabled:opacity-70 text-white text-[10px] font-bold transition-all shadow-sm active:scale-95"
+                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-purple hover:bg-purple/90 disabled:pointer-events-none disabled:opacity-70 text-white text-[10px] font-bold transition-all shadow-sm active:scale-95"
                     >
                       {isSpinPending ? (
                         <>
@@ -148,44 +148,78 @@ export function ReportingRosterTable({
                 row.isReported && "bg-emerald-500/[0.05]",
               )}
             >
-              <div className="shrink-0">
-                {isInProgress ? (
-                  isMarking ? (
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  ) : (
-                    <Checkbox
-                      checked={row.isReported}
-                      onCheckedChange={(checked) => onMark(row, !!checked)}
-                      className="h-5 w-5 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
-                    />
-                  )
-                ) : (
-                  <div
-                    className={cn(
-                      "h-2.5 w-2.5 rounded-full",
-                      row.isReported ? "bg-green-500" : "bg-muted",
-                    )}
-                  />
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p
+              {isInProgress ? (
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => !isMarking && onMark(row, !row.isReported)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      if (!isMarking) onMark(row, !row.isReported);
+                    }
+                  }}
                   className={cn(
-                    "text-sm font-medium truncate",
-                    row.isReported
-                      ? "text-foreground"
-                      : "text-muted-foreground",
+                    "-my-3 flex min-w-0 flex-1 items-center gap-4 py-3 text-left cursor-pointer",
+                    isMarking && "opacity-50 cursor-not-allowed pointer-events-none"
                   )}
                 >
-                  {title}
-                </p>
-                <p className="text-[11px] text-muted-foreground truncate mt-0.5 uppercase tracking-wide">
-                  {subtitle}
-                </p>
-              </div>
+                  <span className="shrink-0">
+                    {isMarking ? (
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    ) : (
+                      <Checkbox
+                        checked={row.isReported}
+                        className="pointer-events-none h-6 w-6 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
+                      />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className={cn(
+                        "block truncate text-sm font-medium",
+                        row.isReported
+                          ? "text-foreground"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {title}
+                    </span>
+                    <span className="mt-0.5 block truncate text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {subtitle}
+                    </span>
+                  </span>
+                </div>
+              ) : (
+                <div className="flex min-w-0 flex-1 items-center gap-4">
+                  <div className="shrink-0">
+                    <div
+                      className={cn(
+                        "h-2.5 w-2.5 rounded-full",
+                        row.isReported ? "bg-green-500" : "bg-muted",
+                      )}
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={cn(
+                        "text-sm font-medium truncate",
+                        row.isReported
+                          ? "text-foreground"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {title}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground truncate mt-0.5 uppercase tracking-wide">
+                      {subtitle}
+                    </p>
+                  </div>
+                </div>
+              )}
               <div className="shrink-0 font-mono text-xs">
                 {showCode ? (
-                  <span className="inline-flex items-center rounded-md border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-violet-700 dark:text-violet-300 font-bold">
+                  <span className="inline-flex items-center rounded-md border border-purple/30 bg-purple/10 px-2 py-1 text-purple font-bold">
                     {issuedCode}
                   </span>
                 ) : row.isReported && isInProgress ? (
@@ -194,7 +228,7 @@ export function ReportingRosterTable({
                     onClick={() => onSpin(row)}
                     disabled={isSpinPending}
                     aria-busy={isSpinPending}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-violet-600 hover:bg-violet-500 disabled:pointer-events-none disabled:opacity-70 text-white text-[10px] font-bold transition-all shadow-sm active:scale-95"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-purple hover:bg-purple/90 disabled:pointer-events-none disabled:opacity-70 text-white text-[10px] font-bold transition-all shadow-sm active:scale-95"
                   >
                     {isSpinPending ? (
                       <>

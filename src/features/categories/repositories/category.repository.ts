@@ -45,15 +45,18 @@ export async function findCategoryById(id: string) {
     where: eq(categories.id, id),
     with: {
       programmes: { columns: { id: true } },
-      students: { columns: { id: true } },
+      participants: { columns: { id: true } },
     },
   });
 
   if (!category) return null;
-  const { programmes, students, ...rest } = category;
+  const { programmes, participants, ...rest } = category;
   return {
     ...rest,
-    _count: { programmes: programmes.length, students: students.length },
+    _count: {
+      programmes: programmes.length,
+      participants: participants.length,
+    },
   };
 }
 
@@ -63,15 +66,18 @@ export async function findCategoriesByFestival(festivalId: string) {
     orderBy: [desc(categories.createdAt)],
     with: {
       programmes: { columns: { id: true } },
-      students: { columns: { id: true } },
+      participants: { columns: { id: true } },
     },
   });
 
   return results.map((cat) => {
-    const { programmes, students, ...rest } = cat;
+    const { programmes, participants, ...rest } = cat;
     return {
       ...rest,
-      _count: { programmes: programmes.length, students: students.length },
+      _count: {
+        programmes: programmes.length,
+        participants: participants.length,
+      },
     };
   });
 }

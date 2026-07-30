@@ -1,21 +1,28 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Loader2, Plus, Search, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useAssignments, useDeleteAssignment } from "@/api/client/assignments";
+import { useCategories } from "@/api/client/categories";
+import { useGroups } from "@/api/client/groups";
+import { useParticipants } from "@/api/client/participants";
+import { useProgrammes } from "@/api/client/programmes";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { DeadlinesCard } from "@/components/festival/pre-event-works/DeadlinesCard";
+import { ProgrammeActivityTimeline } from "@/components/festival/pre-event-works/programmes/ProgrammeActivityTimeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -27,13 +34,14 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { parseStoredInstant } from "@/core/utils/date-time";
-import { useAssignments } from "@/features/assignments/hooks/use-assignments";
-import { useCategories } from "@/features/categories/hooks/use-categories";
+import {
+  deleteAssignmentAction,
+  deleteTeamAssignmentAction,
+} from "@/features/assignments/actions/assignment.actions";
 import { useDeadlineLock } from "@/features/festivals/hooks/use-deadline-lock";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import { useGroups } from "@/features/groups/hooks/use-groups";
-import { useProgrammes } from "@/features/programmes/hooks/use-programmes";
-import { useStudents } from "@/features/students/hooks/use-students";
+import { useFeatureTag } from "@/features/plan-features/hooks/use-feature";
+import { getProgrammeDetailForDrawerAction } from "@/features/programmes/actions/programme.actions";
 import { AssignmentModal } from "./AssignmentModal";
 
 type IndividualAssignmentRow = {
@@ -193,20 +201,16 @@ export function AssignmentsClient({
   programmeAssignmentDeadline,
   children,
 }: AssignmentsClientProps) {
-  const {
-    assignments,
-    isLoading: isAssignmentsLoading,
-    deleteAssignment,
-    deleteTeamAssignment,
-    isDeleting,
-    isDeletingTeam,
-  } = useAssignments(festivalId);
-  const { programmes } = useProgrammes(festivalId);
-  const { categories } = useCategories(festivalId);
-  const { groups } = useGroups(festivalId);
-  const { students, isLoading: isStudentsLoading } = useStudents(festivalId);
+  const { data: assignments = [], isLoading: isAssignmentsLoading } =
+    useAssignments(festivalId);
+  const deleteAssignment = useDeleteAssignment();
+  const { data: programmes = [] } = useProgrammes(festivalId);
+  const { data: categories = [] } = useCategories(festivalId);
+  const { data: groups = [] } = useGroups(festivalId);
+  const { data: participants = [], isLoading: isParticipantsLoading } =
+    useParticipants(festivalId);
 
-  const isLoading = isAssignmentsLoading || isStudentsLoading;
+  const isLoading = isAssignmentsLoading || isParticipantsLoading;
 
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<
@@ -217,6 +221,25 @@ export function AssignmentsClient({
   const [selectedProgrammeCard, setSelectedProgrammeCard] =
     useState<ProgrammeCardRow | null>(null);
   const [detailsSearch, setDetailsSearch] = useState("");
+
+  const canUseTeamLead = useFeatureTag("programme.teamLead");
+  const canUseAuditDrawer = useFeatureTag("programme.auditDrawer");
+  const { data: programmeDetail, isLoading: programmeDetailLoading } = useQuery(
+    {
+      queryKey: [
+        "programme-detail-drawer",
+        festivalId,
+        selectedProgrammeCard?.programmeId,
+      ],
+      queryFn: () =>
+        getProgrammeDetailForDrawerAction(
+          festivalId,
+          selectedProgrammeCard!.programmeId,
+        ),
+      enabled: Boolean(selectedProgrammeCard?.programmeId),
+      staleTime: 30_000,
+    },
+  );
 
   // Global Filters
   const [filterGroup, setFilterGroup] = useState<string>("ALL");
@@ -243,7 +266,7 @@ export function AssignmentsClient({
   const filteredAssignments = useMemo(() => {
     return assignments.filter((a: any) => {
       if (filterGroup !== "ALL") {
-        const assignmentGroupId = a.group?.id || a.student?.groupId;
+        const assignmentGroupId = a.group?.id || a.participant?.groupId;
         if (assignmentGroupId !== filterGroup) return false;
       }
       if (filterCategory !== "ALL") {
@@ -255,12 +278,12 @@ export function AssignmentsClient({
       }
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
-        const studentName = a.student?.name?.toLowerCase() || "";
+        const participantName = a.participant?.name?.toLowerCase() || "";
         const programmeName = a.programme?.name?.toLowerCase() || "";
         const groupName =
-          (a.group?.name || a.student?.group?.name)?.toLowerCase() || "";
+          (a.group?.name || a.participant?.group?.name)?.toLowerCase() || "";
         if (
-          !studentName.includes(query) &&
+          !participantName.includes(query) &&
           !programmeName.includes(query) &&
           !groupName.includes(query)
         ) {
@@ -288,11 +311,12 @@ export function AssignmentsClient({
 
     for (const a of filteredAssignments) {
       if (a.programme?.type === "GROUP") {
-        const gid = a.group?.id || a.student?.groupId;
+        const gid = a.group?.id || a.participant?.groupId;
         if (!gid) continue;
         const tn = a.teamNumber ?? 1;
         const key = `${a.programmeId}-${gid}-${tn}`;
-        const groupName = a.group?.name || a.student?.group?.name || "Unknown";
+        const groupName =
+          a.group?.name || a.participant?.group?.name || "Unknown";
         if (!teamMap.has(key)) {
           teamMap.set(key, {
             programme: a.programme,
@@ -417,18 +441,19 @@ export function AssignmentsClient({
       const catInfo = categories.find((cat: any) => cat.id === c.categoryId);
       const isGeneral = catInfo?.type === "GENERAL";
 
-      // Eligible student pool for this programme's category
-      const eligibleStudents =
+      // Eligible participant pool for this programme's category
+      const eligibleParticipants =
         isGeneral || !c.categoryId
-          ? students
-          : students.filter((s: any) => s.categoryId === c.categoryId);
+          ? participants
+          : participants.filter((s: any) => s.categoryId === c.categoryId);
 
-      // Group students by groupId to calculated group-wise capacity
-      const studentCountByGroup = new Map<string, number>();
-      for (const s of eligibleStudents) {
-        studentCountByGroup.set(
-          s.groupId,
-          (studentCountByGroup.get(s.groupId) || 0) + 1,
+      // Group participants by groupId to calculated group-wise capacity
+      const participantCountByGroup = new Map<string, number>();
+      for (const s of eligibleParticipants) {
+        const gid = s.groupId ?? "";
+        participantCountByGroup.set(
+          gid,
+          (participantCountByGroup.get(gid) || 0) + 1,
         );
       }
 
@@ -438,25 +463,25 @@ export function AssignmentsClient({
 
       if (c.programmeType === "GROUP") {
         const maxTeams = progInfo?.maxTeamsPerGroup || 1;
-        const maxStudentsPerTeam = progInfo?.maxStudentsPerTeam || 1;
+        const maxParticipantsPerTeam = progInfo?.maxParticipantsPerTeam || 1;
 
-        // A group can form a team if they have at least 1 student (ignoring strict size for now as per usual festival flow)
-        // Or should we be strict? Usually, if they have any students, they are expected to form teams up to max.
-        // Let's count groups that have at least one eligible student.
-        const eligibleGroupsCount = studentCountByGroup.size;
+        // A group can form a team if they have at least 1 participant (ignoring strict size for now as per usual festival flow)
+        // Or should we be strict? Usually, if they have any participants, they are expected to form teams up to max.
+        // Let's count groups that have at least one eligible participant.
+        const eligibleGroupsCount = participantCountByGroup.size;
         totalTarget = eligibleGroupsCount * maxTeams;
         currentProgress = c.teamCount;
         label = `${currentProgress}/${totalTarget} Team${totalTarget !== 1 ? "s" : ""}`;
       } else {
         const maxPerGroup = progInfo?.maxParticipantsPerGroup || 1;
 
-        // Total target is the sum of min(maxPerGroup, studentsInGroup) for all groups
-        studentCountByGroup.forEach((count) => {
+        // Total target is the sum of min(maxPerGroup, participantsInGroup) for all groups
+        participantCountByGroup.forEach((count) => {
           totalTarget += Math.min(maxPerGroup, count);
         });
 
         currentProgress = c.attendeesCount;
-        label = `${currentProgress}/${totalTarget} Student${totalTarget !== 1 ? "s" : ""}`;
+        label = `${currentProgress}/${totalTarget} Participant${totalTarget !== 1 ? "s" : ""}`;
       }
 
       c.progress =
@@ -471,7 +496,9 @@ export function AssignmentsClient({
           ? progInfo?.maxTeamsPerGroup || 1
           : progInfo?.maxParticipantsPerGroup || 1;
 
-      const breakdown: GroupBreakdown[] = Array.from(studentCountByGroup.keys())
+      const breakdown: GroupBreakdown[] = Array.from(
+        participantCountByGroup.keys(),
+      )
         .map((gId) => {
           const group = groups.find((g: any) => g.id === gId);
           if (!group) return null;
@@ -486,11 +513,11 @@ export function AssignmentsClient({
               (r): r is IndividualAssignmentRow =>
                 r.kind === "individual" &&
                 (r.assignment.groupId === gId ||
-                  r.assignment.student?.groupId === gId),
+                  r.assignment.participant?.groupId === gId),
             ).length;
           }
 
-          const groupTotal = studentCountByGroup.get(gId) || 0;
+          const groupTotal = participantCountByGroup.get(gId) || 0;
           const target =
             c.programmeType === "GROUP" ? limit : Math.min(limit, groupTotal);
 
@@ -523,7 +550,7 @@ export function AssignmentsClient({
     });
 
     return cards;
-  }, [tableRows, students, programmes, categories, groups]);
+  }, [tableRows, participants, programmes, categories, groups]);
 
   const hasFilters =
     filterGroup !== "ALL" ||
@@ -553,6 +580,11 @@ export function AssignmentsClient({
         open={assignmentModalOpen}
         onOpenChange={setAssignmentModalOpen}
         isReadOnly={isReadOnlyMode}
+        categories={categories}
+        groups={groups}
+        programmes={programmes}
+        participants={participants}
+        assignments={assignments}
       />
 
       {/* Header row */}
@@ -563,46 +595,37 @@ export function AssignmentsClient({
               Programme Assignments
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
-              Manage student assignments to programmes.
+              Manage participant assignments to programmes.
             </p>
           </div>
         )}
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <HowItWorksButton
             title="How Assignments work"
-            description="Assign students or teams to programmes."
+            description="Assign participants or teams to programmes."
           >
             <p className="text-sm text-muted-foreground">
-              <strong>Individual programmes:</strong> Assign one student per
-              entry. Each row is one student.
+              <strong>Individual programmes:</strong> Assign one participant per
+              entry. Each row is one participant.
             </p>
             <p className="text-sm text-muted-foreground">
               <strong>Team programmes:</strong> Assign teams. Each team can have
               multiple members; one result per team. Use &quot;New
-              assignment&quot; to pick a programme, then add students to the
+              assignment&quot; to pick a programme, then add participants to the
               queue to form teams.
             </p>
-            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-left">
-              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                <strong>Note:</strong> Creating new assignments is only
-                available on laptop or large screens. On smaller devices you can
-                view and remove assignments.
-              </p>
-            </div>
           </HowItWorksButton>
           <div className="flex items-center">
             <DeadlinesCard isLockedOverride={isReadOnlyMode} />
           </div>
-          <div className="hidden md:block">
-            <Button
-              size="sm"
-              onClick={() => setAssignmentModalOpen(true)}
-              disabled={isReadOnlyMode}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              New assignment
-            </Button>
-          </div>
+          <Button
+            size="sm"
+            onClick={() => setAssignmentModalOpen(true)}
+            disabled={isReadOnlyMode}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            New assignment
+          </Button>
         </div>
       </div>
 
@@ -716,16 +739,19 @@ export function AssignmentsClient({
         title="Remove assignment"
         description={
           deleteTarget?.kind === "individual"
-            ? `Remove ${deleteTarget.assignment.student?.name} from ${deleteTarget.assignment.programme?.name}?`
+            ? `Remove ${deleteTarget.assignment.participant?.name} from ${deleteTarget.assignment.programme?.name}?`
             : ""
         }
         onDelete={async () => {
           if (deleteTarget?.kind === "individual") {
-            await deleteAssignment(deleteTarget.assignment.id);
+            await deleteAssignment.mutateAsync({
+              festivalId,
+              assignmentId: deleteTarget.assignment.id,
+            });
             setDeleteTarget(null);
           }
         }}
-        isDeleting={isDeleting}
+        isDeleting={deleteAssignment.isPending}
       />
       <DeleteDialog
         open={deleteTarget?.kind === "team"}
@@ -738,30 +764,31 @@ export function AssignmentsClient({
         }
         onDelete={async () => {
           if (deleteTarget?.kind === "team") {
-            await deleteTeamAssignment({
-              programmeId: deleteTarget.row.programme?.id,
-              groupId: deleteTarget.row.groupId,
-              teamNumber: deleteTarget.row.teamNumber,
-            });
+            await deleteTeamAssignmentAction(
+              festivalId,
+              deleteTarget.row.programme?.id,
+              deleteTarget.row.groupId,
+              deleteTarget.row.teamNumber,
+            );
             setDeleteTarget(null);
           }
         }}
-        isDeleting={isDeletingTeam}
+        isDeleting={false}
       />
 
-      {/* Programme Details Dialog */}
-      <Dialog
+      {/* Programme Details Drawer */}
+      <Drawer
         open={Boolean(selectedProgrammeCard)}
         onOpenChange={(open) => {
           if (!open) setSelectedProgrammeCard(null);
         }}
       >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Programme details</DialogTitle>
-          </DialogHeader>
+        <DrawerContent>
+          <DrawerHeader className="shrink-0">
+            <DrawerTitle>Programme details</DrawerTitle>
+          </DrawerHeader>
           {selectedProgrammeCard ? (
-            <div className="space-y-4">
+            <div className="space-y-4 p-4 pt-0 overflow-y-auto flex-1 min-h-0">
               <div className="grid gap-2 sm:grid-cols-2 text-sm">
                 <div>
                   <span className="text-muted-foreground">Programme:</span>{" "}
@@ -784,6 +811,118 @@ export function AssignmentsClient({
                   </div>
                 ) : null}
               </div>
+
+              {/* Panel A — lifecycle summary (always visible) */}
+              {programmeDetailLoading ? (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Loading programme
+                  summary…
+                </div>
+              ) : programmeDetail ? (
+                <div className="rounded-lg border bg-muted/10 p-3 space-y-2 text-xs">
+                  <div className="text-[10px] font-bold uppercase text-muted-foreground">
+                    Summary
+                  </div>
+                  <div className="grid gap-1.5 sm:grid-cols-2">
+                    <div>
+                      Reporting:{" "}
+                      {programmeDetail.reportingSession?.startedAt ? (
+                        <span>
+                          started
+                          {programmeDetail.reportingSession.startedByName
+                            ? ` by ${programmeDetail.reportingSession.startedByName}`
+                            : ""}
+                          {programmeDetail.reportingSession.endedAt
+                            ? `, closed${
+                                programmeDetail.reportingSession.endedByName
+                                  ? ` by ${programmeDetail.reportingSession.endedByName}`
+                                  : ""
+                              }`
+                            : ""}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          not started
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      Reported: {programmeDetail.counts.reported}/
+                      {programmeDetail.counts.totalAssigned}
+                    </div>
+                    <div>
+                      Judging:{" "}
+                      {programmeDetail.judgingSession ? (
+                        <span>
+                          {programmeDetail.judgingSession.judgeCount} judge(s)
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          not configured
+                        </span>
+                      )}
+                    </div>
+                    <div>Scored: {programmeDetail.counts.scored}</div>
+                    <div>
+                      Results:{" "}
+                      {programmeDetail.results.savedAt ? (
+                        <span>
+                          saved
+                          {programmeDetail.results.savedByName
+                            ? ` by ${programmeDetail.results.savedByName}`
+                            : ""}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">not saved</span>
+                      )}
+                    </div>
+                    <div>
+                      Published: {programmeDetail.counts.published} · Announced:{" "}
+                      {programmeDetail.counts.announced}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Panel B — programme team leads (PRO, GROUP only) */}
+              {canUseTeamLead &&
+              selectedProgrammeCard.programmeType === "GROUP" &&
+              programmeDetail &&
+              Object.keys(programmeDetail.teamLeads).length > 0 ? (
+                <div className="rounded-lg border bg-muted/10 p-3 space-y-2 text-xs">
+                  <div className="text-[10px] font-bold uppercase text-muted-foreground">
+                    Team Leads
+                  </div>
+                  <div className="grid gap-1.5 sm:grid-cols-2">
+                    {Object.entries(programmeDetail.teamLeads).flatMap(
+                      ([groupId, teams]) =>
+                        Object.entries(teams).map(([teamNumber, lead]) => (
+                          <div key={`${groupId}:${teamNumber}`}>
+                            Team {teamNumber}:{" "}
+                            <span className="font-medium">
+                              {lead.participantName}
+                            </span>{" "}
+                            {lead.chestNumber ? `(#${lead.chestNumber})` : ""}
+                          </div>
+                        )),
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Panel C — audit timeline (PRO) */}
+              {canUseAuditDrawer ? (
+                <div className="rounded-lg border overflow-hidden">
+                  <div className="border-b bg-muted/10 px-3 py-2 text-[10px] font-bold uppercase text-muted-foreground">
+                    Activity
+                  </div>
+                  <ProgrammeActivityTimeline
+                    entries={programmeDetail?.auditTimeline ?? []}
+                    isLoading={programmeDetailLoading}
+                    className="p-3"
+                  />
+                </div>
+              ) : null}
 
               {/* Progress in detail view */}
               <div className="rounded-lg border bg-muted/10 p-3 space-y-3">
@@ -826,18 +965,20 @@ export function AssignmentsClient({
                       );
                       const isGeneral = catInfo?.type === "GENERAL";
 
-                      const eligibleStudents =
+                      const eligibleParticipants =
                         isGeneral || !selectedProgrammeCard.categoryId
-                          ? students
-                          : students.filter(
+                          ? participants
+                          : participants.filter(
                               (s: any) =>
                                 s.categoryId ===
                                 selectedProgrammeCard.categoryId,
                             );
 
-                      // Groups that have at least one eligible student
+                      // Groups that have at least one eligible participant
                       const eligibleGroupIds = Array.from(
-                        new Set(eligibleStudents.map((s: any) => s.groupId)),
+                        new Set(
+                          eligibleParticipants.map((s: any) => s.groupId),
+                        ),
                       );
 
                       const limit =
@@ -862,18 +1003,19 @@ export function AssignmentsClient({
                               (r): r is IndividualAssignmentRow =>
                                 r.kind === "individual" &&
                                 (r.assignment.groupId === gId ||
-                                  r.assignment.student?.groupId === gId),
+                                  r.assignment.participant?.groupId === gId),
                             ).length;
                           }
 
                           // Target for THIS specific group
-                          const groupStudentCount = eligibleStudents.filter(
-                            (s: any) => s.groupId === gId,
-                          ).length;
+                          const groupParticipantCount =
+                            eligibleParticipants.filter(
+                              (s: any) => s.groupId === gId,
+                            ).length;
                           const target =
                             selectedProgrammeCard.programmeType === "GROUP"
                               ? limit
-                              : Math.min(limit, groupStudentCount);
+                              : Math.min(limit, groupParticipantCount);
 
                           const percent =
                             target > 0
@@ -931,9 +1073,9 @@ export function AssignmentsClient({
                     .filter((r) => {
                       const q = detailsSearch.trim().toLowerCase();
                       if (!q) return true;
-                      const s = r.assignment.student;
+                      const s = r.assignment.participant;
                       const g =
-                        r.assignment.group || r.assignment.student?.group;
+                        r.assignment.group || r.assignment.participant?.group;
                       return (
                         (s?.name ?? "").toLowerCase().includes(q) ||
                         (s?.chestNumber ?? "").toLowerCase().includes(q) ||
@@ -948,9 +1090,9 @@ export function AssignmentsClient({
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-medium truncate">
-                              {r.assignment.student?.name ?? "—"}
+                              {r.assignment.participant?.name ?? "—"}
                             </span>
-                            {r.assignment.student?.isTeamLeader && (
+                            {r.assignment.participant?.isTeamLeader && (
                               <Badge
                                 variant="secondary"
                                 className="h-4 px-1 text-[9px] uppercase font-bold bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
@@ -960,9 +1102,9 @@ export function AssignmentsClient({
                             )}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            #{r.assignment.student?.chestNumber ?? "—"} ·{" "}
+                            #{r.assignment.participant?.chestNumber ?? "—"} ·{" "}
                             {r.assignment.group?.name ||
-                              r.assignment.student?.group?.name ||
+                              r.assignment.participant?.group?.name ||
                               "—"}{" "}
                             ·{" "}
                             {r.assignment.assignedAt
@@ -1007,7 +1149,7 @@ export function AssignmentsClient({
                       if (row.groupName.toLowerCase().includes(q)) return true;
                       if (`team ${row.teamNumber}`.includes(q)) return true;
                       return row.assignments.some((a: any) => {
-                        const s = a.student;
+                        const s = a.participant;
                         return (
                           (s?.name ?? "").toLowerCase().includes(q) ||
                           (s?.chestNumber ?? "").toLowerCase().includes(q)
@@ -1055,12 +1197,12 @@ export function AssignmentsClient({
                               className="text-xs flex items-center gap-1.5"
                             >
                               <span>
-                                {a.student?.name ?? "—"}{" "}
+                                {a.participant?.name ?? "—"}{" "}
                                 <span className="text-muted-foreground">
-                                  (#{a.student?.chestNumber ?? "—"})
+                                  (#{a.participant?.chestNumber ?? "—"})
                                 </span>
                               </span>
-                              {a.student?.isTeamLeader && (
+                              {a.participant?.isTeamLeader && (
                                 <Badge
                                   variant="secondary"
                                   className="h-3.5 px-1 text-[8px] uppercase font-bold bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
@@ -1068,6 +1210,18 @@ export function AssignmentsClient({
                                   Leader
                                 </Badge>
                               )}
+                              {canUseTeamLead &&
+                                programmeDetail?.teamLeads[row.groupId]?.[
+                                  row.teamNumber
+                                ]?.participantId ===
+                                  (a.participant?.id ?? a.participantId) && (
+                                  <Badge
+                                    variant="secondary"
+                                    className="h-3.5 px-1 text-[8px] uppercase font-bold bg-primary/10 text-primary border-primary/30"
+                                  >
+                                    Lead
+                                  </Badge>
+                                )}
                             </div>
                           ))}
                         </div>
@@ -1077,8 +1231,8 @@ export function AssignmentsClient({
               )}
             </div>
           ) : null}
-        </DialogContent>
-      </Dialog>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

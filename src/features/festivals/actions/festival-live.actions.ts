@@ -6,7 +6,7 @@ import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
   festival as festivalTable,
-  festivalGalleryImage as galleryTable,
+  festivalMediaImage as mediaTable,
   festivalMember as memberTable,
   festivalNews as newsTable,
 } from "@/core/database/schema";
@@ -43,18 +43,18 @@ async function assertFestivalAdmin(festivalId: string) {
   return { festival, slug: festival.slug };
 }
 
-export async function addGalleryImageAction(festivalId: string, url: string) {
+export async function addMediaImageAction(festivalId: string, url: string) {
   try {
     const { slug } = await assertFestivalAdmin(festivalId);
     await assertFestivalMutationAllowed(festivalId);
 
     const [maxOrderResult] = await db
-      .select({ maxOrder: sql<number>`max(${galleryTable.order})` })
-      .from(galleryTable)
-      .where(eq(galleryTable.festivalId, festivalId));
+      .select({ maxOrder: sql<number>`max(${mediaTable.order})` })
+      .from(mediaTable)
+      .where(eq(mediaTable.festivalId, festivalId));
 
     const { randomUUID } = await import("crypto");
-    await db.insert(galleryTable).values({
+    await db.insert(mediaTable).values({
       id: randomUUID(),
       festivalId,
       url: url.trim(),
@@ -69,10 +69,10 @@ export async function addGalleryImageAction(festivalId: string, url: string) {
   }
 }
 
-export async function removeGalleryImageAction(imageId: string) {
+export async function removeMediaImageAction(imageId: string) {
   try {
-    const image = await db.query.festivalGalleryImage.findFirst({
-      where: eq(galleryTable.id, imageId),
+    const image = await db.query.festivalMediaImage.findFirst({
+      where: eq(mediaTable.id, imageId),
       with: { festival: { columns: { slug: true } } },
     });
 
@@ -80,7 +80,7 @@ export async function removeGalleryImageAction(imageId: string) {
     await assertFestivalAdmin(image.festivalId);
     await assertFestivalMutationAllowed(image.festivalId);
 
-    await db.delete(galleryTable).where(eq(galleryTable.id, imageId));
+    await db.delete(mediaTable).where(eq(mediaTable.id, imageId));
     revalidatePath(`/dashboard/${image.festival.slug}/festival-live`);
     return { success: true };
   } catch (e) {

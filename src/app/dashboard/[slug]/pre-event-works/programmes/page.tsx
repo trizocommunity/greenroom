@@ -7,7 +7,7 @@ import { db } from "@/core/database/client";
 import {
   category as categoryTable,
   group as groupTable,
-  student as studentTable,
+  participant as participantTable,
 } from "@/core/database/schema";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 
@@ -42,12 +42,12 @@ export default async function ProgrammesPage({
     );
   }
 
-  // Check for students
-  const [studentCountResult] = await db
+  // Check for participants
+  const [participantCountResult] = await db
     .select({ count: sql`count(*)` })
-    .from(studentTable)
-    .where(eq(studentTable.festivalId, festival.id));
-  const studentCount = Number(studentCountResult.count);
+    .from(participantTable)
+    .where(eq(participantTable.festivalId, festival.id));
+  const participantCount = Number(participantCountResult.count);
 
   const [groupCountResult] = await db
     .select({ count: sql`count(*)` })
@@ -55,13 +55,13 @@ export default async function ProgrammesPage({
     .where(eq(groupTable.festivalId, festival.id));
   const groupCount = Number(groupCountResult.count);
 
-  if (studentCount === 0) {
+  if (participantCount === 0) {
     return (
       <EmptyState
-        title="No Students Found"
-        description="You need to create students before you can manage programmes."
-        actionLabel="Create Students"
-        actionLink={`/dashboard/${festival.slug}/pre-event-works/students`}
+        title="No Participants Found"
+        description="You need to create participants before you can manage programmes."
+        actionLabel="Create Participants"
+        actionLink={`/dashboard/${festival.slug}/pre-event-works/participants`}
         icon={Users}
       />
     );

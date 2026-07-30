@@ -16,19 +16,27 @@ export interface PublicResult {
   codeLetter?: string | null;
 }
 
-const getResultPoints = (result: { points?: number; awardPoints?: number | null }) =>
-  result.awardPoints ?? result.points ?? 0;
+const getResultPoints = (result: {
+  points?: number;
+  awardPoints?: number | null;
+}) => result.awardPoints ?? result.points ?? 0;
 
 /**
- * Fetch published results for a festival (public site)
+ * Fetch on-air (announced) results for a festival (public site).
+ * Returns empty when the festival is in team-standings-only display mode.
  */
 export async function getPublicFestivalResults(
   festivalId: string,
+  options?: { publicDisplayMode?: "programme_results" | "team_standings" },
 ): Promise<PublicResult[]> {
+  if (options?.publicDisplayMode === "team_standings") {
+    return [];
+  }
+
   const results = await db.query.result.findMany({
     where: and(
       eq(resultTable.festivalId, festivalId),
-      eq(resultTable.isPublished, true),
+      eq(resultTable.isAnnounced, true),
     ),
     with: {
       programme: {
@@ -38,7 +46,7 @@ export async function getPublicFestivalResults(
       },
       programmeAssignment: {
         with: {
-          student: true,
+          participant: true,
           group: true,
         },
       },
@@ -121,7 +129,7 @@ export async function getPublicFestivalResults(
           programName: programme.name,
           programmeType: "INDIVIDUAL",
           category: programme.category.name,
-          winner: result.programmeAssignment.student?.name || "Unknown",
+          winner: result.programmeAssignment.participant?.name || "Unknown",
           team: result.programmeAssignment.group?.name || "N/A",
           position: result.position || 999,
           points: getResultPoints(result),

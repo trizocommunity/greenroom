@@ -1,417 +1,217 @@
 "use client";
 
-import { format } from "date-fns";
-import { Copy, Eye, Loader2, Trash2, User } from "lucide-react";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
-import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
-import { useFestival } from "@/components/festival/FestivalContext";
-import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { DeleteDialog } from "@/components/ui/delete-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import type { FestivalRole } from "@/core/types/app-enums";
-import { parseStoredInstant } from "@/core/utils/date-time";
+import { Loader2, Mail, Users } from "lucide-react";
+import type React from "react";
+import { useMembers } from "@/api/client/members";
+import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
-import { useMembers } from "@/features/members/hooks/use-members";
-import {
-  createFestivalMember,
-  revokeFestivalMember,
-} from "@/features/team-leader/actions/team.actions";
+import { usePendingInvitations } from "@/features/invitation/hooks/use-invitations";
+import { AddMemberDialog } from "./AddMemberDialog";
+import { MemberCard } from "./MemberCard";
+import { PendingInvitationCard } from "./PendingInvitationCard";
+import type { Member, PendingInvitation } from "./types";
 
 interface MembersClientProps {
   festivalId: string;
-  maxTeamMembers: number;
-  totalMemberCount: number;
-  atMemberCap: boolean;
+  userRole: string;
+  canManageStageAssignments?: boolean;
+  children?: React.ReactNode;
 }
 
 export function MembersClient({
   festivalId,
-  maxTeamMembers,
-  totalMemberCount,
-  atMemberCap,
+  userRole,
+  canManageStageAssignments = false,
+  children,
 }: MembersClientProps) {
   const { isReadOnly } = useFestivalReadOnly();
-  const { members, isLoading } = useMembers(festivalId);
+  const { data: members = [], isLoading: membersLoading } =
+    useMembers(festivalId);
+  const { data: invitationsData, isLoading: invitationsLoading } =
+    usePendingInvitations(festivalId);
+  const invitations: PendingInvitation[] = invitationsData?.body?.data || [];
 
-  if (isLoading) {
+  const isOwner = userRole === "OWNER";
+
+  if (membersLoading && invitationsLoading) {
     return (
-      <div className="flex items-center justify-center p-8">
+      <div className="flex items-center justify-center py-16">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Club Members</h2>
-          <p className="text-sm text-muted-foreground">
-            {totalMemberCount} of {maxTeamMembers} members
-          </p>
-        </div>
-        <AddMemberDialog
-          festivalId={festivalId}
-          disabled={atMemberCap || isReadOnly}
-          atMemberCap={atMemberCap}
-          maxTeamMembers={maxTeamMembers}
-        />
+  if ((invitationsData as any)?.error || (invitationsData as any)?.isError) {
+    const err = (invitationsData as any).error || (invitationsData as any);
+    return (
+      <div className="text-center py-8 text-destructive font-medium">
+        Error: {err.message || "Failed to load invitations"}
       </div>
-
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Joined At</TableHead>
-              <TableHead className="text-right">Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {members.map((member: any) => (
-              <TableRow key={member.id}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-                      <User className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <div className="font-medium">
-                        {member.user?.fullName || member.fullName || "Unknown"}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {member.user?.email || member.email}
-                      </div>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <FestivalRoleBadge
-                    festivalRole={member.role as FestivalRole}
-                  />
-                </TableCell>
-                <TableCell className="text-muted-foreground text-sm">
-                  {format(parseStoredInstant(member.createdAt), "MMM d, yyyy")}
-                </TableCell>
-                <TableCell className="text-right">
-                  <Badge variant={member.isActive ? "default" : "secondary"}>
-                    {member.isActive ? "Active" : "Inactive"}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <MemberActions member={member} isReadOnly={isReadOnly} />
-                </TableCell>
-              </TableRow>
-            ))}
-            {members.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
-                  No members found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
-  );
-}
-
-function AddMemberDialog({
-  festivalId,
-  disabled,
-  atMemberCap,
-  maxTeamMembers,
-}: {
-  festivalId: string;
-  disabled: boolean;
-  atMemberCap: boolean;
-  maxTeamMembers: number;
-}) {
-  const dirtySourceId = `members-add-dialog:${festivalId}`;
-  const { registerDirtySource, unregisterDirtySource, setDirty } =
-    useUnsavedChanges();
-  const festival = useFestival();
-  const readOnlyExpired = festival?.readOnlyExpired ?? false;
-  const [open, setOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    role: "STAGE_MANAGER",
-    password: "",
-  });
-  const hasUnsavedForm =
-    open &&
-    (formData.fullName.trim().length > 0 ||
-      formData.email.trim().length > 0 ||
-      formData.password.trim().length > 0);
-  const canCreateMember =
-    hasUnsavedForm &&
-    formData.fullName.trim().length > 0 &&
-    formData.email.trim().length > 0 &&
-    formData.password.trim().length >= 6;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      const result = await createFestivalMember({
-        festivalId,
-        ...formData,
-        role: formData.role as "ADMIN" | "ANNOUNCER" | "STAGE_MANAGER",
-      });
-
-      if (result.success) {
-        toast.success("Member added successfully");
-        setOpen(false);
-        setFormData({
-          fullName: "",
-          email: "",
-          role: "STAGE_MANAGER",
-          password: "",
-        });
-        window.location.reload(); // Simple reload to refresh list
-        setDirty(dirtySourceId, false);
-      } else {
-        toast.error(result.error as string);
-      }
-    } catch (error) {
-      toast.error("Failed to add member");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    registerDirtySource(dirtySourceId);
-    return () => unregisterDirtySource(dirtySourceId);
-  }, [dirtySourceId, registerDirtySource, unregisterDirtySource]);
-
-  useEffect(() => {
-    setDirty(dirtySourceId, hasUnsavedForm);
-  }, [dirtySourceId, hasUnsavedForm, setDirty]);
+    );
+  }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          disabled={disabled || readOnlyExpired}
-          title={
-            readOnlyExpired
-              ? "Festival has expired; read-only access."
-              : atMemberCap
-                ? `Member limit reached (${maxTeamMembers} for your plan). Upgrade to add more.`
-                : undefined
-          }
-        >
-          <User className="mr-2 h-4 w-4" />
-          Add Member
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add New Member</DialogTitle>
-          <DialogDescription>
-            Create a new staff member for this festival.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label>Full Name</Label>
-            <Input
-              required
-              value={formData.fullName}
-              onChange={(e) =>
-                setFormData({ ...formData, fullName: e.target.value })
-              }
-              placeholder="John Doe"
-            />
+    <div className="space-y-6 pt-2">
+      <div className="flex flex-row items-center justify-between gap-4">
+        {children || (
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+              Members
+            </h1>
           </div>
-          <div className="space-y-2">
-            <Label>Email</Label>
-            <Input
-              required
-              type="email"
-              value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
-              placeholder="john@example.com"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Role</Label>
-            <Select
-              value={formData.role}
-              onValueChange={(val) => setFormData({ ...formData, role: val })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ADMIN">Admin</SelectItem>
-                <SelectItem value="STAGE_MANAGER">Stage Manager</SelectItem>
-                <SelectItem value="ANNOUNCER">Announcer</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Initial Password</Label>
-            <Input
-              required
-              type="password"
-              value={formData.password}
-              onChange={(e) =>
-                setFormData({ ...formData, password: e.target.value })
-              }
-              placeholder="******"
-              minLength={6}
-            />
-            <p className="text-xs text-muted-foreground">
-              Must be at least 6 characters.
-            </p>
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={isLoading}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isLoading || !canCreateMember}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Member
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function MemberActions({
-  member,
-  isReadOnly,
-}: {
-  member: any;
-  isReadOnly: boolean;
-}) {
-  const [isRevoking, setIsRevoking] = useState(false);
-
-  const handleRevoke = async () => {
-    if (isReadOnly) return;
-    setIsRevoking(true);
-    try {
-      const result = await revokeFestivalMember(member.id);
-      if (result.success) {
-        toast.success("Member removed");
-        window.location.reload();
-      } else {
-        toast.error("Failed to remove member");
-      }
-    } catch (e) {
-      toast.error("Error removing member");
-    } finally {
-      setIsRevoking(false);
-    }
-  };
-
-  return (
-    <div className="flex justify-end gap-2">
-      <Dialog>
-        <DialogTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <Eye className="h-4 w-4" />
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Member Details</DialogTitle>
-            <DialogDescription>Details for {member.fullName}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid gap-2">
-              <Label>Full Name</Label>
-              <div className="font-medium">{member.fullName}</div>
-            </div>
-            <div className="grid gap-2">
-              <Label>Email</Label>
-              <div className="font-medium">{member.email}</div>
-            </div>
-            {member.initialPassword && (
-              <div className="grid gap-2">
-                <Label>Initial Password</Label>
-                <div className="flex items-center gap-2">
-                  <code className="bg-muted px-2 py-1 rounded">
-                    {member.initialPassword}
-                  </code>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() =>
-                      navigator.clipboard.writeText(member.initialPassword)
-                    }
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Share this with the member.
+        )}
+        <div className="flex items-center gap-2.5 shrink-0">
+          <HowItWorksButton
+            title="How it Works"
+            description="Learn how to add members to your festival"
+          >
+            <div className="flex gap-4">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
+                1
+              </div>
+              <div>
+                <p className="font-semibold">Invite</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Fill in the member&apos;s email and select their role. An
+                  invitation email will be sent automatically.
                 </p>
               </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <DeleteDialog
-        title="Remove Member"
-        description="Are you sure you want to remove this member? Their account will not be deleted, but they will lose access to this festival."
-        onDelete={handleRevoke}
-        isDeleting={isRevoking}
-        trigger={
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-destructive"
+            </div>
+            <div className="flex gap-4">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
+                2
+              </div>
+              <div>
+                <p className="font-semibold">Pending</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  The invitation stays active for 48 hours. If it expires, you
+                  can re-invite from the members list.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-4">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
+                3
+              </div>
+              <div>
+                <p className="font-semibold">Accept</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  The invitee clicks the link in their email and accepts the
+                  invitation.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-4">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
+                4
+              </div>
+              <div>
+                <p className="font-semibold">Active</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Once accepted, the member appears in your list with full
+                  access to the festival.
+                </p>
+              </div>
+            </div>
+          </HowItWorksButton>
+          <AddMemberDialog
+            festivalId={festivalId}
             disabled={isReadOnly}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        }
-      />
+            existingEmails={[
+              ...members
+                .map((m: Member) => m.email?.toLowerCase())
+                .filter((email): email is string => Boolean(email)),
+              ...invitations
+                .map((i: PendingInvitation) => i.email?.toLowerCase())
+                .filter((email): email is string => Boolean(email)),
+            ]}
+          />
+        </div>
+      </div>
+
+      {members.length === 0 && invitations.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/80 bg-card/50 p-12 text-center shadow-sm">
+          <div className="h-16 w-16 rounded-full bg-muted/60 flex items-center justify-center mb-4 text-muted-foreground">
+            <Users className="h-8 w-8" />
+          </div>
+          <h3 className="mb-1 text-lg font-bold tracking-tight text-foreground">
+            No team members yet
+          </h3>
+          <p className="mb-6 text-sm text-muted-foreground max-w-sm">
+            Invite staff members to help manage schedules, stages, categories,
+            and festival operations.
+          </p>
+          <AddMemberDialog
+            festivalId={festivalId}
+            disabled={isReadOnly}
+            existingEmails={[]}
+          />
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {invitations.length > 0 && (
+            <section className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-blue-500" />
+                <h2 className="text-sm font-semibold tracking-tight text-foreground">
+                  Pending invitations
+                </h2>
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-500/10 px-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
+                  {invitations.length}
+                </span>
+              </div>
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {sortByCreatedDesc(invitations).map((invitation) => (
+                  <PendingInvitationCard
+                    key={invitation.id}
+                    invitation={invitation}
+                    isOwner={isOwner}
+                    festivalId={festivalId}
+                    isReadOnly={isReadOnly}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-semibold tracking-tight text-foreground">
+                Team members
+              </h2>
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/10 px-1.5 text-xs font-semibold text-primary">
+                {members.length}
+              </span>
+            </div>
+            {members.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-border/70 bg-card/40 px-4 py-6 text-center text-sm text-muted-foreground">
+                No one has joined yet. Members appear here once they accept
+                their invitation.
+              </p>
+            ) : (
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {sortByCreatedDesc(members).map((member) => (
+                  <MemberCard
+                    key={member.id}
+                    member={member}
+                    festivalId={festivalId}
+                    isOwner={isOwner}
+                    isReadOnly={isReadOnly}
+                    canManageStageAssignments={canManageStageAssignments}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      )}
     </div>
+  );
+}
+
+function sortByCreatedDesc<T extends { createdAt: string }>(items: T[]): T[] {
+  return [...items].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 }

@@ -13,9 +13,11 @@ import {
   Image,
   Layers,
   LayoutDashboard,
+  LayoutTemplate,
   LifeBuoy,
   ListChecks,
   Megaphone,
+  Mic2,
   Newspaper,
   QrCode,
   Radio,
@@ -31,6 +33,7 @@ export type FestivalRole =
   | "ADMIN"
   | "STAGE_MANAGER"
   | "ANNOUNCER"
+  | "MEDIA"
   | "OWNER";
 
 export const SUPER_ADMIN_SIDEBAR_ITEMS = [
@@ -100,9 +103,13 @@ export const getFestivalDashboardSidebarConfig = (
   const useExternalJudging = plan.useExternalJudging ?? false;
   // Dedicated /event-works/results is excluded for BASIC; available when external judging is enabled.
   const canUseResultsPage = useExternalJudging;
-  const judgmentTitle = useExternalJudging ? "Judgment" : "Marks";
-  const judgmentHref = useExternalJudging
-    ? `${basePath}/event-works/judgment`
+  const judgementTitle = useExternalJudging
+    ? "Judgement"
+    : plan.isBasic
+      ? "Scoring"
+      : "Marks";
+  const judgementHref = useExternalJudging
+    ? `${basePath}/event-works/judgement`
     : `${basePath}/event-works/marks`;
 
   const hasAccess = (allowedRoles?: FestivalRole[]) => {
@@ -121,7 +128,9 @@ export const getFestivalDashboardSidebarConfig = (
           href:
             normalizedRole === "STAGE_MANAGER"
               ? `${basePath}/stage-manager`
-              : basePath,
+              : normalizedRole === "ANNOUNCER"
+                ? `${basePath}/announcer`
+                : basePath,
           icon: LayoutDashboard,
         },
         {
@@ -131,23 +140,9 @@ export const getFestivalDashboardSidebarConfig = (
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {
-          title: "Scoring Policy",
-          href: `${basePath}/event-works/scoring`,
-          icon: ListChecks,
-          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"] as FestivalRole[],
-          disabled: !useExternalJudging,
-        },
-        {
           title: "Members",
           href: `${basePath}/members`,
           icon: Users,
-          allowedRoles: ["ADMIN", "OWNER"],
-          disabled: plan.isBasic,
-        },
-        {
-          title: "Festival Live",
-          href: `${basePath}/festival-live`,
-          icon: Radio,
           allowedRoles: ["ADMIN", "OWNER"],
           disabled: plan.isBasic,
         },
@@ -169,8 +164,8 @@ export const getFestivalDashboardSidebarConfig = (
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {
-          title: "Students",
-          href: `${basePath}/pre-event-works/students`,
+          title: "Participants",
+          href: `${basePath}/pre-event-works/participants`,
           icon: UsersRound,
           allowedRoles: ["ADMIN", "OWNER"],
         },
@@ -187,16 +182,10 @@ export const getFestivalDashboardSidebarConfig = (
           allowedRoles: ["ADMIN", "OWNER"],
         },
         {
-          title: "QR Codes",
-          href: `${basePath}/pre-event-works/qr-codes`,
-          icon: QrCode,
-          allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
-        },
-        {
           title: "Stage Management",
           href: `${basePath}/pre-event-works/stage-management`,
           icon: Megaphone,
-          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
+          allowedRoles: ["ADMIN", "OWNER"],
         },
         {
           title: "Schedule",
@@ -204,12 +193,7 @@ export const getFestivalDashboardSidebarConfig = (
           icon: Calendar,
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
         },
-        {
-          title: "Sessions",
-          href: `${basePath}/pre-event-works/sessions`,
-          icon: CalendarDays,
-          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
-        },
+
         {
           title: "Judges",
           href: `${basePath}/pre-event-works/judges`,
@@ -217,8 +201,8 @@ export const getFestivalDashboardSidebarConfig = (
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
         },
         {
-          title: "Gallery",
-          href: `${basePath}/content/gallery`,
+          title: "Media",
+          href: `${basePath}/content/media`,
           icon: Image,
           allowedRoles: ["ADMIN", "OWNER"],
         },
@@ -241,8 +225,8 @@ export const getFestivalDashboardSidebarConfig = (
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"] as FestivalRole[],
         },
         {
-          title: judgmentTitle,
-          href: judgmentHref,
+          title: judgementTitle,
+          href: judgementHref,
           icon: Gavel,
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"] as FestivalRole[],
         },
@@ -250,6 +234,20 @@ export const getFestivalDashboardSidebarConfig = (
           title: "Results",
           href: `${basePath}/event-works/results`,
           icon: ListChecks,
+          allowedRoles: ["ADMIN", "OWNER", "ANNOUNCER"] as FestivalRole[],
+          disabled: !canUseResultsPage,
+        },
+        {
+          title: "Announcement",
+          href: `${basePath}/event-works/announcement-desk`,
+          icon: Mic2,
+          allowedRoles: ["ADMIN", "OWNER", "ANNOUNCER"] as FestivalRole[],
+          disabled: !canUseResultsPage,
+        },
+        {
+          title: "Group Standings",
+          href: `${basePath}/event-works/group-standings`,
+          icon: UsersRound,
           allowedRoles: ["ADMIN", "OWNER", "ANNOUNCER"] as FestivalRole[],
           disabled: !canUseResultsPage,
         },

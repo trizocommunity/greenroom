@@ -18,11 +18,11 @@ export default async function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Users</h2>
+        <h2 className="text-3xl font-semibold tracking-tight">Users</h2>
         <p className="text-muted-foreground">View all registered users</p>
       </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>

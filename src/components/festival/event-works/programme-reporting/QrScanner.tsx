@@ -6,18 +6,19 @@ import {
   Camera,
   CheckCircle,
   Loader2,
-  Maximize2,
   Upload,
   X,
+  Zap,
+  ZapOff,
+  SwitchCamera,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { flushSync } from "react-dom";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/core/utils/cn";
-import { scanAndReportStudentAction } from "@/features/programmes/actions/programme-reporting.actions";
+import { scanAndReportParticipantAction } from "@/features/programmes/actions/programme-reporting.actions";
 import { QuickAddScanForm } from "./QuickAddScanForm";
 
 interface QrScannerProps {
@@ -28,6 +29,17 @@ interface QrScannerProps {
   onScanError?: (error: unknown) => void;
   /** Tighter layout, no footer help — use inside reporting panel */
   variant?: "default" | "embedded";
+  /**
+   * Which controls this instance renders:
+   * - "full": manual chest#, photo upload, and camera (default embedded).
+   * - "camera": only the square camera surface (the live-check-in hero).
+   * - "manual": only chest# and photo upload (fallback in the manual section).
+   */
+  mode?: "full" | "camera" | "manual";
+  /** Camera mode only — try to open the camera as soon as it mounts. */
+  autoStart?: boolean;
+  /** Hide the internal success/error result cards (parent shows its own). */
+  hideResults?: boolean;
 }
 
 type ScanStatus = "idle" | "scanning" | "processing" | "success" | "error";
@@ -37,7 +49,7 @@ interface ScanResult {
   message?: string;
   error?: string;
   reason?: string;
-  student?: {
+  participant?: {
     id: string;
     name: string;
     chestNumber: string | null;
@@ -73,10 +85,7 @@ function mapGetUserMediaError(error: unknown): CameraGateReason {
   if (name === "NotFoundError" || name === "DevicesNotFoundError")
     return "nodevice";
   if (name === "NotReadableError" || name === "TrackStartError") return "busy";
-  if (
-    name === "OverconstrainedError" ||
-    name === "ConstraintNotSatisfiedError"
-  )
+  if (name === "OverconstrainedError" || name === "ConstraintNotSatisfiedError")
     return "constraint";
   return "other";
 }
@@ -111,9 +120,11 @@ function isPermissionDenied(e: unknown): boolean {
  * Single getUserMedia call: a second call after await often loses user activation
  * and Chrome may reject with NotAllowedError even when the user would allow.
  */
-async function getVideoStream(): Promise<MediaStream> {
+async function getVideoStreamWithMode(
+  mode: "environment" | "user",
+): Promise<MediaStream> {
   return navigator.mediaDevices.getUserMedia({
-    video: { facingMode: { ideal: "environment" } },
+    video: { facingMode: { ideal: mode } },
   });
 }
 
@@ -124,6 +135,9 @@ export function QrScanner({
   onScanSuccess,
   onScanError,
   variant = "default",
+  mode = "full",
+  autoStart = false,
+  hideResults = false,
 }: QrScannerProps) {
   const [status, setStatus] = useState<ScanStatus>("idle");
   const [lastResult, setLastResult] = useState<ScanResult | null>(null);
@@ -139,6 +153,11 @@ export function QrScanner({
   const [cameraGate, setCameraGate] = useState<CameraGateReason | null>(null);
   const [fullscreenAvailable, setFullscreenAvailable] = useState(false);
   const [simpleCameraHint, setSimpleCameraHint] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [facingMode, setFacingMode] = useState<"environment" | "user">(
+    "environment",
+  );
 
   useEffect(() => {
     let perm: PermissionStatus | undefined;
@@ -165,7 +184,10 @@ export function QrScanner({
     };
   }, []);
 
-  const startCamera = async (constraints: "default" | "any" = "default") => {
+  const startCamera = async (
+    constraints: "default" | "any" = "default",
+    mode: "environment" | "user" = facingMode,
+  ) => {
     setCameraGate(null);
     setSimpleCameraHint(false);
 
@@ -183,25 +205,32 @@ export function QrScanner({
 
     // Commit the <video> mount synchronously so videoRef is set after await
     // getUserMedia() (fast grant paths used to leave ref null).
-    try {
-      flushSync(() => {
-        setLastResult(null);
-        setStatus("scanning");
-      });
-    } catch {
-      /* flushSync can throw if nested in another update; fall back */
-      setLastResult(null);
-      setStatus("scanning");
-    }
+    setLastResult(null);
+    setStatus("scanning");
 
     try {
       const stream =
         constraints === "any"
           ? await navigator.mediaDevices.getUserMedia({ video: true })
-          : await getVideoStream();
+          : await getVideoStreamWithMode(mode);
+
+      const track = stream.getVideoTracks()[0];
+      if (track && "getCapabilities" in track) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const capabilities = (track as any).getCapabilities();
+          setTorchSupported(!!capabilities?.torch);
+        } catch {
+          setTorchSupported(false);
+        }
+      } else {
+        setTorchSupported(false);
+      }
 
       if (session !== cameraSessionRef.current) {
-        stream.getTracks().forEach((t) => t.stop());
+        stream.getTracks().forEach((t) => {
+          t.stop();
+        });
         return;
       }
 
@@ -209,7 +238,9 @@ export function QrScanner({
 
       const video = videoRef.current;
       if (!video) {
-        stream.getTracks().forEach((t) => t.stop());
+        stream.getTracks().forEach((t) => {
+          t.stop();
+        });
         console.error("QrScanner: video element missing after mount");
         setStatus("idle");
         setCameraGate("other");
@@ -231,7 +262,9 @@ export function QrScanner({
               console.error("Video play failed:", playErr);
             }
             scanningRef.current = false;
-            stream.getTracks().forEach((t) => t.stop());
+            stream.getTracks().forEach((t) => {
+              t.stop();
+            });
             streamRef.current = null;
             video.onloadedmetadata = null;
             video.srcObject = null;
@@ -262,13 +295,33 @@ export function QrScanner({
     }
   };
 
+  const toggleTorch = useCallback(() => {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (track) {
+      const nextTorch = !torchOn;
+      track
+        .applyConstraints({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          advanced: [{ torch: nextTorch } as any],
+        })
+        .then(() => {
+          setTorchOn(nextTorch);
+        })
+        .catch((err) => {
+          console.error("Failed to toggle torch", err);
+        });
+    }
+  }, [torchOn]);
+
+  const toggleCamera = useCallback(() => {
+    const nextMode = facingMode === "environment" ? "user" : "environment";
+    setFacingMode(nextMode);
+    void startCamera("default", nextMode);
+  }, [facingMode]);
+
   const enterScannerFullscreen = useCallback(() => {
     const surface = scannerSurfaceRef.current;
-    if (
-      !surface ||
-      !document.fullscreenEnabled ||
-      document.fullscreenElement
-    ) {
+    if (!surface || !document.fullscreenEnabled || document.fullscreenElement) {
       return;
     }
     void surface.requestFullscreen().catch(() => {});
@@ -304,7 +357,6 @@ export function QrScanner({
 
       if (chestNumber) {
         scanningRef.current = false;
-        stopCamera();
         void processChestNumber(chestNumber);
         return;
       }
@@ -352,7 +404,7 @@ export function QrScanner({
     setStatus("processing");
 
     try {
-      const result = await scanAndReportStudentAction(
+      const result = await scanAndReportParticipantAction(
         festivalId,
         reportingSessionId,
         chestNumber,
@@ -362,24 +414,52 @@ export function QrScanner({
 
       if (result.success) {
         setStatus("success");
-        toast.success(result.message || "Student reported successfully!");
+        toast.success(result.message || "Participant reported successfully!");
         onScanSuccess?.(result);
 
         setTimeout(() => {
-          setStatus("idle");
-          setLastResult(null);
-          setManualInput("");
+          if (streamRef.current) {
+            setStatus("scanning");
+            setLastResult(null);
+            setManualInput("");
+            scanningRef.current = true;
+            scanVideoFrame();
+          } else {
+            setStatus("idle");
+            setLastResult(null);
+            setManualInput("");
+          }
         }, 3000);
       } else {
         setStatus("error");
-        toast.error(result.error || "Failed to report student");
+        toast.error(result.error || "Failed to report participant");
         onScanError?.(result);
+
+        setTimeout(() => {
+          if (streamRef.current) {
+            setStatus("scanning");
+            setLastResult(null);
+            setManualInput("");
+            scanningRef.current = true;
+            scanVideoFrame();
+          }
+        }, 3000);
       }
     } catch (error) {
       console.error("Scan processing failed:", error);
       setStatus("error");
       toast.error("Processing failed. Please try again.");
       onScanError?.({ error: "Processing failed" });
+
+      setTimeout(() => {
+        if (streamRef.current) {
+          setStatus("scanning");
+          setLastResult(null);
+          setManualInput("");
+          scanningRef.current = true;
+          scanVideoFrame();
+        }
+      }, 3000);
     }
   };
 
@@ -475,6 +555,17 @@ export function QrScanner({
     };
   }, [stopCamera]);
 
+  // Camera-hero: open the camera automatically on mount. Guarded so it fires
+  // once; if the browser blocks it (no prior grant / lost gesture) the idle
+  // square still offers a tap-to-open button.
+  const autoStartedRef = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: one-shot mount trigger; startCamera is intentionally excluded.
+  useEffect(() => {
+    if (!autoStart || mode !== "camera" || autoStartedRef.current) return;
+    autoStartedRef.current = true;
+    void startCamera();
+  }, [autoStart, mode]);
+
   const embedded = variant === "embedded";
   const sectionGap = embedded ? "gap-3" : "gap-5";
   const labelClass =
@@ -491,7 +582,7 @@ export function QrScanner({
     <div className={cn(embedded ? "space-y-2" : "space-y-5")}>
       <canvas ref={canvasRef} className="hidden" aria-hidden />
 
-      {embedded ? (
+      {embedded && mode !== "camera" ? (
         <QuickAddScanForm
           manualInput={manualInput}
           onManualInputChange={setManualInput}
@@ -502,8 +593,9 @@ export function QrScanner({
           onOpenCameraFallback={() => void startCamera("any")}
           showCameraFallback={simpleCameraHint}
           fieldStatus={fieldStatus}
+          hideCamera={mode === "manual"}
         />
-      ) : (
+      ) : !embedded ? (
         <div className={cn("grid", sectionGap)}>
           <div className="space-y-2">
             <p className={labelClass}>Chest number</p>
@@ -597,11 +689,21 @@ export function QrScanner({
             )}
           </div>
         </div>
-      )}
+      ) : null}
+
+      {mode === "camera" && status !== "scanning" && status !== "processing" ? (
+        <button
+          type="button"
+          onClick={() => void startCamera()}
+          className="mx-auto flex aspect-square w-full max-w-[300px] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-muted/30 text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
+        >
+          <Camera className="h-10 w-10" aria-hidden />
+          <span className="text-sm font-semibold">Open camera</span>
+        </button>
+      ) : null}
 
       {cameraGate ? (
-        <div
-          role="status"
+        <output
           className={cn(
             "flex rounded-md border border-amber-400/90 bg-amber-50 text-amber-950 shadow-sm dark:border-amber-500/70 dark:bg-amber-950/95 dark:text-amber-50",
             embedded
@@ -617,86 +719,139 @@ export function QrScanner({
             aria-hidden
           />
           <p className="min-w-0 leading-snug">{cameraGateCopy(cameraGate)}</p>
-        </div>
+        </output>
       ) : null}
 
-      {status === "scanning" && (
-        <div
-          ref={scannerSurfaceRef}
-          className={cn(
-            "relative aspect-video rounded-lg bg-black",
-            embedded ? "max-h-[min(32vh,220px)]" : "max-h-[min(50vh,360px)]",
-            "[&:fullscreen]:aspect-auto [&:fullscreen]:h-full [&:fullscreen]:max-h-none [&:fullscreen]:min-h-[100dvh] [&:fullscreen]:w-full",
-          )}
-        >
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            controls={false}
-            className="h-full w-full object-cover"
-          />
+      {["scanning", "processing", "success", "error"].includes(status) &&
+        mode !== "manual" &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={scannerSurfaceRef}
+            className="fixed inset-0 z-[100000] flex flex-col bg-black h-[100dvh] w-screen"
+            style={{ pointerEvents: "auto" }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
+            }}
+          >
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              controls={false}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
 
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div
-              className={cn(
-                "rounded-lg border-2 border-white/50",
-                embedded
-                  ? "h-36 w-36 sm:h-44 sm:w-44"
-                  : "h-48 w-48 sm:h-64 sm:w-64",
+            <div className="absolute top-16 left-4 right-4 z-10 flex flex-col items-center">
+              {status === "success" && lastResult && (
+                <div className="w-full max-w-sm rounded-xl border border-green-500/30 bg-green-500/90 backdrop-blur-md p-4 text-white shadow-xl animate-in slide-in-from-top-4">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="mt-0.5 shrink-0 h-5 w-5" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium">{lastResult.message}</p>
+                      {lastResult.participant && (
+                        <div className="mt-2 space-y-1 text-sm text-green-50">
+                          <p>
+                            <span className="font-medium text-white">
+                              Participant:
+                            </span>{" "}
+                            {lastResult.participant.name}
+                          </p>
+                          <p>
+                            <span className="font-medium text-white">
+                              Chest #:
+                            </span>{" "}
+                            {lastResult.participant.chestNumber}
+                          </p>
+                          {lastResult.participant.groupName && (
+                            <p>
+                              <span className="font-medium text-white">
+                                Group:
+                              </span>{" "}
+                              {lastResult.participant.groupName}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )}
-            >
-              <div className="h-full w-full animate-pulse rounded-lg border-2 border-primary" />
+              {status === "error" && lastResult && (
+                <div className="w-full max-w-sm rounded-xl border border-red-500/30 bg-red-500/90 backdrop-blur-md p-4 text-white shadow-xl animate-in slide-in-from-top-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="mt-0.5 shrink-0 h-5 w-5" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium">
+                        {lastResult.error || "Failed to process scan"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {status === "processing" && (
+                <div className="rounded-full bg-black/70 backdrop-blur-md px-4 py-2 text-white flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm font-medium">Processing...</span>
+                </div>
+              )}
             </div>
-          </div>
 
-          <div className="pointer-events-none absolute bottom-3 left-0 right-0 text-center">
-            <Badge variant="secondary" className="bg-black/70 text-white">
-              Point at QR code
-            </Badge>
-          </div>
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <div className="relative w-64 h-64 sm:w-80 sm:h-80">
+                <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-white/80 rounded-tl-3xl" />
+                <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-white/80 rounded-tr-3xl" />
+                <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-white/80 rounded-bl-3xl" />
+                <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-white/80 rounded-br-3xl" />
+              </div>
+            </div>
 
-          <div className="absolute right-2 top-2 flex gap-1">
-            {fullscreenAvailable ? (
+            <div className="absolute bottom-10 left-0 right-0 flex items-center justify-center gap-6 z-20">
+              {torchSupported && (
+                <button
+                  type="button"
+                  onClick={toggleTorch}
+                  className="p-4 rounded-full bg-black/50 text-white backdrop-blur-md border border-white/10 hover:bg-black/70 transition-colors"
+                >
+                  {torchOn ? (
+                    <Zap className="h-6 w-6 text-yellow-400" />
+                  ) : (
+                    <ZapOff className="h-6 w-6" />
+                  )}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={toggleCamera}
+                className="p-4 rounded-full bg-black/50 text-white backdrop-blur-md border border-white/10 hover:bg-black/70 transition-colors"
+              >
+                <SwitchCamera className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="absolute right-4 top-4 z-20 flex gap-2">
               <Button
                 type="button"
-                size="sm"
+                size="icon"
                 variant="secondary"
-                className="bg-black/70 text-white hover:bg-black/85"
-                onClick={enterScannerFullscreen}
+                className="rounded-full bg-black/50 text-white hover:bg-black/70 border-0"
+                onClick={stopCamera}
               >
-                <Maximize2 className="h-4 w-4" />
-                <span className="sr-only">Full screen</span>
+                <X className="h-5 w-5" />
+                <span className="sr-only">Close camera</span>
               </Button>
-            ) : null}
-            <Button
-              type="button"
-              size="sm"
-              variant="destructive"
-              onClick={stopCamera}
-            >
-              <X className="h-4 w-4" />
-              <span className="sr-only">Close camera</span>
-            </Button>
-          </div>
-        </div>
-      )}
+            </div>
+          </div>,
+          document.body,
+        )}
 
-      {status === "scanning" && (
-        <p
-          className={cn(
-            "text-center text-muted-foreground",
-            embedded ? "text-[11px] leading-tight" : "text-xs",
-          )}
-        >
-          {embedded
-            ? "Hold QR steady — or close and use Photo / #."
-            : "Scanning… hold the QR steady, or close the camera and use upload / manual entry."}
-        </p>
-      )}
-
-      {status === "success" && lastResult?.student && (
+      {!hideResults && status === "success" && lastResult?.participant && (
         <div
           className={cn(
             "space-y-2 rounded-md border border-green-500/30 bg-green-500/10",
@@ -726,17 +881,17 @@ export function QrScanner({
                 )}
               >
                 <p className="text-muted-foreground">
-                  <span className="font-medium">Student:</span>{" "}
-                  {lastResult.student.name}
+                  <span className="font-medium">Participant:</span>{" "}
+                  {lastResult.participant.name}
                 </p>
                 <p className="text-muted-foreground">
                   <span className="font-medium">Chest #:</span>{" "}
-                  {lastResult.student.chestNumber}
+                  {lastResult.participant.chestNumber}
                 </p>
-                {lastResult.student.groupName && (
+                {lastResult.participant.groupName && (
                   <p className="text-muted-foreground">
                     <span className="font-medium">Group:</span>{" "}
-                    {lastResult.student.groupName}
+                    {lastResult.participant.groupName}
                   </p>
                 )}
               </div>
@@ -745,7 +900,7 @@ export function QrScanner({
         </div>
       )}
 
-      {status === "error" && lastResult && (
+      {!hideResults && status === "error" && lastResult && (
         <div
           className={cn(
             "space-y-2 rounded-md border border-red-500/30 bg-red-500/10",
@@ -770,7 +925,7 @@ export function QrScanner({
               </p>
 
               {lastResult.reason === "NOT_ASSIGNED_TO_PROGRAMME" &&
-                lastResult.student && (
+                lastResult.participant && (
                   <div
                     className={cn(
                       "space-y-1 text-muted-foreground",
@@ -778,17 +933,17 @@ export function QrScanner({
                     )}
                   >
                     <p>
-                      <span className="font-medium">Student:</span>{" "}
-                      {lastResult.student.name}
+                      <span className="font-medium">Participant:</span>{" "}
+                      {lastResult.participant.name}
                     </p>
                     <p>
                       <span className="font-medium">Chest #:</span>{" "}
-                      {lastResult.student.chestNumber}
+                      {lastResult.participant.chestNumber}
                     </p>
-                    {lastResult.student.groupName && (
+                    {lastResult.participant.groupName && (
                       <p>
                         <span className="font-medium">Group:</span>{" "}
-                        {lastResult.student.groupName}
+                        {lastResult.participant.groupName}
                       </p>
                     )}
                     <p className="mt-2 font-medium text-red-600 dark:text-red-400">
@@ -797,7 +952,7 @@ export function QrScanner({
                   </div>
                 )}
 
-              {lastResult.reason === "STUDENT_NOT_FOUND" && (
+              {lastResult.reason === "PARTICIPANT_NOT_FOUND" && (
                 <p
                   className={cn(
                     "mt-2 text-muted-foreground",
@@ -815,7 +970,7 @@ export function QrScanner({
                     embedded ? "text-xs" : "text-sm",
                   )}
                 >
-                  This student is already marked present.
+                  This participant is already marked present.
                 </p>
               )}
             </div>

@@ -1,76 +1,81 @@
 import "dotenv/config";
-import { hash } from "bcryptjs";
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
-import * as relations from "../src/core/database/relations";
-import * as schema from "../src/core/database/schema";
-
-const dbSchema = { ...schema, ...relations };
-
-// Use DATABASE_URL (Supabase pooler connection)
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) throw new Error("DATABASE_URL must be defined in .env");
-
-// Check if local connection to disable SSL (same logic as src/lib/db.ts)
-const isLocalConnection = (() => {
-  try {
-    const url = new URL(connectionString);
-    return ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
-  } catch {
-    return /localhost|127\.0\.0\.1|::1/i.test(connectionString);
-  }
-})();
-
-const hasExplicitSslDisable = /sslmode=disable/i.test(connectionString);
-const sslConfig =
-  isLocalConnection || hasExplicitSslDisable
-    ? false
-    : { rejectUnauthorized: false };
-
-const pool = new Pool({
-  connectionString,
-  ssl: sslConfig,
-});
-
-const db = drizzle(pool, { schema: dbSchema });
+import { JUDGES, SESSIONS } from "./seed/config";
+import { buildDb } from "./seed/db";
+import {
+  addFestivalMembers,
+  createFestival,
+  recordProPayment,
+  upsertPurchaseSummary,
+} from "./seed/festival";
+import { createParticipants } from "./seed/participants";
+import {
+  createProgrammesAndAssignments,
+  createSessions,
+} from "./seed/programmes";
+import { printSeedSummary, updateFestivalUsageCounts } from "./seed/summary";
+import {
+  createCategories,
+  createGroups,
+  createJudges,
+  createStages,
+} from "./seed/taxonomies";
+import { createFestivalOwner, createSuperAdmin } from "./seed/users";
 
 async function seed() {
-  const email = "trizocommunity@gmail.com";
-  const password = "trizo786";
+  console.log("🌱 Starting database seeding...");
+  const { db, pool } = buildDb();
 
-  // Check if user already exists
-  const existingUser = await db.query.user.findFirst({
-    where: (user, { eq }) => eq(user.email, email),
+  await createSuperAdmin(db);
+
+  const { ownerId, institutionId } = await createFestivalOwner(db);
+
+  const festivalId = await createFestival(db, ownerId, institutionId);
+  await recordProPayment(db, festivalId, ownerId);
+  await upsertPurchaseSummary(db, ownerId, festivalId);
+  await addFestivalMembers(db, festivalId, ownerId);
+
+  const categories = await createCategories(db, festivalId);
+  const groups = await createGroups(db, festivalId);
+  const stages = await createStages(db, festivalId);
+  await createJudges(db, festivalId, JUDGES);
+
+  const participants = await createParticipants(
+    db,
+    festivalId,
+    categories,
+    groups,
+  );
+
+  const sessionCount = await createSessions(db, festivalId, stages, SESSIONS);
+
+  const { programmeCount } = await createProgrammesAndAssignments(
+    db,
+    festivalId,
+    categories,
+    stages,
+    groups,
+    participants,
+  );
+
+  await updateFestivalUsageCounts(db, festivalId, {
+    participants: participants.length,
+    programmes: programmeCount,
+    stages: stages.length,
   });
 
-  if (existingUser) {
-    console.log(`User with email ${email} already exists.`);
-    await pool.end();
-    return;
-  }
-
-  // Hash password
-  const hashedPassword = await hash(password, 10);
-
-  // Create super admin user
-  const now = new Date().toISOString();
-  const userId = crypto.randomUUID();
-
-  await db.insert(schema.user).values({
-    id: userId,
-    email,
-    password: hashedPassword,
-    globalRole: "SUPER_ADMIN",
-    fullName: "TRIZO Community Admin",
-    isActive: true,
-    createdAt: now,
-    updatedAt: now,
-  });
-
-  console.log(`✅ Super admin created successfully!`);
-  console.log(`   Email: ${email}`);
-  console.log(`   Password: ${password}`);
-  console.log(`   ID: ${userId}`);
+  printSeedSummary(
+    {
+      categories: categories.length,
+      groups: groups.length,
+      participants: participants.length,
+      leaders: participants.filter((s) => s.isTeamLeader).length,
+      judges: JUDGES.length,
+      sessions: sessionCount,
+      programmes: programmeCount,
+    },
+    participants,
+    stages,
+  );
 
   await pool.end();
 }

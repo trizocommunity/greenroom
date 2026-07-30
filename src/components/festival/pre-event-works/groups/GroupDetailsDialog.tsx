@@ -2,16 +2,17 @@
 
 import { Eye, Loader2, Users } from "lucide-react";
 import { useState } from "react";
+import { useParticipants } from "@/api/client/participants";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
@@ -22,7 +23,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useFeature } from "@/features/plan-features/hooks/use-feature";
-import { useStudents } from "@/features/students/hooks/use-students";
 
 interface User {
   id: string;
@@ -36,13 +36,13 @@ interface Member {
   user: User;
 }
 
-interface Student {
+interface Participant {
   id: string;
-  name: string;
+  name: string | null;
   chestNumber?: string | null;
   category?: { name: string } | null;
   email?: string | null;
-  group?: { id: string };
+  group?: { id: string; name: string } | null;
   groupId?: string | null;
 }
 
@@ -68,11 +68,11 @@ export function GroupDetailsDialog({
   open: controlledOpen,
   onOpenChange: setControlledOpen,
 }: GroupDetailsDialogProps) {
-  const { students, isLoading } = useStudents(festivalId);
+  const { data: participants = [], isLoading } = useParticipants(festivalId);
   const canAssignTeamLeaders = useFeature("members");
 
-  const groupStudents = students.filter(
-    (p: Student) => p.group?.id === group.id || p.groupId === group.id,
+  const groupParticipants = participants.filter(
+    (p: Participant) => p.group?.id === group.id || p.groupId === group.id,
   );
 
   const isControlled = controlledOpen !== undefined;
@@ -82,33 +82,35 @@ export function GroupDetailsDialog({
     isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Drawer open={open} onOpenChange={setOpen}>
       {!isControlled && (
-        <DialogTrigger asChild>
+        <DrawerTrigger asChild>
           {trigger ?? (
             <Button variant="ghost" size="icon" className="h-8 w-8">
               <Eye className="h-4 w-4" />
             </Button>
           )}
-        </DialogTrigger>
+        </DrawerTrigger>
       )}
-      <DialogContent className="w-[calc(100%-2rem)] max-w-4xl max-h-[85vh] flex flex-col p-4 sm:p-6">
-        <DialogHeader className="pr-8 sm:pr-0">
+      <DrawerContent>
+        <DrawerHeader className="pr-8 sm:pr-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
-              <DialogTitle className="text-lg sm:text-xl truncate">
+              <DrawerTitle className="text-lg sm:text-xl truncate">
                 {group.name}
-              </DialogTitle>
+              </DrawerTitle>
             </div>
           </div>
-          <DialogDescription>{groupStudents.length} Students</DialogDescription>
-        </DialogHeader>
+          <DrawerDescription>
+            {groupParticipants.length} Participants
+          </DrawerDescription>
+        </DrawerHeader>
 
         <div className="flex-1 overflow-hidden mt-4 min-h-0">
           <div className="flex flex-col gap-4 overflow-hidden h-full">
             <h4 className="font-semibold text-sm flex items-center gap-2">
               <Users className="h-4 w-4 shrink-0" />
-              Students ({groupStudents.length})
+              Participants ({groupParticipants.length})
             </h4>
 
             <ScrollArea className="flex-1 border rounded-md">
@@ -120,12 +122,12 @@ export function GroupDetailsDialog({
                 <>
                   {/* Mobile: list of cards */}
                   <div className="block md:hidden divide-y">
-                    {groupStudents.length === 0 ? (
+                    {groupParticipants.length === 0 ? (
                       <div className="py-8 text-center text-muted-foreground text-sm">
-                        No students found in this group.
+                        No participants found in this group.
                       </div>
                     ) : (
-                      groupStudents.map((p: Student) => (
+                      groupParticipants.map((p: Participant) => (
                         <div
                           key={p.id}
                           className="p-3 flex items-center justify-between gap-2"
@@ -159,7 +161,7 @@ export function GroupDetailsDialog({
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {groupStudents.map((p: Student) => (
+                        {groupParticipants.map((p: Participant) => (
                           <TableRow key={p.id}>
                             <TableCell className="font-medium">
                               {p.chestNumber || "-"}
@@ -183,13 +185,13 @@ export function GroupDetailsDialog({
                             </TableCell>
                           </TableRow>
                         ))}
-                        {groupStudents.length === 0 && (
+                        {groupParticipants.length === 0 && (
                           <TableRow>
                             <TableCell
                               colSpan={3}
                               className="h-24 text-center text-muted-foreground"
                             >
-                              No students found in this group.
+                              No participants found in this group.
                             </TableCell>
                           </TableRow>
                         )}
@@ -201,7 +203,7 @@ export function GroupDetailsDialog({
             </ScrollArea>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }

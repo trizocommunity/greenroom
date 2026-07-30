@@ -2,10 +2,10 @@
 
 import { LayoutDashboard, Lock } from "lucide-react";
 import Link from "next/link";
+import type { Festival } from "@/api/contracts/festivals";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import type { Festival } from "@/features/festivals/hooks/use-festivals";
 import {
   FESTIVAL_STATUS_LABELS,
   getDerivedFestivalStatus,
@@ -28,7 +28,7 @@ export function JoinedFestivalCard({ festival }: JoinedFestivalCardProps) {
   const isLocked = festival.isLocked;
 
   return (
-    <Card className="group relative overflow-hidden border-none shadow-md bg-background/50 backdrop-blur-sm ring-1 ring-border/50 transition-all duration-300 hover:shadow-lg hover:ring-primary/20">
+    <Card className="group relative overflow-hidden border border-border rounded-2xl bg-card shadow-premium transition-shadow duration-300 hover:shadow-premium-lg">
       <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-transparent opacity-50 transition-opacity group-hover:opacity-80" />
 
       <CardContent className="relative p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
@@ -40,9 +40,9 @@ export function JoinedFestivalCard({ festival }: JoinedFestivalCardProps) {
               }
               className={
                 isExpired
-                  ? "bg-red-500/90 text-white"
+                  ? "bg-destructive text-white"
                   : isActive
-                    ? "bg-green-500 hover:bg-green-600"
+                    ? "bg-success hover:bg-success/90"
                     : ""
               }
             >
@@ -54,7 +54,7 @@ export function JoinedFestivalCard({ festival }: JoinedFestivalCardProps) {
               </Badge>
             )}
           </div>
-          <h3 className="font-bold text-xl md:text-2xl tracking-tight text-foreground group-hover:text-primary transition-colors duration-300 truncate">
+          <h3 className="font-semibold text-xl md:text-2xl tracking-tight text-heading group-hover:text-primary transition-colors duration-300 truncate">
             {festival.name}
           </h3>
           <p className="text-sm text-muted-foreground truncate">
@@ -64,20 +64,34 @@ export function JoinedFestivalCard({ festival }: JoinedFestivalCardProps) {
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
           {isActive || isPast ? (
-            <Button asChild size="sm" className="flex-1 sm:flex-none shadow-sm">
+            <Button
+              asChild
+              size="sm"
+              className="flex-1 sm:flex-none rounded-full font-medium shadow-primary-glow hover:opacity-90 transition-opacity"
+            >
               <Link href={`/dashboard/${festival.slug}`}>
                 <LayoutDashboard className="mr-2 h-4 w-4" />
-                {isPast ? "Dashboard (Read-only)" : "Dashboard"}
+                {isPast ? "Dashboard (read-only)" : "Dashboard"}
               </Link>
             </Button>
           ) : isExpired ? (
-            <Button disabled size="sm" variant="secondary">
+            <Button
+              disabled
+              size="sm"
+              variant="secondary"
+              className="rounded-full font-medium"
+            >
               Festival ended
             </Button>
           ) : (
-            <Button disabled size="sm" variant="secondary">
+            <Button
+              disabled
+              size="sm"
+              variant="secondary"
+              className="rounded-full font-medium"
+            >
               {isLocked ? <Lock className="mr-2 w-4 h-4" /> : null}
-              {isLocked ? "Locked" : "Past (Read-only)"}
+              {isLocked ? "Locked" : "Past (read-only)"}
             </Button>
           )}
         </div>
