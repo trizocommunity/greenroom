@@ -728,7 +728,16 @@ export function QrScanner({
         createPortal(
           <div
             ref={scannerSurfaceRef}
-            className="fixed inset-0 z-[100] flex flex-col bg-black h-[100dvh] w-screen"
+            className="fixed inset-0 z-[100000] flex flex-col bg-black h-[100dvh] w-screen"
+            style={{ pointerEvents: "auto" }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
+            }}
           >
             <video
               ref={videoRef}
