@@ -16,6 +16,13 @@ export interface ParseInstantOptions {
    *   deployments where appending `Z` would silently drift the display.
    */
   legacyLocalFormat?: "utc" | "reject";
+  /**
+   * When `true`, emit a one-shot `console.warn` per unique raw value
+   * that fails to parse. Used by the diagnostic round in v0.x to
+   * capture what Drizzle / pg actually returns from the DB. Off in
+   * production builds where this would be noisy.
+   */
+  debugUnparseable?: boolean;
 }
 
 /**
@@ -24,10 +31,14 @@ export interface ParseInstantOptions {
  * Convention: all stored instants are UTC, regardless of input shape.
  *   - `"2026-08-15T09:00:00.000Z"`             → as-is
  *   - `"2026-08-15T09:00:00.000+05:30"`        → as-is
+ *   - `"2026-08-15T09:00:00.000+00"`           → normalised to `Z`
+ *   - `"2026-08-15T09:00:00.000+0000"`         → normalised to `Z`
+ *   - `"2026-08-15T09:00:00.000+00:00"`        → normalised to `Z`
  *   - `"2026-08-15T09:00:00.000"`              → assumed UTC, parsed as Z
  *   - `"2026-08-15 09:00:00.000"`              → space-separator normalised, assumed UTC
  *   - `"2026-08-15"`                           → midnight UTC
  *   - `Date` object                            → cloned (if valid; null if NaN)
+ *   - numeric epoch ms (10–13 digits)          → UTC instant
  *   - `null` / `undefined` / `""`              → `null`
  *   - invalid string                           → `null`
  *
@@ -46,24 +57,57 @@ export function parseInstant(
   const raw = String(value).trim();
   if (raw === "") return null;
 
-  // Already Z-suffixed or has an explicit ±HH:MM offset.
-  if (ISO_INSTANT_WITH_TZ.test(raw)) {
-    return safeToDate(raw);
+  // Normalise ±00 (UTC-zero offset) variants to `Z` so they hit the
+  // TZ-aware branch below. This covers the wire formats emitted by
+  // Drizzle `mode: "string"` with `timestamptz` (e.g. `+00`, `+00:00`,
+  // `+0000`) and the `text` cast of `timestamp(3)` in a UTC session.
+  const normalised = normaliseZeroOffsetToZ(raw);
+
+  if (ISO_INSTANT_WITH_TZ.test(normalised)) {
+    return safeToDate(normalised);
   }
 
   // Postgres-style "YYYY-MM-DD HH:mm:ss(.SSS)?" without TZ.
-  if (TIMESTAMP_NO_TZ.test(raw)) {
+  if (TIMESTAMP_NO_TZ.test(normalised)) {
     if (options.legacyLocalFormat === "reject") return null;
-    return safeToDate(coerceLegacyLocalFormatToUtc(raw));
+    return safeToDate(coerceLegacyLocalFormatToUtc(normalised));
   }
 
   // Date-only "YYYY-MM-DD" → midnight UTC.
-  if (DATE_ONLY.test(raw)) {
-    return safeToDate(`${raw}T00:00:00.000Z`);
+  if (DATE_ONLY.test(normalised)) {
+    return safeToDate(`${normalised}T00:00:00.000Z`);
   }
 
+  // Last-resort fallback: only accept unambiguous numeric epoch ms
+  // (13-digit values covering 2001–2286). Anything `Date.parse(...)`
+  // would handle browser-locally is rejected to avoid silent TZ drift
+  // on non-UTC server deployments.
+  if (/^-?\d{13}$/.test(normalised)) {
+    // Construct the Date from the numeric value directly — `new Date()`
+    // parses a number as epoch ms, but the same number wrapped in a
+    // string is interpreted as ISO / RFC2822 depending on shape.
+    const asNumber = parseInt(normalised, 10);
+    const parsed = new Date(asNumber);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  // Diagnostic — one warn per unique raw value per process. Lets us
+  // capture what Drizzle / pg actually returned at runtime instead of
+  // guessing. Off in production unless `debugUnparseable: true` is
+  // passed explicitly (only the dev/test paths opt in today).
+  if (options.debugUnparseable && !warnedSet.has(normalised)) {
+    warnedSet.add(normalised);
+    console.warn(
+      `[datetime] parseInstant could not parse value: ${JSON.stringify(normalised)} ` +
+        `(length=${normalised.length}); returning null. This produces a ` +
+        `"${FALLBACK_DISPLAY_STRING}" fallback in format helpers.`,
+    );
+  }
   return null;
 }
+
+const warnedSet = new Set<string>();
+const FALLBACK_DISPLAY_STRING = "—";
 
 /**
  * Convert a Postgres-style timestamp without TZ into an ISO instant
@@ -74,6 +118,24 @@ export function parseInstant(
 function coerceLegacyLocalFormatToUtc(raw: string): string {
   const normalised = raw.includes("T") ? raw : raw.replace(" ", "T");
   return `${normalised}Z`;
+}
+
+/**
+ * Replace any ±HH(:?MM)? zero-offset suffix with a literal `Z`. Empty
+ * (no sign, no digits — i.e. no offset at all) is a no-op. Operates
+ * case-insensitively to be safe. Keeps the rest of the input intact.
+ *
+ *   "2026-08-15T09:00:00.000+00"   → "2026-08-15T09:00:00.000Z"
+ *   "2026-08-15T09:00:00.000+0000" → "2026-08-15T09:00:00.000Z"
+ *   "2026-08-15T09:00:00.000+00:00" → "2026-08-15T09:00:00.000Z"
+ *   "2026-08-15 09:00:00.000+00"   → "2026-08-15 09:00:00.000Z"
+ *   "2026-08-15T09:00:00.000+05:30" → "2026-08-15T09:00:00.000+05:30" (unchanged)
+ */
+function normaliseZeroOffsetToZ(raw: string): string {
+  return raw.replace(
+    /([+-])00(?::?00)?(?=[T ]|\.|$)/,
+    () => "Z",
+  );
 }
 
 /**

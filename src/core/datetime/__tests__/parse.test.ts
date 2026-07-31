@@ -76,6 +76,69 @@ describe("parseInstant — NaN-getTime Date never propagates", () => {
   });
 });
 
+describe("parseInstant — zero-offset normalisation (the 'everywhere none/empty' bug)", () => {
+  it("normalises +00 to Z", () => {
+    expect(parseInstant("2026-08-15T09:00:00.000+00")?.toISOString()).toBe(
+      "2026-08-15T09:00:00.000Z",
+    );
+  });
+
+  it("normalises -00 to Z", () => {
+    expect(parseInstant("2026-08-15T09:00:00.000-00")?.toISOString()).toBe(
+      "2026-08-15T09:00:00.000Z",
+    );
+  });
+
+  it("normalises +0000 (no colon) to Z", () => {
+    expect(parseInstant("2026-08-15T09:00:00.000+0000")?.toISOString()).toBe(
+      "2026-08-15T09:00:00.000Z",
+    );
+  });
+
+  it("normalises +00:00 (with colon) to Z", () => {
+    expect(parseInstant("2026-08-15T09:00:00.000+00:00")?.toISOString()).toBe(
+      "2026-08-15T09:00:00.000Z",
+    );
+  });
+
+  it("normalises -00:00 (with colon) to Z", () => {
+    expect(parseInstant("2026-08-15T09:00:00.000-00:00")?.toISOString()).toBe(
+      "2026-08-15T09:00:00.000Z",
+    );
+  });
+
+  it("preserves non-zero offsets", () => {
+    expect(parseInstant("2026-08-15T14:30:00.000+05:30")?.toISOString()).toBe(
+      "2026-08-15T09:00:00.000Z",
+    );
+  });
+
+  it("normalises +00 on space-separated UTC strings too", () => {
+    expect(parseInstant("2026-08-15 09:00:00.000+00")?.toISOString()).toBe(
+      "2026-08-15T09:00:00.000Z",
+    );
+  });
+});
+
+describe("parseInstant — last-resort fallback (numeric epoch ms only)", () => {
+  it("accepts a 13-digit epoch ms", () => {
+    const ms = Date.parse("2026-08-15T09:00:00.000Z").toString();
+    const parsed = parseInstant(ms);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.toISOString()).toBe("2026-08-15T09:00:00.000Z");
+  });
+
+  it("rejects non-numeric strings that new Date() accepts (TZ-ambiguous)", () => {
+    expect(parseInstant("2026/08/15")).toBeNull();
+    expect(parseInstant("15 Aug 2026")).toBeNull();
+  });
+
+  it("rejects 9- and 14-digit numbers (out of accepted ms range)", () => {
+    expect(parseInstant("123456789")).toBeNull();
+    expect(parseInstant(Date.parse("2026-08-15T09:00:00.000Z").toString() + "0")).toBeNull();
+  });
+});
+
 describe("parseInstant — legacy UTC coercion (the case behind the 'NaNd ago' bug)", () => {
   it("parses space-separated UTC timestamp with milliseconds", () => {
     expect(parseInstant("2026-08-15 09:00:00.000")?.toISOString()).toBe(
@@ -113,6 +176,33 @@ describe("parseInstant — legacy UTC coercion (the case behind the 'NaNd ago' b
     expect(
       parseInstant("2026-08-15", { legacyLocalFormat: "reject" })?.toISOString(),
     ).toBe("2026-08-15T00:00:00.000Z");
+  });
+
+  it("still accepts +00 zero-offset input when legacyLocalFormat === 'reject'", () => {
+    expect(
+      parseInstant("2026-08-15T09:00:00.000+00", {
+        legacyLocalFormat: "reject",
+      })?.toISOString(),
+    ).toBe("2026-08-15T09:00:00.000Z");
+  });
+});
+
+describe("parseInstant — debug warn fires once per unique unparseable value", () => {
+  it("emits exactly one warn per unique input", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      for (let i = 0; i < 3; i += 1) {
+        expect(parseInstant("totally-bogus-string-xyz", {
+          debugUnparseable: true,
+        })).toBeNull();
+      }
+      const matches = warnSpy.mock.calls.filter((args) =>
+        String(args[0]).includes("totally-bogus-string-xyz"),
+      );
+      expect(matches).toHaveLength(1);
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });
 
