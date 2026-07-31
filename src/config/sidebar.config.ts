@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   LayoutTemplate,
   LifeBuoy,
+  Mail,
   ListChecks,
   Megaphone,
   Mic2,
@@ -72,6 +73,11 @@ export const SUPER_ADMIN_SIDEBAR_ITEMS = [
     title: "Plan Features",
     url: "/super-admin/plan-features",
     icon: Layers,
+  },
+  {
+    title: "Email Settings",
+    url: "/super-admin/email-settings",
+    icon: Mail,
   },
   {
     title: "Settings",

@@ -162,3 +162,47 @@ Neon's `neon-http` driver doesn't support interactive transactions in production
 - **Smoke tests for the 12 transactional flows** against live Neon. Each call site already had unit-level coverage before this refactor; the lazy-client change does not alter runtime behaviour. Add a `scripts/smoke-transactions.ts` in a follow-up if the team wants end-to-end coverage in CI.
 - **Retiring `docker-compose.yml`** for per-developer Neon branches.
 - **Postgres RLS hardening on `festivalId`** for defence-in-depth tenant isolation.
+
+---
+
+## Appendix A — Rotating the Neon database password
+
+**When to run this:**
+- Production returns `error: password authentication failed for user 'neondb_owner'` (Postgres `28P01`) in Vercel logs — the `DATABASE_URL` / `DATABASE_URL_UNPOOLED` values in Vercel are stale or the role password was rotated.
+- The role password was exposed (committed by accident, pasted in a public channel, etc.). Treat all related secrets as compromised (see step 5).
+- Periodic credential hygiene (recommended: at least once per quarter, or whenever a team member with Vercel/Neon admin access leaves).
+
+**Steps:**
+
+1. **Reset the role password in Neon.**
+   - Dashboard: Neon Console → project → **Settings** → **Reset password** for `neondb_owner`.
+   - CLI: `neonctl roles reset-password neondb_owner --project-id <id>`.
+   - This invalidates the old password immediately for any new connection attempts — expect a brief outage in production until steps 2–4 are complete.
+
+2. **Pull fresh connection strings** (the new password is embedded in both):
+   ```bash
+   neonctl connection-string main --pooled       # → DATABASE_URL (Vercel Production)
+   neonctl connection-string main               # → DATABASE_URL_UNPOOLED (Vercel Production)
+   ```
+   Verify the host matches the project (`ep-…c-<region>.aws.neon.tech`); do not paste from old notes.
+
+3. **Update Vercel env vars.** Project → **Settings** → **Environment Variables** → Production scope:
+   - Replace `DATABASE_URL` with the pooled string from step 2.
+   - Replace `DATABASE_URL_UNPOOLED` with the unpooled string from step 2.
+   - Save each one.
+
+4. **Force a redeploy.** Vercel env-var changes do not auto-redeploy. Two options:
+   - **Quickest:** Deployments → ⋯ on the latest → **Redeploy** (no code change required; new env vars are baked into the new deployment).
+   - **Or** push an empty commit to `develop` to let CI trigger a fresh deploy.
+
+5. **Rotate co-stored secrets if the credential was exposed.** `JWT_SECRET` and `CRON_SECRET` live in Vercel alongside the DB URL — if the DB URL leaked, generate fresh values via `openssl rand -hex 32`, update both in Vercel, and redeploy again. Existing user sessions and Vercel Cron invocations will need to be re-established after `JWT_SECRET` changes.
+
+6. **Verify.**
+   - Open `https://trizo-greenroom.vercel.app/login`, submit an email, confirm `200 { success: true, data: { message: "Magic link sent" } }` and an email arrives.
+   - From your machine, sanity-check the new credentials directly:
+     ```bash
+     psql "$(neonctl connection-string main --pooled)" -c '\dt magic_link_token'
+     ```
+   - Search Vercel logs for `[ApiHandlerError]` and `[magic-link]` to confirm no auth failures remain.
+
+**Time estimate:** 5–10 minutes including redeploy. Plan for ~1 minute of user-visible login downtime between step 1 and the redeploy completing in step 4.

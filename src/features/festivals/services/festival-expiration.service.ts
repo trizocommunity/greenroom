@@ -9,6 +9,7 @@
 
 import { eq, lt, ne } from "drizzle-orm";
 import { jsPDF } from "jspdf";
+import { sendEmail } from "@/core/integrations/email/index";
 import { db } from "@/core/database/client";
 import {
   category as categories,
@@ -26,6 +27,7 @@ import {
   result as results,
   scheduleEntry,
   stage as stages,
+  user as users,
 } from "@/core/database/schema";
 import { isAfter, parseInstant } from "@/core/datetime";
 import {
@@ -340,5 +342,95 @@ export const FestivalExpirationService = {
       }
     }
     return { processed: toExpire.length };
+  },
+
+  /**
+   * Send the "festival expiring soon" email to the owner of every
+   * festival in the 7-day pre-archival window, once per festival.
+   *
+   * Idempotent — `festivalExpiringSoonEmailSentAt` is set after a
+   * successful send so a cron retry (or a second cron tick in the
+   * window) doesn't spam the owner.
+   */
+  async runFestivalExpiringSoonEmails(): Promise<{
+    processed: number;
+    sent: number;
+    skipped: number;
+  }> {
+    const approaching = await this.getFestivalsApproachingExpiry();
+    let sent = 0;
+    let skipped = 0;
+
+    for (const f of approaching) {
+      try {
+        const fresh = await db.query.festival.findFirst({
+          where: eq(festivals.id, f.id),
+        });
+        if (!fresh || fresh.festivalExpiringSoonEmailSentAt) {
+          skipped++;
+          continue;
+        }
+
+        const owner = await db.query.user.findFirst({
+          where: eq(users.id, fresh.ownerId),
+        });
+        if (!owner?.email) {
+          console.warn(
+            `[FestivalExpiringSoon] No owner email for festival ${f.slug}; skipping.`,
+          );
+          skipped++;
+          continue;
+        }
+
+        if (!f.expiresAt) continue;
+        const daysRemaining = Math.max(
+         	1,
+          Math.ceil(
+            (parseInstant(f.expiresAt)!.getTime() - serverNow().getTime()) /
+              MS.day,
+          ),
+        );
+
+        const result = await sendEmail({
+          to: owner.email,
+          kind: {
+            kind: "festival_expiring_soon",
+            festivalName: fresh.name,
+            daysRemaining,
+            expiresOn: parseInstant(f.expiresAt)!.toISOString().split("T")[0] ?? "",
+            dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL || ""}/dashboard/${fresh.slug}`,
+          },
+        });
+
+        if ("kindDisabled" in result) {
+          console.info(
+            `[FestivalExpiringSoon] Kind disabled; not marking festival ${f.slug}.`,
+          );
+          skipped++;
+          continue;
+        }
+        if ("error" in result) {
+          console.error(
+            `[FestivalExpiringSoon] Email error for festival ${f.slug}:`,
+            result.error,
+          );
+          continue;
+        }
+
+        await db
+          .update(festivals)
+          .set({ festivalExpiringSoonEmailSentAt: serverNowIso() })
+          .where(eq(festivals.id, f.id));
+
+        sent++;
+      } catch (err) {
+        console.error(
+          `[FestivalExpiringSoon] Failed for festival ${f.slug}:`,
+          err,
+        );
+      }
+    }
+
+    return { processed: approaching.length, sent, skipped };
   },
 };

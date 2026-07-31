@@ -313,6 +313,7 @@ export const festival = pgTable(
     maxResultScore: integer(),
     expiresAt: tzTimestamp(),
     institutionName: text(),
+    festivalExpiringSoonEmailSentAt: tzTimestamp(),
     institutionType: institutionType(),
     judgesCount: integer().default(0).notNull(),
     location: text(),

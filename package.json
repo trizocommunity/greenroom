@@ -22,6 +22,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.ts",
+    "db:seed:admin": "tsx scripts/seed-superadmin.ts",
     "db:setup": "npm run db:start && npm run db:push && npm run db:seed"
   },
   "dependencies": {
@@ -41,6 +42,8 @@
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@react-email/components": "^1.0.12",
+    "@react-email/render": "^2.1.0",
     "@tanstack/react-query": "^5.90.12",
     "@tanstack/react-query-devtools": "^5.101.2",
     "@tanstack/react-table": "^8.21.3",
