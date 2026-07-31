@@ -1,7 +1,13 @@
 import "server-only";
 
 import { eq, sql } from "drizzle-orm";
-import { badRequest, createHandler, ok, unauthorized } from "@/api/lib";
+import {
+  badRequest,
+  createHandler,
+  internalError,
+  ok,
+  unauthorized,
+} from "@/api/lib";
 import {
   consumeMagicLinkToken,
   createMagicLinkToken,
@@ -44,27 +50,43 @@ const handler = createHandler({
         return badRequest("INVALID_INPUT", "Email is required");
       }
 
-      const token = await createMagicLinkToken(email, MAGIC_LINK_EXPIRY_MS);
+      try {
+        const token = await createMagicLinkToken(email, MAGIC_LINK_EXPIRY_MS);
 
-      // Always log in dev mode — before send attempt, so it's visible for new users too
-      if (process.env.NODE_ENV !== "production") {
-        const magicLinkUrl = `http://localhost:3000/login/verify/${token}`;
-        console.log(`[DEV] Magic link: ${magicLinkUrl}`);
-      }
+        // Always log in dev mode — before send attempt, so it's visible for new users too
+        if (process.env.NODE_ENV !== "production") {
+          const magicLinkUrl = `http://localhost:3000/login/verify/${token}`;
+          console.log(`[DEV] Magic link: ${magicLinkUrl}`);
+        }
 
-      const user = await db.query.user.findFirst({
-        where: eq(userTable.email, email.toLowerCase()),
-      });
+        const user = await db.query.user.findFirst({
+          where: eq(userTable.email, email.toLowerCase()),
+        });
 
-      if (user) {
+        console.log("[magic-link] Sending email", {
+          email,
+          userExists: !!user,
+        });
+
         try {
           await sendMagicLinkEmail(email, token);
-        } catch {
-          // Send failed — URL already logged above, return success to avoid enumeration
+        } catch (emailError) {
+          console.error("[magic-link] Failed to send email", {
+            email,
+            emailError,
+          });
         }
-      }
 
-      return ok({ message: "Magic link sent" });
+        return ok({ message: "Magic link sent" });
+      } catch (error) {
+        console.error("[magic-link] Failed to issue sign-in link", {
+          email,
+          error,
+        });
+        return internalError(
+          "We couldn't issue your sign-in link right now. Please try again in a moment.",
+        );
+      }
     }
 
     if (action === "verify-magic-link") {
@@ -75,44 +97,53 @@ const handler = createHandler({
         return badRequest("INVALID_INPUT", "Token is required");
       }
 
-      const record = await consumeMagicLinkToken(token);
+      try {
+        const record = await consumeMagicLinkToken(token);
 
-      if (!record) {
-        return badRequest("INVALID_TOKEN", "Invalid or expired magic link");
+        if (!record) {
+          return badRequest("INVALID_TOKEN", "Invalid or expired magic link");
+        }
+
+        // Find or create stub user (case-insensitive email lookup)
+        let dbUser = await db.query.user.findFirst({
+          where: sql`lower(${userTable.email}) = ${record.email}`,
+        });
+
+        if (!dbUser) {
+          const result = await db
+            .insert(userTable)
+            .values({
+              id: generateId(),
+              email: record.email,
+              globalRole: "USER",
+            })
+            .returning();
+          dbUser = result[0];
+        }
+
+        if (!dbUser) {
+          return badRequest("USER_CREATION_FAILED", "Could not create user");
+        }
+
+        const role = dbUser.globalRole as "USER" | "SUPER_ADMIN";
+
+        await createSession(dbUser.id, role);
+
+        const requiresOnboarding = !dbUser.fullName;
+
+        return ok({
+          role,
+          requiresOnboarding,
+          redirectTo: getPostAuthRoute({ role, requiresOnboarding }),
+        });
+      } catch (error) {
+        console.error("[magic-link] Failed to verify sign-in link", {
+          error,
+        });
+        return internalError(
+          "We couldn't verify your sign-in link right now. Please request a new one and try again.",
+        );
       }
-
-      // Find or create stub user (case-insensitive email lookup)
-      let dbUser = await db.query.user.findFirst({
-        where: sql`lower(${userTable.email}) = ${record.email}`,
-      });
-
-      if (!dbUser) {
-        const result = await db
-          .insert(userTable)
-          .values({
-            id: generateId(),
-            email: record.email,
-            globalRole: "USER",
-          })
-          .returning();
-        dbUser = result[0];
-      }
-
-      if (!dbUser) {
-        return badRequest("USER_CREATION_FAILED", "Could not create user");
-      }
-
-      const role = dbUser.globalRole as "USER" | "SUPER_ADMIN";
-
-      await createSession(dbUser.id, role);
-
-      const requiresOnboarding = !dbUser.fullName;
-
-      return ok({
-        role,
-        requiresOnboarding,
-        redirectTo: getPostAuthRoute({ role, requiresOnboarding }),
-      });
     }
 
     return badRequest(
