@@ -43,6 +43,9 @@ export interface TierFeatures {
   // Templates (poster editor)
   templates: boolean;
 
+  // Exports (festival-scoped data & document exports)
+  exports: boolean;
+
   // Certificates & QR
   qrCodes: boolean;
   autoCertificates: boolean;
@@ -158,6 +161,8 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
 
       templates: true,
 
+      exports: true,
+
       // Certificates & QR
       qrCodes: false,
       autoCertificates: false,
@@ -254,6 +259,8 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
 
       templates: true,
 
+      exports: true,
+
       // Certificates & QR — QR and auto-certs unlocked
       qrCodes: true,
       autoCertificates: true,
@@ -349,6 +356,8 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       customReports: true,
 
       templates: true,
+
+      exports: true,
 
       // Certificates & QR — fully unlocked with templates + bulk generation
       qrCodes: true,

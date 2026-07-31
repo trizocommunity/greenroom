@@ -71,6 +71,9 @@ export const queryKeys = {
   news: {
     all: (festivalId: string) => ["news", festivalId] as const,
   },
+  exports: {
+    all: (festivalId: string) => ["exports", festivalId] as const,
+  },
   profile: {
     all: ["profile"] as const,
   },
