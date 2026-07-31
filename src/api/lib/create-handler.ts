@@ -65,11 +65,7 @@ export function createHandler(handlers: RouteHandlers) {
         });
       }
 
-      const debugMsg =
-        process.env.DEBUG_ERRORS === "1" && error instanceof Error
-          ? error.message
-          : ERROR_MESSAGES.DEFAULT;
-      return internalError(debugMsg);
+      return internalError(ERROR_MESSAGES.DEFAULT);
     }
   };
 }

@@ -37,15 +37,7 @@ const handler = createHandler({
     }
 
     if (action === "magic-link") {
-      const rawBody = await request.text();
-      console.error("[auth/magic-link] RAW BODY:", JSON.stringify(rawBody), "len:", rawBody.length, "content-type:", request.headers.get("content-type"));
-      let body: any;
-      try {
-        body = JSON.parse(rawBody);
-      } catch (e) {
-        console.error("[auth/magic-link] JSON.parse FAILED on raw body:", e);
-        throw e;
-      }
+      const body = await request.json();
       const { email } = body;
 
       if (!email || typeof email !== "string") {
@@ -60,21 +52,14 @@ const handler = createHandler({
         console.log(`[DEV] Magic link: ${magicLinkUrl}`);
       }
 
-      let user;
-      try {
-        user = await db.query.user.findFirst({
-          where: eq(userTable.email, email.toLowerCase()),
-        });
-      } catch (e) {
-        console.error("[auth/magic-link] user lookup FAILED:", e);
-        throw e;
-      }
+      const user = await db.query.user.findFirst({
+        where: eq(userTable.email, email.toLowerCase()),
+      });
 
       if (user) {
         try {
           await sendMagicLinkEmail(email, token);
-        } catch (e) {
-          console.error("[auth/magic-link] sendMagicLinkEmail FAILED:", e);
+        } catch {
           // Send failed — URL already logged above, return success to avoid enumeration
         }
       }
