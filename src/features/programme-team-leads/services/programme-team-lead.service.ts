@@ -5,6 +5,7 @@ import {
   programme as programmeTable,
   programmeTeamLead,
 } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 import { AppError } from "@/core/errors/errors";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 
@@ -109,7 +110,7 @@ export const ProgrammeTeamLeadService = {
     }
 
     const { randomUUID } = await import("crypto");
-    const now = new Date().toISOString();
+    const now = serverNowIso();
     const [row] = await executor
       .insert(programmeTeamLead)
       .values({
@@ -170,7 +171,7 @@ export const ProgrammeTeamLeadService = {
       );
     }
 
-    const now = new Date().toISOString();
+    const now = serverNowIso();
     const [row] = await executor
       .update(programmeTeamLead)
       .set({

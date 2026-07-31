@@ -7,6 +7,7 @@ import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { festivalMediaImage } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { StorageUsageService } from "@/features/festivals/services/storage-usage.service";
 import { UsageCounterService } from "@/features/festivals/services/usage-counter.service";
@@ -43,7 +44,7 @@ export async function addMediaImageAction(festivalId: string, url: string) {
     festivalId,
     url,
     order,
-    updatedAt: new Date().toISOString(),
+    updatedAt: serverNowIso(),
   });
   if (addedMb > 0) {
     await UsageCounterService.incrementUsage(festivalId, "storage", addedMb);
@@ -71,7 +72,7 @@ export async function addMediaImagesAction(festivalId: string, urls: string[]) {
   let order = (maxOrder ?? -1) + 1;
 
   const addedMb = await StorageUsageService.getUrlsSizeMB(urls);
-  const now = new Date().toISOString();
+  const now = serverNowIso();
   await db.insert(festivalMediaImage).values(
     urls.map((url) => ({
       id: randomUUID(),

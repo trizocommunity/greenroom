@@ -13,6 +13,13 @@ import {
   result as resultTable,
   scheduleEntry as scheduleEntryTable,
 } from "@/core/database/schema";
+import { parseInstant } from "@/core/datetime";
+import {
+  MS,
+  nowPlus,
+  serverNowIso,
+  serverNowMs,
+} from "@/core/datetime/server";
 import { NotificationService } from "@/features/notifications/services/notification.service";
 import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
 import { CodeLetterGeneratorService } from "./code-letter-generator.service";
@@ -44,7 +51,7 @@ async function getOrCreateSessionByScheduleEntry(scheduleEntryId: string) {
     programmeId: entry.programmeId,
     stageId: entry.stageId,
     status: "NOT_STARTED",
-    updatedAt: new Date().toISOString(),
+    updatedAt: serverNowIso(),
   } as any);
 
   return db.query.programmeReportingSession.findFirst({
@@ -142,7 +149,7 @@ export const ProgrammeReportingService = {
       );
     }
 
-    const nowStr = new Date().toISOString();
+    const nowStr = serverNowIso();
 
     await db.transaction(async (tx) => {
       await CodeLetterGeneratorService.clearSessionCodeLetters(session.id);
@@ -274,7 +281,7 @@ export const ProgrammeReportingService = {
     if (session.status === "CLOSED")
       throw new Error("Reporting already closed");
 
-    const now = new Date().toISOString();
+    const now = serverNowIso();
     const windowEndsAt = null;
 
     const updated = await db
@@ -352,7 +359,7 @@ export const ProgrammeReportingService = {
     if (!session) throw new Error("Reporting session not found");
     if (session.isLocked) throw new Error("Reporting is locked");
 
-    const now = new Date().toISOString();
+    const now = serverNowIso();
 
     await db.transaction(async (tx) => {
       await CodeLetterGeneratorService.clearSessionCodeLetters(
@@ -462,7 +469,7 @@ export const ProgrammeReportingService = {
       participantId: assignment.participantId,
     });
 
-    const now = new Date().toISOString();
+    const now = serverNowIso();
 
     if (isReported) {
       if (
@@ -655,7 +662,7 @@ export const ProgrammeReportingService = {
       });
     }
 
-    const now = new Date().toISOString();
+    const now = serverNowIso();
 
     await db.transaction(async (tx) => {
       for (const assignment of assignments) {
@@ -763,10 +770,10 @@ export const ProgrammeReportingService = {
     }
 
     const effectiveEndedAt =
-      session.scheduleEntry?.startTime || new Date().toISOString();
+      session.scheduleEntry?.startTime || serverNowIso();
 
     const closed = await db.transaction(async (tx) => {
-      const nowStr = new Date().toISOString();
+      const nowStr = serverNowIso();
       await tx
         .update(prsTable)
         .set({
@@ -917,7 +924,7 @@ export const ProgrammeReportingService = {
         .set({
           isLocked: false,
           status: "RESET",
-          updatedAt: new Date().toISOString(),
+          updatedAt: serverNowIso(),
         })
         .where(eq(prsTable.id, session.id));
     });
@@ -962,17 +969,17 @@ export const ProgrammeReportingService = {
         : session.programmeReportedParticipants.length;
 
     const remaining = totalUnits - reportedCount;
-    const startTime = session.startedAt ? new Date(session.startedAt) : null;
+    const startTime = parseInstant(session.startedAt);
 
     let estimatedEnd: Date | null = null;
     let estimatedRemainingMinutes: number | null = null;
 
     if (startTime && reportedCount > 0 && remaining > 0) {
-      const elapsed = Date.now() - startTime.getTime();
+      const elapsed = serverNowMs() - startTime.getTime();
       const rate = elapsed / reportedCount;
       const remainingMs = rate * remaining;
-      estimatedRemainingMinutes = Math.ceil(remainingMs / 60000);
-      estimatedEnd = new Date(Date.now() + remainingMs);
+      estimatedRemainingMinutes = Math.ceil(remainingMs / MS.minute);
+      estimatedEnd = nowPlus(remainingMs);
     }
 
     return {
@@ -983,7 +990,7 @@ export const ProgrammeReportingService = {
         totalUnits > 0 ? Math.round((reportedCount / totalUnits) * 100) : 0,
       startedAt: startTime,
       elapsedMinutes: startTime
-        ? Math.round((Date.now() - startTime.getTime()) / 60000)
+        ? Math.round((serverNowMs() - startTime.getTime()) / MS.minute)
         : 0,
       estimatedEnd,
       estimatedRemainingMinutes,

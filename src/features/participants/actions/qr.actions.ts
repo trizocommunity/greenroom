@@ -8,6 +8,7 @@ import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { participant as participantTable } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import {
   getParticipantProfileUrl,
@@ -119,6 +120,6 @@ export async function exportParticipantsQrPdfAction(
       "",
     ),
   );
-  const filename = `qr-codes-${festival.slug}-${new Date().toISOString().slice(0, 10)}.pdf`;
+  const filename = `qr-codes-${festival.slug}-${serverNowIso().slice(0, 10)}.pdf`;
   return { success: true, data: base64, filename };
 }

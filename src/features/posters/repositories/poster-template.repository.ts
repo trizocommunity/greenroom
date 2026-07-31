@@ -2,6 +2,7 @@ import { and, desc, eq } from "drizzle-orm";
 import type { PosterEditorDocument } from "@/components/editor/poster-editor-types";
 import { db } from "@/core/database/client";
 import { festivalPosterTemplate } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 import type {
   PosterTemplateRecord,
   PosterTemplateStatus,
@@ -76,7 +77,7 @@ export async function upsertTemplate(input: {
   backgroundUrl?: string | null;
   meta?: Record<string, unknown> | null;
 }) {
-  const now = new Date().toISOString();
+  const now = serverNowIso();
   const existing = await findByFestivalAndCode(input.festivalId, input.code);
   if (existing) {
     await db
@@ -117,7 +118,7 @@ export async function updateStatus(
   code: string,
   status: PosterTemplateStatus,
 ) {
-  const now = new Date().toISOString();
+  const now = serverNowIso();
   await db
     .update(festivalPosterTemplate)
     .set({ status, updatedAt: now })

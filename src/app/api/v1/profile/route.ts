@@ -5,6 +5,7 @@ import { updateProfileInput } from "@/api/contracts/profile";
 import { badRequest, createProtectedHandler, ok } from "@/api/lib";
 import { db } from "@/core/database/client";
 import { user as usersTable } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 
 const handler = createProtectedHandler({
   async GET({ user: sessionUser }) {
@@ -38,7 +39,7 @@ const handler = createProtectedHandler({
       .update(usersTable)
       .set({
         ...parsed.data,
-        updatedAt: new Date().toISOString(),
+        updatedAt: serverNowIso(),
       })
       .where(eq(usersTable.id, sessionUser.userId))
       .returning();

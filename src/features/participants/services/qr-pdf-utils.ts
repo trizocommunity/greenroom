@@ -1,5 +1,8 @@
 import jsPDF from "jspdf";
 
+import { formatDate } from "@/core/datetime";
+import { serverNow } from "@/core/datetime/server";
+
 interface ParticipantQrData {
   name: string;
   chestNumber: string;
@@ -13,12 +16,14 @@ interface GenerateBulkQrPdfOptions {
   festivalName: string;
   participants: ParticipantQrData[];
   fileName?: string;
+  timezone?: string;
 }
 
 export async function generateBulkQrPdf({
   festivalName,
   participants,
   fileName = "participant-qr-codes.pdf",
+  timezone = "UTC",
 }: GenerateBulkQrPdfOptions): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
@@ -55,7 +60,7 @@ export async function generateBulkQrPdf({
         },
       );
       doc.text(
-        `Generated: ${new Date().toLocaleDateString()}`,
+        `Generated: ${formatDate(serverNow(), { tz: timezone, style: "medium" })}`,
         pageWidth / 2,
         125,
         { align: "center" },

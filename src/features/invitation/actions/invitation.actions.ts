@@ -8,6 +8,8 @@ import {
   festivalMember,
   pendingInvitation,
 } from "@/core/database/schema";
+import { isExpired } from "@/core/datetime";
+import { fromNow, MS, serverNowIso } from "@/core/datetime/server";
 import {
   AppError,
   ERROR_MESSAGES,
@@ -16,7 +18,7 @@ import {
 import { sendInvitationEmail } from "@/core/integrations/email";
 import type { ActionResponse } from "@/core/types/actions";
 
-const INVITATION_EXPIRY_MS = 48 * 60 * 60 * 1000; // 48 hours
+const INVITATION_EXPIRY_MS = 48 * MS.hour; // 48 hours
 
 export async function createInvitationAction(data: {
   email: string;
@@ -74,7 +76,7 @@ export async function createInvitationAction(data: {
       };
     }
 
-    const expiresAt = new Date(Date.now() + INVITATION_EXPIRY_MS).toISOString();
+    const expiresAt = fromNow(INVITATION_EXPIRY_MS);
     const token = crypto.randomUUID();
 
     const { randomUUID } = await import("crypto");
@@ -142,8 +144,7 @@ export async function acceptInvitationAction(token: string): Promise<
       throw new AppError("Invalid or expired invitation");
     }
 
-    const now = new Date();
-    if (new Date(invitation.expiresAt) < now) {
+    if (isExpired(invitation.expiresAt)) {
       throw new AppError("Invitation has expired");
     }
 
@@ -175,7 +176,7 @@ export async function acceptInvitationAction(token: string): Promise<
     // Mark invitation as accepted
     await db
       .update(pendingInvitation)
-      .set({ acceptedAt: now.toISOString() })
+      .set({ acceptedAt: serverNowIso() })
       .where(eq(pendingInvitation.id, token));
 
     // Get festival slug for redirect
@@ -333,8 +334,7 @@ export async function getInvitationDetailsAction(token: string): Promise<
       where: eq(festival.id, invitation.festivalId),
     });
 
-    const now = new Date();
-    const isExpired = new Date(invitation.expiresAt) < now;
+    const expired = isExpired(invitation.expiresAt);
     const isAccepted = invitation.acceptedAt !== null;
 
     return {
@@ -346,7 +346,7 @@ export async function getInvitationDetailsAction(token: string): Promise<
         festivalRole: invitation.festivalRole,
         expiresAt: invitation.expiresAt,
         alreadyAccepted: isAccepted,
-        expired: isExpired,
+        expired,
       },
     };
   } catch (error) {

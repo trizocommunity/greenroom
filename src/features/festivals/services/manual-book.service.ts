@@ -5,6 +5,8 @@ import {
   expiredFestivalManualBook,
   festival as festivals,
 } from "@/core/database/schema";
+import { formatDate, parseInstant } from "@/core/datetime";
+import { serverNow } from "@/core/datetime/server";
 
 export type ManualBookFormat = "pdf" | "json" | "zip";
 
@@ -127,7 +129,7 @@ export const ManualBookService = {
 
     doc.setFontSize(10);
     doc.text(
-      `${data.festival.tierLabel} Plan | ${data.festival.startDate ? new Date(data.festival.startDate).toLocaleDateString() : "N/A"} - ${data.festival.endDate ? new Date(data.festival.endDate).toLocaleDateString() : "N/A"}`,
+      `${data.festival.tierLabel} Plan | ${data.festival.startDate ? (parseInstant(data.festival.startDate) ? formatDate(data.festival.startDate, { tz: "UTC", style: "medium" }) : "N/A") : "N/A"} - ${data.festival.endDate ? (parseInstant(data.festival.endDate) ? formatDate(data.festival.endDate, { tz: "UTC", style: "medium" }) : "N/A") : "N/A"}`,
       pageW / 2,
       y,
       { align: "center" },
@@ -229,7 +231,7 @@ export const ManualBookService = {
 
     doc.setFontSize(8);
     doc.text(
-      `Generated on ${new Date().toLocaleDateString()}`,
+      `Generated on ${formatDate(serverNow(), { tz: "UTC", style: "medium" })}`,
       pageW / 2,
       290,
       { align: "center" },

@@ -1,6 +1,7 @@
 import { count, desc, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { category as categories } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 
 export async function createCategory(
   data: Omit<typeof categories.$inferInsert, "id" | "updatedAt"> & {
@@ -13,7 +14,7 @@ export async function createCategory(
     .insert(categories)
     .values({
       id: data.id ?? randomUUID(),
-      updatedAt: data.updatedAt ?? new Date().toISOString(),
+      updatedAt: data.updatedAt ?? serverNowIso(),
       ...data,
     })
     .returning();

@@ -4,6 +4,7 @@ import {
   programmeAssignment,
   programme as programmes,
 } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { UsageCounterService } from "@/features/festivals/services/usage-counter.service";
@@ -110,7 +111,7 @@ export const ProgrammeService = {
 
     try {
       const { randomUUID } = await import("crypto");
-      const now = new Date().toISOString();
+      const now = serverNowIso();
       const data = programmeList.map((p) => ({
         id: randomUUID(),
         updatedAt: now,

@@ -7,6 +7,7 @@ import { badRequest, createProtectedHandler, ok } from "@/api/lib";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { db } from "@/core/database/client";
 import { festivalMediaImage } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 import { StorageUsageService } from "@/features/festivals/services/storage-usage.service";
 import { UsageCounterService } from "@/features/festivals/services/usage-counter.service";
 
@@ -44,7 +45,7 @@ const handler = createProtectedHandler({
     const order = (maxOrder ?? -1) + 1;
 
     const addedMb = await StorageUsageService.getUrlSizeMB(url);
-    const now = new Date().toISOString();
+    const now = serverNowIso();
     const image = {
       id: randomUUID(),
       festivalId,

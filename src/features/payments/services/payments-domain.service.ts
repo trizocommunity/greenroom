@@ -3,6 +3,13 @@ import { TIER_CONFIG } from "@/config/pricing";
 import { db } from "@/core/database/client";
 import { generateId } from "@/core/database/ids";
 import { payment, userPurchaseSummary } from "@/core/database/schema";
+import { isExpired } from "@/core/datetime";
+import {
+  fromNow,
+  MS,
+  serverNowIso,
+  serverNowMs,
+} from "@/core/datetime/server";
 import {
   getActivePaymentForUser,
   getLatestPaymentForUser,
@@ -49,10 +56,7 @@ export async function initiatePaymentDomain(
       eq(payment.purpose, purpose),
       eq(payment.status, "PENDING"),
       eq(payment.used, false),
-      gte(
-        payment.createdAt,
-        new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-      ),
+      gte(payment.createdAt, fromNow(-MS.day)),
     ),
   });
 
@@ -69,14 +73,11 @@ export async function initiatePaymentDomain(
   const order = await RazorpayService.createOrder(
     config.price * 100,
     "INR",
-    `rcpt_${Date.now()}`.substring(0, 40),
+    `rcpt_${serverNowMs()}`.substring(0, 40),
     { userId, purpose, tier },
   );
 
-  const now = new Date();
-  const validUntil = new Date(
-    now.getTime() + config.festivalDurationDays * 24 * 60 * 60 * 1000,
-  );
+  const validUntil = fromNow(config.festivalDurationDays * MS.day);
 
   const newPayment = await db
     .insert(payment)
@@ -90,8 +91,8 @@ export async function initiatePaymentDomain(
       purpose,
       tier,
       used: false,
-      validUntil: validUntil.toISOString(),
-      updatedAt: now.toISOString(),
+      validUntil,
+      updatedAt: serverNowIso(),
     })
     .returning();
 
@@ -223,7 +224,6 @@ export async function getUserPaymentsDomain(userId: string) {
 }
 
 export async function getUserStatusDomain(userId: string, role: string) {
-  const now = new Date();
   const activePayment = await getActivePaymentForUser(userId);
 
   let hasExistingFestival = false;
@@ -249,16 +249,15 @@ export async function getUserStatusDomain(userId: string, role: string) {
   const latestPayment = await getLatestPaymentForUser(userId);
 
   if (latestPayment && latestPayment.status === "PAID") {
-    const isExpired =
-      latestPayment.validUntil && new Date(latestPayment.validUntil) <= now;
+    const expired = isExpired(latestPayment.validUntil);
 
     return {
-      status: isExpired ? "EXPIRED" : "ACTIVE",
+      status: expired ? "EXPIRED" : "ACTIVE",
       payment: {
         ...latestPayment,
         validFrom: latestPayment.createdAt,
       },
-      canCreateFestival: !isExpired && !hasExistingFestival,
+      canCreateFestival: !expired && !hasExistingFestival,
     };
   }
 

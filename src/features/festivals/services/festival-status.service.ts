@@ -1,4 +1,10 @@
-import { parseStoredInstant, toDateOrNull } from "@/core/utils/date-time";
+import {
+  isAfter,
+  isBefore,
+  isExpired,
+  toDateOrNull,
+} from "@/core/datetime";
+import { MS, serverNow } from "@/core/datetime/server";
 
 /**
  * Festival lifecycle status (READY, ONGOING, PAST, EXPIRED).
@@ -23,18 +29,23 @@ export interface FestivalForStatus {
 export function getDerivedFestivalStatus(
   festival: FestivalForStatus,
 ): DerivedFestivalStatus {
-  const now = new Date();
+  const now = serverNow();
   const status = festival.status as DerivedFestivalStatus;
 
   if (status === "EXPIRED") return "EXPIRED";
-  if (festival.expiresAt && parseStoredInstant(festival.expiresAt) <= now) {
+  if (isExpired(festival.expiresAt, now)) {
     return "EXPIRED";
   }
   const startDate = toDateOrNull(festival.startDate);
   const endDate = toDateOrNull(festival.endDate);
-  if (endDate && now > endDate) return "PAST";
+  if (endDate && isAfter(now, endDate)) return "PAST";
   // ONGOING only when we have both dates and now is inside [startDate, endDate]
-  if (startDate && endDate && now >= startDate && now <= endDate) {
+  if (
+    startDate &&
+    endDate &&
+    !isBefore(now, startDate) &&
+    !isAfter(now, endDate)
+  ) {
     return "ONGOING";
   }
   return "READY";
@@ -52,7 +63,7 @@ function toDate(value?: Date | string | null): Date | null {
 }
 
 function daysUntil(target: Date, now: Date): number {
-  return Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.ceil((target.getTime() - now.getTime()) / MS.day);
 }
 
 /**
@@ -74,7 +85,7 @@ export function getFestivalStatusCountdownText(
   status: DerivedFestivalStatus,
   festival: Pick<FestivalForStatus, "startDate" | "endDate" | "expiresAt">,
 ): string | null {
-  const now = new Date();
+  const now = serverNow();
   const startDate = toDate(festival.startDate);
   const endDate = toDate(festival.endDate);
   const expiresAt = toDate(festival.expiresAt);

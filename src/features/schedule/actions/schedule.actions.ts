@@ -10,6 +10,8 @@ import {
   scheduleEntry as scheduleEntryTable,
   user as userTable,
 } from "@/core/database/schema";
+import { parseInstant } from "@/core/datetime";
+import { serverNowIso } from "@/core/datetime/server";
 import type { Tier } from "@/core/types/app-enums";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
@@ -318,7 +320,7 @@ export async function createScheduleEntry(
     ? await getDisplayName(session.userId)
     : null;
 
-  const now = new Date().toISOString();
+  const now = serverNowIso();
   await db.insert(scheduleEntryTable).values({
     id: randomUUID(),
     festivalId,
@@ -329,8 +331,8 @@ export async function createScheduleEntry(
     description: data.type === "SESSION" ? (data.description ?? null) : null,
     speakers: data.type === "SESSION" ? (data.speakers ?? null) : null,
     sessionType: data.type === "SESSION" ? (data.sessionType ?? null) : null,
-    startTime: data.startTime.toISOString(),
-    endTime: data.endTime?.toISOString() ?? null,
+    startTime: parseInstant(data.startTime)!.toISOString(),
+    endTime: parseInstant(data.endTime)?.toISOString() ?? null,
     order: data.order ?? 0,
     createdBy,
     updatedBy: null,
@@ -441,7 +443,7 @@ export async function updateScheduleEntry(
     ? await getDisplayName(session.userId)
     : null;
 
-  const now = new Date().toISOString();
+  const now = serverNowIso();
   await db
     .update(scheduleEntryTable)
     .set({
@@ -452,10 +454,10 @@ export async function updateScheduleEntry(
       ...(data.speakers !== undefined && { speakers: data.speakers }),
       ...(data.sessionType !== undefined && { sessionType: data.sessionType }),
       ...(data.startTime !== undefined && {
-        startTime: data.startTime.toISOString(),
+        startTime: parseInstant(data.startTime)?.toISOString(),
       }),
       ...(data.endTime !== undefined && {
-        endTime: data.endTime?.toISOString() ?? null,
+        endTime: parseInstant(data.endTime)?.toISOString() ?? null,
       }),
       ...(data.order !== undefined && { order: data.order }),
       updatedBy,
@@ -545,7 +547,7 @@ export async function reorderScheduleEntries(
     };
 
   await db.transaction(async (tx) => {
-    const now = new Date().toISOString();
+    const now = serverNowIso();
     for (let i = 0; i < entryIds.length; i++) {
       const entryId = entryIds[i];
       const { startTime, endTime } = oldOrder[i]!;

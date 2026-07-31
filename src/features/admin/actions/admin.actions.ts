@@ -15,6 +15,7 @@ import {
   payment as paymentTable,
   programme as programmeTable,
 } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 import {
   AppError,
   ERROR_MESSAGES,
@@ -92,7 +93,7 @@ export async function updateFestivalAdmin(festivalId: string, data: any) {
       .update(festivalTable)
       .set({
         ...data,
-        updatedAt: new Date().toISOString(),
+        updatedAt: serverNowIso(),
       })
       .where(eq(festivalTable.id, festivalId))
       .returning();
@@ -132,7 +133,7 @@ export async function freezeFestivalAdmin(festivalId: string, reason: string) {
       .update(festivalTable)
       .set({
         isLocked: true,
-        updatedAt: new Date().toISOString(),
+        updatedAt: serverNowIso(),
       })
       .where(eq(festivalTable.id, festivalId));
 

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { badRequest, createProtectedHandler, ok } from "@/api/lib";
 import { db } from "@/core/database/client";
 import { institution, user as usersTable } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 
 const updateInstitutionSchema = z.object({
   institutionName: z.string().min(2).optional(),
@@ -60,7 +61,7 @@ const handler = createProtectedHandler({
         ...(parsed.data.sizeRange !== undefined && {
           sizeRange: parsed.data.sizeRange,
         }),
-        updatedAt: new Date().toISOString(),
+        updatedAt: serverNowIso(),
       })
       .where(eq(institution.id, user.institutionId))
       .returning();

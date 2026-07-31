@@ -1,6 +1,7 @@
 import { eq, isNotNull, lt, ne } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { festival as festivals } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 
 /**
  * Service to handle Festival Lifecycle management (Auto-Expiry).
@@ -15,7 +16,7 @@ export const FestivalLifecycleService = {
    * @returns Number of festivals deleted
    */
   async cleanupExpiredFestivals() {
-    const now = new Date();
+    const now = serverNowIso();
 
     try {
       // Hard delete festivals expiring before NOW.
@@ -24,7 +25,7 @@ export const FestivalLifecycleService = {
         .delete(festivals)
         .where(
           // expiresAt < now AND expiresAt IS NOT NULL
-          lt(festivals.expiresAt, now.toISOString()),
+          lt(festivals.expiresAt, now),
         )
         .returning();
 

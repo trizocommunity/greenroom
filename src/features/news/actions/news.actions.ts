@@ -7,6 +7,8 @@ import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { festivalNews } from "@/core/database/schema";
+import { parseInstant } from "@/core/datetime";
+import { serverNowIso } from "@/core/datetime/server";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { StorageUsageService } from "@/features/festivals/services/storage-usage.service";
 import { UsageCounterService } from "@/features/festivals/services/usage-counter.service";
@@ -47,13 +49,13 @@ export async function createNewsPostAction(
   const addedMb = await StorageUsageService.getUrlSizeMB(data.imageUrl);
   await db.insert(festivalNews).values({
     id: randomUUID(),
-    updatedAt: new Date().toISOString(),
+    updatedAt: serverNowIso(),
     festivalId,
     title: data.title,
     excerpt: data.excerpt ?? null,
     content: data.content,
     imageUrl: data.imageUrl ?? null,
-    publishedAt: data.publishedAt?.toISOString() ?? null,
+    publishedAt: parseInstant(data.publishedAt)?.toISOString() ?? null,
   });
   if (addedMb > 0) {
     await UsageCounterService.incrementUsage(festivalId, "storage", addedMb);
@@ -110,7 +112,7 @@ export async function updateNewsPostAction(
       ...(data.content !== undefined && { content: data.content }),
       ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
       ...(data.publishedAt !== undefined && {
-        publishedAt: data.publishedAt?.toISOString() ?? null,
+        publishedAt: parseInstant(data.publishedAt)?.toISOString() ?? null,
       }),
     })
     .where(eq(festivalNews.id, existing.id));

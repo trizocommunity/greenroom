@@ -1,6 +1,7 @@
 import { and, desc, eq, type SQL } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { festivalMember } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 
 export async function findMemberByFestivalAndUser(
   festivalId: string,
@@ -42,7 +43,7 @@ export async function createMember(
     .insert(festivalMember)
     .values({
       id: data.id ?? randomUUID(),
-      updatedAt: data.updatedAt ?? new Date().toISOString(),
+      updatedAt: data.updatedAt ?? serverNowIso(),
       ...data,
     })
     .returning();

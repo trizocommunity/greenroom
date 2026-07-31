@@ -10,9 +10,10 @@ import {
   pendingInvitation,
   stage as stageTable,
 } from "@/core/database/schema";
+import { fromNow, MS } from "@/core/datetime/server";
 import { sendInvitationEmail } from "@/core/integrations/email";
 
-const INVITATION_EXPIRY_MS = 48 * 60 * 60 * 1000;
+const INVITATION_EXPIRY_MS = 48 * MS.hour;
 
 export const POST = async (req: Request) => {
   try {
@@ -106,7 +107,7 @@ export const POST = async (req: Request) => {
       );
     }
 
-    const expiresAt = new Date(Date.now() + INVITATION_EXPIRY_MS).toISOString();
+    const expiresAt = fromNow(INVITATION_EXPIRY_MS);
     const token = crypto.randomUUID();
 
     const result = await db

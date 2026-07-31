@@ -1,4 +1,5 @@
 import { createMagicLinkToken } from "@/core/auth/magic-link";
+import { MS } from "@/core/datetime/server";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { sendMagicLinkEmail } from "@/core/integrations/email";
 import {
@@ -14,7 +15,7 @@ import {
   findMembersByFestival,
 } from "@/features/members/repositories/member.repository";
 
-const MAGIC_LINK_EXPIRY_MS = 15 * 60 * 1000;
+const MAGIC_LINK_EXPIRY_MS = 15 * MS.minute;
 
 export const MemberService = {
   async getMembers(festivalId: string) {

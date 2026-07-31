@@ -1,6 +1,7 @@
 import { and, asc, eq, gt } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { payment } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 
 export type PaymentPurpose = "FESTIVAL_CREATION";
 
@@ -8,14 +9,13 @@ export async function getUnusedPayment(
   userId: string,
   purpose?: PaymentPurpose,
 ) {
-  const now = new Date();
   return db.query.payment.findFirst({
     where: and(
       eq(payment.userId, userId),
       eq(payment.status, "PAID"),
       eq(payment.used, false),
       purpose ? eq(payment.purpose, purpose) : undefined,
-      gt(payment.validUntil, new Date().toISOString()),
+      gt(payment.validUntil, serverNowIso()),
     ),
     orderBy: [asc(payment.createdAt)],
   });

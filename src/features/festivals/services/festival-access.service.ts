@@ -1,5 +1,6 @@
 import { TIER_CONFIG } from "@/config/pricing";
 import type { festival as festivals } from "@/core/database/schema";
+import { isExpired } from "@/core/datetime";
 import type { FeaturePath } from "@/features/plan-features/services/features";
 import {
   FeatureService,
@@ -12,10 +13,8 @@ type FestivalRow = typeof festivals.$inferSelect;
 export function isFestivalActive(
   festival: Pick<FestivalRow, "status" | "expiresAt">,
 ) {
-  const now = new Date();
   if (festival.status === "EXPIRED") return false;
-  if (festival.expiresAt && festival.expiresAt < new Date().toISOString())
-    return false;
+  if (isExpired(festival.expiresAt)) return false;
   return true;
 }
 

@@ -31,9 +31,10 @@ import {
   result as resultTable,
   scheduleEntry as scheduleEntryTable,
 } from "@/core/database/schema";
+import { dateKeyLocal, isAfter, isBefore, parseInstant } from "@/core/datetime";
+import { serverNow, serverNowIso } from "@/core/datetime/server";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import type { ProgrammeJudgementStatus } from "@/core/types/app-enums";
-import { parseStoredInstant } from "@/core/utils/date-time";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { getFestivalDateKeySet } from "@/features/schedule/utils/festival-schedule-days";
 import { listFestivalJudgesWithAssignments } from "@/features/judges/repositories/judge.repository";
@@ -528,7 +529,7 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
         const prevFirstScoredAt = judgeFirstScoredAt.get(score.judgeId);
         if (
           !prevFirstScoredAt ||
-          new Date(score.updatedAt) < new Date(prevFirstScoredAt)
+          isBefore(score.updatedAt, prevFirstScoredAt)
         ) {
           judgeFirstScoredAt.set(score.judgeId, score.updatedAt);
         }
@@ -536,7 +537,7 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
         const prevSubmittedAt = judgeSubmittedAt.get(score.judgeId);
         if (
           !prevSubmittedAt ||
-          new Date(score.updatedAt) > new Date(prevSubmittedAt)
+          isAfter(score.updatedAt, prevSubmittedAt)
         ) {
           judgeSubmittedAt.set(score.judgeId, score.updatedAt);
         }
@@ -684,7 +685,7 @@ async function insertLiveJudgementConfig(input: {
   judgingMode: "SINGLE" | "GROUP";
   startedBy: string;
 }): Promise<string> {
-  const now = new Date().toISOString();
+  const now = serverNowIso();
   const configId = randomUUID();
 
   const liveConfigsOnStage = await db
@@ -940,15 +941,17 @@ export async function getStagePortalBoardAction(day?: string) {
   // Day range from the festival's start–end; default to today (clamped).
   const festival = await db.query.festival.findFirst({
     where: eq(festivalTable.id, stagePortalSession.festivalId),
-    columns: { startDate: true, endDate: true },
+    columns: { startDate: true, endDate: true, timezone: true },
   });
+  const festivalTz = festival?.timezone ?? "UTC";
   const dayKeySet =
     getFestivalDateKeySet(
       festival?.startDate ?? null,
       festival?.endDate ?? null,
+      festivalTz,
     ) ?? null;
   const days = dayKeySet ? Array.from(dayKeySet).sort() : [];
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = dateKeyLocal(serverNow(), festivalTz);
   let selectedDay =
     day && days.includes(day)
       ? day
@@ -990,9 +993,12 @@ export async function getStagePortalBoardAction(day?: string) {
 
   const programmes = stageEntries
     .filter(
-      (e) =>
-        e.programme &&
-        format(parseStoredInstant(e.startTime), "yyyy-MM-dd") === selectedDay,
+      (e) => {
+        const start = parseInstant(e.startTime);
+        return (
+          e.programme && start && dateKeyLocal(start, festivalTz) === selectedDay
+        );
+      },
     )
     .map((e) => {
       const p = e.programme!;
@@ -1280,7 +1286,7 @@ export async function markCodeLetterAbsenceAction(input: {
     throw new AppError("Code letter not found for this programme.");
   }
 
-  const now = new Date().toISOString();
+  const now = serverNowIso();
   await db.transaction(async (tx) => {
     await tx
       .update(codeLetterTable)
@@ -1373,7 +1379,7 @@ export async function submitJudgeScoresAction(
     }
   }
 
-  const now = new Date().toISOString();
+  const now = serverNowIso();
   await db.transaction(async (tx) => {
     for (const [codeLetterId, score] of Object.entries(
       input.scoresByCodeLetterId,

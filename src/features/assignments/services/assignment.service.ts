@@ -10,6 +10,7 @@ import {
   programmeTeamLead as programmeTeamLeadTable,
 } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { serverNowIso } from "@/core/datetime/server";
 import {
   checkAssignmentExists,
   createAssignment,
@@ -179,7 +180,7 @@ export const AssignmentService = {
         participantId: data.participantId,
         teamNumber,
         ...(participant.groupId ? { groupId: participant.groupId } : {}),
-        assignedAt: new Date().toISOString(),
+        assignedAt: serverNowIso(),
         ...(actor?.createdByEmail
           ? { createdByEmail: actor.createdByEmail }
           : {}),
@@ -193,7 +194,7 @@ export const AssignmentService = {
       festivalId,
       programmeId: data.programmeId,
       groupId: data.groupId!,
-      assignedAt: new Date().toISOString(),
+      assignedAt: serverNowIso(),
       ...(actor?.createdByEmail
         ? { createdByEmail: actor.createdByEmail }
         : {}),
@@ -274,7 +275,7 @@ export const AssignmentService = {
             programmeId: newProgrammeId,
             participantId: newParticipantId,
             groupId: null,
-            updatedAt: new Date().toISOString(),
+            updatedAt: serverNowIso(),
           })
           .where(eq(programmeAssignment.id, id))
           .returning()
@@ -292,7 +293,7 @@ export const AssignmentService = {
           programmeId: newProgrammeId,
           participantId: null,
           groupId: newGroupId!,
-          updatedAt: new Date().toISOString(),
+          updatedAt: serverNowIso(),
         })
         .where(eq(programmeAssignment.id, id))
         .returning()
@@ -661,8 +662,8 @@ export const AssignmentService = {
                 programmeId,
                 participantId,
                 teamNumber,
-                assignedAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
+                assignedAt: serverNowIso(),
+                updatedAt: serverNowIso(),
                 ...(actor?.createdByEmail
                   ? { createdByEmail: actor.createdByEmail }
                   : {}),

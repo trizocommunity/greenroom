@@ -12,6 +12,7 @@ import {
   judge as judgeTable,
   stage as stageTable,
 } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 
 export const PUT = async (
   req: Request,
@@ -61,7 +62,7 @@ export const PUT = async (
     .set({
       name,
       description: parsed.data.description?.trim() || null,
-      updatedAt: new Date().toISOString(),
+      updatedAt: serverNowIso(),
     })
     .where(eq(judgeTable.id, id))
     .returning();
