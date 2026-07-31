@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { serverNowIso } from "../server";
 import { parseInstant, parseInstantOrThrow, toDateOrNull } from "../parse";
 
 describe("parseInstant", () => {
@@ -63,6 +64,58 @@ describe("parseInstant", () => {
   });
 });
 
+describe("parseInstant — NaN-getTime Date never propagates", () => {
+  it("returns null for a Date whose getTime is NaN", () => {
+    const bad = new Date("not-a-date");
+    expect(parseInstant(bad)).toBeNull();
+  });
+
+  it("returns null for a freshly-constructed bad Date", () => {
+    const bad = new Date(NaN);
+    expect(parseInstant(bad)).toBeNull();
+  });
+});
+
+describe("parseInstant — legacy UTC coercion (the case behind the 'NaNd ago' bug)", () => {
+  it("parses space-separated UTC timestamp with milliseconds", () => {
+    expect(parseInstant("2026-08-15 09:00:00.000")?.toISOString()).toBe(
+      "2026-08-15T09:00:00.000Z",
+    );
+  });
+
+  it("parses space-separated UTC timestamp without milliseconds", () => {
+    expect(parseInstant("2026-08-15 09:00:00")?.toISOString()).toBe(
+      "2026-08-15T09:00:00.000Z",
+    );
+  });
+
+  it("round-trips with serverNowIso()", () => {
+    expect(parseInstant(serverNowIso())).not.toBeNull();
+  });
+
+  it("returns null when legacyLocalFormat === 'reject' for space-separated input", () => {
+    expect(
+      parseInstant("2026-08-15 09:00:00.000", {
+        legacyLocalFormat: "reject",
+      }),
+    ).toBeNull();
+  });
+
+  it("still accepts Z-suffixed input when legacyLocalFormat === 'reject'", () => {
+    expect(
+      parseInstant("2026-08-15T09:00:00.000Z", {
+        legacyLocalFormat: "reject",
+      })?.toISOString(),
+    ).toBe("2026-08-15T09:00:00.000Z");
+  });
+
+  it("still accepts date-only input when legacyLocalFormat === 'reject'", () => {
+    expect(
+      parseInstant("2026-08-15", { legacyLocalFormat: "reject" })?.toISOString(),
+    ).toBe("2026-08-15T00:00:00.000Z");
+  });
+});
+
 describe("parseInstantOrThrow", () => {
   it("returns Date on valid input", () => {
     const d = parseInstantOrThrow("2026-08-15T09:00:00.000Z");
@@ -72,6 +125,14 @@ describe("parseInstantOrThrow", () => {
   it("throws on invalid input", () => {
     expect(() => parseInstantOrThrow("nope")).toThrow();
   });
+
+  it("throws on legacyLocalFormat === 'reject' input", () => {
+    expect(() =>
+      parseInstantOrThrow("2026-08-15 09:00:00.000", {
+        legacyLocalFormat: "reject",
+      }),
+    ).toThrow();
+  });
 });
 
 describe("toDateOrNull", () => {
@@ -80,5 +141,13 @@ describe("toDateOrNull", () => {
       parseInstant("2026-08-15T09:00:00.000Z"),
     );
     expect(toDateOrNull(null)).toBeNull();
+  });
+
+  it("respects the legacyLocalFormat option", () => {
+    expect(
+      toDateOrNull("2026-08-15 09:00:00.000", {
+        legacyLocalFormat: "reject",
+      }),
+    ).toBeNull();
   });
 });
