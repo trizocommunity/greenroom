@@ -11,7 +11,7 @@ import {
   festivalLifecycleEvent as lifecycleEventTable,
   expiredFestivalResult as resultTable,
 } from "@/core/database/schema";
-import { formatStoredDateTime } from "@/core/utils/date-time";
+import { formatDate, formatDateTime } from "@/core/datetime";
 import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 
@@ -28,6 +28,7 @@ export default async function AdminFestivalDetailPage({
   }
 
   const festivalId = festival.id;
+  const festivalTz = festival.timezone ?? "UTC";
   const derivedStatus = getDerivedFestivalStatus({
     status: (festival.status ?? "READY") as any,
     startDate: festival.startDate,
@@ -108,8 +109,9 @@ export default async function AdminFestivalDetailPage({
             <div className="flex justify-between">
               <span className="text-muted-foreground">Created At</span>
               <span>
-                {formatStoredDateTime(festival.createdAt, {
-                  dateStyle: "medium",
+                {formatDate(festival.createdAt, {
+                  tz: festivalTz,
+                  style: "medium",
                 })}
               </span>
             </div>
@@ -121,8 +123,9 @@ export default async function AdminFestivalDetailPage({
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Expired At</span>
                 <span>
-                  {formatStoredDateTime(festival.expiredAt, {
-                    dateStyle: "medium",
+                  {formatDate(festival.expiredAt, {
+                    tz: festivalTz,
+                    style: "medium",
                   })}
                 </span>
               </div>
@@ -219,7 +222,8 @@ export default async function AdminFestivalDetailPage({
                   <li key={ev.id} className="flex items-center gap-3 text-sm">
                     <Badge variant="outline">{ev.event}</Badge>
                     <span className="text-muted-foreground">
-                      {formatStoredDateTime(ev.occurredAt, {
+                      {formatDateTime(ev.occurredAt, {
+                        tz: festivalTz,
                         dateStyle: "medium",
                         timeStyle: "short",
                       })}

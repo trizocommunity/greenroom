@@ -1,10 +1,10 @@
 "use client";
 
-import { format } from "date-fns";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import { StagePickerCards } from "@/components/festival/stage-assignment/StagePickerCards";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,8 +15,8 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import { formatDate, parseInstant } from "@/core/datetime";
 import { cn } from "@/core/utils/cn";
-import { parseStoredInstant } from "@/core/utils/date-time";
 import type { Member } from "./types";
 
 interface MemberDetailsDialogProps {
@@ -42,7 +42,8 @@ export function MemberDetailsDialog({
 }: MemberDetailsDialogProps) {
   const fullName = member.user?.fullName || member.fullName || "Unknown";
   const email = member.user?.email || member.email || "";
-  const joinedAt = parseStoredInstant(member.createdAt);
+  const joinedAt = parseInstant(member.createdAt);
+  const displayTz = useDisplayTimezone();
   const avatarUrl =
     (member.user as any)?.image || (member.user as any)?.avatarUrl;
   const initials =
@@ -119,7 +120,7 @@ export function MemberDetailsDialog({
               {member.isActive ? "Active" : "Inactive"}
             </Badge>
             <span className="text-xs text-muted-foreground ml-auto">
-              Joined {format(joinedAt, "MMM d, yyyy")}
+              Joined {formatDate(joinedAt, { tz: displayTz, style: "medium" })}
             </span>
           </div>
 

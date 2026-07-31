@@ -12,7 +12,6 @@ import {
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import { format } from "date-fns";
 import { AlertCircle, ArrowUpDown, CreditCard, Search } from "lucide-react";
 import { useState } from "react";
 import { type SuperAdminPayment, useSuperAdminPayments } from "@/api/client";
@@ -27,7 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { parseStoredInstant } from "@/core/utils/date-time";
+import { formatDateTime } from "@/core/datetime";
 
 const columns: ColumnDef<SuperAdminPayment>[] = [
   {
@@ -44,10 +43,11 @@ const columns: ColumnDef<SuperAdminPayment>[] = [
       );
     },
     cell: ({ row }) =>
-      format(
-        parseStoredInstant(row.getValue("createdAt") as string | Date),
-        "dd MMM yyyy, hh:mm a",
-      ),
+      formatDateTime(row.getValue("createdAt") as string | Date, {
+        tz: "UTC",
+        dateStyle: "medium",
+        timeStyle: "short",
+      }),
   },
   {
     accessorKey: "user.fullName",

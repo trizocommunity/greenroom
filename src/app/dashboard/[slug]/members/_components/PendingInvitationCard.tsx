@@ -1,6 +1,6 @@
 "use client";
 
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import {
   Clock,
   Loader2,
@@ -12,6 +12,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { parseStoredInstant } from "@/core/utils/date-time";
+import { formatDate, parseInstant } from "@/core/datetime";
 import {
   useCancelInvitation,
   useResendInvitation,
@@ -44,6 +45,7 @@ export function PendingInvitationCard({
   const resendInvitation = useResendInvitation();
   const [isCancelling, setIsCancelling] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const displayTz = useDisplayTimezone();
 
   const handleCancel = async () => {
     setIsCancelling(true);
@@ -72,10 +74,13 @@ export function PendingInvitationCard({
     }
   };
 
-  const expiresAt = parseStoredInstant(invitation.expiresAt);
+  const expiresAt = parseInstant(invitation.expiresAt);
   const isExpired = invitation.status === "expired";
-  const createdAt = parseStoredInstant(invitation.createdAt);
-  const expiryRelative = formatDistanceToNow(expiresAt, { addSuffix: true });
+  const createdAt = parseInstant(invitation.createdAt);
+  const expiryRelative =
+    expiresAt != null
+      ? formatDistanceToNow(expiresAt, { addSuffix: true })
+      : "—";
 
   return (
     <div className="group/card relative flex flex-col justify-between overflow-hidden rounded-2xl border border-dashed border-border bg-card/60 text-card-foreground shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-blue-500/40">
@@ -199,7 +204,7 @@ export function PendingInvitationCard({
             <span className="text-sm whitespace-nowrap">
               <span className="text-muted-foreground">Invited: </span>
               <span className="font-medium text-foreground">
-                {format(createdAt, "MMM d, yyyy")}
+                {formatDate(createdAt, { tz: displayTz, style: "medium" })}
               </span>
             </span>
           </div>
@@ -209,7 +214,7 @@ export function PendingInvitationCard({
                 {isExpired ? "Expired On: " : "Expires: "}
               </span>
               <span className="font-medium text-foreground">
-                {format(expiresAt, "MMM d, yyyy")}
+                {formatDate(expiresAt, { tz: displayTz, style: "medium" })}
               </span>
             </span>
           </div>

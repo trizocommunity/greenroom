@@ -71,6 +71,32 @@
           }
         }
       }
+    },
+    {
+      "includes": [
+        "src/**",
+        "!src/core/datetime/**",
+        "!src/components/ui/calendar.tsx",
+        "!src/lib/age.ts",
+        "!src/components/festival/posters/use-poster-editor-autosave.ts",
+        "!src/core/utils/date-time.ts",
+        "!**/*.test.ts",
+        "!**/*.test.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@/core/utils/date-time": "Use @/core/datetime helpers instead — see src/core/datetime/index.ts"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }

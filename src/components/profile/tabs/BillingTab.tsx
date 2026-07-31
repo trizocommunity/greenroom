@@ -1,6 +1,5 @@
 "use client";
 
-import { format } from "date-fns";
 import {
   ArrowRight,
   CheckCircle2,
@@ -11,6 +10,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { usePaymentHistory } from "@/api/client";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/card";
 import { BillingHistorySkeleton } from "@/components/ui/Skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
-import { parseStoredInstant } from "@/core/utils/date-time";
+import { formatDate, parseInstant } from "@/core/datetime";
 import { PaymentDetailsModal } from "../modals/PaymentDetailsModal";
 
 export function BillingTab() {
@@ -30,6 +30,7 @@ export function BillingTab() {
   const payments = data?.history ?? [];
   const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const displayTz = useDisplayTimezone();
 
   if (isLoading) {
     return (
@@ -98,7 +99,7 @@ export function BillingTab() {
                 </div>
               ) : (
                 payments.map((payment) => {
-                  const createdAt = parseStoredInstant(payment.createdAt);
+                  const createdAt = parseInstant(payment.createdAt);
                   return (
                     <div
                       key={payment.id}
@@ -139,7 +140,10 @@ export function BillingTab() {
                           </div>
                           <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
                             {payment.createdAt
-                              ? format(createdAt, "PPP")
+                              ? formatDate(createdAt, {
+                                  tz: displayTz,
+                                  style: "long",
+                                })
                               : "Unknown date"}
                             <span className="w-1 h-1 rounded-full bg-border" />
                             {payment.tier || "Standard"} plan

@@ -4,7 +4,7 @@ import { ParticipantProfileView } from "@/components/festival/pre-event-works/pa
 import { APP_URL } from "@/config/routes";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
-import { parseStoredInstant } from "@/core/utils/date-time";
+import { parseInstant } from "@/core/datetime";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { findParticipantByFestivalAndProfileSlug } from "@/features/participants/repositories/participant.repository";
 import {
@@ -63,8 +63,8 @@ async function ParticipantProfileContent({
     <ParticipantProfileView
       participant={{
         ...participant,
-        createdAt: parseStoredInstant(participant.createdAt),
-        updatedAt: parseStoredInstant(participant.updatedAt),
+        createdAt: parseInstant(participant.createdAt) ?? new Date(NaN),
+        updatedAt: parseInstant(participant.updatedAt) ?? new Date(NaN),
         assignments: participant.assignments ?? [],
       }}
       festivalId={festival.id}

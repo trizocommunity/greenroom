@@ -1,12 +1,12 @@
 "use client";
 
-import { format } from "date-fns";
 import { ArrowLeft, Crown, Loader2, Mail, Phone } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { QrCodeDisplay } from "@/components/common/QrCodeDisplay";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { TeamParticipantsDialog } from "@/components/festival/pre-event-works/assignments/TeamParticipantsDialog";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { parseStoredInstant } from "@/core/utils/date-time";
+import { formatDate } from "@/core/datetime";
 import { getProgrammeTeamMembersAction } from "@/features/assignments/actions/assignment.actions";
 import {
   getParticipantProfileUrl,
@@ -76,6 +76,7 @@ export function ParticipantProfileView({
   const canViewTeamLeaders = useFeature("members");
   const festivalContext = useFestival();
   const isBasicTier = festivalContext.tier === "BASIC";
+  const displayTz = useDisplayTimezone();
   const [teamDialog, setTeamDialog] = useState<{
     open: boolean;
     programmeName: string;
@@ -230,7 +231,10 @@ export function ParticipantProfileView({
                     Date of Birth
                   </span>
                   <div className="text-sm">
-                    {format(parseStoredInstant(participant.dateOfBirth), "PP")}
+                    {formatDate(participant.dateOfBirth, {
+                      tz: displayTz,
+                      style: "long",
+                    })}
                   </div>
                 </div>
               )}
@@ -283,13 +287,19 @@ export function ParticipantProfileView({
               {participant.createdAt && (
                 <span>
                   Created{" "}
-                  {format(parseStoredInstant(participant.createdAt), "PP")}
+                  {formatDate(participant.createdAt, {
+                    tz: displayTz,
+                    style: "long",
+                  })}
                 </span>
               )}
               {participant.updatedAt && (
                 <span>
                   Updated{" "}
-                  {format(parseStoredInstant(participant.updatedAt), "PP")}
+                  {formatDate(participant.updatedAt, {
+                    tz: displayTz,
+                    style: "long",
+                  })}
                 </span>
               )}
             </div>

@@ -1,10 +1,12 @@
 "use client";
 
-import { format, isPast } from "date-fns";
+import { isPast } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { CalendarClock } from "lucide-react";
 import { useFestival } from "@/components/festival/FestivalContext";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
-import { parseStoredInstant } from "@/core/utils/date-time";
+import { parseInstant } from "@/core/datetime";
 
 export function DeadlinesCard({
   label = "Assignments",
@@ -16,6 +18,7 @@ export function DeadlinesCard({
   isLockedOverride?: boolean;
 } = {}) {
   const festival = useFestival();
+  const displayTz = useDisplayTimezone();
 
   const deadline =
     deadlineProp !== undefined
@@ -24,8 +27,8 @@ export function DeadlinesCard({
 
   if (!deadline) return null;
 
-  const deadlineDate = parseStoredInstant(deadline);
-  const isExpired = isLockedOverride ?? isPast(deadlineDate);
+  const deadlineDate = parseInstant(deadline);
+  const isExpired = isLockedOverride ?? (deadlineDate ? isPast(deadlineDate) : false);
 
   return (
     <div
@@ -45,7 +48,9 @@ export function DeadlinesCard({
 
       <div className="flex items-center gap-2 justify-between sm:justify-normal">
         <span className="whitespace-nowrap">
-          {format(deadlineDate, "MMM d, h:mm a")}
+          {deadlineDate
+            ? formatInTimeZone(deadlineDate, displayTz, "MMM d, h:mm a")
+            : "—"}
         </span>
         {isExpired ? (
           <Badge

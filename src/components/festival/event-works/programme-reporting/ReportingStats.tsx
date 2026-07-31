@@ -1,10 +1,11 @@
 "use client";
 
-import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { CheckCircle2, Clock, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { parseStoredInstant } from "@/core/utils/date-time";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
+import { parseInstant } from "@/core/datetime";
 
 interface ReportingStatsProps {
   stats: {
@@ -19,6 +20,7 @@ interface ReportingStatsProps {
 }
 
 export function ReportingStats({ stats }: ReportingStatsProps) {
+  const displayTz = useDisplayTimezone();
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <Card className="bg-primary/5 border-primary/10 shadow-sm">
@@ -67,9 +69,12 @@ export function ReportingStats({ stats }: ReportingStatsProps) {
               Est. Completion
             </p>
             <p className="text-lg font-bold truncate">
-              {stats.estimatedEnd
-                ? format(parseStoredInstant(stats.estimatedEnd), "h:mm a")
-                : "Calculating..."}
+              {(() => {
+                const d = parseInstant(stats.estimatedEnd);
+                return d
+                  ? formatInTimeZone(d, displayTz, "h:mm a")
+                  : "Calculating...";
+              })()}
             </p>
           </div>
         </CardContent>

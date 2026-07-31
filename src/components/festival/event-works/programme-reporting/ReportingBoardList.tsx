@@ -1,9 +1,10 @@
 "use client";
 
-import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { Badge } from "@/components/ui/badge";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
+import { parseInstant } from "@/core/datetime";
 import { cn } from "@/core/utils/cn";
-import { parseStoredInstant } from "@/core/utils/date-time";
 import type { ReportingBoardItem } from "./types";
 
 interface ReportingBoardListProps {
@@ -24,6 +25,7 @@ export function ReportingBoardList({
   onSelect,
   getUiReportingStatus,
 }: ReportingBoardListProps) {
+  const displayTz = useDisplayTimezone();
   const statusTone = (status: string) => {
     if (status === "IN_PROGRESS")
       return "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
@@ -89,7 +91,12 @@ export function ReportingBoardList({
                     {uiStatus.replace("_", " ")}
                   </Badge>
                   <span className="text-xs text-muted-foreground font-mono">
-                    {format(parseStoredInstant(item.startTime), "h:mm a")}
+                    {(() => {
+                      const d = parseInstant(item.startTime);
+                      return d
+                        ? formatInTimeZone(d, displayTz, "h:mm a")
+                        : "—";
+                    })()}
                   </span>
                   {item.stage?.name && (
                     <span className="text-xs text-muted-foreground truncate max-w-[100px]">

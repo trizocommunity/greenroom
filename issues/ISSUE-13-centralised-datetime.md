@@ -19,9 +19,9 @@
 | 5 | Onboarding: auto-detect TZ + inline `<TimezoneSelect>` | **Done** (this PR) |
 | 6 | Profile settings: timezone edit field | **Done** (this PR) |
 | 7 | Wire `user.timezone` / `festival.timezone` into client display helpers | **Done (foundation)** — `UserTimezoneProvider` + `getCurrentUserTimezone()` server helper; per-component `tz` plumbing is the Phase 8 follow-up. Critical bug fixes (DOB login, judgement day key, festival-schedule-day expansion) are in. |
-| 8 | Festival public site + dashboard: render in `festival.timezone` | **TODO** — per-component `tz` plumbing across the 32 legacy `parseStoredInstant` callers |
+| 8 | Festival public site + dashboard: render in `festival.timezone` | **Done** (this PR) — 31 legacy `parseStoredInstant` callers migrated to `parseInstant` + `formatDate`/`formatDateTime` with `useDisplayTimezone()` (client) or `festival.timezone` (server). |
 | 9 | PDFs / exports: render in `festival.timezone` | **Done** (this PR) — `buildSectionedPdf`, call-list/results generators, QR PDF, manual book all render in `festival.timezone` |
-| 10 | Biome guardrails (forbid raw `new Date()` outside `core/datetime/`) | **Done (shim)** — `core/utils/date-time.ts` is now a deprecated shim pointing at `@/core/datetime`; guardrail rule intentionally deferred to Phase 8 codemod to avoid blocking 32 existing imports |
+| 10 | Biome guardrails (forbid raw `new Date()` outside `core/datetime/`) | **Done** — `noRestrictedImports` rule active in `biome.json`; `@/core/utils/date-time` deprecated shim remains as compatibility layer; new imports are blocked. |
 
 ---
 

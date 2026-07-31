@@ -51,12 +51,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { formatDateTime, parseInstant } from "@/core/datetime";
 import type { ProgrammeJudgementStatus } from "@/core/types/app-enums";
-import {
-  formatStoredDateTime,
-  parseStoredInstant,
-} from "@/core/utils/date-time";
 import { ProgrammeProgressFunnel } from "@/components/dashboard/judgement/ProgrammeProgressFunnel";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { StagePortalCredentialDialog } from "@/components/festival/stage-assignment/StagePortalCredentialDialog";
 import { createJudgeAction } from "@/features/judges/actions/judge.actions";
 import {
@@ -167,16 +165,18 @@ export function JudgementWizardClient({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const displayTz = useDisplayTimezone();
   const formatCardDateTime = useCallback(
     (value: string | Date) =>
-      formatStoredDateTime(value, {
+      formatDateTime(value, {
+        tz: displayTz,
         dateStyle: "medium",
         timeStyle: "short",
       }),
-    [],
+    [displayTz],
   );
   const toEpoch = useCallback((value: string | Date) => {
-    return parseStoredInstant(value).getTime();
+    return parseInstant(value)?.getTime() ?? 0;
   }, []);
 
   const judgementStatusLabel = (status: ProgrammeJudgementStatus) => {

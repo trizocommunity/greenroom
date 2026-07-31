@@ -1,4 +1,3 @@
-import { format } from "date-fns";
 import { CreditCard, History, IndianRupee } from "lucide-react";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { ViewDetailsDialog } from "@/components/admin/ViewDetailsDialog";
@@ -18,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { parseStoredInstant } from "@/core/utils/date-time";
+import { formatDate } from "@/core/datetime";
 import { adminService } from "@/features/admin/services/admin.service";
 
 function getPaymentStatusVariant(
@@ -187,10 +186,10 @@ export default async function AdminPaymentsPage() {
                     </TableCell>
                     <TableCell className="py-4 text-right">
                       <span className="text-xs text-muted-foreground">
-                        {format(
-                          parseStoredInstant(payment.createdAt),
-                          "MMM d, yyyy",
-                        )}
+                        {formatDate(payment.createdAt, {
+                          tz: "UTC",
+                          style: "medium",
+                        })}
                       </span>
                     </TableCell>
                     <TableCell className="py-4">

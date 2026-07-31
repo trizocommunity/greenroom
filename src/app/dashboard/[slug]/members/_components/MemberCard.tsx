@@ -1,6 +1,5 @@
 "use client";
 
-import { format } from "date-fns";
 import {
   CalendarDays,
   Eye,
@@ -20,6 +19,7 @@ import {
 } from "@/api/client/stage-assignments";
 import { useStages } from "@/api/client/stages";
 import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +28,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { parseStoredInstant } from "@/core/utils/date-time";
+import { formatDate, parseInstant } from "@/core/datetime";
 import { MemberDetailsDialog } from "./MemberDetailsDialog";
 import type { Member } from "./types";
 
@@ -117,7 +117,8 @@ export function MemberCard({
 
   const fullName = member.user?.fullName || member.fullName || "Unknown";
   const email = member.user?.email || member.email || "";
-  const joinedAt = parseStoredInstant(member.createdAt);
+  const joinedAt = parseInstant(member.createdAt);
+  const displayTz = useDisplayTimezone();
   const avatarUrl =
     (member.user as any)?.image || (member.user as any)?.avatarUrl;
   const initials =
@@ -236,7 +237,7 @@ export function MemberCard({
         <div className="mt-3 flex items-center gap-3.5 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <CalendarDays className="h-3.5 w-3.5" />
-            {format(joinedAt, "MMM d, yyyy")}
+            {formatDate(joinedAt, { tz: displayTz, style: "medium" })}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <ShieldCheck className="h-3.5 w-3.5" />
