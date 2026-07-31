@@ -22,7 +22,7 @@ import { getCurrentUser } from "@/core/auth/current-user";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { stage as stageTable } from "@/core/database/schema";
-import { parseInstant } from "@/core/datetime";
+import { serverNowMs } from "@/core/datetime/server";
 import { MS } from "@/core/datetime/server";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
@@ -195,8 +195,8 @@ export default async function FestivalDashboardLayout({
                     daysRemaining={
                       festival.expiresAt
                         ? Math.ceil(
-                            (parseInstant(festival.expiresAt)!.getTime() -
-                              Date.now()) /
+                            (new Date(festival.expiresAt).getTime() -
+                              serverNowMs()) /
                               MS.day,
                           )
                         : null
