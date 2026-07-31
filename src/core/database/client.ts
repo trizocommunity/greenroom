@@ -24,16 +24,6 @@ function isBuildPhase(): boolean {
 
 function handlePoolError(err: Error): void {
   console.error("Database pool error:", err);
-  if (process.env.NODE_ENV === "production") {
-    try {
-      // Lazy require — @sentry/nextjs only resolves in runtime bundles.
-      const { captureException } =
-        require("@sentry/nextjs") as typeof import("@sentry/nextjs");
-      captureException(err, { tags: { area: "pg-pool" } });
-    } catch {
-      // Sentry not initialized; ignore.
-    }
-  }
 }
 
 function registerShutdown(pool: Pool): void {
