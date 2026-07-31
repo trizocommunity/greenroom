@@ -9,6 +9,7 @@ import {
   judge as judgeTable,
   stage as stageTable,
 } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 import { listFestivalJudgesWithAssignments } from "@/features/judges/repositories/judge.repository";
 
 const handler = createProtectedHandler({
@@ -48,7 +49,7 @@ const handler = createProtectedHandler({
     if (conflict)
       return badRequest("CONFLICT", "A judge with this name already exists");
 
-    const now = new Date().toISOString();
+    const now = serverNowIso();
     const [created] = await db
       .insert(judgeTable)
       .values({

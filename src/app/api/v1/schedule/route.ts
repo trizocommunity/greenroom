@@ -5,6 +5,7 @@ import { badRequest, createProtectedHandler, ok } from "@/api/lib";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { db } from "@/core/database/client";
 import { scheduleEntry } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 
 const handler = createProtectedHandler({
   async GET({ user, request }) {
@@ -45,7 +46,7 @@ const handler = createProtectedHandler({
     if (!parsed.success)
       return badRequest("INVALID_INPUT", parsed.error.message);
 
-    const now = new Date().toISOString();
+    const now = serverNowIso();
     const entry = await db
       .insert(scheduleEntry)
       .values({

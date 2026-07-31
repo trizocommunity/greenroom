@@ -9,9 +9,10 @@ import {
   festivalMember,
   pendingInvitation,
 } from "@/core/database/schema";
+import { fromNow, MS } from "@/core/datetime/server";
 import { sendInvitationEmail } from "@/core/integrations/email";
 
-const INVITATION_EXPIRY_MS = 48 * 60 * 60 * 1000;
+const INVITATION_EXPIRY_MS = 48 * MS.hour;
 
 export const POST = async (
   _req: Request,
@@ -75,7 +76,7 @@ export const POST = async (
       );
     }
 
-    const expiresAt = new Date(Date.now() + INVITATION_EXPIRY_MS).toISOString();
+    const expiresAt = fromNow(INVITATION_EXPIRY_MS);
 
     await db
       .update(pendingInvitation)

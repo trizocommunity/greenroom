@@ -5,6 +5,7 @@ import {
   festivalMember as festivalMemberTable,
   festival as festivalTable,
 } from "@/core/database/schema";
+import { MS, nowPlus, serverNowMs } from "@/core/datetime/server";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { assertFestivalMutationAllowed } from "@/features/festivals/services/festival-lifecycle-policy.service";
 
@@ -16,7 +17,7 @@ interface CacheEntry {
 }
 
 const accessCache = new Map<string, CacheEntry>();
-const CACHE_TTL_MS = 60_000;
+const CACHE_TTL_MS = MS.minute;
 
 function getCacheKey(festivalId: string, userId: string, role: string): string {
   return `${festivalId}:${userId}:${role}`;
@@ -25,7 +26,7 @@ function getCacheKey(festivalId: string, userId: string, role: string): string {
 function getFromCache(key: string): AccessLevel | null {
   const entry = accessCache.get(key);
   if (!entry) return null;
-  if (Date.now() > entry.expiresAt) {
+  if (serverNowMs() > entry.expiresAt) {
     accessCache.delete(key);
     return null;
   }
@@ -33,7 +34,7 @@ function getFromCache(key: string): AccessLevel | null {
 }
 
 function setToCache(key: string, access: AccessLevel): void {
-  accessCache.set(key, { access, expiresAt: Date.now() + CACHE_TTL_MS });
+  accessCache.set(key, { access, expiresAt: nowPlus(CACHE_TTL_MS).getTime() });
 }
 
 export async function assertFestivalAccess(

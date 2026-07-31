@@ -1,9 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
 import { AlertCircle, CheckCircle2, Clock, Loader2 } from "lucide-react";
 import { usePaymentHistory } from "@/api/client";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -14,11 +14,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { parseStoredInstant } from "@/core/utils/date-time";
+import { formatDateTime, parseInstant } from "@/core/datetime";
 
 export function PaymentHistoryTab() {
   const { data, isLoading, isError, error } = usePaymentHistory();
   const payments = data?.history ?? [];
+  const displayTz = useDisplayTimezone();
 
   if (isLoading) {
     return (
@@ -77,14 +78,15 @@ export function PaymentHistoryTab() {
           </TableHeader>
           <TableBody>
             {payments.map((payment) => {
-              const createdAt = parseStoredInstant(payment.createdAt);
+              const createdAt = parseInstant(payment.createdAt);
               return (
                 <TableRow key={payment.id}>
                   <TableCell className="whitespace-nowrap">
-                    {format(createdAt, "MMM dd, yyyy")}
-                    <div className="text-xs text-muted-foreground">
-                      {format(createdAt, "hh:mm a")}
-                    </div>
+                    {formatDateTime(createdAt, {
+                      tz: displayTz,
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
                   </TableCell>
                   <TableCell>
                     Festival Pass

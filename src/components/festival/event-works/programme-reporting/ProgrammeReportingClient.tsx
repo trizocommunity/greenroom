@@ -64,11 +64,9 @@ import {
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
+import { formatDateTime, parseInstant } from "@/core/datetime";
 import { cn } from "@/core/utils/cn";
-import {
-  formatStoredDateTime,
-  parseStoredInstant,
-} from "@/core/utils/date-time";
 import {
   assignCodeLettersWithSpinAction,
   closeProgrammeReportingAction,
@@ -143,13 +141,22 @@ function generateCodeLetters(count: number): string[] {
   return letters;
 }
 
-function formatHistoryTime(value: Date | string): string {
-  const date = parseStoredInstant(value);
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  }).format(date);
+function formatHistoryTime(
+  value: Date | string,
+  tz: string,
+): string {
+  const date = parseInstant(value);
+  if (!date) return "—";
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: tz,
+    }).format(date);
+  } catch {
+    return "—";
+  }
 }
 
 export function ProgrammeReportingClient({
@@ -172,6 +179,7 @@ export function ProgrammeReportingClient({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const displayTz = useDisplayTimezone();
   const [isPending, startTransition] = useTransition();
   const [filterCategoryId, setFilterCategoryId] = useState<string>("ALL");
   const [filterStageId, setFilterStageId] = useState<string>(
@@ -331,8 +339,8 @@ export function ProgrammeReportingClient({
       const rb = statusRank(bStatus);
       if (ra !== rb) return ra - rb;
       return (
-        parseStoredInstant(a.startTime).getTime() -
-        parseStoredInstant(b.startTime).getTime()
+        (parseInstant(a.startTime)?.getTime() ?? 0) -
+        (parseInstant(b.startTime)?.getTime() ?? 0)
       );
     });
   }, [
@@ -362,14 +370,14 @@ export function ProgrammeReportingClient({
 
     const getHistoryTimestamp = (item: ReportingBoardItem) => {
       const endedAt = item.reportingSession?.endedAt
-        ? parseStoredInstant(item.reportingSession.endedAt).getTime()
+        ? parseInstant(item.reportingSession.endedAt)?.getTime() ?? Number.NaN
         : Number.NaN;
       if (Number.isFinite(endedAt)) return endedAt;
       const updatedAt = item.reportingSession?.updatedAt
-        ? parseStoredInstant(item.reportingSession.updatedAt).getTime()
+        ? parseInstant(item.reportingSession.updatedAt)?.getTime() ?? Number.NaN
         : Number.NaN;
       if (Number.isFinite(updatedAt)) return updatedAt;
-      return parseStoredInstant(item.startTime).getTime();
+      return parseInstant(item.startTime)?.getTime() ?? 0;
     };
 
     return board
@@ -428,12 +436,12 @@ export function ProgrammeReportingClient({
           title: item.programme?.name ?? "Unknown programme",
           badge: reportingSessionStatusLabel(status),
           tinyBadge,
-          metaPrimary: `${item.stage?.name ?? "No stage"} • ${formatHistoryTime(item.startTime)}`,
+          metaPrimary: `${item.stage?.name ?? "No stage"} • ${formatHistoryTime(item.startTime, displayTz)}`,
           metaSecondary: `${item.programme?.category?.name ?? "No category"} • ${item.programme?.type ?? "—"}`,
           detailSummary: `${reportedCount} ${reportedLabel} • ${codeLetters.length} ${codeLabel}`,
         };
       });
-  }, [board, mounted]);
+  }, [board, mounted, displayTz]);
 
   const reportingHistoryDetailsById = useMemo(() => {
     const details = new Map<
@@ -599,7 +607,8 @@ export function ProgrammeReportingClient({
         timeline: [
           {
             title: "Scheduled slot",
-            at: formatStoredDateTime(item.startTime, {
+            at: formatDateTime(item.startTime, {
+              tz: displayTz,
               dateStyle: "medium",
               timeStyle: "short",
             }),
@@ -609,11 +618,13 @@ export function ProgrammeReportingClient({
             title: "Reporting status",
             at:
               item.reportingSession?.windowEndsAt != null
-                ? formatStoredDateTime(item.reportingSession.windowEndsAt, {
+                ? formatDateTime(item.reportingSession.windowEndsAt, {
+                    tz: displayTz,
                     dateStyle: "medium",
                     timeStyle: "short",
                   })
-                : formatStoredDateTime(item.startTime, {
+                : formatDateTime(item.startTime, {
+                    tz: displayTz,
                     dateStyle: "medium",
                     timeStyle: "short",
                   }),
@@ -621,14 +632,16 @@ export function ProgrammeReportingClient({
           },
           {
             title: "Summary snapshot",
-            at: formatStoredDateTime(item.startTime, {
+            at: formatDateTime(item.startTime, {
+              tz: displayTz,
               dateStyle: "medium",
               timeStyle: "short",
             }),
             note: `${reportedIds.size} reported • ${assignedCodes.length} codes`,
           },
         ],
-        startTimeLabel: formatStoredDateTime(item.startTime, {
+        startTimeLabel: formatDateTime(item.startTime, {
+          tz: displayTz,
           dateStyle: "medium",
           timeStyle: "short",
         }),
@@ -640,7 +653,7 @@ export function ProgrammeReportingClient({
     }
 
     return details;
-  }, [board, assignments, mounted]);
+  }, [board, assignments, mounted, displayTz]);
 
   const historyDetail = historyDetailOpenId
     ? (reportingHistoryDetailsById.get(historyDetailOpenId) ?? null)
@@ -1287,7 +1300,6 @@ export function ProgrammeReportingClient({
           half-screen sheet on desktop, a full-width swap on mobile. Closing it
           clears the selection, so nothing is shown until a programme is picked. */}
       <Sheet
-        direction="right"
         open={Boolean(selectedEntryId)}
         onOpenChange={(open) => {
           if (!open) closeDetail();
@@ -1295,7 +1307,6 @@ export function ProgrammeReportingClient({
       >
         <SheetContent
           ref={confettiRef}
-          direction="right"
           className="w-full gap-0 overflow-hidden p-0 sm:w-1/2 sm:min-w-[560px] sm:max-w-none"
         >
           <SheetHeader className="shrink-0 space-y-0 border-b border-border/40 px-4 py-3 text-left sm:px-6">
@@ -1988,19 +1999,18 @@ export function ProgrammeReportingClient({
                                     <p>
                                       Reported:{" "}
                                       {entry.reportedAt
-                                        ? formatStoredDateTime(
-                                            entry.reportedAt,
-                                            {
-                                              dateStyle: "medium",
-                                              timeStyle: "short",
-                                            },
-                                          )
+                                        ? formatDateTime(entry.reportedAt, {
+                                            tz: displayTz,
+                                            dateStyle: "medium",
+                                            timeStyle: "short",
+                                          })
                                         : "—"}
                                     </p>
                                     <p>
                                       Spun/Issued:{" "}
                                       {entry.spunAt
-                                        ? formatStoredDateTime(entry.spunAt, {
+                                        ? formatDateTime(entry.spunAt, {
+                                            tz: displayTz,
                                             dateStyle: "medium",
                                             timeStyle: "short",
                                           })

@@ -1,6 +1,5 @@
 "use client";
 
-import { format } from "date-fns";
 import {
   Eye,
   ImagePlus,
@@ -23,6 +22,7 @@ import {
 } from "@/api/client/news";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
@@ -45,8 +45,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { formatDate, parseInstant } from "@/core/datetime";
 import { cn } from "@/core/utils/cn";
-import { parseStoredInstant } from "@/core/utils/date-time";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 
 type NewsPost = {
@@ -83,6 +83,7 @@ export function NewsClient({
   const { registerDirtySource, unregisterDirtySource, setDirty } =
     useUnsavedChanges();
   const { isReadOnly } = useFestivalReadOnly();
+  const displayTz = useDisplayTimezone();
   const [posts, setPosts] = useState<NewsPost[]>(initialPosts);
   const {
     data: newsData,
@@ -382,7 +383,10 @@ export function NewsClient({
               </CardTitle>
               <p className="text-xs text-muted-foreground mt-1">
                 {post.publishedAt
-                  ? format(parseStoredInstant(post.publishedAt), "MMM d, yyyy")
+                  ? formatDate(parseInstant(post.publishedAt), {
+                      tz: displayTz,
+                      style: "medium",
+                    })
                   : "Draft"}
               </p>
             </CardHeader>
@@ -440,7 +444,7 @@ export function NewsClient({
             <DialogTitle>{viewDetailsPost?.title}</DialogTitle>
             <DialogDescription>
               {viewDetailsPost?.publishedAt
-                ? `Published ${format(parseStoredInstant(viewDetailsPost.publishedAt), "MMM d, yyyy")}`
+                ? `Published ${formatDate(parseInstant(viewDetailsPost.publishedAt), { tz: displayTz, style: "medium" })}`
                 : "Draft"}
             </DialogDescription>
           </DialogHeader>

@@ -6,6 +6,7 @@ import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { judge as judgeTable } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { listFestivalJudgesWithAssignments } from "@/features/judges/repositories/judge.repository";
 
@@ -51,7 +52,7 @@ export async function createJudgeAction(
   if (!name) throw new AppError(ERROR_MESSAGES.JUDGE_NAME_REQUIRED);
   await assertUniqueJudgeName(festivalId, name);
 
-  const now = new Date().toISOString();
+  const now = serverNowIso();
   const [created] = await db
     .insert(judgeTable)
     .values({
@@ -77,7 +78,7 @@ export async function updateJudgeAction(
   if (!name) throw new AppError(ERROR_MESSAGES.JUDGE_NAME_REQUIRED);
   await assertUniqueJudgeName(festivalId, name, judgeId);
 
-  const now = new Date().toISOString();
+  const now = serverNowIso();
   const [updated] = await db
     .update(judgeTable)
     .set({

@@ -7,6 +7,7 @@ import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { stage } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 
 export const PUT = async (
   req: Request,
@@ -40,7 +41,7 @@ export const PUT = async (
     .set({
       name: parsed.data.name,
       description: parsed.data.description ?? null,
-      updatedAt: new Date().toISOString(),
+      updatedAt: serverNowIso(),
     })
     .where(eq(stage.id, id))
     .returning();

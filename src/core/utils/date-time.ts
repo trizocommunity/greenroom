@@ -1,13 +1,31 @@
+/**
+ * @deprecated Use the helpers from `@/core/datetime` directly:
+ *   - `parseStoredInstant` → `parseInstant`
+ *   - `toDateOrNull`       → `toDateOrNull` (now in `@/core/datetime`)
+ *   - `formatStoredDateTime` → `formatDate` / `formatDateTime` with `tz`
+ *
+ * This shim exists only until every call site is migrated. New imports
+ * are forbidden by the Biome guardrail (see `biome.json` overrides).
+ *
+ * Behaviors preserved from the legacy helper:
+ *   - `parseStoredInstant` returns `new Date(NaN)` for invalid input
+ *     (matches the legacy function's "Date | Invalid-Date" contract).
+ *   - `formatStoredDateTime` accepts `(value, options, locales)` and
+ *     falls back to `"—"` for invalid input.
+ */
+import { parseInstant } from "@/core/datetime";
+
 export function parseStoredInstant(
   value: string | Date | null | undefined,
 ): Date {
-  if (value == null || value === "") return new Date(NaN);
-  if (value instanceof Date) return value;
-  const raw = String(value).trim();
-  if (/Z$/i.test(raw)) return new Date(raw);
-  if (/[+-]\d{2}:?\d{2}$/.test(raw)) return new Date(raw);
-  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
-  return new Date(`${normalized}Z`);
+  const parsed = parseInstant(value);
+  return parsed ?? new Date(NaN);
+}
+
+export function toDateOrNull(
+  value: string | Date | null | undefined,
+): Date | null {
+  return parseInstant(value);
 }
 
 export function formatStoredDateTime(
@@ -15,14 +33,11 @@ export function formatStoredDateTime(
   options?: Intl.DateTimeFormatOptions,
   locales?: Intl.LocalesArgument,
 ): string {
-  const date = parseStoredInstant(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat(locales, options).format(date);
-}
-
-export function toDateOrNull(
-  value: string | Date | null | undefined,
-): Date | null {
-  const date = parseStoredInstant(value);
-  return Number.isNaN(date.getTime()) ? null : date;
+  const date = parseInstant(value);
+  if (date === null) return "—";
+  try {
+    return new Intl.DateTimeFormat(locales, options).format(date);
+  } catch {
+    return "—";
+  }
 }

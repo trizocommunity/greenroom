@@ -11,6 +11,7 @@ import {
   group as groupTable,
   participant as participantTable,
 } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { assignChestNumberForNewParticipant } from "@/features/participants/actions/chest-number.actions";
@@ -319,6 +320,6 @@ export async function exportParticipantsToExcelAction(
   XLSX.utils.book_append_sheet(wb, ws, "Participants");
   const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
   const base64 = buf.toString("base64");
-  const filename = `participants_${festival.slug}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const filename = `participants_${festival.slug}_${serverNowIso().slice(0, 10)}.xlsx`;
   return { success: true, data: base64, filename };
 }

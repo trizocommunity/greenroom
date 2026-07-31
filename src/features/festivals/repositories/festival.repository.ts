@@ -11,6 +11,8 @@ import {
   result as results,
   stage as stages,
 } from "@/core/database/schema";
+import { isAfter, parseInstant } from "@/core/datetime";
+import { serverNowIso } from "@/core/datetime/server";
 
 export async function findAllFestivals(
   where?: SQL,
@@ -48,7 +50,7 @@ export async function createFestival(
     .insert(festivals)
     .values({
       id: data.id ?? randomUUID(),
-      updatedAt: data.updatedAt ?? new Date().toISOString(),
+      updatedAt: data.updatedAt ?? serverNowIso(),
       ...data,
     })
     .returning();
@@ -165,7 +167,7 @@ export async function updateFestivalAnnouncerState(
     .update(festivals)
     .set({
       ...data,
-      updatedAt: new Date().toISOString(),
+      updatedAt: serverNowIso(),
     })
     .where(eq(festivals.id, festivalId))
     .returning();
@@ -330,12 +332,12 @@ export async function getDashboardOverviewData(festivalId: string) {
       const resultDates = prog.assignments
         .map((a) => a.result)
         .filter((r) => r?.isPublished)
-        .map((r) => r!.createdAt)
-        .map((d) => new Date(d));
-      const latestResultAt =
-        resultDates.length > 0
-          ? new Date(Math.max(...resultDates.map((d) => d.getTime())))
-          : null;
+        .map((r) => parseInstant(r!.createdAt))
+        .filter((date): date is Date => date !== null);
+      const latestResultAt = resultDates.reduce<Date | null>(
+        (latest, date) => (!latest || isAfter(date, latest) ? date : latest),
+        null,
+      );
       return {
         programme: {
           id: prog.id,

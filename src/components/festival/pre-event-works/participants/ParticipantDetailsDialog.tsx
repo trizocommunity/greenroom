@@ -1,11 +1,11 @@
 "use client";
 
-import { format } from "date-fns";
 import { Crown, Eye, Loader2, Mail, Phone } from "lucide-react";
 import { useState } from "react";
 import { useAssignments } from "@/api/client/assignments";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { TeamParticipantsDialog } from "@/components/festival/pre-event-works/assignments/TeamParticipantsDialog";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/drawer";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-import { parseStoredInstant } from "@/core/utils/date-time";
+import { formatDate, formatDateTime } from "@/core/datetime";
 import { getProgrammeTeamMembersAction } from "@/features/assignments/actions/assignment.actions";
 import { useFeature } from "@/features/plan-features/hooks/use-feature";
 import { computeAgeFromDateOfBirth } from "@/lib/age";
@@ -41,6 +41,7 @@ export function ParticipantDetailsDialog({
   const canViewTeamLeaders = useFeature("members");
   const festivalContext = useFestival();
   const isBasicTier = festivalContext.tier === "BASIC";
+  const displayTz = useDisplayTimezone();
 
   const participantAssignments = assignments.filter(
     (a: any) => a.participantId === participant.id,
@@ -188,10 +189,10 @@ export function ParticipantDetailsDialog({
                       Date of Birth
                     </p>
                     <p className="text-sm font-medium">
-                      {format(
-                        parseStoredInstant(participant.dateOfBirth),
-                        "PP",
-                      )}
+                      {formatDate(participant.dateOfBirth, {
+                        tz: displayTz,
+                        style: "long",
+                      })}
                     </p>
                   </div>
                 )}
@@ -333,13 +334,21 @@ export function ParticipantDetailsDialog({
                 {participant.createdAt && (
                   <div>
                     Added{" "}
-                    {format(parseStoredInstant(participant.createdAt), "PPp")}
+                    {formatDateTime(participant.createdAt, {
+                      tz: displayTz,
+                      dateStyle: "long",
+                      timeStyle: "short",
+                    })}
                   </div>
                 )}
                 {participant.updatedAt && (
                   <div>
                     Last updated{" "}
-                    {format(parseStoredInstant(participant.updatedAt), "PPp")}
+                    {formatDateTime(participant.updatedAt, {
+                      tz: displayTz,
+                      dateStyle: "long",
+                      timeStyle: "short",
+                    })}
                   </div>
                 )}
               </div>

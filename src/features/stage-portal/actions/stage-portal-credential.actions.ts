@@ -10,6 +10,7 @@ import {
   stagePortalSession as sessionTable,
 } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { serverNowIso } from "@/core/datetime/server";
 import {
   generateAccessCode,
   generatePin,
@@ -30,7 +31,7 @@ export async function provisionStagePortalCredential(
   const accessCode = generateAccessCode();
   const pin = generatePin();
   const pinHash = await hashPin(pin);
-  const now = new Date().toISOString();
+  const now = serverNowIso();
 
   await tx.insert(credentialTable).values({
     id: randomUUID(),
@@ -85,7 +86,7 @@ export async function resetStagePortalCredentialAction(
   const accessCode = generateAccessCode();
   const pin = generatePin();
   const pinHash = await hashPin(pin);
-  const now = new Date().toISOString();
+  const now = serverNowIso();
 
   await db.transaction(async (tx) => {
     await tx

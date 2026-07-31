@@ -1,4 +1,3 @@
-import { format } from "date-fns";
 import {
   ArrowRight,
   BarChart2,
@@ -36,7 +35,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { festival as festivalSchema } from "@/core/database/schema";
-import { parseStoredInstant } from "@/core/utils/date-time";
+import { formatDate } from "@/core/datetime";
 import { getDashboardOverviewData } from "@/features/festivals/repositories/festival.repository";
 import type { FeaturePath } from "@/features/plan-features/services/features";
 import { isFeatureTagEnabled } from "@/features/plan-features/services/features-tags";
@@ -60,6 +59,7 @@ export default async function OverviewWidgets({
   const overviewData = await getDashboardOverviewData(festival.id);
   const tier = getResolvedTier(festival.tier);
   const slug = festival.slug;
+  const festivalTz = festival.timezone ?? "UTC";
 
   const matrix = await getEffectivePlanFeatureMatrix();
   const features = matrix[tier] ?? {};
@@ -252,10 +252,10 @@ export default async function OverviewWidgets({
                         />
                       )}
                       <p className="text-[12px] text-muted-foreground shrink-0">
-                        {format(
-                          parseStoredInstant(prog.createdAt),
-                          "dd/MM/yyyy",
-                        )}
+                        {formatDate(prog.createdAt, {
+                          tz: festivalTz,
+                          style: "short",
+                        })}
                       </p>
                     </div>
                   </div>
@@ -365,10 +365,10 @@ export default async function OverviewWidgets({
                       </div>
                       <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
                         {programme.latestResultAt
-                          ? format(
-                              parseStoredInstant(programme.latestResultAt),
-                              "dd/MM/yyyy",
-                            )
+                          ? formatDate(programme.latestResultAt, {
+                              tz: festivalTz,
+                              style: "short",
+                            })
                           : "—"}
                       </span>
                     </div>

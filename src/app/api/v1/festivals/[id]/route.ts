@@ -11,6 +11,7 @@ import {
   unauthorized,
 } from "@/api/lib";
 import { getSession } from "@/core/auth/session";
+import { serverNowIso } from "@/core/datetime/server";
 import {
   deleteFestival as deleteFestivalRecord,
   findFestivalById,
@@ -79,7 +80,7 @@ export const PUT = async (
   try {
     const updated = await updateFestival(id, {
       ...parsed.data,
-      updatedAt: new Date().toISOString(),
+      updatedAt: serverNowIso(),
     });
 
     return ok(updated);

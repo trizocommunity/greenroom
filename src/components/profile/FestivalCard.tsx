@@ -1,13 +1,14 @@
 "use client";
 
-import { addDays, differenceInDays, format } from "date-fns";
+import { addDays, differenceInDays } from "date-fns";
 import { Clock, LayoutDashboard, Lock, Pencil } from "lucide-react";
 import Link from "next/link";
 import type { Festival } from "@/api/contracts/festivals";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { parseStoredInstant } from "@/core/utils/date-time";
+import { formatDate, parseInstant } from "@/core/datetime";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 
 interface FestivalCardProps {
@@ -28,9 +29,10 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
   const isActive = !isExpired && (status === "ONGOING" || status === "READY");
 
   const totalDays = 30;
-  const createdAt = parseStoredInstant(festival.createdAt);
+  const displayTz = useDisplayTimezone();
+  const createdAt = parseInstant(festival.createdAt) ?? new Date(NaN);
   const expiresAt = festival.expiresAt
-    ? parseStoredInstant(festival.expiresAt)
+    ? (parseInstant(festival.expiresAt) ?? addDays(createdAt, totalDays))
     : addDays(createdAt, totalDays);
 
   const daysPassed = Math.max(0, differenceInDays(new Date(), createdAt));
@@ -82,7 +84,8 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
             </h3>
             <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-primary/60" />
-              Created {format(createdAt, "PPP")}
+              Created{" "}
+              {formatDate(createdAt, { tz: displayTz, style: "long" })}
             </p>
           </div>
 

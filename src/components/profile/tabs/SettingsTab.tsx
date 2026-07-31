@@ -20,6 +20,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TimezoneField } from "@/components/profile/TimezoneField";
+import { labelForTimezone } from "@/core/datetime";
 import { UpdateInstitutionDialog } from "../UpdateInstitutionDialog";
 import { UpdateProfileDialog } from "../UpdateProfileDialog";
 
@@ -130,7 +132,7 @@ export function SettingsTab({ userId: _userId }: SettingsTabProps) {
           </CardTitle>
           <CardDescription>Choose how Greenroom looks for you.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="theme-select">Appearance</Label>
             <Select
@@ -156,6 +158,18 @@ export function SettingsTab({ userId: _userId }: SettingsTabProps) {
             <p className="text-xs text-muted-foreground">
               System follows your device&apos;s appearance.
             </p>
+          </div>
+          <div className="space-y-1.5 pt-2 border-t border-border">
+            <Label>Timezone</Label>
+            <p className="text-xs text-muted-foreground">
+              All dates and times are shown in this zone. Currently:{" "}
+              <span className="font-medium text-foreground">
+                {user.timezone
+                  ? labelForTimezone(user.timezone)
+                  : "Not set — using browser default"}
+              </span>
+            </p>
+            <TimezoneField initialTimezone={user.timezone} />
           </div>
         </CardContent>
       </Card>

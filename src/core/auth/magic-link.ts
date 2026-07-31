@@ -3,6 +3,7 @@ import "server-only";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { magicLinkToken } from "@/core/database/schema";
+import { fromNow, serverNowIso } from "@/core/datetime/server";
 
 const TOKEN_BYTES = 32;
 
@@ -19,7 +20,7 @@ export async function createMagicLinkToken(
   expiresInMs: number,
 ): Promise<string> {
   const token = generateMagicToken();
-  const expiresAt = new Date(Date.now() + expiresInMs).toISOString();
+  const expiresAt = fromNow(expiresInMs);
 
   await db.insert(magicLinkToken).values({
     id: crypto.randomUUID(),
@@ -32,7 +33,7 @@ export async function createMagicLinkToken(
 }
 
 export async function consumeMagicLinkToken(token: string) {
-  const now = new Date().toISOString();
+  const now = serverNowIso();
 
   const record = await db.query.magicLinkToken.findFirst({
     where: and(
@@ -53,7 +54,7 @@ export async function consumeMagicLinkToken(token: string) {
 }
 
 export async function findPendingMagicLinkToken(email: string) {
-  const now = new Date().toISOString();
+  const now = serverNowIso();
 
   return db.query.magicLinkToken.findFirst({
     where: and(

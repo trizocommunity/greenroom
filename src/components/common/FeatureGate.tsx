@@ -107,6 +107,7 @@ function getFeatureLabel(feature: FeaturePath): string {
   const labels: Record<FeaturePath, string> = {
     // Pre Event Works
     categories: "Categories",
+    exports: "Exports",
     groups: "Groups",
     participants: "Participants",
     viewParticipantProfile: "Participant Profile",

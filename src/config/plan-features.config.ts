@@ -53,6 +53,7 @@ export const PLAN_FEATURE_TOGGLE_KEYS = [
 /** Human-readable labels for the plan features matrix. */
 export const PLAN_FEATURE_LABELS: Record<FeaturePath, string> = {
   categories: "Categories",
+  exports: "Exports",
   groups: "Groups",
   participants: "Participants",
   viewParticipantProfile: "Participant Profile",

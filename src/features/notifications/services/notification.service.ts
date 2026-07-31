@@ -6,6 +6,7 @@ import {
   programmeNotification as notificationTable,
   participant as participantTable,
 } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 
 type DeliveryChannel = "IN_APP" | "EMAIL";
 
@@ -107,7 +108,7 @@ export const NotificationService = {
     const recipients = await resolveRecipients(input.festivalId, input.targets);
     if (!recipients.participantRecipients.length) return { created: 0 };
 
-    const now = new Date().toISOString();
+    const now = serverNowIso();
     const notificationRows = recipients.participantRecipients.map(
       (recipient) => ({
         id: randomUUID(),

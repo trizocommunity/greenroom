@@ -27,9 +27,15 @@ import {
   scheduleEntry,
   stage as stages,
 } from "@/core/database/schema";
+import { isAfter, parseInstant } from "@/core/datetime";
+import {
+  MS,
+  nowPlus,
+  serverNow,
+  serverNowIso,
+} from "@/core/datetime/server";
 import { getPublicFestivalResults } from "@/features/festivals/loaders/festival-results.loader";
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const PRE_ARCHIVAL_DAYS = 7;
 
 export const FestivalExpirationService = {
@@ -40,8 +46,8 @@ export const FestivalExpirationService = {
   async getFestivalsApproachingExpiry(): Promise<
     { id: string; name: string; slug: string; expiresAt: string | null }[]
   > {
-    const now = new Date();
-    const windowEnd = new Date(now.getTime() + PRE_ARCHIVAL_DAYS * MS_PER_DAY);
+    const now = serverNow();
+    const windowEnd = nowPlus(PRE_ARCHIVAL_DAYS * MS.day);
     const list = await db
       .select({
         id: festivals.id,
@@ -55,8 +61,9 @@ export const FestivalExpirationService = {
 
     return list.filter((f) => {
       if (!f.expiresAt || !f.slug) return false;
-      const expiryDate = new Date(f.expiresAt);
-      return expiryDate > now && expiryDate <= windowEnd;
+      const expiryDate = parseInstant(f.expiresAt);
+      if (!expiryDate) return false;
+      return isAfter(expiryDate, now) && !isAfter(expiryDate, windowEnd);
     });
   },
 
@@ -96,7 +103,7 @@ export const FestivalExpirationService = {
         metadata: {
           type: "PRE_ARCHIVAL",
           snapshotCount: publishedResults.length,
-          archivedAt: new Date().toISOString(),
+          archivedAt: serverNowIso(),
         },
       } as any);
     });
@@ -108,11 +115,11 @@ export const FestivalExpirationService = {
   async getFestivalsToExpire(): Promise<
     { id: string; name: string; slug: string }[]
   > {
-    const now = new Date();
+    const now = serverNowIso();
     const list = await db
       .select({ id: festivals.id, name: festivals.name, slug: festivals.slug })
       .from(festivals)
-      .where(lt(festivals.expiresAt, now.toISOString()));
+      .where(lt(festivals.expiresAt, now));
     return list.filter((f) => f.slug !== null) as {
       id: string;
       name: string;
@@ -230,12 +237,12 @@ export const FestivalExpirationService = {
 
       // 5. Update festival — resultPdfUrl intentionally left null so
       // on-demand PDF generation is used (avoids stale stored PDFs)
-      const now = new Date();
+      const now = serverNowIso();
       await tx
         .update(festivals)
         .set({
           status: "EXPIRED",
-          expiredAt: now.toISOString(),
+          expiredAt: now,
           participantsCount: 0,
           programmesCount: 0,
           stagesCount: 0,

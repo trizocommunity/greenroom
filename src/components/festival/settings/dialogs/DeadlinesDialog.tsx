@@ -15,7 +15,7 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { Label } from "@/components/ui/label";
-import { parseStoredInstant, toDateOrNull } from "@/core/utils/date-time";
+import { parseInstant, toDateOrNull } from "@/core/datetime";
 import { updateFestivalSettingsAction } from "@/features/festivals/actions/festival-crud.actions";
 
 interface DeadlinesDialogProps {
@@ -43,13 +43,13 @@ export function DeadlinesDialog({
   const [programmeAssignmentDeadline, setProgrammeAssignmentDeadline] =
     useState<Date | null>(
       festival.programmeAssignmentDeadline
-        ? parseStoredInstant(festival.programmeAssignmentDeadline)
+        ? (parseInstant(festival.programmeAssignmentDeadline) ?? null)
         : null,
     );
   const [participantCreationDeadline, setParticipantCreationDeadline] =
     useState<Date | null>(
       festival.participantCreationDeadline
-        ? parseStoredInstant(festival.participantCreationDeadline)
+        ? (parseInstant(festival.participantCreationDeadline) ?? null)
         : null,
     );
   const [isSaving, setIsSaving] = useState(false);

@@ -5,6 +5,7 @@
  */
 
 import { LRUCache } from "lru-cache";
+import { MS, serverNowMs } from "@/core/datetime/server";
 
 type RateLimitEntry = {
   count: number;
@@ -13,15 +14,15 @@ type RateLimitEntry = {
 
 const rateLimitCache = new LRUCache<string, RateLimitEntry>({
   max: 500,
-  ttl: 1000 * 60 * 15,
+  ttl: 15 * MS.minute,
 });
 
 export function checkRateLimit(
   identifier: string,
   maxRequests: number = 5,
-  windowMs: number = 15 * 60 * 1000,
+  windowMs: number = 15 * MS.minute,
 ): { allowed: boolean; remaining: number; resetTime: number } {
-  const now = Date.now();
+  const now = serverNowMs();
   const key = identifier;
 
   const entry = rateLimitCache.get(key);

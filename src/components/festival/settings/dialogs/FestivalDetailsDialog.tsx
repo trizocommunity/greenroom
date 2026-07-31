@@ -20,7 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { toDateOrNull } from "@/core/utils/date-time";
+import { toDateOrNull } from "@/core/datetime";
 import { slugify } from "@/core/utils/slug";
 
 const SLUG_PATTERN = /^[a-z0-9-]+$/;

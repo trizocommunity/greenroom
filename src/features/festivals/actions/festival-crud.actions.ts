@@ -12,6 +12,8 @@ import {
   festivalMember as memberTable,
   payment as paymentTable,
 } from "@/core/database/schema";
+import { isAfter, isBefore, parseInstant } from "@/core/datetime";
+import { fromNow, MS, serverNowIso } from "@/core/datetime/server";
 import {
   AppError,
   ERROR_MESSAGES,
@@ -61,8 +63,7 @@ export async function createFestival(input: CreateFestivalInput) {
     // Validate date range doesn't exceed plan duration
     if (data.startDate && data.endDate) {
       const diffDays = Math.ceil(
-        (data.endDate.getTime() - data.startDate.getTime()) /
-          (1000 * 60 * 60 * 24),
+        (data.endDate.getTime() - data.startDate.getTime()) / MS.day,
       );
       if (diffDays > tierConfig.festivalDurationDays) {
         return {
@@ -73,11 +74,7 @@ export async function createFestival(input: CreateFestivalInput) {
     }
 
     // 3. Atomic Transaction
-    const festivalCreatedAt = new Date();
-    const expiresAt = new Date(
-      festivalCreatedAt.getTime() +
-        tierConfig.festivalDurationDays * 24 * 60 * 60 * 1000,
-    ).toISOString();
+    const expiresAt = fromNow(tierConfig.festivalDurationDays * MS.day);
 
     const result = await db.transaction(async (tx) => {
       // Create Festival
@@ -90,7 +87,7 @@ export async function createFestival(input: CreateFestivalInput) {
       ).slice(0, 50);
 
       const festivalId = randomUUID();
-      const now = new Date().toISOString();
+      const now = serverNowIso();
 
       const [festival] = await tx
         .insert(festivalTable)
@@ -101,8 +98,8 @@ export async function createFestival(input: CreateFestivalInput) {
           institutionType: (data.institutionType as any) || "OTHER",
           institutionName: data.institutionName,
           location: data.location,
-          startDate: data.startDate?.toISOString(),
-          endDate: data.endDate?.toISOString(),
+          startDate: parseInstant(data.startDate)?.toISOString(),
+          endDate: parseInstant(data.endDate)?.toISOString(),
           ownerId: session.userId,
           status: "ONGOING",
           expiresAt,
@@ -212,28 +209,32 @@ export async function updateFestivalSettingsAction(
       allowPast: isDateOnlyUpdate,
     });
 
-    const incomingStart = data.startDate ? new Date(data.startDate) : null;
-    const incomingEnd = data.endDate ? new Date(data.endDate) : null;
-    const planStart = new Date(festival.createdAt);
+    const incomingStart = parseInstant(data.startDate);
+    const incomingEnd = parseInstant(data.endDate);
+    const planStart = parseInstant(festival.createdAt);
     const tierConfig = TIER_CONFIG[festival.tier as keyof typeof TIER_CONFIG];
-    const planEnd = new Date(
-      planStart.getTime() +
-        (tierConfig?.festivalDurationDays ?? 90) * 24 * 60 * 60 * 1000,
-    );
+    const planEndMs = planStart
+      ? planStart.getTime() +
+        (tierConfig?.festivalDurationDays ?? 90) * MS.day
+      : null;
 
-    if (incomingStart && Number.isNaN(incomingStart.getTime())) {
+    if (data.startDate && !incomingStart) {
       throw new AppError("Invalid start date");
     }
-    if (incomingEnd && Number.isNaN(incomingEnd.getTime())) {
+    if (data.endDate && !incomingEnd) {
       throw new AppError("Invalid end date");
     }
-    if (incomingStart && incomingEnd && incomingStart > incomingEnd) {
+    if (incomingStart && incomingEnd && isAfter(incomingStart, incomingEnd)) {
       throw new AppError("Start date must be before end date");
     }
-    if (incomingStart && incomingStart < planStart) {
+    if (incomingStart && planStart && isBefore(incomingStart, planStart)) {
       throw new AppError("Start date must be on/after plan created date");
     }
-    if (incomingEnd && incomingEnd > planEnd) {
+    if (
+      incomingEnd &&
+      planEndMs !== null &&
+      incomingEnd.getTime() > planEndMs
+    ) {
       throw new AppError("End date must be on/before plan expiry date");
     }
 
@@ -242,12 +243,12 @@ export async function updateFestivalSettingsAction(
       .set({
         ...(data.programmeAssignmentDeadline !== undefined && {
           programmeAssignmentDeadline: data.programmeAssignmentDeadline
-            ? new Date(data.programmeAssignmentDeadline).toISOString()
+            ? parseInstant(data.programmeAssignmentDeadline)?.toISOString()
             : null,
         }),
         ...(data.participantCreationDeadline !== undefined && {
           participantCreationDeadline: data.participantCreationDeadline
-            ? new Date(data.participantCreationDeadline).toISOString()
+            ? parseInstant(data.participantCreationDeadline)?.toISOString()
             : null,
         }),
         ...(data.teamLeaderLimit !== undefined && {
@@ -266,12 +267,10 @@ export async function updateFestivalSettingsAction(
           ),
         }),
         ...(data.startDate !== undefined && {
-          startDate: data.startDate
-            ? new Date(data.startDate).toISOString()
-            : null,
+          startDate: incomingStart?.toISOString() ?? null,
         }),
         ...(data.endDate !== undefined && {
-          endDate: data.endDate ? new Date(data.endDate).toISOString() : null,
+          endDate: incomingEnd?.toISOString() ?? null,
         }),
         ...(data.scoringSystem !== undefined && {
           scoringSystem:
@@ -286,7 +285,7 @@ export async function updateFestivalSettingsAction(
         ...(data.chestNumberSettings !== undefined && {
           chestNumberSettings: data.chestNumberSettings,
         }),
-        updatedAt: new Date().toISOString(),
+        updatedAt: serverNowIso(),
       })
       .where(eq(festivalTable.id, festivalId))
       .returning();
@@ -340,7 +339,7 @@ export async function setPublicSiteEnabledAction(
       .update(festivalTable)
       .set({
         publicSiteEnabled: enabled,
-        updatedAt: new Date().toISOString(),
+        updatedAt: serverNowIso(),
       })
       .where(eq(festivalTable.id, festivalId));
 
@@ -419,7 +418,7 @@ export async function updateFestivalBrandingAction(data: {
         .update(festivalTable)
         .set({
           branding: nextBranding,
-          updatedAt: new Date().toISOString(),
+          updatedAt: serverNowIso(),
         })
         .where(eq(festivalTable.id, festival.id));
 

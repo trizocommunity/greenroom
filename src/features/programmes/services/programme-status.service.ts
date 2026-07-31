@@ -11,6 +11,7 @@ import {
   result as resultTable,
   scheduleEntry as scheduleEntryTable,
 } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 import {
   getResolvedTier,
   isBasicTier,
@@ -270,9 +271,9 @@ export async function updateProgrammeStatus(
         status,
         publishedAt:
           status === "PUBLISHED" || status === "ANNOUNCED"
-            ? new Date().toISOString()
+            ? serverNowIso()
             : null,
-        updatedAt: new Date().toISOString(),
+        updatedAt: serverNowIso(),
       })
       .where(eq(programmeTable.id, programmeId));
 
@@ -404,9 +405,9 @@ export async function updateProgrammeStatus(
       status,
       publishedAt:
         status === "PUBLISHED" || status === "ANNOUNCED"
-          ? new Date().toISOString()
+          ? serverNowIso()
           : null,
-      updatedAt: new Date().toISOString(),
+      updatedAt: serverNowIso(),
     })
     .where(eq(programmeTable.id, programmeId));
 
@@ -422,7 +423,7 @@ export async function setProgrammeAnnounced(
       .update(programmeTable)
       .set({
         status: "PUBLISHED",
-        updatedAt: new Date().toISOString(),
+        updatedAt: serverNowIso(),
       })
       .where(eq(programmeTable.id, programmeId));
     return;
@@ -431,8 +432,8 @@ export async function setProgrammeAnnounced(
     .update(programmeTable)
     .set({
       status: "ANNOUNCED",
-      publishedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      publishedAt: serverNowIso(),
+      updatedAt: serverNowIso(),
     })
     .where(eq(programmeTable.id, programmeId));
 }
@@ -453,8 +454,8 @@ export async function setProgrammePublished(
     .update(programmeTable)
     .set({
       status: "PUBLISHED",
-      publishedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      publishedAt: serverNowIso(),
+      updatedAt: serverNowIso(),
     })
     .where(eq(programmeTable.id, programmeId));
 }

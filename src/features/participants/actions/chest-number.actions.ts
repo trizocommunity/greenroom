@@ -11,6 +11,7 @@ import {
   participant as participantTable,
 } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { serverNowIso } from "@/core/datetime/server";
 import { generateProfileSlug } from "@/core/utils/slug";
 
 export async function getChestNumberSettings(festivalId: string) {
@@ -51,7 +52,7 @@ export async function saveChestNumberSettings(
         categoryCodes: settings.categoryCodes,
         numberingStyle: settings.numberingStyle || "ALPHANUMERIC",
       },
-      updatedAt: new Date().toISOString(),
+      updatedAt: serverNowIso(),
     })
     .where(eq(festivalTable.id, festivalId));
 
@@ -147,7 +148,7 @@ export async function generateChestNumbers(festivalId: string) {
   const codes = settings.categoryCodes || {};
 
   await db.transaction(async (tx) => {
-    const now = new Date().toISOString();
+    const now = serverNowIso();
     for (const participant of eligibleParticipants) {
       const catId = participant.categoryId;
       let currentSeq = categorySequences[catId];
@@ -223,7 +224,7 @@ export async function resetChestNumbers(festivalId: string) {
   if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
 
   await db.transaction(async (tx) => {
-    const now = new Date().toISOString();
+    const now = serverNowIso();
     await tx
       .update(participantTable)
       .set({
@@ -334,7 +335,7 @@ export async function assignChestNumberForParticipantInternal(
   categorySequences[catId] = currentSeq + 1;
 
   await db.transaction(async (tx) => {
-    const now = new Date().toISOString();
+    const now = serverNowIso();
     await tx
       .update(participantTable)
       .set({
@@ -419,7 +420,7 @@ export async function updateAllChestNumbers(
       : newCategoryCodes || settings?.categoryCodes || {};
 
   await db.transaction(async (tx) => {
-    const now = new Date().toISOString();
+    const now = serverNowIso();
     for (const participant of eligibleParticipants) {
       let catInitial = "";
       if (style === "ALPHANUMERIC") {

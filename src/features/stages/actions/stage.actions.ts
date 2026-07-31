@@ -8,6 +8,7 @@ import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { festival as festivalTable, stage, user } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { serverNowIso } from "@/core/datetime/server";
 import { UsageCounterService } from "@/features/festivals/services/usage-counter.service";
 import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 
@@ -37,7 +38,7 @@ export async function createStage(festivalId: string, data: StageData) {
 
   await db.insert(stage).values({
     id: randomUUID(),
-    updatedAt: new Date().toISOString(),
+    updatedAt: serverNowIso(),
     festivalId,
     name: data.name,
     description: data.description,

@@ -8,6 +8,8 @@ import {
   festival as festivalTable,
   festivalMember as memberTable,
 } from "@/core/database/schema";
+import { isAfter, isBefore, parseInstant } from "@/core/datetime";
+import { serverNowIso } from "@/core/datetime/server";
 import {
   AppError,
   ERROR_MESSAGES,
@@ -73,30 +75,24 @@ export async function updateFestivalAction(
       allowPast: isDateOnlyUpdate,
     });
 
-    const incomingStart =
-      validated.startDate !== undefined && validated.startDate !== null
-        ? new Date(validated.startDate)
-        : null;
-    const incomingEnd =
-      validated.endDate !== undefined && validated.endDate !== null
-        ? new Date(validated.endDate)
-        : null;
-    const planStart = new Date(festival.createdAt);
-    const planEnd = festival.expiresAt ? new Date(festival.expiresAt) : null;
+    const incomingStart = parseInstant(validated.startDate);
+    const incomingEnd = parseInstant(validated.endDate);
+    const planStart = parseInstant(festival.createdAt);
+    const planEnd = parseInstant(festival.expiresAt);
 
-    if (incomingStart && Number.isNaN(incomingStart.getTime())) {
+    if (validated.startDate && !incomingStart) {
       throw new AppError("Invalid start date");
     }
-    if (incomingEnd && Number.isNaN(incomingEnd.getTime())) {
+    if (validated.endDate && !incomingEnd) {
       throw new AppError("Invalid end date");
     }
-    if (incomingStart && incomingEnd && incomingStart > incomingEnd) {
+    if (incomingStart && incomingEnd && isAfter(incomingStart, incomingEnd)) {
       throw new AppError("Start date must be before end date");
     }
-    if (incomingStart && incomingStart < planStart) {
+    if (incomingStart && planStart && isBefore(incomingStart, planStart)) {
       throw new AppError("Start date must be on/after plan created date");
     }
-    if (incomingEnd && planEnd && incomingEnd > planEnd) {
+    if (incomingEnd && planEnd && isAfter(incomingEnd, planEnd)) {
       throw new AppError("End date must be on/before plan expiry date");
     }
 
@@ -105,17 +101,19 @@ export async function updateFestivalAction(
       .set({
         ...validated,
         startDate: validated.startDate
-          ? validated.startDate.toISOString()
+          ? parseInstant(validated.startDate)?.toISOString()
           : undefined,
         endDate: validated.endDate
-          ? validated.endDate.toISOString()
+          ? parseInstant(validated.endDate)?.toISOString()
           : undefined,
         programmeAssignmentDeadline: validated.programmeAssignmentDeadline
-          ? new Date(validated.programmeAssignmentDeadline).toISOString()
+          ? parseInstant(
+              validated.programmeAssignmentDeadline,
+            )?.toISOString()
           : validated.programmeAssignmentDeadline === null
             ? null
             : undefined,
-        updatedAt: new Date().toISOString(),
+        updatedAt: serverNowIso(),
       })
       .where(eq(festivalTable.id, festivalId))
       .returning();

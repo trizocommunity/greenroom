@@ -1,6 +1,7 @@
 import { and, count, desc, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { participant as participants } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 
 export async function createParticipant(
   data: Omit<typeof participants.$inferInsert, "id" | "updatedAt"> & {
@@ -13,7 +14,7 @@ export async function createParticipant(
     .insert(participants)
     .values({
       id: data.id ?? randomUUID(),
-      updatedAt: data.updatedAt ?? new Date().toISOString(),
+      updatedAt: data.updatedAt ?? serverNowIso(),
       ...data,
     })
     .returning();

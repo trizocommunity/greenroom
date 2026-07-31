@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { cookies } from "next/headers";
 import { db } from "@/core/database/client";
+import { MS, nowPlus, serverNowIso } from "@/core/datetime/server";
 
 export const PARTICIPANT_SESSION_COOKIE = "participant_session";
 
@@ -9,7 +10,7 @@ export function createRawSessionToken(): string {
 }
 
 export function getSessionExpiryDate(): Date {
-  return new Date(Date.now() + 12 * 60 * 60 * 1000); // 12 hours
+  return nowPlus(12 * MS.hour); // 12 hours
 }
 
 export function getTokenHash(rawToken: string): string {
@@ -56,7 +57,7 @@ export async function getParticipantSessionFromCookie() {
       and(
         eq(s.tokenHash, tokenHash),
         isNull(s.revokedAt),
-        gt(s.expiresAt, new Date().toISOString()),
+        gt(s.expiresAt, serverNowIso()),
       ),
     with: {
       participant: {

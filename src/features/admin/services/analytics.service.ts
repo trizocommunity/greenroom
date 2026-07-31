@@ -7,6 +7,8 @@ import {
   userPurchaseSummary,
   user as users,
 } from "@/core/database/schema";
+import { dateKeyUTC, parseInstant } from "@/core/datetime";
+import { serverNow } from "@/core/datetime/server";
 
 interface PurchaseSummaryDto {
   userId: string;
@@ -47,7 +49,7 @@ export async function getPurchaseSummaries(): Promise<PurchaseSummaryDto[]> {
     name: row.user.displayName || row.user.fullName || row.user.email,
     totalSpend: row.totalSpend,
     festivalsCount: row.festivalsCount,
-    lastPurchaseAt: row.lastPurchaseAt ? new Date(row.lastPurchaseAt) : null,
+    lastPurchaseAt: parseInstant(row.lastPurchaseAt),
     planCountsByTier:
       (row.planCountsByTier as Record<string, number> | null) ?? {},
   }));
@@ -126,7 +128,7 @@ export interface TimeSeriesPoint {
 }
 
 export async function getLoginsByDay(days = 14): Promise<TimeSeriesPoint[]> {
-  const start = new Date();
+  const start = serverNow();
   start.setDate(start.getDate() - days);
   start.setHours(0, 0, 0, 0);
 
@@ -137,22 +139,23 @@ export async function getLoginsByDay(days = 14): Promise<TimeSeriesPoint[]> {
 
   const byDay = new Map<string, number>();
   for (const e of events) {
-    const key = new Date(e.loggedAt).toISOString().slice(0, 10);
+    const key = dateKeyUTC(e.loggedAt);
     byDay.set(key, (byDay.get(key) ?? 0) + 1);
   }
 
   const result: TimeSeriesPoint[] = [];
   for (let d = 0; d < days; d++) {
-    const date = new Date(start);
+    const date = parseInstant(start);
+    if (!date) continue;
     date.setDate(date.getDate() + d);
-    const key = date.toISOString().slice(0, 10);
+    const key = dateKeyUTC(date);
     result.push({ date: key, count: byDay.get(key) ?? 0 });
   }
   return result;
 }
 
 export async function getRevenueByDay(days = 14): Promise<TimeSeriesPoint[]> {
-  const start = new Date();
+  const start = serverNow();
   start.setDate(start.getDate() - days);
   start.setHours(0, 0, 0, 0);
 
@@ -163,7 +166,7 @@ export async function getRevenueByDay(days = 14): Promise<TimeSeriesPoint[]> {
 
   const byDay = new Map<string, { count: number; amount: number }>();
   for (const p of payments) {
-    const key = new Date(p.createdAt).toISOString().slice(0, 10);
+    const key = dateKeyUTC(p.createdAt);
     const cur = byDay.get(key) ?? { count: 0, amount: 0 };
     cur.count += 1;
     cur.amount += p.amount;
@@ -172,9 +175,10 @@ export async function getRevenueByDay(days = 14): Promise<TimeSeriesPoint[]> {
 
   const result: TimeSeriesPoint[] = [];
   for (let d = 0; d < days; d++) {
-    const date = new Date(start);
+    const date = parseInstant(start);
+    if (!date) continue;
     date.setDate(date.getDate() + d);
-    const key = date.toISOString().slice(0, 10);
+    const key = dateKeyUTC(date);
     const cur = byDay.get(key);
     result.push({
       date: key,

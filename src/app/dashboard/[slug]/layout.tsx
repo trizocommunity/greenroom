@@ -10,6 +10,7 @@ import { FestivalDashboardSidebar } from "@/components/festival/dashboard/Festiv
 import { StageContextSelector } from "@/components/festival/dashboard/StageContextSelector";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { FestivalStatusBadge } from "@/components/festival/FestivalStatusBadge";
+import { UserTimezoneProviderClient } from "@/components/providers/user-timezone-provider-client";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import {
   SidebarInset,
@@ -21,7 +22,8 @@ import { getCurrentUser } from "@/core/auth/current-user";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { stage as stageTable } from "@/core/database/schema";
-import { parseStoredInstant } from "@/core/utils/date-time";
+import { parseInstant } from "@/core/datetime";
+import { MS } from "@/core/datetime/server";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 import { getEffectiveTierFeatures } from "@/features/plan-features/services/plan-features.service";
@@ -142,82 +144,87 @@ export default async function FestivalDashboardLayout({
   };
 
   return (
-    <SidebarProvider defaultOpen={false}>
-      <FestivalProvider festival={festivalData}>
-        <FestivalDashboardClientShell>
-          <FestivalDashboardSidebar festival={festivalData} role={userRole} />
+    <UserTimezoneProviderClient
+      userTimezone={currentUser?.timezone}
+      festivalTimezone={festival.timezone}
+    >
+      <SidebarProvider defaultOpen={false}>
+        <FestivalProvider festival={festivalData}>
+          <FestivalDashboardClientShell>
+            <FestivalDashboardSidebar festival={festivalData} role={userRole} />
 
-          <SidebarInset>
-            <header className="sticky top-0 z-10 w-full flex h-14 shrink-0 items-center justify-between border-b bg-card/95 backdrop-blur px-2 md:px-8 shadow-sm">
-              <div className="flex items-center gap-2">
-                <SidebarTrigger className="h-8 w-8" />
-                <div className="mr-2 h-4 w-px bg-border hidden lg:block" />
-                <DashboardBreadcrumb slug={slug} />
-              </div>
+            <SidebarInset>
+              <header className="sticky top-0 z-10 w-full flex h-14 shrink-0 items-center justify-between border-b bg-card/95 backdrop-blur px-2 md:px-8 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <SidebarTrigger className="h-8 w-8" />
+                  <div className="mr-2 h-4 w-px bg-border hidden lg:block" />
+                  <DashboardBreadcrumb slug={slug} />
+                </div>
 
-              {/* Header Actions */}
-              <div className="flex items-center gap-2">
-                {userRole === "STAGE_MANAGER" && myStages.length > 1 && (
-                  <StageContextSelector
-                    festivalId={festival.id}
-                    stages={myStages}
-                    currentStageId={currentStageId}
+                {/* Header Actions */}
+                <div className="flex items-center gap-2">
+                  {userRole === "STAGE_MANAGER" && myStages.length > 1 && (
+                    <StageContextSelector
+                      festivalId={festival.id}
+                      stages={myStages}
+                      currentStageId={currentStageId}
+                    />
+                  )}
+                  <ThemeToggle />
+                  <FestivalStatusBadge
+                    status={derivedStatus}
+                    createdAt={festival.createdAt}
+                    startDate={festival.startDate}
+                    endDate={festival.endDate}
+                    expiresAt={festival.expiresAt}
+                    size="default"
+                    interactive={true}
                   />
-                )}
-                <ThemeToggle />
-                <FestivalStatusBadge
-                  status={derivedStatus}
-                  createdAt={festival.createdAt}
-                  startDate={festival.startDate}
-                  endDate={festival.endDate}
-                  expiresAt={festival.expiresAt}
-                  size="default"
-                  interactive={true}
-                />
-                <DashboardRightSidebar
-                  user={userData}
-                  festivalSlug={slug}
-                  showStatusAndUsage={
-                    userRole === "OWNER" || userRole === "SUPER_ADMIN"
-                  }
-                  festivalName={festival.name}
-                  festivalStatus={derivedStatus}
-                  festivalCreatedAt={festival.createdAt}
-                  festivalStartDate={festival.startDate}
-                  festivalEndDate={festival.endDate}
-                  festivalExpiresAt={festival.expiresAt}
-                  daysRemaining={
-                    festival.expiresAt
-                      ? Math.ceil(
-                          (parseStoredInstant(festival.expiresAt).getTime() -
-                            Date.now()) /
-                            (1000 * 60 * 60 * 24),
-                        )
-                      : null
-                  }
-                  userRole={userRole}
-                  usage={{
-                    participantsCount: festival._count?.participants || 0,
-                    programmesCount: festival._count?.programmes || 0,
-                    stagesCount: festival.stagesCount || 0,
-                    storageUsedMB: festival.storageUsedMb ?? 0,
-                  }}
-                  limits={festivalData.limits}
-                  tierLabel={TIER_CONFIG[getResolvedTier(festival.tier)].label}
-                  canAccessSettings={effectiveFeatures.festivalSettings}
-                />
-              </div>
-            </header>
+                  <DashboardRightSidebar
+                    user={userData}
+                    festivalSlug={slug}
+                    showStatusAndUsage={
+                      userRole === "OWNER" || userRole === "SUPER_ADMIN"
+                    }
+                    festivalName={festival.name}
+                    festivalStatus={derivedStatus}
+                    festivalCreatedAt={festival.createdAt}
+                    festivalStartDate={festival.startDate}
+                    festivalEndDate={festival.endDate}
+                    festivalExpiresAt={festival.expiresAt}
+                    daysRemaining={
+                      festival.expiresAt
+                        ? Math.ceil(
+                            (parseInstant(festival.expiresAt)!.getTime() -
+                              Date.now()) /
+                              MS.day,
+                          )
+                        : null
+                    }
+                    userRole={userRole}
+                    usage={{
+                      participantsCount: festival._count?.participants || 0,
+                      programmesCount: festival._count?.programmes || 0,
+                      stagesCount: festival.stagesCount || 0,
+                      storageUsedMB: festival.storageUsedMb ?? 0,
+                    }}
+                    limits={festivalData.limits}
+                    tierLabel={TIER_CONFIG[getResolvedTier(festival.tier)].label}
+                    canAccessSettings={effectiveFeatures.festivalSettings}
+                  />
+                </div>
+              </header>
 
-            <main className="flex flex-1 flex-col gap-4 md:gap-6 p-4 md:p-8 relative">
-              <Suspense fallback={null}>
-                <DashboardCelebration />
-              </Suspense>
-              {children}
-            </main>
-          </SidebarInset>
-        </FestivalDashboardClientShell>
-      </FestivalProvider>
-    </SidebarProvider>
+              <main className="flex flex-1 flex-col gap-4 md:gap-6 p-4 md:p-8 relative">
+                <Suspense fallback={null}>
+                  <DashboardCelebration />
+                </Suspense>
+                {children}
+              </main>
+            </SidebarInset>
+          </FestivalDashboardClientShell>
+        </FestivalProvider>
+      </SidebarProvider>
+    </UserTimezoneProviderClient>
   );
 }

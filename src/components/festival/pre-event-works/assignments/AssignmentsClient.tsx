@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
 import { Loader2, Plus, Search, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -13,6 +12,7 @@ import { useProgrammes } from "@/api/client/programmes";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { DeadlinesCard } from "@/components/festival/pre-event-works/DeadlinesCard";
 import { ProgrammeActivityTimeline } from "@/components/festival/pre-event-works/programmes/ProgrammeActivityTimeline";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -33,7 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { parseStoredInstant } from "@/core/utils/date-time";
+import { formatDate, formatDateTime, isAfter, parseInstant } from "@/core/datetime";
 import {
   deleteAssignmentAction,
   deleteTeamAssignmentAction,
@@ -252,6 +252,7 @@ export function AssignmentsClient({
   );
   const { isReadOnly: isFestivalReadOnly } = useFestivalReadOnly();
   const isReadOnlyMode = isReadOnly || isFestivalReadOnly;
+  const displayTz = useDisplayTimezone();
 
   // If deadline expires while the modal is open, close it to prevent confusing UX.
   useEffect(() => {
@@ -330,10 +331,11 @@ export function AssignmentsClient({
         }
         const bucket = teamMap.get(key)!;
         bucket.assignments.push(a);
-        const dt = a.assignedAt ? parseStoredInstant(a.assignedAt) : null;
+        const dt = a.assignedAt ? parseInstant(a.assignedAt) : null;
         if (
           dt &&
-          (!bucket.latestAssignedAtDate || dt > bucket.latestAssignedAtDate)
+          (!bucket.latestAssignedAtDate ||
+            isAfter(dt, bucket.latestAssignedAtDate))
         ) {
           bucket.latestAssignedAtDate = dt;
         }
@@ -344,7 +346,10 @@ export function AssignmentsClient({
 
     teamMap.forEach((val) => {
       const assignedAt = val.assignments[0]?.assignedAt
-        ? format(parseStoredInstant(val.assignments[0].assignedAt), "PP")
+        ? formatDate(val.assignments[0].assignedAt, {
+            tz: displayTz,
+            style: "long",
+          })
         : null;
       rows.push({
         kind: "team",
@@ -360,7 +365,7 @@ export function AssignmentsClient({
     });
 
     return rows;
-  }, [filteredAssignments]);
+  }, [filteredAssignments, displayTz]);
 
   const programmeCards = useMemo<ProgrammeCardRow[]>(() => {
     const map = new Map<
@@ -409,11 +414,11 @@ export function AssignmentsClient({
       if (row.kind === "individual") {
         card.attendeesCount += 1;
         const dt = row.assignment.assignedAt
-          ? parseStoredInstant(row.assignment.assignedAt)
+          ? parseInstant(row.assignment.assignedAt)
           : null;
         if (
           dt &&
-          (!card.latestAssignedAtDate || dt > card.latestAssignedAtDate)
+          (!card.latestAssignedAtDate || isAfter(dt, card.latestAssignedAtDate))
         ) {
           card.latestAssignedAtDate = dt;
         }
@@ -433,7 +438,7 @@ export function AssignmentsClient({
     // Compute progress per card
     const cards = Array.from(map.values()).map((c) => {
       c.assignedAt = c.latestAssignedAtDate
-        ? format(c.latestAssignedAtDate, "PP")
+        ? formatDate(c.latestAssignedAtDate, { tz: displayTz, style: "long" })
         : null;
 
       // Find the source programme object to get maxParticipantsPerGroup/maxTeamsPerGroup
@@ -550,7 +555,7 @@ export function AssignmentsClient({
     });
 
     return cards;
-  }, [tableRows, participants, programmes, categories, groups]);
+  }, [tableRows, participants, programmes, categories, groups, displayTz]);
 
   const hasFilters =
     filterGroup !== "ALL" ||
@@ -1108,10 +1113,11 @@ export function AssignmentsClient({
                               "—"}{" "}
                             ·{" "}
                             {r.assignment.assignedAt
-                              ? format(
-                                  parseStoredInstant(r.assignment.assignedAt),
-                                  "PPp",
-                                )
+                              ? formatDateTime(r.assignment.assignedAt, {
+                                  tz: displayTz,
+                                  dateStyle: "long",
+                                  timeStyle: "short",
+                                })
                               : "—"}
                             {r.assignment.createdByName && (
                               <span className="ml-1 text-[10px] opacity-70 italic">

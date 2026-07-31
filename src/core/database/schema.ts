@@ -9,9 +9,14 @@ import {
   pgEnum,
   pgTable,
   text,
-  timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+
+import {
+  currentTimestampSql,
+  tzTimestamp,
+  tzTimestampNamed,
+} from "@/core/datetime";
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
@@ -120,6 +125,21 @@ export const sessionType = pgEnum("SessionType", [
 ]);
 export const stageType = pgEnum("StageType", ["STAGE", "NON_STAGE"]);
 export const tier = pgEnum("Tier", ["BASIC", "STANDARD", "PRO"]);
+export const exportType = pgEnum("ExportType", [
+  "CALL_LIST",
+  "RESULTS",
+  "TEAM_RESULT",
+  "JUDGE_LIST",
+  "VALUATION_SHEET",
+  "BADGE",
+  "CERTIFICATE",
+]);
+export const exportFormat = pgEnum("ExportFormat", ["PDF", "CSV"]);
+export const exportStatus = pgEnum("ExportStatus", [
+  "PROCESSING",
+  "COMPLETED",
+  "FAILED",
+]);
 
 // ─── Utility / standalone tables ─────────────────────────────────────────────
 
@@ -131,12 +151,8 @@ export const auditLog = pgTable("audit_log", {
   targetType: text().notNull(),
   targetId: text().notNull(),
   metadata: jsonb(),
-  createdAt: timestamp({ precision: 3, mode: "string" })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-  updatedAt: timestamp({ precision: 3, mode: "string" })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
+  createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+  updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
 });
 
 export const systemConfig = pgTable(
@@ -145,12 +161,8 @@ export const systemConfig = pgTable(
     id: text().primaryKey().notNull(),
     key: text().notNull(),
     value: jsonb().notNull(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
     uniqueIndex("system_config_key_key").using(
@@ -178,12 +190,8 @@ export const institution = pgTable(
     city: text(),
     sizeRange: text(),
     ownerId: text().notNull(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
     uniqueIndex("institution_ownerId_key").using(
@@ -199,11 +207,9 @@ export const magicLinkToken = pgTable(
     id: text().primaryKey().notNull(),
     email: text().notNull(),
     token: text().notNull().unique(),
-    expiresAt: timestamp({ precision: 3, mode: "string" }).notNull(),
-    usedAt: timestamp({ precision: 3, mode: "string" }),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    expiresAt: tzTimestamp().notNull(),
+    usedAt: tzTimestamp(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
     index("magic_link_token_email_idx").using(
@@ -221,13 +227,11 @@ export const pendingInvitation = pgTable(
     festivalId: text().notNull(),
     festivalRole: festivalRole().notNull(),
     invitedBy: text().notNull(),
-    expiresAt: timestamp({ precision: 3, mode: "string" }).notNull(),
-    acceptedAt: timestamp({ precision: 3, mode: "string" }),
+    expiresAt: tzTimestamp().notNull(),
+    acceptedAt: tzTimestamp(),
     status: text().default("pending").notNull(),
     metadata: jsonb().$type<{ stageIds?: string[] }>(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
     uniqueIndex("pending_invitation_token_key").using(
@@ -266,12 +270,9 @@ export const user = pgTable(
     accountType: accountType(),
     institutionId: text(),
     isActive: boolean().default(true).notNull(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    timezone: text(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
     uniqueIndex("user_email_key").using("btree", table.email.asc().nullsLast()),
@@ -307,29 +308,25 @@ export const festival = pgTable(
     rules: jsonb(),
     structure: jsonb(),
     isLocked: boolean().default(true).notNull(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     maxResultScore: integer(),
-    expiresAt: timestamp({ precision: 3, mode: "string" }),
+    expiresAt: tzTimestamp(),
     institutionName: text(),
     institutionType: institutionType(),
     judgesCount: integer().default(0).notNull(),
     location: text(),
-    programmeAssignmentDeadline: timestamp({ precision: 3, mode: "string" }),
+    programmeAssignmentDeadline: tzTimestamp(),
     storageUsedMb: integer().default(0).notNull(),
     tier: tier().default("STANDARD").notNull(),
     tierLabel: text().default("Standard").notNull(),
-    participantCreationDeadline: timestamp({ precision: 3, mode: "string" }),
+    participantCreationDeadline: tzTimestamp(),
     teamLeaderLimit: integer().default(2).notNull(),
     participantsCount: integer().default(0).notNull(),
     publicSiteEnabled: boolean().default(false).notNull(),
     stagesCount: integer().default(0).notNull(),
-    startDate: timestamp({ precision: 3, mode: "string" }),
-    endDate: timestamp({ precision: 3, mode: "string" }),
+    startDate: tzTimestamp(),
+    endDate: tzTimestamp(),
     programmesCount: integer().default(0).notNull(),
     chestNumberSettings: jsonb(),
     teamStandings: jsonb(),
@@ -341,9 +338,10 @@ export const festival = pgTable(
     scoringSystem: scoringSystem().default("SCORE_BASED").notNull(),
     status: festivalStatus().default("READY").notNull(),
     resultPdfUrl: text(),
-    expiredAt: timestamp({ precision: 3, mode: "string" }),
+    expiredAt: tzTimestamp(),
     institutionId: text(),
     festivalType: festivalTypeEnum().default("INDEPENDENT").notNull(),
+    timezone: text().default("UTC").notNull(),
   },
   (table) => [
     index("festival_expiresAt_idx").using(
@@ -384,12 +382,8 @@ export const category = pgTable(
     festivalId: text().notNull(),
     name: text().notNull(),
     description: text(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     type: categoryType().default("SINGLE").notNull(),
   },
   (table) => [
@@ -420,12 +414,8 @@ export const group = pgTable(
     id: text().primaryKey().notNull(),
     festivalId: text().notNull(),
     name: text().notNull(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     seriesStart: integer().default(100).notNull(),
     color: text().default("#2563eb").notNull(),
   },
@@ -460,18 +450,14 @@ export const programme = pgTable(
     name: text().notNull(),
     type: programmeType().default("INDIVIDUAL").notNull(),
     stageType: stageType().default("STAGE").notNull(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     festivalId: text().notNull(),
     maxParticipantsPerGroup: integer().default(1).notNull(),
     maxTeamsPerGroup: integer().default(1).notNull(),
     maxParticipantsPerTeam: integer().default(1).notNull(),
     status: programmeStatus().default("READY").notNull(),
-    publishedAt: timestamp({ precision: 3, mode: "string" }),
+    publishedAt: tzTimestamp(),
     createdByEmail: text("created_by_email"),
     createdByName: text("created_by_name"),
     publishedByEmail: text("published_by_email"),
@@ -517,11 +503,11 @@ export const festivalScoringPolicy = pgTable(
     noGradeBelow: integer("no_grade_below").default(50).notNull(),
     gradeRules: jsonb("grade_rules").notNull(),
     createdBy: text("created_by"),
-    createdAt: timestamp("created_at", { precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
+    createdAt: tzTimestampNamed("created_at")
+      .default(currentTimestampSql())
       .notNull(),
-    updatedAt: timestamp("updated_at", { precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
+    updatedAt: tzTimestampNamed("updated_at")
+      .default(currentTimestampSql())
       .notNull(),
   },
   (table) => [
@@ -555,11 +541,11 @@ export const festivalScoringAwardRule = pgTable(
     grade: text().notNull(),
     awardPoints: integer("award_points").notNull(),
     priority: integer().default(0).notNull(),
-    createdAt: timestamp("created_at", { precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
+    createdAt: tzTimestampNamed("created_at")
+      .default(currentTimestampSql())
       .notNull(),
-    updatedAt: timestamp("updated_at", { precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
+    updatedAt: tzTimestampNamed("updated_at")
+      .default(currentTimestampSql())
       .notNull(),
   },
   (table) => [
@@ -613,14 +599,10 @@ export const participant = pgTable(
     phone: text(),
     gender: gender().default("MALE").notNull(),
     isTeamLeader: boolean().default(false).notNull(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     chestNumber: text(),
-    dateOfBirth: timestamp({ precision: 3, mode: "string" }).notNull(),
+    dateOfBirth: tzTimestamp().notNull(),
     standard: text(),
     profileSlug: text(),
   },
@@ -682,12 +664,8 @@ export const stage = pgTable(
     name: text().notNull(),
     description: text(),
     createdBy: text(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
     uniqueIndex("stage_festivalId_name_key").using(
@@ -720,12 +698,12 @@ export const stagePortalCredential = pgTable(
     accessCode: text("access_code").notNull(),
     pinHash: text("pin_hash").notNull(),
     attempts: integer().default(0).notNull(),
-    lockedUntil: timestamp("locked_until", { precision: 3, mode: "string" }),
-    createdAt: timestamp("created_at", { precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
+    lockedUntil: tzTimestampNamed("locked_until"),
+    createdAt: tzTimestampNamed("created_at")
+      .default(currentTimestampSql())
       .notNull(),
-    updatedAt: timestamp("updated_at", { precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
+    updatedAt: tzTimestampNamed("updated_at")
+      .default(currentTimestampSql())
       .notNull(),
   },
   (table) => [
@@ -764,18 +742,15 @@ export const stagePortalSession = pgTable(
     stageId: text("stage_id").notNull(),
     festivalId: text("festival_id").notNull(),
     tokenHash: text("token_hash").notNull(),
-    expiresAt: timestamp("expires_at", {
-      precision: 3,
-      mode: "string",
-    }).notNull(),
-    revokedAt: timestamp("revoked_at", { precision: 3, mode: "string" }),
+    expiresAt: tzTimestampNamed("expires_at").notNull(),
+    revokedAt: tzTimestampNamed("revoked_at"),
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
-    createdAt: timestamp("created_at", { precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
+    createdAt: tzTimestampNamed("created_at")
+      .default(currentTimestampSql())
       .notNull(),
-    updatedAt: timestamp("updated_at", { precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
+    updatedAt: tzTimestampNamed("updated_at")
+      .default(currentTimestampSql())
       .notNull(),
   },
   (table) => [
@@ -823,15 +798,13 @@ export const scheduleEntry = pgTable(
     festivalId: text().notNull(),
     programmeId: text(),
     stageId: text(),
-    startTime: timestamp({ precision: 3, mode: "string" }).notNull(),
-    endTime: timestamp({ precision: 3, mode: "string" }),
+    startTime: tzTimestamp().notNull(),
+    endTime: tzTimestamp(),
     order: integer().default(0).notNull(),
     createdBy: text(),
     updatedBy: text(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ precision: 3, mode: "string" }).notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().notNull(),
     type: scheduleEntryType().default("PROGRAMME").notNull(),
     title: text(),
     description: text(),
@@ -885,19 +858,13 @@ export const programmeAssignment = pgTable(
     id: text().primaryKey().notNull(),
     programmeId: text().notNull(),
     groupId: text(),
-    assignedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    assignedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     festivalId: text().notNull(),
     categoryId: text(),
     participantId: text(),
     teamNumber: integer().default(1).notNull(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     createdByEmail: text(),
     createdByName: text(),
   },
@@ -970,19 +937,15 @@ export const result = pgTable(
     remarks: text(),
     isPublished: boolean().default(false).notNull(),
     isAnnounced: boolean().default(false).notNull(),
-    announcedAt: timestamp({ precision: 3, mode: "string" }),
+    announcedAt: tzTimestamp(),
     savedByEmail: text("saved_by_email"),
     savedByName: text("saved_by_name"),
     publishedByEmail: text("published_by_email"),
     publishedByName: text("published_by_name"),
     announcedByEmail: text("announced_by_email"),
     announcedByName: text("announced_by_name"),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
     uniqueIndex("result_assignmentId_key").using(
@@ -1044,15 +1007,9 @@ export const programmeTeamLead = pgTable(
       .notNull(),
     appointedByName: text(),
     appointedByEmail: text(),
-    appointedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    appointedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
     uniqueIndex("programme_team_lead_team_key").using(
@@ -1104,19 +1061,15 @@ export const programmeReportingSession = pgTable(
     programmeId: text().notNull(),
     stageId: text(),
     status: programmeReportingStatus().default("NOT_STARTED").notNull(),
-    startedAt: timestamp({ precision: 3, mode: "string" }),
+    startedAt: tzTimestamp(),
     startedBy: text(),
-    endedAt: timestamp({ precision: 3, mode: "string" }),
+    endedAt: tzTimestamp(),
     endedBy: text(),
-    windowEndsAt: timestamp({ precision: 3, mode: "string" }),
+    windowEndsAt: tzTimestamp(),
     isLocked: boolean().default(false).notNull(),
     closedAtScheduleStart: boolean().default(true).notNull(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
     index("programme_reporting_session_festivalId_status_idx").using(
@@ -1174,9 +1127,7 @@ export const programmeReportedParticipant = pgTable(
     participantId: text(),
     groupId: text(),
     teamNumber: integer(),
-    reportedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    reportedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     reportedBy: text(),
   },
   (table) => [
@@ -1236,13 +1187,11 @@ export const programmeCodeLetter = pgTable(
     reportingSessionId: text().notNull(),
     programmeId: text().notNull(),
     code: text().notNull(),
-    issuedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    issuedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     issuedBy: text(),
     isAbsent: boolean("is_absent").default(false).notNull(),
     absentBy: text("absent_by"),
-    absentAt: timestamp("absent_at", { precision: 3, mode: "string" }),
+    absentAt: tzTimestampNamed("absent_at"),
   },
   (table) => [
     index("programme_code_letter_festivalId_issuedAt_idx").using(
@@ -1291,9 +1240,7 @@ export const programmeCodeLetterRecipient = pgTable(
     id: text().primaryKey().notNull(),
     codeLetterId: text().notNull(),
     participantId: text().notNull(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
     uniqueIndex(
@@ -1331,11 +1278,11 @@ export const judge = pgTable(
     festivalId: text("festival_id").notNull(),
     name: text().notNull(),
     description: text(),
-    createdAt: timestamp("created_at", { precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
+    createdAt: tzTimestampNamed("created_at")
+      .default(currentTimestampSql())
       .notNull(),
-    updatedAt: timestamp("updated_at", { precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
+    updatedAt: tzTimestampNamed("updated_at")
+      .default(currentTimestampSql())
       .notNull(),
   },
   (table) => [
@@ -1363,16 +1310,16 @@ export const judgementConfig = pgTable(
     scoreLimit: integer("score_limit").notNull(),
     judgingMode: text("judging_mode").default("GROUP").notNull(),
     status: text().default("LIVE").notNull(), // LIVE | SUBMITTED | ARCHIVED
-    startedAt: timestamp("started_at", { precision: 3, mode: "string" }),
+    startedAt: tzTimestampNamed("started_at"),
     startedBy: text("started_by"),
-    endedAt: timestamp("ended_at", { precision: 3, mode: "string" }),
+    endedAt: tzTimestampNamed("ended_at"),
     endedBy: text("ended_by"),
     createdBy: text("created_by"),
-    createdAt: timestamp("created_at", { precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
+    createdAt: tzTimestampNamed("created_at")
+      .default(currentTimestampSql())
       .notNull(),
-    updatedAt: timestamp("updated_at", { precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
+    updatedAt: tzTimestampNamed("updated_at")
+      .default(currentTimestampSql())
       .notNull(),
   },
   (table) => [
@@ -1414,8 +1361,8 @@ export const judgementConfigJudge = pgTable(
     id: text().primaryKey().notNull(),
     configId: text("config_id").notNull(),
     judgeId: text("judge_id").notNull(),
-    createdAt: timestamp("created_at", { precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
+    createdAt: tzTimestampNamed("created_at")
+      .default(currentTimestampSql())
       .notNull(),
   },
   (table) => [
@@ -1450,11 +1397,11 @@ export const judgementScore = pgTable(
     codeLetterId: text("code_letter_id").notNull(),
     score: doublePrecision().notNull(),
     remark: text(),
-    submittedAt: timestamp("submitted_at", { precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
+    submittedAt: tzTimestampNamed("submitted_at")
+      .default(currentTimestampSql())
       .notNull(),
-    updatedAt: timestamp("updated_at", { precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
+    updatedAt: tzTimestampNamed("updated_at")
+      .default(currentTimestampSql())
       .notNull(),
   },
   (table) => [
@@ -1499,12 +1446,8 @@ export const festivalMember = pgTable(
     role: festivalRole().default("ANNOUNCER").notNull(),
     isActive: boolean().default(true).notNull(),
     metadata: jsonb(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
     uniqueIndex("festival_member_festivalId_userId_key").using(
@@ -1539,13 +1482,9 @@ export const festivalNews = pgTable(
     title: text().notNull(),
     content: text().notNull(),
     imageUrl: text(),
-    publishedAt: timestamp({ precision: 3, mode: "string" }),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    publishedAt: tzTimestamp(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     excerpt: text(),
   },
   (table) => [
@@ -1568,12 +1507,8 @@ export const festivalMediaImage = pgTable(
     festivalId: text().notNull(),
     url: text().notNull(),
     order: integer().default(0).notNull(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
     foreignKey({
@@ -1597,15 +1532,11 @@ export const payment = pgTable(
     providerId: text().notNull(),
     referenceId: text(),
     receipt: text(),
-    validUntil: timestamp({ precision: 3, mode: "string" }),
+    validUntil: tzTimestamp(),
     userId: text().notNull(),
     festivalId: text(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     purpose: paymentPurpose().default("FESTIVAL_CREATION").notNull(),
     used: boolean().default(false).notNull(),
     status: paymentStatus().default("PENDING").notNull(),
@@ -1662,9 +1593,7 @@ export const userLoginEvent = pgTable(
   {
     id: text().primaryKey().notNull(),
     userId: text().notNull(),
-    loggedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    loggedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     ip: text(),
     userAgent: text(),
   },
@@ -1692,12 +1621,10 @@ export const userPurchaseSummary = pgTable(
     userId: text().primaryKey().notNull(),
     totalSpend: integer().default(0).notNull(),
     festivalsCount: integer().default(0).notNull(),
-    lastPurchaseAt: timestamp({ precision: 3, mode: "string" }),
+    lastPurchaseAt: tzTimestamp(),
     festivalIds: jsonb(),
     planCountsByTier: jsonb(),
-    updatedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
     foreignKey({
@@ -1719,9 +1646,7 @@ export const festivalCategoryPreference = pgTable(
     userId: text().notNull(),
     category: text().notNull(),
     weight: integer().default(0).notNull(),
-    updatedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
     uniqueIndex("festival_category_preference_userId_category_key").using(
@@ -1757,9 +1682,7 @@ export const expiredFestivalResult = pgTable(
     grade: text(),
     score: doublePrecision(),
     points: integer(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
     index("expired_festival_result_festivalId_idx").using(
@@ -1784,9 +1707,7 @@ export const expiredFestivalManualBook = pgTable(
     id: text().primaryKey().notNull(),
     festivalId: text().notNull(),
     data: jsonb().notNull(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
     index("expired_festival_manual_book_festivalId_idx").using(
@@ -1811,9 +1732,7 @@ export const festivalLifecycleEvent = pgTable(
     id: text().primaryKey().notNull(),
     festivalId: text().notNull(),
     event: festivalLifecycleEventType().notNull(),
-    occurredAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    occurredAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     metadata: jsonb(),
   },
   (table) => [
@@ -1839,15 +1758,11 @@ export const participantOtp = pgTable(
     id: text().primaryKey().notNull(),
     participantId: text().notNull(),
     codeHash: text().notNull(),
-    expiresAt: timestamp({ precision: 3, mode: "string" }).notNull(),
+    expiresAt: tzTimestamp().notNull(),
     attempts: integer().default(0).notNull(),
-    consumedAt: timestamp({ precision: 3, mode: "string" }),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    consumedAt: tzTimestamp(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
     index("participant_otp_expiresAt_idx").using(
@@ -1878,16 +1793,12 @@ export const participantSession = pgTable(
     participantId: text().notNull(),
     festivalId: text().notNull(),
     tokenHash: text().notNull(),
-    expiresAt: timestamp({ precision: 3, mode: "string" }).notNull(),
-    revokedAt: timestamp({ precision: 3, mode: "string" }),
+    expiresAt: tzTimestamp().notNull(),
+    revokedAt: tzTimestamp(),
     ipAddress: text(),
     userAgent: text(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
     index("participant_session_expiresAt_idx").using(
@@ -1940,9 +1851,7 @@ export const programmeNotification = pgTable(
     payload: jsonb(),
     channels: jsonb(),
     isRead: boolean().default(false).notNull(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
     index("programme_notification_festivalId_createdAt_idx").using(
@@ -2009,11 +1918,11 @@ export const festivalPosterTemplate = pgTable(
     konvaJson: jsonb("konva_json").notNull(),
     backgroundUrl: text("background_url"),
     meta: jsonb(),
-    createdAt: timestamp("created_at", { precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
+    createdAt: tzTimestampNamed("created_at")
+      .default(currentTimestampSql())
       .notNull(),
-    updatedAt: timestamp("updated_at", { precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
+    updatedAt: tzTimestampNamed("updated_at")
+      .default(currentTimestampSql())
       .notNull(),
   },
   (table) => [
@@ -2046,9 +1955,7 @@ export const stageManagerAssignment = pgTable(
     festivalId: text().notNull(),
     stageId: text().notNull(),
     memberId: text().notNull(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
     uniqueIndex("stage_manager_assignment_stageId_memberId_key").using(
@@ -2093,9 +2000,7 @@ export const judgeStageAssignment = pgTable(
     festivalId: text().notNull(),
     stageId: text().notNull(),
     judgeId: text().notNull(),
-    createdAt: timestamp({ precision: 3, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
     uniqueIndex("judge_stage_assignment_stageId_judgeId_key").using(
@@ -2125,6 +2030,60 @@ export const judgeStageAssignment = pgTable(
       columns: [table.judgeId],
       foreignColumns: [judge.id],
       name: "judge_stage_assignment_judgeId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
+// ─── festival_export (depends on: festival, user) ────────────────────────────
+// Festival-scoped export jobs. Generated files are stored inline as base64
+// (`fileData`) — no external object storage — and pruned 2 days after queueing
+// by the daily cron. See issues/ISSUE-11-exports-foundation-and-data-exports.md.
+
+export const festivalExport = pgTable(
+  "festival_export",
+  {
+    id: text().primaryKey().notNull(),
+    festivalId: text().notNull(),
+    type: exportType().notNull(),
+    format: exportFormat().notNull(),
+    status: exportStatus().default("PROCESSING").notNull(),
+    summary: text().notNull(),
+    config: jsonb().notNull(),
+    fileName: text(),
+    fileData: text(), // base64-encoded file bytes; null until COMPLETED
+    fileSizeBytes: integer(),
+    mimeType: text(),
+    itemCount: integer(),
+    errorMessage: text(),
+    createdBy: text().notNull(),
+    queuedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    completedAt: tzTimestamp(),
+    completedInMs: integer(),
+    expiresAt: tzTimestamp().notNull(),
+  },
+  (table) => [
+    index("festival_export_festivalId_queuedAt_idx").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+      table.queuedAt.desc().nullsLast(),
+    ),
+    index("festival_export_expiresAt_idx").using(
+      "btree",
+      table.expiresAt.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "festival_export_festivalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.createdBy],
+      foreignColumns: [user.id],
+      name: "festival_export_createdBy_fkey",
     })
       .onUpdate("cascade")
       .onDelete("cascade"),

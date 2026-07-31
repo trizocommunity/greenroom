@@ -1,6 +1,7 @@
 "use client";
 
-import { eachDayOfInterval, format, parseISO, startOfDay } from "date-fns";
+import { eachDayOfInterval, format, parseISO } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { motion } from "framer-motion";
 import {
   Calendar,
@@ -22,6 +23,7 @@ import {
   useUpdateScheduleItem,
 } from "@/api/client/schedule";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -62,8 +64,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { dateKeyLocal, parseInstant } from "@/core/datetime";
 import { cn } from "@/core/utils/cn";
-import { parseStoredInstant } from "@/core/utils/date-time";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
   type ConflictParts,
@@ -112,15 +114,21 @@ type DateOption = { value: string; label: string };
 function getFestivalDateOptions(
   startISO: string | null,
   endISO: string | null,
+  tz: string,
 ): DateOption[] {
   if (!startISO || !endISO) return [];
-  const start = startOfDay(parseStoredInstant(startISO));
-  const end = startOfDay(parseStoredInstant(endISO));
-  if (start > end) return [];
-  const days = eachDayOfInterval({ start, end });
+  const start = parseInstant(startISO);
+  const end = parseInstant(endISO);
+  if (!start || !end) return [];
+  const startKey = dateKeyLocal(start, tz);
+  const endKey = dateKeyLocal(end, tz);
+  if (!startKey || !endKey || startKey > endKey) return [];
+  const startDate = new Date(`${startKey}T00:00:00`);
+  const endDate = new Date(`${endKey}T00:00:00`);
+  const days = eachDayOfInterval({ start: startDate, end: endDate });
   return days.map((d) => ({
-    value: format(d, "yyyy-MM-dd"),
-    label: format(d, "EEE, d MMM yyyy"),
+    value: formatInTimeZone(d, tz, "yyyy-MM-dd"),
+    label: formatInTimeZone(d, tz, "EEE, d MMM yyyy"),
   }));
 }
 
@@ -150,9 +158,11 @@ export function ScheduleClient({
   hideStageFilter,
 }: ScheduleClientProps) {
   const { isReadOnly } = useFestivalReadOnly();
+  const displayTz = useDisplayTimezone();
   const dateOptions = getFestivalDateOptions(
     festivalStartDate,
     festivalEndDate,
+    displayTz,
   );
   const [entries, setEntries] =
     useState<ScheduleEntryWithRelations[]>(initialEntries);
@@ -676,10 +686,14 @@ export function ScheduleClient({
                                     <>
                                       {" "}
                                       ·{" "}
-                                      {format(
-                                        parseStoredInstant(entry.updatedAt),
-                                        "MMM d, h:mm a",
-                                      )}
+                                      {entry.updatedAt
+                                        ? formatInTimeZone(
+                                            parseInstant(entry.updatedAt) ??
+                                              new Date(NaN),
+                                            displayTz,
+                                            "MMM d, h:mm a",
+                                          )
+                                        : ""}
                                     </>
                                   )}
                                 </p>
@@ -701,8 +715,10 @@ export function ScheduleClient({
                                       entry.updatedBy}{" "}
                                     on{" "}
                                     {entry.updatedAt &&
-                                      format(
-                                        parseStoredInstant(entry.updatedAt),
+                                      formatInTimeZone(
+                                        parseInstant(entry.updatedAt) ??
+                                          new Date(NaN),
+                                        displayTz,
                                         "MMM d, yyyy 'at' h:mm a",
                                       )}
                                   </p>

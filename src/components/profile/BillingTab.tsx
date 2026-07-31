@@ -1,8 +1,8 @@
 "use client";
 
-import { format } from "date-fns";
 import { AlertCircle, CheckCircle2, Clock } from "lucide-react";
 import { usePaymentStatus } from "@/api/client";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -13,12 +13,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { parseStoredInstant } from "@/core/utils/date-time";
+import { formatDateTime, parseInstant } from "@/core/datetime";
 import { Skeleton } from "../ui/skeleton";
 
 export function BillingTab() {
   const { data: paymentData, isLoading, isError, error } = usePaymentStatus();
   const payments = paymentData?.history ?? [];
+  const displayTz = useDisplayTimezone();
 
   if (isLoading) {
     return (
@@ -95,14 +96,15 @@ export function BillingTab() {
               </TableHeader>
               <TableBody>
                 {payments.map((payment) => {
-                  const createdAt = parseStoredInstant(payment.createdAt);
+                  const createdAt = parseInstant(payment.createdAt);
                   return (
                     <TableRow key={payment.id}>
                       <TableCell className="whitespace-nowrap">
-                        {format(createdAt, "MMM dd, yyyy")}
-                        <div className="text-xs text-muted-foreground">
-                          {format(createdAt, "hh:mm a")}
-                        </div>
+                        {formatDateTime(createdAt, {
+                          tz: displayTz,
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })}
                       </TableCell>
                       <TableCell>
                         Festival Pass

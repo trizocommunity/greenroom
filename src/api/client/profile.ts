@@ -17,6 +17,7 @@ export interface UserWithInstitution {
   isActive: boolean | null;
   createdAt: string;
   updatedAt: string;
+  timezone: string | null;
   institutionId: string | null;
   institution?: {
     id: string;

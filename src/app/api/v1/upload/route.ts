@@ -9,6 +9,7 @@ import {
   tooManyRequests,
 } from "@/api/lib";
 import { checkRateLimit } from "@/core/http/rate-limit";
+import { MS, serverNowMs } from "@/core/datetime/server";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
@@ -25,7 +26,7 @@ const handler = createProtectedHandler({
     const rateLimit = checkRateLimit(
       `upload:${user!.userId}`,
       10,
-      60 * 60 * 1000,
+      MS.hour,
     );
     if (!rateLimit.allowed) {
       return tooManyRequests("Upload limit exceeded. Please try again later.");
@@ -49,7 +50,7 @@ const handler = createProtectedHandler({
       return badRequest("CONFIG_ERROR", "Upload service not configured");
     }
 
-    const timestamp = Math.round(Date.now() / 1000);
+    const timestamp = Math.round(serverNowMs() / 1000);
     const folderPath = `greenroom/festivals/${parsed.data.folder}`;
     const signatureString = `folder=${folderPath}&timestamp=${timestamp}${apiSecret}`;
     const signature = crypto

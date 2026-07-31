@@ -10,6 +10,7 @@ import {
   festivalMember as memberTable,
   festivalNews as newsTable,
 } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 import {
   AppError,
   ERROR_MESSAGES,
@@ -59,7 +60,7 @@ export async function addMediaImageAction(festivalId: string, url: string) {
       festivalId,
       url: url.trim(),
       order: (maxOrderResult.maxOrder ?? -1) + 1,
-      updatedAt: new Date().toISOString(),
+      updatedAt: serverNowIso(),
     });
 
     revalidatePath(`/dashboard/${slug}/festival-live`);
@@ -103,7 +104,7 @@ export async function addNewsPostAction(
       title: data.title.trim(),
       content: data.content.trim(),
       imageUrl: data.imageUrl?.trim() || null,
-      updatedAt: new Date().toISOString(),
+      updatedAt: serverNowIso(),
     });
 
     revalidatePath(`/dashboard/${slug}/festival-live`);

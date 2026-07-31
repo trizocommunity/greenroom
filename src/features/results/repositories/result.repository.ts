@@ -4,6 +4,7 @@ import {
   programme as programmes,
   result as results,
 } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 
 export interface ResultInput {
   id?: string;
@@ -76,7 +77,7 @@ async function bulkPublishByProgramme(
   programmeId: string,
   isPublished: boolean,
 ) {
-  const now = new Date().toISOString();
+  const now = serverNowIso();
   const result = await db
     .update(results)
     .set(
@@ -95,7 +96,7 @@ async function bulkPublishByProgramme(
 }
 
 async function bulkAnnounceByProgramme(programmeId: string) {
-  const now = new Date().toISOString();
+  const now = serverNowIso();
   return db
     .update(results)
     .set({ isAnnounced: true, announcedAt: now, updatedAt: now })
@@ -116,7 +117,7 @@ async function bulkPublishByFestival(festivalId: string, isPublished: boolean) {
 
 async function upsert(_assignmentId: string, data: ResultInput) {
   const { randomUUID } = await import("crypto");
-  const now = new Date().toISOString();
+  const now = serverNowIso();
 
   const result = await db
     .insert(results)

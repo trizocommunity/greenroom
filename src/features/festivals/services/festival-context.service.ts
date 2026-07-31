@@ -2,8 +2,8 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { withDbRetry } from "@/core/database/db-retry";
 import { festivalMember, festival as festivals } from "@/core/database/schema";
+import { isExpired } from "@/core/datetime";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
-import { parseStoredInstant } from "@/core/utils/date-time";
 import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 
@@ -60,18 +60,15 @@ export async function getFestivalContext(
     }
   }
 
-  const now = new Date();
-  const isExpired = Boolean(
-    festival.status === "EXPIRED" ||
-      (festival.expiresAt && parseStoredInstant(festival.expiresAt) < now),
-  );
+  const expired =
+    festival.status === "EXPIRED" || isExpired(festival.expiresAt);
 
   const readOnlyExpired = false;
 
   return {
     festival,
     role,
-    isExpired,
+    isExpired: expired,
     readOnlyExpired,
   };
 }

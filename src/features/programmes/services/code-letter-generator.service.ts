@@ -6,6 +6,7 @@ import {
   programmeCodeLetter as codeLetterTable,
   programmeReportingSession as prsTable,
 } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 
 export function sequentialAlphabetCode(indexOneBased: number): string {
   let n = Math.max(1, indexOneBased);
@@ -41,7 +42,7 @@ export const CodeLetterGeneratorService = {
     txIn?: any,
   ): Promise<CodeLetterEntry[]> {
     const participantCodes: CodeLetterEntry[] = [];
-    const nowStr = new Date().toISOString();
+    const nowStr = serverNowIso();
 
     // Filter out rows without participantId
     const shuffled = reportedParticipants.filter(
@@ -129,7 +130,7 @@ export const CodeLetterGeneratorService = {
     txIn?: any,
   ): Promise<CodeLetterEntry[]> {
     const participantCodes: CodeLetterEntry[] = [];
-    const nowStr = new Date().toISOString();
+    const nowStr = serverNowIso();
 
     const run = async (tx: any) => {
       // 1. Find existing assignments
@@ -237,7 +238,7 @@ export const CodeLetterGeneratorService = {
     txIn?: any,
   ): Promise<CodeLetterEntry[]> {
     const participantCodes: CodeLetterEntry[] = [];
-    const nowStr = new Date().toISOString();
+    const nowStr = serverNowIso();
 
     const run = async (tx: any) => {
       for (const assignment of codeAssignments) {

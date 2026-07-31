@@ -13,8 +13,8 @@ import {
   programme as programmeTable,
   user as userTable,
 } from "@/core/database/schema";
+import { isExpired } from "@/core/datetime";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
-import { parseStoredInstant } from "@/core/utils/date-time";
 import { AssignmentService } from "@/features/assignments/services/assignment.service";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
@@ -63,10 +63,7 @@ export async function getActorForCreatedBy(userId: string) {
 function assertAssignmentWindowOpen(
   festival: { programmeAssignmentDeadline?: string | null } | null | undefined,
 ) {
-  if (
-    festival?.programmeAssignmentDeadline &&
-    new Date() > parseStoredInstant(festival.programmeAssignmentDeadline)
-  ) {
+  if (isExpired(festival?.programmeAssignmentDeadline)) {
     throw new AppError(ERROR_MESSAGES.ASSIGNMENT_DEADLINE_PASSED);
   }
 }
@@ -91,7 +88,7 @@ export async function resolveAssignmentActorContext(
   if (
     !tlSession ||
     tlSession.revokedAt ||
-    parseStoredInstant(tlSession.expiresAt) <= new Date() ||
+    isExpired(tlSession.expiresAt) ||
     !tlSession.participant?.isTeamLeader ||
     tlSession.festivalId !== festivalId ||
     !tlSession.participant.groupId
@@ -456,7 +453,7 @@ export async function getProgrammeTeamMembersAction(
   if (
     !tlSession ||
     tlSession.revokedAt ||
-    parseStoredInstant(tlSession.expiresAt) <= new Date() ||
+    isExpired(tlSession.expiresAt) ||
     !tlSession.participant?.isTeamLeader ||
     tlSession.festivalId !== festivalId ||
     tlSession.participant.groupId !== groupId

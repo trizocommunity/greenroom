@@ -9,6 +9,7 @@ import {
   useMyFestivals,
   useUnusedCredit,
 } from "@/api/client";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,9 +32,9 @@ import {
 import { FestivalCardSkeleton } from "@/components/ui/Skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PRICING_TIERS } from "@/config/pricing";
+import { parseInstant } from "@/core/datetime";
 import type { Tier } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
-import { parseStoredInstant } from "@/core/utils/date-time";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 import { FestivalCard } from "../FestivalCard";
 import { JoinedFestivalCard } from "../JoinedFestivalCard";
@@ -49,6 +50,7 @@ export function OverviewTab({
 }: OverviewTabProps) {
   const router = useRouter();
   const [confirmationTier, setConfirmationTier] = useState<Tier | null>(null);
+  const displayTz = useDisplayTimezone();
 
   const { data: myFestivalData, isLoading: isFestivalLoading } =
     useMyFestivals();
@@ -192,18 +194,25 @@ export function OverviewTab({
 
                   {/* Expiry Progress Section */}
                   <div className="mt-8 pt-6 border-t border-border">
-                    {(() => {
-                      const start = parseStoredInstant(
+{(() => {
+                      const start = parseInstant(
                         credit.validFrom as string | Date,
                       );
-                      const end = credit.validUntil
-                        ? parseStoredInstant(credit.validUntil as string | Date)
-                        : new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000);
+                      const endDate = credit.validUntil
+                        ? parseInstant(credit.validUntil as string | Date)
+                        : null;
+                      const end =
+                        endDate ??
+                        new Date((start?.getTime() ?? Date.now()) + 30 * 24 * 60 * 60 * 1000);
+                      const startMs = start?.getTime() ?? Date.now();
                       const now = new Date();
 
-                      const totalDuration = end.getTime() - start.getTime();
-                      const elapsed = now.getTime() - start.getTime();
-                      let progress = (elapsed / totalDuration) * 100;
+                      const totalDuration = end.getTime() - startMs;
+                      const elapsed = now.getTime() - startMs;
+                      let progress =
+                        totalDuration > 0
+                          ? (elapsed / totalDuration) * 100
+                          : 0;
                       progress = Math.min(100, Math.max(0, progress));
 
                       const daysLeft = Math.ceil(

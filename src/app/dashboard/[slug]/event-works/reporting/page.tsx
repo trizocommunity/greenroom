@@ -10,8 +10,8 @@ import {
   festival as festivalTable,
   stage as stageTable,
 } from "@/core/database/schema";
+import { parseInstant } from "@/core/datetime";
 import type { Tier } from "@/core/types/app-enums";
-import { parseStoredInstant } from "@/core/utils/date-time";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
 import { getProgrammeReportingBoardAction } from "@/features/programmes/actions/programme-reporting.actions";
@@ -99,13 +99,13 @@ export default async function ProgrammeReportingPage({
     .map((item: any) => ({
       ...item,
       startTime: item.startTime
-        ? parseStoredInstant(item.startTime)
+        ? (parseInstant(item.startTime) ?? new Date(NaN))
         : new Date(),
       reportingSession: item.reportingSession
         ? {
             ...item.reportingSession,
             windowEndsAt: item.reportingSession.windowEndsAt
-              ? parseStoredInstant(item.reportingSession.windowEndsAt)
+              ? (parseInstant(item.reportingSession.windowEndsAt) ?? null)
               : null,
           }
         : null,

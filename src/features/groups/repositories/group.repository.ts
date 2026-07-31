@@ -4,6 +4,7 @@ import {
   group as groups,
   participant as participants,
 } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 
 export async function createGroup(
   data: Omit<typeof groups.$inferInsert, "id" | "updatedAt"> & {
@@ -16,7 +17,7 @@ export async function createGroup(
     .insert(groups)
     .values({
       id: data.id ?? randomUUID(),
-      updatedAt: data.updatedAt ?? new Date().toISOString(),
+      updatedAt: data.updatedAt ?? serverNowIso(),
       ...data,
     })
     .returning();

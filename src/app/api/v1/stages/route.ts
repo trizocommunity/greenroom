@@ -5,6 +5,7 @@ import { badRequest, createProtectedHandler, ok } from "@/api/lib";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { db } from "@/core/database/client";
 import { stage } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 import { provisionStagePortalCredential } from "@/features/stage-portal/actions/stage-portal-credential.actions";
 
 const handler = createProtectedHandler({
@@ -34,7 +35,7 @@ const handler = createProtectedHandler({
     if (!parsed.success)
       return badRequest("INVALID_INPUT", parsed.error.message);
 
-    const now = new Date().toISOString();
+    const now = serverNowIso();
     const [newStage] = await db
       .insert(stage)
       .values({

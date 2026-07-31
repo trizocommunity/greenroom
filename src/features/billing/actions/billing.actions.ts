@@ -8,6 +8,12 @@ import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { payment as paymentTable } from "@/core/database/schema";
 import {
+  fromNow,
+  MS,
+  serverNowIso,
+  serverNowMs,
+} from "@/core/datetime/server";
+import {
   AppError,
   ERROR_MESSAGES,
   handleActionError,
@@ -43,7 +49,7 @@ export async function initiatePayment(
     }
 
     // Check for existing pending payment
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const yesterday = fromNow(-MS.day);
     const existingPayment = await db.query.payment.findFirst({
       where: and(
         eq(paymentTable.userId, session.userId),
@@ -72,7 +78,7 @@ export async function initiatePayment(
     const order = await RazorpayService.createOrder(
       config.price * 100,
       "INR",
-      `rcpt_${Date.now()}`.substring(0, 40),
+      `rcpt_${serverNowMs()}`.substring(0, 40),
       {
         userId: session.userId,
         purpose,
@@ -81,7 +87,7 @@ export async function initiatePayment(
     );
 
     // Create Payment Record (Pending)
-    const now = new Date();
+    const now = serverNowIso();
 
     const paymentId = randomUUID();
     await db.insert(paymentTable).values({
@@ -94,7 +100,7 @@ export async function initiatePayment(
       purpose,
       tier,
       used: false,
-      updatedAt: now.toISOString(),
+      updatedAt: now,
     });
 
     return {
@@ -141,7 +147,7 @@ export async function verifyPayment(
         .update(paymentTable)
         .set({
           status: "FAILED",
-          updatedAt: new Date().toISOString(),
+          updatedAt: serverNowIso(),
         })
         .where(eq(paymentTable.id, paymentId));
       throw new AppError(ERROR_MESSAGES.PAYMENT_SIGNATURE_INVALID);
@@ -153,7 +159,7 @@ export async function verifyPayment(
       .set({
         status: "PAID",
         referenceId: razorpayPaymentId,
-        updatedAt: new Date().toISOString(),
+        updatedAt: serverNowIso(),
       })
       .where(
         and(eq(paymentTable.id, paymentId), eq(paymentTable.status, "PENDING")),

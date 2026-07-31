@@ -1,4 +1,3 @@
-import { format } from "date-fns";
 import { ViewDetailsDialog } from "@/components/admin/ViewDetailsDialog";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -9,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { parseStoredInstant } from "@/core/utils/date-time";
+import { formatDate } from "@/core/datetime";
 import { adminService } from "@/features/admin/services/admin.service";
 
 export default async function AdminUsersPage() {
@@ -66,7 +65,7 @@ export default async function AdminUsersPage() {
                   )}
                 </TableCell>
                 <TableCell>
-                  {format(parseStoredInstant(user.createdAt), "MMM d, yyyy")}
+                  {formatDate(user.createdAt, { tz: "UTC", style: "medium" })}
                 </TableCell>
                 <TableCell>
                   <Badge variant={user.isActive ? "default" : "secondary"}>

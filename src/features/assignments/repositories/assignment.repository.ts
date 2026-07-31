@@ -1,6 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { programmeAssignment } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 
 export async function createAssignment(
   data: Omit<typeof programmeAssignment.$inferInsert, "id" | "updatedAt"> & {
@@ -13,7 +14,7 @@ export async function createAssignment(
     .insert(programmeAssignment)
     .values({
       id: data.id ?? randomUUID(),
-      updatedAt: data.updatedAt ?? new Date().toISOString(),
+      updatedAt: data.updatedAt ?? serverNowIso(),
       ...data,
     })
     .returning();

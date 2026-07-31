@@ -2,12 +2,14 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
   type institutionType,
   user as userTable,
 } from "@/core/database/schema";
+import { isValidTimezone, zodTimezoneLoose } from "@/core/datetime";
 import {
   AppError,
   ERROR_MESSAGES,
@@ -18,11 +20,30 @@ import { createInstitution } from "@/features/institution/repositories/instituti
 
 type InstitutionType = (typeof institutionType.enumValues)[number];
 
-export async function completePersonalOnboardingAction(data: {
-  fullName: string;
-  displayName: string;
-  userRole: string;
-}): Promise<ActionResponse<null>> {
+const personalOnboardingSchema = z.object({
+  fullName: z.string().min(2, "Full name must be at least 2 characters"),
+  displayName: z.string().min(2, "Display name must be at least 2 characters"),
+  userRole: z.string().min(1, "Please select a role"),
+  timezone: zodTimezoneLoose.optional(),
+});
+
+const institutionalOnboardingSchema = z.object({
+  fullName: z.string().min(2, "Full name must be at least 2 characters"),
+  displayName: z.string().min(2, "Display name must be at least 2 characters"),
+  userRole: z.string().min(1, "Please select a role"),
+  institutionName: z
+    .string()
+    .min(2, "Institution name must be at least 2 characters"),
+  institutionType: z.string().min(1, "Please select institution type"),
+  affiliation: z.string().optional(),
+  city: z.string().optional(),
+  sizeRange: z.string().optional(),
+  timezone: zodTimezoneLoose.optional(),
+});
+
+export async function completePersonalOnboardingAction(
+  data: z.infer<typeof personalOnboardingSchema>,
+): Promise<ActionResponse<null>> {
   try {
     const session = await getSession();
 
@@ -30,12 +51,18 @@ export async function completePersonalOnboardingAction(data: {
       throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
     }
 
+    const parsed = personalOnboardingSchema.parse(data);
+    const timezone = parsed.timezone && isValidTimezone(parsed.timezone)
+      ? parsed.timezone
+      : null;
+
     await db
       .update(userTable)
       .set({
-        fullName: data.fullName,
-        displayName: data.displayName,
+        fullName: parsed.fullName,
+        displayName: parsed.displayName,
         accountType: "PERSONAL",
+        timezone,
       })
       .where(eq(userTable.id, session.userId));
 
@@ -48,16 +75,9 @@ export async function completePersonalOnboardingAction(data: {
   }
 }
 
-export async function completeInstitutionalOnboardingAction(data: {
-  fullName: string;
-  displayName: string;
-  userRole: string;
-  institutionName: string;
-  institutionType: InstitutionType;
-  affiliation?: string | null;
-  city?: string | null;
-  sizeRange?: string | null;
-}): Promise<ActionResponse<null>> {
+export async function completeInstitutionalOnboardingAction(
+  data: z.infer<typeof institutionalOnboardingSchema>,
+): Promise<ActionResponse<null>> {
   try {
     const session = await getSession();
 
@@ -65,22 +85,28 @@ export async function completeInstitutionalOnboardingAction(data: {
       throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
     }
 
+    const parsed = institutionalOnboardingSchema.parse(data);
+    const timezone = parsed.timezone && isValidTimezone(parsed.timezone)
+      ? parsed.timezone
+      : null;
+
     const institution = await createInstitution({
-      name: data.institutionName,
-      type: data.institutionType,
-      affiliation: data.affiliation ?? null,
-      city: data.city ?? null,
-      sizeRange: data.sizeRange ?? null,
+      name: parsed.institutionName,
+      type: parsed.institutionType as InstitutionType,
+      affiliation: parsed.affiliation ?? null,
+      city: parsed.city ?? null,
+      sizeRange: parsed.sizeRange ?? null,
       ownerId: session.userId,
     });
 
     await db
       .update(userTable)
       .set({
-        fullName: data.fullName,
-        displayName: data.displayName,
+        fullName: parsed.fullName,
+        displayName: parsed.displayName,
         accountType: "INSTITUTIONAL",
         institutionId: institution.id,
+        timezone,
       })
       .where(eq(userTable.id, session.userId));
 

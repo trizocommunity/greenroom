@@ -1,47 +1,34 @@
 import "server-only";
 
 import { drizzle } from "drizzle-orm/node-postgres";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { Pool, type PoolConfig } from "pg";
+import { buildPoolConfig } from "./connection";
 import * as relations from "./relations";
 import * as schema from "./schema";
 
 const dbSchema = { ...schema, ...relations };
 
-import { Pool, type PoolConfig } from "pg";
-import { buildPoolConfig, scrubConnectionString } from "./connection";
+type Db = NodePgDatabase<typeof dbSchema>;
 
-const globalForDb = globalThis as unknown as {
-  pool: Pool | undefined;
-  db: ReturnType<typeof drizzle<typeof dbSchema>> | undefined;
-};
+let _pool: Pool | undefined;
+let _db: Db | undefined;
+let _shutdownRegistered = false;
 
-const rawConnectionString = process.env.DATABASE_URL;
-if (!rawConnectionString) throw new Error("DATABASE_URL is not defined");
-
-const connectionString =
-  scrubConnectionString(rawConnectionString) || rawConnectionString;
-const poolConfig: PoolConfig = buildPoolConfig(rawConnectionString);
-
-if (!globalForDb.pool) {
-  globalForDb.pool = new Pool(poolConfig);
-}
-export const pool = globalForDb.pool;
-
-if (process.env.NODE_ENV !== "production") globalForDb.pool = pool;
-
-if (!globalForDb.db) {
-  globalForDb.db = drizzle(pool, { schema: dbSchema });
-}
-export const db = globalForDb.db;
-
-if (process.env.NODE_ENV !== "production") {
-  globalForDb.db = db;
+function isBuildPhase(): boolean {
+  return (
+    process.env.NEXT_PHASE === "phase-production-build" ||
+    process.env.NEXT_PHASE === "phase-development-build"
+  );
 }
 
-// Graceful shutdown (production only, skip build)
-if (
-  process.env.NODE_ENV === "production" &&
-  process.env.NEXT_PHASE !== "phase-production-build"
-) {
+function handlePoolError(err: Error): void {
+  console.error("Database pool error:", err);
+}
+
+function registerShutdown(pool: Pool): void {
+  if (_shutdownRegistered) return;
+  _shutdownRegistered = true;
   const shutdown = async () => {
     await pool.end();
   };
@@ -49,18 +36,58 @@ if (
   process.on("SIGTERM", shutdown);
 }
 
-// Capture pool-level errors. In production, surface to Sentry so we don't
-// silently swallow transient pgBouncer / Postgres disconnects.
-pool.on("error", (err) => {
-  console.error("Database pool error:", err);
-  if (process.env.NODE_ENV === "production") {
-    try {
-      // Lazy require — @sentry/nextjs only resolves in runtime bundles.
-      const { captureException } =
-        require("@sentry/nextjs") as typeof import("@sentry/nextjs");
-      captureException(err, { tags: { area: "pg-pool" } });
-    } catch {
-      // Sentry not initialized; ignore.
-    }
+/**
+ * Lazy pool construction. We defer reading `process.env.DATABASE_URL` and
+ * creating the `pg.Pool` until the first call so that `next build`'s
+ * "Collecting page data" phase can statically import this module without
+ * throwing when the env var is unavailable.
+ */
+export function getPool(): Pool {
+  if (_pool) return _pool;
+  if (isBuildPhase()) {
+    throw new Error(
+      "Database pool accessed during build phase (DATABASE_URL likely not set)",
+    );
   }
-});
+  const rawConnectionString = process.env.DATABASE_URL;
+  if (!rawConnectionString) throw new Error("DATABASE_URL is not defined");
+  const poolConfig: PoolConfig = buildPoolConfig(rawConnectionString);
+  const pool = new Pool(poolConfig);
+  pool.on("error", handlePoolError);
+  if (process.env.NODE_ENV === "production") {
+    registerShutdown(pool);
+  }
+  _pool = pool;
+  return pool;
+}
+
+export function getDb(): Db {
+  if (_db) return _db;
+  _db = drizzle(getPool(), { schema: dbSchema });
+  return _db;
+}
+
+/**
+ * Proxy so existing `db.select()` / `db.transaction(...)` call sites work
+ * unchanged. Each property access goes through `getDb()`, which lazily
+ * constructs the pool on first use.
+ */
+export const db = new Proxy({} as Db, {
+  get(_target, prop, receiver) {
+    const real = getDb() as unknown as Record<PropertyKey, unknown>;
+    const value = Reflect.get(real, prop, receiver);
+    return typeof value === "function" ? (value as Function).bind(real) : value;
+  },
+}) as Db;
+
+/**
+ * Direct pool access for code that needs `pool.query(...)` or `pool.end()`.
+ * Lazy — same construction rules as `getDb()`.
+ */
+export const pool = new Proxy({} as Pool, {
+  get(_target, prop, receiver) {
+    const real = getPool() as unknown as Record<PropertyKey, unknown>;
+    const value = Reflect.get(real, prop, receiver);
+    return typeof value === "function" ? (value as Function).bind(real) : value;
+  },
+}) as Pool;

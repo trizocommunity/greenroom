@@ -1,6 +1,5 @@
 "use client";
 
-import { format } from "date-fns";
 import {
   ArrowUpDown,
   Binary,
@@ -33,6 +32,7 @@ import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { ChestNumberSetup } from "@/components/festival/event-works/chest-numbers/ChestNumberSetup";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { DeadlinesCard } from "@/components/festival/pre-event-works/DeadlinesCard";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
@@ -66,7 +66,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { parseStoredInstant } from "@/core/utils/date-time";
+import { formatDate, isAfter, parseInstant } from "@/core/datetime";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { getQrCodeContent } from "@/features/participants/services/participant-profile-url";
 import { useFeature } from "@/features/plan-features/hooks/use-feature";
@@ -105,6 +105,7 @@ export function ParticipantsClient({
   const canUseQR = useFeature("qrCodes");
   const { isReadOnly } = useFestivalReadOnly();
   const { participantCreationDeadline } = useFestival();
+  const displayTz = useDisplayTimezone();
 
   const singleCategories = (categories ?? []).filter(
     (c: any) => c.type === "SINGLE",
@@ -162,10 +163,12 @@ export function ParticipantsClient({
         case "NAME":
           return a.name.localeCompare(b.name);
         case "CREATED":
-          return (
-            parseStoredInstant(b.createdAt).getTime() -
-            parseStoredInstant(a.createdAt).getTime()
-          );
+          // b.createdAt > a.createdAt (newest first) → positive compare result
+          return isAfter(b.createdAt, a.createdAt)
+            ? 1
+            : isAfter(a.createdAt, b.createdAt)
+              ? -1
+              : 0;
         case "NUMERIC": {
           const aNum = a.chestNumber?.replace(/\D/g, "");
           const bNum = b.chestNumber?.replace(/\D/g, "");
@@ -546,10 +549,10 @@ export function ParticipantsClient({
                       <span>{participant.group?.name || "—"}</span>
                       <span>{participant.category?.name || "—"}</span>
                       <span className="text-muted-foreground/80">
-                        {format(
-                          parseStoredInstant(participant.createdAt),
-                          "MMM d",
-                        )}
+                        {formatDate(participant.createdAt, {
+                          tz: displayTz,
+                          style: "medium",
+                        })}
                       </span>
                     </div>
                   </div>
@@ -683,10 +686,10 @@ export function ParticipantsClient({
                     </TableCell>
                     <TableCell>{participant.category?.name || "-"}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {format(
-                        parseStoredInstant(participant.createdAt),
-                        "MMM d, yyyy",
-                      )}
+                      {formatDate(participant.createdAt, {
+                        tz: displayTz,
+                        style: "medium",
+                      })}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>

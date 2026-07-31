@@ -7,11 +7,13 @@ import {
 } from "@/core/auth/participant-session";
 import { db } from "@/core/database/client";
 import { participantOtp, participantSession } from "@/core/database/schema";
+import { dateKeyLocal } from "@/core/datetime";
+import { fromNow, MS, serverNowIso } from "@/core/datetime/server";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { findGroupsByFestival } from "@/features/groups/repositories/group.repository";
 
-const OTP_TTL_MS = 10 * 60 * 1000;
+const OTP_TTL_MS = 10 * MS.minute;
 const OTP_MAX_ATTEMPTS = 5;
 const OTP_MAX_REQUESTS_PER_10_MIN = 5;
 
@@ -72,13 +74,10 @@ export const ParticipantLoginService = {
       if (!participantData.dateOfBirth) {
         throw new AppError(ERROR_MESSAGES.PARTICIPANT_NOT_FOUND);
       }
-      const participantDob = new Date(participantData.dateOfBirth)
-        .toISOString()
-        .split("T")[0];
-      const inputDob = new Date(input.identifierValue)
-        .toISOString()
-        .split("T")[0];
-      if (participantDob !== inputDob) {
+      const festivalTz = festival.timezone ?? "UTC";
+      const participantDob = dateKeyLocal(participantData.dateOfBirth, festivalTz);
+      const inputDob = dateKeyLocal(input.identifierValue, festivalTz);
+      if (!participantDob || !inputDob || participantDob !== inputDob) {
         throw new AppError(ERROR_MESSAGES.PARTICIPANT_NOT_FOUND);
       }
     } else if (input.identifierKind === "GROUP") {
@@ -120,7 +119,7 @@ export const ParticipantLoginService = {
       );
     }
 
-    const tenMinsAgo = new Date(Date.now() - OTP_TTL_MS).toISOString();
+    const tenMinsAgo = fromNow(-OTP_TTL_MS);
     const recentRequests = await db.query.participantOtp.findMany({
       where: (otp: any, { eq, and, gt }: any) =>
         and(
@@ -135,14 +134,14 @@ export const ParticipantLoginService = {
 
     const otpCode = generateOtpCode();
     const codeHash = hashOtp(otpCode);
-    const expiresAt = new Date(Date.now() + OTP_TTL_MS);
-    const now = new Date().toISOString();
+    const expiresAt = fromNow(OTP_TTL_MS);
+    const now = serverNowIso();
 
     await db.insert(participantOtp).values({
       id: crypto.randomUUID(),
       participantId: participantData.id,
       codeHash,
-      expiresAt: expiresAt.toISOString(),
+      expiresAt,
       updatedAt: now,
     });
 
@@ -197,7 +196,7 @@ export const ParticipantLoginService = {
       throw new AppError("Not a team leader.");
     }
 
-    const now = new Date().toISOString();
+    const now = serverNowIso();
     const latestOtp = await db.query.participantOtp.findFirst({
       where: (otp: any, { eq, and, isNull, gt }: any) =>
         and(
@@ -260,7 +259,7 @@ export const ParticipantLoginService = {
     const tokenHash = getTokenHash(rawToken);
     await db
       .update(participantSession)
-      .set({ revokedAt: new Date().toISOString() })
+      .set({ revokedAt: serverNowIso() })
       .where(
         and(
           eq(participantSession.tokenHash, tokenHash),

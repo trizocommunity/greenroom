@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { cookies } from "next/headers";
 import { db } from "@/core/database/client";
+import { MS, nowPlus, serverNowIso } from "@/core/datetime/server";
 
 export const STAGE_PORTAL_SESSION_COOKIE = "stage_portal_session";
 
@@ -9,7 +10,7 @@ export function createRawSessionToken(): string {
 }
 
 export function getStagePortalSessionExpiryDate(): Date {
-  return new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+  return nowPlus(24 * MS.hour); // 24 hours
 }
 
 export function getTokenHash(rawToken: string): string {
@@ -56,7 +57,7 @@ export async function getStagePortalSessionFromCookie() {
       and(
         eq(s.tokenHash, tokenHash),
         isNull(s.revokedAt),
-        gt(s.expiresAt, new Date().toISOString()),
+        gt(s.expiresAt, serverNowIso()),
       ),
     with: {
       stage: {

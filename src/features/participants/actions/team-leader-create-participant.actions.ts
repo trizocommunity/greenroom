@@ -5,8 +5,8 @@ import { revalidatePath } from "next/cache";
 import { getParticipantSessionFromCookie } from "@/core/auth/participant-session";
 import { db } from "@/core/database/client";
 import { festival as festivalTable } from "@/core/database/schema";
+import { isExpired } from "@/core/datetime";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
-import { parseStoredInstant } from "@/core/utils/date-time";
 import { assignChestNumberForParticipantInternal } from "@/features/participants/actions/chest-number.actions";
 import { ParticipantService } from "@/features/participants/services/participant.service";
 
@@ -15,7 +15,7 @@ async function resolveTeamLeaderContext(festivalId: string) {
   if (
     !tlSession ||
     tlSession.revokedAt ||
-    parseStoredInstant(tlSession.expiresAt) <= new Date() ||
+    isExpired(tlSession.expiresAt) ||
     !tlSession.participant?.isTeamLeader ||
     tlSession.festivalId !== festivalId ||
     !tlSession.participant.groupId
@@ -50,10 +50,7 @@ export async function createParticipantAsTeamLeaderAction(
   });
   if (!festival) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
 
-  if (
-    festival.participantCreationDeadline &&
-    new Date() > parseStoredInstant(festival.participantCreationDeadline)
-  ) {
+  if (isExpired(festival.participantCreationDeadline)) {
     throw new AppError(ERROR_MESSAGES.PARTICIPANT_CREATION_DEADLINE_PASSED);
   }
 

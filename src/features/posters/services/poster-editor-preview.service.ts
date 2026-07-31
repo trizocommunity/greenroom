@@ -10,6 +10,8 @@ import {
   programme as programmeTable,
   result as resultTable,
 } from "@/core/database/schema";
+import { parseInstant } from "@/core/datetime";
+import { serverNow } from "@/core/datetime/server";
 import {
   buildCandidateCardBindings,
   buildResultPosterBindings,
@@ -27,7 +29,9 @@ import type { PosterTemplateType } from "@/features/posters/types/poster-templat
 export type { EditorPreviewBindingsPayload };
 
 function formatSingleFestDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
+  const date = parseInstant(iso);
+  if (!date) return "Invalid Date";
+  return date.toLocaleDateString(undefined, {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -40,7 +44,7 @@ export function formatFestDateRange(
   end: string | null | undefined,
 ): string {
   const fallback = () =>
-    new Date().toLocaleDateString(undefined, {
+    serverNow().toLocaleDateString(undefined, {
       day: "numeric",
       month: "short",
       year: "numeric",
@@ -63,10 +67,10 @@ export function formatFestDateRange(
   }
 
   try {
-    const s = new Date(start!);
-    const e = new Date(end!);
-    if (Number.isNaN(s.getTime())) return formatSingleFestDate(end!);
-    if (Number.isNaN(e.getTime())) return formatSingleFestDate(start!);
+    const s = parseInstant(start);
+    const e = parseInstant(end);
+    if (!s) return formatSingleFestDate(end!);
+    if (!e) return formatSingleFestDate(start!);
     if (s.toDateString() === e.toDateString())
       return formatSingleFestDate(start!);
 

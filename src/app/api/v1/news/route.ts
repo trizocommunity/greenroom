@@ -13,6 +13,7 @@ import {
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { db } from "@/core/database/client";
 import { festivalNews } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { StorageUsageService } from "@/features/festivals/services/storage-usage.service";
 import { UsageCounterService } from "@/features/festivals/services/usage-counter.service";
@@ -68,7 +69,7 @@ const handler = createProtectedHandler({
 
     await db.insert(festivalNews).values({
       id: randomUUID(),
-      updatedAt: new Date().toISOString(),
+      updatedAt: serverNowIso(),
       festivalId,
       title: parsed.data.title,
       excerpt: parsed.data.excerpt ?? null,

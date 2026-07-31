@@ -3,6 +3,7 @@ import { PLAN_FEATURE_TOGGLE_KEYS } from "@/config/plan-features.config";
 import { TIER_CONFIG } from "@/config/pricing";
 import { db } from "@/core/database/client";
 import { systemConfig } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 import type { FeaturePath } from "@/features/plan-features/services/features";
 
 type Tier = "BASIC" | "STANDARD" | "PRO";
@@ -103,7 +104,7 @@ export async function setPlanFeatureOverride(
 
   try {
     const { randomUUID } = await import("crypto");
-    const now = new Date().toISOString();
+    const now = serverNowIso();
     await db
       .insert(systemConfig)
       .values({

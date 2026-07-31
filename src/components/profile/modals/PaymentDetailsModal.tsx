@@ -1,6 +1,5 @@
 "use client";
 
-import { format } from "date-fns";
 import {
   Box,
   Calendar,
@@ -12,6 +11,7 @@ import {
   Tag,
   XCircle,
 } from "lucide-react";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { parseStoredInstant } from "@/core/utils/date-time";
+import { formatDateTime, parseInstant } from "@/core/datetime";
 
 interface PaymentDetailsModalProps {
   isOpen: boolean;
@@ -32,9 +32,10 @@ export function PaymentDetailsModal({
   onClose,
   payment,
 }: PaymentDetailsModalProps) {
+  const displayTz = useDisplayTimezone();
   if (!payment) return null;
   const createdAt = payment.createdAt
-    ? parseStoredInstant(payment.createdAt)
+    ? parseInstant(payment.createdAt)
     : null;
 
   return (
@@ -90,7 +91,13 @@ export function PaymentDetailsModal({
                   Date
                 </div>
                 <p className="font-medium text-sm text-heading">
-                  {createdAt ? format(createdAt, "PPP p") : "N/A"}
+                  {createdAt
+                    ? formatDateTime(createdAt, {
+                        tz: displayTz,
+                        dateStyle: "long",
+                        timeStyle: "short",
+                      })
+                    : "N/A"}
                 </p>
               </div>
 

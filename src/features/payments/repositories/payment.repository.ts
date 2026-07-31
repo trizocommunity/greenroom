@@ -1,6 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { payment } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 
 export type Payment = typeof payment.$inferSelect;
 export type PaymentStatus = "PENDING" | "PAID" | "FAILED";
@@ -25,7 +26,7 @@ export async function createPayment(
     .insert(payment)
     .values({
       id: randomUUID(),
-      updatedAt: new Date().toISOString(),
+      updatedAt: serverNowIso(),
       userId,
       amount,
       currency,

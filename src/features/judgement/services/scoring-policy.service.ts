@@ -8,6 +8,7 @@ import {
   festivalScoringPolicy as scoringPolicyTable,
 } from "@/core/database/schema";
 import { AppError } from "@/core/errors/errors";
+import { serverNowIso } from "@/core/datetime/server";
 
 export type GradeRule = {
   grade: string;
@@ -305,7 +306,7 @@ export async function upsertScoringPolicyActionData(input: {
     max: Math.round(rule.max),
   }));
 
-  const now = new Date().toISOString();
+  const now = serverNowIso();
   await db.transaction(async (tx) => {
     const existing = await tx.query.festivalScoringPolicy.findFirst({
       where: eq(scoringPolicyTable.festivalId, input.festivalId),

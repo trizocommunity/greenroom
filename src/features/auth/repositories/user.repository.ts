@@ -2,6 +2,7 @@ import { count, desc, eq, type SQL, sql } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { generateId } from "@/core/database/ids";
 import { user as users } from "@/core/database/schema";
+import { serverNowIso } from "@/core/datetime/server";
 
 export async function findUserById(id: string) {
   return db.query.user.findFirst({
@@ -41,7 +42,7 @@ export async function createUser(
     .insert(users)
     .values({
       id: data.id ?? generateId(),
-      updatedAt: data.updatedAt ?? new Date().toISOString(),
+      updatedAt: data.updatedAt ?? serverNowIso(),
       ...data,
     })
     .returning();

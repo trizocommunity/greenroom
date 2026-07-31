@@ -8,9 +8,9 @@ import {
   participant as participantTable,
   user as userTable,
 } from "@/core/database/schema";
+import { isExpired } from "@/core/datetime";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import type { Tier } from "@/core/types/app-enums";
-import { parseStoredInstant } from "@/core/utils/date-time";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 
@@ -74,7 +74,7 @@ export async function assertParticipantNotificationAccess(
   const tlSession = await getParticipantSessionFromCookie();
   if (
     tlSession &&
-    parseStoredInstant(tlSession.expiresAt) > new Date() &&
+    !isExpired(tlSession.expiresAt) &&
     !tlSession.revokedAt &&
     tlSession.festivalId === participant.festivalId &&
     tlSession.participantId === participantId

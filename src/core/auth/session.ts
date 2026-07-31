@@ -3,6 +3,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
+import { MS, nowPlus } from "@/core/datetime/server";
 
 /** Matches Prisma GlobalRole – use for type-safe session role */
 export type GlobalRole = "USER" | "SUPER_ADMIN";
@@ -38,7 +39,7 @@ export async function decrypt(input: string): Promise<SessionPayload> {
 }
 
 export async function createSession(userId: string, role: GlobalRole) {
-  const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const expires = nowPlus(MS.week);
   const session = await encrypt({ userId, role, expires });
 
   const cookieStore = await cookies();
@@ -58,7 +59,7 @@ export async function updateSession(data: Partial<SessionPayload>) {
   const newPayload: SessionPayload = {
     ...session,
     ...data,
-    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    expires: nowPlus(MS.week),
   };
 
   const newToken = await encrypt(newPayload);
