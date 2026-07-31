@@ -52,14 +52,21 @@ const handler = createHandler({
         console.log(`[DEV] Magic link: ${magicLinkUrl}`);
       }
 
-      const user = await db.query.user.findFirst({
-        where: eq(userTable.email, email.toLowerCase()),
-      });
+      let user;
+      try {
+        user = await db.query.user.findFirst({
+          where: eq(userTable.email, email.toLowerCase()),
+        });
+      } catch (e) {
+        console.error("[auth/magic-link] user lookup FAILED:", e);
+        throw e;
+      }
 
       if (user) {
         try {
           await sendMagicLinkEmail(email, token);
-        } catch {
+        } catch (e) {
+          console.error("[auth/magic-link] sendMagicLinkEmail FAILED:", e);
           // Send failed — URL already logged above, return success to avoid enumeration
         }
       }
