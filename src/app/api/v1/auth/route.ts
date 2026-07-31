@@ -37,7 +37,15 @@ const handler = createHandler({
     }
 
     if (action === "magic-link") {
-      const body = await request.json();
+      const rawBody = await request.text();
+      console.error("[auth/magic-link] RAW BODY:", JSON.stringify(rawBody), "len:", rawBody.length, "content-type:", request.headers.get("content-type"));
+      let body: any;
+      try {
+        body = JSON.parse(rawBody);
+      } catch (e) {
+        console.error("[auth/magic-link] JSON.parse FAILED on raw body:", e);
+        throw e;
+      }
       const { email } = body;
 
       if (!email || typeof email !== "string") {
