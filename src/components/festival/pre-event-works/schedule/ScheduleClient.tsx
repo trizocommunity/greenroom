@@ -144,7 +144,23 @@ function isProgrammeEntry(entry: ScheduleEntryWithRelations): boolean {
 }
 
 function getDateKey(d: Date): string {
+  if (Number.isNaN(d.getTime())) return "";
   return format(d, "yyyy-MM-dd");
+}
+
+/**
+ * Format a `Date` produced from a stored instant, falling back to `"—"`
+ * when the instant is missing/unparseable. Centralises the "Invalid
+ * time value" guard so date-fns' `format(...)` never receives a
+ * `Date` whose `getTime()` is `NaN`. See ISSUE-13 followup.
+ */
+function safeFormat(
+  d: Date,
+  pattern: string,
+  fallback: string = "—",
+): string {
+  if (Number.isNaN(d.getTime())) return fallback;
+  return format(d, pattern);
 }
 
 export function ScheduleClient({
@@ -201,6 +217,7 @@ export function ScheduleClient({
     Record<string, ScheduleEntryWithRelations[]>
   >((acc, entry) => {
     const key = getDateKey(parseStoredScheduleInstant(entry.startTime));
+    if (!key) return acc;
     if (!acc[key]) acc[key] = [];
     acc[key].push(entry);
     return acc;
@@ -661,12 +678,12 @@ export function ScheduleClient({
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          {format(
+                          {safeFormat(
                             parseStoredScheduleInstant(entry.startTime),
                             "h:mm a",
                           )}
                           {entry.endTime &&
-                            ` – ${format(
+                            ` – ${safeFormat(
                               parseStoredScheduleInstant(entry.endTime),
                               "h:mm a",
                             )}`}
@@ -1309,9 +1326,13 @@ function EditEntryDialog({
   stages: StageOption[];
   dateOptions: DateOption[];
 }) {
-  const entryDateStr = format(
+  const entryDateStr = safeFormat(
     parseStoredScheduleInstant(entry.startTime),
     "yyyy-MM-dd",
+  );
+  const entryLabel = safeFormat(
+    parseStoredScheduleInstant(entry.startTime),
+    "EEE, d MMM yyyy",
   );
   const optionsForEdit =
     dateOptions.length > 0
@@ -1320,30 +1341,24 @@ function EditEntryDialog({
         : [
             {
               value: entryDateStr,
-              label: format(
-                parseStoredScheduleInstant(entry.startTime),
-                "EEE, d MMM yyyy",
-              ),
+              label: entryLabel,
             },
             ...dateOptions,
           ]
       : [
           {
             value: entryDateStr,
-            label: format(
-              parseStoredScheduleInstant(entry.startTime),
-              "EEE, d MMM yyyy",
-            ),
+            label: entryLabel,
           },
         ];
   const [stageId, setStageId] = useState(entry.stageId ?? "");
   const [dateStr, setDateStr] = useState(entryDateStr);
   const [startTimeStr, setStartTimeStr] = useState(
-    format(parseStoredScheduleInstant(entry.startTime), "HH:mm"),
+    safeFormat(parseStoredScheduleInstant(entry.startTime), "HH:mm"),
   );
   const [endTimeStr, setEndTimeStr] = useState(
     entry.endTime
-      ? format(parseStoredScheduleInstant(entry.endTime), "HH:mm")
+      ? safeFormat(parseStoredScheduleInstant(entry.endTime), "HH:mm")
       : "",
   );
   const [conflictError, setConflictError] = useState<string | null>(null);
