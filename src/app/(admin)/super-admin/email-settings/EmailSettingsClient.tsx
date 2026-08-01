@@ -1,3 +1,5 @@
+"use client";
+
 import { Loader2, Power } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";

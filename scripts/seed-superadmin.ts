@@ -7,6 +7,7 @@ const raw = process.env.DATABASE_URL;
 if (!raw) throw new Error("DATABASE_URL must be defined in .env");
 
 const isLocal = /localhost|127\.0\.0\.1|::1/i.test(raw);
+const url: string = raw;
 const force = process.argv.includes("--force");
 if (!isLocal && !force) {
   throw new Error(
@@ -21,7 +22,7 @@ function maskUrl(url: string): string {
 async function main() {
   const { db, pool } = buildDb();
   try {
-    console.log(`Seeding super admin against: ${maskUrl(raw)}`);
+    console.log(`Seeding super admin against: ${maskUrl(url)}`);
     await createSuperAdmin(db);
     console.log(`Done. Admin: ${SUPER_ADMIN_EMAIL} (${SUPER_ADMIN_NAME})`);
   } finally {
