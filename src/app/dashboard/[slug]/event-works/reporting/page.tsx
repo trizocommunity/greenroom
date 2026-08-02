@@ -10,7 +10,6 @@ import {
   festival as festivalTable,
   stage as stageTable,
 } from "@/core/database/schema";
-import { parseInstant } from "@/core/datetime";
 import type { Tier } from "@/core/types/app-enums";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
@@ -89,27 +88,21 @@ export default async function ProgrammeReportingPage({
       )
     : null;
 
-  const normalizedBoard = (board as any[])
-    .filter(
-      (item: any) =>
-        accessibleStageIds === "all" ||
-        !item.stage ||
-        accessibleStageIds.includes(item.stage.id),
-    )
-    .map((item: any) => ({
-      ...item,
-      startTime: item.startTime
-        ? (parseInstant(item.startTime) ?? new Date(NaN))
-        : new Date(),
-      reportingSession: item.reportingSession
-        ? {
-            ...item.reportingSession,
-            windowEndsAt: item.reportingSession.windowEndsAt
-              ? (parseInstant(item.reportingSession.windowEndsAt) ?? null)
-              : null,
-          }
-        : null,
-    })) as ReportingBoardItem[];
+  const normalizedBoard = (board as any[]).map((item: any) => ({
+    ...item,
+    startTime: item.startTime ?? null,
+    reportingSession: item.reportingSession
+      ? {
+          ...item.reportingSession,
+          windowEndsAt:
+            item.reportingSession.windowEndsAt instanceof Date
+              ? item.reportingSession.windowEndsAt
+              : item.reportingSession.windowEndsAt
+                ? new Date(item.reportingSession.windowEndsAt)
+                : null,
+        }
+      : null,
+  })) as ReportingBoardItem[];
 
   const assignments = assignmentRows.map((row) => ({
     id: row.id,

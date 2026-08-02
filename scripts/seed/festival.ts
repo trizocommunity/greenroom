@@ -1,16 +1,27 @@
 import { eq } from "drizzle-orm";
 import { generateId } from "../../src/core/database/ids";
 import * as schema from "../../src/core/database/schema";
-import { expiresAt, FESTIVAL, FESTIVAL_MEMBERS } from "./config";
+import { TIER_CONFIG } from "../../src/config/pricing";
+import {
+  expiresAtFromCreatedAt,
+  FESTIVAL,
+  FESTIVAL_MEMBERS,
+  getSeedCreatedAt,
+  getSeedDayOffset,
+} from "./config";
 import type { DB } from "./db";
 import { getOrCreateUser } from "./users";
+
+const MS_DAY = 24 * 60 * 60 * 1000;
 
 export async function createFestival(
   db: DB,
   ownerId: string,
   institutionId: string,
 ): Promise<string> {
-  const now = new Date().toISOString();
+  const createdAt = getSeedCreatedAt();
+  const dayOffset = getSeedDayOffset();
+  const expiresAt = expiresAtFromCreatedAt(createdAt);
   const festivalId = generateId();
 
   const existing = await db.query.festival.findFirst({
@@ -22,6 +33,26 @@ export async function createFestival(
       `♻️  Existing Festival '${existing.name}' found. Removing previous data to seed cleanly...`,
     );
     await db.delete(schema.festival).where(eq(schema.festival.id, existing.id));
+  }
+
+  const expectedExpiresAt = expiresAtFromCreatedAt(createdAt);
+  const drift = Math.abs(
+    new Date(expectedExpiresAt).getTime() - new Date(expiresAt).getTime(),
+  );
+  if (drift > MS_DAY) {
+    throw new Error(
+      `[seed] expiresAt drift > 1 day: expected ≈ ${expectedExpiresAt}, got ${expiresAt}. ` +
+        `This would surface as an incoherent "X days left" on the profile card.`,
+    );
+  }
+  if (
+    new Date(expiresAt).getTime() - new Date(createdAt).getTime() !==
+    TIER_CONFIG.PRO.festivalDurationDays * MS_DAY
+  ) {
+    throw new Error(
+      `[seed] expiresAt must equal createdAt + ${TIER_CONFIG.PRO.festivalDurationDays} days. ` +
+        `Got createdAt=${createdAt}, expiresAt=${expiresAt}.`,
+    );
   }
 
   await db.insert(schema.festival).values({
@@ -42,13 +73,16 @@ export async function createFestival(
     isLocked: false,
     startDate: FESTIVAL.startDate,
     endDate: FESTIVAL.endDate,
-    expiresAt: expiresAt(FESTIVAL.startDate),
+    expiresAt,
     chestNumberSettings: FESTIVAL.chestNumberSettings,
-    createdAt: now,
-    updatedAt: now,
+    createdAt,
+    updatedAt: createdAt,
   });
 
-  console.log("👑 Created Pro Tier Festival with start & end dates.");
+  const offsetNote = dayOffset > 0 ? ` (shifted back ${dayOffset}d via SEED_DAY_OFFSET)` : "";
+  console.log(
+    `👑 Created Pro Tier Festival — createdAt=${createdAt}, expiresAt=${expiresAt}${offsetNote}`,
+  );
   return festivalId;
 }
 

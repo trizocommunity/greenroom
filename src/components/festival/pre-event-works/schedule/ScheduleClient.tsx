@@ -1,6 +1,6 @@
 "use client";
 
-import { eachDayOfInterval, format, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { motion } from "framer-motion";
 import {
@@ -65,7 +65,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { dateKeyLocal, parseInstant } from "@/core/datetime";
+import { parseInstant } from "@/core/datetime";
 import { cn } from "@/core/utils/cn";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
@@ -109,29 +109,6 @@ interface ScheduleClientProps {
   hideStageFilter?: boolean;
 }
 
-type DateOption = { value: string; label: string };
-
-function getFestivalDateOptions(
-  startISO: string | null,
-  endISO: string | null,
-  tz: string,
-): DateOption[] {
-  if (!startISO || !endISO) return [];
-  const start = parseInstant(startISO);
-  const end = parseInstant(endISO);
-  if (!start || !end) return [];
-  const startKey = dateKeyLocal(start, tz);
-  const endKey = dateKeyLocal(end, tz);
-  if (!startKey || !endKey || startKey > endKey) return [];
-  const startDate = new Date(`${startKey}T00:00:00`);
-  const endDate = new Date(`${endKey}T00:00:00`);
-  const days = eachDayOfInterval({ start: startDate, end: endDate });
-  return days.map((d) => ({
-    value: formatInTimeZone(d, tz, "yyyy-MM-dd"),
-    label: formatInTimeZone(d, tz, "EEE, d MMM yyyy"),
-  }));
-}
-
 function getEntryLabel(entry: ScheduleEntryWithRelations): string {
   if (entry.type === "PROGRAMME" && entry.programme)
     return entry.programme.name;
@@ -171,11 +148,6 @@ export function ScheduleClient({
 }: ScheduleClientProps) {
   const { isReadOnly } = useFestivalReadOnly();
   const displayTz = useDisplayTimezone();
-  const dateOptions = getFestivalDateOptions(
-    festivalStartDate,
-    festivalEndDate,
-    displayTz,
-  );
   const [entries, setEntries] =
     useState<ScheduleEntryWithRelations[]>(initialEntries);
   const [addOpen, setAddOpen] = useState(false);
@@ -195,9 +167,11 @@ export function ScheduleClient({
   );
   const [searchQuery, setSearchQuery] = useState("");
 
+  const dayTabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
   const hasStages = stages.length > 0;
   const hasProgrammes = programmes.length > 0;
-  const hasFestivalDates = dateOptions.length > 0;
+  const hasFestivalDates = !!festivalStartDate && !!festivalEndDate;
   const canAdd = hasStages && hasProgrammes && hasFestivalDates && !isReadOnly;
 
   const createScheduleItem = useCreateScheduleItem();
@@ -224,6 +198,17 @@ export function ScheduleClient({
     activeDayKey && groupedByDay[activeDayKey]
       ? activeDayKey
       : (sortedDays[0] ?? null);
+
+  useEffect(() => {
+    if (!effectiveActiveDay) return;
+    const node = dayTabRefs.current[effectiveActiveDay];
+    if (!node) return;
+    node.scrollIntoView({
+      behavior: "smooth",
+      inline: "center",
+      block: "nearest",
+    });
+  }, [effectiveActiveDay]);
 
   const dayEntries = effectiveActiveDay
     ? (groupedByDay[effectiveActiveDay] ?? [])
@@ -539,7 +524,7 @@ export function ScheduleClient({
         <div className="space-y-4">
           {/* Day tabs */}
           <div
-            className="flex overflow-x-auto gap-2 border-b border-border pb-3"
+            className="scrollbar-hide flex snap-x snap-mandatory overflow-x-auto gap-2 border-b border-border pb-3"
             role="tablist"
           >
             {sortedDays.map((dayKey, index) => {
@@ -548,12 +533,15 @@ export function ScheduleClient({
               return (
                 <button
                   key={dayKey}
+                  ref={(node) => {
+                    dayTabRefs.current[dayKey] = node;
+                  }}
                   type="button"
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => setActiveDayKey(dayKey)}
                   className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0",
+                    "px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0 snap-center",
                     isActive
                       ? "bg-primary text-primary-foreground shadow-sm"
                       : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -797,7 +785,7 @@ export function ScheduleClient({
         formConflictParts={addFormConflictParts}
         programmes={programmes}
         stages={stages}
-        dateOptions={dateOptions}
+        festivalEndDate={festivalEndDate}
       />
 
       {!isReadOnly && (
@@ -825,7 +813,7 @@ export function ScheduleClient({
           onSubmit={(data) => handleUpdate(editEntry.id, data)}
           saving={saving}
           stages={stages}
-          dateOptions={dateOptions}
+          festivalEndDate={festivalEndDate}
         />
       )}
     </div>
@@ -842,7 +830,7 @@ function AddEntryDialog({
   formConflictParts,
   programmes,
   stages,
-  dateOptions,
+  festivalEndDate,
 }: {
   festivalId: string;
   open: boolean;
@@ -864,15 +852,10 @@ function AddEntryDialog({
   formConflictParts?: ConflictParts | null;
   programmes: ProgrammeOption[];
   stages: StageOption[];
-  dateOptions: DateOption[];
+  festivalEndDate: string | null;
 }) {
   const today = format(new Date(), "yyyy-MM-dd");
-  const defaultDate =
-    dateOptions.length > 0
-      ? dateOptions.some((o) => o.value === today)
-        ? today
-        : dateOptions[0]!.value
-      : today;
+  const defaultDate = today;
   const [entryType, setEntryType] = useState<"PROGRAMME" | "SESSION">(
     "PROGRAMME",
   );
@@ -892,10 +875,7 @@ function AddEntryDialog({
   );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const effectiveDate =
-    dateOptions.length > 0 && !dateOptions.some((o) => o.value === dateStr)
-      ? dateOptions[0]!.value
-      : dateStr;
+  const effectiveDate = dateStr;
 
   useEffect(() => {
     if (!open) return;
@@ -970,10 +950,7 @@ function AddEntryDialog({
       toast.error("Select a stage.");
       return;
     }
-    const effectiveDate =
-      dateOptions.length > 0 && !dateOptions.some((o) => o.value === dateStr)
-        ? dateOptions[0]!.value
-        : dateStr;
+    const effectiveDate = dateStr;
     const startTime = localWallClockToDate(effectiveDate, startTimeStr);
     const endTime = endTimeStr
       ? localWallClockToDate(effectiveDate, endTimeStr)
@@ -1175,35 +1152,16 @@ function AddEntryDialog({
                 <Label htmlFor="add-date" className="text-xs">
                   Date
                 </Label>
-                {dateOptions.length > 0 ? (
-                  <Select
-                    value={
-                      dateOptions.some((o) => o.value === dateStr)
-                        ? dateStr
-                        : dateOptions[0]!.value
-                    }
-                    onValueChange={setDateStr}
-                  >
-                    <SelectTrigger id="add-date" className="h-9 text-sm">
-                      <SelectValue placeholder="Date" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {dateOptions.map((o) => (
-                        <SelectItem key={o.value} value={o.value}>
-                          {o.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    id="add-date"
-                    type="date"
-                    value={dateStr}
-                    onChange={(e) => setDateStr(e.target.value)}
-                    className="h-9 text-sm"
-                  />
-                )}
+                <Input
+                  id="add-date"
+                  type="date"
+                  value={dateStr}
+                  max={
+                    festivalEndDate ? festivalEndDate.split("T")[0] : undefined
+                  }
+                  onChange={(e) => setDateStr(e.target.value)}
+                  className="h-9 text-sm"
+                />
               </div>
               <div className="space-y-1.5 col-span-1">
                 <Label htmlFor="add-start" className="text-xs">
@@ -1303,7 +1261,7 @@ function EditEntryDialog({
   onSubmit,
   saving,
   stages,
-  dateOptions,
+  festivalEndDate,
 }: {
   festivalId: string;
   entry: ScheduleEntryWithRelations;
@@ -1320,33 +1278,12 @@ function EditEntryDialog({
   }) => Promise<void>;
   saving: boolean;
   stages: StageOption[];
-  dateOptions: DateOption[];
+  festivalEndDate: string | null;
 }) {
   const entryDateStr = safeFormat(
     parseStoredScheduleInstant(entry.startTime),
     "yyyy-MM-dd",
   );
-  const entryLabel = safeFormat(
-    parseStoredScheduleInstant(entry.startTime),
-    "EEE, d MMM yyyy",
-  );
-  const optionsForEdit =
-    dateOptions.length > 0
-      ? dateOptions.some((o) => o.value === entryDateStr)
-        ? dateOptions
-        : [
-            {
-              value: entryDateStr,
-              label: entryLabel,
-            },
-            ...dateOptions,
-          ]
-      : [
-          {
-            value: entryDateStr,
-            label: entryLabel,
-          },
-        ];
   const [stageId, setStageId] = useState(entry.stageId ?? "");
   const [dateStr, setDateStr] = useState(entryDateStr);
   const [startTimeStr, setStartTimeStr] = useState(
@@ -1370,9 +1307,7 @@ function EditEntryDialog({
   );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const effectiveDate = optionsForEdit.some((o) => o.value === dateStr)
-    ? dateStr
-    : optionsForEdit[0]!.value;
+  const effectiveDate = dateStr;
 
   useEffect(() => {
     if (!open) return;
@@ -1514,26 +1449,16 @@ function EditEntryDialog({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Date</Label>
-                <Select
-                  value={
-                    optionsForEdit.some((o) => o.value === dateStr)
-                      ? dateStr
-                      : optionsForEdit[0]!.value
+                <Label htmlFor="edit-date">Date</Label>
+                <Input
+                  id="edit-date"
+                  type="date"
+                  value={dateStr}
+                  max={
+                    festivalEndDate ? festivalEndDate.split("T")[0] : undefined
                   }
-                  onValueChange={setDateStr}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select date" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {optionsForEdit.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={(e) => setDateStr(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Start time</Label>

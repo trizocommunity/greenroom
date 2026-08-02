@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { cn } from "@/core/utils/cn";
 
 type CountdownParts = {
   days: number;
@@ -62,39 +63,55 @@ export function DeadlineCountdown({
   const parts = useCountdown(target);
   if (!target) return null;
   return (
-    <span className={`tabular-nums ${className ?? ""}`}>
+    <span className={cn("whitespace-nowrap tabular-nums", className)}>
       {formatCountdown(parts)}
     </span>
   );
 }
 
-/** Big segmented countdown used by the blocked-section panel. */
-export function DeadlineCountdownBlocks({ target }: { target: Date | null }) {
+/**
+ * Prominent countdown for the blocked-section panel. Card-less on purpose:
+ * one unbroken line of digits reads faster than four boxed tiles, and it
+ * survives a 320px viewport without wrapping.
+ */
+export function DeadlineCountdownLarge({
+  target,
+  className,
+}: {
+  target: Date | null;
+  className?: string;
+}) {
   const parts = useCountdown(target);
   if (!target) return null;
 
   const segments = [
-    { label: "days", value: parts.days },
-    { label: "hours", value: parts.hours },
-    { label: "mins", value: parts.minutes },
-    { label: "secs", value: parts.seconds },
+    { label: "d", value: parts.days },
+    { label: "h", value: parts.hours },
+    { label: "m", value: parts.minutes },
+    { label: "s", value: parts.seconds },
   ];
 
   return (
-    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+    <p
+      className={cn(
+        "flex items-baseline justify-center gap-x-1 font-semibold tabular-nums tracking-tight text-heading",
+        "text-[clamp(1.5rem,9vw,2.25rem)]",
+        className,
+      )}
+    >
+      <span className="sr-only">{formatCountdown(parts)} remaining</span>
       {segments.map((segment) => (
-        <div
+        <span
           key={segment.label}
-          className="min-w-[64px] rounded-xl border border-border bg-background/70 px-3 py-2 text-center"
+          aria-hidden
+          className="inline-flex items-baseline"
         >
-          <p className="text-xl font-semibold tabular-nums text-heading sm:text-2xl">
-            {String(segment.value).padStart(2, "0")}
-          </p>
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          {String(segment.value).padStart(2, "0")}
+          <span className="ml-px text-[0.45em] font-medium uppercase text-muted-foreground">
             {segment.label}
-          </p>
-        </div>
+          </span>
+        </span>
       ))}
-    </div>
+    </p>
   );
 }

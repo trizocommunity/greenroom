@@ -14,8 +14,10 @@ import { DeadlineWindowChip } from "@/components/festival/pre-event-works/Deadli
 import { ParticipantLogoutButton } from "@/components/festival/public/ParticipantLogoutButton";
 import { ReportingEndsInCountdown } from "@/components/programme/ReportingEndsInCountdown";
 import { APP_URL } from "@/config/routes";
+import { getFestivalDurationDays } from "@/config/pricing";
 import { requireParticipantAuth } from "@/core/auth/participant-guard";
 import { db } from "@/core/database/client";
+import { MS } from "@/core/datetime/server";
 import {
   programmeAssignment as assignmentTable,
   participant as participantTable,
@@ -54,7 +56,8 @@ export default async function TeamLeaderDashboardPage({
     festival.endDate ??
     festival.expiresAt ??
     new Date(
-      new Date(festival.createdAt).getTime() + 40 * 24 * 60 * 60 * 1000,
+      new Date(festival.createdAt).getTime() +
+        getFestivalDurationDays() * MS.day,
     ).toISOString();
   const venue = festival.location ?? festival.orgLocation ?? "—";
 

@@ -52,6 +52,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { formatDateTime, parseInstant } from "@/core/datetime";
 import type { ProgrammeJudgementStatus } from "@/core/types/app-enums";
@@ -157,9 +164,15 @@ function resetWizardForm() {
 export function JudgementWizardClient({
   festivalId,
   initialDashboardData,
+  stages = [],
+  initialStageId = null,
+  hideStageFilter = false,
 }: {
   festivalId: string;
   initialDashboardData: JudgementDashboardQueryData;
+  stages?: Array<{ id: string; name: string }>;
+  initialStageId?: string | null;
+  hideStageFilter?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -177,6 +190,14 @@ export function JudgementWizardClient({
   const toEpoch = useCallback((value: string | Date) => {
     return parseInstant(value)?.getTime() ?? 0;
   }, []);
+
+  const autoLockedStageId =
+    hideStageFilter && stages.length === 1 ? stages[0]!.id : null;
+  const [selectedStageId, setSelectedStageId] = useState<string>(
+    autoLockedStageId ?? initialStageId ?? "",
+  );
+  const effectiveStageId = autoLockedStageId ?? selectedStageId;
+  const showStageDropdown = !hideStageFilter && stages.length > 1;
 
   const judgementStatusLabel = (status: ProgrammeJudgementStatus) => {
     switch (status) {
@@ -247,6 +268,26 @@ export function JudgementWizardClient({
   const judgedProgrammes = dashboardQuery.data?.judgedProgrammes ?? [];
   const judgesByStageId = dashboardQuery.data?.judgesByStageId ?? {};
 
+  const matchesStageFilter = useCallback(
+    (stageId: string | null | undefined) =>
+      effectiveStageId === "" || stageId === effectiveStageId,
+    [effectiveStageId],
+  );
+  const filteredJudgeProgrammes = useMemo(
+    () =>
+      judgeProgrammes.filter((p) =>
+        matchesStageFilter(p.reportingDetails?.stageId ?? null),
+      ),
+    [judgeProgrammes, matchesStageFilter],
+  );
+  const filteredRejudgeProgrammes = useMemo(
+    () =>
+      rejudgeProgrammes.filter((p) =>
+        matchesStageFilter(p.reportingDetails?.stageId ?? null),
+      ),
+    [rejudgeProgrammes, matchesStageFilter],
+  );
+
   const activeByProgrammeId = useMemo(() => {
     const m = new Map<string, ActiveConfig>();
     for (const c of activeConfigs) {
@@ -266,11 +307,11 @@ export function JudgementWizardClient({
   const wizardProgramme = useMemo(() => {
     if (!wizardProgrammeId) return null;
     return (
-      judgeProgrammes.find((p) => p.id === wizardProgrammeId) ??
-      rejudgeProgrammes.find((p) => p.id === wizardProgrammeId) ??
+      filteredJudgeProgrammes.find((p) => p.id === wizardProgrammeId) ??
+      filteredRejudgeProgrammes.find((p) => p.id === wizardProgrammeId) ??
       null
     );
-  }, [judgeProgrammes, rejudgeProgrammes, wizardProgrammeId]);
+  }, [filteredJudgeProgrammes, filteredRejudgeProgrammes, wizardProgrammeId]);
 
   const sortedJudgedCodeRows = useMemo(() => {
     if (!combinedDrawerDetail) return [];
@@ -300,8 +341,8 @@ export function JudgementWizardClient({
     if (!searchQuery.trim()) return [];
     const query = searchQuery.toLowerCase();
     const allProgrammes = [
-      ...judgeProgrammes.map((p) => ({ ...p, _kind: "READY" })),
-      ...rejudgeProgrammes.map((p) => ({ ...p, _kind: "REJUDGE" })),
+      ...filteredJudgeProgrammes.map((p) => ({ ...p, _kind: "READY" })),
+      ...filteredRejudgeProgrammes.map((p) => ({ ...p, _kind: "REJUDGE" })),
       ...completedJudgements.map((p) => ({
         id: p.programmeId,
         name: p.programmeName,
@@ -324,7 +365,12 @@ export function JudgementWizardClient({
         p.name.toLowerCase().includes(query) ||
         p.programmeCategory?.toLowerCase().includes(query),
     );
-  }, [searchQuery, judgeProgrammes, rejudgeProgrammes, completedJudgements]);
+  }, [
+    searchQuery,
+    filteredJudgeProgrammes,
+    filteredRejudgeProgrammes,
+    completedJudgements,
+  ]);
 
   const completedDetailTimeline = useMemo(() => {
     if (!combinedDrawerDetail) return [];
@@ -388,8 +434,8 @@ export function JudgementWizardClient({
     const priorJudgeIds =
       judgedByProgrammeId.get(programmeId)?.judges.map((j) => j.id) ?? [];
     const programme =
-      judgeProgrammes.find((p) => p.id === programmeId) ??
-      rejudgeProgrammes.find((p) => p.id === programmeId);
+      filteredJudgeProgrammes.find((p) => p.id === programmeId) ??
+      filteredRejudgeProgrammes.find((p) => p.id === programmeId);
     const stageId = programme?.reportingDetails?.stageId ?? null;
     const stagePanel = stageId ? (judgesByStageId[stageId] ?? []) : [];
     const prefill =
@@ -486,12 +532,12 @@ export function JudgementWizardClient({
   // biome-ignore lint/correctness/useExhaustiveDependencies: one-shot handoff; only re-run when the param or programme list changes.
   useEffect(() => {
     if (!startParam || handledStartRef.current === startParam) return;
-    const ready = judgeProgrammes.some((p) => p.id === startParam);
+    const ready = filteredJudgeProgrammes.some((p) => p.id === startParam);
     if (!ready) return;
     handledStartRef.current = startParam;
     openWizardForProgramme(startParam, "create");
     router.replace(pathname);
-  }, [startParam, judgeProgrammes]);
+  }, [startParam, filteredJudgeProgrammes]);
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -515,6 +561,28 @@ export function JudgementWizardClient({
               }}
             />
           </div>
+          {showStageDropdown && (
+            <Select
+              value={effectiveStageId === "" ? "__all__" : effectiveStageId}
+              onValueChange={(v) =>
+                setSelectedStageId(v === "__all__" ? "" : v)
+              }
+            >
+              <SelectTrigger className="w-[180px] h-9 text-sm">
+                <SelectValue placeholder="Stage" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem className="font-normal" value="__all__">
+                  All stages
+                </SelectItem>
+                {stages.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <HowItWorksButton title="How judgement works">
             <div className="space-y-4 text-sm">
               <div>
@@ -547,13 +615,13 @@ export function JudgementWizardClient({
       </div>
 
       <section className="space-y-3 min-h-[60vh]">
-        {judgeProgrammes.length === 0 ? (
+        {filteredJudgeProgrammes.length === 0 ? (
           <div className="py-10 text-center text-sm text-muted-foreground">
             No programmes are ready to judge right now.
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {judgeProgrammes.map((p) => {
+            {filteredJudgeProgrammes.map((p) => {
               const active = activeByProgrammeId.get(p.id);
               return (
                 <Card
@@ -743,17 +811,17 @@ export function JudgementWizardClient({
           <h2 className="text-base font-semibold tracking-tight sm:text-lg flex items-center justify-between">
             Rejudge
             <Badge variant="outline" className="text-[10px]">
-              {rejudgeProgrammes.length}
+              {filteredRejudgeProgrammes.length}
             </Badge>
           </h2>
-          {rejudgeProgrammes.length === 0 ? (
+          {filteredRejudgeProgrammes.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">
               No judged programmes available for rejudge (published items never
               appear here).
             </div>
           ) : (
             <div className="space-y-2">
-              {rejudgeProgrammes.map((p) => (
+              {filteredRejudgeProgrammes.map((p) => (
                 <div
                   key={p.id}
                   className="rounded-xl border border-border/60 bg-linear-to-br from-background to-muted/30 px-3 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md sm:px-4"

@@ -2,7 +2,7 @@
 
 import { formatInTimeZone } from "date-fns-tz";
 import { CalendarClock, Lock } from "lucide-react";
-import { DeadlineCountdownBlocks } from "@/components/festival/pre-event-works/DeadlineCountdown";
+import { DeadlineCountdownLarge } from "@/components/festival/pre-event-works/DeadlineCountdown";
 import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 
 /**
@@ -26,48 +26,47 @@ export function DeadlineWindowGate({
     formatInTimeZone(date, displayTz, "EEE, MMM d • h:mm a");
 
   return (
-    <div className="rounded-3xl border border-amber-500/30 bg-amber-500/[0.06] p-6 text-center sm:p-10">
-      <div className="mx-auto flex max-w-xl flex-col items-center gap-5">
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/15 text-amber-600">
-          <Lock className="h-5 w-5" />
+    <div className="rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] px-4 py-6 text-center sm:px-8 sm:py-8">
+      <div className="mx-auto flex max-w-lg flex-col items-center gap-4">
+        <span className="flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-600">
+          <Lock className="h-3 w-3" />
+          Locked
         </span>
 
-        <div className="space-y-1.5">
-          <h2 className="text-lg font-semibold text-heading sm:text-xl">
+        <div className="space-y-1">
+          <h2 className="text-balance text-base font-semibold text-heading sm:text-lg">
             {title}
           </h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
+          <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
             {description}
           </p>
         </div>
 
-        <div className="space-y-2">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+        <div className="w-full">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
             Opens in
           </p>
-          <DeadlineCountdownBlocks target={start} />
+          <DeadlineCountdownLarge target={start} className="mt-1" />
         </div>
 
-        <dl className="grid w-full gap-3 text-left sm:grid-cols-2">
-          <div className="rounded-xl border border-border bg-background/70 px-4 py-3">
-            <dt className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground">
-              <CalendarClock className="h-3.5 w-3.5" />
-              Opens
-            </dt>
-            <dd className="mt-1 text-sm font-medium text-heading">
+        <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+          <CalendarClock className="h-3.5 w-3.5 shrink-0" />
+          <span>
+            Opens{" "}
+            <span className="font-medium text-heading">
               {start ? stamp(start) : "—"}
-            </dd>
-          </div>
-          <div className="rounded-xl border border-border bg-background/70 px-4 py-3">
-            <dt className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground">
-              <CalendarClock className="h-3.5 w-3.5" />
-              Closes
-            </dt>
-            <dd className="mt-1 text-sm font-medium text-heading">
-              {end ? stamp(end) : "No deadline"}
-            </dd>
-          </div>
-        </dl>
+            </span>
+          </span>
+          <span aria-hidden className="hidden sm:inline">
+            ·
+          </span>
+          <span>
+            Closes{" "}
+            <span className="font-medium text-heading">
+              {end ? stamp(end) : "no deadline"}
+            </span>
+          </span>
+        </p>
       </div>
     </div>
   );

@@ -142,7 +142,7 @@ function generateCodeLetters(count: number): string[] {
   return letters;
 }
 
-function formatHistoryTime(value: Date | string, tz: string): string {
+function formatHistoryTime(value: Date | string | null, tz: string): string {
   const date = parseInstant(value);
   if (!date) return "—";
   try {
@@ -336,10 +336,14 @@ export function ProgrammeReportingClient({
       const ra = statusRank(aStatus);
       const rb = statusRank(bStatus);
       if (ra !== rb) return ra - rb;
-      return (
-        (parseInstant(a.startTime)?.getTime() ?? 0) -
-        (parseInstant(b.startTime)?.getTime() ?? 0)
-      );
+      const aTime = a.startTime
+        ? a.startTime.getTime()
+        : Number.POSITIVE_INFINITY;
+      const bTime = b.startTime
+        ? b.startTime.getTime()
+        : Number.POSITIVE_INFINITY;
+      if (aTime !== bTime) return aTime - bTime;
+      return a.programme.name.localeCompare(b.programme.name);
     });
   }, [
     board,

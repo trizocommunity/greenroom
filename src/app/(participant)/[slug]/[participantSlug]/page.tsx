@@ -23,8 +23,10 @@ import { ParticipantAssignedProgrammeCards } from "@/components/participant/Part
 import { ParticipantQrDialogButton } from "@/components/participant/ParticipantQrDialogButton";
 import { ReportingEndsInCountdown } from "@/components/programme/ReportingEndsInCountdown";
 import { APP_URL } from "@/config/routes";
+import { getFestivalDurationDays } from "@/config/pricing";
 import { getParticipantSessionFromCookie } from "@/core/auth/participant-session";
 import { db } from "@/core/database/client";
+import { MS } from "@/core/datetime/server";
 import {
   participant as participantTable,
   programmeReportingSession as sessionTable,
@@ -134,7 +136,8 @@ export default async function ParticipantMainPage({
     festival.endDate ??
     festival.expiresAt ??
     new Date(
-      new Date(festival.createdAt).getTime() + 40 * 24 * 60 * 60 * 1000,
+      new Date(festival.createdAt).getTime() +
+        getFestivalDurationDays() * MS.day,
     ).toISOString();
   const venue = festival.location ?? festival.orgLocation ?? "—";
 

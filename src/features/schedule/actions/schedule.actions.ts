@@ -2,11 +2,12 @@
 
 import { randomUUID } from "crypto";
 import { format } from "date-fns";
-import { and, asc, eq, inArray, isNull, ne, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
+  programmeAssignment as assignmentTable,
   scheduleEntry as scheduleEntryTable,
   user as userTable,
 } from "@/core/database/schema";
@@ -24,6 +25,23 @@ import {
 } from "@/features/schedule/utils/schedule-orchestration";
 import { validateScheduleTimesForFestival } from "@/features/schedule/utils/schedule-times-validation";
 import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
+
+async function assertCanWriteOnStage(
+  festivalId: string,
+  stageId: string | null | undefined,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await getSession();
+  const accessibleStageIds = await StageAssignmentService.getAccessibleStageIds(
+    festivalId,
+    session,
+  );
+  if (accessibleStageIds === "all") return { ok: true };
+  if (stageId && accessibleStageIds.includes(stageId)) return { ok: true };
+  return {
+    ok: false,
+    error: "You can only schedule on your assigned stages.",
+  };
+}
 
 export type ScheduleEntryWithRelations = Awaited<
   ReturnType<typeof getScheduleEntries>
@@ -129,12 +147,9 @@ export async function getScheduleEntries(
       typeFilter ? eq(scheduleEntryTable.type, typeFilter) : undefined,
       accessibleStageIds === "all"
         ? undefined
-        : or(
-            isNull(scheduleEntryTable.stageId),
-            accessibleStageIds.length > 0
-              ? inArray(scheduleEntryTable.stageId, accessibleStageIds)
-              : undefined,
-          ),
+        : accessibleStageIds.length > 0
+          ? inArray(scheduleEntryTable.stageId, accessibleStageIds)
+          : inArray(scheduleEntryTable.id, ["__none__"]),
     ),
     with: {
       programme: {
@@ -167,6 +182,64 @@ export async function getScheduleEntriesPublic(
     },
     orderBy: [asc(scheduleEntryTable.startTime), asc(scheduleEntryTable.order)],
   });
+}
+
+export type SchedulableProgramme = {
+  id: string;
+  name: string;
+  categoryId: string | null;
+  categoryName: string | null;
+};
+
+export async function getSchedulableProgrammesAction(
+  festivalId: string,
+): Promise<SchedulableProgramme[]> {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
+
+  const allProgrammes = await db.query.programme.findMany({
+    where: (programmeTable, { eq }) =>
+      eq(programmeTable.festivalId, festivalId),
+    columns: { id: true, name: true, categoryId: true },
+    with: {
+      category: { columns: { id: true, name: true } },
+    },
+    orderBy: (programmeTable, { asc }) => asc(programmeTable.name),
+  });
+
+  const alreadyScheduled = await db.query.scheduleEntry.findMany({
+    where: and(
+      eq(scheduleEntryTable.festivalId, festivalId),
+      eq(scheduleEntryTable.type, "PROGRAMME"),
+    ),
+    columns: { programmeId: true },
+  });
+  const scheduledProgrammeIds = new Set(
+    alreadyScheduled
+      .map((row) => row.programmeId)
+      .filter((id): id is string => typeof id === "string" && id.length > 0),
+  );
+
+  const assignmentRows = await db
+    .selectDistinct({ programmeId: assignmentTable.programmeId })
+    .from(assignmentTable)
+    .where(eq(assignmentTable.festivalId, festivalId));
+  const assignedProgrammeIds = new Set(
+    assignmentRows
+      .map((r) => r.programmeId)
+      .filter((id): id is string => typeof id === "string" && id.length > 0),
+  );
+
+  return allProgrammes
+    .filter(
+      (p) => !scheduledProgrammeIds.has(p.id) && assignedProgrammeIds.has(p.id),
+    )
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      categoryId: p.category?.id ?? null,
+      categoryName: p.category?.name ?? null,
+    }));
 }
 
 export async function checkScheduleConflict(
@@ -204,6 +277,9 @@ export async function checkScheduleConflict(
     scheduleDayKey,
   );
   if (!timeCheck.ok) return { ok: false, error: timeCheck.error };
+
+  const stageGuard = await assertCanWriteOnStage(festivalId, stageId);
+  if (!stageGuard.ok) return { ok: false, error: stageGuard.error };
 
   if (stageId) {
     const stageOk = await assertStageBelongsToFestival(stageId, festivalId);
@@ -286,6 +362,9 @@ export async function createScheduleEntry(
   }
   if (!data.stageId) return { success: false, error: "Please select a stage." };
 
+  const stageGuard = await assertCanWriteOnStage(festivalId, data.stageId);
+  if (!stageGuard.ok) return { success: false, error: stageGuard.error };
+
   const timeCheck = validateScheduleTimesForFestival(
     festival,
     data.startTime,
@@ -300,6 +379,23 @@ export async function createScheduleEntry(
       success: false,
       error: "That stage does not belong to this festival.",
     };
+
+  if (data.type === "PROGRAMME" && data.programmeId) {
+    const existing = await db.query.scheduleEntry.findFirst({
+      where: and(
+        eq(scheduleEntryTable.festivalId, festivalId),
+        eq(scheduleEntryTable.type, "PROGRAMME"),
+        eq(scheduleEntryTable.programmeId, data.programmeId),
+      ),
+      columns: { id: true },
+    });
+    if (existing) {
+      return {
+        success: false,
+        error: "That programme is already scheduled.",
+      };
+    }
+  }
 
   const conflict = await getTimeConflictError(
     festivalId,
@@ -403,6 +499,9 @@ export async function updateScheduleEntry(
   const newStageId =
     data.stageId !== undefined ? data.stageId : existing.stageId;
 
+  const stageGuard = await assertCanWriteOnStage(festivalId, newStageId);
+  if (!stageGuard.ok) return { success: false, error: stageGuard.error };
+
   const timeFieldsChanging =
     data.startTime !== undefined || data.endTime !== undefined;
   if (timeFieldsChanging) {
@@ -489,9 +588,12 @@ export async function deleteScheduleEntry(
       eq(scheduleEntryTable.id, id),
       eq(scheduleEntryTable.festivalId, festivalId),
     ),
-    columns: { id: true, type: true, programmeId: true },
+    columns: { id: true, type: true, programmeId: true, stageId: true },
   });
   if (!entry) return { success: false, error: "Schedule entry not found" };
+
+  const stageGuard = await assertCanWriteOnStage(festivalId, entry.stageId);
+  if (!stageGuard.ok) return { success: false, error: stageGuard.error };
 
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
@@ -536,7 +638,7 @@ export async function reorderScheduleEntries(
       inArray(scheduleEntryTable.id, entryIds),
       eq(scheduleEntryTable.festivalId, festivalId),
     ),
-    columns: { id: true, startTime: true, endTime: true },
+    columns: { id: true, startTime: true, endTime: true, stageId: true },
     orderBy: [asc(scheduleEntryTable.startTime), asc(scheduleEntryTable.order)],
   });
 
@@ -545,6 +647,23 @@ export async function reorderScheduleEntries(
       success: false,
       error: "Some entries not found or not in this festival.",
     };
+
+  const sessionForGuard = await getSession();
+  const accessibleStageIds = await StageAssignmentService.getAccessibleStageIds(
+    festivalId,
+    sessionForGuard,
+  );
+  if (accessibleStageIds !== "all") {
+    const offending = oldOrder.find(
+      (e) => !e.stageId || !accessibleStageIds.includes(e.stageId),
+    );
+    if (offending) {
+      return {
+        success: false,
+        error: "You can only schedule on your assigned stages.",
+      };
+    }
+  }
 
   await db.transaction(async (tx) => {
     const now = serverNowIso();

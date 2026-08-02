@@ -27,6 +27,13 @@ interface DeadlinesDialogProps {
     participantCreationDeadline?: Date | string | null;
     startDate?: Date | string | null;
     createdAt?: Date | string | null;
+    /**
+     * IANA timezone the picked wall-clock is anchored to. Required so the
+     * stored UTC instant round-trips correctly regardless of the admin's
+     * browser TZ. Falls back to `DEFAULT_TZ` (`"UTC"`) when absent (e.g.
+     * for legacy festivals created before the migration).
+     */
+    timezone?: string | null;
   };
   onSuccess?: () => void;
   trigger?: React.ReactNode;
@@ -157,6 +164,7 @@ export function DeadlinesDialog({
                   from={durationStart}
                   to={festivalStartDate ?? undefined}
                   disabled={festivalHasStarted}
+                  tz={festival.timezone ?? undefined}
                 />
               </div>
               <div className="space-y-2">
@@ -174,6 +182,7 @@ export function DeadlinesDialog({
                   from={programmeAssignmentStartDate ?? durationStart}
                   to={festivalStartDate ?? undefined}
                   disabled={festivalHasStarted}
+                  tz={festival.timezone ?? undefined}
                 />
               </div>
               <p className="text-sm text-muted-foreground">
@@ -199,6 +208,7 @@ export function DeadlinesDialog({
                   from={durationStart}
                   to={festivalStartDate ?? undefined}
                   disabled={festivalHasStarted}
+                  tz={festival.timezone ?? undefined}
                 />
               </div>
               <div className="space-y-2">
@@ -216,6 +226,7 @@ export function DeadlinesDialog({
                   from={participantCreationStartDate ?? durationStart}
                   to={festivalStartDate ?? undefined}
                   disabled={festivalHasStarted}
+                  tz={festival.timezone ?? undefined}
                 />
               </div>
               <p className="text-sm text-muted-foreground">

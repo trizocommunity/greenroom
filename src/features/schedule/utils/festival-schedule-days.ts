@@ -1,6 +1,7 @@
 import { eachDayOfInterval } from "date-fns";
 import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
 import { DEFAULT_TZ } from "@/core/datetime/constants";
+import { parseInstant } from "@/core/datetime/parse";
 
 const DAY_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -34,6 +35,16 @@ export function getFestivalDateKeySet(
     end: toZonedTime(endUtc, tz),
   });
   return new Set(days.map((d) => formatInTimeZone(d, tz, "yyyy-MM-dd")));
+}
+
+export function getScheduleDateKeyUpperBound(
+  endDate: string | null,
+  tz: string = DEFAULT_TZ,
+): string | null {
+  if (!endDate) return null;
+  const parsed = parseInstant(endDate);
+  if (!parsed) return null;
+  return formatInTimeZone(parsed, tz, "yyyy-MM-dd");
 }
 
 export function isValidScheduleDayKey(key: string): boolean {

@@ -1,5 +1,6 @@
+import { DEFAULT_TZ } from "@/core/datetime/constants";
 import {
-  getFestivalDateKeySet,
+  getScheduleDateKeyUpperBound,
   isSameCalendarDay,
   isValidScheduleDayKey,
 } from "@/features/schedule/utils/festival-schedule-days";
@@ -9,6 +10,7 @@ export function validateScheduleTimesForFestival(
   startTime: Date,
   endTime: Date | null,
   scheduleDayKey: string | null | undefined,
+  tz: string = DEFAULT_TZ,
 ): { ok: true } | { ok: false; error: string } {
   if (!festival.startDate || !festival.endDate) {
     return {
@@ -18,8 +20,8 @@ export function validateScheduleTimesForFestival(
     };
   }
 
-  const allowed = getFestivalDateKeySet(festival.startDate, festival.endDate);
-  if (!allowed || allowed.size === 0) {
+  const endKey = getScheduleDateKeyUpperBound(festival.endDate, tz);
+  if (!endKey) {
     return {
       ok: false,
       error:
@@ -31,10 +33,10 @@ export function validateScheduleTimesForFestival(
   if (!isValidScheduleDayKey(key)) {
     return { ok: false, error: "Choose a valid schedule date." };
   }
-  if (!allowed.has(key)) {
+  if (key > endKey) {
     return {
       ok: false,
-      error: "That date is outside your festival event dates.",
+      error: "That date is after your festival event end date.",
     };
   }
 
@@ -49,7 +51,7 @@ export function validateScheduleTimesForFestival(
     if (endTime <= startTime) {
       return { ok: false, error: "End time must be after start time." };
     }
-    if (!isSameCalendarDay(startTime, endTime)) {
+    if (!isSameCalendarDay(startTime, endTime, tz)) {
       return {
         ok: false,
         error: "Start and end must be on the same calendar day.",

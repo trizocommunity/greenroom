@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, exists, inArray, sql } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
@@ -17,34 +17,53 @@ import { parseInstant } from "@/core/datetime";
 import { MS, nowPlus, serverNowIso, serverNowMs } from "@/core/datetime/server";
 import { NotificationService } from "@/features/notifications/services/notification.service";
 import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
+import {
+  type AccessSession,
+  StageAssignmentService,
+} from "@/features/stages/services/stage-assignment.service";
 import { CodeLetterGeneratorService } from "./code-letter-generator.service";
 
-async function getOrCreateSessionByScheduleEntry(scheduleEntryId: string) {
+async function getOrCreateSessionByProgramme(
+  programmeId: string,
+  festivalId: string,
+) {
   const existing = await db.query.programmeReportingSession.findFirst({
-    where: eq(prsTable.scheduleEntryId, scheduleEntryId),
+    where: and(
+      eq(prsTable.festivalId, festivalId),
+      eq(prsTable.programmeId, programmeId),
+    ),
     with: {
-      scheduleEntry: {
-        with: { programme: true, stage: true },
-      },
+      scheduleEntry: { with: { programme: true, stage: true } },
+      stage: true,
     },
   });
   if (existing) return existing;
 
-  const entry = await db.query.scheduleEntry.findFirst({
-    where: eq(scheduleEntryTable.id, scheduleEntryId),
-    with: { programme: true, stage: true },
+  const programme = await db.query.programme.findFirst({
+    where: eq(programmeTable.id, programmeId),
+    columns: { id: true, festivalId: true },
   });
-  if (!entry || !entry.programmeId || !entry.programme) {
-    throw new Error("Scheduled programme entry not found");
+  if (!programme || programme.festivalId !== festivalId) {
+    throw new Error("Programme not found for this festival");
   }
+
+  const latestEntry = await db.query.scheduleEntry.findFirst({
+    where: and(
+      eq(scheduleEntryTable.festivalId, festivalId),
+      eq(scheduleEntryTable.programmeId, programmeId),
+      eq(scheduleEntryTable.type, "PROGRAMME"),
+    ),
+    orderBy: [desc(scheduleEntryTable.startTime)],
+    columns: { id: true, stageId: true },
+  });
 
   const newId = randomUUID();
   await db.insert(prsTable).values({
     id: newId,
-    festivalId: entry.festivalId,
-    scheduleEntryId: entry.id,
-    programmeId: entry.programmeId,
-    stageId: entry.stageId,
+    festivalId,
+    scheduleEntryId: latestEntry?.id ?? null,
+    programmeId,
+    stageId: latestEntry?.stageId ?? null,
     status: "NOT_STARTED",
     updatedAt: serverNowIso(),
   } as any);
@@ -53,6 +72,7 @@ async function getOrCreateSessionByScheduleEntry(scheduleEntryId: string) {
     where: eq(prsTable.id, newId),
     with: {
       scheduleEntry: { with: { programme: true, stage: true } },
+      stage: true,
     },
   });
 }
@@ -229,21 +249,35 @@ export const ProgrammeReportingService = {
     };
   },
 
-  async listByFestival(festivalId: string) {
-    const entries = await db.query.scheduleEntry.findMany({
+  async listByFestival(festivalId: string, session: AccessSession) {
+    const accessibleStageIds =
+      await StageAssignmentService.getAccessibleStageIds(festivalId, session);
+
+    const programmes = await db.query.programme.findMany({
       where: and(
-        eq(scheduleEntryTable.festivalId, festivalId),
-        eq(scheduleEntryTable.type, "PROGRAMME"),
+        eq(programmeTable.festivalId, festivalId),
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(assignmentTable)
+            .where(eq(assignmentTable.programmeId, programmeTable.id)),
+        ),
       ),
       with: {
-        programme: {
-          with: {
-            category: true,
-          },
-        },
-        stage: true,
+        category: { columns: { id: true, name: true } },
         programmeReportingSessions: {
+          orderBy: [desc(prsTable.updatedAt)],
+          limit: 1,
           with: {
+            stage: { columns: { id: true, name: true } },
+            scheduleEntry: {
+              columns: {
+                id: true,
+                startTime: true,
+                stageId: true,
+              },
+              with: { stage: { columns: { id: true, name: true } } },
+            },
             programmeReportedParticipants: true,
             programmeCodeLetters: {
               orderBy: [asc(codeLetterTable.issuedAt)],
@@ -255,21 +289,116 @@ export const ProgrammeReportingService = {
             },
           },
         },
+        scheduleEntries: {
+          where: eq(scheduleEntryTable.type, "PROGRAMME"),
+          orderBy: [desc(scheduleEntryTable.startTime)],
+          limit: 1,
+          columns: { id: true, startTime: true, stageId: true },
+          with: { stage: { columns: { id: true, name: true } } },
+        },
       },
-      orderBy: [
-        asc(scheduleEntryTable.startTime),
-        asc(scheduleEntryTable.order),
-      ],
     });
 
-    return entries.map((entry) => ({
-      ...entry,
-      reportingSession: entry.programmeReportingSessions?.[0] ?? null,
-    }));
+    const items = programmes.map((programme) => {
+      const reportingSession =
+        programme.programmeReportingSessions?.[0] ?? null;
+      const latestEntry = programme.scheduleEntries?.[0] ?? null;
+      const sessionStartTime = reportingSession?.scheduleEntry?.startTime;
+      const entryStartTime = latestEntry?.startTime;
+      const rawStart = sessionStartTime ?? entryStartTime ?? null;
+      const startTime = rawStart ? parseInstant(rawStart) : null;
+      const sessionStage = reportingSession?.stage
+        ? { id: reportingSession.stage.id, name: reportingSession.stage.name }
+        : null;
+      const entryStage = latestEntry?.stage
+        ? { id: latestEntry.stage.id, name: latestEntry.stage.name }
+        : null;
+      const stage = sessionStage ?? entryStage;
+
+      const scheduleEntry = reportingSession?.scheduleEntry
+        ? {
+            id: reportingSession.scheduleEntry.id,
+            startTime: reportingSession.scheduleEntry.startTime,
+            stageId: reportingSession.scheduleEntry.stageId,
+          }
+        : latestEntry
+          ? {
+              id: latestEntry.id,
+              startTime: latestEntry.startTime,
+              stageId: latestEntry.stageId,
+            }
+          : null;
+
+      const sessionPayload = reportingSession
+        ? {
+            id: reportingSession.id,
+            status: reportingSession.status,
+            endedAt: reportingSession.endedAt,
+            updatedAt: reportingSession.updatedAt,
+            windowEndsAt: parseInstant(reportingSession.windowEndsAt),
+            isLocked: reportingSession.isLocked,
+            programmeReportedParticipants:
+              reportingSession.programmeReportedParticipants ?? [],
+            programmeCodeLetters:
+              reportingSession.programmeCodeLetters?.map((cl) => ({
+                code: cl.code,
+                issuedAt: cl.issuedAt,
+                programmeCodeLetterRecipients:
+                  cl.programmeCodeLetterRecipients ?? [],
+              })) ?? [],
+          }
+        : null;
+
+      return {
+        id: programme.id,
+        startTime,
+        stage,
+        programme: {
+          id: programme.id,
+          name: programme.name,
+          type: programme.type,
+          status: programme.status,
+          category: programme.category
+            ? { id: programme.category.id, name: programme.category.name }
+            : null,
+        },
+        scheduleEntry,
+        reportingSession: sessionPayload,
+      };
+    });
+
+    if (accessibleStageIds === "all") {
+      return items.sort((a, b) => {
+        const aTime = a.startTime?.getTime() ?? Number.POSITIVE_INFINITY;
+        const bTime = b.startTime?.getTime() ?? Number.POSITIVE_INFINITY;
+        return aTime - bTime;
+      });
+    }
+
+    return items
+      .filter((item) => {
+        if (!item.stage) return true;
+        return accessibleStageIds.includes(item.stage.id);
+      })
+      .sort((a, b) => {
+        const aTime = a.startTime?.getTime() ?? Number.POSITIVE_INFINITY;
+        const bTime = b.startTime?.getTime() ?? Number.POSITIVE_INFINITY;
+        return aTime - bTime;
+      });
   },
 
-  async start(scheduleEntryId: string, actorName: string) {
-    const session = await getOrCreateSessionByScheduleEntry(scheduleEntryId);
+  getOrCreateSessionByProgramme,
+
+  async startByProgramme(
+    programmeId: string,
+    festivalId: string,
+    actorName: string,
+  ) {
+    const session =
+      await ProgrammeReportingService.getOrCreateSessionByProgramme(
+        programmeId,
+        festivalId,
+      );
     if (!session) throw new Error("Reporting session not found");
     if (session.isLocked)
       throw new Error("Reporting is locked for this programme");

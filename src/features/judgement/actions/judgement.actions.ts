@@ -12,6 +12,7 @@ import {
   notInArray,
   or,
   sql,
+  type SQL,
 } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
@@ -48,6 +49,7 @@ import { updateProgrammeStatus } from "@/features/programmes/services/programme-
 import { calculatePosition } from "@/features/results/services/results-calculator";
 import { getFestivalDateKeySet } from "@/features/schedule/utils/festival-schedule-days";
 import { JudgeStageAssignmentService } from "@/features/stages/services/judge-stage-assignment.service";
+import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 
 async function allAssignedJudgesHaveCompleteScores(
   configId: string,
@@ -75,14 +77,88 @@ async function allAssignedJudgesHaveCompleteScores(
   return true;
 }
 
+function buildProgrammeReportingSessionStageScope(
+  programmeTableRef: typeof programmeTable,
+  accessibleStageIds: string[] | "all",
+): SQL | undefined {
+  if (accessibleStageIds === "all") return undefined;
+  return or(
+    exists(
+      db
+        .select({ one: sql`1` })
+        .from(reportingSessionTable)
+        .innerJoin(
+          scheduleEntryTable,
+          eq(scheduleEntryTable.id, reportingSessionTable.scheduleEntryId),
+        )
+        .where(
+          and(
+            eq(reportingSessionTable.programmeId, programmeTableRef.id),
+            eq(reportingSessionTable.status, "CLOSED"),
+            inArray(scheduleEntryTable.stageId, accessibleStageIds),
+          ),
+        ),
+    ),
+    exists(
+      db
+        .select({ one: sql`1` })
+        .from(scheduleEntryTable)
+        .where(
+          and(
+            eq(scheduleEntryTable.programmeId, programmeTableRef.id),
+            inArray(scheduleEntryTable.stageId, accessibleStageIds),
+          ),
+        ),
+    ),
+    exists(
+      db
+        .select({ one: sql`1` })
+        .from(reportingSessionTable)
+        .where(
+          and(
+            eq(reportingSessionTable.programmeId, programmeTableRef.id),
+            inArray(reportingSessionTable.stageId, accessibleStageIds),
+          ),
+        ),
+    ),
+  );
+}
+
+function buildJudgementConfigReportingSessionStageScope(
+  accessibleStageIds: string[] | "all",
+): SQL | undefined {
+  if (accessibleStageIds === "all") return undefined;
+  return exists(
+    db
+      .select({ one: sql`1` })
+      .from(reportingSessionTable)
+      .where(
+        and(
+          eq(reportingSessionTable.id, judgementConfigTable.reportingSessionId),
+          inArray(reportingSessionTable.stageId, accessibleStageIds),
+        ),
+      ),
+  );
+}
+
 export async function getJudgementWizardDataAction(festivalId: string) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
+
+  const accessibleStageIds = await StageAssignmentService.getAccessibleStageIds(
+    festivalId,
+    session,
+  );
+  const programmeScope = buildProgrammeReportingSessionStageScope(
+    programmeTable,
+    accessibleStageIds,
+  );
 
   const [judgeProgrammes, rejudgeProgrammes, judges] = await Promise.all([
     db.query.programme.findMany({
       where: and(
         eq(programmeTable.festivalId, festivalId),
+        programmeScope,
         or(
           eq(programmeTable.status, "STARTED"),
           and(
@@ -108,6 +184,7 @@ export async function getJudgementWizardDataAction(festivalId: string) {
     db.query.programme.findMany({
       where: and(
         eq(programmeTable.festivalId, festivalId),
+        programmeScope,
         inArray(programmeTable.status, ["JUDGED", "ENDED"]),
       ),
       columns: { id: true, name: true, status: true, type: true },
@@ -378,10 +455,19 @@ export async function getActiveJudgementConfigsAction(festivalId: string) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
 
+  const accessibleStageIds = await StageAssignmentService.getAccessibleStageIds(
+    festivalId,
+    session,
+  );
+  const configScope = buildJudgementConfigReportingSessionStageScope(
+    accessibleStageIds,
+  );
+
   const configs = await db.query.judgementConfig.findMany({
     where: and(
       eq(judgementConfigTable.festivalId, festivalId),
       eq(judgementConfigTable.status, "LIVE"),
+      configScope,
     ),
     orderBy: [desc(judgementConfigTable.createdAt)],
     with: {
@@ -419,8 +505,19 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
 
+  const accessibleStageIds = await StageAssignmentService.getAccessibleStageIds(
+    festivalId,
+    session,
+  );
+  const configScope = buildJudgementConfigReportingSessionStageScope(
+    accessibleStageIds,
+  );
+
   const configs = await db.query.judgementConfig.findMany({
-    where: eq(judgementConfigTable.festivalId, festivalId),
+    where: and(
+      eq(judgementConfigTable.festivalId, festivalId),
+      configScope,
+    ),
     orderBy: [desc(judgementConfigTable.createdAt)],
     with: {
       programme: {

@@ -1066,7 +1066,7 @@ export const programmeReportingSession = pgTable(
   {
     id: text().primaryKey().notNull(),
     festivalId: text().notNull(),
-    scheduleEntryId: text().notNull(),
+    scheduleEntryId: text(),
     programmeId: text().notNull(),
     stageId: text(),
     status: programmeReportingStatus().default("NOT_STARTED").notNull(),
@@ -1090,9 +1090,10 @@ export const programmeReportingSession = pgTable(
       "btree",
       table.programmeId.asc().nullsLast(),
     ),
-    uniqueIndex("programme_reporting_session_scheduleEntryId_key").using(
+    uniqueIndex("programme_reporting_session_festivalId_programmeId_key").using(
       "btree",
-      table.scheduleEntryId.asc().nullsLast(),
+      table.festivalId.asc().nullsLast(),
+      table.programmeId.asc().nullsLast(),
     ),
     foreignKey({
       columns: [table.festivalId],

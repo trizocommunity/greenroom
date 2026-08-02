@@ -30,14 +30,6 @@ async function getProgrammeIdForReportingSession(reportingSessionId: string) {
   return session?.programmeId;
 }
 
-async function getStageIdForScheduleEntry(scheduleEntryId: string) {
-  const entry = await db.query.scheduleEntry.findFirst({
-    where: eq(scheduleEntryTable.id, scheduleEntryId),
-    columns: { stageId: true },
-  });
-  return entry?.stageId ?? null;
-}
-
 export async function getStageIdForReportingSession(
   reportingSessionId: string,
 ) {
@@ -49,27 +41,49 @@ export async function getStageIdForReportingSession(
 }
 
 export async function getProgrammeReportingBoardAction(festivalId: string) {
-  const actor = await getSession();
-  if (actor?.userId) {
-    await assertStageManagerAccess(festivalId);
-  } else {
+  const session = await getSession();
+  if (!session?.userId) {
     throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
   }
-  return ProgrammeReportingService.listByFestival(festivalId);
+  await assertStageManagerAccess(festivalId);
+  return ProgrammeReportingService.listByFestival(festivalId, session);
 }
 
 export async function startProgrammeReportingAction(
   festivalId: string,
-  scheduleEntryId: string,
+  programmeId: string,
 ) {
-  const stageId = await getStageIdForScheduleEntry(scheduleEntryId);
+  const existing = await db.query.programmeReportingSession.findFirst({
+    where: and(
+      eq(prsTable.festivalId, festivalId),
+      eq(prsTable.programmeId, programmeId),
+    ),
+    columns: { stageId: true },
+  });
+  let stageId = existing?.stageId ?? null;
+  if (!stageId) {
+    const latestEntry = await db.query.scheduleEntry.findFirst({
+      where: and(
+        eq(scheduleEntryTable.festivalId, festivalId),
+        eq(scheduleEntryTable.programmeId, programmeId),
+        eq(scheduleEntryTable.type, "PROGRAMME"),
+      ),
+      orderBy: [desc(scheduleEntryTable.startTime)],
+      columns: { stageId: true },
+    });
+    stageId = latestEntry?.stageId ?? null;
+  }
   const actorName = await assertStageManagerAccessForStage(festivalId, stageId);
-  const res = await ProgrammeReportingService.start(scheduleEntryId, actorName);
+  const res = await ProgrammeReportingService.startByProgramme(
+    programmeId,
+    festivalId,
+    actorName,
+  );
   await createAuditLog({
     action: "OPEN_REPORTING",
     targetType: "REPORTING_SESSION",
     targetId: res.id,
-    metadata: { festivalId, scheduleEntryId, programmeId: res.programmeId },
+    metadata: { festivalId, programmeId: res.programmeId },
   }).catch((err) => console.error("[AuditLog] OPEN_REPORTING failed", err));
   await revalidateProgrammeReporting(festivalId, "reporting");
   return { success: true, data: res };

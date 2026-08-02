@@ -11,7 +11,7 @@ export type ProgrammeReportingAssignmentRow = {
 
 export type ReportingBoardItem = {
   id: string;
-  startTime: Date;
+  startTime: Date | null;
   stage: { id: string; name: string } | null;
   programme: {
     id: string;
@@ -19,6 +19,11 @@ export type ReportingBoardItem = {
     type: "INDIVIDUAL" | "GROUP";
     status?: string;
     category: { id: string; name: string } | null;
+  };
+  scheduleEntry: {
+    id: string;
+    startTime: string;
+    stageId: string | null;
   } | null;
   reportingSession: {
     id: string;

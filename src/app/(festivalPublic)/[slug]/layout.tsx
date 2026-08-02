@@ -4,6 +4,7 @@ import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { FestivalFooter } from "@/components/festival/FestivalFooter";
 import { FestivalNavbar } from "@/components/festival/FestivalNavbar";
 import { ExpiredFestivalView } from "@/components/festival/public/ExpiredFestivalView";
+import { UserTimezoneProviderClient } from "@/components/providers/user-timezone-provider-client";
 import { db } from "@/core/database/client";
 import { result as resultTable } from "@/core/database/schema";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
@@ -85,12 +86,14 @@ export default async function FestivalLayout({
   };
 
   return (
-    <FestivalProvider festival={festivalData as any}>
-      <div className="min-h-screen flex flex-col">
-        <FestivalNavbar festival={festivalData as any} />
-        <main className="flex-1 pt-16">{children}</main>
-        <FestivalFooter festival={festivalData as any} />
-      </div>
-    </FestivalProvider>
+    <UserTimezoneProviderClient festivalTimezone={festival.timezone ?? null}>
+      <FestivalProvider festival={festivalData as any}>
+        <div className="min-h-screen flex flex-col">
+          <FestivalNavbar festival={festivalData as any} />
+          <main className="flex-1 pt-16">{children}</main>
+          <FestivalFooter festival={festivalData as any} />
+        </div>
+      </FestivalProvider>
+    </UserTimezoneProviderClient>
   );
 }

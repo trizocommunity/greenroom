@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  instantToWallClockParts,
+  wallClockToInstant,
+} from "@/core/datetime";
+import {
   isDeadlineWindowOpen,
   nextDeadlineWindowTransition,
   resolveDeadlineWindow,
@@ -107,5 +111,44 @@ describe("nextDeadlineWindowTransition", () => {
         at("2026-08-25T00:00:00.000Z"),
       ),
     ).toBeNull();
+  });
+});
+
+describe("deadline-window round-trip (regression for the team-leader display bug)", () => {
+  // Admin typed "Programme Assignment: 09/08/2026 00:00 → 10/08/2026 23:00"
+  // in `Asia/Kolkata`. The picker must anchor to the festival TZ, so:
+  //   wallClockToInstant("2026-08-09", "00:00", "Asia/Kolkata") === "2026-08-08T18:30:00.000Z"
+  //   wallClockToInstant("2026-08-10", "23:00", "Asia/Kolkata") === "2026-08-10T17:30:00.000Z"
+  // Round-tripping the stored UTC instant back through instantToWallClockParts
+  // in IST must recover the original wall-clock — that's the contract the
+  // (participant) layout relies on once it wraps with UserTimezoneProviderClient.
+  it("preserves IST wall-clock across store / load", () => {
+    const startStored = wallClockToInstant(
+      "2026-08-09",
+      "00:00",
+      "Asia/Kolkata",
+    );
+    const endStored = wallClockToInstant(
+      "2026-08-10",
+      "23:00",
+      "Asia/Kolkata",
+    );
+
+    expect(startStored).toBe("2026-08-08T18:30:00.000Z");
+    expect(endStored).toBe("2026-08-10T17:30:00.000Z");
+
+    const startBack = instantToWallClockParts(startStored, "Asia/Kolkata");
+    const endBack = instantToWallClockParts(endStored, "Asia/Kolkata");
+
+    expect(startBack).toEqual({ yyyymmdd: "2026-08-09", hhmm: "00:00" });
+    expect(endBack).toEqual({ yyyymmdd: "2026-08-10", hhmm: "23:00" });
+
+    // And the deadline-window state machine must agree the window is
+    // upcoming — UTC instants, millisecond math, TZ-independent.
+    const { state } = resolveDeadlineWindow(
+      { start: startStored, end: endStored },
+      at("2026-08-01T00:00:00.000Z"),
+    );
+    expect(state).toBe("UPCOMING");
   });
 });
