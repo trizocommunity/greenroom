@@ -335,11 +335,10 @@ export const festival = pgTable(
     programmesCount: integer().default(0).notNull(),
     chestNumberSettings: jsonb(),
     teamStandings: jsonb(),
-    publicDisplayMode: publicDisplayMode()
-      .default("programme_results")
-      .notNull(),
-    announcerResultsPerStandings: integer().default(10).notNull(),
-    announcedProgrammesSinceStandings: integer().default(0).notNull(),
+    standingsPublishedAtResultNumber: integer(
+      "standings_published_at_result_number",
+    ),
+    standingsPublishedAt: tzTimestampNamed("standings_published_at"),
     scoringSystem: scoringSystem().default("SCORE_BASED").notNull(),
     status: festivalStatus().default("READY").notNull(),
     resultPdfUrl: text(),
@@ -472,6 +471,7 @@ export const programme = pgTable(
     publishedByEmail: text("published_by_email"),
     publishedByName: text("published_by_name"),
     resultPosterTemplateCode: text("result_poster_template_code"),
+    resultNumber: integer("result_number"),
   },
   (table) => [
     index("programme_festivalId_createdAt_idx").using(
@@ -484,6 +484,9 @@ export const programme = pgTable(
       table.festivalId.asc().nullsLast(),
       table.status.asc().nullsLast(),
     ),
+    uniqueIndex("programme_festivalId_resultNumber_key")
+      .using("btree", table.festivalId.asc().nullsLast(), table.resultNumber.asc().nullsLast())
+      .where(sql`${table.resultNumber} IS NOT NULL`),
     foreignKey({
       columns: [table.festivalId],
       foreignColumns: [festival.id],
@@ -945,14 +948,10 @@ export const result = pgTable(
     scoringPolicyVersion: integer("scoring_policy_version"),
     remarks: text(),
     isPublished: boolean().default(false).notNull(),
-    isAnnounced: boolean().default(false).notNull(),
-    announcedAt: tzTimestamp(),
     savedByEmail: text("saved_by_email"),
     savedByName: text("saved_by_name"),
     publishedByEmail: text("published_by_email"),
     publishedByName: text("published_by_name"),
-    announcedByEmail: text("announced_by_email"),
-    announcedByName: text("announced_by_name"),
     createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },

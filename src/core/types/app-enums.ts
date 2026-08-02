@@ -95,12 +95,6 @@ export const ProgrammeStatus = {
 export type ProgrammeStatus =
   (typeof ProgrammeStatus)[keyof typeof ProgrammeStatus];
 
-export const PublicDisplayMode = {
-  PROGRAMME_RESULTS: "programme_results",
-  TEAM_STANDINGS: "team_standings",
-} as const;
-export type PublicDisplayMode =
-  (typeof PublicDisplayMode)[keyof typeof PublicDisplayMode];
 
 export const ProgrammeReportingStatus = {
   NOT_STARTED: "NOT_STARTED",

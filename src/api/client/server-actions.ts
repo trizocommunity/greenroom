@@ -662,11 +662,9 @@ export function useUpdateFestivalSettings() {
         participantCreationStartDate?: string | null;
         participantCreationDeadline?: string | null;
         teamLeaderLimit?: number;
-        announcerResultsPerStandings?: number;
         startDate?: string | null;
         endDate?: string | null;
         scoringSystem?: "POSITION_BASED" | "SCORE_BASED" | null;
-        publicDisplayMode?: "programme_results" | "team_standings" | null;
         chestNumberSettings?: {
           autoGenerate?: boolean;
           prefix?: string;
